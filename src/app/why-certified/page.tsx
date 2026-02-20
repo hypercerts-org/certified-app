@@ -11,7 +11,7 @@ const FAQ_ITEMS = [
   {
     question: "Is this like 'Sign in with Google'?",
     answer:
-      "Similar idea, but you own your account. With Certified, your data isn't controlled by a big tech company — it stays with you.",
+      "Similar idea: one account across apps. The difference is that Certified is designed so you're not locked into one company or one app.",
   },
   {
     question: "Do I need crypto or a wallet?",
@@ -21,7 +21,7 @@ const FAQ_ITEMS = [
   {
     question: "What if I already have an account on a partner app?",
     answer:
-      "You can create a Certified ID and link it to your existing account on supported platforms.",
+      "On supported platforms, you can connect Certified to an existing account.",
   },
   {
     question: "Can I stop using Certified later?",
@@ -31,7 +31,7 @@ const FAQ_ITEMS = [
   {
     question: "Is my data safe?",
     answer:
-      "We use secure, encrypted connections and email-based verification. We never sell your personal data.",
+      "We use encrypted connections and one-time email codes. You control where you use Certified.",
   },
   {
     question: "What apps support Certified?",
@@ -56,17 +56,17 @@ export default function WhyCertifiedPage() {
       <div className="wc-hero">
         <h1>Why Certified</h1>
         <p>
-          One account that works across trusted impact apps — your identity and
-          data travel with you.
+          One account across partner apps — your profile follows you.
         </p>
         <div className="wc-hero__actions">
           <Button variant="primary" size="lg" onClick={signUp}>
             Create your Certified ID
           </Button>
           <a href="#how-it-works" className="hero__btn-secondary">
-            Learn how it works
+            How it works
           </a>
         </div>
+        <p className="wc-hero__helper">No passwords. Email code only.</p>
       </div>
 
       <div className="wc-divider">
@@ -78,8 +78,8 @@ export default function WhyCertifiedPage() {
         <h2>The problem</h2>
         <ul className="wc-bullets">
           <li>Every app makes you create a new account.</li>
-          <li>Your profile and work don&apos;t carry over.</li>
-          <li>Your data gets stuck in one place.</li>
+          <li>You have to rebuild your profile each time.</li>
+          <li>Your history ends up scattered.</li>
         </ul>
       </div>
 
@@ -92,9 +92,8 @@ export default function WhyCertifiedPage() {
         <h2>The simple idea</h2>
         <div className="wc-prose">
           <p>
-            You create one Certified account. You use it to sign in to different
-            apps. Your identity and data travel with you — no extra setup, no
-            starting over.
+            Create one Certified account. Use it to sign in to partner apps.
+            Your profile and records come with you — no extra setup.
           </p>
         </div>
       </div>
@@ -103,37 +102,36 @@ export default function WhyCertifiedPage() {
         <hr />
       </div>
 
+      <div className="wc-section">
+        <div className="wc-callout">
+          <p className="wc-callout__label">Example</p>
+          <p className="wc-callout__text">Create your Certified ID on Ma Earth. Later, sign in to GainForest — your profile is already there.</p>
+        </div>
+      </div>
+
+      <div className="wc-divider"><hr /></div>
+
       {/* 4. What you get */}
       <div className="wc-section">
         <h2>What you get</h2>
         <div className="wc-grid">
           <div className="wc-card">
             <h3>One account across apps</h3>
-            <p>
-              Sign in once and use the same account on every partner platform.
-              No more juggling logins.
-            </p>
+            <p>Use the same account on every partner platform. No new logins.</p>
+            <p className="wc-card__micro">Example: Ma Earth → GainForest</p>
           </div>
           <div className="wc-card">
             <h3>Your profile travels with you</h3>
-            <p>
-              Your name, contributions, and records are already there when you
-              sign in to a new app.
-            </p>
+            <p>Your profile and activity appear when you sign in to a new app.</p>
           </div>
           <div className="wc-card">
             <h3>You stay in control</h3>
-            <p>
-              Your data belongs to you. You can move it or leave any time — no
-              lock-in.
-            </p>
+            <p>You can leave anytime. You&apos;re not locked in.</p>
           </div>
           <div className="wc-card">
             <h3>Simple sign-in</h3>
-            <p>
-              No passwords to remember. Just enter your email and a secure code.
-              That&apos;s it.
-            </p>
+            <p>No passwords. We email you a one-time code.</p>
+            <p className="wc-card__micro">Takes ~30 seconds.</p>
           </div>
         </div>
       </div>
@@ -144,8 +142,8 @@ export default function WhyCertifiedPage() {
 
       {/* 5. Where you can use Certified */}
       <div className="wc-section">
-        <h2>Where you can use Certified</h2>
-        <p className="wc-prose">Certified works across trusted partner platforms.</p>
+        <h2>Works across partner apps</h2>
+        <p className="wc-prose">Use your Certified ID anywhere you see &lsquo;Sign in with Certified&rsquo;.</p>
         <div className="wc-partners">
           <span className="wc-chip">Ma Earth</span>
           <span className="wc-chip">GainForest</span>
@@ -166,23 +164,20 @@ export default function WhyCertifiedPage() {
           <div className="wc-step">
             <div className="wc-step__number">1</div>
             <h3>Create your Certified ID</h3>
-            <p>Enter your email and verify with a secure code.</p>
+            <p>Enter your email. We send a one-time code.</p>
           </div>
           <div className="wc-step">
             <div className="wc-step__number">2</div>
             <h3>Sign in to partner apps</h3>
-            <p>
-              Use your Certified account wherever you see &ldquo;Sign in with
-              Certified.&rdquo;
-            </p>
+            <p>Use it anywhere you see &lsquo;Sign in with Certified&rsquo;.</p>
           </div>
           <div className="wc-step">
             <div className="wc-step__number">3</div>
             <h3>Your profile is already there</h3>
-            <p>Your identity and records follow you automatically.</p>
+            <p>Your profile and records follow you automatically.</p>
           </div>
         </div>
-        <p className="wc-reassurance">You don&apos;t have to set up anything else.</p>
+        <p className="wc-reassurance">That&apos;s it — no extra setup.</p>
       </div>
 
       <div className="wc-divider">
@@ -193,19 +188,16 @@ export default function WhyCertifiedPage() {
       <div className="wc-section">
         <h2>Built for trust</h2>
         <ul className="wc-trust-list">
-          <li>Your identity is yours.</li>
-          <li>You can move your data — you&apos;re not locked in.</li>
-          <li>
-            Certified is built on open standards and works across multiple apps.
-          </li>
+          <li>Your account belongs to you.</li>
+          <li>You can leave anytime — no lock-in.</li>
+          <li>Works across multiple apps — you&apos;re not stuck in one place.</li>
         </ul>
         <div className="wc-trust-sub">
           <h3>Privacy &amp; security</h3>
           <ul>
-            <li>
-              We use secure email codes for sign-in — no passwords needed.
-            </li>
-            <li>Our policy is to never sell your personal data.</li>
+            <li>One-time email codes — no passwords.</li>
+            <li>We don&apos;t sell your personal data.</li>
+            <li>Encrypted connections by default.</li>
             <li>
               Read our{" "}
               <Link href="/privacy">Privacy Policy</Link> and{" "}
@@ -259,7 +251,7 @@ export default function WhyCertifiedPage() {
       {/* 9. Bottom CTA */}
       <div className="wc-bottom-cta">
         <h2>Ready to get started?</h2>
-        <p>Create your account in under a minute.</p>
+        <p>Create your account in under a minute — no passwords.</p>
         <div className="wc-bottom-cta__actions">
           <Button variant="primary" size="lg" onClick={signUp}>
             Create your Certified ID
