@@ -84,12 +84,9 @@ export default function Home() {
             <Button variant="primary" size="lg" onClick={signUp}>
               Create your Certified ID
             </Button>
-            <button
-              className="hero__btn-secondary"
-              onClick={() => window.open("https://hypercerts-v02-documentation.vercel.app", "_blank")}
-            >
+            <Link href="/why-certified" className="hero__btn-secondary">
               Learn more
-            </button>
+            </Link>
           </div>
         </div>
       </div>
