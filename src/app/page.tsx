@@ -8,7 +8,7 @@ import Button from "@/components/ui/button";
 import Card from "@/components/ui/card";
 
 export default function Home() {
-  const { isLoading, session, did, signIn } = useAuth();
+  const { isLoading, session, did, signIn, signUp } = useAuth();
   const { setVariant } = useNavbarVariant();
 
   useEffect(() => {
@@ -81,7 +81,7 @@ export default function Home() {
         </p>
         <div className="hero-reveal">
           <div className="hero__actions">
-            <Button variant="primary" size="lg" onClick={signIn}>
+            <Button variant="primary" size="lg" onClick={signUp}>
               Create your Certified ID
             </Button>
             <button

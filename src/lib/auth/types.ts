@@ -18,6 +18,8 @@ export interface AuthState {
   authorizeUrl: string | null
   /** Initiate sign-in — opens the PDS authorize page */
   signIn: () => Promise<void>
+  /** Initiate sign-up — opens the PDS create-account page */
+  signUp: () => Promise<void>
   /** Sign out — revokes tokens and clears session */
   signOut: () => Promise<void>
   /** Close the sign-in modal */

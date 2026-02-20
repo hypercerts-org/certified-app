@@ -83,12 +83,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const url = await client.authorize(PDS_URL, {
         scope: "atproto transition:generic",
         display: "page",
+        prompt: "login",
       })
       setAuthorizeUrl(url.href)
       setIsSigningIn(true)
     } catch (err) {
       console.error("Sign in error:", err)
       setError(err instanceof Error ? err.message : "Failed to sign in")
+    }
+  }, [])
+
+  const signUp = useCallback(async () => {
+    try {
+      setError(null)
+      const client = getOAuthClient()
+      const url = await client.authorize(PDS_URL, {
+        scope: "atproto transition:generic",
+        display: "page",
+        prompt: "create",
+      })
+      setAuthorizeUrl(url.href)
+      setIsSigningIn(true)
+    } catch (err) {
+      console.error("Sign up error:", err)
+      setError(err instanceof Error ? err.message : "Failed to sign up")
     }
   }, [])
 
@@ -121,6 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isSigningIn,
     authorizeUrl,
     signIn,
+    signUp,
     signOut,
     closeSignIn,
   }
