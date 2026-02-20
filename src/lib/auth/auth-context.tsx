@@ -84,6 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const url = await client.authorize(PDS_URL, {
         scope: "atproto transition:generic",
         display: "page",
+        prompt: "login",
       })
       setAuthMode("sign-in")
       setAuthorizeUrl(url.href)
