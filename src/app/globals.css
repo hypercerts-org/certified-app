@@ -169,9 +169,37 @@ h1, h2, h3, h4, h5, h6 {
   margin: 0 auto 48px;
 }
 
-.hero__inner > div:last-child {
+.hero__actions {
   display: flex;
   justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.hero__btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 32px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--color-white);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.hero__btn-secondary:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.hero__btn-secondary:focus-visible {
+  outline: 2px solid var(--color-white);
+  outline-offset: 2px;
 }
 
 @keyframes fadeUp {

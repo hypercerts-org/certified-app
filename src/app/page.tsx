@@ -72,9 +72,17 @@ export default function Home() {
             Your identity, contributions, and trust — everywhere you go.
           </p>
           <div className="hero-reveal">
-            <Button variant="primary" size="lg" onClick={signIn}>
-              Claim your account
-            </Button>
+            <div className="hero__actions">
+              <Button variant="primary" size="lg" onClick={signIn}>
+                Claim your account
+              </Button>
+              <button
+                className="hero__btn-secondary"
+                onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })}
+              >
+                Learn more
+              </button>
+            </div>
           </div>
         </div>
       </section>
