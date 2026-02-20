@@ -5,10 +5,11 @@ import React, { useEffect, useRef } from "react"
 interface SignInModalProps {
   isOpen: boolean
   authorizeUrl: string | null
+  authMode: "sign-in" | "sign-up"
   onClose: () => void
 }
 
-export default function SignInModal({ isOpen, authorizeUrl, onClose }: SignInModalProps) {
+export default function SignInModal({ isOpen, authorizeUrl, authMode, onClose }: SignInModalProps) {
   const backdropRef = useRef<HTMLDivElement>(null)
 
   // Close on Escape key
@@ -40,12 +41,14 @@ export default function SignInModal({ isOpen, authorizeUrl, onClose }: SignInMod
       onClick={(e) => { if (e.target === backdropRef.current) onClose() }}
       role="dialog"
       aria-modal="true"
-      aria-label="Sign in"
+      aria-label={authMode === "sign-up" ? "Create Certified ID" : "Sign in"}
     >
       <div className="signin-modal">
         <div className="signin-modal__header">
           <img src="/assets/certified_brandmark.svg" alt="" className="signin-modal__logo" />
-          <span className="signin-modal__title">Sign in to Certified</span>
+          <span className="signin-modal__title">
+            {authMode === "sign-up" ? "Create Certified ID" : "Sign in to Certified"}
+          </span>
           <button
             className="signin-modal__close"
             onClick={onClose}
@@ -58,7 +61,7 @@ export default function SignInModal({ isOpen, authorizeUrl, onClose }: SignInMod
           <iframe
             src={authorizeUrl}
             className="signin-modal__iframe"
-            title="Sign in"
+            title={authMode === "sign-up" ? "Create Certified ID" : "Sign in"}
             allow="clipboard-write"
           />
         </div>

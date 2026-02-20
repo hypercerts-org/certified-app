@@ -24,4 +24,6 @@ export interface AuthState {
   signOut: () => Promise<void>
   /** Close the sign-in modal */
   closeSignIn: () => void
+  /** Which auth flow opened the modal */
+  authMode: "sign-in" | "sign-up"
 }

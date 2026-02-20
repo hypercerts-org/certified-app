@@ -19,6 +19,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [isSigningIn, setIsSigningIn] = useState(false)
   const [authorizeUrl, setAuthorizeUrl] = useState<string | null>(null)
+  const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in")
 
   // Initialize auth on mount
   useEffect(() => {
@@ -83,8 +84,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const url = await client.authorize(PDS_URL, {
         scope: "atproto transition:generic",
         display: "page",
-        prompt: "login",
       })
+      setAuthMode("sign-in")
       setAuthorizeUrl(url.href)
       setIsSigningIn(true)
     } catch (err) {
@@ -102,6 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         display: "page",
         prompt: "create",
       })
+      setAuthMode("sign-up")
       setAuthorizeUrl(url.href)
       setIsSigningIn(true)
     } catch (err) {
@@ -138,6 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error,
     isSigningIn,
     authorizeUrl,
+    authMode,
     signIn,
     signUp,
     signOut,
@@ -150,6 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       <SignInModal
         isOpen={isSigningIn}
         authorizeUrl={authorizeUrl}
+        authMode={authMode}
         onClose={closeSignIn}
       />
     </AuthContext.Provider>
