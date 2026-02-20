@@ -72,24 +72,26 @@ export default function EditProfilePage() {
 
   return (
     <AuthGuard>
-      {/* Show loading spinner while loading profile */}
-      {isLoading ? (
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <LoadingSpinner size="md" />
-        </div>
-      ) : (
-        <ProfileEditForm
-          initialProfile={profile}
-          onSave={handleSave}
-          isSaving={isSaving}
-          saveError={saveError}
-          onAvatarUpload={handleAvatarUpload}
-          onBannerUpload={handleBannerUpload}
-          currentAvatarUrl={currentAvatarUrl}
-          currentBannerUrl={currentBannerUrl}
-          fallbackInitials={fallbackInitials}
-        />
-      )}
+      <div className="max-w-[1200px] mx-auto px-6 py-8 bg-gray-50 min-h-screen">
+        {/* Show loading spinner while loading profile */}
+        {isLoading ? (
+          <div className="flex items-center justify-center min-h-[50vh]">
+            <LoadingSpinner size="md" />
+          </div>
+        ) : (
+          <ProfileEditForm
+            initialProfile={profile}
+            onSave={handleSave}
+            isSaving={isSaving}
+            saveError={saveError}
+            onAvatarUpload={handleAvatarUpload}
+            onBannerUpload={handleBannerUpload}
+            currentAvatarUrl={currentAvatarUrl}
+            currentBannerUrl={currentBannerUrl}
+            fallbackInitials={fallbackInitials}
+          />
+        )}
+      </div>
     </AuthGuard>
   );
 }

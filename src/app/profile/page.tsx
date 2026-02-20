@@ -15,29 +15,31 @@ export default function ProfilePage() {
 
   return (
     <AuthGuard>
-      {/* Show loading spinner while fetching */}
-      {isLoading && (
-        <div className="flex items-center justify-center min-h-[400px]">
-          <LoadingSpinner size="md" />
-        </div>
-      )}
+      <div className="max-w-[1200px] mx-auto px-6 py-8 bg-gray-50 min-h-screen">
+        {/* Show loading spinner while fetching */}
+        {isLoading && (
+          <div className="flex items-center justify-center min-h-[400px]">
+            <LoadingSpinner size="md" />
+          </div>
+        )}
 
-      {/* Show error message with retry button */}
-      {error && (
-        <div className="flex items-center justify-center min-h-[400px]">
-          <ErrorMessage message={error} onRetry={refetch} />
-        </div>
-      )}
+        {/* Show error message with retry button */}
+        {error && (
+          <div className="flex items-center justify-center min-h-[400px]">
+            <ErrorMessage message={error} onRetry={refetch} />
+          </div>
+        )}
 
-      {/* Render profile view */}
-      {!isLoading && !error && did && (
-        <ProfileView
-          profile={profile}
-          did={did}
-          avatarUrl={avatarUrl}
-          bannerUrl={bannerUrl}
-        />
-      )}
+        {/* Render profile view */}
+        {!isLoading && !error && did && (
+          <ProfileView
+            profile={profile}
+            did={did}
+            avatarUrl={avatarUrl}
+            bannerUrl={bannerUrl}
+          />
+        )}
+      </div>
     </AuthGuard>
   );
 }

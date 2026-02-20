@@ -12,7 +12,7 @@ export default function Home() {
   if (session) {
     // Authenticated state
     return (
-      <div className="py-8">
+      <div className="max-w-[1200px] mx-auto px-6 py-8 bg-gray-50 min-h-screen">
         <h2 className="text-h2 text-navy mb-6">Welcome back</h2>
         <Card className="mb-6">
           <p className="text-body text-gray-700 mb-4">
