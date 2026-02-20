@@ -12,12 +12,6 @@ const Footer: React.FC = () => {
           </p>
           <div className="flex gap-6">
             <a
-              href="#"
-              className="text-caption text-gray-400 hover:text-gray-600 transition-colors duration-200"
-            >
-              About
-            </a>
-            <a
               href="https://hypercerts-v02-documentation.vercel.app"
               target="_blank"
               rel="noopener noreferrer"
