@@ -16,9 +16,6 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   avatarUrl,
   bannerUrl,
 }) => {
-  // Truncate DID to first 24 chars + "..."
-  const truncatedDid = did.length > 24 ? `${did.slice(0, 24)}...` : did;
-
   // Get initials for avatar fallback
   const getInitials = () => {
     if (displayName) {
@@ -65,8 +62,8 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             )}
           </h2>
           <div className="flex items-center justify-center gap-2 mt-1">
-            <p className="text-body-sm text-gray-400 font-mono">
-              {truncatedDid}
+            <p className="text-body-sm text-gray-400 font-mono break-all">
+              {did}
             </p>
             {pronouns && (
               <>
