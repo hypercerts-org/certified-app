@@ -76,9 +76,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Do a full-page redirect OAuth flow to the selected provider
       try {
         const client = getOAuthClient();
-        await client.signIn(input, {
-          scope: "atproto transition:generic",
-        });
+        const trimmedInput = input.trim();
+
+        // If it already has a protocol, use as-is
+        if (
+          trimmedInput.startsWith("http://") ||
+          trimmedInput.startsWith("https://")
+        ) {
+          await client.signIn(trimmedInput, {
+            scope: "atproto transition:generic",
+          });
+          return;
+        }
+
+        // If it starts with did:, use as-is (it's a DID)
+        if (trimmedInput.startsWith("did:")) {
+          await client.signIn(trimmedInput, {
+            scope: "atproto transition:generic",
+          });
+          return;
+        }
+
+        // Otherwise: try as handle first, fall back to hosting provider URL
+        try {
+          await client.signIn(trimmedInput, {
+            scope: "atproto transition:generic",
+          });
+        } catch (handleErr) {
+          // Handle resolution failed — try as a hosting provider URL
+          try {
+            await client.signIn("https://" + trimmedInput, {
+              scope: "atproto transition:generic",
+            });
+          } catch {
+            // Both failed — throw the handle error (more useful to the user)
+            throw handleErr;
+          }
+        }
         // signIn does window.location.href = ... so this line is never reached
       } catch (err) {
         console.error("External provider sign-in error:", err);
