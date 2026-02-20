@@ -2,18 +2,26 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { BlobRef } from "@atproto/api";
 import Input from "@/components/ui/input";
 import Textarea from "@/components/ui/textarea";
 import Button from "@/components/ui/button";
 import Card from "@/components/ui/card";
 import ErrorMessage from "@/components/ui/error-message";
-import type { CertifiedProfile } from "@/lib/atproto/types";
+import AvatarUpload from "@/components/profile/avatar-upload";
+import BannerUpload from "@/components/profile/banner-upload";
+import type { CertifiedProfile, HypercertsSmallImage, HypercertsLargeImage } from "@/lib/atproto/types";
 
 export interface ProfileEditFormProps {
   initialProfile: CertifiedProfile | null;
   onSave: (profile: CertifiedProfile) => Promise<void>;
   isSaving: boolean;
   saveError: string | null;
+  onAvatarUpload: (file: File) => Promise<BlobRef>;
+  onBannerUpload: (file: File) => Promise<BlobRef>;
+  currentAvatarUrl: string | null;
+  currentBannerUrl: string | null;
+  fallbackInitials: string;
 }
 
 const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
@@ -21,6 +29,11 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
   onSave,
   isSaving,
   saveError,
+  onAvatarUpload,
+  onBannerUpload,
+  currentAvatarUrl,
+  currentBannerUrl,
+  fallbackInitials,
 }) => {
   const router = useRouter();
 
@@ -29,6 +42,12 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
   const [description, setDescription] = useState("");
   const [pronouns, setPronouns] = useState("");
   const [website, setWebsite] = useState("");
+
+  // Image upload state
+  const [avatarBlob, setAvatarBlob] = useState<BlobRef | null>(null);
+  const [bannerBlob, setBannerBlob] = useState<BlobRef | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
 
   // Validation errors
   const [displayNameError, setDisplayNameError] = useState("");
@@ -55,9 +74,11 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
       displayName !== (initialProfile?.displayName || "") ||
       description !== (initialProfile?.description || "") ||
       pronouns !== (initialProfile?.pronouns || "") ||
-      website !== (initialProfile?.website || "");
+      website !== (initialProfile?.website || "") ||
+      avatarBlob !== null ||
+      bannerBlob !== null;
     setHasChanges(changed);
-  }, [displayName, description, pronouns, website, initialProfile]);
+  }, [displayName, description, pronouns, website, initialProfile, avatarBlob, bannerBlob]);
 
   // Validate display name
   const validateDisplayName = (value: string) => {
@@ -102,6 +123,28 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     } catch {
       setWebsiteError("Please enter a valid URL");
       return false;
+    }
+  };
+
+  // Handle avatar upload
+  const handleAvatarUpload = async (file: File) => {
+    setIsUploadingAvatar(true);
+    try {
+      const blobRef = await onAvatarUpload(file);
+      setAvatarBlob(blobRef);
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  // Handle banner upload
+  const handleBannerUpload = async (file: File) => {
+    setIsUploadingBanner(true);
+    try {
+      const blobRef = await onBannerUpload(file);
+      setBannerBlob(blobRef);
+    } finally {
+      setIsUploadingBanner(false);
     }
   };
 
@@ -153,9 +196,6 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
 
     // Construct profile
     const profile: CertifiedProfile = {
-      // Preserve existing avatar and banner
-      ...(initialProfile?.avatar && { avatar: initialProfile.avatar }),
-      ...(initialProfile?.banner && { banner: initialProfile.banner }),
       // Set createdAt: use existing or new
       createdAt: initialProfile?.createdAt || new Date().toISOString(),
       // Add text fields (trim and omit empty strings)
@@ -164,6 +204,28 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
       ...(pronouns.trim() && { pronouns: pronouns.trim() }),
       ...(website.trim() && { website: website.trim() }),
     };
+
+    // Handle avatar: use new blob if uploaded, otherwise preserve existing
+    if (avatarBlob) {
+      const avatarImage: HypercertsSmallImage = {
+        $type: "org.hypercerts.defs#smallImage",
+        image: avatarBlob,
+      };
+      profile.avatar = avatarImage;
+    } else if (initialProfile?.avatar) {
+      profile.avatar = initialProfile.avatar;
+    }
+
+    // Handle banner: use new blob if uploaded, otherwise preserve existing
+    if (bannerBlob) {
+      const bannerImage: HypercertsLargeImage = {
+        $type: "org.hypercerts.defs#largeImage",
+        image: bannerBlob,
+      };
+      profile.banner = bannerImage;
+    } else if (initialProfile?.banner) {
+      profile.banner = initialProfile.banner;
+    }
 
     await onSave(profile);
   };
@@ -179,6 +241,23 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
 
       <Card className="shadow-elevation-1 rounded-card p-6">
         <div className="flex flex-col gap-6">
+          {/* Banner Upload */}
+          <BannerUpload
+            currentBannerUrl={currentBannerUrl}
+            onUpload={handleBannerUpload}
+            isUploading={isUploadingBanner}
+          />
+
+          {/* Avatar Upload */}
+          <div className="flex justify-center -mt-12">
+            <AvatarUpload
+              currentAvatarUrl={currentAvatarUrl}
+              fallbackInitials={fallbackInitials}
+              onUpload={handleAvatarUpload}
+              isUploading={isUploadingAvatar}
+            />
+          </div>
+
           {/* Display Name */}
           <Input
             label="Display name"
