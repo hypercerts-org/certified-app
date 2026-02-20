@@ -20,6 +20,15 @@ export default function Home() {
     };
   }, [session, isLoading, setVariant]);
 
+  useEffect(() => {
+    if (!isLoading && !session) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [isLoading, session]);
+
   if (isLoading) {
     return (
       <div className="loading-screen">
@@ -58,16 +67,6 @@ export default function Home() {
   }
 
   // Not authenticated - Landing page
-  // Lock scroll on landing page
-  useEffect(() => {
-    if (!isLoading && !session) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => { document.body.style.overflow = ""; };
-  }, [isLoading, session]);
-
   return (
     <section id="hero" className="hero">
       <div className="hero__bg" aria-hidden="true" />
