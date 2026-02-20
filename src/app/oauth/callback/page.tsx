@@ -12,18 +12,37 @@ export default function OAuthCallbackPage() {
     async function handleCallback() {
       try {
         const client = getOAuthClient()
-        const result = await client.init()
+        const isInIframe = window.parent !== window
 
-        if (cancelled) return
+        if (isInIframe) {
+          // In iframe: use initCallback to process the OAuth params,
+          // then notify the parent window
+          const params = client.readCallbackParams()
+          if (!params) {
+            setError("No OAuth parameters found.")
+            return
+          }
+          const redirectUri = client.findRedirectUrl()
+          const result = await client.initCallback(params, redirectUri)
 
-        if (result?.session) {
-          // Session is now persisted in IndexedDB.
-          // Use full page navigation to ensure AuthProvider reads fresh state.
-          window.location.replace("/")
+          if (cancelled) return
+
+          // Send the session sub to the parent window
+          window.parent.postMessage(
+            { type: "oauth-callback-complete", sub: result.session.sub },
+            window.location.origin
+          )
         } else {
-          // No session returned — the URL may not have had a valid code fragment.
-          // This can happen if the user navigates to /oauth/callback directly.
-          setError("No session received. Please try signing in again.")
+          // Not in iframe: original behavior (direct navigation or popup)
+          const result = await client.init()
+
+          if (cancelled) return
+
+          if (result?.session) {
+            window.location.replace("/")
+          } else {
+            setError("No session received. Please try signing in again.")
+          }
         }
       } catch (err) {
         if (cancelled) return

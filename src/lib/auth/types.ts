@@ -12,8 +12,14 @@ export interface AuthState {
   did: string | null
   /** Error from the last auth operation */
   error: string | null
+  /** Whether the sign-in modal is currently open */
+  isSigningIn: boolean
+  /** The authorize URL for the iframe, or null */
+  authorizeUrl: string | null
   /** Initiate sign-in — opens the PDS authorize page */
   signIn: () => Promise<void>
   /** Sign out — revokes tokens and clears session */
   signOut: () => Promise<void>
+  /** Close the sign-in modal */
+  closeSignIn: () => void
 }

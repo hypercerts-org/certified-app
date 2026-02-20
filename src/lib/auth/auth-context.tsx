@@ -5,6 +5,7 @@ import { Agent } from "@atproto/api"
 import type { OAuthSession } from "@atproto/oauth-client-browser"
 import { getOAuthClient } from "./oauth-client"
 import type { AuthState } from "./types"
+import SignInModal from "@/components/ui/sign-in-modal"
 
 const AuthContext = createContext<AuthState | undefined>(undefined)
 
@@ -16,6 +17,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [agent, setAgent] = useState<Agent | null>(null)
   const [did, setDid] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isSigningIn, setIsSigningIn] = useState(false)
+  const [authorizeUrl, setAuthorizeUrl] = useState<string | null>(null)
 
   // Initialize auth on mount
   useEffect(() => {
@@ -44,33 +47,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth()
   }, [])
 
+  // Listen for postMessage from iframe callback
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return
+      if (event.data?.type !== "oauth-callback-complete") return
+
+      const { sub } = event.data
+      if (!sub) return
+
+      try {
+        const client = getOAuthClient()
+        const oauthSession = await client.restore(sub, false)
+        const newAgent = new Agent(oauthSession)
+        setSession(oauthSession)
+        setAgent(newAgent)
+        setDid(oauthSession.did)
+      } catch (err) {
+        console.error("Session restore error:", err)
+        setError(err instanceof Error ? err.message : "Failed to complete sign in")
+      } finally {
+        setIsSigningIn(false)
+        setAuthorizeUrl(null)
+      }
+    }
+
+    window.addEventListener("message", handleMessage)
+    return () => window.removeEventListener("message", handleMessage)
+  }, [])
+
   const signIn = useCallback(async () => {
     try {
       setError(null)
       const client = getOAuthClient()
-      
-      // Use popup mode — opens PDS authorize page in a popup window.
-      // The popup handles the full OTP flow, then closes itself.
-      // signInPopup resolves with the session directly.
-      const oauthSession = await client.signInPopup(PDS_URL, {
+      const url = await client.authorize(PDS_URL, {
         scope: "atproto transition:generic",
+        display: "page",
       })
-      
-      // Session received — update state immediately
-      const newAgent = new Agent(oauthSession)
-      setSession(oauthSession)
-      setAgent(newAgent)
-      setDid(oauthSession.did)
+      setAuthorizeUrl(url.href)
+      setIsSigningIn(true)
     } catch (err) {
-      // LoginContinuedInParentWindowError is thrown in the popup window itself — ignore it.
-      // Also ignore if user closed the popup (will throw generic error).
-      if (err instanceof Error && err.message === "Aborted") {
-        // User closed popup — not an error
-        return
-      }
       console.error("Sign in error:", err)
       setError(err instanceof Error ? err.message : "Failed to sign in")
     }
+  }, [])
+
+  const closeSignIn = useCallback(() => {
+    setIsSigningIn(false)
+    setAuthorizeUrl(null)
   }, [])
 
   const signOut = useCallback(async () => {
@@ -94,11 +118,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     agent,
     did,
     error,
+    isSigningIn,
+    authorizeUrl,
     signIn,
     signOut,
+    closeSignIn,
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      <SignInModal
+        isOpen={isSigningIn}
+        authorizeUrl={authorizeUrl}
+        onClose={closeSignIn}
+      />
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth(): AuthState {
