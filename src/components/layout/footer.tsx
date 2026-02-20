@@ -18,20 +18,6 @@ const Footer: React.FC = () => {
             <Link href="/privacy" className="text-caption text-gray-400 hover:text-gray-600 transition-colors duration-200">
               Policy
             </Link>
-            <a
-              href="https://hypercerts-v02-documentation.vercel.app"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-caption text-gray-400 hover:text-gray-600 transition-colors duration-200"
-            >
-              Documentation
-            </a>
-            <a
-              href="#"
-              className="text-caption text-gray-400 hover:text-gray-600 transition-colors duration-200"
-            >
-              GitHub
-            </a>
           </div>
         </div>
       </div>
