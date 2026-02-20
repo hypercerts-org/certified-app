@@ -5,8 +5,6 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { getProfile, getAvatarUrl, getBannerUrl } from "@/lib/atproto/profile"
 import type { CertifiedProfile } from "@/lib/atproto/types"
 
-const PDS_URL = process.env.NEXT_PUBLIC_PDS_URL || "https://otp.certs.network"
-
 export function useProfile(): {
   profile: CertifiedProfile | null
   isLoading: boolean
@@ -15,7 +13,7 @@ export function useProfile(): {
   avatarUrl: string | null
   bannerUrl: string | null
 } {
-  const { agent, did } = useAuth()
+  const { agent, did, pdsUrl } = useAuth()
   const [profile, setProfile] = useState<CertifiedProfile | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -48,8 +46,9 @@ export function useProfile(): {
   }, [fetchProfile])
 
   // Compute avatar and banner URLs
-  const avatarUrl = profile && did ? getAvatarUrl(profile, did, PDS_URL) : null
-  const bannerUrl = profile && did ? getBannerUrl(profile, did, PDS_URL) : null
+  const effectivePdsUrl = pdsUrl || process.env.NEXT_PUBLIC_PDS_URL || "https://otp.certs.network"
+  const avatarUrl = profile && did ? getAvatarUrl(profile, did, effectivePdsUrl) : null
+  const bannerUrl = profile && did ? getBannerUrl(profile, did, effectivePdsUrl) : null
 
   return {
     profile,

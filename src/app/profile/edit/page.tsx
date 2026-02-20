@@ -13,12 +13,12 @@ import type { CertifiedProfile } from "@/lib/atproto/types";
 
 export default function EditProfilePage() {
   const router = useRouter();
-  const { agent, did } = useAuth();
+  const { agent, did, pdsUrl } = useAuth();
   const { profile, isLoading, refetch } = useProfile();
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const PDS_URL = "https://otp.certs.network";
+  const effectivePdsUrl = pdsUrl || process.env.NEXT_PUBLIC_PDS_URL || "https://otp.certs.network";
 
   // Handle avatar upload
   const handleAvatarUpload = async (file: File): Promise<BlobRef> => {
@@ -60,8 +60,8 @@ export default function EditProfilePage() {
   };
 
   // Get current avatar and banner URLs
-  const currentAvatarUrl = profile && did ? getAvatarUrl(profile, did, PDS_URL) : null;
-  const currentBannerUrl = profile && did ? getBannerUrl(profile, did, PDS_URL) : null;
+  const currentAvatarUrl = profile && did ? getAvatarUrl(profile, did, effectivePdsUrl) : null;
+  const currentBannerUrl = profile && did ? getBannerUrl(profile, did, effectivePdsUrl) : null;
 
   // Get fallback initials from display name or DID
   const fallbackInitials = profile?.displayName
