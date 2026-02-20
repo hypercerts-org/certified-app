@@ -77,12 +77,12 @@ export default function Home() {
           Any app.
         </h1>
         <p className="hero-reveal">
-          Your identity, contributions, and trust — everywhere you go.
+          Your identity and data — everywhere you go.
         </p>
         <div className="hero-reveal">
           <div className="hero__actions">
             <Button variant="primary" size="lg" onClick={signIn}>
-              Claim your account
+              Create your Certified ID
             </Button>
             <button
               className="hero__btn-secondary"

@@ -100,7 +100,7 @@ const Navbar: React.FC = () => {
               {isTransparent ? (
                 <button
                   onClick={signIn}
-                  className="px-4 py-2 text-sm font-medium text-white border border-white/30 rounded-md hover:border-white transition-colors duration-200"
+                  className="px-4 py-2 text-sm font-medium text-white border border-white/60 rounded-md bg-white/10 hover:bg-white/20 hover:border-white transition-colors duration-200"
                 >
                   Sign in
                 </button>
