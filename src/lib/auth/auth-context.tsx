@@ -28,7 +28,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const result = await client.init()
         
         if (result?.session) {
-          // Create Agent from session
           const newAgent = new Agent(result.session)
           setSession(result.session)
           setAgent(newAgent)
@@ -45,24 +44,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth()
   }, [])
 
-  // Note: Session expiry/revocation is handled by the BrowserOAuthClient internally
-  // The client stores sessions in IndexedDB and will automatically refresh tokens
-  // If a session is revoked, subsequent API calls will fail and the app should handle that
-
   const signIn = useCallback(async () => {
     try {
       setError(null)
       const client = getOAuthClient()
-      // Pass PDS URL and scope for the OAuth flow
+      // Pass PDS URL — the resolver will fetch its OAuth metadata
+      // and redirect the user to the PDS authorize page for OTP login
       await client.signIn(PDS_URL, { 
         scope: "atproto transition:generic" 
       })
-      // After signIn, the page will redirect to PDS authorize page
-      // On callback, init() will pick up the session
+      // signInRedirect sets window.location.href — browser navigates away
+      // On return, init() on the callback page processes the response
     } catch (err) {
       console.error("Sign in error:", err)
       setError(err instanceof Error ? err.message : "Failed to sign in")
-      throw err
+      // Don't re-throw — the onClick handler doesn't expect a rejection
     }
   }, [])
 
@@ -78,7 +74,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error("Sign out error:", err)
       setError(err instanceof Error ? err.message : "Failed to sign out")
-      throw err
     }
   }, [session])
 
