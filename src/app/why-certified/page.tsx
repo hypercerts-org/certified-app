@@ -66,7 +66,6 @@ export default function WhyCertifiedPage() {
             How it works
           </a>
         </div>
-        <p className="wc-hero__helper">No passwords. Email code only.</p>
       </div>
 
       <div className="wc-divider">
@@ -145,10 +144,19 @@ export default function WhyCertifiedPage() {
         <h2>Works across partner apps</h2>
         <p className="wc-prose">Use your Certified ID anywhere you see &lsquo;Sign in with Certified&rsquo;.</p>
         <div className="wc-partners">
-          <span className="wc-chip">Ma Earth</span>
-          <span className="wc-chip">GainForest</span>
+          <span className="wc-chip">
+            <img src="/assets/maearth_logo.jpeg" alt="" className="wc-chip__logo" />
+            Ma Earth
+          </span>
+          <span className="wc-chip">
+            <img src="/assets/gainforest_logo.jpeg" alt="" className="wc-chip__logo" />
+            GainForest
+          </span>
           <span className="wc-chip">Hyperboards</span>
-          <span className="wc-chip">Silvi</span>
+          <span className="wc-chip">
+            <img src="/assets/silvi_logo.jpeg" alt="" className="wc-chip__logo" />
+            Silvi
+          </span>
         </div>
         <p className="wc-footnote">More apps are joining over time.</p>
       </div>
