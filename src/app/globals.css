@@ -1,0 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Core */
+  --color-navy: #0F2544;
+  --color-accent: #60A1E2;
+  --color-white: #FFFFFF;
+
+  /* Neutrals */
+  --color-off-white: #F7F8FA;
+  --color-light-gray: #E2E5EB;
+  --color-mid-gray: #8A92A0;
+  --color-dark-gray: #3B4251;
+
+  /* Accent Variations */
+  --color-sky-blue: #A3CDF2;
+  --color-deep-blue: #1A3A6B;
+
+  /* Semantic */
+  --color-success: #2ECC71;
+  --color-warning: #F5A623;
+  --color-error: #E74C3C;
+  --color-info: var(--color-accent);
+
+  /* Transitions */
+  --transition-fast: 150ms ease-out;
+  --transition-base: 250ms ease-out;
+  --transition-slow: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  color: var(--color-dark-gray);
+  background: var(--color-white);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-navy);
+}
