@@ -23,6 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<OAuthSession | null>(null);
   const [agent, setAgent] = useState<Agent | null>(null);
   const [did, setDid] = useState<string | null>(null);
+  const [pdsUrl, setPdsUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [authorizeUrl, setAuthorizeUrl] = useState<string | null>(null);
@@ -44,6 +45,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(result.session);
           setAgent(newAgent);
           setDid(result.session.did);
+          const tokenInfo = await result.session.getTokenInfo(false);
+          setPdsUrl(tokenInfo.aud);
         }
       } catch (err) {
         console.error("Auth initialization error:", err);
@@ -145,6 +148,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(oauthSession);
         setAgent(newAgent);
         setDid(oauthSession.did);
+        const tokenInfo = await oauthSession.getTokenInfo(false);
+        setPdsUrl(tokenInfo.aud);
       } catch (err) {
         console.error("Session restore error:", err);
         setError(
@@ -210,6 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(null);
       setAgent(null);
       setDid(null);
+      setPdsUrl(null);
     } catch (err) {
       console.error("Sign out error:", err);
       setError(err instanceof Error ? err.message : "Failed to sign out");
@@ -221,6 +227,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     agent,
     did,
+    pdsUrl,
     error,
     isSigningIn,
     isRedirectingToProvider,

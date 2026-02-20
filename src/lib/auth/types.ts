@@ -10,6 +10,8 @@ export interface AuthState {
   agent: Agent | null;
   /** The DID of the authenticated user, or null */
   did: string | null;
+  /** The PDS URL of the authenticated user (their actual server, not necessarily our app PDS) */
+  pdsUrl: string | null;
   /** Error from the last auth operation */
   error: string | null;
   /** Whether the sign-in modal is currently open */
