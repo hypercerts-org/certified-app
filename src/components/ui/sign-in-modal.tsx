@@ -41,13 +41,13 @@ export default function SignInModal({ isOpen, authorizeUrl, authMode, onClose }:
       onClick={(e) => { if (e.target === backdropRef.current) onClose() }}
       role="dialog"
       aria-modal="true"
-      aria-label={authMode === "sign-up" ? "Create Certified ID" : "Sign in"}
+      aria-label={authMode === "sign-up" ? "Create your Certified ID" : "Sign in"}
     >
       <div className="signin-modal">
         <div className="signin-modal__header">
           <img src="/assets/certified_brandmark.svg" alt="" className="signin-modal__logo" />
           <span className="signin-modal__title">
-            {authMode === "sign-up" ? "Create Certified ID" : "Sign in to Certified"}
+            {authMode === "sign-up" ? "Create your Certified ID" : "Sign in to Certified"}
           </span>
           <button
             className="signin-modal__close"
@@ -61,7 +61,7 @@ export default function SignInModal({ isOpen, authorizeUrl, authMode, onClose }:
           <iframe
             src={authorizeUrl}
             className="signin-modal__iframe"
-            title={authMode === "sign-up" ? "Create Certified ID" : "Sign in"}
+            title={authMode === "sign-up" ? "Create your Certified ID" : "Sign in"}
             allow="clipboard-write"
           />
         </div>
