@@ -12,6 +12,7 @@ import type { OAuthSession } from "@atproto/oauth-client-browser";
 import { getOAuthClient } from "./oauth-client";
 import type { AuthState } from "./types";
 import SignInModal from "@/components/ui/sign-in-modal";
+import ProviderRedirectOverlay from "@/components/ui/provider-redirect-overlay";
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
@@ -26,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [authorizeUrl, setAuthorizeUrl] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in");
+  const [isRedirectingToProvider, setIsRedirectingToProvider] = useState(false);
 
   // Initialize auth on mount
   useEffect(() => {
@@ -64,6 +66,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const input = event.data.input;
       if (!input || typeof input !== "string") return;
 
+      // Show the full-screen overlay before closing the modal
+      setIsRedirectingToProvider(true);
+
       // Close the iframe modal
       setIsSigningIn(false);
       setAuthorizeUrl(null);
@@ -77,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // signIn does window.location.href = ... so this line is never reached
       } catch (err) {
         console.error("External provider sign-in error:", err);
+        setIsRedirectingToProvider(false);
         setError(
           err instanceof Error
             ? err.message
@@ -183,6 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     did,
     error,
     isSigningIn,
+    isRedirectingToProvider,
     authorizeUrl,
     authMode,
     signIn,
@@ -194,6 +201,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={value}>
       {children}
+      {isRedirectingToProvider && <ProviderRedirectOverlay />}
       <SignInModal
         isOpen={isSigningIn}
         authorizeUrl={authorizeUrl}
