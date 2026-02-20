@@ -48,17 +48,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setError(null)
       const client = getOAuthClient()
-      // Pass PDS URL — the resolver will fetch its OAuth metadata
-      // and redirect the user to the PDS authorize page for OTP login
-      await client.signIn(PDS_URL, { 
-        scope: "atproto transition:generic" 
+      
+      // Use popup mode — opens PDS authorize page in a popup window.
+      // The popup handles the full OTP flow, then closes itself.
+      // signInPopup resolves with the session directly.
+      const oauthSession = await client.signInPopup(PDS_URL, {
+        scope: "atproto transition:generic",
       })
-      // signInRedirect sets window.location.href — browser navigates away
-      // On return, init() on the callback page processes the response
+      
+      // Session received — update state immediately
+      const newAgent = new Agent(oauthSession)
+      setSession(oauthSession)
+      setAgent(newAgent)
+      setDid(oauthSession.did)
     } catch (err) {
+      // LoginContinuedInParentWindowError is thrown in the popup window itself — ignore it.
+      // Also ignore if user closed the popup (will throw generic error).
+      if (err instanceof Error && err.message === "Aborted") {
+        // User closed popup — not an error
+        return
+      }
       console.error("Sign in error:", err)
       setError(err instanceof Error ? err.message : "Failed to sign in")
-      // Don't re-throw — the onClick handler doesn't expect a rejection
     }
   }, [])
 
