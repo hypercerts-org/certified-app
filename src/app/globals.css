@@ -113,7 +113,7 @@ h1, h2, h3, h4, h5, h6 {
 #hero,
 .hero {
   position: relative;
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -126,7 +126,7 @@ h1, h2, h3, h4, h5, h6 {
 @media (max-width: 768px) {
   #hero,
   .hero {
-    min-height: 80vh;
+    height: 100vh;
     padding: 64px 0;
   }
 }
@@ -238,6 +238,53 @@ h1, h2, h3, h4, h5, h6 {
     animation: none;
     opacity: 1;
     transform: none;
+  }
+}
+
+.hero__footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  padding: 24px 0;
+}
+
+.hero__footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hero__footer p,
+.hero__footer-links a {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.35);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.hero__footer-links {
+  display: flex;
+  gap: 24px;
+}
+
+.hero__footer-links a:hover {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+@media (max-width: 768px) {
+  .hero__footer-inner {
+    justify-content: center;
+    text-align: center;
+  }
+  .hero__footer-links {
+    gap: 16px;
   }
 }
 

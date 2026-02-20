@@ -58,41 +58,52 @@ export default function Home() {
   }
 
   // Not authenticated - Landing page
+  // Lock scroll on landing page
+  useEffect(() => {
+    if (!isLoading && !session) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [isLoading, session]);
+
   return (
-    <>
-      <section id="hero" className="hero">
-        <div className="hero__bg" aria-hidden="true" />
-        <div className="hero__inner">
-          <h1 className="hero-reveal">
-            One account.
-            <br />
-            Any app.
-          </h1>
-          <p className="hero-reveal">
-            Your identity, contributions, and trust — everywhere you go.
-          </p>
-          <div className="hero-reveal">
-            <div className="hero__actions">
-              <Button variant="primary" size="lg" onClick={signIn}>
-                Claim your account
-              </Button>
-              <button
-                className="hero__btn-secondary"
-                onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })}
-              >
-                Learn more
-              </button>
-            </div>
+    <section id="hero" className="hero">
+      <div className="hero__bg" aria-hidden="true" />
+      <div className="hero__inner">
+        <h1 className="hero-reveal">
+          One account.
+          <br />
+          Any app.
+        </h1>
+        <p className="hero-reveal">
+          Your identity, contributions, and trust — everywhere you go.
+        </p>
+        <div className="hero-reveal">
+          <div className="hero__actions">
+            <Button variant="primary" size="lg" onClick={signIn}>
+              Claim your account
+            </Button>
+            <button
+              className="hero__btn-secondary"
+              onClick={() => window.open("https://hypercerts-v02-documentation.vercel.app", "_blank")}
+            >
+              Learn more
+            </button>
           </div>
         </div>
-      </section>
-
-      {/* Placeholder sections for future tasks */}
-      <div id="partners" />
-      <div id="ecosystem" />
-      <div id="features" />
-      <div id="how-it-works" />
-      <div id="cta" />
-    </>
+      </div>
+      <footer className="hero__footer">
+        <div className="hero__footer-inner">
+          <p>© 2026 Certified. All rights reserved.</p>
+          <div className="hero__footer-links">
+            <a href="#">About</a>
+            <a href="https://hypercerts-v02-documentation.vercel.app" target="_blank" rel="noopener noreferrer">Documentation</a>
+            <a href="#">GitHub</a>
+          </div>
+        </div>
+      </footer>
+    </section>
   );
 }
