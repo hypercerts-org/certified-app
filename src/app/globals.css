@@ -120,14 +120,14 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--color-navy);
   overflow: hidden;
   text-align: center;
-  padding: 160px 0 96px;
+  padding: 136px 0 72px;
 }
 
 @media (max-width: 768px) {
   #hero,
   .hero {
     height: 100vh;
-    padding: 128px 0 64px;
+    padding: 112px 0 56px;
   }
 }
 
