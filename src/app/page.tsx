@@ -1,13 +1,24 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/auth-context";
+import { useNavbarVariant } from "@/lib/navbar-context";
 import Button from "@/components/ui/button";
 import Card from "@/components/ui/card";
 
 export default function Home() {
   const { session, did, signIn } = useAuth();
+  const { setVariant } = useNavbarVariant();
+
+  useEffect(() => {
+    if (!session) {
+      setVariant("transparent");
+    }
+    return () => {
+      setVariant("default");
+    };
+  }, [session, setVariant]);
 
   if (session) {
     // Authenticated state
@@ -32,70 +43,34 @@ export default function Home() {
     );
   }
 
-  // Not authenticated - Hero section
+  // Not authenticated - Landing page
   return (
     <>
-      {/* Hero section - full width, breaks out of container */}
-      <div className="relative -mx-6 -mt-8">
-        <section className="w-full bg-navy py-16 lg:py-24">
-          <div className="max-w-[1200px] mx-auto px-6">
-            <div className="max-w-3xl">
-              <h1
-                className="text-display text-white animate-fade-up"
-                style={{
-                  fontSize: "3rem",
-                  fontWeight: 700,
-                  lineHeight: 1.1,
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                Your identity, everywhere.
-              </h1>
-              <p
-                className="text-h4 text-sky font-normal mt-4 max-w-2xl animate-fade-up"
-                style={{ animationDelay: "100ms" }}
-              >
-                Sign in once. Your contributions, reputation, and impact follow
-                you across the ecosystem.
-              </p>
-              <div
-                className="mt-8 animate-fade-up"
-                style={{ animationDelay: "200ms" }}
-              >
-                <Button variant="primary" onClick={signIn}>
-                  Get Started
-                </Button>
-              </div>
-            </div>
+      <section id="hero" className="hero">
+        <div className="hero__bg" aria-hidden="true" />
+        <div className="hero__inner">
+          <h1 className="hero-reveal">
+            One account.
+            <br />
+            Any app.
+          </h1>
+          <p className="hero-reveal">
+            Your identity, contributions, and trust — everywhere you go.
+          </p>
+          <div className="hero-reveal">
+            <Button variant="primary" size="lg" onClick={signIn}>
+              Claim your account
+            </Button>
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
 
-      {/* Add animation styles */}
-      <style jsx>{`
-        @keyframes fade-up {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fade-up {
-          animation: fade-up 0.6s ease-out forwards;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .animate-fade-up {
-            animation: none;
-            opacity: 1;
-            transform: none;
-          }
-        }
-      `}</style>
+      {/* Placeholder sections for future tasks */}
+      <div id="partners" />
+      <div id="ecosystem" />
+      <div id="features" />
+      <div id="how-it-works" />
+      <div id="cta" />
     </>
   );
 }
