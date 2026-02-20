@@ -2,8 +2,12 @@
 
 import React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const Footer: React.FC = () => {
+  const pathname = usePathname();
+  if (pathname === "/") return null;
+
   return (
     <footer className="py-8">
       <div className="max-w-[1200px] mx-auto px-6">
