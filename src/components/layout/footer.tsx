@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 
 const Footer: React.FC = () => {
   return (
@@ -11,6 +12,12 @@ const Footer: React.FC = () => {
             © 2026 Certified. All rights reserved.
           </p>
           <div className="flex gap-6">
+            <Link href="/terms" className="text-caption text-gray-400 hover:text-gray-600 transition-colors duration-200">
+              Terms
+            </Link>
+            <Link href="/privacy" className="text-caption text-gray-400 hover:text-gray-600 transition-colors duration-200">
+              Policy
+            </Link>
             <a
               href="https://hypercerts-v02-documentation.vercel.app"
               target="_blank"

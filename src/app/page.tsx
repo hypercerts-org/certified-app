@@ -97,6 +97,8 @@ export default function Home() {
         <div className="hero__footer-inner">
           <p>© 2026 Certified. All rights reserved.</p>
           <div className="hero__footer-links">
+            <Link href="/terms">Terms</Link>
+            <Link href="/privacy">Policy</Link>
             <a href="https://hypercerts-v02-documentation.vercel.app" target="_blank" rel="noopener noreferrer">Documentation</a>
             <a href="#">GitHub</a>
           </div>
