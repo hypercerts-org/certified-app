@@ -53,6 +53,46 @@ h1, h2, h3, h4, h5, h6 {
   transition: background var(--transition-fast);
 }
 
+/* ========== Loading Screen ========== */
+.loading-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-navy);
+}
+
+.loading-screen__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.loading-screen__logo {
+  width: 64px;
+  height: 64px;
+  animation: logoPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes logoPulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-screen__logo {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* ========== Hero ========== */
 
 @keyframes meshShift {

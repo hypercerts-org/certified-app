@@ -8,17 +8,31 @@ import Button from "@/components/ui/button";
 import Card from "@/components/ui/card";
 
 export default function Home() {
-  const { session, did, signIn } = useAuth();
+  const { isLoading, session, did, signIn } = useAuth();
   const { setVariant } = useNavbarVariant();
 
   useEffect(() => {
-    if (!session) {
+    if (!session && !isLoading) {
       setVariant("transparent");
     }
     return () => {
       setVariant("default");
     };
-  }, [session, setVariant]);
+  }, [session, isLoading, setVariant]);
+
+  if (isLoading) {
+    return (
+      <div className="loading-screen">
+        <div className="loading-screen__inner">
+          <img
+            src="/assets/certified_brandmark.svg"
+            alt=""
+            className="loading-screen__logo"
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (session) {
     // Authenticated state
