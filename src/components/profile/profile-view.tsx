@@ -90,14 +90,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({
             <p className="text-body text-gray-700">{memberSince}</p>
           </div>
         )}
-      </Card>
 
-      {/* Edit Profile button */}
-      <div className="mt-6 flex justify-end">
-        <Link href="/profile/edit">
-          <Button variant="secondary">Edit Profile</Button>
-        </Link>
-      </div>
+        {/* Edit Profile button */}
+        <div className="mt-6 flex justify-end">
+          <Link href="/profile/edit">
+            <Button variant="secondary">Edit Profile</Button>
+          </Link>
+        </div>
+      </Card>
 
       <style jsx>{`
         @keyframes slide-in {
