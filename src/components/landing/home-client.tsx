@@ -16,7 +16,7 @@ interface HomeClientProps {
 }
 
 export default function HomeClient({ partnerLogos }: HomeClientProps) {
-  const { isLoading, session, did, signIn, signUp } = useAuth();
+  const { isLoading, session, did, agent, signIn, signUp } = useAuth();
   const { profile, isLoading: profileLoading, error: profileError, refetch: refetchProfile, avatarUrl, bannerUrl } = useProfile();
   const { setVariant } = useNavbarVariant();
 
@@ -70,6 +70,7 @@ export default function HomeClient({ partnerLogos }: HomeClientProps) {
             did={did}
             avatarUrl={avatarUrl}
             bannerUrl={bannerUrl}
+            agent={agent}
           />
         ) : null}
       </div>

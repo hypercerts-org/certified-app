@@ -3,9 +3,11 @@
 import React from "react";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
+import { Agent } from "@atproto/api";
 import Card from "@/components/ui/card";
 import Button from "@/components/ui/button";
 import ProfileHeader from "./profile-header";
+import AccountSettings from "@/components/account/account-settings";
 import type { CertifiedProfile } from "@/lib/atproto/types";
 
 export interface ProfileViewProps {
@@ -13,6 +15,7 @@ export interface ProfileViewProps {
   did: string;
   avatarUrl: string | null;
   bannerUrl: string | null;
+  agent: Agent | null;
 }
 
 const ProfileView: React.FC<ProfileViewProps> = ({
@@ -20,6 +23,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   did,
   avatarUrl,
   bannerUrl,
+  agent,
 }) => {
   // Format createdAt as "Month Year"
   const formatMemberSince = (dateString?: string): string | null => {
@@ -98,6 +102,13 @@ const ProfileView: React.FC<ProfileViewProps> = ({
           </Link>
         </div>
       </Card>
+
+      {/* Account settings */}
+      {agent && (
+        <div className="mt-6">
+          <AccountSettings agent={agent} did={did} />
+        </div>
+      )}
 
       <style jsx>{`
         @keyframes slide-in {
