@@ -92,9 +92,9 @@ function OrbitingLogosInner({
 
       // Define 2-3 concentric orbits
       const orbitTiers = [
-        { radiusX: 180 * scale, radiusY: 180 * scale * 0.65 },
-        { radiusX: 260 * scale, radiusY: 260 * scale * 0.65 },
-        { radiusX: 320 * scale, radiusY: 320 * scale * 0.65 },
+        { radiusX: 280 * scale, radiusY: 280 * scale * 0.65 },
+        { radiusX: 350 * scale, radiusY: 350 * scale * 0.65 },
+        { radiusX: 420 * scale, radiusY: 420 * scale * 0.65 },
       ];
 
       // Speed range: 0.15 to 0.4 rad/s, alternating direction
@@ -239,13 +239,14 @@ function OrbitingLogosInner({
         const dy = orbit.currentY - orbit.centerY;
         orbit.angle = Math.atan2(dy, dx);
 
-        // Optionally recalculate radii based on drop distance
+        // Recalculate radii based on drop distance, clamped to a minimum
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist > 20) {
-          const aspectRatio = orbit.radiusY / orbit.radiusX;
-          orbit.radiusX = dist;
-          orbit.radiusY = dist * aspectRatio;
-        }
+        const isMobile = containerSizeRef.current.width < 600;
+        const minRadius = isMobile ? 160 : 250;
+        const clampedDist = Math.max(dist, minRadius);
+        const aspectRatio = orbit.radiusY / orbit.radiusX;
+        orbit.radiusX = clampedDist;
+        orbit.radiusY = clampedDist * aspectRatio;
 
         el!.style.filter = "grayscale(100%) brightness(0.7)";
         el!.style.opacity = "0.6";
