@@ -40,7 +40,6 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
   // Form state
   const [displayName, setDisplayName] = useState("");
   const [description, setDescription] = useState("");
-  const [pronouns, setPronouns] = useState("");
   const [website, setWebsite] = useState("");
 
   // Image upload state
@@ -52,7 +51,6 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
   // Validation errors
   const [displayNameError, setDisplayNameError] = useState("");
   const [descriptionError, setDescriptionError] = useState("");
-  const [pronounsError, setPronounsError] = useState("");
   const [websiteError, setWebsiteError] = useState("");
 
   // Track if form has changes
@@ -63,7 +61,6 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     if (initialProfile) {
       setDisplayName(initialProfile.displayName || "");
       setDescription(initialProfile.description || "");
-      setPronouns(initialProfile.pronouns || "");
       setWebsite(initialProfile.website || "");
     }
   }, [initialProfile]);
@@ -73,12 +70,11 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     const changed =
       displayName !== (initialProfile?.displayName || "") ||
       description !== (initialProfile?.description || "") ||
-      pronouns !== (initialProfile?.pronouns || "") ||
       website !== (initialProfile?.website || "") ||
       avatarBlob !== null ||
       bannerBlob !== null;
     setHasChanges(changed);
-  }, [displayName, description, pronouns, website, initialProfile, avatarBlob, bannerBlob]);
+  }, [displayName, description, website, initialProfile, avatarBlob, bannerBlob]);
 
   // Validate display name
   const validateDisplayName = (value: string) => {
@@ -97,16 +93,6 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
       return false;
     }
     setDescriptionError("");
-    return true;
-  };
-
-  // Validate pronouns
-  const validatePronouns = (value: string) => {
-    if (value.length > 20) {
-      setPronounsError("Pronouns must be 20 characters or fewer");
-      return false;
-    }
-    setPronounsError("");
     return true;
   };
 
@@ -163,12 +149,6 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     validateDescription(value);
   };
 
-  const handlePronounsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setPronouns(value);
-    validatePronouns(value);
-  };
-
   const handleWebsiteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setWebsite(value);
@@ -179,7 +159,6 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
   const isValid =
     !displayNameError &&
     !descriptionError &&
-    !pronounsError &&
     !websiteError;
 
   // Handle save
@@ -187,10 +166,9 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     // Re-validate all fields
     const displayNameValid = validateDisplayName(displayName);
     const descriptionValid = validateDescription(description);
-    const pronounsValid = validatePronouns(pronouns);
     const websiteValid = validateWebsite(website);
 
-    if (!displayNameValid || !descriptionValid || !pronounsValid || !websiteValid) {
+    if (!displayNameValid || !descriptionValid || !websiteValid) {
       return;
     }
 
@@ -201,7 +179,6 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
       // Add text fields (trim and omit empty strings)
       ...(displayName.trim() && { displayName: displayName.trim() }),
       ...(description.trim() && { description: description.trim() }),
-      ...(pronouns.trim() && { pronouns: pronouns.trim() }),
       ...(website.trim() && { website: website.trim() }),
     };
 
@@ -283,16 +260,6 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
               {description.length}/256 characters
             </div>
           </div>
-
-          {/* Pronouns */}
-          <Input
-            label="Pronouns"
-            value={pronouns}
-            onChange={handlePronounsChange}
-            maxLength={200}
-            placeholder="e.g., they/them"
-            error={pronounsError}
-          />
 
           {/* Website */}
           <Input
