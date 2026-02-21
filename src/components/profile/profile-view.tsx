@@ -81,20 +81,20 @@ const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         )}
 
-        {/* Member since section */}
-        {memberSince && (
-          <div className="mt-4">
-            <h3 className="text-caption text-gray-400 uppercase tracking-wider mb-2">
-              MEMBER SINCE
-            </h3>
-            <p className="text-body text-gray-700">{memberSince}</p>
-          </div>
-        )}
-
-        {/* Edit Profile button */}
-        <div className="mt-6 flex justify-end">
+        {/* Member since + Edit Profile on same row */}
+        <div className="mt-4 flex items-end justify-between">
+          {memberSince ? (
+            <div>
+              <h3 className="text-caption text-gray-400 uppercase tracking-wider mb-2">
+                MEMBER SINCE
+              </h3>
+              <p className="text-body text-gray-700">{memberSince}</p>
+            </div>
+          ) : (
+            <div />
+          )}
           <Link href="/settings/edit-profile">
-            <Button variant="secondary">Edit Profile</Button>
+            <Button variant="secondary" size="sm">Edit Profile</Button>
           </Link>
         </div>
       </Card>
