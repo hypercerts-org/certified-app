@@ -11,6 +11,7 @@ import { Agent } from "@atproto/api";
 import type { OAuthSession } from "@atproto/oauth-client-browser";
 import { getOAuthClient } from "./oauth-client";
 import type { AuthState } from "./types";
+import { resolvePdsUrl } from "@/lib/atproto/did";
 import SignInModal from "@/components/ui/sign-in-modal";
 import ProviderRedirectOverlay from "@/components/ui/provider-redirect-overlay";
 
@@ -45,8 +46,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(result.session);
           setAgent(newAgent);
           setDid(result.session.did);
-          const tokenInfo = await result.session.getTokenInfo(false);
-          setPdsUrl(tokenInfo.aud);
+          const resolvedPdsUrl = await resolvePdsUrl(result.session.did);
+          setPdsUrl(resolvedPdsUrl);
         }
       } catch (err) {
         console.error("Auth initialization error:", err);
@@ -148,8 +149,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(oauthSession);
         setAgent(newAgent);
         setDid(oauthSession.did);
-        const tokenInfo = await oauthSession.getTokenInfo(false);
-        setPdsUrl(tokenInfo.aud);
+        const resolvedPdsUrl = await resolvePdsUrl(oauthSession.did);
+        setPdsUrl(resolvedPdsUrl);
       } catch (err) {
         console.error("Session restore error:", err);
         setError(
