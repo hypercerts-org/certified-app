@@ -16,6 +16,13 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ agent, did }) => {
   const [email, setEmail] = useState<string>("");
   const [loadingSession, setLoadingSession] = useState(true);
 
+  // Handle editing state
+  const [editingHandle, setEditingHandle] = useState(false);
+  const [newHandle, setNewHandle] = useState("");
+  const [handleSaving, setHandleSaving] = useState(false);
+  const [handleError, setHandleError] = useState<string | null>(null);
+  const [handleSuccess, setHandleSuccess] = useState(false);
+
   // Email editing state
   const [editingEmail, setEditingEmail] = useState(false);
   const [newEmail, setNewEmail] = useState("");
@@ -24,6 +31,11 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ agent, did }) => {
   const [emailSaving, setEmailSaving] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [emailSuccess, setEmailSuccess] = useState(false);
+
+  // Password state
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -40,6 +52,37 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ agent, did }) => {
     fetchSession();
   }, [agent]);
 
+  // Handle editing handlers
+  const handleStartEdit = () => {
+    setNewHandle(handle);
+    setHandleError(null);
+    setHandleSuccess(false);
+    setEditingHandle(true);
+  };
+
+  const handleCancel = () => {
+    setEditingHandle(false);
+    setNewHandle("");
+    setHandleError(null);
+  };
+
+  const handleSave = async () => {
+    setHandleSaving(true);
+    setHandleError(null);
+    try {
+      await agent.com.atproto.identity.updateHandle({ handle: newHandle });
+      setHandle(newHandle);
+      setEditingHandle(false);
+      setHandleSuccess(true);
+      setTimeout(() => setHandleSuccess(false), 3000);
+    } catch (err) {
+      setHandleError(err instanceof Error ? err.message : "Failed to update handle");
+    } finally {
+      setHandleSaving(false);
+    }
+  };
+
+  // Email editing handlers
   const startEmailEdit = () => {
     setNewEmail(email);
     setEmailToken("");
@@ -91,6 +134,27 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ agent, did }) => {
     }
   };
 
+  // Password reset handler
+  const handlePasswordReset = async () => {
+    if (!email) {
+      setPasswordError(
+        "No email associated with this account. Set an email first to enable password reset."
+      );
+      return;
+    }
+    setPasswordLoading(true);
+    setPasswordError(null);
+    try {
+      await agent.com.atproto.server.requestPasswordReset({ email });
+      setPasswordSuccess(true);
+      setTimeout(() => setPasswordSuccess(false), 5000);
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : "Failed to send password reset email");
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
   if (loadingSession || !handle) return null;
 
   return (
@@ -101,8 +165,44 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ agent, did }) => {
 
       {/* Row 1: USERNAME */}
       <div>
-        <h4 className="text-caption text-gray-400 uppercase tracking-wider mb-1">USERNAME</h4>
-        <p className="text-body text-gray-700">{handle}</p>
+        {!editingHandle ? (
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-caption text-gray-400 uppercase tracking-wider mb-1">USERNAME</h4>
+              <p className="text-body text-gray-700">{handle}</p>
+              {handleError && (
+                <p className="text-body-sm text-error mt-1">{handleError}</p>
+              )}
+              {handleSuccess && (
+                <p className="text-body-sm text-success mt-1">Handle updated successfully.</p>
+              )}
+            </div>
+            <Button variant="ghost" size="sm" onClick={handleStartEdit}>
+              Change
+            </Button>
+          </div>
+        ) : (
+          <div>
+            <h4 className="text-caption text-gray-400 uppercase tracking-wider mb-1">USERNAME</h4>
+            <Input
+              type="text"
+              value={newHandle}
+              onChange={(e) => setNewHandle(e.target.value)}
+              placeholder="Enter new handle"
+            />
+            {handleError && (
+              <p className="text-body-sm text-error mt-2">{handleError}</p>
+            )}
+            <div className="flex gap-2 mt-3">
+              <Button size="sm" onClick={handleSave} disabled={handleSaving}>
+                {handleSaving ? "Saving…" : "Save"}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleCancel} disabled={handleSaving}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Row 2: DID */}
@@ -163,6 +263,36 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ agent, did }) => {
         {emailSuccess && (
           <p className="text-body-sm text-green-600 mt-2">Email updated successfully.</p>
         )}
+      </div>
+
+      {/* Row 4: PASSWORD */}
+      <div className="border-t border-gray-200 pt-4 mt-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="text-caption text-gray-400 uppercase tracking-wider mb-1">
+              PASSWORD
+            </h4>
+            <p className="text-body text-gray-700">••••••••</p>
+            {passwordError && (
+              <p className="text-body-sm text-error mt-1">{passwordError}</p>
+            )}
+            {passwordSuccess && (
+              <p className="text-body-sm text-success mt-1">
+                Reset email sent — check your inbox
+              </p>
+            )}
+          </div>
+          {!passwordSuccess && (
+            <Button
+              variant="ghost"
+              size="sm"
+              loading={passwordLoading}
+              onClick={handlePasswordReset}
+            >
+              Change password
+            </Button>
+          )}
+        </div>
       </div>
     </Card>
   );
