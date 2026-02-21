@@ -48,7 +48,7 @@ export default function EditProfilePage() {
       setSaveError(null);
       await putProfile(agent, did, updatedProfile);
       await refetch();
-      router.push("/profile");
+      router.push("/");
     } catch (error) {
       console.error("Failed to save profile:", error);
       setSaveError(
