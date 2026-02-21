@@ -93,7 +93,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
 
         {/* Edit Profile button */}
         <div className="mt-6 flex justify-end">
-          <Link href="/profile/edit">
+          <Link href="/settings/edit-profile">
             <Button variant="secondary">Edit Profile</Button>
           </Link>
         </div>

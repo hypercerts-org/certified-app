@@ -232,7 +232,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
 
   // Handle cancel
   const handleCancel = () => {
-    router.push("/profile");
+    router.push("/");
   };
 
   return (
