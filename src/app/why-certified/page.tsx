@@ -145,16 +145,16 @@ export default function WhyCertifiedPage() {
         <p className="wc-prose">Use your Certified ID anywhere you see &lsquo;Sign in with Certified&rsquo;.</p>
         <div className="wc-partners">
           <span className="wc-chip">
-            <img src="/assets/maearth_logo.jpeg" alt="" className="wc-chip__logo" />
+            <img src="/assets/partners/maearth_logo.jpeg" alt="" className="wc-chip__logo" />
             Ma Earth
           </span>
           <span className="wc-chip">
-            <img src="/assets/gainforest_logo.jpeg" alt="" className="wc-chip__logo" />
+            <img src="/assets/partners/gainforest_logo.jpeg" alt="" className="wc-chip__logo" />
             GainForest
           </span>
           <span className="wc-chip">Hyperboards</span>
           <span className="wc-chip">
-            <img src="/assets/silvi_logo.jpeg" alt="" className="wc-chip__logo" />
+            <img src="/assets/partners/silvi_logo.jpeg" alt="" className="wc-chip__logo" />
             Silvi
           </span>
         </div>
