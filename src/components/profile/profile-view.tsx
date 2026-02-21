@@ -45,8 +45,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     <div className="profile-view-container animate-slide-in">
       <ProfileHeader
         displayName={profile?.displayName}
-        did={did}
-        pronouns={profile?.pronouns}
         avatarUrl={avatarUrl}
         bannerUrl={bannerUrl}
       />

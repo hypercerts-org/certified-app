@@ -3,16 +3,12 @@ import Avatar from "@/components/ui/avatar";
 
 export interface ProfileHeaderProps {
   displayName?: string;
-  did: string;
-  pronouns?: string;
   avatarUrl: string | null;
   bannerUrl: string | null;
 }
 
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   displayName,
-  did,
-  pronouns,
   avatarUrl,
   bannerUrl,
 }) => {
@@ -54,24 +50,13 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           className="shadow-elevation-1"
         />
 
-        {/* Display name and DID */}
+        {/* Display name */}
         <div className="mt-3 text-center">
           <h2 className="text-h2 text-navy">
             {displayName || (
               <span className="text-gray-400">Anonymous</span>
             )}
           </h2>
-          <div className="flex items-center justify-center gap-2 mt-1">
-            <p className="text-body-sm text-gray-400 font-mono break-all">
-              {did}
-            </p>
-            {pronouns && (
-              <>
-                <span className="text-gray-400">·</span>
-                <p className="text-body-sm text-gray-400 italic">{pronouns}</p>
-              </>
-            )}
-          </div>
         </div>
       </div>
     </div>
