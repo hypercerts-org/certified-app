@@ -5,10 +5,14 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useNavbarVariant } from "@/lib/navbar-context";
 import Button from "@/components/ui/button";
-import Card from "@/components/ui/card";
+import { useProfile } from "@/hooks/use-profile";
+import LoadingSpinner from "@/components/ui/loading-spinner";
+import ErrorMessage from "@/components/ui/error-message";
+import ProfileView from "@/components/profile/profile-view";
 
 export default function Home() {
   const { isLoading, session, did, signIn, signUp } = useAuth();
+  const { profile, isLoading: profileLoading, error: profileError, refetch: refetchProfile, avatarUrl, bannerUrl } = useProfile();
   const { setVariant } = useNavbarVariant();
 
   useEffect(() => {
@@ -47,21 +51,22 @@ export default function Home() {
     // Authenticated state
     return (
       <div className="max-w-[1200px] mx-auto px-6 py-8 bg-gray-50 min-h-screen">
-        <h2 className="text-h2 text-navy mb-6">Welcome back</h2>
-        <Card className="mb-6">
-          <p className="text-body text-gray-700 mb-4">
-            You are signed in with:
-          </p>
-          <p className="text-body-sm text-gray-400 font-mono break-all">
-            {did}
-          </p>
-        </Card>
-        <Link
-          href="/profile"
-          className="text-body text-accent hover:underline inline-block"
-        >
-          View your profile →
-        </Link>
+        {profileLoading ? (
+          <div className="flex items-center justify-center min-h-[400px]">
+            <LoadingSpinner size="md" />
+          </div>
+        ) : profileError ? (
+          <div className="flex items-center justify-center min-h-[400px]">
+            <ErrorMessage message={profileError} onRetry={refetchProfile} />
+          </div>
+        ) : did ? (
+          <ProfileView
+            profile={profile}
+            did={did}
+            avatarUrl={avatarUrl}
+            bannerUrl={bannerUrl}
+          />
+        ) : null}
       </div>
     );
   }
