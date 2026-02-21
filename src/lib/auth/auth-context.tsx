@@ -175,9 +175,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         display: "page",
         prompt: "login",
       });
-      setAuthMode("sign-in");
-      setAuthorizeUrl(url.href);
-      setIsSigningIn(true);
+      window.location.href = url.href;
     } catch (err) {
       console.error("Sign in error:", err);
       setError(err instanceof Error ? err.message : "Failed to sign in");
@@ -193,9 +191,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         display: "page",
         prompt: "create",
       });
-      setAuthMode("sign-up");
-      setAuthorizeUrl(url.href);
-      setIsSigningIn(true);
+      window.location.href = url.href;
     } catch (err) {
       console.error("Sign up error:", err);
       setError(err instanceof Error ? err.message : "Failed to sign up");
