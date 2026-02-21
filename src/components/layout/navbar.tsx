@@ -5,12 +5,14 @@ import Link from "next/link";
 import { CheckCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useNavbarVariant } from "@/lib/navbar-context";
+import { useProfile } from "@/hooks/use-profile";
 import Button from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
 
 const Navbar: React.FC = () => {
   const { isLoading, session, did, signIn, signOut } = useAuth();
   const { variant } = useNavbarVariant();
+  const { profile, avatarUrl } = useProfile();
   const [scrolled, setScrolled] = useState(false);
 
   // Scroll listener for transparent navbar
@@ -25,11 +27,13 @@ const Navbar: React.FC = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [variant]);
 
-  // Truncate DID for display
-  const truncatedDid = did ? `${did.slice(0, 24)}...` : "";
-  
-  // Extract display name from session if available
-  const displayName = truncatedDid;
+  // Compute display name and initials from profile
+  const displayName = profile?.displayName || null;
+  const avatarInitials = displayName
+    ? displayName.trim().split(/\s+/).length >= 2
+      ? `${displayName.trim().split(/\s+/)[0][0]}${displayName.trim().split(/\s+/)[1][0]}`
+      : displayName.slice(0, 2)
+    : did?.slice(4, 6) || "?";
 
   // Determine navbar styles based on variant
   const isTransparent = variant === "transparent";
@@ -85,10 +89,12 @@ const Navbar: React.FC = () => {
                 href="/profile"
                 className="flex items-center gap-3 hover:opacity-80 transition-opacity duration-200"
               >
-                <Avatar size="sm" fallbackInitials={did?.slice(4, 6) || "?"} />
-                <span className={`text-body-sm ${isTransparent ? "text-white" : "text-gray-700"}`}>
-                  {displayName}
-                </span>
+                <Avatar size="sm" src={avatarUrl || undefined} fallbackInitials={avatarInitials} />
+                {displayName && (
+                  <span className={`text-body-sm ${isTransparent ? "text-white" : "text-gray-700"}`}>
+                    {displayName}
+                  </span>
+                )}
               </Link>
               <Button variant="ghost" size="sm" onClick={signOut}>
                 Sign out
