@@ -27,13 +27,13 @@ const Navbar: React.FC = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [variant]);
 
-  // Compute display name and initials from profile
-  const displayName = profile?.displayName || null;
-  const avatarInitials = displayName
-    ? displayName.trim().split(/\s+/).length >= 2
-      ? `${displayName.trim().split(/\s+/)[0][0]}${displayName.trim().split(/\s+/)[1][0]}`
-      : displayName.slice(0, 2)
-    : did?.slice(4, 6) || "?";
+  // Compute initials from profile
+  const avatarInitials = (() => {
+    const name = profile?.displayName || null;
+    if (!name) return did?.slice(4, 6) || "?";
+    const parts = name.trim().split(/\s+/);
+    return parts.length >= 2 ? `${parts[0][0]}${parts[1][0]}` : name.slice(0, 2);
+  })();
 
   // Determine navbar styles based on variant
   const isTransparent = variant === "transparent";
@@ -47,7 +47,6 @@ const Navbar: React.FC = () => {
     ? "/assets/certified_wordmark_white.svg"
     : "/assets/certified_wordmark_darkblue.svg";
 
-  const textColor = isTransparent ? "text-white" : "text-navy";
   const buttonVariant = isTransparent ? "ghost" : "primary";
 
   return (
@@ -69,7 +68,7 @@ const Navbar: React.FC = () => {
             }}
           />
           <span
-            className={`text-h4 ${textColor} font-semibold hidden items-center gap-2`}
+            className={`text-h4 ${isTransparent ? "text-white" : "text-navy"} font-semibold hidden items-center gap-2`}
             style={{ display: "none" }}
           >
             <CheckCircle className="h-6 w-6 text-accent" />
@@ -86,15 +85,10 @@ const Navbar: React.FC = () => {
             // Authenticated state
             <>
               <Link
-                href="/profile"
-                className="flex items-center gap-3 hover:opacity-80 transition-opacity duration-200"
+                href="/"
+                className="flex items-center hover:opacity-80 transition-opacity duration-200"
               >
                 <Avatar size="sm" src={avatarUrl || undefined} fallbackInitials={avatarInitials} />
-                {displayName && (
-                  <span className={`text-body-sm ${isTransparent ? "text-white" : "text-gray-700"}`}>
-                    {displayName}
-                  </span>
-                )}
               </Link>
               <Button variant="ghost" size="sm" onClick={signOut}>
                 Sign out
