@@ -10,15 +10,8 @@ export default function ProviderRedirectOverlay() {
           alt=""
           className="loading-screen__logo"
         />
-        <p
-          style={{
-            color: "white",
-            marginTop: "1.5rem",
-            fontSize: "1rem",
-            opacity: 0.7,
-          }}
-        >
-          Connecting to your provider…
+        <p className="mt-6 text-sm text-white/40 font-mono">
+          Connecting to your provider...
         </p>
       </div>
     </div>

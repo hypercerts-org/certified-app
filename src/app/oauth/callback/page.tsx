@@ -15,8 +15,6 @@ export default function OAuthCallbackPage() {
         const isInIframe = window.parent !== window
 
         if (isInIframe) {
-          // In iframe: use initCallback to process the OAuth params,
-          // then notify the parent window
           const params = client.readCallbackParams()
           if (!params) {
             setError("No OAuth parameters found.")
@@ -27,17 +25,13 @@ export default function OAuthCallbackPage() {
 
           if (cancelled) return
 
-          // Send the session sub to the parent window
           window.parent.postMessage(
             { type: "oauth-callback-complete", sub: result.session.sub },
             window.location.origin
           )
         } else {
-          // Not in iframe: original behavior (direct navigation or popup)
           const result = await client.init()
-
           if (cancelled) return
-
           if (result?.session) {
             window.location.replace("/")
           } else {
@@ -57,10 +51,10 @@ export default function OAuthCallbackPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--color-off-white)]">
         <div className="text-center">
-          <p className="text-error text-body mb-4">{error}</p>
-          <a href="/" className="text-accent hover:underline">
+          <p className="text-sm text-error mb-4 font-mono">{error}</p>
+          <a href="/" className="text-sm text-accent font-mono hover:text-deep transition-colors duration-150">
             Return to home
           </a>
         </div>
@@ -69,17 +63,14 @@ export default function OAuthCallbackPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="flex flex-col items-center">
-        {/* Pulsing brandmark as per DESIGN_SYSTEM.md Section 8 */}
-        <div className="w-16 h-16 animate-pulse">
-          <img
-            src="/assets/certified_brandmark.svg"
-            alt="Certified"
-            className="w-full h-full"
-          />
-        </div>
-        <p className="mt-6 text-body text-gray-400">Completing sign in...</p>
+    <div className="loading-screen">
+      <div className="loading-screen__inner">
+        <img
+          src="/assets/certified_brandmark.svg"
+          alt="Certified"
+          className="loading-screen__logo"
+        />
+        <p className="mt-6 text-sm text-white/40 font-mono">Completing sign in...</p>
       </div>
     </div>
   )

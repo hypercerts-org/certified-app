@@ -22,28 +22,24 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    // Base styles
     const baseStyles =
-      "rounded-button font-medium text-body transition-all duration-200 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 inline-flex items-center justify-center gap-2";
+      "rounded font-mono text-sm font-medium uppercase tracking-wider transition-all duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 inline-flex items-center justify-center gap-2";
 
-    // Variant styles
     const variantStyles = {
       primary:
-        "bg-accent text-white hover:bg-[#6EAEE8] hover:shadow-[0_4px_12px_rgba(96,161,226,0.3)]",
+        "bg-accent/10 text-accent border border-accent/20 hover:bg-accent/15 hover:border-accent/35 hover:text-[#A3CDF2]",
       secondary:
-        "bg-transparent text-navy border-[1.5px] border-navy hover:bg-navy hover:text-white",
+        "bg-transparent text-navy border border-navy/20 hover:border-navy/40",
       ghost: "bg-transparent text-accent hover:bg-accent/10",
-      destructive: "bg-error text-white hover:bg-[#D13426]",
+      destructive: "bg-error/10 text-error border border-error/20 hover:bg-error/15 hover:border-error/35",
     };
 
-    // Size styles
     const sizeStyles = {
-      sm: "py-2 px-4 text-body-sm",
-      md: "py-3 px-6",
-      lg: "py-4 px-8 text-h4",
+      sm: "py-1.5 px-4 text-xs",
+      md: "py-2.5 px-6 text-sm",
+      lg: "py-3 px-8 text-sm",
     };
 
-    // Disabled styles
     const disabledStyles = disabled || loading ? "opacity-50 cursor-not-allowed" : "";
 
     return (

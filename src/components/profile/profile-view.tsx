@@ -4,7 +4,6 @@ import React from "react";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { Agent } from "@atproto/api";
-import Card from "@/components/ui/card";
 import Button from "@/components/ui/button";
 import ProfileHeader from "./profile-header";
 import AccountSettings from "@/components/account/account-settings";
@@ -25,7 +24,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   bannerUrl,
   agent,
 }) => {
-  // Format createdAt as "Month Year"
   const formatMemberSince = (dateString?: string): string | null => {
     if (!dateString) return null;
     try {
@@ -42,7 +40,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   const memberSince = formatMemberSince(profile?.createdAt);
 
   return (
-    <div className="profile-view-container animate-slide-in">
+    <div>
       <ProfileHeader
         displayName={profile?.displayName}
         avatarUrl={avatarUrl}
@@ -50,12 +48,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       />
 
       {/* Profile details card */}
-      <Card className="mt-6">
-        {/* About section */}
+      <div className="app-card mt-6">
         <div>
-          <h3 className="text-caption text-gray-400 uppercase tracking-wider mb-2">
-            ABOUT
-          </h3>
+          <p className="app-card__label">About</p>
           {profile?.description ? (
             <p className="text-body text-gray-700">{profile.description}</p>
           ) : (
@@ -65,17 +60,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({
           )}
         </div>
 
-        {/* Website section */}
         {profile?.website && (
           <div className="mt-4">
-            <h3 className="text-caption text-gray-400 uppercase tracking-wider mb-2">
-              WEBSITE
-            </h3>
+            <p className="app-card__label">Website</p>
             <a
               href={profile.website}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-body text-accent hover:underline inline-flex items-center gap-1"
+              className="text-body text-accent hover:text-deep inline-flex items-center gap-1 transition-colors duration-150"
             >
               {profile.website}
               <ExternalLink className="w-4 h-4" />
@@ -83,13 +75,10 @@ const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         )}
 
-        {/* Member since + Edit Profile on same row */}
         <div className="mt-4 flex items-end justify-between">
           {memberSince ? (
             <div>
-              <h3 className="text-caption text-gray-400 uppercase tracking-wider mb-2">
-                MEMBER SINCE
-              </h3>
+              <p className="app-card__label">Member since</p>
               <p className="text-body text-gray-700">{memberSince}</p>
             </div>
           ) : (
@@ -99,37 +88,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({
             <Button variant="secondary" size="sm">Edit Profile</Button>
           </Link>
         </div>
-      </Card>
+      </div>
 
       {/* Account settings */}
       {agent && (
-        <div className="mt-6">
+        <div className="mt-4">
           <AccountSettings agent={agent} did={did} />
         </div>
       )}
-
-      <style jsx>{`
-        @keyframes slide-in {
-          from {
-            opacity: 0;
-            transform: translateX(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-
-        .animate-slide-in {
-          animation: slide-in 300ms ease-out;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .animate-slide-in {
-            animation: none;
-          }
-        }
-      `}</style>
     </div>
   );
 };

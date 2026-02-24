@@ -78,7 +78,7 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
   return (
     <div className="flex flex-col gap-2">
       <div
-        className="relative w-full h-48 rounded-xl overflow-hidden cursor-pointer"
+        className="relative w-full h-48 rounded overflow-hidden cursor-pointer"
         onClick={handleClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -102,7 +102,7 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
             ) : (
               <>
                 <ImageIcon className="h-6 w-6 text-white" />
-                <span className="text-white font-medium">Change banner</span>
+                <span className="text-white font-mono text-xs uppercase tracking-wider">Change banner</span>
               </>
             )}
           </div>

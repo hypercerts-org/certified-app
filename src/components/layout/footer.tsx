@@ -6,23 +6,21 @@ import { usePathname } from "next/navigation";
 
 const Footer: React.FC = () => {
   const pathname = usePathname();
+
+  // Hide footer on landing page (has its own footer) and why-certified (dark bg has own footer)
   if (pathname === "/") return null;
 
+  const isDark = pathname === "/why-certified";
+
   return (
-    <footer className="py-8">
-      <div className="max-w-[1200px] mx-auto px-6">
-        <div className="flex justify-between items-center flex-wrap gap-4">
-          <p className="text-caption text-gray-400">
-            © 2026 Certified. All rights reserved.
-          </p>
-          <div className="flex gap-6">
-            <Link href="/terms" className="text-caption text-gray-400 hover:text-gray-600 transition-colors duration-200">
-              Terms
-            </Link>
-            <Link href="/privacy" className="text-caption text-gray-400 hover:text-gray-600 transition-colors duration-200">
-              Policy
-            </Link>
-          </div>
+    <footer className={`footer ${isDark ? "footer--dark" : ""}`}>
+      <div className="footer__inner">
+        <p className="footer__copy">
+          &copy; 2026 Certified. All rights reserved.
+        </p>
+        <div className="footer__links">
+          <Link href="/terms">Terms</Link>
+          <Link href="/privacy">Policy</Link>
         </div>
       </div>
     </footer>

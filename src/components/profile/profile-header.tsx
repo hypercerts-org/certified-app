@@ -12,7 +12,6 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   avatarUrl,
   bannerUrl,
 }) => {
-  // Get initials for avatar fallback
   const getInitials = () => {
     if (displayName) {
       const parts = displayName.trim().split(/\s+/);
@@ -27,15 +26,14 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   return (
     <div>
       {/* Banner */}
-      <div className="w-full h-48 rounded-card overflow-hidden">
+      <div className="profile-banner">
         {bannerUrl ? (
           <img
             src={bannerUrl}
             alt="Profile banner"
-            className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-r from-navy to-deep" />
+          <div className="profile-banner__fallback" />
         )}
       </div>
 
@@ -50,9 +48,8 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           className="shadow-elevation-1"
         />
 
-        {/* Display name */}
         <div className="mt-3 text-center">
-          <h2 className="text-h2 text-navy">
+          <h2 className="font-mono text-h2 text-navy uppercase tracking-tight">
             {displayName || (
               <span className="text-gray-400">Anonymous</span>
             )}

@@ -6,7 +6,6 @@ import { BlobRef } from "@atproto/api";
 import Input from "@/components/ui/input";
 import Textarea from "@/components/ui/textarea";
 import Button from "@/components/ui/button";
-import Card from "@/components/ui/card";
 import ErrorMessage from "@/components/ui/error-message";
 import AvatarUpload from "@/components/profile/avatar-upload";
 import BannerUpload from "@/components/profile/banner-upload";
@@ -214,9 +213,9 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
 
   return (
     <div>
-      <h1 className="text-h1 text-navy mb-6">Edit Profile</h1>
+      <h1 className="font-mono text-h1 text-navy uppercase tracking-tight mb-6">Edit Profile</h1>
 
-      <Card className="shadow-elevation-1 rounded-card p-6">
+      <div className="app-card">
         <div className="flex flex-col gap-6">
           {/* Banner Upload */}
           <BannerUpload
@@ -256,7 +255,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
               placeholder="Tell us about yourself"
               error={descriptionError}
             />
-            <div className="text-caption text-gray-400 text-right mt-1">
+            <div className="font-mono text-xs text-gray-400 text-right mt-1">
               {description.length}/256 characters
             </div>
           </div>
@@ -278,7 +277,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
           )}
 
           {/* Buttons */}
-          <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
+          <div className="flex justify-end gap-4 pt-6 border-t border-[rgba(15,37,68,0.08)]">
             <Button variant="ghost" onClick={handleCancel} disabled={isSaving}>
               Cancel
             </Button>
@@ -292,7 +291,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
             </Button>
           </div>
         </div>
-      </Card>
+      </div>
     </div>
   );
 };

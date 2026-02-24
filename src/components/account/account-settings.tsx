@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { Agent } from "@atproto/api";
-import Card from "@/components/ui/card";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 
@@ -158,17 +157,15 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ agent, did }) => {
   if (loadingSession || !handle) return null;
 
   return (
-    <Card>
-      <h3 className="text-caption text-gray-400 uppercase tracking-wider mb-4">
-        Account
-      </h3>
+    <div className="app-card">
+      <p className="app-card__label mb-4">Account</p>
 
       {/* Row 1: USERNAME */}
       <div>
         {!editingHandle ? (
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="text-caption text-gray-400 uppercase tracking-wider mb-1">USERNAME</h4>
+              <p className="app-card__label">Username</p>
               <p className="text-body text-gray-700">{handle}</p>
               {handleError && (
                 <p className="text-body-sm text-error mt-1">{handleError}</p>
@@ -183,7 +180,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ agent, did }) => {
           </div>
         ) : (
           <div>
-            <h4 className="text-caption text-gray-400 uppercase tracking-wider mb-1">USERNAME</h4>
+            <p className="app-card__label">Username</p>
             <Input
               type="text"
               value={newHandle}
@@ -207,7 +204,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ agent, did }) => {
 
       {/* Row 2: DID */}
       <div className="border-t border-gray-200 pt-4 mt-4">
-        <h4 className="text-caption text-gray-400 uppercase tracking-wider mb-1">DID</h4>
+        <p className="app-card__label">DID</p>
         <p className="text-body-sm text-gray-400 font-mono break-all">{did}</p>
       </div>
 
@@ -216,7 +213,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ agent, did }) => {
         {!editingEmail ? (
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="text-caption text-gray-400 uppercase tracking-wider mb-1">EMAIL</h4>
+              <p className="app-card__label">Email</p>
               <p className="text-body text-gray-700">
                 {email || <span className="text-gray-400 italic">No email set</span>}
               </p>
@@ -227,7 +224,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ agent, did }) => {
           </div>
         ) : (
           <div>
-            <h4 className="text-caption text-gray-400 uppercase tracking-wider mb-1">EMAIL</h4>
+            <p className="app-card__label">Email</p>
             <Input
               type="email"
               value={newEmail}
@@ -269,9 +266,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ agent, did }) => {
       <div className="border-t border-gray-200 pt-4 mt-4">
         <div className="flex items-center justify-between">
           <div>
-            <h4 className="text-caption text-gray-400 uppercase tracking-wider mb-1">
-              PASSWORD
-            </h4>
+            <p className="app-card__label">Password</p>
             <p className="text-body text-gray-700">••••••••</p>
             {passwordError && (
               <p className="text-body-sm text-error mt-1">{passwordError}</p>
@@ -294,7 +289,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ agent, did }) => {
           )}
         </div>
       </div>
-    </Card>
+    </div>
   );
 };
 

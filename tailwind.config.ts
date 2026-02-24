@@ -15,8 +15,10 @@ export default {
         deep: "#1A3A6B",
         gray: {
           50: "#F7F8FA",
+          100: "#EEF0F4",
           200: "#E2E5EB",
           400: "#8A92A0",
+          600: "#525B6A",
           700: "#3B4251",
         },
         success: "#2ECC71",
@@ -25,16 +27,23 @@ export default {
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
-        mono: ["JetBrains Mono", "ui-monospace", "Courier New", "monospace"],
+        mono: [
+          "JetBrains Mono",
+          "IBM Plex Mono",
+          "SF Mono",
+          "ui-monospace",
+          "Courier New",
+          "monospace",
+        ],
       },
       fontSize: {
         display: [
           "3rem",
-          { lineHeight: "1.1", fontWeight: "700", letterSpacing: "-0.02em" },
+          { lineHeight: "1.1", fontWeight: "700", letterSpacing: "-0.03em" },
         ],
         h1: [
           "2.25rem",
-          { lineHeight: "1.2", fontWeight: "700", letterSpacing: "-0.015em" },
+          { lineHeight: "1.2", fontWeight: "700", letterSpacing: "-0.02em" },
         ],
         h2: [
           "1.75rem",
@@ -46,7 +55,7 @@ export default {
         "body-sm": ["0.875rem", { lineHeight: "1.5", fontWeight: "400" }],
         caption: [
           "0.75rem",
-          { lineHeight: "1.4", fontWeight: "500", letterSpacing: "0.02em" },
+          { lineHeight: "1.4", fontWeight: "500", letterSpacing: "0.05em" },
         ],
       },
       boxShadow: {
@@ -56,8 +65,9 @@ export default {
         "elevation-4": "0 8px 24px rgba(15, 37, 68, 0.14)",
       },
       borderRadius: {
-        button: "8px",
-        card: "12px",
+        button: "6px",
+        card: "4px",
+        sm: "2px",
       },
     },
   },

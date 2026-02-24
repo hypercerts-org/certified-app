@@ -18,13 +18,13 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
   return (
     <div
       role="alert"
-      className={`rounded-card border border-error/20 bg-error/5 p-6 ${className}`}
+      className={`rounded border border-error/20 bg-error/5 p-6 ${className}`}
     >
       <div className="flex gap-4">
-        <AlertCircle className="w-6 h-6 text-error flex-shrink-0" />
+        <AlertCircle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />
         <div className="flex-1">
-          <h4 className="text-h4 text-navy mb-1">{title}</h4>
-          <p className="text-body text-gray-700">{message}</p>
+          <h4 className="font-mono text-sm font-semibold text-navy uppercase tracking-wider mb-1">{title}</h4>
+          <p className="text-sm text-gray-700">{message}</p>
           {onRetry && (
             <div className="mt-4">
               <Button variant="secondary" size="sm" onClick={onRetry}>

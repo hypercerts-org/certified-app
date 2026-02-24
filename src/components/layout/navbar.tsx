@@ -2,11 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { CheckCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useNavbarVariant } from "@/lib/navbar-context";
 import { useProfile } from "@/hooks/use-profile";
-import Button from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
 
 const Navbar: React.FC = () => {
@@ -15,19 +13,14 @@ const Navbar: React.FC = () => {
   const { profile, avatarUrl } = useProfile();
   const [scrolled, setScrolled] = useState(false);
 
-  // Scroll listener for transparent navbar
   useEffect(() => {
-    if (variant !== "transparent") return;
-
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };
-
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [variant]);
+  }, []);
 
-  // Compute initials from profile
   const avatarInitials = (() => {
     const name = profile?.displayName || null;
     if (!name) return did?.slice(4, 6) || "?";
@@ -35,81 +28,63 @@ const Navbar: React.FC = () => {
     return parts.length >= 2 ? `${parts[0][0]}${parts[1][0]}` : name.slice(0, 2);
   })();
 
-  // Determine navbar styles based on variant
   const isTransparent = variant === "transparent";
-  const navClasses = isTransparent
-    ? `fixed top-0 left-0 w-full z-50 h-16 navbar-transparent ${
-        scrolled ? "bg-navy" : "bg-transparent"
-      }`
-    : "w-full bg-white border-b border-gray-200 h-16";
+
+  const navClasses = [
+    "navbar",
+    isTransparent ? "navbar--transparent" : "navbar--default",
+    scrolled ? "navbar--scrolled" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const wordmarkSrc = isTransparent
     ? "/assets/certified_wordmark_white.svg"
     : "/assets/certified_wordmark_darkblue.svg";
 
-  const buttonVariant = isTransparent ? "ghost" : "primary";
-
   return (
     <nav className={navClasses}>
-      <div className="max-w-[1200px] mx-auto px-6 h-full flex items-center justify-between">
-        {/* Left: Certified wordmark */}
-        <Link href="/" className="flex items-center gap-2">
+      <div className="navbar__inner">
+        <Link href="/" className="navbar__logo">
           <img
             src={wordmarkSrc}
             alt="Certified"
-            className="h-8"
-            onError={(e) => {
-              // Fallback to text + icon if SVG doesn't exist
-              e.currentTarget.style.display = "none";
-              const fallback = e.currentTarget.nextElementSibling;
-              if (fallback) {
-                (fallback as HTMLElement).style.display = "flex";
-              }
-            }}
           />
-          <span
-            className={`text-h4 ${isTransparent ? "text-white" : "text-navy"} font-semibold hidden items-center gap-2`}
-            style={{ display: "none" }}
-          >
-            <CheckCircle className="h-6 w-6 text-accent" />
-            Certified
-          </span>
         </Link>
 
-        {/* Right: Auth state */}
-        <div className="flex items-center gap-4">
+        <div className="navbar__right">
           {isLoading ? (
-            // Show nothing during loading to avoid layout shift
-            <div className="w-24" />
+            <div className="w-20" />
           ) : session ? (
-            // Authenticated state
             <>
               <Link
                 href="/"
-                className="flex items-center hover:opacity-80 transition-opacity duration-200"
+                className="flex items-center hover:opacity-80 transition-opacity duration-150"
               >
                 <Avatar size="sm" src={avatarUrl || undefined} fallbackInitials={avatarInitials} />
               </Link>
-              <Button variant="ghost" size="sm" onClick={signOut}>
+              <button
+                onClick={signOut}
+                className={`font-mono text-xs uppercase tracking-wider px-3 py-1.5 rounded transition-colors duration-150 ${
+                  isTransparent
+                    ? "text-white/60 hover:text-white/90"
+                    : "text-gray-400 hover:text-navy"
+                }`}
+              >
                 Sign out
-              </Button>
+              </button>
             </>
           ) : (
-            // Not authenticated state
-            <>
-              {isTransparent ? (
-                <button
-                  onClick={signIn}
-                  className="px-4 py-2 text-sm font-medium text-white border border-white/60 rounded-md bg-white/10 hover:bg-white/20 hover:border-white transition-colors duration-200"
-                >
-                  Sign in
-                </button>
-              ) : (
-                <Button variant="primary" size="sm" onClick={signIn}>
-                  Sign in
-                </Button>
-              )}
-            </>
+            <button
+              onClick={signIn}
+              className={`font-mono text-xs uppercase tracking-wider px-4 py-2 rounded transition-all duration-150 ${
+                isTransparent
+                  ? "text-white/70 border border-white/20 hover:border-white/40 hover:text-white"
+                  : "text-navy border border-navy/20 hover:border-navy/40 bg-transparent"
+              }`}
+            >
+              Sign in
+            </button>
           )}
         </div>
       </div>
