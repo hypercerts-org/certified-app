@@ -7,6 +7,7 @@ import { Agent } from "@atproto/api";
 import Button from "@/components/ui/button";
 import ProfileHeader from "./profile-header";
 import AccountSettings from "@/components/account/account-settings";
+import IdentityLinkCard from "@/components/identity-link/identity-link-card";
 import type { CertifiedProfile } from "@/lib/atproto/types";
 
 export interface ProfileViewProps {
@@ -89,6 +90,13 @@ const ProfileView: React.FC<ProfileViewProps> = ({
           </Link>
         </div>
       </div>
+
+      {/* Identity Links */}
+      {agent && (
+        <div className="mt-4">
+          <IdentityLinkCard agent={agent} did={did} />
+        </div>
+      )}
 
       {/* Account settings */}
       {agent && (

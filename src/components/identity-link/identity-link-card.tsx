@@ -9,6 +9,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import { useIdentityLinks } from "@/hooks/use-identity-links"
 import { deleteAttestation } from "@/lib/identity-link/pds"
 import { SUPPORTED_CHAINS } from "@/lib/wagmi"
+import LinkWalletFlow from "./link-wallet-flow"
 
 interface IdentityLinkCardProps {
   agent: Agent | null
@@ -69,10 +70,18 @@ const IdentityLinkCard: React.FC<IdentityLinkCardProps> = ({ agent, did }) => {
         </Button>
       </div>
 
-      {/* Link wallet flow placeholder */}
+      {/* Link wallet flow */}
       {showLinkFlow && (
         <div className="mt-3">
-          <div>Link wallet flow coming soon</div>
+          <LinkWalletFlow
+            agent={agent}
+            did={did}
+            onComplete={() => {
+              setShowLinkFlow(false)
+              refetch()
+            }}
+            onCancel={() => setShowLinkFlow(false)}
+          />
         </div>
       )}
 
