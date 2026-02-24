@@ -5,6 +5,7 @@ import { AuthProvider } from "@/lib/auth/auth-context";
 import { NavbarProvider } from "@/lib/navbar-context";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
+import { Providers } from "@/lib/providers";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -25,13 +26,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} min-h-screen flex flex-col`}>
-        <AuthProvider>
-          <NavbarProvider>
-            <Navbar />
-            <main className="flex-1">{children}</main>
-            <Footer />
-          </NavbarProvider>
-        </AuthProvider>
+        <Providers>
+          <AuthProvider>
+            <NavbarProvider>
+              <Navbar />
+              <main className="flex-1">{children}</main>
+              <Footer />
+            </NavbarProvider>
+          </AuthProvider>
+        </Providers>
       </body>
     </html>
   );
