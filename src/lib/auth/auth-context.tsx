@@ -28,6 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in");
+  const [iframeUrl, setIframeUrl] = useState<string | null>(null);
   const [isRedirectingToProvider, setIsRedirectingToProvider] = useState(false);
 
   // Initialize auth on mount
@@ -61,24 +62,121 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, []);
 
+  // Listen for postMessage from iframe callback (oauth-callback-complete)
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== "oauth-callback-complete") return;
+
+      const { sub } = event.data;
+      if (!sub) return;
+
+      try {
+        const client = getOAuthClient();
+        const oauthSession = await client.restore(sub, false);
+        const newAgent = new Agent(oauthSession);
+        setSession(oauthSession);
+        setAgent(newAgent);
+        setDid(oauthSession.did);
+        const resolvedPdsUrl = await resolvePdsUrl(oauthSession.did);
+        setPdsUrl(resolvedPdsUrl);
+      } catch (err) {
+        console.error("Session restore error:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to complete sign in",
+        );
+      } finally {
+        setIsModalOpen(false);
+        setIframeUrl(null);
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
+  // Listen for switch-provider postMessage from PDS OAuth UI iframe
+  useEffect(() => {
+    const handleSwitchProvider = async (event: MessageEvent) => {
+      if (event.data?.type !== "switch-provider") return;
+      const input = event.data.input;
+      if (!input || typeof input !== "string") return;
+
+      // Show the full-screen overlay before closing the modal
+      setIsRedirectingToProvider(true);
+      setIsModalOpen(false);
+      setIframeUrl(null);
+
+      try {
+        const client = getOAuthClient();
+        const trimmedInput = input.trim();
+
+        if (
+          trimmedInput.startsWith("http://") ||
+          trimmedInput.startsWith("https://")
+        ) {
+          await client.signIn(trimmedInput, {
+            scope: "atproto transition:generic",
+          });
+          return;
+        }
+
+        if (trimmedInput.startsWith("did:")) {
+          await client.signIn(trimmedInput, {
+            scope: "atproto transition:generic",
+          });
+          return;
+        }
+
+        try {
+          await client.signIn(trimmedInput, {
+            scope: "atproto transition:generic",
+          });
+        } catch (handleErr) {
+          try {
+            await client.signIn("https://" + trimmedInput, {
+              scope: "atproto transition:generic",
+            });
+          } catch {
+            throw handleErr;
+          }
+        }
+      } catch (err) {
+        console.error("External provider sign-in error:", err);
+        setIsRedirectingToProvider(false);
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to sign in with external provider",
+        );
+      }
+    };
+
+    window.addEventListener("message", handleSwitchProvider);
+    return () => window.removeEventListener("message", handleSwitchProvider);
+  }, []);
+
   const openSignIn = useCallback(() => {
     setAuthMode("sign-in");
     setError(null);
+    setIframeUrl(null);
     setIsModalOpen(true);
   }, []);
 
   const openSignUp = useCallback(() => {
     setAuthMode("sign-up");
     setError(null);
+    setIframeUrl(null);
     setIsModalOpen(true);
   }, []);
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
+    setIframeUrl(null);
     setError(null);
   }, []);
 
-  // Flow 1: Submit email to ePDS with login_hint on the redirect URL
+  // Flow 1: Submit email — get authorize URL and show OTP page in iframe
   const submitEmail = useCallback(async (email: string) => {
     try {
       setError(null);
@@ -86,14 +184,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const prompt = authMode === "sign-up" ? "create" : "login";
       const url = await client.authorize(PDS_URL, {
         scope: "atproto transition:generic",
-        display: "page",
+        display: "popup",
         prompt,
       });
       // Append login_hint to the authorize URL (NOT the PAR body)
       // This tells the ePDS auth server to skip the email form and go straight to OTP
       url.searchParams.set("login_hint", email);
-      setIsModalOpen(false);
-      window.location.href = url.href;
+      // Show the OTP page in the iframe inside the modal
+      setIframeUrl(url.href);
     } catch (err) {
       console.error("Email sign-in error:", err);
       setError(err instanceof Error ? err.message : "Failed to sign in");
@@ -106,10 +204,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setError(null);
       setIsRedirectingToProvider(true);
       setIsModalOpen(false);
+      setIframeUrl(null);
       const client = getOAuthClient();
       const trimmedHandle = handle.trim();
 
-      // Try as handle first, then as URL
       if (
         trimmedHandle.startsWith("http://") ||
         trimmedHandle.startsWith("https://")
@@ -178,6 +276,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isModalOpen,
     isRedirectingToProvider,
     authMode,
+    iframeUrl,
     openSignIn,
     openSignUp,
     closeModal,
@@ -194,6 +293,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isOpen={isModalOpen}
         authMode={authMode}
         error={error}
+        iframeUrl={iframeUrl}
         onClose={closeModal}
         onSubmitEmail={submitEmail}
         onSubmitHandle={submitHandle}

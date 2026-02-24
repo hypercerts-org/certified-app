@@ -20,13 +20,15 @@ export interface AuthState {
   isRedirectingToProvider: boolean;
   /** Which mode the modal opened in: sign-in or sign-up */
   authMode: "sign-in" | "sign-up";
+  /** The authorize URL to show in the iframe (OTP page), or null if showing the form */
+  iframeUrl: string | null;
   /** Open the modal in sign-in mode */
   openSignIn: () => void;
   /** Open the modal in sign-up mode */
   openSignUp: () => void;
   /** Close the modal */
   closeModal: () => void;
-  /** Submit Certified email (Flow 1) — redirects to ePDS with login_hint */
+  /** Submit Certified email (Flow 1) — loads OTP page in iframe with login_hint */
   submitEmail: (email: string) => Promise<void>;
   /** Submit ATProto handle — redirects to that provider's OAuth */
   submitHandle: (handle: string) => Promise<void>;

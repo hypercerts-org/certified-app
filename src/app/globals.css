@@ -520,6 +520,23 @@ h1, h2, h3, h4, h5, h6 {
   outline-offset: 2px;
 }
 
+/* Iframe variant — taller modal for OTP page */
+.signin-modal--iframe {
+  height: 80vh;
+  max-height: 640px;
+}
+
+.signin-modal__iframe-container {
+  flex: 1;
+  overflow: hidden;
+}
+
+.signin-modal__iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
 @keyframes modalFadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
