@@ -20,8 +20,6 @@ export interface AuthState {
   isRedirectingToProvider: boolean;
   /** Which mode the modal opened in: sign-in or sign-up */
   authMode: "sign-in" | "sign-up";
-  /** The authorize URL to show in the iframe (OTP page), or null if showing the form */
-  iframeUrl: string | null;
   /** Open the modal in sign-in mode */
   openSignIn: () => void;
   /** Open the modal in sign-up mode */

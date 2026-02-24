@@ -28,7 +28,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in");
-  const [iframeUrl, setIframeUrl] = useState<string | null>(null);
   const [isRedirectingToProvider, setIsRedirectingToProvider] = useState(false);
 
   // Initialize auth on mount
@@ -87,7 +86,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
       } finally {
         setIsModalOpen(false);
-        setIframeUrl(null);
       }
     };
 
@@ -105,7 +103,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Show the full-screen overlay before closing the modal
       setIsRedirectingToProvider(true);
       setIsModalOpen(false);
-      setIframeUrl(null);
 
       try {
         const client = getOAuthClient();
@@ -159,24 +156,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const openSignIn = useCallback(() => {
     setAuthMode("sign-in");
     setError(null);
-    setIframeUrl(null);
     setIsModalOpen(true);
   }, []);
 
   const openSignUp = useCallback(() => {
     setAuthMode("sign-up");
     setError(null);
-    setIframeUrl(null);
     setIsModalOpen(true);
   }, []);
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
-    setIframeUrl(null);
     setError(null);
   }, []);
 
-  // Flow 1: Submit email — get authorize URL and show OTP page in iframe
+  // Flow 1: Submit email — redirect to ePDS with login_hint so user goes straight to OTP
   const submitEmail = useCallback(async (email: string) => {
     try {
       setError(null);
@@ -184,14 +178,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const prompt = authMode === "sign-up" ? "create" : "login";
       const url = await client.authorize(PDS_URL, {
         scope: "atproto transition:generic",
-        display: "popup",
+        display: "page",
         prompt,
       });
       // Append login_hint to the authorize URL (NOT the PAR body)
       // This tells the ePDS auth server to skip the email form and go straight to OTP
       url.searchParams.set("login_hint", email);
-      // Show the OTP page in the iframe inside the modal
-      setIframeUrl(url.href);
+      setIsModalOpen(false);
+      window.location.href = url.href;
     } catch (err) {
       console.error("Email sign-in error:", err);
       setError(err instanceof Error ? err.message : "Failed to sign in");
@@ -204,7 +198,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setError(null);
       setIsRedirectingToProvider(true);
       setIsModalOpen(false);
-      setIframeUrl(null);
       const client = getOAuthClient();
       const trimmedHandle = handle.trim();
 
@@ -276,7 +269,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isModalOpen,
     isRedirectingToProvider,
     authMode,
-    iframeUrl,
     openSignIn,
     openSignUp,
     closeModal,
@@ -293,7 +285,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isOpen={isModalOpen}
         authMode={authMode}
         error={error}
-        iframeUrl={iframeUrl}
         onClose={closeModal}
         onSubmitEmail={submitEmail}
         onSubmitHandle={submitHandle}

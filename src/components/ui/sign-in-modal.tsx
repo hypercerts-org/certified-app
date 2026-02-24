@@ -6,7 +6,6 @@ interface SignInModalProps {
   isOpen: boolean
   authMode: "sign-in" | "sign-up"
   error: string | null
-  iframeUrl: string | null
   onClose: () => void
   onSubmitEmail: (email: string) => Promise<void>
   onSubmitHandle: (handle: string) => Promise<void>
@@ -18,7 +17,6 @@ export default function SignInModal({
   isOpen,
   authMode,
   error,
-  iframeUrl,
   onClose,
   onSubmitEmail,
   onSubmitHandle,
@@ -39,12 +37,12 @@ export default function SignInModal({
     }
   }, [isOpen])
 
-  // Focus input when switching views (only if not showing iframe)
+  // Focus input when switching views
   useEffect(() => {
-    if (isOpen && !iframeUrl) {
+    if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 50)
     }
-  }, [view, isOpen, iframeUrl])
+  }, [view, isOpen])
 
   // Close on Escape key
   useEffect(() => {
@@ -84,15 +82,12 @@ export default function SignInModal({
   }
 
   const isCertified = view === "certified"
-  const showIframe = !!iframeUrl
 
-  const title = showIframe
-    ? "Enter your code"
-    : isCertified
-      ? authMode === "sign-up"
-        ? "Create your Certified ID"
-        : "Sign in to Certified"
-      : "Sign in with ATProto"
+  const title = isCertified
+    ? authMode === "sign-up"
+      ? "Create your Certified ID"
+      : "Sign in to Certified"
+    : "Sign in with ATProto"
 
   const buttonLabel = isCertified
     ? authMode === "sign-up"
@@ -113,7 +108,7 @@ export default function SignInModal({
       aria-modal="true"
       aria-label={title}
     >
-      <div className={`signin-modal ${showIframe ? "signin-modal--iframe" : ""}`}>
+      <div className="signin-modal">
         <div className="signin-modal__header">
           <img src="/assets/certified_brandmark.svg" alt="" className="signin-modal__logo" />
           <span className="signin-modal__title">{title}</span>
@@ -128,17 +123,7 @@ export default function SignInModal({
           </button>
         </div>
 
-        {showIframe ? (
-          <div className="signin-modal__iframe-container">
-            <iframe
-              src={iframeUrl}
-              className="signin-modal__iframe"
-              title="Enter your sign-in code"
-              allow="clipboard-write"
-            />
-          </div>
-        ) : (
-          <div className="signin-modal__body">
+        <div className="signin-modal__body">
             <form onSubmit={handleSubmit} className="signin-modal__form">
               <label className="signin-modal__label">
                 {isCertified ? "Email address" : "Handle (username)"}
@@ -181,7 +166,6 @@ export default function SignInModal({
               </button>
             </div>
           </div>
-        )}
       </div>
     </div>
   )
