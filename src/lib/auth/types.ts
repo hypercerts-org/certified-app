@@ -15,19 +15,21 @@ export interface AuthState {
   /** Error from the last auth operation */
   error: string | null;
   /** Whether the sign-in modal is currently open */
-  isSigningIn: boolean;
+  isModalOpen: boolean;
   /** Whether we are waiting for the external provider redirect (overlay shown) */
   isRedirectingToProvider: boolean;
-  /** The authorize URL for the iframe, or null */
-  authorizeUrl: string | null;
-  /** Initiate sign-in — opens the PDS authorize page */
-  signIn: () => Promise<void>;
-  /** Initiate sign-up — opens the PDS create-account page */
-  signUp: () => Promise<void>;
+  /** Which mode the modal opened in: sign-in or sign-up */
+  authMode: "sign-in" | "sign-up";
+  /** Open the modal in sign-in mode */
+  openSignIn: () => void;
+  /** Open the modal in sign-up mode */
+  openSignUp: () => void;
+  /** Close the modal */
+  closeModal: () => void;
+  /** Submit Certified email (Flow 1) — redirects to ePDS with login_hint */
+  submitEmail: (email: string) => Promise<void>;
+  /** Submit ATProto handle — redirects to that provider's OAuth */
+  submitHandle: (handle: string) => Promise<void>;
   /** Sign out — revokes tokens and clears session */
   signOut: () => Promise<void>;
-  /** Close the sign-in modal */
-  closeSignIn: () => void;
-  /** Which auth flow opened the modal */
-  authMode: "sign-in" | "sign-up";
 }

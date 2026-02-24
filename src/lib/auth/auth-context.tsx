@@ -26,8 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [did, setDid] = useState<string | null>(null);
   const [pdsUrl, setPdsUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isSigningIn, setIsSigningIn] = useState(false);
-  const [authorizeUrl, setAuthorizeUrl] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [isRedirectingToProvider, setIsRedirectingToProvider] = useState(false);
 
@@ -62,145 +61,95 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, []);
 
-  // Listen for switch-provider postMessage from PDS OAuth UI iframe
-  useEffect(() => {
-    const handleSwitchProvider = async (event: MessageEvent) => {
-      // Accept messages from any origin (the PDS iframe could be on any domain)
-      if (event.data?.type !== "switch-provider") return;
-      const input = event.data.input;
-      if (!input || typeof input !== "string") return;
-
-      // Show the full-screen overlay before closing the modal
-      setIsRedirectingToProvider(true);
-
-      // Close the iframe modal
-      setIsSigningIn(false);
-      setAuthorizeUrl(null);
-
-      // Do a full-page redirect OAuth flow to the selected provider
-      try {
-        const client = getOAuthClient();
-        const trimmedInput = input.trim();
-
-        // If it already has a protocol, use as-is
-        if (
-          trimmedInput.startsWith("http://") ||
-          trimmedInput.startsWith("https://")
-        ) {
-          await client.signIn(trimmedInput, {
-            scope: "atproto transition:generic",
-          });
-          return;
-        }
-
-        // If it starts with did:, use as-is (it's a DID)
-        if (trimmedInput.startsWith("did:")) {
-          await client.signIn(trimmedInput, {
-            scope: "atproto transition:generic",
-          });
-          return;
-        }
-
-        // Otherwise: try as handle first, fall back to hosting provider URL
-        try {
-          await client.signIn(trimmedInput, {
-            scope: "atproto transition:generic",
-          });
-        } catch (handleErr) {
-          // Handle resolution failed — try as a hosting provider URL
-          try {
-            await client.signIn("https://" + trimmedInput, {
-              scope: "atproto transition:generic",
-            });
-          } catch {
-            // Both failed — throw the handle error (more useful to the user)
-            throw handleErr;
-          }
-        }
-        // signIn does window.location.href = ... so this line is never reached
-      } catch (err) {
-        console.error("External provider sign-in error:", err);
-        setIsRedirectingToProvider(false);
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to sign in with external provider",
-        );
-      }
-    };
-
-    window.addEventListener("message", handleSwitchProvider);
-    return () => window.removeEventListener("message", handleSwitchProvider);
+  const openSignIn = useCallback(() => {
+    setAuthMode("sign-in");
+    setError(null);
+    setIsModalOpen(true);
   }, []);
 
-  // Listen for postMessage from iframe callback
-  useEffect(() => {
-    const handleMessage = async (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-      if (event.data?.type !== "oauth-callback-complete") return;
-
-      const { sub } = event.data;
-      if (!sub) return;
-
-      try {
-        const client = getOAuthClient();
-        const oauthSession = await client.restore(sub, false);
-        const newAgent = new Agent(oauthSession);
-        setSession(oauthSession);
-        setAgent(newAgent);
-        setDid(oauthSession.did);
-        const resolvedPdsUrl = await resolvePdsUrl(oauthSession.did);
-        setPdsUrl(resolvedPdsUrl);
-      } catch (err) {
-        console.error("Session restore error:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to complete sign in",
-        );
-      } finally {
-        setIsSigningIn(false);
-        setAuthorizeUrl(null);
-      }
-    };
-
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
+  const openSignUp = useCallback(() => {
+    setAuthMode("sign-up");
+    setError(null);
+    setIsModalOpen(true);
   }, []);
 
-  const signIn = useCallback(async () => {
+  const closeModal = useCallback(() => {
+    setIsModalOpen(false);
+    setError(null);
+  }, []);
+
+  // Flow 1: Submit email to ePDS with login_hint on the redirect URL
+  const submitEmail = useCallback(async (email: string) => {
     try {
       setError(null);
       const client = getOAuthClient();
+      const prompt = authMode === "sign-up" ? "create" : "login";
       const url = await client.authorize(PDS_URL, {
         scope: "atproto transition:generic",
         display: "page",
-        prompt: "login",
+        prompt,
       });
+      // Append login_hint to the authorize URL (NOT the PAR body)
+      // This tells the ePDS auth server to skip the email form and go straight to OTP
+      url.searchParams.set("login_hint", email);
+      setIsModalOpen(false);
       window.location.href = url.href;
     } catch (err) {
-      console.error("Sign in error:", err);
+      console.error("Email sign-in error:", err);
       setError(err instanceof Error ? err.message : "Failed to sign in");
     }
-  }, []);
+  }, [authMode]);
 
-  const signUp = useCallback(async () => {
+  // ATProto handle sign-in: resolve the handle and redirect to that provider
+  const submitHandle = useCallback(async (handle: string) => {
     try {
       setError(null);
+      setIsRedirectingToProvider(true);
+      setIsModalOpen(false);
       const client = getOAuthClient();
-      const url = await client.authorize(PDS_URL, {
-        scope: "atproto transition:generic",
-        display: "page",
-        prompt: "create",
-      });
-      window.location.href = url.href;
-    } catch (err) {
-      console.error("Sign up error:", err);
-      setError(err instanceof Error ? err.message : "Failed to sign up");
-    }
-  }, []);
+      const trimmedHandle = handle.trim();
 
-  const closeSignIn = useCallback(() => {
-    setIsSigningIn(false);
-    setAuthorizeUrl(null);
+      // Try as handle first, then as URL
+      if (
+        trimmedHandle.startsWith("http://") ||
+        trimmedHandle.startsWith("https://")
+      ) {
+        await client.signIn(trimmedHandle, {
+          scope: "atproto transition:generic",
+        });
+        return;
+      }
+
+      if (trimmedHandle.startsWith("did:")) {
+        await client.signIn(trimmedHandle, {
+          scope: "atproto transition:generic",
+        });
+        return;
+      }
+
+      try {
+        await client.signIn(trimmedHandle, {
+          scope: "atproto transition:generic",
+        });
+      } catch (handleErr) {
+        try {
+          await client.signIn("https://" + trimmedHandle, {
+            scope: "atproto transition:generic",
+          });
+        } catch {
+          throw handleErr;
+        }
+      }
+    } catch (err) {
+      console.error("Handle sign-in error:", err);
+      setIsRedirectingToProvider(false);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to sign in with that handle",
+      );
+      setIsModalOpen(true);
+    }
   }, []);
 
   const signOut = useCallback(async () => {
@@ -226,14 +175,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     did,
     pdsUrl,
     error,
-    isSigningIn,
+    isModalOpen,
     isRedirectingToProvider,
-    authorizeUrl,
     authMode,
-    signIn,
-    signUp,
+    openSignIn,
+    openSignUp,
+    closeModal,
+    submitEmail,
+    submitHandle,
     signOut,
-    closeSignIn,
   };
 
   return (
@@ -241,10 +191,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
       {isRedirectingToProvider && <ProviderRedirectOverlay />}
       <SignInModal
-        isOpen={isSigningIn}
-        authorizeUrl={authorizeUrl}
+        isOpen={isModalOpen}
         authMode={authMode}
-        onClose={closeSignIn}
+        error={error}
+        onClose={closeModal}
+        onSubmitEmail={submitEmail}
+        onSubmitHandle={submitHandle}
       />
     </AuthContext.Provider>
   );

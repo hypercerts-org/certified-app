@@ -8,7 +8,7 @@ import { useProfile } from "@/hooks/use-profile";
 import Avatar from "@/components/ui/avatar";
 
 const Navbar: React.FC = () => {
-  const { isLoading, session, did, signIn, signOut } = useAuth();
+  const { isLoading, session, did, openSignIn, signOut } = useAuth();
   const { variant } = useNavbarVariant();
   const { profile, avatarUrl } = useProfile();
   const [scrolled, setScrolled] = useState(false);
@@ -76,7 +76,7 @@ const Navbar: React.FC = () => {
             </>
           ) : (
             <button
-              onClick={signIn}
+              onClick={openSignIn}
               className={`font-mono text-xs uppercase tracking-wider px-4 py-2 rounded transition-all duration-150 ${
                 isTransparent
                   ? "text-white/70 border border-white/20 hover:border-white/40 hover:text-white"

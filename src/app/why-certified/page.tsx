@@ -41,7 +41,7 @@ const FAQ_ITEMS = [
 ];
 
 export default function WhyCertifiedPage() {
-  const { signIn, signUp } = useAuth();
+  const { openSignIn, openSignUp } = useAuth();
   const { setVariant } = useNavbarVariant();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
@@ -59,7 +59,7 @@ export default function WhyCertifiedPage() {
           One account across partner apps — your profile follows you.
         </p>
         <div className="wc-hero__actions">
-          <Button variant="primary" size="lg" onClick={signUp}>
+          <Button variant="primary" size="lg" onClick={openSignUp}>
             Create your Certified ID
           </Button>
           <a href="#how-it-works" className="hero__btn-secondary">
@@ -72,7 +72,7 @@ export default function WhyCertifiedPage() {
         <hr />
       </div>
 
-      {/* 2. The problem */}
+      {/* 2–3. Problem → Solution → Example (tight narrative group) */}
       <div className="wc-section">
         <h2>The problem</h2>
         <ul className="wc-bullets">
@@ -82,12 +82,7 @@ export default function WhyCertifiedPage() {
         </ul>
       </div>
 
-      <div className="wc-divider">
-        <hr />
-      </div>
-
-      {/* 3. The simple idea */}
-      <div className="wc-section">
+      <div className="wc-section wc-section--continues">
         <h2>The simple idea</h2>
         <div className="wc-prose">
           <p>
@@ -95,20 +90,15 @@ export default function WhyCertifiedPage() {
             Your profile and records come with you — no extra setup.
           </p>
         </div>
-      </div>
-
-      <div className="wc-divider">
-        <hr />
-      </div>
-
-      <div className="wc-section">
         <div className="wc-callout">
           <p className="wc-callout__label">Example</p>
           <p className="wc-callout__text">Create your Certified ID on Ma Earth. Later, sign in to GainForest — your profile is already there.</p>
         </div>
       </div>
 
-      <div className="wc-divider"><hr /></div>
+      <div className="wc-divider">
+        <hr />
+      </div>
 
       {/* 4. What you get */}
       <div className="wc-section">
@@ -139,8 +129,30 @@ export default function WhyCertifiedPage() {
         <hr />
       </div>
 
-      {/* 5. Where you can use Certified */}
-      <div className="wc-section">
+      {/* 5. How it works + Partner apps */}
+      <div className="wc-section" id="how-it-works">
+        <h2>How it works</h2>
+        <div className="wc-steps">
+          <div className="wc-step">
+            <div className="wc-step__number">1</div>
+            <h3>Create your Certified ID</h3>
+            <p>Enter your email. We send a one-time code.</p>
+          </div>
+          <div className="wc-step">
+            <div className="wc-step__number">2</div>
+            <h3>Sign in to partner apps</h3>
+            <p>Use it anywhere you see &lsquo;Sign in with Certified&rsquo;.</p>
+          </div>
+          <div className="wc-step">
+            <div className="wc-step__number">3</div>
+            <h3>Your profile is already there</h3>
+            <p>Your profile and records follow you automatically.</p>
+          </div>
+        </div>
+        <p className="wc-reassurance">That&apos;s it — no extra setup.</p>
+      </div>
+
+      <div className="wc-section wc-section--continues">
         <h2>Works across partner apps</h2>
         <p className="wc-prose">Use your Certified ID anywhere you see &lsquo;Sign in with Certified&rsquo;.</p>
         <div className="wc-partners">
@@ -165,34 +177,7 @@ export default function WhyCertifiedPage() {
         <hr />
       </div>
 
-      {/* 6. How it works */}
-      <div className="wc-section" id="how-it-works">
-        <h2>How it works</h2>
-        <div className="wc-steps">
-          <div className="wc-step">
-            <div className="wc-step__number">1</div>
-            <h3>Create your Certified ID</h3>
-            <p>Enter your email. We send a one-time code.</p>
-          </div>
-          <div className="wc-step">
-            <div className="wc-step__number">2</div>
-            <h3>Sign in to partner apps</h3>
-            <p>Use it anywhere you see &lsquo;Sign in with Certified&rsquo;.</p>
-          </div>
-          <div className="wc-step">
-            <div className="wc-step__number">3</div>
-            <h3>Your profile is already there</h3>
-            <p>Your profile and records follow you automatically.</p>
-          </div>
-        </div>
-        <p className="wc-reassurance">That&apos;s it — no extra setup.</p>
-      </div>
-
-      <div className="wc-divider">
-        <hr />
-      </div>
-
-      {/* 7. Built for trust */}
+      {/* 6. Built for trust */}
       <div className="wc-section">
         <h2>Built for trust</h2>
         <ul className="wc-trust-list">
@@ -219,7 +204,7 @@ export default function WhyCertifiedPage() {
         <hr />
       </div>
 
-      {/* 8. FAQ */}
+      {/* 7. FAQ */}
       <div className="wc-section">
         <h2>Frequently asked questions</h2>
         <div className="wc-faq">
@@ -252,19 +237,15 @@ export default function WhyCertifiedPage() {
         </div>
       </div>
 
-      <div className="wc-divider">
-        <hr />
-      </div>
-
-      {/* 9. Bottom CTA */}
+      {/* 8. Bottom CTA */}
       <div className="wc-bottom-cta">
         <h2>Ready to get started?</h2>
         <p>Create your account in under a minute — no passwords.</p>
         <div className="wc-bottom-cta__actions">
-          <Button variant="primary" size="lg" onClick={signUp}>
+          <Button variant="primary" size="lg" onClick={openSignUp}>
             Create your Certified ID
           </Button>
-          <button className="hero__btn-secondary" onClick={signIn}>
+          <button className="hero__btn-secondary" onClick={openSignIn}>
             Sign in
           </button>
         </div>
