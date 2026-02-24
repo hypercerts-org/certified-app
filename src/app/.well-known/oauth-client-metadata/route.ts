@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
     dpop_bound_access_tokens: true,
     brand_color: '#60A1E2',
     background_color: '#0F2544',
+    email_template_uri: `${origin}/assets/otp-email-template.html`,
+    email_subject_template: '{{code}} — Your Certified sign-in code',
   }
 
   return NextResponse.json(metadata, {
