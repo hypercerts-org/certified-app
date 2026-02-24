@@ -21,6 +21,8 @@ export async function GET(request: NextRequest) {
     token_endpoint_auth_method: "none",
     application_type: "web",
     dpop_bound_access_tokens: true,
+    brand_color: '#60A1E2',
+    background_color: '#0F2544',
   }
 
   return NextResponse.json(metadata, {
