@@ -38,7 +38,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
       </div>
 
       {/* Avatar overlapping banner */}
-      <div className="flex flex-col items-center -mt-12">
+      <div className="relative z-10 flex flex-col items-center -mt-12">
         <Avatar
           src={avatarUrl || undefined}
           alt={displayName || "Profile avatar"}

@@ -714,14 +714,14 @@ h1, h2, h3, h4, h5, h6 {
 
 .wc-card h3 {
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 1rem;
+  font-size: 1.0625rem;
   font-weight: 600;
   color: var(--color-white);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .wc-card p {
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   line-height: 1.6;
   color: rgba(255, 255, 255, 0.5);
   margin: 0;
@@ -739,12 +739,12 @@ h1, h2, h3, h4, h5, h6 {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 20px;
+  padding: 10px 20px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 500;
   color: var(--color-white);
   transition: border-color var(--transition-fast);
@@ -808,7 +808,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .wc-step h3 {
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--color-white);
   margin-bottom: 8px;
@@ -817,7 +817,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .wc-step p {
   font-size: 0.875rem;
-  line-height: 1.5;
+  line-height: 1.6;
   color: rgba(255, 255, 255, 0.5);
   margin: 0;
 }
@@ -964,7 +964,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .wc-faq-answer p {
   padding: 0 0 20px;
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   line-height: 1.6;
   color: rgba(255, 255, 255, 0.5);
   margin: 0;
