@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Agent } from "@atproto/api";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
+import PasswordSection from "@/components/account/password-section";
 
 interface AccountSettingsProps {
   agent: Agent;
@@ -275,17 +276,9 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ agent, did }) => {
         </p>
       </div>
 
-      {/* ── PASSWORD (read-only) ── */}
+      {/* ── PASSWORD ── */}
       <div className="border-t border-gray-200 pt-4 mt-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="app-card__label">Password</p>
-            <p className="text-body text-gray-400 italic">Not set</p>
-          </div>
-        </div>
-        <p className="text-xs text-gray-400 mt-1">
-          Your account uses email sign-in codes instead of a password. Password support will be available in a future update.
-        </p>
+        <PasswordSection agent={agent} email={email} />
       </div>
     </div>
   );
