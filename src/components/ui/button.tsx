@@ -23,21 +23,21 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      "rounded-sm font-sans text-xs font-medium uppercase tracking-[0.1em] transition-all duration-150 focus-visible:outline-2 focus-visible:outline-black focus-visible:outline-offset-2 inline-flex items-center justify-center gap-2";
+      "rounded font-mono text-sm font-medium uppercase tracking-wider transition-all duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 inline-flex items-center justify-center gap-2";
 
     const variantStyles = {
       primary:
-        "bg-black text-white hover:opacity-70",
+        "bg-accent/10 text-accent border border-accent/20 hover:bg-accent/15 hover:border-accent/35 hover:text-[#A3CDF2]",
       secondary:
-        "bg-transparent text-gray-700 border border-gray-300 hover:border-gray-400",
-      ghost: "bg-transparent text-gray-500 hover:text-black",
+        "bg-transparent text-navy border border-navy/20 hover:border-navy/40",
+      ghost: "bg-transparent text-accent hover:bg-accent/10",
       destructive: "bg-error/10 text-error border border-error/20 hover:bg-error/15 hover:border-error/35",
     };
 
     const sizeStyles = {
       sm: "py-1.5 px-4 text-xs",
-      md: "py-2.5 px-6 text-xs",
-      lg: "py-3 px-8 text-xs",
+      md: "py-2.5 px-6 text-sm",
+      lg: "py-3 px-8 text-sm",
     };
 
     const disabledStyles = disabled || loading ? "opacity-50 cursor-not-allowed" : "";
