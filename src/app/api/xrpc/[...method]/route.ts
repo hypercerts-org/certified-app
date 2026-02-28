@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Agent } from "@atproto/api"
 import { getOAuthClient } from "@/lib/auth/oauth-client"
-import { getSessionDid } from "@/lib/auth/session"
+import { getSessionDid, deleteSession } from "@/lib/auth/session"
 
 export async function GET(
   request: NextRequest,
@@ -17,7 +17,13 @@ export async function GET(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
 
     const client = await getOAuthClient()
-    const oauthSession = await client.restore(did)
+    let oauthSession
+    try {
+      oauthSession = await client.restore(did)
+    } catch {
+      await deleteSession()
+      return NextResponse.json({ error: "Session expired" }, { status: 401 })
+    }
     const agent = new Agent(oauthSession)
 
     const queryParams = Object.fromEntries(
@@ -80,7 +86,13 @@ export async function POST(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
 
     const client = await getOAuthClient()
-    const oauthSession = await client.restore(did)
+    let oauthSession
+    try {
+      oauthSession = await client.restore(did)
+    } catch {
+      await deleteSession()
+      return NextResponse.json({ error: "Session expired" }, { status: 401 })
+    }
     const agent = new Agent(oauthSession)
 
     switch (methodName) {
