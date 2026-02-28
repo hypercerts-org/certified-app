@@ -10,27 +10,27 @@ import ErrorMessage from "@/components/ui/error-message";
 import ProfileView from "@/components/profile/profile-view";
 
 export default function HomeClient() {
-  const { isLoading, session, did, agent, openSignIn, openSignUp } = useAuth();
+  const { isLoading, isAuthenticated, did, openSignIn, openSignUp } = useAuth();
   const { profile, isLoading: profileLoading, error: profileError, refetch: refetchProfile, avatarUrl, bannerUrl } = useProfile();
   const { setVariant } = useNavbarVariant();
 
   useEffect(() => {
-    if (!session && !isLoading) {
+    if (!isAuthenticated && !isLoading) {
       setVariant("transparent");
     }
     return () => {
       setVariant("default");
     };
-  }, [session, isLoading, setVariant]);
+  }, [isAuthenticated, isLoading, setVariant]);
 
   useEffect(() => {
-    if (!isLoading && !session) {
+    if (!isLoading && !isAuthenticated) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
     }
     return () => { document.body.style.overflow = ""; };
-  }, [isLoading, session]);
+  }, [isLoading, isAuthenticated]);
 
   if (isLoading) {
     return (
@@ -46,7 +46,7 @@ export default function HomeClient() {
     );
   }
 
-  if (session) {
+  if (isAuthenticated) {
     return (
       <div className="app-page">
         <div className="app-page__inner">
@@ -64,7 +64,6 @@ export default function HomeClient() {
               did={did}
               avatarUrl={avatarUrl}
               bannerUrl={bannerUrl}
-              agent={agent}
             />
           ) : null}
         </div>

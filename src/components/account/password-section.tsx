@@ -1,18 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Agent } from "@atproto/api";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 
 interface PasswordSectionProps {
-  agent: Agent;
   email: string;
 }
 
 type State = "idle" | "requesting" | "form" | "success";
 
-const PasswordSection: React.FC<PasswordSectionProps> = ({ agent, email }) => {
+const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
   const [state, setState] = useState<State>("idle");
   const [hasSetPassword, setHasSetPassword] = useState(false);
 
@@ -45,7 +43,15 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ agent, email }) => {
     setState("requesting");
     setIdleError(null);
     try {
-      await agent.com.atproto.server.requestPasswordReset({ email });
+      const resetRes = await fetch("/api/xrpc/com/atproto/server/requestPasswordReset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (!resetRes.ok) {
+        const data = await resetRes.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error || resetRes.statusText);
+      }
       setState("form");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
@@ -91,7 +97,15 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ agent, email }) => {
     setSaving(true);
     setFormError(null);
     try {
-      await agent.com.atproto.server.resetPassword({ token: token.trim(), password });
+      const pwRes = await fetch("/api/xrpc/com/atproto/server/resetPassword", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: token.trim(), password }),
+      });
+      if (!pwRes.ok) {
+        const data = await pwRes.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error || pwRes.statusText);
+      }
       setHasSetPassword(true);
       clearFormState();
       setState("success");
@@ -120,8 +134,8 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ agent, email }) => {
   if (state === "form") {
     return (
       <div>
-        <p className="app-card__label">Password</p>
-        <p className="text-xs text-gray-500 mb-3">
+        <p className="font-sans text-overline uppercase tracking-[0.12em] text-gray-400 mb-2">Password</p>
+        <p className="font-sans text-xs text-gray-500 mb-3">
           We sent a password reset code to your email. Enter it below with your new password.
         </p>
         <div className="flex flex-col gap-3">
@@ -154,7 +168,7 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ agent, email }) => {
           />
         </div>
         {formError && (
-          <p className="text-body-sm text-error mt-2">{formError}</p>
+          <p className="font-sans text-body-sm text-error mt-2">{formError}</p>
         )}
         <div className="flex gap-2 mt-3">
           <Button size="sm" onClick={handleSubmit} disabled={saving}>
@@ -171,21 +185,21 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ agent, email }) => {
   return (
     <div className="flex items-center justify-between">
       <div>
-        <p className="app-card__label">Password</p>
+        <p className="font-sans text-overline uppercase tracking-[0.12em] text-gray-400 mb-1">Password</p>
         {state === "success" ? (
-          <p className="text-body-sm text-success mt-1">Password updated successfully.</p>
+          <p className="font-sans text-body-sm text-success mt-1">Password updated successfully.</p>
         ) : hasSetPassword ? (
-          <p className="text-body text-gray-700">Password set</p>
+          <p className="font-sans text-body text-gray-700">Password set</p>
         ) : (
-          <p className="text-body text-gray-400 italic">Not set</p>
+          <p className="font-sans text-body text-gray-400 italic">Not set</p>
         )}
         {state === "idle" && !hasSetPassword && (
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="font-sans text-xs text-gray-400 mt-1">
             Set a password to sign in to other AT Protocol apps (like Bluesky) with your handle.
           </p>
         )}
         {idleError && (
-          <p className="text-body-sm text-error mt-2">{idleError}</p>
+          <p className="font-sans text-body-sm text-error mt-2">{idleError}</p>
         )}
       </div>
       <Button

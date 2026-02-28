@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { BlobRef } from "@atproto/api";
 import Input from "@/components/ui/input";
 import Textarea from "@/components/ui/textarea";
 import Button from "@/components/ui/button";
@@ -16,8 +15,8 @@ export interface ProfileEditFormProps {
   onSave: (profile: CertifiedProfile) => Promise<void>;
   isSaving: boolean;
   saveError: string | null;
-  onAvatarUpload: (file: File) => Promise<BlobRef>;
-  onBannerUpload: (file: File) => Promise<BlobRef>;
+  onAvatarUpload: (file: File) => Promise<Record<string, unknown>>;
+  onBannerUpload: (file: File) => Promise<Record<string, unknown>>;
   currentAvatarUrl: string | null;
   currentBannerUrl: string | null;
   fallbackInitials: string;
@@ -42,8 +41,8 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
   const [website, setWebsite] = useState("");
 
   // Image upload state
-  const [avatarBlob, setAvatarBlob] = useState<BlobRef | null>(null);
-  const [bannerBlob, setBannerBlob] = useState<BlobRef | null>(null);
+  const [avatarBlob, setAvatarBlob] = useState<Record<string, unknown> | null>(null);
+  const [bannerBlob, setBannerBlob] = useState<Record<string, unknown> | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
 
@@ -185,7 +184,8 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     if (avatarBlob) {
       const avatarImage: HypercertsSmallImage = {
         $type: "org.hypercerts.defs#smallImage",
-        image: avatarBlob,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        image: avatarBlob as any,
       };
       profile.avatar = avatarImage;
     } else if (initialProfile?.avatar) {
@@ -196,7 +196,8 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     if (bannerBlob) {
       const bannerImage: HypercertsLargeImage = {
         $type: "org.hypercerts.defs#largeImage",
-        image: bannerBlob,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        image: bannerBlob as any,
       };
       profile.banner = bannerImage;
     } else if (initialProfile?.banner) {

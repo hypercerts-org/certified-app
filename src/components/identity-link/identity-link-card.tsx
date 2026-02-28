@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useState } from "react"
-import { Agent } from "@atproto/api"
 import { Trash2 } from "lucide-react"
 import Button from "@/components/ui/button"
 import Badge from "@/components/ui/badge"
@@ -12,7 +11,6 @@ import { SUPPORTED_CHAINS } from "@/lib/wagmi"
 import LinkWalletFlow from "./link-wallet-flow"
 
 interface IdentityLinkCardProps {
-  agent: Agent | null
   did: string | null
 }
 
@@ -35,22 +33,22 @@ function relativeTime(dateString: string): string {
   return `${months}mo ago`
 }
 
-const IdentityLinkCard: React.FC<IdentityLinkCardProps> = ({ agent, did }) => {
+const IdentityLinkCard: React.FC<IdentityLinkCardProps> = ({ did }) => {
   const [showLinkFlow, setShowLinkFlow] = useState(false)
   const [confirmDeleteRkey, setConfirmDeleteRkey] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const { attestations, isLoading, error, refetch } = useIdentityLinks(agent, did)
+  const { attestations, isLoading, error, refetch } = useIdentityLinks(did)
 
-  if (!agent || !did) return null
+  if (!did) return null
 
   const handleDelete = async (rkey: string) => {
-    if (!agent || !did) return
+    if (!did) return
     setIsDeleting(true)
     setDeleteError(null)
     try {
-      await deleteAttestation(agent, did, rkey)
+      await deleteAttestation(did, rkey)
       setConfirmDeleteRkey(null)
       await refetch()
     } catch (err) {
@@ -61,10 +59,10 @@ const IdentityLinkCard: React.FC<IdentityLinkCardProps> = ({ agent, did }) => {
   }
 
   return (
-    <div className="app-card">
+    <div>
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <span className="app-card__label">Identity Links</span>
+      <div className="flex items-center justify-between mb-4">
+        <span className="font-serif text-h3 text-black">Identity Links</span>
         <Button variant="secondary" size="sm" onClick={() => setShowLinkFlow(true)}>
           Link Wallet
         </Button>
@@ -74,7 +72,6 @@ const IdentityLinkCard: React.FC<IdentityLinkCardProps> = ({ agent, did }) => {
       {showLinkFlow && (
         <div className="mt-3">
           <LinkWalletFlow
-            agent={agent}
             did={did}
             onComplete={() => {
               setShowLinkFlow(false)
@@ -94,14 +91,14 @@ const IdentityLinkCard: React.FC<IdentityLinkCardProps> = ({ agent, did }) => {
 
       {/* Error */}
       {error && !isLoading && (
-        <p className="mt-4 text-error text-body-sm">{error}</p>
+        <p className="mt-4 font-sans text-body-sm text-error">{error}</p>
       )}
 
       {/* Empty state */}
       {!isLoading && !error && attestations.length === 0 && (
         <div className="py-8 text-center">
-          <p className="text-body text-gray-400">No wallets linked yet.</p>
-          <p className="text-body-sm text-gray-400 mt-1">Link a wallet to prove you own it.</p>
+          <p className="font-sans text-body text-gray-400 italic">No wallets linked yet.</p>
+          <p className="font-sans text-body-sm text-gray-400 mt-1">Link a wallet to prove you own it.</p>
         </div>
       )}
 
@@ -116,14 +113,14 @@ const IdentityLinkCard: React.FC<IdentityLinkCardProps> = ({ agent, did }) => {
         return (
           <div
             key={attestation.rkey}
-            className={`flex items-center justify-between py-3 ${index > 0 ? "border-t border-gray-200" : ""}`}
+            className={`flex items-center justify-between py-4 ${index > 0 ? "border-t border-gray-100" : ""}`}
           >
             {/* Left side */}
             <div className="flex items-center gap-3">
               <span>{chainIcon}</span>
               <div>
-                <p className="text-body-sm text-gray-400">{chainName}</p>
-                <p className="font-mono text-body-sm text-gray-700">
+                <p className="font-sans text-body-sm text-gray-400">{chainName}</p>
+                <p className="font-mono text-body-sm text-gray-600">
                   {truncateAddress(attestation.value.address)}
                 </p>
               </div>
@@ -134,13 +131,13 @@ const IdentityLinkCard: React.FC<IdentityLinkCardProps> = ({ agent, did }) => {
               <Badge variant={attestation.verified ? "verified" : "unverified"}>
                 {attestation.verified ? "Verified" : "Unverified"}
               </Badge>
-              <span className="text-xs text-gray-400">
+              <span className="font-sans text-xs text-gray-400">
                 {relativeTime(attestation.value.createdAt)}
               </span>
 
               {isConfirming ? (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">Remove?</span>
+                  <span className="font-sans text-xs text-gray-500">Remove?</span>
                   <Button
                     variant="destructive"
                     size="sm"
@@ -167,7 +164,7 @@ const IdentityLinkCard: React.FC<IdentityLinkCardProps> = ({ agent, did }) => {
                     setConfirmDeleteRkey(attestation.rkey)
                     setDeleteError(null)
                   }}
-                  className="text-gray-300 hover:text-error transition-colors"
+                  className="text-gray-400 hover:text-error transition-colors"
                   aria-label="Remove wallet"
                 >
                   <Trash2 size={16} />
@@ -180,7 +177,7 @@ const IdentityLinkCard: React.FC<IdentityLinkCardProps> = ({ agent, did }) => {
 
       {/* Delete error */}
       {deleteError && (
-        <p className="text-body-sm text-error mt-2">{deleteError}</p>
+        <p className="font-sans text-body-sm text-error mt-2">{deleteError}</p>
       )}
     </div>
   )
