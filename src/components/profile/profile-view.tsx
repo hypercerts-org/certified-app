@@ -3,7 +3,6 @@
 import React from "react";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
-import { Agent } from "@atproto/api";
 import Button from "@/components/ui/button";
 import ProfileHeader from "./profile-header";
 import AccountSettings from "@/components/account/account-settings";
@@ -15,7 +14,6 @@ export interface ProfileViewProps {
   did: string;
   avatarUrl: string | null;
   bannerUrl: string | null;
-  agent: Agent | null;
 }
 
 const ProfileView: React.FC<ProfileViewProps> = ({
@@ -23,7 +21,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   did,
   avatarUrl,
   bannerUrl,
-  agent,
 }) => {
   const formatMemberSince = (dateString?: string): string | null => {
     if (!dateString) return null;
@@ -92,18 +89,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       </div>
 
       {/* Identity Links */}
-      {agent && (
-        <div className="mt-4">
-          <IdentityLinkCard agent={agent} did={did} />
-        </div>
-      )}
+      <div className="mt-4">
+        <IdentityLinkCard did={did} />
+      </div>
 
       {/* Account settings */}
-      {agent && (
-        <div className="mt-4">
-          <AccountSettings agent={agent} did={did} />
-        </div>
-      )}
+      <div className="mt-4">
+        <AccountSettings did={did} />
+      </div>
     </div>
   );
 };

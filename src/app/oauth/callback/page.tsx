@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 
 export default function OAuthCallbackPage() {
   const [error, setError] = useState<string | null>(null)
@@ -48,9 +49,9 @@ export default function OAuthCallbackPage() {
       <div className="min-h-screen flex items-center justify-center bg-[var(--color-off-white)]">
         <div className="text-center">
           <p className="text-sm text-error mb-4 font-mono">{error}</p>
-          <a href="/" className="text-sm text-accent font-mono hover:text-deep transition-colors duration-150">
+          <Link href="/" className="text-sm text-accent font-mono hover:text-deep transition-colors duration-150">
             Return to home
-          </a>
+          </Link>
         </div>
       </div>
     )

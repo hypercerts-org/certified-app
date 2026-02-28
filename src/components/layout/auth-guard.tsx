@@ -12,14 +12,14 @@ export interface AuthGuardProps {
 
 const AuthGuard: React.FC<AuthGuardProps> = ({ children, fallback }) => {
   const router = useRouter();
-  const { isLoading, session } = useAuth();
+  const { isLoading, isAuthenticated } = useAuth();
 
   // Redirect to home if not authenticated
   useEffect(() => {
-    if (!isLoading && !session) {
+    if (!isLoading && !isAuthenticated) {
       router.replace("/");
     }
-  }, [isLoading, session, router]);
+  }, [isLoading, isAuthenticated, router]);
 
   // Show loading fallback while checking auth
   if (isLoading) {
@@ -34,7 +34,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children, fallback }) => {
   }
 
   // Don't render children if not authenticated (will redirect)
-  if (!session) {
+  if (!isAuthenticated) {
     return null;
   }
 

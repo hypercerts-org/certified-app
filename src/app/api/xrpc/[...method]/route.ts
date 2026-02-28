@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server"
 import { Agent } from "@atproto/api"
 import { getOAuthClient } from "@/lib/auth/oauth-client"
@@ -58,9 +59,10 @@ export async function GET(
           { status: 400 }
         )
     }
-  } catch (err: any) {
-    const status = err?.status ?? err?.statusCode ?? 500
-    const message = err?.message ?? "Internal server error"
+  } catch (err: unknown) {
+    const error = err as { status?: number; statusCode?: number; message?: string }
+    const status = error?.status ?? error?.statusCode ?? 500
+    const message = error?.message ?? "Internal server error"
     return NextResponse.json({ error: message }, { status })
   }
 }
@@ -104,19 +106,18 @@ export async function POST(
       }
       case "com.atproto.identity.updateHandle": {
         const body = await request.json()
-        const result = await agent.com.atproto.identity.updateHandle(body)
-        return NextResponse.json(result.data)
+        await agent.com.atproto.identity.updateHandle(body)
+        return NextResponse.json({})
       }
       case "com.atproto.server.requestPasswordReset": {
         const body = await request.json()
-        const result =
-          await agent.com.atproto.server.requestPasswordReset(body)
-        return NextResponse.json(result.data)
+        await agent.com.atproto.server.requestPasswordReset(body)
+        return NextResponse.json({})
       }
       case "com.atproto.server.resetPassword": {
         const body = await request.json()
-        const result = await agent.com.atproto.server.resetPassword(body)
-        return NextResponse.json(result.data)
+        await agent.com.atproto.server.resetPassword(body)
+        return NextResponse.json({})
       }
       default:
         return NextResponse.json(
@@ -124,9 +125,10 @@ export async function POST(
           { status: 400 }
         )
     }
-  } catch (err: any) {
-    const status = err?.status ?? err?.statusCode ?? 500
-    const message = err?.message ?? "Internal server error"
+  } catch (err: unknown) {
+    const error = err as { status?: number; statusCode?: number; message?: string }
+    const status = error?.status ?? error?.statusCode ?? 500
+    const message = error?.message ?? "Internal server error"
     return NextResponse.json({ error: message }, { status })
   }
 }

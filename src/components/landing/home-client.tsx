@@ -10,7 +10,7 @@ import ErrorMessage from "@/components/ui/error-message";
 import ProfileView from "@/components/profile/profile-view";
 
 export default function HomeClient() {
-  const { isLoading, isAuthenticated, did, openSignIn, openSignUp } = useAuth();
+  const { isLoading, isAuthenticated, did, openSignUp } = useAuth();
   const { profile, isLoading: profileLoading, error: profileError, refetch: refetchProfile, avatarUrl, bannerUrl } = useProfile();
   const { setVariant } = useNavbarVariant();
 

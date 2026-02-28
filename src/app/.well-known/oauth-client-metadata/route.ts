@@ -4,20 +4,20 @@ import { getOAuthClient } from "@/lib/auth/oauth-client"
 export async function GET() {
   const client = await getOAuthClient()
 
-  // Start with the client metadata from the OAuth client
-  const metadata = {
+  // Derive origin from client_id (strip the path)
+  const origin = new URL(client.clientMetadata.client_id).origin
+
+  // Build metadata as a plain object to avoid strict type constraints
+  const metadata: Record<string, unknown> = {
     ...client.clientMetadata,
     // Add the extra fields that the ePDS needs but are not part of the OAuth client config
     brand_color: "#60A1E2",
     background_color: "#0F2544",
+    tos_uri: `${origin}/terms`,
+    policy_uri: `${origin}/privacy`,
+    email_template_uri: `${origin}/assets/otp-email-template.html`,
+    email_subject_template: "{{code}} — Your Certified sign-in code",
   }
-
-  // Derive origin from client_id (strip the path)
-  const origin = new URL(client.clientMetadata.client_id).origin
-  metadata.tos_uri = `${origin}/terms`
-  metadata.policy_uri = `${origin}/privacy`
-  metadata.email_template_uri = `${origin}/assets/otp-email-template.html`
-  metadata.email_subject_template = "{{code}} — Your Certified sign-in code"
 
   return NextResponse.json(metadata, {
     headers: {

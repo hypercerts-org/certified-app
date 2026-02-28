@@ -1,12 +1,8 @@
-import type { Agent } from "@atproto/api";
-
 export interface AuthState {
   /** Whether the auth system has finished initializing (checking for existing session) */
   isLoading: boolean;
   /** Whether the user is currently authenticated */
   isAuthenticated: boolean;
-  /** An Agent instance bound to the current session for making XRPC calls, or null */
-  agent: Agent | null;
   /** The DID of the authenticated user, or null */
   did: string | null;
   /** The PDS URL of the authenticated user (their actual server, not necessarily our app PDS) */

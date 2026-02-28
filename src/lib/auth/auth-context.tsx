@@ -214,7 +214,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value: AuthState = {
     isLoading,
     isAuthenticated,
-    agent: null,
     did,
     pdsUrl,
     error,

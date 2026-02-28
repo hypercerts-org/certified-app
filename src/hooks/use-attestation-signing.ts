@@ -1,6 +1,6 @@
 import { useSignTypedData, useAccount, useChainId } from "wagmi"
 import { useState, useCallback } from "react"
-import { Agent } from "@atproto/api"
+import { useAuth } from "@/lib/auth/auth-context"
 import { ATTESTATION_DOMAIN, ATTESTATION_TYPES, buildAttestationMessage } from "@/lib/identity-link/attestation"
 import { storeAttestation } from "@/lib/identity-link/pds"
 import type { EIP712Message } from "@/lib/identity-link/types"
@@ -14,9 +14,9 @@ interface UseAttestationSigningResult {
 }
 
 export function useAttestationSigning(
-  agent: Agent | null,
   did: string | null
 ): UseAttestationSigningResult {
+  const { isAuthenticated } = useAuth()
   const [isSigning, setIsSigning] = useState(false)
   const [isStoring, setIsStoring] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -31,7 +31,7 @@ export function useAttestationSigning(
 
   const signAndStore = useCallback(async () => {
     // Check preconditions
-    if (!agent || !did) {
+    if (!isAuthenticated || !did) {
       setError("Not authenticated. Please log in first.")
       return
     }
@@ -75,14 +75,14 @@ export function useAttestationSigning(
     setIsStoring(true)
     try {
       const storedMessage: EIP712Message = msg.stored
-      await storeAttestation(agent, did, address, chainId, signature, storedMessage, "eoa")
+      await storeAttestation(did, address, chainId, signature, storedMessage, "eoa")
     } catch (err) {
       setIsStoring(false)
       setError(`Failed to save: ${err instanceof Error ? err.message : "Unknown error"}`)
       return
     }
     setIsStoring(false)
-  }, [agent, did, isConnected, address, chainId, signTypedDataAsync])
+  }, [isAuthenticated, did, isConnected, address, chainId, signTypedDataAsync])
 
   return {
     signAndStore,
