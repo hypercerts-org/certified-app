@@ -13,19 +13,19 @@ const Badge: React.FC<BadgeProps> = ({
   className = "",
 }) => {
   const baseStyles =
-    "rounded-full px-3 py-1 text-body-sm font-medium inline-flex items-center gap-1.5";
+    "rounded-sm px-2 py-0.5 text-xs font-sans font-medium uppercase tracking-widest inline-flex items-center gap-1.5";
 
   const variantConfig = {
     verified: {
-      styles: "bg-[#E8F5E9] text-[#1B7A3D]",
-      icon: <CheckCircle className="h-4 w-4" />,
+      styles: "bg-cream text-gray-600",
+      icon: <CheckCircle className="h-3.5 w-3.5" />,
     },
     pending: {
-      styles: "bg-[#FFF3E0] text-[#B37100]",
-      icon: <Clock className="h-4 w-4" />,
+      styles: "bg-cream text-gray-600",
+      icon: <Clock className="h-3.5 w-3.5" />,
     },
     unverified: {
-      styles: "bg-gray-50 text-gray-400 border border-gray-200",
+      styles: "bg-cream text-gray-600",
       icon: null,
     },
   };
