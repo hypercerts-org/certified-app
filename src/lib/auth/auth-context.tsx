@@ -199,15 +199,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    // Clear local state immediately (optimistic sign-out).
+    // Server-side session cleanup is best-effort; the client should always
+    // clear its local state even if the fetch throws.
+    setIsAuthenticated(false);
+    setDid(null);
+    setPdsUrl(null);
     try {
-      setError(null);
       await fetch("/api/auth/logout", { method: "POST" });
-      setIsAuthenticated(false);
-      setDid(null);
-      setPdsUrl(null);
     } catch (err) {
-      console.error("Sign out error:", err);
-      setError(err instanceof Error ? err.message : "Failed to sign out");
+      console.error("Sign out error (server-side cleanup failed):", err);
+      // Local state already cleared — user is signed out client-side.
     }
   }, []);
 
