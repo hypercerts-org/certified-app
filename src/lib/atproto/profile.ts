@@ -167,7 +167,7 @@ export function getAvatarUrl(
     "org.hypercerts.defs#smallImage"
   ) {
     const image = (profile.avatar as HypercertsSmallImage).image;
-    return `${pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${did}&cid=${image.ref.toString()}`;
+    return `${pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${did}&cid=${(image.ref as unknown as { $link: string })["$link"]}`;
   }
 
   return null;
@@ -200,7 +200,7 @@ export function getBannerUrl(
     "org.hypercerts.defs#largeImage"
   ) {
     const image = (profile.banner as HypercertsLargeImage).image;
-    return `${pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${did}&cid=${image.ref.toString()}`;
+    return `${pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${did}&cid=${(image.ref as unknown as { $link: string })["$link"]}`;
   }
 
   return null;
