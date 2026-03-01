@@ -101,19 +101,20 @@ export default function SignInModal({
 
   return (
     <div
-      className="signin-modal__backdrop"
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
       ref={backdropRef}
       onClick={(e) => { if (e.target === backdropRef.current) onClose() }}
       role="dialog"
       aria-modal="true"
       aria-label={title}
     >
-      <div className="signin-modal">
-        <div className="signin-modal__header">
-          <img src="/assets/certified_brandmark.svg" alt="" className="signin-modal__logo" />
-          <span className="signin-modal__title">{title}</span>
+      <div className="bg-white rounded-sm shadow-modal w-full max-w-sm mx-4 p-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <span className="font-sans text-sm uppercase tracking-[0.12em] text-gray-700">{title}</span>
           <button
-            className="signin-modal__close"
+            className="text-gray-400 hover:text-black transition-colors"
             onClick={onClose}
             aria-label="Close"
           >
@@ -123,49 +124,50 @@ export default function SignInModal({
           </button>
         </div>
 
-        <div className="signin-modal__body">
-            <form onSubmit={handleSubmit} className="signin-modal__form">
-              <label className="signin-modal__label">
-                {isCertified ? "Email address" : "Handle (username)"}
-              </label>
-              <input
-                ref={inputRef}
-                type={isCertified ? "email" : "text"}
-                className="signin-modal__input"
-                placeholder={isCertified ? "you@example.com" : "you.bsky.social"}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                required
-                autoComplete={isCertified ? "email" : "username"}
-                disabled={isSubmitting}
-              />
-
-              {error && (
-                <p className="signin-modal__error">{error}</p>
-              )}
-
-              <button
-                type="submit"
-                className="signin-modal__submit"
-                disabled={isSubmitting || !inputValue.trim()}
-              >
-                {isSubmitting ? "Connecting..." : buttonLabel}
-              </button>
-            </form>
-
-            <div className="signin-modal__switch">
-              <button
-                type="button"
-                className="signin-modal__switch-btn"
-                onClick={() => {
-                  setView(isCertified ? "atproto" : "certified")
-                  setInputValue("")
-                }}
-              >
-                {switchLabel}
-              </button>
-            </div>
+        {/* Body */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div>
+            <label className="block mb-1.5 font-sans text-xs uppercase tracking-[0.12em] text-gray-400">
+              {isCertified ? "Email address" : "Handle (username)"}
+            </label>
+            <input
+              ref={inputRef}
+              type={isCertified ? "email" : "text"}
+              className="h-11 w-full border border-gray-200 rounded-sm bg-white px-4 text-sm font-sans text-gray-700 placeholder:text-gray-400 focus:border-black focus:outline-none transition-all duration-150"
+              placeholder={isCertified ? "you@example.com" : "you.bsky.social"}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              required
+              autoComplete={isCertified ? "email" : "username"}
+              disabled={isSubmitting}
+            />
           </div>
+
+          {error && (
+            <p className="text-xs font-sans text-error">{error}</p>
+          )}
+
+          <button
+            type="submit"
+            className="w-full bg-black text-white font-sans text-xs uppercase tracking-[0.1em] py-3 rounded-sm transition-opacity hover:opacity-70 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isSubmitting || !inputValue.trim()}
+          >
+            {isSubmitting ? "Connecting..." : buttonLabel}
+          </button>
+        </form>
+
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            className="font-sans text-xs text-gray-500 hover:text-black transition-colors uppercase tracking-[0.1em]"
+            onClick={() => {
+              setView(isCertified ? "atproto" : "certified")
+              setInputValue("")
+            }}
+          >
+            {switchLabel}
+          </button>
+        </div>
       </div>
     </div>
   )

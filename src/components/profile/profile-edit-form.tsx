@@ -214,10 +214,10 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
 
   return (
     <div>
-      <h1 className="font-mono text-h1 text-navy uppercase tracking-tight mb-6">Edit Profile</h1>
+      <h1 className="font-serif text-h1 text-black mb-6">Edit Profile</h1>
 
-      <div className="app-card">
-        <div className="flex flex-col gap-6">
+      <div className="bg-white border border-gray-100 rounded-sm">
+        <div className="flex flex-col gap-6 p-6">
           {/* Banner Upload */}
           <BannerUpload
             currentBannerUrl={currentBannerUrl}
@@ -236,14 +236,16 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
           </div>
 
           {/* Display Name */}
-          <Input
-            label="Display name"
-            value={displayName}
-            onChange={handleDisplayNameChange}
-            maxLength={640}
-            placeholder="Your display name"
-            error={displayNameError}
-          />
+          <div className="border-t border-gray-100 pt-6">
+            <Input
+              label="Display name"
+              value={displayName}
+              onChange={handleDisplayNameChange}
+              maxLength={640}
+              placeholder="Your display name"
+              error={displayNameError}
+            />
+          </div>
 
           {/* Description */}
           <div>
@@ -256,7 +258,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
               placeholder="Tell us about yourself"
               error={descriptionError}
             />
-            <div className="font-mono text-xs text-gray-400 text-right mt-1">
+            <div className="font-sans text-xs text-gray-400 text-right mt-1">
               {description.length}/256 characters
             </div>
           </div>
@@ -278,7 +280,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
           )}
 
           {/* Buttons */}
-          <div className="flex justify-end gap-4 pt-6 border-t border-[rgba(15,37,68,0.08)]">
+          <div className="flex justify-end gap-4 pt-6 border-t border-gray-100">
             <Button variant="ghost" onClick={handleCancel} disabled={isSaving}>
               Cancel
             </Button>
