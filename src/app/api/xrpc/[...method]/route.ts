@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { Agent } from "@atproto/api"
 import { getOAuthClient } from "@/lib/auth/oauth-client"
 import { getSessionDid, deleteSession } from "@/lib/auth/session"
+import { checkCsrf } from "@/lib/auth/csrf"
 
 export async function GET(
   request: NextRequest,
@@ -77,6 +78,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ method: string[] }> }
 ) {
+  const csrfError = checkCsrf(request)
+  if (csrfError) return csrfError
+
   try {
     const { method } = await params
     const methodName = method.join(".")
