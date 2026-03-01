@@ -15,11 +15,11 @@ interface AccountSettingsProps {
  * e.g. "https://epds1.test.certified.app/" → "epds1.test.certified.app"
  */
 function getPdsHostname(): string {
-  const url = process.env.NEXT_PUBLIC_PDS_URL || "https://otp.certs.network";
+  const url = process.env.NEXT_PUBLIC_PDS_URL || "https://epds1.test.certified.app";
   try {
     return new URL(url).hostname;
   } catch {
-    return "otp.certs.network";
+    return "epds1.test.certified.app";
   }
 }
 

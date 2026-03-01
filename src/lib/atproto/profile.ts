@@ -133,7 +133,7 @@ export async function uploadBanner(
  * Get the URL for a profile avatar
  * @param profile - The profile record
  * @param did - The DID of the user
- * @param pdsUrl - The PDS URL (e.g., https://otp.certs.network)
+ * @param pdsUrl - The PDS URL (e.g., https://epds1.test.certified.app)
  * @returns The avatar URL or null if no avatar is set
  */
 export function getAvatarUrl(
@@ -166,7 +166,7 @@ export function getAvatarUrl(
  * Get the URL for a profile banner
  * @param profile - The profile record
  * @param did - The DID of the user
- * @param pdsUrl - The PDS URL (e.g., https://otp.certs.network)
+ * @param pdsUrl - The PDS URL (e.g., https://epds1.test.certified.app)
  * @returns The banner URL or null if no banner is set
  */
 export function getBannerUrl(

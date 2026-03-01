@@ -17,7 +17,7 @@ export default function EditProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const effectivePdsUrl = pdsUrl || process.env.NEXT_PUBLIC_PDS_URL || "https://otp.certs.network";
+  const effectivePdsUrl = pdsUrl || process.env.NEXT_PUBLIC_PDS_URL || "https://epds1.test.certified.app";
 
   const handleAvatarUpload = async (file: File): Promise<Record<string, unknown>> => {
     return await uploadAvatar(file);

@@ -46,7 +46,7 @@ export function useProfile(): {
   }, [fetchProfile])
 
   // Compute avatar and banner URLs
-  const effectivePdsUrl = pdsUrl || process.env.NEXT_PUBLIC_PDS_URL || "https://otp.certs.network"
+  const effectivePdsUrl = pdsUrl || process.env.NEXT_PUBLIC_PDS_URL || "https://epds1.test.certified.app"
   const avatarUrl = profile && did ? getAvatarUrl(profile, did, effectivePdsUrl) : null
   const bannerUrl = profile && did ? getBannerUrl(profile, did, effectivePdsUrl) : null
 
