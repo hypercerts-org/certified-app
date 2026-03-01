@@ -147,6 +147,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setError(null);
       const prompt = authMode === "sign-up" ? "create" : "login";
 
+      // Show loading overlay immediately while we fetch the auth URL
+      setIsRedirectingToProvider(true);
+      setIsModalOpen(false);
+
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -159,10 +163,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = await res.json() as { url: string };
-      setIsModalOpen(false);
       window.location.href = data.url;
     } catch (err) {
       console.error("Email sign-in error:", err);
+      setIsRedirectingToProvider(false);
+      setIsModalOpen(true);
       setError(err instanceof Error ? err.message : "Failed to sign in");
     }
   }, [authMode]);
