@@ -1,5 +1,5 @@
 import { cookies } from "next/headers"
-import { randomBytes, createHmac } from "crypto"
+import { randomBytes, createHmac, timingSafeEqual } from "crypto"
 
 const COOKIE_NAME = "certified_session"
 const COOKIE_SECRET =
@@ -41,7 +41,11 @@ export async function getSessionDid(): Promise<string | null> {
   const providedSignature = cookie.value.slice(dotIndex + 1)
   const expectedSignature = sign(sessionId)
 
-  if (providedSignature !== expectedSignature) return null
+  const providedBuf = Buffer.from(providedSignature, "hex")
+  const expectedBuf = Buffer.from(expectedSignature, "hex")
+  if (providedBuf.length !== expectedBuf.length || !timingSafeEqual(providedBuf, expectedBuf)) {
+    return null
+  }
 
   return sessionToDid.get(sessionId) ?? null
 }
