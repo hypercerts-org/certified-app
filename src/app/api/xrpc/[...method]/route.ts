@@ -99,15 +99,30 @@ export async function POST(
     }
     const agent = new Agent(oauthSession)
 
+    // Parse body once (uploadBlob uses arrayBuffer instead)
+    let body: Record<string, unknown> | null = null
+    if (methodName !== "com.atproto.repo.uploadBlob") {
+      body = await request.json()
+    }
+
+    // Validate repo on write methods — reject cross-repo writes
+    const REPO_METHODS = ["com.atproto.repo.putRecord", "com.atproto.repo.deleteRecord"]
+    if (body && REPO_METHODS.includes(methodName)) {
+      if (body.repo && body.repo !== did) {
+        return NextResponse.json(
+          { error: "Forbidden: cannot write to another user's repo" },
+          { status: 403 }
+        )
+      }
+    }
+
     switch (methodName) {
       case "com.atproto.repo.putRecord": {
-        const body = await request.json()
-        const result = await agent.com.atproto.repo.putRecord(body)
+        const result = await agent.com.atproto.repo.putRecord(body as any)
         return NextResponse.json(result.data)
       }
       case "com.atproto.repo.deleteRecord": {
-        const body = await request.json()
-        const result = await agent.com.atproto.repo.deleteRecord(body)
+        const result = await agent.com.atproto.repo.deleteRecord(body as any)
         return NextResponse.json(result.data)
       }
       case "com.atproto.repo.uploadBlob": {
@@ -121,18 +136,15 @@ export async function POST(
         return NextResponse.json(result.data)
       }
       case "com.atproto.identity.updateHandle": {
-        const body = await request.json()
-        await agent.com.atproto.identity.updateHandle(body)
+        await agent.com.atproto.identity.updateHandle(body as any)
         return NextResponse.json({})
       }
       case "com.atproto.server.requestPasswordReset": {
-        const body = await request.json()
-        await agent.com.atproto.server.requestPasswordReset(body)
+        await agent.com.atproto.server.requestPasswordReset(body as any)
         return NextResponse.json({})
       }
       case "com.atproto.server.resetPassword": {
-        const body = await request.json()
-        await agent.com.atproto.server.resetPassword(body)
+        await agent.com.atproto.server.resetPassword(body as any)
         return NextResponse.json({})
       }
       default:
