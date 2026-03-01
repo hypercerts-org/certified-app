@@ -89,12 +89,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       </div>
 
       {/* Identity Links */}
-      <div className="mt-4">
+      <div className="mt-6">
         <IdentityLinkCard did={did} />
       </div>
 
       {/* Account settings */}
-      <div className="mt-4">
+      <div className="mt-6">
         <AccountSettings did={did} />
       </div>
     </div>

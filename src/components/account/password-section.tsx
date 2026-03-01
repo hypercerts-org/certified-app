@@ -135,8 +135,8 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
   if (state === "form") {
     return (
       <div>
-        <p className="font-sans text-overline uppercase tracking-[0.12em] text-gray-400 mb-2">Password</p>
-        <p className="font-sans text-xs text-gray-500 mb-3">
+        <p className="app-card__label mb-2">Password</p>
+        <p className="text-xs text-gray-500 mb-3">
           We sent a password reset code to your email. Enter it below with your new password.
         </p>
         <div className="flex flex-col gap-3">
@@ -169,7 +169,7 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
           />
         </div>
         {formError && (
-          <p className="font-sans text-body-sm text-error mt-2">{formError}</p>
+          <p className="text-body-sm text-error mt-2">{formError}</p>
         )}
         <div className="flex gap-2 mt-3">
           <Button size="sm" onClick={handleSubmit} disabled={saving}>
@@ -186,21 +186,21 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
   return (
     <div className="flex items-center justify-between">
       <div>
-        <p className="font-sans text-overline uppercase tracking-[0.12em] text-gray-400 mb-1">Password</p>
+        <p className="app-card__label">Password</p>
         {state === "success" ? (
-          <p className="font-sans text-body-sm text-success mt-1">Password updated successfully.</p>
+          <p className="text-body-sm text-success mt-1">Password updated successfully.</p>
         ) : hasSetPassword ? (
-          <p className="font-sans text-body text-gray-700">Password set</p>
+          <p className="text-body text-gray-700">Password set</p>
         ) : (
-          <p className="font-sans text-body text-gray-400 italic">Not set</p>
+          <p className="text-body text-gray-400 italic">Not set</p>
         )}
         {state === "idle" && !hasSetPassword && (
-          <p className="font-sans text-xs text-gray-400 mt-1">
+          <p className="text-xs text-gray-400 mt-1">
             Set a password to sign in to other AT Protocol apps (like Bluesky) with your handle.
           </p>
         )}
         {idleError && (
-          <p className="font-sans text-body-sm text-error mt-2">{idleError}</p>
+          <p className="text-body-sm text-error mt-2">{idleError}</p>
         )}
       </div>
       <Button

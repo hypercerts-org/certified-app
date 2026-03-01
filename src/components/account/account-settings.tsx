@@ -153,18 +153,18 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ did }) => {
   if (loadingSession || !handle) return null;
 
   return (
-    <div>
-      <p className="font-serif text-h3 text-black mb-6">Account</p>
+    <div className="app-card">
+      <p className="app-card__label mb-6">Account</p>
 
       {/* ── USERNAME (HANDLE) ── */}
       <div>
         {!editingHandle ? (
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
-              <p className="font-sans text-overline uppercase tracking-[0.12em] text-gray-400 mb-1">Username</p>
-              <p className="font-sans text-body text-gray-700 break-all">{handle}</p>
+              <p className="app-card__label">Username</p>
+              <p className="text-body text-gray-700 break-all">{handle}</p>
               {handleSuccess && (
-                <p className="font-sans text-body-sm text-success mt-1">Handle updated.</p>
+                <p className="text-body-sm text-success mt-1">Handle updated.</p>
               )}
             </div>
             <Button variant="ghost" size="sm" onClick={handleStartEdit} className="ml-4 flex-shrink-0">
@@ -173,16 +173,16 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ did }) => {
           </div>
         ) : (
           <div>
-            <p className="font-sans text-overline uppercase tracking-[0.12em] text-gray-400 mb-2">Username</p>
+            <p className="app-card__label mb-2">Username</p>
 
             {/* Mode tabs */}
             <div className="flex gap-1 mb-3 mt-1">
               <button
                 type="button"
                 onClick={() => { setHandleMode("subdomain"); setHandleError(null); }}
-                className={`font-sans text-xs uppercase tracking-[0.1em] px-3 py-1.5 rounded-sm transition-colors duration-200 ${
+                className={`font-mono text-xs uppercase tracking-wider px-3 py-1.5 rounded transition-colors duration-200 ${
                   handleMode === "subdomain"
-                    ? "bg-black text-white"
+                    ? "bg-accent/10 text-accent border border-accent/20"
                     : "text-gray-400 hover:text-gray-700"
                 }`}
               >
@@ -191,9 +191,9 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ did }) => {
               <button
                 type="button"
                 onClick={() => { setHandleMode("custom"); setHandleError(null); }}
-                className={`font-sans text-xs uppercase tracking-[0.1em] px-3 py-1.5 rounded-sm transition-colors duration-200 ${
+                className={`font-mono text-xs uppercase tracking-wider px-3 py-1.5 rounded transition-colors duration-200 ${
                   handleMode === "custom"
-                    ? "bg-black text-white"
+                    ? "bg-accent/10 text-accent border border-accent/20"
                     : "text-gray-400 hover:text-gray-700"
                 }`}
               >
@@ -211,11 +211,11 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ did }) => {
                     placeholder="yourname"
                     className="rounded-r-none border-r-0"
                   />
-                  <span className="h-11 flex items-center px-3 bg-gray-50 border border-gray-200 rounded-r text-xs text-gray-400 font-sans whitespace-nowrap select-none">
+                  <span className="h-11 flex items-center px-3 bg-[var(--color-off-white)] border border-[rgba(15,37,68,0.15)] rounded-r text-xs text-gray-400 font-mono whitespace-nowrap select-none">
                     .{pdsHostname}
                   </span>
                 </div>
-                <p className="font-sans text-xs text-gray-400 mt-1.5">
+                <p className="text-xs text-gray-400 mt-1.5">
                   3–18 characters. Letters, numbers, and hyphens only.
                 </p>
               </div>
@@ -227,19 +227,19 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ did }) => {
                   onChange={(e) => setCustomDomainValue(e.target.value)}
                   placeholder="you.example.com"
                 />
-                <div className="mt-3 p-4 rounded-sm bg-gray-50 border border-gray-100">
-                  <p className="font-sans text-overline uppercase tracking-[0.12em] text-gray-400 mb-2">
+                <div className="mt-3 p-4 rounded bg-[var(--color-off-white)] border border-[rgba(15,37,68,0.1)]">
+                  <p className="app-card__label mb-2">
                     Setup required
                   </p>
-                  <p className="font-sans text-xs text-gray-500 leading-relaxed">
+                  <p className="text-xs text-gray-500 leading-relaxed">
                     To use your own domain as your handle, add a DNS TXT record before saving:
                   </p>
-                  <div className="mt-2 p-2 rounded-sm bg-white border border-gray-100 font-sans text-xs text-gray-700 break-all">
+                  <div className="mt-2 p-2 rounded bg-white border border-[rgba(15,37,68,0.1)] font-mono text-xs text-gray-700 break-all">
                     <span className="text-gray-400">Host:</span> _atproto.{customDomainValue || "you.example.com"}
                     <br />
                     <span className="text-gray-400">Value:</span> did={did}
                   </div>
-                  <p className="font-sans text-xs text-gray-400 mt-2">
+                  <p className="text-xs text-gray-400 mt-2">
                     DNS changes can take a few minutes to propagate. Save once the record is active.
                   </p>
                 </div>
@@ -247,7 +247,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ did }) => {
             )}
 
             {handleError && (
-              <p className="font-sans text-body-sm text-error mt-2">{handleError}</p>
+              <p className="text-body-sm text-error mt-2">{handleError}</p>
             )}
             <div className="flex gap-2 mt-3">
               <Button size="sm" onClick={handleSave} disabled={handleSaving}>
@@ -262,31 +262,31 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ did }) => {
       </div>
 
       {/* ── DID ── */}
-      <div className="border-t border-gray-100 pt-6 mt-6">
-        <p className="font-sans text-overline uppercase tracking-[0.12em] text-gray-400 mb-1">DID</p>
+      <div className="border-t border-[rgba(15,37,68,0.08)] pt-6 mt-6">
+        <p className="app-card__label">DID</p>
         <p className="font-mono text-body-sm text-gray-400 break-all select-all">{did}</p>
-        <p className="font-sans text-xs text-gray-400 mt-1">
+        <p className="text-xs text-gray-400 mt-1">
           Your permanent, unique identifier. This never changes.
         </p>
       </div>
 
       {/* ── EMAIL (read-only) ── */}
-      <div className="border-t border-gray-100 pt-6 mt-6">
+      <div className="border-t border-[rgba(15,37,68,0.08)] pt-6 mt-6">
         <div className="flex items-center justify-between">
           <div className="min-w-0 flex-1">
-            <p className="font-sans text-overline uppercase tracking-[0.12em] text-gray-400 mb-1">Email</p>
-            <p className="font-sans text-body text-gray-700">
+            <p className="app-card__label">Email</p>
+            <p className="text-body text-gray-700">
               {email || <span className="text-gray-400 italic">No email on file</span>}
             </p>
           </div>
         </div>
-        <p className="font-sans text-xs text-gray-400 mt-1">
+        <p className="text-xs text-gray-400 mt-1">
           Email changes are not yet supported. This will be available in a future update.
         </p>
       </div>
 
       {/* ── PASSWORD ── */}
-      <div className="border-t border-gray-100 pt-6 mt-6">
+      <div className="border-t border-[rgba(15,37,68,0.08)] pt-6 mt-6">
         <PasswordSection email={email} />
       </div>
     </div>

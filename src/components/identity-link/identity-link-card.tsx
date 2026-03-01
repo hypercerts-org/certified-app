@@ -59,10 +59,10 @@ const IdentityLinkCard: React.FC<IdentityLinkCardProps> = ({ did }) => {
   }
 
   return (
-    <div>
+    <div className="app-card">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <span className="font-serif text-h3 text-black">Identity Links</span>
+        <p className="app-card__label">Identity Links</p>
         <Button variant="secondary" size="sm" onClick={() => setShowLinkFlow(true)}>
           Link Wallet
         </Button>
@@ -91,14 +91,14 @@ const IdentityLinkCard: React.FC<IdentityLinkCardProps> = ({ did }) => {
 
       {/* Error */}
       {error && !isLoading && (
-        <p className="mt-4 font-sans text-body-sm text-error">{error}</p>
+        <p className="mt-4 text-body-sm text-error">{error}</p>
       )}
 
       {/* Empty state */}
       {!isLoading && !error && attestations.length === 0 && (
         <div className="py-8 text-center">
-          <p className="font-sans text-body text-gray-400 italic">No wallets linked yet.</p>
-          <p className="font-sans text-body-sm text-gray-400 mt-1">Link a wallet to prove you own it.</p>
+          <p className="text-body text-gray-400 italic">No wallets linked yet.</p>
+          <p className="text-body-sm text-gray-400 mt-1">Link a wallet to prove you own it.</p>
         </div>
       )}
 
@@ -113,13 +113,13 @@ const IdentityLinkCard: React.FC<IdentityLinkCardProps> = ({ did }) => {
         return (
           <div
             key={attestation.rkey}
-            className={`flex items-center justify-between py-4 ${index > 0 ? "border-t border-gray-100" : ""}`}
+            className={`flex items-center justify-between py-4 ${index > 0 ? "border-t border-[rgba(15,37,68,0.08)]" : ""}`}
           >
             {/* Left side */}
             <div className="flex items-center gap-3">
               <span>{chainIcon}</span>
               <div>
-                <p className="font-sans text-body-sm text-gray-400">{chainName}</p>
+                <p className="text-body-sm text-gray-400">{chainName}</p>
                 <p className="font-mono text-body-sm text-gray-600">
                   {truncateAddress(attestation.value.address)}
                 </p>
@@ -131,13 +131,13 @@ const IdentityLinkCard: React.FC<IdentityLinkCardProps> = ({ did }) => {
               <Badge variant={attestation.verified ? "verified" : "unverified"}>
                 {attestation.verified ? "Verified" : "Unverified"}
               </Badge>
-              <span className="font-sans text-xs text-gray-400">
+              <span className="text-xs text-gray-400">
                 {relativeTime(attestation.value.createdAt)}
               </span>
 
               {isConfirming ? (
                 <div className="flex items-center gap-2">
-                  <span className="font-sans text-xs text-gray-500">Remove?</span>
+                  <span className="text-xs text-gray-500">Remove?</span>
                   <Button
                     variant="destructive"
                     size="sm"
@@ -177,7 +177,7 @@ const IdentityLinkCard: React.FC<IdentityLinkCardProps> = ({ did }) => {
 
       {/* Delete error */}
       {deleteError && (
-        <p className="font-sans text-body-sm text-error mt-2">{deleteError}</p>
+        <p className="text-body-sm text-error mt-2">{deleteError}</p>
       )}
     </div>
   )
