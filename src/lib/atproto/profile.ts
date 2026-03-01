@@ -27,27 +27,15 @@ const ALLOWED_IMAGE_TYPES = [
 export async function getProfile(
   did: string
 ): Promise<CertifiedProfile | null> {
-  try {
-    const res = await authFetch(
-      `/api/xrpc/com/atproto/repo/getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(COLLECTION)}&rkey=${encodeURIComponent(RKEY)}`
-    );
-    if (!res.ok) {
-      if (res.status === 400 || res.status === 404) return null;
-      throw new Error(`Failed to get profile: ${res.statusText}`);
-    }
-    const data = await res.json();
-    return data.value as CertifiedProfile;
-  } catch (error) {
-    // Handle record not found - return null instead of throwing
-    if (
-      (error as { status?: number })?.status === 400 ||
-      (error as { message?: string })?.message?.includes("RecordNotFound") ||
-      (error as { error?: string })?.error === "RecordNotFound"
-    ) {
-      return null;
-    }
-    throw error;
+  const res = await authFetch(
+    `/api/xrpc/com/atproto/repo/getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(COLLECTION)}&rkey=${encodeURIComponent(RKEY)}`
+  );
+  if (!res.ok) {
+    if (res.status === 400 || res.status === 404) return null;
+    throw new Error(`Failed to get profile: ${res.statusText}`);
   }
+  const data = await res.json();
+  return data.value as CertifiedProfile;
 }
 
 /**
