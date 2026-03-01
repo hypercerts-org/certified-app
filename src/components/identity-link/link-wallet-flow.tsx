@@ -28,22 +28,11 @@ const LinkWalletFlow: React.FC<LinkWalletFlowProps> = ({ did, onComplete, onCanc
   const chain = SUPPORTED_CHAINS[chainId]
   const chainName = chain?.name ?? `Chain ${chainId}`
 
-  // Detect success: after signAndStore resolves, if no error and not signing/storing,
-  // call onComplete. We track whether a sign attempt was made via didAttemptSign,
-  // and watch for isStoring transitioning from true → false without an error.
-  const [didAttemptSign, setDidAttemptSign] = React.useState(false)
-  const prevIsStoring = React.useRef(false)
-
-  React.useEffect(() => {
-    if (prevIsStoring.current && !isStoring && !isSigning && !error && didAttemptSign) {
+  const handleSignClick = async () => {
+    const success = await signAndStore()
+    if (success) {
       onComplete()
     }
-    prevIsStoring.current = isStoring
-  }, [isStoring, isSigning, error, didAttemptSign, onComplete])
-
-  const handleSignClick = async () => {
-    setDidAttemptSign(true)
-    await signAndStore()
   }
 
   // Step 1: Connect wallet

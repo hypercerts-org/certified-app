@@ -1,3 +1,5 @@
+"use client"
+
 import type { AttestationRecord, Attestation, EIP712Message } from "./types"
 import { ATTESTATION_COLLECTION, buildRecordKey } from "./attestation"
 import { authFetch } from "@/lib/auth/fetch"

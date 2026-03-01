@@ -1,3 +1,5 @@
+"use client"
+
 import { useSignTypedData, useAccount, useChainId } from "wagmi"
 import { useState, useCallback } from "react"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -6,7 +8,7 @@ import { storeAttestation } from "@/lib/identity-link/pds"
 import type { EIP712Message } from "@/lib/identity-link/types"
 
 interface UseAttestationSigningResult {
-  signAndStore: () => Promise<void>
+  signAndStore: () => Promise<boolean>
   isSigning: boolean
   isStoring: boolean
   error: string | null
@@ -29,15 +31,15 @@ export function useAttestationSigning(
     setError(null)
   }, [])
 
-  const signAndStore = useCallback(async () => {
+  const signAndStore = useCallback(async (): Promise<boolean> => {
     // Check preconditions
     if (!isAuthenticated || !did) {
       setError("Not authenticated. Please log in first.")
-      return
+      return false
     }
     if (!isConnected || !address) {
       setError("No wallet connected. Please connect a wallet first.")
-      return
+      return false
     }
 
     setError(null)
@@ -67,7 +69,7 @@ export function useAttestationSigning(
       } else {
         setError(err instanceof Error ? err.message : "Signing failed")
       }
-      return
+      return false
     }
     setIsSigning(false)
 
@@ -79,9 +81,10 @@ export function useAttestationSigning(
     } catch (err) {
       setIsStoring(false)
       setError(`Failed to save: ${err instanceof Error ? err.message : "Unknown error"}`)
-      return
+      return false
     }
     setIsStoring(false)
+    return true
   }, [isAuthenticated, did, isConnected, address, chainId, signTypedDataAsync])
 
   return {

@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useEffect, useCallback } from "react"
 import { verifyTypedData } from "viem"
 import { listAttestations } from "@/lib/identity-link/pds"
