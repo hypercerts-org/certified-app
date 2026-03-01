@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import PasswordSection from "@/components/account/password-section";
+import { authFetch } from "@/lib/auth/fetch";
 
 interface AccountSettingsProps {
   did: string;
@@ -41,7 +42,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ did }) => {
   useEffect(() => {
     const fetchSession = async () => {
       try {
-        const res = await fetch("/api/xrpc/com/atproto/server/getSession");
+        const res = await authFetch("/api/xrpc/com/atproto/server/getSession");
         if (!res.ok) throw new Error(res.statusText);
         const data = await res.json();
         setHandle(data.handle);
@@ -118,7 +119,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ did }) => {
     setHandleSaving(true);
     setHandleError(null);
     try {
-      const res = await fetch("/api/xrpc/com/atproto/identity/updateHandle", {
+      const res = await authFetch("/api/xrpc/com/atproto/identity/updateHandle", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ handle: newHandle }),

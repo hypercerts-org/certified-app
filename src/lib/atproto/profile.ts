@@ -4,6 +4,7 @@ import {
   HypercertsSmallImage,
   HypercertsLargeImage,
 } from "./types";
+import { authFetch } from "@/lib/auth/fetch";
 
 const COLLECTION = "app.certified.actor.profile";
 const RKEY = "self";
@@ -27,7 +28,7 @@ export async function getProfile(
   did: string
 ): Promise<CertifiedProfile | null> {
   try {
-    const res = await fetch(
+    const res = await authFetch(
       `/api/xrpc/com/atproto/repo/getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(COLLECTION)}&rkey=${encodeURIComponent(RKEY)}`
     );
     if (!res.ok) {
@@ -58,7 +59,7 @@ export async function putProfile(
   did: string,
   profile: CertifiedProfile
 ): Promise<void> {
-  const res = await fetch("/api/xrpc/com/atproto/repo/putRecord", {
+  const res = await authFetch("/api/xrpc/com/atproto/repo/putRecord", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -93,7 +94,7 @@ export async function uploadBlob(
   }
 
   const buffer = await file.arrayBuffer();
-  const res = await fetch("/api/xrpc/com/atproto/repo/uploadBlob", {
+  const res = await authFetch("/api/xrpc/com/atproto/repo/uploadBlob", {
     method: "POST",
     headers: { "Content-Type": file.type },
     body: buffer,

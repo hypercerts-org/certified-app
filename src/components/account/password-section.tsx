@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
+import { authFetch } from "@/lib/auth/fetch";
 
 interface PasswordSectionProps {
   email: string;
@@ -43,7 +44,7 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
     setState("requesting");
     setIdleError(null);
     try {
-      const resetRes = await fetch("/api/xrpc/com/atproto/server/requestPasswordReset", {
+      const resetRes = await authFetch("/api/xrpc/com/atproto/server/requestPasswordReset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -97,7 +98,7 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
     setSaving(true);
     setFormError(null);
     try {
-      const pwRes = await fetch("/api/xrpc/com/atproto/server/resetPassword", {
+      const pwRes = await authFetch("/api/xrpc/com/atproto/server/resetPassword", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: token.trim(), password }),

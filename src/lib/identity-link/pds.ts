@@ -1,11 +1,12 @@
 import type { AttestationRecord, Attestation, EIP712Message } from "./types"
 import { ATTESTATION_COLLECTION, buildRecordKey } from "./attestation"
+import { authFetch } from "@/lib/auth/fetch"
 
 export async function listAttestations(
   did: string
 ): Promise<AttestationRecord[]> {
   try {
-    const res = await fetch(
+    const res = await authFetch(
       `/api/xrpc/com/atproto/repo/listRecords?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(ATTESTATION_COLLECTION)}&limit=100`
     )
     if (!res.ok) return []
@@ -44,7 +45,7 @@ export async function storeAttestation(
     signatureType,
     createdAt: new Date().toISOString(),
   }
-  const res = await fetch("/api/xrpc/com/atproto/repo/putRecord", {
+  const res = await authFetch("/api/xrpc/com/atproto/repo/putRecord", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -66,7 +67,7 @@ export async function deleteAttestation(
   did: string,
   rkey: string
 ): Promise<void> {
-  const res = await fetch("/api/xrpc/com/atproto/repo/deleteRecord", {
+  const res = await authFetch("/api/xrpc/com/atproto/repo/deleteRecord", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

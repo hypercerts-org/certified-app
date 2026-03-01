@@ -11,6 +11,7 @@ import type { AuthState } from "./types";
 import { resolvePdsUrl } from "@/lib/atproto/did";
 import SignInModal from "@/components/ui/sign-in-modal";
 import ProviderRedirectOverlay from "@/components/ui/provider-redirect-overlay";
+import { setOnUnauthorized } from "./fetch";
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
@@ -211,6 +212,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Sign out error (server-side cleanup failed):", err);
       // Local state already cleared — user is signed out client-side.
     }
+  }, []);
+
+  // Register the 401 interceptor so authFetch can clear auth state on session expiry
+  useEffect(() => {
+    setOnUnauthorized(() => {
+      // Clear auth state — user needs to sign in again
+      setIsAuthenticated(false);
+      setDid(null);
+      setPdsUrl(null);
+      setError("Your session has expired. Please sign in again.");
+    });
+    return () => setOnUnauthorized(null);
   }, []);
 
   const value: AuthState = {
