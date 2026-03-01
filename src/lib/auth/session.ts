@@ -2,17 +2,29 @@ import { cookies } from "next/headers"
 import { randomBytes, createHmac, timingSafeEqual } from "crypto"
 
 const COOKIE_NAME = "certified_session"
-const COOKIE_SECRET =
-  process.env.COOKIE_SECRET || "dev-secret-change-in-production"
+const COOKIE_SECRET = process.env.COOKIE_SECRET
+if (!COOKIE_SECRET && process.env.NODE_ENV === "production") {
+  throw new Error(
+    "COOKIE_SECRET environment variable is required in production. Generate one with: openssl rand -hex 32"
+  )
+}
+const effectiveSecret = COOKIE_SECRET || "dev-secret-change-in-production"
 
 // Map from session ID -> DID (the key used in NodeOAuthClient session store)
 const sessionToDid = new Map<string, string>()
 
 function sign(sessionId: string): string {
-  return createHmac("sha256", COOKIE_SECRET).update(sessionId).digest("hex")
+  return createHmac("sha256", effectiveSecret).update(sessionId).digest("hex")
 }
 
 export async function createSession(did: string): Promise<void> {
+  // Invalidate any existing session for this DID (session rotation)
+  for (const [existingSessionId, existingDid] of sessionToDid.entries()) {
+    if (existingDid === did) {
+      sessionToDid.delete(existingSessionId)
+    }
+  }
+
   const sessionId = randomBytes(32).toString("hex")
   const signature = sign(sessionId)
   const cookieValue = `${sessionId}.${signature}`
