@@ -13,14 +13,14 @@ export function useProfile(): {
   avatarUrl: string | null
   bannerUrl: string | null
 } {
-  const { agent, did, pdsUrl } = useAuth()
+  const { isAuthenticated, did, pdsUrl } = useAuth()
   const [profile, setProfile] = useState<CertifiedProfile | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fetchProfile = useCallback(async () => {
     // If not authenticated, return null profile without error
-    if (!agent || !did) {
+    if (!isAuthenticated || !did) {
       setProfile(null)
       setIsLoading(false)
       setError(null)
@@ -30,7 +30,7 @@ export function useProfile(): {
     try {
       setIsLoading(true)
       setError(null)
-      const fetchedProfile = await getProfile(agent, did)
+      const fetchedProfile = await getProfile(did)
       setProfile(fetchedProfile)
     } catch (err) {
       console.error("Failed to fetch profile:", err)
@@ -38,7 +38,7 @@ export function useProfile(): {
     } finally {
       setIsLoading(false)
     }
-  }, [agent, did])
+  }, [isAuthenticated, did])
 
   // Fetch profile on mount and when did changes
   useEffect(() => {

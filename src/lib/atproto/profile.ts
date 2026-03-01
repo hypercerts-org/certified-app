@@ -1,10 +1,10 @@
-import { Agent, BlobRef } from "@atproto/api";
 import {
   CertifiedProfile,
   HypercertsUri,
   HypercertsSmallImage,
   HypercertsLargeImage,
 } from "./types";
+import { authFetch } from "@/lib/auth/fetch";
 
 const COLLECTION = "app.certified.actor.profile";
 const RKEY = "self";
@@ -21,66 +21,59 @@ const ALLOWED_IMAGE_TYPES = [
 
 /**
  * Get a user's profile record
- * @param agent - The authenticated Agent instance
  * @param did - The DID of the user whose profile to fetch
  * @returns The profile record or null if it doesn't exist
  */
 export async function getProfile(
-  agent: Agent,
   did: string
 ): Promise<CertifiedProfile | null> {
-  try {
-    const response = await agent.com.atproto.repo.getRecord({
-      repo: did,
-      collection: COLLECTION,
-      rkey: RKEY,
-    });
-    return response.data.value as CertifiedProfile;
-  } catch (error) {
-    // Handle record not found - return null instead of throwing
-    if (
-      (error as { status?: number })?.status === 400 ||
-      (error as { message?: string })?.message?.includes("RecordNotFound") ||
-      (error as { error?: string })?.error === "RecordNotFound"
-    ) {
-      return null;
-    }
-    throw error;
+  const res = await authFetch(
+    `/api/xrpc/com/atproto/repo/getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(COLLECTION)}&rkey=${encodeURIComponent(RKEY)}`
+  );
+  if (!res.ok) {
+    if (res.status === 400 || res.status === 404) return null;
+    throw new Error(`Failed to get profile: ${res.statusText}`);
   }
+  const data = await res.json();
+  return data.value as CertifiedProfile;
 }
 
 /**
  * Create or update a user's profile record
- * @param agent - The authenticated Agent instance
  * @param did - The DID of the user whose profile to update
  * @param profile - The profile data to save
  */
 export async function putProfile(
-  agent: Agent,
   did: string,
   profile: CertifiedProfile
 ): Promise<void> {
-  await agent.com.atproto.repo.putRecord({
-    repo: did,
-    collection: COLLECTION,
-    rkey: RKEY,
-    record: {
-      ...profile,
-      $type: "app.certified.actor.profile",
-    },
+  const res = await authFetch("/api/xrpc/com/atproto/repo/putRecord", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      repo: did,
+      collection: COLLECTION,
+      rkey: RKEY,
+      record: {
+        ...profile,
+        $type: "app.certified.actor.profile",
+      },
+    }),
   });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error((data as { error?: string }).error || res.statusText);
+  }
 }
 
 /**
  * Upload a blob (image file) to the PDS
- * @param agent - The authenticated Agent instance
  * @param file - The file to upload
- * @returns The blob reference
+ * @returns The blob reference as a plain object
  */
 export async function uploadBlob(
-  agent: Agent,
   file: File
-): Promise<BlobRef> {
+): Promise<Record<string, unknown>> {
   // Validate file type
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
     throw new Error(
@@ -88,52 +81,52 @@ export async function uploadBlob(
     );
   }
 
-  // Read file as ArrayBuffer
   const buffer = await file.arrayBuffer();
+  const res = await authFetch("/api/xrpc/com/atproto/repo/uploadBlob", {
+    method: "POST",
+    headers: { "Content-Type": file.type },
+    body: buffer,
+  });
 
-  // Upload blob
-  const response = await agent.com.atproto.repo.uploadBlob(
-    new Uint8Array(buffer),
-    { encoding: file.type }
-  );
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error((data as { error?: string }).error || res.statusText);
+  }
 
-  return response.data.blob;
+  const data = await res.json();
+  return data.blob as Record<string, unknown>;
 }
 
 /**
  * Upload an avatar image (max 5MB)
- * @param agent - The authenticated Agent instance
  * @param file - The avatar image file
- * @returns The blob reference
+ * @returns The blob reference as a plain object
  */
 export async function uploadAvatar(
-  agent: Agent,
   file: File
-): Promise<BlobRef> {
+): Promise<Record<string, unknown>> {
   if (file.size > MAX_AVATAR_SIZE) {
     throw new Error(
       `Avatar file size exceeds maximum of ${MAX_AVATAR_SIZE / 1024 / 1024}MB`
     );
   }
-  return uploadBlob(agent, file);
+  return uploadBlob(file);
 }
 
 /**
  * Upload a banner image (max 10MB)
- * @param agent - The authenticated Agent instance
  * @param file - The banner image file
- * @returns The blob reference
+ * @returns The blob reference as a plain object
  */
 export async function uploadBanner(
-  agent: Agent,
   file: File
-): Promise<BlobRef> {
+): Promise<Record<string, unknown>> {
   if (file.size > MAX_BANNER_SIZE) {
     throw new Error(
       `Banner file size exceeds maximum of ${MAX_BANNER_SIZE / 1024 / 1024}MB`
     );
   }
-  return uploadBlob(agent, file);
+  return uploadBlob(file);
 }
 
 /**
@@ -163,7 +156,7 @@ export function getAvatarUrl(
     "org.hypercerts.defs#smallImage"
   ) {
     const image = (profile.avatar as HypercertsSmallImage).image;
-    return `${pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${did}&cid=${image.ref.toString()}`;
+    return `${pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${did}&cid=${(image.ref as unknown as { $link: string })["$link"]}`;
   }
 
   return null;
@@ -196,7 +189,7 @@ export function getBannerUrl(
     "org.hypercerts.defs#largeImage"
   ) {
     const image = (profile.banner as HypercertsLargeImage).image;
-    return `${pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${did}&cid=${image.ref.toString()}`;
+    return `${pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${did}&cid=${(image.ref as unknown as { $link: string })["$link"]}`;
   }
 
   return null;

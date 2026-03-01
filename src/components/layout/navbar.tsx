@@ -8,7 +8,7 @@ import { useProfile } from "@/hooks/use-profile";
 import Avatar from "@/components/ui/avatar";
 
 const Navbar: React.FC = () => {
-  const { isLoading, session, did, openSignIn, signOut } = useAuth();
+  const { isLoading, isAuthenticated, did, openSignIn, signOut } = useAuth();
   const { variant } = useNavbarVariant();
   const { profile, avatarUrl } = useProfile();
   const [scrolled, setScrolled] = useState(false);
@@ -55,7 +55,7 @@ const Navbar: React.FC = () => {
         <div className="navbar__right">
           {isLoading ? (
             <div className="w-20" />
-          ) : session ? (
+          ) : isAuthenticated ? (
             <>
               <Link
                 href="/"

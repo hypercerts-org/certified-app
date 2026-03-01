@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getOAuthClient } from "@/lib/auth/oauth-client"
+import Link from "next/link"
 
 export default function OAuthCallbackPage() {
   const [error, setError] = useState<string | null>(null)
@@ -11,32 +11,27 @@ export default function OAuthCallbackPage() {
 
     async function handleCallback() {
       try {
-        const client = getOAuthClient()
+        // Forward all query params to the server-side callback handler
+        const callbackUrl = `/api/auth/callback-handler${window.location.search}`
+        const res = await fetch(callbackUrl)
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({ error: "Callback failed" }))
+          throw new Error(data.error || "Authentication failed")
+        }
+
+        const { did } = await res.json()
+        if (cancelled) return
+
         const isInIframe = window.parent !== window
 
         if (isInIframe) {
-          const params = client.readCallbackParams()
-          if (!params) {
-            setError("No OAuth parameters found.")
-            return
-          }
-          const redirectUri = client.findRedirectUrl()
-          const result = await client.initCallback(params, redirectUri)
-
-          if (cancelled) return
-
           window.parent.postMessage(
-            { type: "oauth-callback-complete", sub: result.session.sub },
+            { type: "oauth-callback-complete", sub: did },
             window.location.origin
           )
         } else {
-          const result = await client.init()
-          if (cancelled) return
-          if (result?.session) {
-            window.location.replace("/")
-          } else {
-            setError("No session received. Please try signing in again.")
-          }
+          window.location.replace("/")
         }
       } catch (err) {
         if (cancelled) return
@@ -54,9 +49,9 @@ export default function OAuthCallbackPage() {
       <div className="min-h-screen flex items-center justify-center bg-[var(--color-off-white)]">
         <div className="text-center">
           <p className="text-sm text-error mb-4 font-mono">{error}</p>
-          <a href="/" className="text-sm text-accent font-mono hover:text-deep transition-colors duration-150">
+          <Link href="/" className="text-sm text-accent font-mono hover:text-deep transition-colors duration-150">
             Return to home
-          </a>
+          </Link>
         </div>
       </div>
     )

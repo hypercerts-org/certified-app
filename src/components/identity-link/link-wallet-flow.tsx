@@ -1,14 +1,12 @@
 "use client"
 
 import React from "react"
-import { Agent } from "@atproto/api"
 import { useConnect, useAccount, useDisconnect, useChainId } from "wagmi"
 import Button from "@/components/ui/button"
 import { useAttestationSigning } from "@/hooks/use-attestation-signing"
 import { SUPPORTED_CHAINS } from "@/lib/wagmi"
 
 interface LinkWalletFlowProps {
-  agent: Agent | null
   did: string | null
   onComplete: () => void
   onCancel: () => void
@@ -18,34 +16,23 @@ function truncateAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`
 }
 
-const LinkWalletFlow: React.FC<LinkWalletFlowProps> = ({ agent, did, onComplete, onCancel }) => {
+const LinkWalletFlow: React.FC<LinkWalletFlowProps> = ({ did, onComplete, onCancel }) => {
   const { connectors, connect } = useConnect()
   const { isConnected, address } = useAccount()
   const { disconnect } = useDisconnect()
   const chainId = useChainId()
 
-  const { signAndStore, isSigning, isStoring, error } = useAttestationSigning(agent, did)
+  const { signAndStore, isSigning, isStoring, error } = useAttestationSigning(did)
 
   const isSupported = chainId in SUPPORTED_CHAINS
   const chain = SUPPORTED_CHAINS[chainId]
   const chainName = chain?.name ?? `Chain ${chainId}`
 
-  // Detect success: after signAndStore resolves, if no error and not signing/storing,
-  // call onComplete. We track whether a sign attempt was made via didAttemptSign,
-  // and watch for isStoring transitioning from true → false without an error.
-  const [didAttemptSign, setDidAttemptSign] = React.useState(false)
-  const prevIsStoring = React.useRef(false)
-
-  React.useEffect(() => {
-    if (prevIsStoring.current && !isStoring && !isSigning && !error && didAttemptSign) {
+  const handleSignClick = async () => {
+    const success = await signAndStore()
+    if (success) {
       onComplete()
     }
-    prevIsStoring.current = isStoring
-  }, [isStoring, isSigning, error, didAttemptSign, onComplete])
-
-  const handleSignClick = async () => {
-    setDidAttemptSign(true)
-    await signAndStore()
   }
 
   // Step 1: Connect wallet
@@ -53,9 +40,9 @@ const LinkWalletFlow: React.FC<LinkWalletFlowProps> = ({ agent, did, onComplete,
     const availableConnectors = connectors.filter((c) => (c as { ready?: boolean }).ready !== false)
 
     return (
-      <div className="p-4 rounded bg-gray-50 border border-[rgba(15,37,68,0.08)]">
-        <p className="app-card__label">Connect a wallet</p>
-        <div className="flex flex-col gap-2 mt-3">
+      <div className="p-4 rounded-sm bg-gray-50 border border-gray-100">
+        <p className="font-sans text-overline uppercase tracking-[0.12em] text-gray-400 mb-3">Connect a wallet</p>
+        <div className="flex flex-col gap-2">
           {availableConnectors.map((connector) => (
             <Button
               key={connector.id}
@@ -78,22 +65,22 @@ const LinkWalletFlow: React.FC<LinkWalletFlowProps> = ({ agent, did, onComplete,
 
   // Step 2: Confirm & Sign
   return (
-    <div className="p-4 rounded bg-gray-50 border border-[rgba(15,37,68,0.08)]">
-      <p className="app-card__label">Sign to link</p>
-      <div className="mt-3">
-        <p className="text-body-sm text-gray-700">Wallet: {address ? truncateAddress(address) : ""}</p>
-        <p className="text-body-sm text-gray-400 mt-1">Chain: {chainName}</p>
-        <p className="text-body-sm text-gray-400 mt-2">
+    <div className="p-4 rounded-sm bg-gray-50 border border-gray-100">
+      <p className="font-sans text-overline uppercase tracking-[0.12em] text-gray-400 mb-3">Sign to link</p>
+      <div>
+        <p className="font-sans text-body-sm text-gray-700">Wallet: {address ? truncateAddress(address) : ""}</p>
+        <p className="font-sans text-body-sm text-gray-400 mt-1">Chain: {chainName}</p>
+        <p className="font-sans text-body-sm text-gray-400 mt-2">
           Your wallet will ask you to sign a message proving you own this address. No transaction will be sent.
         </p>
       </div>
 
       {error && (
-        <p className="text-body-sm text-error mt-2">{error}</p>
+        <p className="font-sans text-body-sm text-error mt-2">{error}</p>
       )}
 
       {!isSupported && (
-        <p className="text-body-sm text-warning mt-2">
+        <p className="font-sans text-body-sm text-warning mt-2">
           Switch to Ethereum, Base, Optimism, or Arbitrum to continue.
         </p>
       )}

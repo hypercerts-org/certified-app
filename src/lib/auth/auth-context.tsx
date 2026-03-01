@@ -7,22 +7,17 @@ import React, {
   useState,
   useCallback,
 } from "react";
-import { Agent } from "@atproto/api";
-import type { OAuthSession } from "@atproto/oauth-client-browser";
-import { getOAuthClient } from "./oauth-client";
 import type { AuthState } from "./types";
 import { resolvePdsUrl } from "@/lib/atproto/did";
 import SignInModal from "@/components/ui/sign-in-modal";
 import ProviderRedirectOverlay from "@/components/ui/provider-redirect-overlay";
+import { setOnUnauthorized } from "./fetch";
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
-const PDS_URL = process.env.NEXT_PUBLIC_PDS_URL || "https://otp.certs.network";
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
-  const [session, setSession] = useState<OAuthSession | null>(null);
-  const [agent, setAgent] = useState<Agent | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [did, setDid] = useState<string | null>(null);
   const [pdsUrl, setPdsUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -30,22 +25,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [isRedirectingToProvider, setIsRedirectingToProvider] = useState(false);
 
-  // Initialize auth on mount
+  // Initialize auth on mount by checking server-side session
   useEffect(() => {
     const initAuth = async () => {
       try {
         setIsLoading(true);
         setError(null);
 
-        const client = getOAuthClient();
-        const result = await client.init();
+        const res = await fetch("/api/auth/session");
+        const data = await res.json() as { did: string | null };
 
-        if (result?.session) {
-          const newAgent = new Agent(result.session);
-          setSession(result.session);
-          setAgent(newAgent);
-          setDid(result.session.did);
-          const resolvedPdsUrl = await resolvePdsUrl(result.session.did);
+        if (data.did) {
+          setIsAuthenticated(true);
+          setDid(data.did);
+          const resolvedPdsUrl = await resolvePdsUrl(data.did);
           setPdsUrl(resolvedPdsUrl);
         }
       } catch (err) {
@@ -67,20 +60,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event.origin !== window.location.origin) return;
       if (event.data?.type !== "oauth-callback-complete") return;
 
-      const { sub } = event.data;
-      if (!sub) return;
-
       try {
-        const client = getOAuthClient();
-        const oauthSession = await client.restore(sub, false);
-        const newAgent = new Agent(oauthSession);
-        setSession(oauthSession);
-        setAgent(newAgent);
-        setDid(oauthSession.did);
-        const resolvedPdsUrl = await resolvePdsUrl(oauthSession.did);
-        setPdsUrl(resolvedPdsUrl);
+        const res = await fetch("/api/auth/session");
+        const data = await res.json() as { did: string | null };
+
+        if (data.did) {
+          setIsAuthenticated(true);
+          setDid(data.did);
+          const resolvedPdsUrl = await resolvePdsUrl(data.did);
+          setPdsUrl(resolvedPdsUrl);
+        }
       } catch (err) {
-        console.error("Session restore error:", err);
+        console.error("Session refresh error:", err);
         setError(
           err instanceof Error ? err.message : "Failed to complete sign in",
         );
@@ -105,39 +96,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsModalOpen(false);
 
       try {
-        const client = getOAuthClient();
-        const trimmedInput = input.trim();
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ input: input.trim(), mode: "handle" }),
+        });
 
-        if (
-          trimmedInput.startsWith("http://") ||
-          trimmedInput.startsWith("https://")
-        ) {
-          await client.signIn(trimmedInput, {
-            scope: "atproto transition:generic identity:handle account:email",
-          });
-          return;
+        if (!res.ok) {
+          const data = await res.json() as { error?: string };
+          throw new Error(data.error ?? "Failed to sign in with external provider");
         }
 
-        if (trimmedInput.startsWith("did:")) {
-          await client.signIn(trimmedInput, {
-            scope: "atproto transition:generic identity:handle account:email",
-          });
-          return;
-        }
-
-        try {
-          await client.signIn(trimmedInput, {
-            scope: "atproto transition:generic identity:handle account:email",
-          });
-        } catch (handleErr) {
-          try {
-            await client.signIn("https://" + trimmedInput, {
-              scope: "atproto transition:generic identity:handle account:email",
-            });
-          } catch {
-            throw handleErr;
-          }
-        }
+        const data = await res.json() as { url: string };
+        window.location.href = data.url;
       } catch (err) {
         console.error("External provider sign-in error:", err);
         setIsRedirectingToProvider(false);
@@ -170,67 +141,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
   }, []);
 
-  // Flow 1: Submit email — redirect to ePDS with login_hint so user goes straight to OTP
+  // Flow 1: Submit email — calls /api/auth/login with mode "email" and redirects
   const submitEmail = useCallback(async (email: string) => {
     try {
       setError(null);
-      const client = getOAuthClient();
       const prompt = authMode === "sign-up" ? "create" : "login";
-      const url = await client.authorize(PDS_URL, {
-        scope: "atproto transition:generic identity:handle account:email",
-        display: "page",
-        prompt,
+
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input: email, mode: "email", prompt }),
       });
-      // Append login_hint to the authorize URL (NOT the PAR body)
-      // This tells the ePDS auth server to skip the email form and go straight to OTP
-      url.searchParams.set("login_hint", email);
+
+      if (!res.ok) {
+        const data = await res.json() as { error?: string };
+        throw new Error(data.error ?? "Failed to sign in");
+      }
+
+      const data = await res.json() as { url: string };
       setIsModalOpen(false);
-      window.location.href = url.href;
+      window.location.href = data.url;
     } catch (err) {
       console.error("Email sign-in error:", err);
       setError(err instanceof Error ? err.message : "Failed to sign in");
     }
   }, [authMode]);
 
-  // ATProto handle sign-in: resolve the handle and redirect to that provider
+  // ATProto handle sign-in: calls /api/auth/login with mode "handle" and redirects
   const submitHandle = useCallback(async (handle: string) => {
     try {
       setError(null);
       setIsRedirectingToProvider(true);
       setIsModalOpen(false);
-      const client = getOAuthClient();
-      const trimmedHandle = handle.trim();
 
-      if (
-        trimmedHandle.startsWith("http://") ||
-        trimmedHandle.startsWith("https://")
-      ) {
-        await client.signIn(trimmedHandle, {
-          scope: "atproto transition:generic identity:handle account:email",
-        });
-        return;
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input: handle.trim(), mode: "handle" }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json() as { error?: string };
+        throw new Error(data.error ?? "Failed to sign in with that handle");
       }
 
-      if (trimmedHandle.startsWith("did:")) {
-        await client.signIn(trimmedHandle, {
-          scope: "atproto transition:generic identity:handle account:email",
-        });
-        return;
-      }
-
-      try {
-        await client.signIn(trimmedHandle, {
-          scope: "atproto transition:generic identity:handle account:email",
-        });
-      } catch (handleErr) {
-        try {
-          await client.signIn("https://" + trimmedHandle, {
-            scope: "atproto transition:generic identity:handle account:email",
-          });
-        } catch {
-          throw handleErr;
-        }
-      }
+      const data = await res.json() as { url: string };
+      window.location.href = data.url;
     } catch (err) {
       console.error("Handle sign-in error:", err);
       setIsRedirectingToProvider(false);
@@ -244,25 +200,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    // Clear local state immediately (optimistic sign-out).
+    // Server-side session cleanup is best-effort; the client should always
+    // clear its local state even if the fetch throws.
+    setIsAuthenticated(false);
+    setDid(null);
+    setPdsUrl(null);
     try {
-      setError(null);
-      if (session) {
-        await session.signOut();
-      }
-      setSession(null);
-      setAgent(null);
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (err) {
+      console.error("Sign out error (server-side cleanup failed):", err);
+      // Local state already cleared — user is signed out client-side.
+    }
+  }, []);
+
+  // Register the 401 interceptor so authFetch can clear auth state on session expiry
+  useEffect(() => {
+    setOnUnauthorized(() => {
+      // Clear auth state — user needs to sign in again
+      setIsAuthenticated(false);
       setDid(null);
       setPdsUrl(null);
-    } catch (err) {
-      console.error("Sign out error:", err);
-      setError(err instanceof Error ? err.message : "Failed to sign out");
-    }
-  }, [session]);
+      setError("Your session has expired. Please sign in again.");
+    });
+    return () => setOnUnauthorized(null);
+  }, []);
 
   const value: AuthState = {
     isLoading,
-    session,
-    agent,
+    isAuthenticated,
     did,
     pdsUrl,
     error,

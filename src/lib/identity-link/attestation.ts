@@ -45,7 +45,7 @@ export function buildAttestationMessage(
     },
     stored: {
       did,
-      evmAddress: address,
+      evmAddress: address.toLowerCase(),
       chainId: String(chainId),
       timestamp: String(timestamp),
       nonce: String(nonce),

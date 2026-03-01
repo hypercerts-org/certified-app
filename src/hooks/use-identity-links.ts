@@ -1,5 +1,6 @@
+"use client"
+
 import { useState, useEffect, useCallback } from "react"
-import { Agent } from "@atproto/api"
 import { verifyTypedData } from "viem"
 import { listAttestations } from "@/lib/identity-link/pds"
 import { ATTESTATION_DOMAIN, ATTESTATION_TYPES } from "@/lib/identity-link/attestation"
@@ -13,7 +14,6 @@ interface UseIdentityLinksResult {
 }
 
 export function useIdentityLinks(
-  agent: Agent | null,
   did: string | null
 ): UseIdentityLinksResult {
   const [attestations, setAttestations] = useState<VerifiedAttestation[]>([])
@@ -21,7 +21,7 @@ export function useIdentityLinks(
   const [error, setError] = useState<string | null>(null)
 
   const fetchAndVerify = useCallback(async () => {
-    if (!agent || !did) {
+    if (!did) {
       setAttestations([])
       setIsLoading(false)
       return
@@ -31,7 +31,7 @@ export function useIdentityLinks(
     setError(null)
 
     try {
-      const records: AttestationRecord[] = await listAttestations(agent, did)
+      const records: AttestationRecord[] = await listAttestations(did)
 
       const verified: VerifiedAttestation[] = await Promise.all(
         records.map(async (record) => {
@@ -85,7 +85,7 @@ export function useIdentityLinks(
     } finally {
       setIsLoading(false)
     }
-  }, [agent, did])
+  }, [did])
 
   useEffect(() => {
     fetchAndVerify()

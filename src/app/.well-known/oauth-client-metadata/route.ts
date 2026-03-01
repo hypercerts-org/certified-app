@@ -1,30 +1,22 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
+import { getOAuthClient } from "@/lib/auth/oauth-client"
 
-export async function GET(request: NextRequest) {
-  const origin = request.headers.get("x-forwarded-host")
-    ? `https://${request.headers.get("x-forwarded-host")}`
-    : request.nextUrl.origin
+export async function GET() {
+  const client = await getOAuthClient()
 
-  const clientId = `${origin}/.well-known/oauth-client-metadata`
+  // Derive origin from client_id (strip the path)
+  const origin = new URL(client.clientMetadata.client_id).origin
 
-  const metadata = {
-    client_id: clientId,
-    client_name: "Certified",
-    client_uri: origin,
-    logo_uri: `${origin}/assets/certified_brandmark.svg`,
+  // Build metadata as a plain object to avoid strict type constraints
+  const metadata: Record<string, unknown> = {
+    ...client.clientMetadata,
+    // Add the extra fields that the ePDS needs but are not part of the OAuth client config
+    brand_color: "#60A1E2",
+    background_color: "#0F2544",
     tos_uri: `${origin}/terms`,
     policy_uri: `${origin}/privacy`,
-    redirect_uris: [`${origin}/oauth/callback`],
-    response_types: ["code"],
-    grant_types: ["authorization_code", "refresh_token"],
-    scope: "atproto transition:generic identity:handle account:email",
-    token_endpoint_auth_method: "none",
-    application_type: "web",
-    dpop_bound_access_tokens: true,
-    brand_color: '#60A1E2',
-    background_color: '#0F2544',
     email_template_uri: `${origin}/assets/otp-email-template.html`,
-    email_subject_template: '{{code}} — Your Certified sign-in code',
+    email_subject_template: "{{code}} — Your Certified sign-in code",
   }
 
   return NextResponse.json(metadata, {

@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { BlobRef } from "@atproto/api";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import { putProfile, uploadAvatar, uploadBanner, getAvatarUrl, getBannerUrl } from "@/lib/atproto/profile";
@@ -13,32 +12,30 @@ import type { CertifiedProfile } from "@/lib/atproto/types";
 
 export default function EditProfilePage() {
   const router = useRouter();
-  const { agent, did, pdsUrl } = useAuth();
+  const { isAuthenticated, did, pdsUrl } = useAuth();
   const { profile, isLoading, refetch } = useProfile();
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const effectivePdsUrl = pdsUrl || process.env.NEXT_PUBLIC_PDS_URL || "https://otp.certs.network";
 
-  const handleAvatarUpload = async (file: File): Promise<BlobRef> => {
-    if (!agent) throw new Error("Not authenticated");
-    return await uploadAvatar(agent, file);
+  const handleAvatarUpload = async (file: File): Promise<Record<string, unknown>> => {
+    return await uploadAvatar(file);
   };
 
-  const handleBannerUpload = async (file: File): Promise<BlobRef> => {
-    if (!agent) throw new Error("Not authenticated");
-    return await uploadBanner(agent, file);
+  const handleBannerUpload = async (file: File): Promise<Record<string, unknown>> => {
+    return await uploadBanner(file);
   };
 
   const handleSave = async (updatedProfile: CertifiedProfile) => {
-    if (!agent || !did) {
+    if (!isAuthenticated || !did) {
       setSaveError("Not authenticated");
       return;
     }
     try {
       setIsSaving(true);
       setSaveError(null);
-      await putProfile(agent, did, updatedProfile);
+      await putProfile(did, updatedProfile);
       await refetch();
       router.push("/");
     } catch (error) {

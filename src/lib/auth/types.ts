@@ -1,13 +1,8 @@
-import type { OAuthSession } from "@atproto/oauth-client-browser";
-import type { Agent } from "@atproto/api";
-
 export interface AuthState {
   /** Whether the auth system has finished initializing (checking for existing session) */
   isLoading: boolean;
-  /** The current authenticated session, or null */
-  session: OAuthSession | null;
-  /** An Agent instance bound to the current session for making XRPC calls, or null */
-  agent: Agent | null;
+  /** Whether the user is currently authenticated */
+  isAuthenticated: boolean;
   /** The DID of the authenticated user, or null */
   did: string | null;
   /** The PDS URL of the authenticated user (their actual server, not necessarily our app PDS) */
@@ -26,10 +21,10 @@ export interface AuthState {
   openSignUp: () => void;
   /** Close the modal */
   closeModal: () => void;
-  /** Submit Certified email (Flow 1) — loads OTP page in iframe with login_hint */
+  /** Submit Certified email (Flow 1) — calls /api/auth/login with mode "email" */
   submitEmail: (email: string) => Promise<void>;
-  /** Submit ATProto handle — redirects to that provider's OAuth */
+  /** Submit ATProto handle — calls /api/auth/login with mode "handle" */
   submitHandle: (handle: string) => Promise<void>;
-  /** Sign out — revokes tokens and clears session */
+  /** Sign out — calls /api/auth/logout and clears local state */
   signOut: () => Promise<void>;
 }

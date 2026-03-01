@@ -1,18 +1,19 @@
-import { Agent } from "@atproto/api"
+"use client"
+
 import type { AttestationRecord, Attestation, EIP712Message } from "./types"
 import { ATTESTATION_COLLECTION, buildRecordKey } from "./attestation"
+import { authFetch } from "@/lib/auth/fetch"
 
 export async function listAttestations(
-  agent: Agent,
   did: string
 ): Promise<AttestationRecord[]> {
   try {
-    const res = await agent.com.atproto.repo.listRecords({
-      repo: did,
-      collection: ATTESTATION_COLLECTION,
-      limit: 100,
-    })
-    return res.data.records.map((record) => {
+    const res = await authFetch(
+      `/api/xrpc/com/atproto/repo/listRecords?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(ATTESTATION_COLLECTION)}&limit=100`
+    )
+    if (!res.ok) return []
+    const data = await res.json()
+    return (data.records ?? []).map((record: { uri: string; cid: string; value: unknown }) => {
       const uri = record.uri
       const rkey = uri.split("/").pop() ?? ""
       return {
@@ -29,7 +30,6 @@ export async function listAttestations(
 }
 
 export async function storeAttestation(
-  agent: Agent,
   did: string,
   address: string,
   chainId: number,
@@ -47,23 +47,39 @@ export async function storeAttestation(
     signatureType,
     createdAt: new Date().toISOString(),
   }
-  const res = await agent.com.atproto.repo.putRecord({
-    repo: did,
-    collection: ATTESTATION_COLLECTION,
-    rkey,
-    record,
+  const res = await authFetch("/api/xrpc/com/atproto/repo/putRecord", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      repo: did,
+      collection: ATTESTATION_COLLECTION,
+      rkey,
+      record,
+    }),
   })
-  return { uri: res.data.uri, cid: res.data.cid }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error((data as { error?: string }).error || res.statusText)
+  }
+  const data = await res.json()
+  return { uri: data.uri, cid: data.cid }
 }
 
 export async function deleteAttestation(
-  agent: Agent,
   did: string,
   rkey: string
 ): Promise<void> {
-  await agent.com.atproto.repo.deleteRecord({
-    repo: did,
-    collection: ATTESTATION_COLLECTION,
-    rkey,
+  const res = await authFetch("/api/xrpc/com/atproto/repo/deleteRecord", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      repo: did,
+      collection: ATTESTATION_COLLECTION,
+      rkey,
+    }),
   })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error((data as { error?: string }).error || res.statusText)
+  }
 }
