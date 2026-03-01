@@ -1,5 +1,6 @@
 import { cookies } from "next/headers"
 import { randomBytes, createHmac, timingSafeEqual } from "crypto"
+import { getRedis } from "./stores"
 
 const COOKIE_NAME = "certified_session"
 const COOKIE_SECRET = process.env.COOKIE_SECRET
@@ -10,26 +11,28 @@ if (!COOKIE_SECRET && process.env.NODE_ENV === "production") {
 }
 const effectiveSecret = COOKIE_SECRET || "dev-secret-change-in-production"
 
-// Map from session ID -> DID (the key used in NodeOAuthClient session store)
-const sessionToDid = new Map<string, string>()
+const SESSION_DID_PREFIX = "session:did:"
+const SESSION_TTL = 60 * 60 * 24 * 30 // 30 days in seconds
 
 function sign(sessionId: string): string {
   return createHmac("sha256", effectiveSecret).update(sessionId).digest("hex")
 }
 
 export async function createSession(did: string): Promise<void> {
-  // Invalidate any existing session for this DID (session rotation)
-  for (const [existingSessionId, existingDid] of sessionToDid.entries()) {
-    if (existingDid === did) {
-      sessionToDid.delete(existingSessionId)
-    }
-  }
+  // Note: we don't scan/invalidate old sessions for this DID in Redis
+  // because scanning is expensive. The old session cookie on the client
+  // will simply be overwritten, and the orphaned Redis key will expire
+  // via TTL.
 
   const sessionId = randomBytes(32).toString("hex")
   const signature = sign(sessionId)
   const cookieValue = `${sessionId}.${signature}`
 
-  sessionToDid.set(sessionId, did)
+  // Store session-to-DID mapping in Redis
+  const redis = getRedis()
+  await redis.set(`${SESSION_DID_PREFIX}${sessionId}`, did, {
+    ex: SESSION_TTL,
+  })
 
   const cookieStore = await cookies()
   cookieStore.set(COOKIE_NAME, cookieValue, {
@@ -37,7 +40,7 @@ export async function createSession(did: string): Promise<void> {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 30, // 30 days
+    maxAge: SESSION_TTL,
   })
 }
 
@@ -59,7 +62,9 @@ export async function getSessionDid(): Promise<string | null> {
     return null
   }
 
-  return sessionToDid.get(sessionId) ?? null
+  const redis = getRedis()
+  const did = await redis.get<string>(`${SESSION_DID_PREFIX}${sessionId}`)
+  return did ?? null
 }
 
 export async function deleteSession(): Promise<void> {
@@ -70,7 +75,8 @@ export async function deleteSession(): Promise<void> {
     const dotIndex = cookie.value.lastIndexOf(".")
     if (dotIndex !== -1) {
       const sessionId = cookie.value.slice(0, dotIndex)
-      sessionToDid.delete(sessionId)
+      const redis = getRedis()
+      await redis.del(`${SESSION_DID_PREFIX}${sessionId}`)
     }
   }
 

@@ -1,7 +1,7 @@
 import { NodeOAuthClient } from "@atproto/oauth-client-node"
 import { JoseKey } from "@atproto/jwk-jose"
 import type { OAuthClientMetadataInput } from "@atproto/oauth-types"
-import { MemoryStateStore, MemorySessionStore } from "./stores"
+import { RedisStateStore, RedisSessionStore } from "./stores"
 
 export const PDS_URL =
   process.env.PDS_URL ||
@@ -53,8 +53,8 @@ export async function getOAuthClient(): Promise<NodeOAuthClient> {
 
   clientInstance = new NodeOAuthClient({
     clientMetadata,
-    stateStore: new MemoryStateStore(),
-    sessionStore: new MemorySessionStore(),
+    stateStore: new RedisStateStore(),
+    sessionStore: new RedisSessionStore(),
     handleResolver: PDS_URL,
     ...(keyset ? { keyset } : {}),
   })
