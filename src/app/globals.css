@@ -199,7 +199,6 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
   line-height: 1.05;
   letter-spacing: -0.04em;
-  text-transform: uppercase;
   margin-bottom: 24px;
 }
 
@@ -236,7 +235,6 @@ h1, h2, h3, h4, h5, h6 {
   font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 1rem;
   font-weight: 500;
-  text-transform: uppercase;
   color: var(--color-accent);
   background: rgba(96, 161, 226, 0.1);
   border: 1px solid rgba(96, 161, 226, 0.2);
@@ -406,7 +404,6 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   color: var(--color-navy);
   flex: 1;
-  text-transform: uppercase;
   letter-spacing: 0.02em;
 }
 
@@ -442,7 +439,6 @@ h1, h2, h3, h4, h5, h6 {
   font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.6875rem;
   font-weight: 600;
-  text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--color-mid-gray);
   margin-bottom: 8px;
@@ -625,7 +621,6 @@ h1, h2, h3, h4, h5, h6 {
   font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.6875rem;
   font-weight: 600;
-  text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--color-mid-gray);
   margin-bottom: 8px;
@@ -816,7 +811,6 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   line-height: 1.3;
   letter-spacing: -0.01em;
-  text-transform: uppercase;
   margin-bottom: 32px;
 }
 
@@ -991,7 +985,6 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   color: var(--color-white);
   margin-bottom: 8px;
-  text-transform: uppercase;
 }
 
 .landing-step p {
@@ -1046,7 +1039,6 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   color: var(--color-white);
   margin-bottom: 12px;
-  text-transform: uppercase;
 }
 
 .landing-trust-sub ul {

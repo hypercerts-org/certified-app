@@ -22,21 +22,21 @@ export default function PartnerApps() {
             </div>
           </div>
           <div className="landing-chip">
+            <img src="/assets/partners/silvi_logo.jpeg" alt="" className="landing-chip__logo" />
+            <div className="landing-chip__text">
+              <span className="landing-chip__name">Silvi</span>
+              <span className="landing-chip__desc">Planting the right trees in the right place at the right time</span>
+            </div>
+          </div>
+          <div className="landing-chip">
             <img src="/assets/hyperboards_brandmark.webp" alt="" className="landing-chip__logo" />
             <div className="landing-chip__text">
               <span className="landing-chip__name">Hyperboards</span>
               <span className="landing-chip__desc">Visualizing and recognizing those who create real value</span>
             </div>
           </div>
-          <div className="landing-chip">
-            <img src="/assets/partners/silvi_logo.jpeg" alt="" className="landing-chip__logo" />
-            <div className="landing-chip__text">
-              <span className="landing-chip__name">Silvi</span>
-              <span className="landing-chip__desc">Reforestation done Right. Planting the right trees in the right place at the right time.</span>
-            </div>
-          </div>
         </div>
-        <p className="landing-footnote">More apps are joining over time.</p>
+        <p className="landing-footnote">More apps coming soon.</p>
       </div>
     </section>
   );

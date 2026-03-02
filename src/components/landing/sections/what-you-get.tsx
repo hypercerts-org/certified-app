@@ -19,7 +19,6 @@ export default function WhatYouGet() {
           <div className="landing-card">
             <h3>Simple sign-in</h3>
             <p>No passwords. We email you a one-time code.</p>
-            <p className="landing-card__micro">Takes ~30 seconds.</p>
           </div>
         </div>
       </div>

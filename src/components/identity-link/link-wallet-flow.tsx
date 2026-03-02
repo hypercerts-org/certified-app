@@ -41,7 +41,7 @@ const LinkWalletFlow: React.FC<LinkWalletFlowProps> = ({ did, onComplete, onCanc
 
     return (
       <div className="p-4 rounded-sm bg-gray-50 border border-gray-100">
-        <p className="font-sans text-overline uppercase tracking-[0.12em] text-gray-400 mb-3">Connect a wallet</p>
+        <p className="font-sans text-overline tracking-[0.12em] text-gray-400 mb-3">Connect a wallet</p>
         <div className="flex flex-col gap-2">
           {availableConnectors.map((connector) => (
             <Button
@@ -66,7 +66,7 @@ const LinkWalletFlow: React.FC<LinkWalletFlowProps> = ({ did, onComplete, onCanc
   // Step 2: Confirm & Sign
   return (
     <div className="p-4 rounded-sm bg-gray-50 border border-gray-100">
-      <p className="font-sans text-overline uppercase tracking-[0.12em] text-gray-400 mb-3">Sign to link</p>
+      <p className="font-sans text-overline tracking-[0.12em] text-gray-400 mb-3">Sign to link</p>
       <div>
         <p className="font-sans text-body-sm text-gray-700">Wallet: {address ? truncateAddress(address) : ""}</p>
         <p className="font-sans text-body-sm text-gray-400 mt-1">Chain: {chainName}</p>

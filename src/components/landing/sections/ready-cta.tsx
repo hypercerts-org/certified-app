@@ -13,10 +13,7 @@ export default function ReadyCta() {
         <div className="landing-cta__actions">
           <button className="hero__btn-primary" onClick={openSignUp}>
             <img src="/assets/certified_brandmark.svg" alt="" className="hero__btn-icon" />
-            Create your Certified ID
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M7.5 4.5L13 10m0 0l-5.5 5.5M13 10H3" />
-            </svg>
+            Sign in with Certified
           </button>
           <button className="hero__btn-secondary" onClick={openSignIn}>
             Sign in
