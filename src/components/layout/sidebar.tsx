@@ -1,0 +1,111 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { User, Shield, LayoutGrid, Lock, Fingerprint, LogOut } from "lucide-react";
+import { useAuth } from "@/lib/auth/auth-context";
+import { useProfile } from "@/hooks/use-profile";
+import { authFetch } from "@/lib/auth/fetch";
+import Avatar from "@/components/ui/avatar";
+
+export default function Sidebar() {
+  const { signOut } = useAuth();
+  const { profile, avatarUrl } = useProfile();
+  const pathname = usePathname();
+  const [handle, setHandle] = useState("");
+
+  useEffect(() => {
+    authFetch("/api/xrpc/com/atproto/server/getSession")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.handle) setHandle(data.handle);
+      })
+      .catch(() => {});
+  }, []);
+
+  const initials = profile?.displayName
+    ? (() => {
+        const parts = profile.displayName.trim().split(/\s+/);
+        if (parts.length >= 2) {
+          return `${parts[0][0]}${parts[1][0]}`;
+        }
+        return profile.displayName.slice(0, 2);
+      })()
+    : "?";
+
+  return (
+    <aside className="sidebar">
+      {/* Top: Logo */}
+      <div className="sidebar__logo">
+        <Link href="/">
+          <img src="/assets/certified_wordmark_white.svg" alt="Certified" />
+        </Link>
+      </div>
+
+      {/* Navigation */}
+      <nav className="sidebar__nav">
+        <p className="sidebar__section-label">Account</p>
+        <ul className="sidebar__menu">
+          <li>
+            <Link
+              href="/"
+              className={`sidebar__item ${pathname === "/" ? "sidebar__item--active" : ""}`}
+            >
+              <User size={18} />
+              Profile
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/settings/security"
+              className={`sidebar__item ${pathname === "/settings/security" ? "sidebar__item--active" : ""}`}
+            >
+              <Shield size={18} />
+              Security
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/settings/connected-apps"
+              className={`sidebar__item ${pathname === "/settings/connected-apps" ? "sidebar__item--active" : ""}`}
+            >
+              <LayoutGrid size={18} />
+              Connected Apps
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/settings/data-privacy"
+              className={`sidebar__item ${pathname === "/settings/data-privacy" ? "sidebar__item--active" : ""}`}
+            >
+              <Lock size={18} />
+              Data &amp; Privacy
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/settings/identity"
+              className={`sidebar__item ${pathname === "/settings/identity" ? "sidebar__item--active" : ""}`}
+            >
+              <Fingerprint size={18} />
+              Identity
+            </Link>
+          </li>
+        </ul>
+      </nav>
+
+      {/* Bottom: User card */}
+      <div className="sidebar__user">
+        <Avatar size="sm" src={avatarUrl || undefined} fallbackInitials={initials} />
+        <div className="sidebar__user-info">
+          <p className="sidebar__user-name">{profile?.displayName || "Anonymous"}</p>
+          <p className="sidebar__user-handle">@{handle || "..."}</p>
+        </div>
+        <button onClick={signOut} className="sidebar__signout" aria-label="Sign out">
+          <LogOut size={18} />
+        </button>
+      </div>
+    </aside>
+  );
+}
