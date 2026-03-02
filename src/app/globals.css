@@ -1464,6 +1464,9 @@ h1, h2, h3, h4, h5, h6 {
 
 .sidebar__logo {
   padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .sidebar__logo img {
@@ -1882,4 +1885,101 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.8125rem;
   line-height: 1.6;
   color: var(--color-mid-gray);
+}
+
+/* ========== Mobile Header ========== */
+.mobile-header {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--color-white);
+    border-bottom: 1px solid rgba(15, 37, 68, 0.08);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+
+  .mobile-header__logo img {
+    height: 20px;
+  }
+
+  .mobile-header__toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: none;
+    color: var(--color-navy);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background var(--transition-fast);
+  }
+
+  .mobile-header__toggle:hover {
+    background: var(--color-off-white);
+  }
+}
+
+/* ========== Sidebar Overlay ========== */
+.sidebar-overlay {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 39;
+  }
+}
+
+/* ========== Sidebar Close Button (mobile only) ========== */
+.sidebar__close {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: none;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all var(--transition-fast);
+  }
+
+  .sidebar__close:hover {
+    color: var(--color-white);
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  /* Sidebar: hidden by default on mobile, slides in when open */
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform var(--transition-base);
+  }
+
+  .sidebar--open {
+    transform: translateX(0);
+  }
+
+  /* Remove the fixed left margin on mobile */
+  .app-shell__content {
+    margin-left: 0;
+  }
 }

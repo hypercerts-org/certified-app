@@ -3,13 +3,18 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User, Shield, LayoutGrid, Lock, LogOut } from "lucide-react";
+import { User, Shield, LayoutGrid, Lock, LogOut, X } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import { authFetch } from "@/lib/auth/fetch";
 import Avatar from "@/components/ui/avatar";
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const { signOut } = useAuth();
   const { profile, avatarUrl } = useProfile();
   const pathname = usePathname();
@@ -24,6 +29,11 @@ export default function Sidebar() {
       .catch(() => {});
   }, []);
 
+  // Close sidebar on navigation (mobile)
+  useEffect(() => {
+    if (onClose) onClose();
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const initials = profile?.displayName
     ? (() => {
         const parts = profile.displayName.trim().split(/\s+/);
@@ -35,12 +45,17 @@ export default function Sidebar() {
     : "?";
 
   return (
-    <aside className="sidebar">
-      {/* Top: Logo */}
+    <aside className={`sidebar ${isOpen ? "sidebar--open" : ""}`}>
+      {/* Top: Logo + close button */}
       <div className="sidebar__logo">
         <Link href="/">
           <img src="/assets/certified_wordmark_white.svg" alt="Certified" />
         </Link>
+        {onClose && (
+          <button className="sidebar__close" onClick={onClose} aria-label="Close menu">
+            <X size={20} />
+          </button>
+        )}
       </div>
 
       {/* Navigation */}
