@@ -77,12 +77,13 @@ const Navbar: React.FC = () => {
           ) : (
             <button
               onClick={openSignIn}
-              className={`font-mono text-xs uppercase tracking-wider px-4 py-2 rounded transition-all duration-150 ${
+              className={`font-mono text-xs uppercase tracking-wider px-4 py-2 rounded transition-all duration-150 inline-flex items-center gap-2 ${
                 isTransparent
                   ? "text-white/70 border border-white/20 hover:border-white/40 hover:text-white"
                   : "text-navy border border-navy/20 hover:border-navy/40 bg-transparent"
               }`}
             >
+              <img src="/assets/certified_brandmark.svg" alt="" className="w-5 h-5 rounded-sm" />
               Sign in
             </button>
           )}
