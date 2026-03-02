@@ -59,7 +59,7 @@ Certified does not exist in isolation. It is the identity and data layer that co
 
 ### Partner Platforms (examples)
 
-- **Ma Earth** — Environmental impact platform
+- **Ma Earth** — Collective Funding for Regenerating Earth
 - **GainForest** — Conservation and reforestation
 - **Silvi** — Reforestation and tree-planting impact tracking
 - **Hyperboards** — Visual display of hypercert contributions

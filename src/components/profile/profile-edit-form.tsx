@@ -214,7 +214,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
 
   return (
     <div>
-      <h1 className="font-mono text-h1 text-navy uppercase tracking-tight mb-6">Edit Profile</h1>
+      <h1 className="font-mono text-h1 text-navy tracking-tight mb-6">Edit Profile</h1>
 
       <div className="app-card">
         <div className="flex flex-col gap-6">

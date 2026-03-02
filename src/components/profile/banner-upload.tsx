@@ -102,7 +102,7 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
             ) : (
               <>
                 <ImageIcon className="h-6 w-6 text-white" />
-                <span className="text-white font-mono text-xs uppercase tracking-wider">Change banner</span>
+                <span className="text-white font-mono text-xs tracking-wider">Change banner</span>
               </>
             )}
           </div>

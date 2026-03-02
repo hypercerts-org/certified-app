@@ -49,7 +49,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
         />
 
         <div className="mt-3 text-center">
-          <h2 className="font-mono text-h2 text-navy uppercase tracking-tight">
+          <h2 className="font-mono text-h2 text-navy tracking-tight">
             {displayName || (
               <span className="text-gray-400">Anonymous</span>
             )}

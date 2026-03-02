@@ -180,7 +180,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ did }) => {
               <button
                 type="button"
                 onClick={() => { setHandleMode("subdomain"); setHandleError(null); }}
-                className={`font-mono text-xs uppercase tracking-wider px-3 py-1.5 rounded transition-colors duration-200 ${
+                className={`font-mono text-xs tracking-wider px-3 py-1.5 rounded transition-colors duration-200 ${
                   handleMode === "subdomain"
                     ? "bg-accent/10 text-accent border border-accent/20"
                     : "text-gray-400 hover:text-gray-700"
@@ -191,7 +191,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ did }) => {
               <button
                 type="button"
                 onClick={() => { setHandleMode("custom"); setHandleError(null); }}
-                className={`font-mono text-xs uppercase tracking-wider px-3 py-1.5 rounded transition-colors duration-200 ${
+                className={`font-mono text-xs tracking-wider px-3 py-1.5 rounded transition-colors duration-200 ${
                   handleMode === "custom"
                     ? "bg-accent/10 text-accent border border-accent/20"
                     : "text-gray-400 hover:text-gray-700"
