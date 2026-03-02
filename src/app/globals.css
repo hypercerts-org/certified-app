@@ -1237,6 +1237,37 @@ h1, h2, h3, h4, h5, h6 {
   border-bottom: none;
 }
 
+.connected-apps__item--link {
+  text-decoration: none;
+  color: inherit;
+  transition: background var(--transition-fast);
+  margin: 0 -16px;
+  padding: 16px;
+  border-radius: var(--radius);
+  border-bottom: none;
+}
+
+.connected-apps__item--link + .connected-apps__item--link {
+  border-top: 1px solid rgba(15, 37, 68, 0.06);
+  border-radius: 0;
+}
+
+.connected-apps__item--link:last-child {
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.connected-apps__item--link:first-of-type {
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.connected-apps__item--link:only-of-type {
+  border-radius: var(--radius);
+}
+
+.connected-apps__item--link:hover {
+  background: var(--color-off-white);
+}
+
 .connected-apps__icon {
   width: 40px;
   height: 40px;
