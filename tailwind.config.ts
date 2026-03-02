@@ -27,14 +27,7 @@ export default {
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
-        mono: [
-          "JetBrains Mono",
-          "IBM Plex Mono",
-          "SF Mono",
-          "ui-monospace",
-          "Courier New",
-          "monospace",
-        ],
+        mono: ["Inter", "system-ui", "-apple-system", "sans-serif"],
       },
       fontSize: {
         display: [

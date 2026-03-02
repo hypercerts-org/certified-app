@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -184,7 +184,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .hero__title {
-  font-family: "JetBrains Mono", "IBM Plex Mono", "SF Mono", ui-monospace, monospace;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   color: var(--color-white);
   font-size: clamp(2.5rem, 6vw + 1rem, 5rem);
   font-weight: 700;
@@ -195,7 +195,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .hero__subtitle {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   color: var(--color-mid-gray);
   font-size: clamp(1rem, 1.5vw + 0.5rem, 1.25rem);
   line-height: 1.5;
@@ -217,7 +217,7 @@ h1, h2, h3, h4, h5, h6 {
   gap: 8px;
   padding: 12px 28px;
   border-radius: 6px;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 1rem;
   font-weight: 500;
   text-transform: uppercase;
@@ -246,7 +246,7 @@ h1, h2, h3, h4, h5, h6 {
   gap: 8px;
   padding: 12px 28px;
   border-radius: 6px;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 1rem;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.6);
@@ -322,7 +322,7 @@ h1, h2, h3, h4, h5, h6 {
 .landing-footer p,
 .landing-footer__links a {
   font-size: 0.75rem;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   color: rgba(255, 255, 255, 0.25);
   text-decoration: none;
   transition: color var(--transition-fast);
@@ -385,7 +385,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .signin-modal__title {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--color-navy);
@@ -423,7 +423,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .signin-modal__label {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -606,7 +606,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .app-card__label {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -633,7 +633,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .footer__copy {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.6875rem;
   color: var(--color-mid-gray);
 }
@@ -644,7 +644,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .footer__links a {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.6875rem;
   color: var(--color-mid-gray);
   text-decoration: none;
@@ -702,7 +702,7 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 4px;
   background: var(--color-white);
   border: 1px solid var(--color-light-gray);
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 1rem;
   font-weight: 500;
   color: var(--color-navy);
@@ -728,7 +728,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .landing-chip__name {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--color-navy);
@@ -744,7 +744,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .landing-footnote {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.75rem;
   color: var(--color-mid-gray);
   margin-top: 8px;
@@ -795,7 +795,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .landing-section h2 {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: clamp(1.25rem, 2vw + 0.5rem, 1.75rem);
   font-weight: 600;
   line-height: 1.3;
@@ -835,7 +835,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .landing-card h3 {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 1.0625rem;
   font-weight: 600;
   color: var(--color-navy);
@@ -850,7 +850,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .landing-card__micro {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.6875rem;
   color: var(--color-mid-gray);
   opacity: 0.6;
@@ -963,14 +963,14 @@ h1, h2, h3, h4, h5, h6 {
   background: rgba(96, 161, 226, 0.1);
   border: 1px solid rgba(96, 161, 226, 0.2);
   color: var(--color-accent);
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 1rem;
   font-weight: 700;
   margin-bottom: 16px;
 }
 
 .landing-step h3 {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 1rem;
   font-weight: 600;
   color: var(--color-white);
@@ -987,7 +987,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .landing-reassurance {
   text-align: center;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.4);
 }
@@ -1025,7 +1025,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .landing-trust-sub h3 {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-white);
