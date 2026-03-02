@@ -1,0 +1,27 @@
+"use client";
+
+import { useAuth } from "@/lib/auth/auth-context";
+
+export default function ReadyCta() {
+  const { openSignIn, openSignUp } = useAuth();
+
+  return (
+    <section id="ready-cta" className="landing-section landing-section--dark">
+      <div className="landing-section__inner landing-cta">
+        <h2>Ready to get started?</h2>
+        <p>Create your account in under a minute — no passwords.</p>
+        <div className="landing-cta__actions">
+          <button className="hero__btn-primary" onClick={openSignUp}>
+            Create your Certified ID
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M7.5 4.5L13 10m0 0l-5.5 5.5M13 10H3" />
+            </svg>
+          </button>
+          <button className="hero__btn-secondary" onClick={openSignIn}>
+            Sign in
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
