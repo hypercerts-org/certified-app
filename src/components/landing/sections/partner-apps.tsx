@@ -2,7 +2,7 @@ import React from "react";
 
 export default function PartnerApps() {
   return (
-    <section id="partner-apps" className="landing-section landing-section--light">
+    <section id="partner-apps" className="landing-section landing-section--gray">
       <div className="landing-section__inner">
         <h2>Works across partner apps</h2>
         <p className="landing-prose">Use your Certified ID anywhere you see &lsquo;Sign in with Certified&rsquo;.</p>
