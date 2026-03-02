@@ -73,15 +73,6 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           </li>
           <li>
             <Link
-              href="/settings/security"
-              className={`sidebar__item ${pathname === "/settings/security" ? "sidebar__item--active" : ""}`}
-            >
-              <Shield size={18} />
-              Security
-            </Link>
-          </li>
-          <li>
-            <Link
               href="/settings/connected-apps"
               className={`sidebar__item ${pathname === "/settings/connected-apps" ? "sidebar__item--active" : ""}`}
             >
@@ -105,6 +96,15 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             >
               <Lock size={18} />
               My Data
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/settings/security"
+              className={`sidebar__item ${pathname === "/settings/security" ? "sidebar__item--active" : ""}`}
+            >
+              <Shield size={18} />
+              Security
             </Link>
           </li>
         </ul>
