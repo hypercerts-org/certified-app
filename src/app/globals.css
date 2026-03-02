@@ -1282,6 +1282,10 @@ h1, h2, h3, h4, h5, h6 {
   flex-shrink: 0;
 }
 
+.connected-apps__status--available {
+  color: var(--color-mid-gray);
+}
+
 .connected-apps__dot {
   width: 6px;
   height: 6px;

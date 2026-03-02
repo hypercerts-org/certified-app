@@ -4,7 +4,22 @@ import React from "react";
 import { ExternalLink } from "lucide-react";
 import AuthGuard from "@/components/layout/auth-guard";
 
-const APPS = [
+const CONNECTED_APPS = [
+  {
+    name: "Bluesky",
+    desc: "Decentralized social networking built on the AT Protocol. Bluesky gives you control over your social experience with algorithmic choice and portable identity.",
+    logo: "/assets/partners/bluesky_logo.svg",
+    url: "https://bsky.app",
+  },
+  {
+    name: "Leaflet",
+    desc: "A writing tool for the open internet. Leaflet lets you publish long-form content on the AT Protocol, giving you full ownership of your writing and audience.",
+    logo: "/assets/partners/leaflet_logo.svg",
+    url: "https://leaflet.pub",
+  },
+];
+
+const EXPLORE_APPS = [
   {
     name: "Ma Earth",
     desc: "Collective Funding for Regenerating Earth. Ma Earth connects communities with regenerative projects, enabling transparent funding and impact tracking through hypercerts.",
@@ -29,18 +44,6 @@ const APPS = [
     logo: "/assets/hyperboards_brandmark.webp",
     url: "https://hyperboards.org",
   },
-  {
-    name: "Bluesky",
-    desc: "Decentralized social networking built on the AT Protocol. Bluesky gives you control over your social experience with algorithmic choice and portable identity.",
-    logo: "/assets/partners/bluesky_logo.svg",
-    url: "https://bsky.app",
-  },
-  {
-    name: "Leaflet",
-    desc: "A writing tool for the open internet. Leaflet lets you publish long-form content on the AT Protocol, giving you full ownership of your writing and audience.",
-    logo: "/assets/partners/leaflet_logo.svg",
-    url: "https://leaflet.pub",
-  },
 ];
 
 export default function ConnectedAppsPage() {
@@ -53,16 +56,15 @@ export default function ConnectedAppsPage() {
 
         <div className="dashboard__body dashboard__body--single">
           <div className="dashboard__main">
-            {/* Intro card */}
+            {/* Connected apps section */}
             <div className="dash-card">
-              <h3 className="dash-card__title">Your App Ecosystem</h3>
+              <h3 className="dash-card__title">Connected</h3>
               <p className="dash-card__desc">
-                These apps work with your Certified identity. Sign in once and your identity, data, and reputation travel with you across the ecosystem.
+                Apps you can sign in to with your Certified identity. Your handle, profile, and data are portable across these apps.
               </p>
             </div>
 
-            {/* App cards */}
-            {APPS.map((app) => (
+            {CONNECTED_APPS.map((app) => (
               <div key={app.name} className="dash-card mt-4">
                 <div className="app-detail">
                   <div className="app-detail__icon">
@@ -74,6 +76,42 @@ export default function ConnectedAppsPage() {
                       <span className="connected-apps__status">
                         <span className="connected-apps__dot" />
                         Connected
+                      </span>
+                    </div>
+                    <p className="app-detail__desc">{app.desc}</p>
+                    <a
+                      href={app.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="app-detail__link"
+                    >
+                      Visit {app.name}
+                      <ExternalLink size={14} />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* Explore more apps section */}
+            <div className="dash-card mt-8">
+              <h3 className="dash-card__title">Explore more apps</h3>
+              <p className="dash-card__desc">
+                These apps are building on the hypercerts ecosystem. Connect your Certified identity to get started.
+              </p>
+            </div>
+
+            {EXPLORE_APPS.map((app) => (
+              <div key={app.name} className="dash-card mt-4">
+                <div className="app-detail">
+                  <div className="app-detail__icon">
+                    <img src={app.logo} alt="" className="app-detail__logo" />
+                  </div>
+                  <div className="app-detail__content">
+                    <div className="app-detail__header">
+                      <h3 className="app-detail__name">{app.name}</h3>
+                      <span className="connected-apps__status connected-apps__status--available">
+                        Available
                       </span>
                     </div>
                     <p className="app-detail__desc">{app.desc}</p>
