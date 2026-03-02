@@ -87,9 +87,7 @@ export default function HomeClient() {
                   <path d="M7.5 4.5L13 10m0 0l-5.5 5.5M13 10H3" />
                 </svg>
               </button>
-              <a href="#what-you-get" className="hero__btn-secondary">
-                Learn more
-              </a>
+
             </div>
           </div>
         </div>
