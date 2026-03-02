@@ -1,8 +1,10 @@
 const CONNECTED_APPS = [
-  { name: "Bluesky", desc: "Decentralized social networking", icon: "💬", connected: true },
-  { name: "Whitewind", desc: "Long-form publishing on AT Protocol", icon: "📡", connected: true },
-  { name: "Frontpage", desc: "Link aggregator and community discussions", icon: "📰", connected: true },
-  { name: "Smokesignal", desc: "Decentralized events and meetups", icon: "⚡", connected: true },
+  { name: "Ma Earth", desc: "Collective Funding for Regenerating Earth", logo: "/assets/partners/maearth_logo.jpeg", connected: true },
+  { name: "GainForest", desc: "Co-creating a fair future for nature stewards", logo: "/assets/partners/gainforest_logo.jpeg", connected: true },
+  { name: "Silvi", desc: "Planting the right trees in the right place at the right time", logo: "/assets/partners/silvi_logo.jpeg", connected: true },
+  { name: "Hyperboards", desc: "Visualizing and recognizing those who create real value", logo: "/assets/hyperboards_brandmark.webp", connected: true },
+  { name: "Bluesky", desc: "Decentralized social networking", logo: "/assets/partners/bluesky_logo.svg", connected: true },
+  { name: "Leaflet", desc: "A writing tool for the open internet", logo: "/assets/partners/leaflet_logo.svg", connected: true },
 ];
 
 export default function ConnectedAppsList() {
@@ -16,7 +18,9 @@ export default function ConnectedAppsList() {
       <div className="connected-apps__list">
         {CONNECTED_APPS.map((app) => (
           <div key={app.name} className="connected-apps__item">
-            <div className="connected-apps__icon">{app.icon}</div>
+            <div className="connected-apps__icon">
+              <img src={app.logo} alt="" className="connected-apps__logo" />
+            </div>
             <div className="connected-apps__info">
               <p className="connected-apps__name">{app.name}</p>
               <p className="connected-apps__desc">{app.desc}</p>
