@@ -1619,6 +1619,15 @@ h1, h2, h3, h4, h5, h6 {
   grid-template-columns: 1fr;
 }
 
+/* Dashboard body stacks at medium screens (sidebar takes 240px, leaving little room for 2 columns) */
+@media (max-width: 1024px) {
+  .dashboard__body {
+    grid-template-columns: 1fr;
+    padding: 20px 24px;
+    gap: 16px;
+  }
+}
+
 .dashboard__back-btn {
   display: inline-flex;
   align-items: center;
@@ -1979,6 +1988,10 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   /* Remove the fixed left margin on mobile */
+  .app-shell {
+    flex-direction: column;
+  }
+
   .app-shell__content {
     margin-left: 0;
   }
