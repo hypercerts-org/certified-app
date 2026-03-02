@@ -3,7 +3,7 @@
 import { useAuth } from "@/lib/auth/auth-context";
 
 export default function ReadyCta() {
-  const { openSignIn, openSignUp } = useAuth();
+  const { openSignUp } = useAuth();
 
   return (
     <section id="ready-cta" className="landing-section landing-section--dark">
@@ -15,9 +15,7 @@ export default function ReadyCta() {
             <img src="/assets/certified_brandmark.svg" alt="" className="hero__btn-icon" />
             Sign in with Certified
           </button>
-          <button className="hero__btn-secondary" onClick={openSignIn}>
-            Sign in
-          </button>
+
         </div>
       </div>
     </section>
