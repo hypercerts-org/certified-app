@@ -11,27 +11,28 @@ export default function PartnerApps() {
             <img src="/assets/partners/maearth_logo.jpeg" alt="" className="landing-chip__logo" />
             <div className="landing-chip__text">
               <span className="landing-chip__name">Ma Earth</span>
-              <span className="landing-chip__desc">Verified carbon removal marketplace.</span>
+              <span className="landing-chip__desc">Collective Funding for Regenerating Earth</span>
             </div>
           </div>
           <div className="landing-chip">
             <img src="/assets/partners/gainforest_logo.jpeg" alt="" className="landing-chip__logo" />
             <div className="landing-chip__text">
               <span className="landing-chip__name">GainForest</span>
-              <span className="landing-chip__desc">AI-powered conservation funding.</span>
+              <span className="landing-chip__desc">Co-creating a fair future for nature stewards</span>
             </div>
           </div>
           <div className="landing-chip">
+            <img src="/assets/hyperboards_brandmark.webp" alt="" className="landing-chip__logo" />
             <div className="landing-chip__text">
               <span className="landing-chip__name">Hyperboards</span>
-              <span className="landing-chip__desc">Visual leaderboards for impact funding.</span>
+              <span className="landing-chip__desc">Visualizing and recognizing those who create real value</span>
             </div>
           </div>
           <div className="landing-chip">
             <img src="/assets/partners/silvi_logo.jpeg" alt="" className="landing-chip__logo" />
             <div className="landing-chip__text">
               <span className="landing-chip__name">Silvi</span>
-              <span className="landing-chip__desc">Tree planting tracking and verification.</span>
+              <span className="landing-chip__desc">Reforestation done Right. Planting the right trees in the right place at the right time.</span>
             </div>
           </div>
         </div>
