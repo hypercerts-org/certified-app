@@ -1,0 +1,28 @@
+export default function WhatYouGet() {
+  return (
+    <section id="what-you-get" className="landing-section landing-section--light">
+      <div className="landing-section__inner">
+        <h2>What you get</h2>
+        <div className="landing-card-grid">
+          <div className="landing-card">
+            <h3>One account across apps</h3>
+            <p>Use the same account on every partner platform. No new logins.</p>
+          </div>
+          <div className="landing-card">
+            <h3>Your profile travels with you</h3>
+            <p>Your profile and activity appear when you sign in to a new app.</p>
+          </div>
+          <div className="landing-card">
+            <h3>You stay in control</h3>
+            <p>You can leave anytime. You&apos;re not locked in.</p>
+          </div>
+          <div className="landing-card">
+            <h3>Simple sign-in</h3>
+            <p>No passwords. We email you a one-time code.</p>
+            <p className="landing-card__micro">Takes ~30 seconds.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
