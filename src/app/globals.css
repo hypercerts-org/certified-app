@@ -1463,3 +1463,70 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.4);
 }
+
+/* ========== Built for Trust Section ========== */
+.landing-trust-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.landing-trust-list li {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.6);
+  padding-left: 28px;
+  position: relative;
+}
+
+.landing-trust-list li::before {
+  content: "\2713";
+  position: absolute;
+  left: 0;
+  color: var(--color-accent);
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.landing-trust-sub {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 24px;
+}
+
+.landing-trust-sub h3 {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-white);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.landing-trust-sub ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.landing-trust-sub li {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.landing-trust-sub a {
+  color: var(--color-accent);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(96, 161, 226, 0.3);
+  transition: border-color var(--transition-fast);
+}
+
+.landing-trust-sub a:hover {
+  border-color: var(--color-accent);
+}
