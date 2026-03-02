@@ -1983,3 +1983,143 @@ h1, h2, h3, h4, h5, h6 {
     margin-left: 0;
   }
 }
+
+/* ========== Responsive: Dashboard & Pages (≤768px) ========== */
+@media (max-width: 768px) {
+  /* Dashboard topbar */
+  .dashboard__topbar {
+    padding: 12px 16px;
+  }
+
+  .dashboard__page-title {
+    font-size: 1.125rem;
+  }
+
+  /* Dashboard body: stack columns */
+  .dashboard__body {
+    grid-template-columns: 1fr;
+    padding: 16px;
+    gap: 16px;
+  }
+
+  /* Dash cards: tighter padding */
+  .dash-card {
+    padding: 16px;
+  }
+
+  /* Profile card: stack vertically */
+  .profile-card {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .profile-card__info {
+    text-align: center;
+  }
+
+  .profile-card__name {
+    font-size: 1.125rem;
+  }
+
+  /* Personal info: single column */
+  .personal-info__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .personal-info__field {
+    padding: 10px 12px;
+    font-size: 0.8125rem;
+  }
+
+  .personal-info__field--mono {
+    font-size: 0.75rem;
+  }
+
+  /* Connected apps items: hide status text on very small screens */
+  .connected-apps__item {
+    gap: 10px;
+    padding: 12px 0;
+  }
+
+  .connected-apps__desc {
+    display: none;
+  }
+
+  /* App detail cards (connected apps page): stack */
+  .app-detail {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .app-detail__icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .app-detail__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  /* My data records: stack meta below main */
+  .my-data__record {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .my-data__record-meta {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .my-data__did-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  /* Edit profile */
+  .edit-profile__actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .edit-profile__actions button {
+    width: 100%;
+  }
+
+  /* Dashboard back button */
+  .dashboard__back-btn {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+  }
+
+  /* Right sidebar cards: reduce desc margin */
+  .dash-card__desc {
+    margin-bottom: 12px;
+  }
+
+  /* Preview button: smaller on mobile */
+  .dash-card__preview {
+    padding: 16px;
+  }
+
+  .dash-card__preview-btn {
+    padding: 10px 20px;
+    font-size: 0.8125rem;
+  }
+
+  .dash-card__preview-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  /* Footer: hide for authenticated (sidebar has signout) */
+  .app-shell .footer {
+    display: none;
+  }
+}
