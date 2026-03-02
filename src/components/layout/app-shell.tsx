@@ -1,15 +1,22 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
 import { Menu } from "lucide-react";
 import Sidebar from "@/components/layout/sidebar";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  if (isLoading || !isAuthenticated) {
+  // Settings pages always show the app shell (even while loading)
+  // so the user sees the sidebar + a spinner instead of the landing logo
+  const isAppPage = pathname.startsWith("/settings");
+  const showShell = isAppPage || (!isLoading && isAuthenticated);
+
+  if (!showShell) {
     return <>{children}</>;
   }
 

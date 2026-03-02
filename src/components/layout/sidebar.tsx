@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User, Shield, LayoutGrid, Lock, LogOut, X } from "lucide-react";
+import { User, Shield, LayoutGrid, Lock, Wallet, LogOut, X } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import { authFetch } from "@/lib/auth/fetch";
@@ -87,6 +87,15 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             >
               <LayoutGrid size={18} />
               Connected Apps
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/settings/wallet"
+              className={`sidebar__item ${pathname === "/settings/wallet" ? "sidebar__item--active" : ""}`}
+            >
+              <Wallet size={18} />
+              Wallet
             </Link>
           </li>
           <li>
