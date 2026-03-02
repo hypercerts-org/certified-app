@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User, LayoutGrid, Lock, LogOut } from "lucide-react";
+import { User, Shield, LayoutGrid, Lock, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import { authFetch } from "@/lib/auth/fetch";
@@ -54,6 +54,15 @@ export default function Sidebar() {
             >
               <User size={18} />
               Profile
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/settings/security"
+              className={`sidebar__item ${pathname === "/settings/security" ? "sidebar__item--active" : ""}`}
+            >
+              <Shield size={18} />
+              Security
             </Link>
           </li>
           <li>
