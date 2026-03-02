@@ -164,16 +164,25 @@ h1, h2, h3, h4, h5, h6 {
   position: absolute;
   inset: 0;
   z-index: 0;
-  opacity: 0.5;
-  background-image: url("data:image/svg+xml,%3Csvg width='10' height='10' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='2' height='2' fill='%231A3A6B'/%3E%3C/svg%3E");
-  background-repeat: repeat;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 40%, rgba(96,161,226,0.15) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 80% at 80% 20%, rgba(26,58,107,0.2) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 60% at 50% 80%, rgba(96,161,226,0.08) 0%, transparent 50%);
+  background-size: 200% 200%, 200% 200%, 200% 200%;
+  animation: meshShift 20s ease-in-out infinite;
 }
 
-.hero__bg::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to bottom, var(--color-navy) 0%, transparent 30%, transparent 70%, var(--color-navy) 100%);
+@keyframes meshShift {
+  0%   { background-position: 0% 0%, 100% 0%, 50% 100%; }
+  33%  { background-position: 10% 20%, 90% 10%, 40% 90%; }
+  66%  { background-position: 5% 10%, 95% 20%, 55% 80%; }
+  100% { background-position: 0% 0%, 100% 0%, 50% 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__bg {
+    animation: none;
+  }
 }
 
 .hero__inner {
