@@ -213,29 +213,31 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
   };
 
   return (
-    <div>
-      <h1 className="font-mono text-h1 text-navy tracking-tight mb-6">Edit Profile</h1>
-
-      <div className="app-card">
-        <div className="flex flex-col gap-6">
-          {/* Banner Upload */}
-          <BannerUpload
-            currentBannerUrl={currentBannerUrl}
-            onUpload={handleBannerUpload}
-            isUploading={isUploadingBanner}
+    <div className="edit-profile">
+      {/* Media card: banner + avatar */}
+      <div className="dash-card">
+        <h3 className="dash-card__title">Profile Media</h3>
+        <p className="dash-card__desc">Upload a banner and avatar for your profile.</p>
+        <BannerUpload
+          currentBannerUrl={currentBannerUrl}
+          onUpload={handleBannerUpload}
+          isUploading={isUploadingBanner}
+        />
+        <div className="edit-profile__avatar-row">
+          <AvatarUpload
+            currentAvatarUrl={currentAvatarUrl}
+            fallbackInitials={fallbackInitials}
+            onUpload={handleAvatarUpload}
+            isUploading={isUploadingAvatar}
           />
+        </div>
+      </div>
 
-          {/* Avatar Upload */}
-          <div className="flex justify-center -mt-12">
-            <AvatarUpload
-              currentAvatarUrl={currentAvatarUrl}
-              fallbackInitials={fallbackInitials}
-              onUpload={handleAvatarUpload}
-              isUploading={isUploadingAvatar}
-            />
-          </div>
-
-          {/* Display Name */}
+      {/* Details card: form fields */}
+      <div className="dash-card">
+        <h3 className="dash-card__title">Profile Details</h3>
+        <p className="dash-card__desc">This information is visible on your public profile.</p>
+        <div className="edit-profile__fields">
           <Input
             label="Display name"
             value={displayName}
@@ -244,8 +246,6 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
             placeholder="Your display name"
             error={displayNameError}
           />
-
-          {/* Description */}
           <div>
             <Textarea
               label="About"
@@ -256,12 +256,10 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
               placeholder="Tell us about yourself"
               error={descriptionError}
             />
-            <div className="font-mono text-xs text-gray-400 text-right mt-1">
+            <div className="edit-profile__char-count">
               {description.length}/256 characters
             </div>
           </div>
-
-          {/* Website */}
           <Input
             label="Website"
             type="url"
@@ -271,26 +269,22 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
             placeholder="https://example.com"
             error={websiteError}
           />
+        </div>
 
-          {/* Save error */}
-          {saveError && (
-            <ErrorMessage message={saveError} />
-          )}
+        {saveError && <ErrorMessage message={saveError} />}
 
-          {/* Buttons */}
-          <div className="flex justify-end gap-4 pt-6 border-t border-[rgba(15,37,68,0.08)]">
-            <Button variant="ghost" onClick={handleCancel} disabled={isSaving}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleSave}
-              loading={isSaving}
-              disabled={!hasChanges || !isValid || isSaving}
-            >
-              Save
-            </Button>
-          </div>
+        <div className="edit-profile__actions">
+          <Button variant="ghost" onClick={handleCancel} disabled={isSaving}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleSave}
+            loading={isSaving}
+            disabled={!hasChanges || !isValid || isSaving}
+          >
+            Save Changes
+          </Button>
         </div>
       </div>
     </div>
