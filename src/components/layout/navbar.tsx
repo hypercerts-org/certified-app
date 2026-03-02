@@ -28,6 +28,9 @@ const Navbar: React.FC = () => {
     return parts.length >= 2 ? `${parts[0][0]}${parts[1][0]}` : name.slice(0, 2);
   })();
 
+  // Hide navbar for authenticated users (sidebar replaces it)
+  if (!isLoading && isAuthenticated) return null;
+
   const isTransparent = variant === "transparent";
 
   const navClasses = [

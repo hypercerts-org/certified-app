@@ -1277,6 +1277,168 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--color-success);
 }
 
+/* ========== App Shell (sidebar layout) ========== */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-shell__content {
+  flex: 1;
+  margin-left: 240px;
+  background: var(--color-off-white);
+  min-height: 100vh;
+}
+
+/* ========== Dashboard ========== */
+.dashboard {
+  padding: 0;
+}
+
+.dashboard__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  background: var(--color-white);
+  border-bottom: 1px solid rgba(15, 37, 68, 0.08);
+}
+
+.dashboard__page-title {
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: var(--color-navy);
+}
+
+.dashboard__topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid rgba(15, 37, 68, 0.1);
+  background: var(--color-off-white);
+  font-size: 0.8125rem;
+  color: var(--color-mid-gray);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.dashboard__search:hover {
+  border-color: rgba(15, 37, 68, 0.2);
+}
+
+.dashboard__notification {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--color-mid-gray);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all var(--transition-fast);
+}
+
+.dashboard__notification:hover {
+  background: var(--color-off-white);
+  color: var(--color-navy);
+}
+
+.dashboard__body {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 24px;
+  padding: 24px 32px;
+  align-items: start;
+}
+
+.dashboard__main {
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard__aside {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Profile card (horizontal layout) */
+.profile-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.profile-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-card__name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-navy);
+}
+
+.profile-card__handle {
+  font-size: 0.8125rem;
+  color: var(--color-mid-gray);
+  margin-top: 2px;
+}
+
+.profile-card__bio {
+  font-size: 0.875rem;
+  color: var(--color-dark-gray);
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+/* Personal Information form fields */
+.personal-info__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.personal-info__label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-mid-gray);
+  margin-bottom: 6px;
+}
+
+.personal-info__field {
+  padding: 12px 16px;
+  border: 1px solid rgba(15, 37, 68, 0.12);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: var(--color-navy);
+  background: var(--color-white);
+}
+
+.personal-info__field--mono {
+  font-family: monospace;
+  font-size: 0.8125rem;
+  color: var(--color-mid-gray);
+  word-break: break-all;
+}
+
+/* Utility */
+.mt-4 {
+  margin-top: 16px;
+}
+
 /* ========== Sidebar ========== */
 .sidebar {
   position: fixed;

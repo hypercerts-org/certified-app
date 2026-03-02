@@ -6,6 +6,7 @@ import { NavbarProvider } from "@/lib/navbar-context";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 import { Providers } from "@/lib/providers";
+import AppShell from "@/components/layout/app-shell";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -30,7 +31,9 @@ export default function RootLayout({
           <AuthProvider>
             <NavbarProvider>
               <Navbar />
-              <main className="flex-1">{children}</main>
+              <main className="flex-1">
+                <AppShell>{children}</AppShell>
+              </main>
               <Footer />
             </NavbarProvider>
           </AuthProvider>
