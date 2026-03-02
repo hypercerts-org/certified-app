@@ -1402,3 +1402,64 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-mid-gray);
   margin: 0;
 }
+
+/* ========== Landing: How It Works ========== */
+.landing-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+  .landing-steps {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.landing-step {
+  text-align: center;
+  padding: 32px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+
+.landing-step__number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  background: rgba(96, 161, 226, 0.1);
+  border: 1px solid rgba(96, 161, 226, 0.2);
+  color: var(--color-accent);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.landing-step h3 {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-white);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.landing-step p {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+}
+
+.landing-reassurance {
+  text-align: center;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.4);
+}
