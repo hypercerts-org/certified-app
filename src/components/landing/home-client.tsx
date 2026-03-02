@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { Search, Bell, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useNavbarVariant } from "@/lib/navbar-context";
 import { useProfile } from "@/hooks/use-profile";
@@ -75,15 +75,6 @@ export default function HomeClient() {
         {/* Top bar */}
         <div className="dashboard__topbar">
           <h1 className="dashboard__page-title">Profile</h1>
-          <div className="dashboard__topbar-right">
-            <div className="dashboard__search">
-              <Search size={16} />
-              <span>Search settings...</span>
-            </div>
-            <button className="dashboard__notification" aria-label="Notifications">
-              <Bell size={18} />
-            </button>
-          </div>
         </div>
 
         {/* Main content area */}

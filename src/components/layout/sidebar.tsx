@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User, Shield, LayoutGrid, Lock, Fingerprint, LogOut } from "lucide-react";
+import { User, LayoutGrid, Lock, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import { authFetch } from "@/lib/auth/fetch";
@@ -58,15 +58,6 @@ export default function Sidebar() {
           </li>
           <li>
             <Link
-              href="/settings/security"
-              className={`sidebar__item ${pathname === "/settings/security" ? "sidebar__item--active" : ""}`}
-            >
-              <Shield size={18} />
-              Security
-            </Link>
-          </li>
-          <li>
-            <Link
               href="/settings/connected-apps"
               className={`sidebar__item ${pathname === "/settings/connected-apps" ? "sidebar__item--active" : ""}`}
             >
@@ -76,20 +67,11 @@ export default function Sidebar() {
           </li>
           <li>
             <Link
-              href="/settings/data-privacy"
-              className={`sidebar__item ${pathname === "/settings/data-privacy" ? "sidebar__item--active" : ""}`}
+              href="/settings/my-data"
+              className={`sidebar__item ${pathname === "/settings/my-data" ? "sidebar__item--active" : ""}`}
             >
               <Lock size={18} />
-              Data &amp; Privacy
-            </Link>
-          </li>
-          <li>
-            <Link
-              href="/settings/identity"
-              className={`sidebar__item ${pathname === "/settings/identity" ? "sidebar__item--active" : ""}`}
-            >
-              <Fingerprint size={18} />
-              Identity
+              My Data
             </Link>
           </li>
         </ul>
