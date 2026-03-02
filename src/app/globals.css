@@ -235,7 +235,7 @@ h1, h2, h3, h4, h5, h6 {
   font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 1rem;
   font-weight: 500;
-  color: var(--color-accent);
+  color: var(--color-white);
   background: rgba(96, 161, 226, 0.1);
   border: 1px solid rgba(96, 161, 226, 0.2);
   cursor: pointer;
@@ -246,7 +246,7 @@ h1, h2, h3, h4, h5, h6 {
 .hero__btn-primary:hover {
   background: rgba(96, 161, 226, 0.15);
   border-color: rgba(96, 161, 226, 0.35);
-  color: var(--color-sky-blue);
+  color: var(--color-white);
 }
 
 .hero__btn-primary:focus-visible {
