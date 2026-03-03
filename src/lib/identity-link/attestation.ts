@@ -32,7 +32,7 @@ export function buildAttestationMessage(
   stored: EIP712Message
 } {
   const timestamp = BigInt(Math.floor(Date.now() / 1000))
-  const nonce = BigInt(1)
+  const nonce = BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER))
   const evmAddress = address.toLowerCase() as `0x${string}`
 
   return {

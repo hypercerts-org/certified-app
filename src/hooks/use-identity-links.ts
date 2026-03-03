@@ -35,12 +35,12 @@ export function useIdentityLinks(
 
       const verified: VerifiedAttestation[] = await Promise.all(
         records.map(async (record) => {
-          // Only verify EOA signatures; skip on-chain verification for erc1271/erc6492
-          if (record.value.signatureType !== "eoa") {
+          // Only verify EOA signatures; on-chain verification not yet supported
+          if (record.value.signatureType === "erc1271" || record.value.signatureType === "erc6492") {
             return {
               ...record,
-              verified: true,
-              verificationError: null,
+              verified: false,
+              verificationError: "On-chain verification not yet supported",
             }
           }
 
