@@ -45,7 +45,7 @@ hb list --all          # List all issues including closed
 
 **Certified** is a web app for decentralized identity management built on the AT Protocol (atproto). Users get DIDs, handles, can link Ethereum wallets, manage connected apps, and control their data. The app connects to an ePDS (extended Personal Data Server) that handles OAuth + OTP email authentication.
 
-**Production URL:** https://certified-app.vercel.app
+**Production URL:** https://certified-app-hypercerts-foundation.vercel.app
 **Repo:** https://github.com/hypercerts-org/certified-app
 
 ## Tech Stack
@@ -274,7 +274,7 @@ Required in `.env.local` (and Vercel Production + Preview):
 ```
 COOKIE_SECRET=<32+ char secret for HMAC session cookies>
 NEXT_PUBLIC_PDS_URL=<ePDS URL, e.g. https://epds1.test.certified.app>
-PUBLIC_URL=<app URL, e.g. https://certified-app.vercel.app>
+PUBLIC_URL=<app URL, e.g. https://certified-app-hypercerts-foundation.vercel.app>
 UPSTASH_REDIS_REST_URL=<Upstash Redis URL for OAuth state>
 UPSTASH_REDIS_REST_TOKEN=<Upstash Redis token>
 ```
