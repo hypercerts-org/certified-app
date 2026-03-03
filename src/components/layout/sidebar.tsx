@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { User, Shield, LayoutGrid, Lock, Wallet, LogOut, X } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
-import { authFetch } from "@/lib/auth/fetch";
+import { useSession } from "@/hooks/use-session";
 import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
 
@@ -18,17 +18,8 @@ interface SidebarProps {
 export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const { signOut } = useAuth();
   const { profile, avatarUrl } = useProfile();
+  const { handle } = useSession();
   const pathname = usePathname();
-  const [handle, setHandle] = useState("");
-
-  useEffect(() => {
-    authFetch("/api/xrpc/com/atproto/server/getSession")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.handle) setHandle(data.handle);
-      })
-      .catch(() => {});
-  }, []);
 
   // Close sidebar on navigation (mobile)
   useEffect(() => {

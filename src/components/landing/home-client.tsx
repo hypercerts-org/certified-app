@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Pencil } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useNavbarVariant } from "@/lib/navbar-context";
 import { useProfile } from "@/hooks/use-profile";
-import { authFetch } from "@/lib/auth/fetch";
+import { useSession } from "@/hooks/use-session";
 import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
 import Button from "@/components/ui/button";
@@ -30,8 +30,7 @@ export default function HomeClient() {
   const { isLoading, isAuthenticated, did, openSignUp } = useAuth();
   const { profile, avatarUrl } = useProfile();
   const { setVariant } = useNavbarVariant();
-  const [handle, setHandle] = useState("");
-  const [email, setEmail] = useState("");
+  const { handle, email } = useSession();
 
   useEffect(() => {
     if (!isAuthenticated && !isLoading) {
@@ -41,18 +40,6 @@ export default function HomeClient() {
       setVariant("default");
     };
   }, [isAuthenticated, isLoading, setVariant]);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      authFetch("/api/xrpc/com/atproto/server/getSession")
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data?.handle) setHandle(data.handle);
-          if (data?.email) setEmail(data.email);
-        })
-        .catch(() => {});
-    }
-  }, [isAuthenticated]);
 
   const initials = getInitials(profile?.displayName, did);
 
@@ -103,26 +90,26 @@ export default function HomeClient() {
 
             {/* Personal Information card */}
             <div className="dash-card mt-4">
-              <h3 className="dash-card__title">Personal Information</h3>
+              <h2 className="dash-card__title">Personal Information</h2>
               <p className="dash-card__desc">This information is shared when you sign in to apps using Certified.</p>
-              <div className="personal-info__grid">
+              <dl className="personal-info__grid">
                 <div>
-                  <label className="personal-info__label">First Name</label>
-                  <div className="personal-info__field">{profile?.displayName?.split(" ")[0] || "—"}</div>
+                  <dt className="personal-info__label">First Name</dt>
+                  <dd className="personal-info__field">{profile?.displayName?.split(" ")[0] || "—"}</dd>
                 </div>
                 <div>
-                  <label className="personal-info__label">Last Name</label>
-                  <div className="personal-info__field">{profile?.displayName?.split(" ").slice(1).join(" ") || "—"}</div>
+                  <dt className="personal-info__label">Last Name</dt>
+                  <dd className="personal-info__field">{profile?.displayName?.split(" ").slice(1).join(" ") || "—"}</dd>
                 </div>
-              </div>
-              <div className="mt-4">
-                <label className="personal-info__label">Email Address</label>
-                <div className="personal-info__field">{email || "—"}</div>
-              </div>
-              <div className="mt-4">
-                <label className="personal-info__label">Handle (DID)</label>
-                <div className="personal-info__field personal-info__field--mono">{did}</div>
-              </div>
+                <div className="mt-4">
+                  <dt className="personal-info__label">Email Address</dt>
+                  <dd className="personal-info__field">{email || "—"}</dd>
+                </div>
+                <div className="mt-4">
+                  <dt className="personal-info__label">Handle (DID)</dt>
+                  <dd className="personal-info__field personal-info__field--mono">{did}</dd>
+                </div>
+              </dl>
             </div>
 
             {/* Connected Apps */}
@@ -174,7 +161,7 @@ export default function HomeClient() {
           <p>&copy; 2026 Certified. All rights reserved.</p>
           <div className="landing-footer__links">
             <Link href="/terms">Terms</Link>
-            <Link href="/privacy">Policy</Link>
+            <Link href="/privacy">Privacy</Link>
           </div>
         </div>
       </footer>
