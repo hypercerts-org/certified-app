@@ -1086,7 +1086,9 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--color-off-white);
   border-radius: var(--radius);
   padding: 20px;
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .dash-card__preview-label {
@@ -1190,6 +1192,37 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.75rem;
   color: var(--color-mid-gray);
   margin-top: 2px;
+}
+
+/* Username card */
+.username-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.username-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.username-card__value {
+  font-size: 0.875rem;
+  color: var(--color-navy);
+}
+
+.username-card__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.username-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 /* ========== Connected Apps ========== */
@@ -1410,11 +1443,63 @@ h1, h2, h3, h4, h5, h6 {
   margin-top: 8px;
 }
 
+.profile-card__banner {
+  width: calc(100% + 48px);
+  height: 160px;
+  overflow: hidden;
+  margin: -24px -24px 16px -24px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: linear-gradient(135deg, #e8eef5 0%, #dce4ed 100%);
+}
+
+.profile-card__banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.personal-info__hint {
+  font-size: 0.6875rem;
+  color: var(--color-mid-gray);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.personal-info__field--link {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.personal-info__field--link:hover {
+  text-decoration: underline;
+}
+
+.personal-info__full-width {
+  grid-column: 1 / -1;
+}
+
+.profile-fallback-note {
+  background: #fef9e7;
+  border: 1px solid #f5d76e;
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-top: 16px;
+}
+
+.profile-fallback-note p {
+  font-size: 0.8125rem;
+  color: #7d6608;
+  line-height: 1.5;
+  margin: 0;
+}
+
 /* Personal Information form fields */
 .personal-info__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+  margin-top: 16px;
 }
 
 .personal-info__label {

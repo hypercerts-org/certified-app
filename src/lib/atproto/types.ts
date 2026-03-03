@@ -29,3 +29,13 @@ export interface CertifiedProfile {
   banner?: HypercertsUri | HypercertsLargeImage;
   createdAt?: string; // format: datetime (ISO 8601)
 }
+
+/** The profile record matching app.bsky.actor.profile */
+export interface BlueskyProfile {
+  $type?: "app.bsky.actor.profile";
+  displayName?: string;
+  description?: string;
+  avatar?: { $type: string; ref: { $link: string }; mimeType: string; size: number } | Record<string, unknown>;
+  banner?: { $type: string; ref: { $link: string }; mimeType: string; size: number } | Record<string, unknown>;
+  createdAt?: string;
+}

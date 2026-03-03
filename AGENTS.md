@@ -273,7 +273,7 @@ public/assets/
 Required in `.env.local` (and Vercel Production + Preview):
 ```
 COOKIE_SECRET=<32+ char secret for HMAC session cookies>
-NEXT_PUBLIC_PDS_URL=<ePDS URL, e.g. https://pds.certified.is>
+NEXT_PUBLIC_PDS_URL=<ePDS URL, e.g. https://epds1.test.certified.app>
 PUBLIC_URL=<app URL, e.g. https://certified-app-v2.vercel.app>
 UPSTASH_REDIS_REST_URL=<Upstash Redis URL for OAuth state>
 UPSTASH_REDIS_REST_TOKEN=<Upstash Redis token>

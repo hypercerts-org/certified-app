@@ -5,19 +5,17 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
-import { putProfile, uploadAvatar, uploadBanner, getAvatarUrl, getBannerUrl } from "@/lib/atproto/profile";
+import { putProfile, uploadAvatar, uploadBanner } from "@/lib/atproto/profile";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import ProfileEditForm from "@/components/profile/profile-edit-form";
 import type { CertifiedProfile } from "@/lib/atproto/types";
 
 export default function EditProfilePage() {
   const router = useRouter();
-  const { isAuthenticated, did, pdsUrl } = useAuth();
-  const { profile, isLoading, refetch } = useProfile();
+  const { isAuthenticated, did } = useAuth();
+  const { profile, isLoading, refetch, avatarUrl, bannerUrl } = useProfile();
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-
-  const effectivePdsUrl = pdsUrl || process.env.NEXT_PUBLIC_PDS_URL || "https://epds1.test.certified.app";
 
   const handleAvatarUpload = async (file: File): Promise<Record<string, unknown>> => {
     return await uploadAvatar(file);
@@ -46,8 +44,8 @@ export default function EditProfilePage() {
     }
   };
 
-  const currentAvatarUrl = profile && did ? getAvatarUrl(profile, did, effectivePdsUrl) : null;
-  const currentBannerUrl = profile && did ? getBannerUrl(profile, did, effectivePdsUrl) : null;
+  const currentAvatarUrl = avatarUrl;
+  const currentBannerUrl = bannerUrl;
 
   const fallbackInitials = profile?.displayName
     ? profile.displayName.slice(0, 2)
