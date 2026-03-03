@@ -2,9 +2,7 @@
 
 import React from "react";
 import Image from "next/image";
-import { CONNECTED_APPS, EXPLORE_APPS } from "@/lib/constants/apps";
-
-const ALL_APPS = [...CONNECTED_APPS, ...EXPLORE_APPS];
+import { CONNECTED_APPS } from "@/lib/constants/apps";
 
 export default function ConnectedAppsPage() {
   return (
@@ -18,13 +16,13 @@ export default function ConnectedAppsPage() {
           <div className="dash-card">
             <div className="connected-apps__header">
               <h2 className="dash-card__title">Explore apps</h2>
-              <span className="connected-apps__count">{ALL_APPS.length} apps</span>
+              <span className="connected-apps__count">{CONNECTED_APPS.length} apps</span>
             </div>
             <p className="dash-card__desc">
               Apps built on the AT Protocol. Use your Certified identity to get started.
             </p>
             <div className="connected-apps__list">
-              {ALL_APPS.map((app) => (
+              {CONNECTED_APPS.map((app) => (
                 <a
                   key={app.name}
                   href={app.url}

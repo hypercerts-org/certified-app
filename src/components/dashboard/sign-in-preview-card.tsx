@@ -6,7 +6,7 @@ export default function SignInPreviewCard() {
         Use your Certified identity to sign in to any app in the AT Protocol ecosystem. Your data and identity travel with you.
       </p>
       <div className="dash-card__preview">
-        <p className="dash-card__preview-label">Preview</p>
+        <p className="dash-card__preview-label">Look out for</p>
         <div className="dash-card__preview-btn">
           <img src="/assets/certified_brandmark.svg" alt="" className="dash-card__preview-icon" />
           Sign in with Certified
