@@ -74,7 +74,7 @@ export default function HomeClient() {
             <div className="dash-card">
               <div className="profile-card__banner">
                 {bannerUrl ? (
-                  <Image src={bannerUrl} alt="" width={800} height={160} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <Image src={bannerUrl} alt="" fill style={{ objectFit: "cover" }} />
                 ) : null}
               </div>
               <div className="profile-card">
@@ -86,12 +86,7 @@ export default function HomeClient() {
                     <p className="profile-card__bio">{profile.description}</p>
                   )}
                 </div>
-                <Link href="/settings/edit-profile">
-                  <Button variant="secondary" size="sm">
-                    <Pencil size={14} />
-                    Edit Profile
-                  </Button>
-                </Link>
+
               </div>
             </div>
 
@@ -100,8 +95,15 @@ export default function HomeClient() {
 
             {/* Account Details card */}
             <div className="dash-card mt-4">
-              <h2 className="dash-card__title">Account Details</h2>
-              <p className="dash-card__desc">This information is shared when you sign in to apps using Certified.</p>
+              <div className="username-card__header">
+                <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Account Details</h2>
+                <Link href="/settings/edit-profile">
+                  <Button variant="ghost" size="sm">
+                    <Pencil size={14} />
+                    Edit
+                  </Button>
+                </Link>
+              </div>
               {isFallback && (
                 <div className="profile-fallback-note">
                   <p>This information was imported from your Bluesky profile. Edit your Certified profile to customize it.</p>
