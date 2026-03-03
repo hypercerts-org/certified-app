@@ -1,3 +1,10 @@
+export function asHex(s: string): `0x${string}` {
+  if (!s.startsWith("0x")) {
+    throw new Error(`Expected hex string starting with "0x", got: ${s}`)
+  }
+  return s as `0x${string}`
+}
+
 export interface EIP712Message {
   did: string
   evmAddress: string

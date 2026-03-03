@@ -5,6 +5,7 @@ import { verifyTypedData } from "viem"
 import { listAttestations } from "@/lib/identity-link/pds"
 import { ATTESTATION_DOMAIN, ATTESTATION_TYPES } from "@/lib/identity-link/attestation"
 import type { AttestationRecord, VerifiedAttestation } from "@/lib/identity-link/types"
+import { asHex } from "@/lib/identity-link/types"
 
 interface UseIdentityLinksResult {
   attestations: VerifiedAttestation[]
@@ -48,19 +49,19 @@ export function useIdentityLinks(
             const msg = record.value.message
             const typedMessage = {
               did: msg.did,
-              evmAddress: msg.evmAddress as `0x${string}`,
+              evmAddress: asHex(msg.evmAddress),
               chainId: BigInt(msg.chainId),
               timestamp: BigInt(msg.timestamp),
               nonce: BigInt(msg.nonce),
             }
 
             const isValid = await verifyTypedData({
-              address: record.value.address as `0x${string}`,
+              address: asHex(record.value.address),
               domain: ATTESTATION_DOMAIN,
               types: ATTESTATION_TYPES,
               primaryType: "Attestation",
               message: typedMessage,
-              signature: record.value.signature as `0x${string}`,
+              signature: asHex(record.value.signature),
             })
 
             return {

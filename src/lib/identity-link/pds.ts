@@ -1,6 +1,7 @@
 "use client"
 
 import type { AttestationRecord, Attestation, EIP712Message } from "./types"
+import type { ListRecordsResponse, PutRecordResponse } from "@/lib/types/api"
 import { ATTESTATION_COLLECTION, buildRecordKey } from "./attestation"
 import { authFetch } from "@/lib/auth/fetch"
 
@@ -32,7 +33,7 @@ export async function listAttestations(
     const data = await res.json().catch(() => ({}))
     throw new Error((data as { error?: string }).error || res.statusText)
   }
-  const data = await res.json()
+  const data: ListRecordsResponse = await res.json()
   const rawRecords: { uri: string; cid: string; value: unknown }[] = data.records ?? []
   return rawRecords
     .filter((record) => isAttestation(record.value))
@@ -80,7 +81,7 @@ export async function storeAttestation(
     const data = await res.json().catch(() => ({}))
     throw new Error((data as { error?: string }).error || res.statusText)
   }
-  const data = await res.json()
+  const data: PutRecordResponse = await res.json()
   return { uri: data.uri, cid: data.cid }
 }
 

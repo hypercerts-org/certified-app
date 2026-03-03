@@ -1,4 +1,5 @@
 import type { EIP712Message } from "./types"
+import { asHex } from "./types"
 
 export const ATTESTATION_DOMAIN = {
   name: "ATProto EVM Attestation",
@@ -33,7 +34,7 @@ export function buildAttestationMessage(
 } {
   const timestamp = BigInt(Math.floor(Date.now() / 1000))
   const nonce = BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER))
-  const evmAddress = address.toLowerCase() as `0x${string}`
+  const evmAddress = asHex(address.toLowerCase())
 
   return {
     typed: {
