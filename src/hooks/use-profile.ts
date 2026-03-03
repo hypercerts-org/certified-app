@@ -15,10 +15,10 @@ export function useProfile(): {
 } {
   const { isAuthenticated, did, pdsUrl } = useAuth()
   const [profile, setProfile] = useState<CertifiedProfile | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchProfile = useCallback(async () => {
+  const fetchProfile = useCallback(async (signal?: AbortSignal) => {
     // If not authenticated, return null profile without error
     if (!isAuthenticated || !did) {
       setProfile(null)
@@ -31,18 +31,24 @@ export function useProfile(): {
       setIsLoading(true)
       setError(null)
       const fetchedProfile = await getProfile(did)
+      if (signal?.aborted) return
       setProfile(fetchedProfile)
     } catch (err) {
+      if (signal?.aborted) return
       console.error("Failed to fetch profile:", err)
       setError(err instanceof Error ? err.message : "Failed to fetch profile")
     } finally {
-      setIsLoading(false)
+      if (!signal?.aborted) {
+        setIsLoading(false)
+      }
     }
   }, [isAuthenticated, did])
 
   // Fetch profile on mount and when did changes
   useEffect(() => {
-    fetchProfile()
+    const controller = new AbortController()
+    fetchProfile(controller.signal)
+    return () => controller.abort()
   }, [fetchProfile])
 
   // Compute avatar and banner URLs

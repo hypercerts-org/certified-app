@@ -17,10 +17,10 @@ export function useIdentityLinks(
   did: string | null
 ): UseIdentityLinksResult {
   const [attestations, setAttestations] = useState<VerifiedAttestation[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(did ? true : false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchAndVerify = useCallback(async () => {
+  const fetchAndVerify = useCallback(async (signal?: AbortSignal) => {
     if (!did) {
       setAttestations([])
       setIsLoading(false)
@@ -78,17 +78,23 @@ export function useIdentityLinks(
         })
       )
 
+      if (signal?.aborted) return
       setAttestations(verified)
     } catch (err) {
+      if (signal?.aborted) return
       setError(err instanceof Error ? err.message : "Failed to fetch attestations")
       setAttestations([])
     } finally {
-      setIsLoading(false)
+      if (!signal?.aborted) {
+        setIsLoading(false)
+      }
     }
   }, [did])
 
   useEffect(() => {
-    fetchAndVerify()
+    const controller = new AbortController()
+    fetchAndVerify(controller.signal)
+    return () => controller.abort()
   }, [fetchAndVerify])
 
   return {
