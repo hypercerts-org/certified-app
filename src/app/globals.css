@@ -1086,7 +1086,9 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--color-off-white);
   border-radius: var(--radius);
   padding: 20px;
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .dash-card__preview-label {
@@ -1482,7 +1484,7 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid #f5d76e;
   border-radius: var(--radius);
   padding: 12px 16px;
-  margin-bottom: 16px;
+  margin-top: 16px;
 }
 
 .profile-fallback-note p {
