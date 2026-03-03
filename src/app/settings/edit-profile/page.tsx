@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import { putProfile, uploadAvatar, uploadBanner, getAvatarUrl, getBannerUrl } from "@/lib/atproto/profile";
@@ -55,25 +56,42 @@ export default function EditProfilePage() {
 
   return (
     <AuthGuard>
-      <div className="app-page">
-        <div className="app-page__inner">
-          {isLoading ? (
-            <div className="flex items-center justify-center min-h-[50vh]">
-              <LoadingSpinner size="md" />
-            </div>
-          ) : (
-            <ProfileEditForm
-              initialProfile={profile}
-              onSave={handleSave}
-              isSaving={isSaving}
-              saveError={saveError}
-              onAvatarUpload={handleAvatarUpload}
-              onBannerUpload={handleBannerUpload}
-              currentAvatarUrl={currentAvatarUrl}
-              currentBannerUrl={currentBannerUrl}
-              fallbackInitials={fallbackInitials}
-            />
-          )}
+      <div className="dashboard">
+        {/* Top bar */}
+        <div className="dashboard__topbar">
+          <h1 className="dashboard__page-title">Edit Profile</h1>
+          <div className="dashboard__topbar-right">
+            <button
+              className="dashboard__back-btn"
+              onClick={() => router.push("/")}
+            >
+              <ArrowLeft size={16} />
+              Back to Profile
+            </button>
+          </div>
+        </div>
+
+        {/* Main content — single column, no right sidebar */}
+        <div className="dashboard__body dashboard__body--single">
+          <div className="dashboard__main">
+            {isLoading ? (
+              <div className="edit-profile__loading">
+                <LoadingSpinner size="md" />
+              </div>
+            ) : (
+              <ProfileEditForm
+                initialProfile={profile}
+                onSave={handleSave}
+                isSaving={isSaving}
+                saveError={saveError}
+                onAvatarUpload={handleAvatarUpload}
+                onBannerUpload={handleBannerUpload}
+                currentAvatarUrl={currentAvatarUrl}
+                currentBannerUrl={currentBannerUrl}
+                fallbackInitials={fallbackInitials}
+              />
+            )}
+          </div>
         </div>
       </div>
     </AuthGuard>

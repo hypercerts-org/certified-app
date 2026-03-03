@@ -21,13 +21,11 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children, fallback }) => {
     }
   }, [isLoading, isAuthenticated, router]);
 
-  // Show loading fallback while checking auth
+  // Show loading spinner centered in the content area
+  // The sidebar is already visible via AppShell
   if (isLoading) {
     return (
-      <div
-        className="min-h-[50vh] flex items-center justify-center"
-        aria-busy="true"
-      >
+      <div className="auth-guard-loading" aria-busy="true">
         {fallback || <LoadingSpinner size="md" />}
       </div>
     );

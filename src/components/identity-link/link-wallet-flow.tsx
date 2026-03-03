@@ -40,21 +40,21 @@ const LinkWalletFlow: React.FC<LinkWalletFlowProps> = ({ did, onComplete, onCanc
     const availableConnectors = connectors.filter((c) => (c as { ready?: boolean }).ready !== false)
 
     return (
-      <div className="p-4 rounded-sm bg-gray-50 border border-gray-100">
-        <p className="font-sans text-overline tracking-[0.12em] text-gray-400 mb-3">Connect a wallet</p>
-        <div className="flex flex-col gap-2">
+      <div className="wallet-flow">
+        <p className="wallet-flow__label">Connect a wallet</p>
+        <div className="wallet-flow__connectors">
           {availableConnectors.map((connector) => (
             <Button
               key={connector.id}
               variant="secondary"
-              className="w-full"
+              className="wallet-flow__connector-btn"
               onClick={() => connect({ connector })}
             >
               {connector.name}
             </Button>
           ))}
         </div>
-        <div className="flex justify-end mt-3">
+        <div className="wallet-flow__footer">
           <Button variant="ghost" size="sm" onClick={onCancel}>
             Cancel
           </Button>
@@ -65,27 +65,27 @@ const LinkWalletFlow: React.FC<LinkWalletFlowProps> = ({ did, onComplete, onCanc
 
   // Step 2: Confirm & Sign
   return (
-    <div className="p-4 rounded-sm bg-gray-50 border border-gray-100">
-      <p className="font-sans text-overline tracking-[0.12em] text-gray-400 mb-3">Sign to link</p>
+    <div className="wallet-flow">
+      <p className="wallet-flow__label">Sign to link</p>
       <div>
-        <p className="font-sans text-body-sm text-gray-700">Wallet: {address ? truncateAddress(address) : ""}</p>
-        <p className="font-sans text-body-sm text-gray-400 mt-1">Chain: {chainName}</p>
-        <p className="font-sans text-body-sm text-gray-400 mt-2">
+        <p className="wallet-flow__detail">Wallet: {address ? truncateAddress(address) : ""}</p>
+        <p className="wallet-flow__detail wallet-flow__detail--muted">Chain: {chainName}</p>
+        <p className="wallet-flow__detail wallet-flow__detail--muted wallet-flow__detail--spaced">
           Your wallet will ask you to sign a message proving you own this address. No transaction will be sent.
         </p>
       </div>
 
       {error && (
-        <p className="font-sans text-body-sm text-error mt-2">{error}</p>
+        <p className="wallet-flow__error">{error}</p>
       )}
 
       {!isSupported && (
-        <p className="font-sans text-body-sm text-warning mt-2">
+        <p className="wallet-flow__warning">
           Switch to Ethereum, Base, Optimism, or Arbitrum to continue.
         </p>
       )}
 
-      <div className="flex gap-2 mt-3">
+      <div className="wallet-flow__actions">
         <Button
           variant="primary"
           size="sm"

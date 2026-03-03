@@ -3,9 +3,14 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/lib/auth/auth-context";
 
 const Footer: React.FC = () => {
   const pathname = usePathname();
+  const { isAuthenticated } = useAuth();
+
+  // Hide footer for authenticated users (sidebar layout replaces it)
+  if (isAuthenticated) return null;
 
   // Hide footer on landing page (has its own footer)
   if (pathname === "/") return null;
