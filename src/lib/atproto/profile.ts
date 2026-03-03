@@ -25,10 +25,12 @@ const ALLOWED_IMAGE_TYPES = [
  * @returns The profile record or null if it doesn't exist
  */
 export async function getProfile(
-  did: string
+  did: string,
+  signal?: AbortSignal
 ): Promise<CertifiedProfile | null> {
   const res = await authFetch(
-    `/api/xrpc/com/atproto/repo/getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(COLLECTION)}&rkey=${encodeURIComponent(RKEY)}`
+    `/api/xrpc/com/atproto/repo/getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(COLLECTION)}&rkey=${encodeURIComponent(RKEY)}`,
+    { signal }
   );
   if (!res.ok) {
     if (res.status === 400 || res.status === 404) return null;
