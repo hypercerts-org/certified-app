@@ -22,7 +22,7 @@ function isOurHandle(handle: string | null, pdsUrl?: string): boolean {
     } catch { /* ignore invalid URL */ }
   }
   // Also match known certified domains
-  return handle.endsWith(".certified.is") || handle.endsWith(".certified.app");
+  return handle.endsWith(".certified.app");
 }
 
 export default function UsernameCard({ handle, pdsUrl }: UsernameCardProps) {
@@ -95,7 +95,7 @@ export default function UsernameCard({ handle, pdsUrl }: UsernameCardProps) {
               label="New username"
               value={newHandle}
               onChange={(e) => setNewHandle(e.target.value)}
-              placeholder="your-username.certified.is"
+              placeholder="your-username.certified.app"
               error={error ?? undefined}
             />
             <div className="username-card__actions">

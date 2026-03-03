@@ -8,10 +8,7 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "**.certified.app",
       },
-      {
-        protocol: "https",
-        hostname: "**.certified.is",
-      },
+
     ],
   },
 };
