@@ -55,6 +55,8 @@ export function useSession(): {
 
   useEffect(() => {
     if (!isAuthenticated) {
+      cachedPromise = null;
+      cachedResult = null;
       setIsLoading(false);
       return;
     }
@@ -83,4 +85,9 @@ export function useSession(): {
   }, [isAuthenticated]);
 
   return { handle, email, isLoading, error };
+}
+
+export function clearSessionCache(): void {
+  cachedPromise = null;
+  cachedResult = null;
 }
