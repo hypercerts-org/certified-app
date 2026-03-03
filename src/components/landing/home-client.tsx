@@ -1,31 +1,36 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { Pencil } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useNavbarVariant } from "@/lib/navbar-context";
 import { useProfile } from "@/hooks/use-profile";
-import { authFetch } from "@/lib/auth/fetch";
+import { useSession } from "@/hooks/use-session";
 import Avatar from "@/components/ui/avatar";
+import { getInitials } from "@/lib/utils/initials";
 import Button from "@/components/ui/button";
-import SignInPreviewCard from "@/components/dashboard/sign-in-preview-card";
-import IdentityOverviewCard from "@/components/dashboard/identity-overview-card";
-import RecentActivityCard from "@/components/dashboard/recent-activity-card";
-import ConnectedAppsList from "@/components/dashboard/connected-apps-list";
-import WhatYouGet from "@/components/landing/sections/what-you-get";
-import HowItWorks from "@/components/landing/sections/how-it-works";
-import PartnerApps from "@/components/landing/sections/partner-apps";
-import BuiltForTrust from "@/components/landing/sections/built-for-trust";
-import Faq from "@/components/landing/sections/faq";
-import ReadyCta from "@/components/landing/sections/ready-cta";
+
+// Dashboard components — only loaded for authenticated users
+const SignInPreviewCard = dynamic(() => import("@/components/dashboard/sign-in-preview-card"));
+const IdentityOverviewCard = dynamic(() => import("@/components/dashboard/identity-overview-card"));
+const RecentActivityCard = dynamic(() => import("@/components/dashboard/recent-activity-card"));
+const ConnectedAppsList = dynamic(() => import("@/components/dashboard/connected-apps-list"));
+
+// Landing sections — only loaded for unauthenticated users
+const WhatYouGet = dynamic(() => import("@/components/landing/sections/what-you-get"));
+const HowItWorks = dynamic(() => import("@/components/landing/sections/how-it-works"));
+const PartnerApps = dynamic(() => import("@/components/landing/sections/partner-apps"));
+const BuiltForTrust = dynamic(() => import("@/components/landing/sections/built-for-trust"));
+const Faq = dynamic(() => import("@/components/landing/sections/faq"));
+const ReadyCta = dynamic(() => import("@/components/landing/sections/ready-cta"));
 
 export default function HomeClient() {
   const { isLoading, isAuthenticated, did, openSignUp } = useAuth();
   const { profile, avatarUrl } = useProfile();
   const { setVariant } = useNavbarVariant();
-  const [handle, setHandle] = useState("");
-  const [email, setEmail] = useState("");
+  const { handle, email } = useSession();
 
   useEffect(() => {
     if (!isAuthenticated && !isLoading) {
@@ -36,24 +41,7 @@ export default function HomeClient() {
     };
   }, [isAuthenticated, isLoading, setVariant]);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      authFetch("/api/xrpc/com/atproto/server/getSession")
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data?.handle) setHandle(data.handle);
-          if (data?.email) setEmail(data.email);
-        })
-        .catch(() => {});
-    }
-  }, [isAuthenticated]);
-
-  const initials = (() => {
-    const name = profile?.displayName || null;
-    if (!name) return did?.slice(4, 6) || "?";
-    const parts = name.trim().split(/\s+/);
-    return parts.length >= 2 ? `${parts[0][0]}${parts[1][0]}` : name.slice(0, 2);
-  })();
+  const initials = getInitials(profile?.displayName, did);
 
   if (isLoading) {
     return (
@@ -102,26 +90,26 @@ export default function HomeClient() {
 
             {/* Personal Information card */}
             <div className="dash-card mt-4">
-              <h3 className="dash-card__title">Personal Information</h3>
+              <h2 className="dash-card__title">Personal Information</h2>
               <p className="dash-card__desc">This information is shared when you sign in to apps using Certified.</p>
-              <div className="personal-info__grid">
+              <dl className="personal-info__grid">
                 <div>
-                  <label className="personal-info__label">First Name</label>
-                  <div className="personal-info__field">{profile?.displayName?.split(" ")[0] || "—"}</div>
+                  <dt className="personal-info__label">First Name</dt>
+                  <dd className="personal-info__field">{profile?.displayName?.split(" ")[0] || "—"}</dd>
                 </div>
                 <div>
-                  <label className="personal-info__label">Last Name</label>
-                  <div className="personal-info__field">{profile?.displayName?.split(" ").slice(1).join(" ") || "—"}</div>
+                  <dt className="personal-info__label">Last Name</dt>
+                  <dd className="personal-info__field">{profile?.displayName?.split(" ").slice(1).join(" ") || "—"}</dd>
                 </div>
-              </div>
-              <div className="mt-4">
-                <label className="personal-info__label">Email Address</label>
-                <div className="personal-info__field">{email || "—"}</div>
-              </div>
-              <div className="mt-4">
-                <label className="personal-info__label">Handle (DID)</label>
-                <div className="personal-info__field personal-info__field--mono">{did}</div>
-              </div>
+                <div className="mt-4">
+                  <dt className="personal-info__label">Email Address</dt>
+                  <dd className="personal-info__field">{email || "—"}</dd>
+                </div>
+                <div className="mt-4">
+                  <dt className="personal-info__label">Handle (DID)</dt>
+                  <dd className="personal-info__field personal-info__field--mono">{did}</dd>
+                </div>
+              </dl>
             </div>
 
             {/* Connected Apps */}
@@ -173,7 +161,7 @@ export default function HomeClient() {
           <p>&copy; 2026 Certified. All rights reserved.</p>
           <div className="landing-footer__links">
             <Link href="/terms">Terms</Link>
-            <Link href="/privacy">Policy</Link>
+            <Link href="/privacy">Privacy</Link>
           </div>
         </div>
       </footer>

@@ -1,9 +1,5 @@
-const CONNECTED_APPS = [
-  { name: "Ma Earth", desc: "Collective Funding for Regenerating Earth", logo: "/assets/partners/maearth_logo.jpeg" },
-  { name: "GainForest", desc: "Co-creating a fair future for nature stewards", logo: "/assets/partners/gainforest_logo.jpeg" },
-  { name: "Silvi", desc: "Planting the right trees in the right place at the right time", logo: "/assets/partners/silvi_logo.jpeg" },
-  { name: "Hyperboards", desc: "Visualizing and recognizing those who create real value", logo: "/assets/hyperboards_brandmark.webp" },
-];
+import Image from "next/image";
+import { CONNECTED_APPS } from "@/lib/constants/apps";
 
 export default function ConnectedAppsList() {
   return (
@@ -17,14 +13,14 @@ export default function ConnectedAppsList() {
         {CONNECTED_APPS.map((app) => (
           <div key={app.name} className="connected-apps__item">
             <div className="connected-apps__icon">
-              <img src={app.logo} alt="" className="connected-apps__logo" />
+              <Image src={app.logo} alt="" width={40} height={40} className="connected-apps__logo" />
             </div>
             <div className="connected-apps__info">
               <p className="connected-apps__name">{app.name}</p>
               <p className="connected-apps__desc">{app.desc}</p>
             </div>
             <span className="connected-apps__status">
-              <span className="connected-apps__dot" />
+              <span className="connected-apps__dot" aria-hidden="true" />
               Connected
             </span>
           </div>

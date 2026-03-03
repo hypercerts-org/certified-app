@@ -12,6 +12,7 @@ import { resolvePdsUrl } from "@/lib/atproto/did";
 import SignInModal from "@/components/ui/sign-in-modal";
 import ProviderRedirectOverlay from "@/components/ui/provider-redirect-overlay";
 import { setOnUnauthorized } from "./fetch";
+import { clearSessionCache } from "@/hooks/use-session";
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
@@ -208,6 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Clear local state immediately (optimistic sign-out).
     // Server-side session cleanup is best-effort; the client should always
     // clear its local state even if the fetch throws.
+    clearSessionCache();
     setIsAuthenticated(false);
     setDid(null);
     setPdsUrl(null);

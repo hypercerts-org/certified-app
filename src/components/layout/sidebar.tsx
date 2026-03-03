@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { User, Shield, LayoutGrid, Lock, Wallet, LogOut, X } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
-import { authFetch } from "@/lib/auth/fetch";
+import { useSession } from "@/hooks/use-session";
 import Avatar from "@/components/ui/avatar";
+import { getInitials } from "@/lib/utils/initials";
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -17,35 +18,18 @@ interface SidebarProps {
 export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const { signOut } = useAuth();
   const { profile, avatarUrl } = useProfile();
+  const { handle } = useSession();
   const pathname = usePathname();
-  const [handle, setHandle] = useState("");
-
-  useEffect(() => {
-    authFetch("/api/xrpc/com/atproto/server/getSession")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.handle) setHandle(data.handle);
-      })
-      .catch(() => {});
-  }, []);
 
   // Close sidebar on navigation (mobile)
   useEffect(() => {
     if (onClose) onClose();
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const initials = profile?.displayName
-    ? (() => {
-        const parts = profile.displayName.trim().split(/\s+/);
-        if (parts.length >= 2) {
-          return `${parts[0][0]}${parts[1][0]}`;
-        }
-        return profile.displayName.slice(0, 2);
-      })()
-    : "?";
+  const initials = getInitials(profile?.displayName, null);
 
   return (
-    <aside className={`sidebar ${isOpen ? "sidebar--open" : ""}`}>
+    <aside className={`sidebar ${isOpen ? "sidebar--open" : ""}`} aria-label="Main navigation">
       {/* Top: Logo + close button */}
       <div className="sidebar__logo">
         <Link href="/">
@@ -65,7 +49,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           <li>
             <Link
               href="/"
-              className={`sidebar__item ${pathname === "/" ? "sidebar__item--active" : ""}`}
+              className={`sidebar__item ${pathname === "/" || pathname === "/settings/edit-profile" ? "sidebar__item--active" : ""}`}
             >
               <User size={18} />
               Profile

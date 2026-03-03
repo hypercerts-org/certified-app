@@ -20,13 +20,6 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
 
   const [useFallback, setUseFallback] = React.useState(false);
 
-  React.useEffect(() => {
-    // Check if brandmark SVG exists
-    const img = new Image();
-    img.src = "/assets/certified_brandmark.svg";
-    img.onerror = () => setUseFallback(true);
-  }, []);
-
   if (useFallback) {
     // Fallback: spinning circle in accent color
     return (
@@ -46,6 +39,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
         src="/assets/certified_brandmark.svg"
         alt="Loading"
         className={`${sizeMap[size]} animate-pulse`}
+        onError={() => setUseFallback(true)}
         style={{
           animationDuration: "1.5s",
           animationTimingFunction: "ease-in-out",

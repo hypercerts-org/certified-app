@@ -5,6 +5,7 @@ import { verifyTypedData } from "viem"
 import { listAttestations } from "@/lib/identity-link/pds"
 import { ATTESTATION_DOMAIN, ATTESTATION_TYPES } from "@/lib/identity-link/attestation"
 import type { AttestationRecord, VerifiedAttestation } from "@/lib/identity-link/types"
+import { asHex } from "@/lib/identity-link/types"
 
 interface UseIdentityLinksResult {
   attestations: VerifiedAttestation[]
@@ -17,10 +18,10 @@ export function useIdentityLinks(
   did: string | null
 ): UseIdentityLinksResult {
   const [attestations, setAttestations] = useState<VerifiedAttestation[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(did ? true : false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchAndVerify = useCallback(async () => {
+  const fetchAndVerify = useCallback(async (signal?: AbortSignal) => {
     if (!did) {
       setAttestations([])
       setIsLoading(false)
@@ -35,12 +36,12 @@ export function useIdentityLinks(
 
       const verified: VerifiedAttestation[] = await Promise.all(
         records.map(async (record) => {
-          // Only verify EOA signatures; skip on-chain verification for erc1271/erc6492
-          if (record.value.signatureType !== "eoa") {
+          // Only verify EOA signatures; on-chain verification not yet supported
+          if (record.value.signatureType === "erc1271" || record.value.signatureType === "erc6492") {
             return {
               ...record,
-              verified: true,
-              verificationError: null,
+              verified: false,
+              verificationError: "On-chain verification not yet supported",
             }
           }
 
@@ -48,19 +49,19 @@ export function useIdentityLinks(
             const msg = record.value.message
             const typedMessage = {
               did: msg.did,
-              evmAddress: msg.evmAddress as `0x${string}`,
+              evmAddress: asHex(msg.evmAddress),
               chainId: BigInt(msg.chainId),
               timestamp: BigInt(msg.timestamp),
               nonce: BigInt(msg.nonce),
             }
 
             const isValid = await verifyTypedData({
-              address: record.value.address as `0x${string}`,
+              address: asHex(record.value.address),
               domain: ATTESTATION_DOMAIN,
               types: ATTESTATION_TYPES,
               primaryType: "Attestation",
               message: typedMessage,
-              signature: record.value.signature as `0x${string}`,
+              signature: asHex(record.value.signature),
             })
 
             return {
@@ -78,17 +79,23 @@ export function useIdentityLinks(
         })
       )
 
+      if (signal?.aborted) return
       setAttestations(verified)
     } catch (err) {
+      if (signal?.aborted) return
       setError(err instanceof Error ? err.message : "Failed to fetch attestations")
       setAttestations([])
     } finally {
-      setIsLoading(false)
+      if (!signal?.aborted) {
+        setIsLoading(false)
+      }
     }
   }, [did])
 
   useEffect(() => {
-    fetchAndVerify()
+    const controller = new AbortController()
+    fetchAndVerify(controller.signal)
+    return () => controller.abort()
   }, [fetchAndVerify])
 
   return {

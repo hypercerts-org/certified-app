@@ -16,7 +16,7 @@ interface UseAttestationSigningResult {
 }
 
 export function useAttestationSigning(
-  did: string | null
+  did: string
 ): UseAttestationSigningResult {
   const { isAuthenticated } = useAuth()
   const [isSigning, setIsSigning] = useState(false)
@@ -33,7 +33,7 @@ export function useAttestationSigning(
 
   const signAndStore = useCallback(async (): Promise<boolean> => {
     // Check preconditions
-    if (!isAuthenticated || !did) {
+    if (!isAuthenticated) {
       setError("Not authenticated. Please log in first.")
       return false
     }

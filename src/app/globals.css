@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -14,15 +12,29 @@
   --color-off-white: #F7F8FA;
   --color-gray-100: #EEF0F4;
   --color-light-gray: #E2E5EB;
-  --color-mid-gray: #8A92A0;
+  --color-mid-gray: #6B7280;
   --color-dark-gray: #3B4251;
 
   /* Accent Variations */
-  --color-sky-blue: #A3CDF2;
-  --color-deep-blue: #1A3A6B;
+  --color-accent-hover: #4e93d8;
+
+  /* Borders */
+  --border-subtle: rgba(15, 37, 68, 0.06);
+  --border-light: rgba(15, 37, 68, 0.08);
+  --border-default: rgba(15, 37, 68, 0.1);
+  --border-medium: rgba(15, 37, 68, 0.12);
+  --border-hover: rgba(15, 37, 68, 0.2);
+  --border-hover-soft: rgba(15, 37, 68, 0.18);
+  --border-strong: rgba(15, 37, 68, 0.25);
+
+  /* Navy overlays */
+  --navy-overlay-30: rgba(15, 37, 68, 0.3);
+  --navy-overlay-70: rgba(15, 37, 68, 0.7);
+  --navy-overlay-85: rgba(15, 37, 68, 0.85);
 
   /* Semantic */
   --color-success: #2ECC71;
+  --color-success-text: #047857;
   --color-warning: #F5A623;
   --color-error: #E74C3C;
   --color-info: var(--color-accent);
@@ -39,6 +51,14 @@
   --navbar-height: 56px;
 }
 
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -47,7 +67,7 @@
 }
 
 body {
-  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
   color: var(--color-dark-gray);
   background: var(--color-white);
 }
@@ -110,7 +130,7 @@ h1, h2, h3, h4, h5, h6 {
 .navbar--default {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(15, 37, 68, 0.08);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .navbar--transparent {
@@ -118,7 +138,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .navbar--transparent.navbar--scrolled {
-  background: rgba(15, 37, 68, 0.85);
+  background: var(--navy-overlay-85);
   backdrop-filter: blur(12px);
 }
 
@@ -196,7 +216,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .hero__title {
-  font-family: Inter, system-ui, -apple-system, sans-serif;
   color: var(--color-white);
   font-size: clamp(2.5rem, 6vw + 1rem, 5rem);
   font-weight: 700;
@@ -206,7 +225,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .hero__subtitle {
-  font-family: Inter, system-ui, -apple-system, sans-serif;
   color: var(--color-mid-gray);
   font-size: clamp(1rem, 1.5vw + 0.5rem, 1.25rem);
   line-height: 1.5;
@@ -235,7 +253,6 @@ h1, h2, h3, h4, h5, h6 {
   gap: 10px;
   padding: 12px 28px;
   border-radius: var(--radius);
-  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 1rem;
   font-weight: 500;
   color: var(--color-white);
@@ -263,7 +280,6 @@ h1, h2, h3, h4, h5, h6 {
   gap: 8px;
   padding: 12px 28px;
   border-radius: var(--radius);
-  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 1rem;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.6);
@@ -339,8 +355,7 @@ h1, h2, h3, h4, h5, h6 {
 .landing-footer p,
 .landing-footer__links a {
   font-size: 0.75rem;
-  font-family: Inter, system-ui, -apple-system, sans-serif;
-  color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.6);
   text-decoration: none;
   transition: color var(--transition-fast);
 }
@@ -351,7 +366,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .landing-footer__links a:hover {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 @media (max-width: 768px) {
@@ -369,7 +384,7 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(15, 37, 68, 0.7);
+  background: var(--navy-overlay-70);
   backdrop-filter: blur(8px);
   animation: modalFadeIn 200ms ease-out;
 }
@@ -382,8 +397,8 @@ h1, h2, h3, h4, h5, h6 {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 24px 64px rgba(15, 37, 68, 0.3);
-  border: 1px solid rgba(15, 37, 68, 0.1);
+  box-shadow: 0 24px 64px var(--navy-overlay-30);
+  border: 1px solid var(--border-default);
   animation: modalSlideUp 300ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -402,7 +417,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .signin-modal__title {
-  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--color-navy);
@@ -439,7 +453,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .signin-modal__label {
-  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -453,7 +466,6 @@ h1, h2, h3, h4, h5, h6 {
   padding: 0 16px;
   border: 1.5px solid var(--color-light-gray);
   border-radius: var(--radius);
-  font-family: Inter, system-ui, sans-serif;
   font-size: 1rem;
   color: var(--color-navy);
   background: var(--color-white);
@@ -489,7 +501,6 @@ h1, h2, h3, h4, h5, h6 {
   height: 48px;
   border: none;
   border-radius: var(--radius);
-  font-family: Inter, system-ui, sans-serif;
   font-size: 1rem;
   font-weight: 500;
   color: var(--color-white);
@@ -499,7 +510,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .signin-modal__submit:hover:not(:disabled) {
-  background: #4e93d8;
+  background: var(--color-accent-hover);
 }
 
 .signin-modal__submit:focus-visible {
@@ -520,7 +531,6 @@ h1, h2, h3, h4, h5, h6 {
 .signin-modal__switch-btn {
   background: none;
   border: none;
-  font-family: Inter, system-ui, sans-serif;
   font-size: 0.8125rem;
   color: var(--color-mid-gray);
   cursor: pointer;
@@ -610,18 +620,17 @@ h1, h2, h3, h4, h5, h6 {
 /* ========== Cards (app pages) ========== */
 .app-card {
   background: var(--color-white);
-  border: 1px solid rgba(15, 37, 68, 0.1);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius);
   padding: 24px;
   transition: border-color var(--transition-fast);
 }
 
 .app-card:hover {
-  border-color: rgba(15, 37, 68, 0.18);
+  border-color: var(--border-hover-soft);
 }
 
 .app-card__label {
-  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -632,7 +641,7 @@ h1, h2, h3, h4, h5, h6 {
 /* ========== Footer ========== */
 .footer {
   padding: 24px 0;
-  border-top: 1px solid rgba(15, 37, 68, 0.06);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .footer__inner {
@@ -647,7 +656,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .footer__copy {
-  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.6875rem;
   color: var(--color-mid-gray);
 }
@@ -658,7 +666,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .footer__links a {
-  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.6875rem;
   color: var(--color-mid-gray);
   text-decoration: none;
@@ -716,7 +723,6 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: var(--radius);
   background: var(--color-white);
   border: 1px solid var(--color-light-gray);
-  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 1rem;
   font-weight: 500;
   color: var(--color-navy);
@@ -724,7 +730,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .landing-chip:hover {
-  border-color: rgba(15, 37, 68, 0.25);
+  border-color: var(--border-strong);
 }
 
 .landing-chip__logo {
@@ -742,7 +748,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .landing-chip__name {
-  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--color-navy);
@@ -750,7 +755,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .landing-chip__desc {
-  font-family: Inter, system-ui, sans-serif;
   font-size: 0.8125rem;
   font-weight: 400;
   color: var(--color-mid-gray);
@@ -758,7 +762,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .landing-footnote {
-  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.75rem;
   color: var(--color-mid-gray);
   margin-top: 8px;
@@ -809,7 +812,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .landing-section h2 {
-  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: clamp(1.25rem, 2vw + 0.5rem, 1.75rem);
   font-weight: 600;
   line-height: 1.3;
@@ -844,11 +846,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .landing-card:hover {
-  border-color: rgba(15, 37, 68, 0.2);
+  border-color: var(--border-hover);
 }
 
 .landing-card h3 {
-  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 1.0625rem;
   font-weight: 600;
   color: var(--color-navy);
@@ -860,14 +861,6 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.6;
   color: var(--color-mid-gray);
   margin: 0;
-}
-
-.landing-card__micro {
-  font-family: Inter, system-ui, -apple-system, sans-serif;
-  font-size: 0.6875rem;
-  color: var(--color-mid-gray);
-  opacity: 0.6;
-  margin-top: 8px;
 }
 
 /* ============================================================
@@ -976,14 +969,12 @@ h1, h2, h3, h4, h5, h6 {
   background: rgba(96, 161, 226, 0.1);
   border: 1px solid rgba(96, 161, 226, 0.2);
   color: var(--color-accent);
-  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 1rem;
   font-weight: 700;
   margin-bottom: 16px;
 }
 
 .landing-step h3 {
-  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 1rem;
   font-weight: 600;
   color: var(--color-white);
@@ -999,7 +990,6 @@ h1, h2, h3, h4, h5, h6 {
 
 .landing-reassurance {
   text-align: center;
-  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.4);
 }
@@ -1037,7 +1027,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .landing-trust-sub h3 {
-  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-white);
@@ -1073,7 +1062,7 @@ h1, h2, h3, h4, h5, h6 {
 /* ========== Dashboard Cards (right sidebar) ========== */
 .dash-card {
   background: var(--color-white);
-  border: 1px solid rgba(15, 37, 68, 0.1);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius);
   padding: 24px;
 }
@@ -1140,7 +1129,7 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: space-between;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid rgba(15, 37, 68, 0.06);
+  border-bottom: 1px solid var(--border-subtle);
   font-size: 0.875rem;
   color: var(--color-dark-gray);
 }
@@ -1230,7 +1219,7 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   gap: 14px;
   padding: 16px 0;
-  border-bottom: 1px solid rgba(15, 37, 68, 0.06);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .connected-apps__item:last-child {
@@ -1248,7 +1237,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .connected-apps__item--link + .connected-apps__item--link {
-  border-top: 1px solid rgba(15, 37, 68, 0.06);
+  border-top: 1px solid var(--border-subtle);
   border-radius: 0;
 }
 
@@ -1309,7 +1298,7 @@ h1, h2, h3, h4, h5, h6 {
   gap: 6px;
   font-size: 0.75rem;
   font-weight: 500;
-  color: var(--color-success);
+  color: var(--color-success-text);
   flex-shrink: 0;
 }
 
@@ -1356,7 +1345,7 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: space-between;
   padding: 16px 32px;
   background: var(--color-white);
-  border-bottom: 1px solid rgba(15, 37, 68, 0.08);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .dashboard__page-title {
@@ -1369,43 +1358,6 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-.dashboard__search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: var(--radius);
-  border: 1px solid rgba(15, 37, 68, 0.1);
-  background: var(--color-off-white);
-  font-size: 0.8125rem;
-  color: var(--color-mid-gray);
-  cursor: pointer;
-  transition: border-color var(--transition-fast);
-}
-
-.dashboard__search:hover {
-  border-color: rgba(15, 37, 68, 0.2);
-}
-
-.dashboard__notification {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: none;
-  color: var(--color-mid-gray);
-  cursor: pointer;
-  border-radius: var(--radius);
-  transition: all var(--transition-fast);
-}
-
-.dashboard__notification:hover {
-  background: var(--color-off-white);
-  color: var(--color-navy);
 }
 
 .dashboard__body {
@@ -1475,7 +1427,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .personal-info__field {
   padding: 12px 16px;
-  border: 1px solid rgba(15, 37, 68, 0.12);
+  border: 1px solid var(--border-medium);
   border-radius: var(--radius);
   font-size: 0.875rem;
   color: var(--color-navy);
@@ -1527,7 +1479,7 @@ h1, h2, h3, h4, h5, h6 {
 .sidebar__section-label {
   font-size: 0.6875rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.65);
   letter-spacing: 0.06em;
   padding: 0 12px;
   margin-bottom: 8px;
@@ -1546,11 +1498,11 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 12px 12px;
   border-radius: var(--radius);
   font-size: 0.875rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.75);
   text-decoration: none;
   transition: all var(--transition-fast);
 }
@@ -1595,7 +1547,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .sidebar__user-handle {
   font-size: 0.6875rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.65);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1610,6 +1562,11 @@ h1, h2, h3, h4, h5, h6 {
   cursor: pointer;
   border-radius: var(--radius);
   transition: all var(--transition-fast);
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .sidebar__signout:hover {
@@ -1657,7 +1614,7 @@ h1, h2, h3, h4, h5, h6 {
   gap: 12px;
   padding-top: 24px;
   margin-top: 8px;
-  border-top: 1px solid rgba(15, 37, 68, 0.08);
+  border-top: 1px solid var(--border-light);
 }
 
 /* Dashboard body single-column variant (no right sidebar) */
@@ -1680,7 +1637,7 @@ h1, h2, h3, h4, h5, h6 {
   gap: 6px;
   padding: 8px 16px;
   border-radius: var(--radius);
-  border: 1px solid rgba(15, 37, 68, 0.1);
+  border: 1px solid var(--border-default);
   background: var(--color-white);
   font-size: 0.8125rem;
   font-weight: 500;
@@ -1691,7 +1648,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .dashboard__back-btn:hover {
   background: var(--color-off-white);
-  border-color: rgba(15, 37, 68, 0.2);
+  border-color: var(--border-hover);
 }
 
 /* ========== My Data Page ========== */
@@ -1740,7 +1697,7 @@ h1, h2, h3, h4, h5, h6 {
 .my-data__list-header {
   padding-bottom: 12px;
   margin-bottom: 4px;
-  border-bottom: 1px solid rgba(15, 37, 68, 0.06);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .my-data__list-count {
@@ -1755,7 +1712,7 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: space-between;
   gap: 16px;
   padding: 16px 0;
-  border-bottom: 1px solid rgba(15, 37, 68, 0.06);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .my-data__record:last-child {
@@ -1798,6 +1755,7 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.6875rem;
   font-family: monospace;
   color: var(--color-mid-gray);
+  word-break: break-all;
 }
 
 .my-data__code {
@@ -1807,6 +1765,7 @@ h1, h2, h3, h4, h5, h6 {
   padding: 2px 6px;
   border-radius: var(--radius);
   color: var(--color-navy);
+  overflow-wrap: break-word;
 }
 
 .my-data__did-info {
@@ -1896,21 +1855,16 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ========== Security Page ========== */
-.security__section {
+.security__section,
+.security__2fa {
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid rgba(15, 37, 68, 0.06);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .security__loading {
   font-size: 0.8125rem;
   color: var(--color-mid-gray);
-}
-
-.security__2fa {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(15, 37, 68, 0.06);
 }
 
 .security__2fa-status {
@@ -1932,7 +1886,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .security__2fa-badge--on {
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(46, 204, 113, 0.1);
   color: var(--color-success);
 }
 
@@ -1995,7 +1949,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .wallet-card__row--bordered {
-  border-top: 1px solid rgba(15, 37, 68, 0.08);
+  border-top: 1px solid var(--border-light);
 }
 
 .wallet-card__wallet-info {
@@ -2035,7 +1989,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .wallet-card__badge--verified {
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(46, 204, 113, 0.1);
   color: var(--color-success);
 }
 
@@ -2063,10 +2017,15 @@ h1, h2, h3, h4, h5, h6 {
 .wallet-card__delete {
   background: none;
   border: none;
-  padding: 4px;
+  padding: 12px;
   cursor: pointer;
   color: var(--color-mid-gray);
   transition: color var(--transition-fast);
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .wallet-card__delete:hover {
@@ -2077,7 +2036,7 @@ h1, h2, h3, h4, h5, h6 {
 .wallet-flow {
   padding: 16px;
   background: var(--color-off-white);
-  border: 1px solid rgba(15, 37, 68, 0.08);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius);
 }
 
@@ -2125,7 +2084,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .wallet-flow__warning {
   font-size: 0.8125rem;
-  color: var(--color-warning, #f59e0b);
+  color: var(--color-warning);
   margin-top: 8px;
 }
 
@@ -2147,7 +2106,7 @@ h1, h2, h3, h4, h5, h6 {
     justify-content: space-between;
     padding: 12px 16px;
     background: var(--color-white);
-    border-bottom: 1px solid rgba(15, 37, 68, 0.08);
+    border-bottom: 1px solid var(--border-light);
     position: sticky;
     top: 0;
     z-index: 30;
@@ -2161,8 +2120,8 @@ h1, h2, h3, h4, h5, h6 {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border: none;
     background: none;
     color: var(--color-navy);
@@ -2201,8 +2160,8 @@ h1, h2, h3, h4, h5, h6 {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     border: none;
     background: none;
     color: rgba(255, 255, 255, 0.6);
@@ -2373,5 +2332,17 @@ h1, h2, h3, h4, h5, h6 {
   /* Footer: hide for authenticated (sidebar has signout) */
   .app-shell .footer {
     display: none;
+  }
+
+  /* Wallet card: stack row vertically */
+  .wallet-card__row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .wallet-card__actions {
+    flex-wrap: wrap;
+    gap: 8px;
   }
 }

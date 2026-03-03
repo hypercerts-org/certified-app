@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { useNavbarVariant } from "@/lib/navbar-context";
 import { useProfile } from "@/hooks/use-profile";
 import Avatar from "@/components/ui/avatar";
+import { getInitials } from "@/lib/utils/initials";
 
 const Navbar: React.FC = () => {
   const { isLoading, isAuthenticated, did, openSignIn, signOut } = useAuth();
@@ -23,12 +24,7 @@ const Navbar: React.FC = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const avatarInitials = (() => {
-    const name = profile?.displayName || null;
-    if (!name) return did?.slice(4, 6) || "?";
-    const parts = name.trim().split(/\s+/);
-    return parts.length >= 2 ? `${parts[0][0]}${parts[1][0]}` : name.slice(0, 2);
-  })();
+  const avatarInitials = getInitials(profile?.displayName, did);
 
   // Hide navbar for authenticated users (sidebar replaces it)
   if (!isLoading && isAuthenticated) return null;

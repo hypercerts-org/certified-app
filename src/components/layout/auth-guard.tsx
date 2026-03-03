@@ -17,7 +17,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children, fallback }) => {
   // Redirect to home if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace("/");
+      router.replace("/?returnTo=" + encodeURIComponent(window.location.pathname));
     }
   }, [isLoading, isAuthenticated, router]);
 

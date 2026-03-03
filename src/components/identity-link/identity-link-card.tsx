@@ -83,14 +83,14 @@ const IdentityLinkCard: React.FC<IdentityLinkCardProps> = ({ did }) => {
 
       {/* Loading */}
       {isLoading && (
-        <div className="wallet-card__loading">
+        <div className="wallet-card__loading" role="status" aria-live="polite">
           <LoadingSpinner size="sm" />
         </div>
       )}
 
       {/* Error */}
       {error && !isLoading && (
-        <p className="wallet-card__error">{error}</p>
+        <p className="wallet-card__error" role="alert">{error}</p>
       )}
 
       {/* Empty state */}
@@ -176,7 +176,7 @@ const IdentityLinkCard: React.FC<IdentityLinkCardProps> = ({ did }) => {
 
       {/* Delete error */}
       {deleteError && (
-        <p className="wallet-card__error">{deleteError}</p>
+        <p className="wallet-card__error" role="alert">{deleteError}</p>
       )}
     </div>
   )

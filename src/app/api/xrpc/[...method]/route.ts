@@ -5,6 +5,21 @@ import { getOAuthClient } from "@/lib/auth/oauth-client"
 import { getSessionDid, deleteSession } from "@/lib/auth/session"
 import { checkCsrf } from "@/lib/auth/csrf"
 
+const ALLOWED_WRITE_COLLECTIONS = [
+  "org.impactindexer.link.attestation",
+  "org.hypercerts.profile",
+]
+
+const ALLOWED_BLOB_CONTENT_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/svg+xml",
+]
+
+const MAX_BLOB_SIZE = 1048576 // 1MB
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ method: string[] }> }
@@ -69,7 +84,10 @@ export async function GET(
   } catch (err: unknown) {
     const error = err as { status?: number; statusCode?: number; message?: string }
     const status = error?.status ?? error?.statusCode ?? 500
-    const message = error?.message ?? "Internal server error"
+    const message =
+      status >= 500
+        ? "Internal server error"
+        : (error?.message ?? "Internal server error")
     return NextResponse.json({ error: message }, { status })
   }
 }
@@ -114,6 +132,16 @@ export async function POST(
           { status: 403 }
         )
       }
+      // Collection allowlist
+      if (
+        body.collection &&
+        !ALLOWED_WRITE_COLLECTIONS.includes(body.collection as string)
+      ) {
+        return NextResponse.json(
+          { error: "Collection not allowed" },
+          { status: 403 }
+        )
+      }
     }
 
     switch (methodName) {
@@ -128,7 +156,29 @@ export async function POST(
       case "com.atproto.repo.uploadBlob": {
         const contentType =
           request.headers.get("content-type") || "application/octet-stream"
+        // Check content type
+        const mimeType = contentType.split(";")[0].trim()
+        if (!ALLOWED_BLOB_CONTENT_TYPES.includes(mimeType)) {
+          return NextResponse.json(
+            { error: "Unsupported media type" },
+            { status: 415 }
+          )
+        }
+        // Check content length
+        const contentLengthHeader = request.headers.get("content-length")
+        if (contentLengthHeader && Number(contentLengthHeader) > MAX_BLOB_SIZE) {
+          return NextResponse.json(
+            { error: "Payload too large" },
+            { status: 413 }
+          )
+        }
         const buffer = await request.arrayBuffer()
+        if (buffer.byteLength > MAX_BLOB_SIZE) {
+          return NextResponse.json(
+            { error: "Payload too large" },
+            { status: 413 }
+          )
+        }
         const result = await agent.com.atproto.repo.uploadBlob(
           new Uint8Array(buffer),
           { encoding: contentType }
@@ -156,7 +206,10 @@ export async function POST(
   } catch (err: unknown) {
     const error = err as { status?: number; statusCode?: number; message?: string }
     const status = error?.status ?? error?.statusCode ?? 500
-    const message = error?.message ?? "Internal server error"
+    const message =
+      status >= 500
+        ? "Internal server error"
+        : (error?.message ?? "Internal server error")
     return NextResponse.json({ error: message }, { status })
   }
 }

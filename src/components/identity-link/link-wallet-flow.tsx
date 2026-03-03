@@ -7,7 +7,7 @@ import { useAttestationSigning } from "@/hooks/use-attestation-signing"
 import { SUPPORTED_CHAINS } from "@/lib/wagmi"
 
 interface LinkWalletFlowProps {
-  did: string | null
+  did: string
   onComplete: () => void
   onCancel: () => void
 }
@@ -37,13 +37,11 @@ const LinkWalletFlow: React.FC<LinkWalletFlowProps> = ({ did, onComplete, onCanc
 
   // Step 1: Connect wallet
   if (!isConnected) {
-    const availableConnectors = connectors.filter((c) => (c as { ready?: boolean }).ready !== false)
-
     return (
       <div className="wallet-flow">
         <p className="wallet-flow__label">Connect a wallet</p>
         <div className="wallet-flow__connectors">
-          {availableConnectors.map((connector) => (
+          {connectors.map((connector) => (
             <Button
               key={connector.id}
               variant="secondary"
@@ -76,11 +74,11 @@ const LinkWalletFlow: React.FC<LinkWalletFlowProps> = ({ did, onComplete, onCanc
       </div>
 
       {error && (
-        <p className="wallet-flow__error">{error}</p>
+        <p className="wallet-flow__error" role="alert">{error}</p>
       )}
 
       {!isSupported && (
-        <p className="wallet-flow__warning">
+        <p className="wallet-flow__warning" role="alert">
           Switch to Ethereum, Base, Optimism, or Arbitrum to continue.
         </p>
       )}

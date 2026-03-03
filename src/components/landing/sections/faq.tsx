@@ -47,9 +47,11 @@ export default function Faq() {
           {FAQ_ITEMS.map((item, index) => {
             const isOpen = openFaq === index;
             const answerId = `faq-answer-${index}`;
+            const questionId = `faq-q-${index}`;
             return (
               <div key={index} className="landing-faq-item">
                 <button
+                  id={questionId}
                   className="landing-faq-btn"
                   aria-expanded={isOpen}
                   aria-controls={answerId}
@@ -61,6 +63,7 @@ export default function Faq() {
                 <div
                   id={answerId}
                   role="region"
+                  aria-labelledby={questionId}
                   className={`landing-faq-answer${isOpen ? " landing-faq-answer--open" : ""}`}
                 >
                   <p>{item.answer}</p>
