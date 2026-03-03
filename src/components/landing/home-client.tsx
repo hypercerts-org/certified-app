@@ -14,9 +14,6 @@ import Button from "@/components/ui/button";
 
 // Dashboard components — only loaded for authenticated users
 const SignInPreviewCard = dynamic(() => import("@/components/dashboard/sign-in-preview-card"));
-const IdentityOverviewCard = dynamic(() => import("@/components/dashboard/identity-overview-card"));
-const RecentActivityCard = dynamic(() => import("@/components/dashboard/recent-activity-card"));
-const ConnectedAppsList = dynamic(() => import("@/components/dashboard/connected-apps-list"));
 const UsernameCard = dynamic(() => import("@/components/dashboard/username-card"));
 
 // Landing sections — only loaded for unauthenticated users
@@ -139,17 +136,11 @@ export default function HomeClient() {
               </dl>
             </div>
 
-            {/* Connected Apps */}
-            <div className="mt-4">
-              <ConnectedAppsList />
-            </div>
           </div>
 
           {/* Right sidebar */}
           <div className="dashboard__aside">
             <SignInPreviewCard />
-            <IdentityOverviewCard />
-            <RecentActivityCard />
           </div>
         </div>
       </div>
