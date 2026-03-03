@@ -49,7 +49,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           <li>
             <Link
               href="/"
-              className={`sidebar__item ${pathname === "/" ? "sidebar__item--active" : ""}`}
+              className={`sidebar__item ${pathname === "/" || pathname === "/settings/edit-profile" ? "sidebar__item--active" : ""}`}
             >
               <User size={18} />
               Profile

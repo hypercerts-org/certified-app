@@ -8,7 +8,6 @@ import { useProfile } from "@/hooks/use-profile";
 import { putProfile, uploadAvatar, uploadBanner, getAvatarUrl, getBannerUrl } from "@/lib/atproto/profile";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import ProfileEditForm from "@/components/profile/profile-edit-form";
-import AuthGuard from "@/components/layout/auth-guard";
 import type { CertifiedProfile } from "@/lib/atproto/types";
 
 export default function EditProfilePage() {
@@ -55,45 +54,43 @@ export default function EditProfilePage() {
     : did ? did.slice(4, 6) : "?";
 
   return (
-    <AuthGuard>
-      <div className="dashboard">
-        {/* Top bar */}
-        <div className="dashboard__topbar">
-          <h1 className="dashboard__page-title">Edit Profile</h1>
-          <div className="dashboard__topbar-right">
-            <button
-              className="dashboard__back-btn"
-              onClick={() => router.push("/")}
-            >
-              <ArrowLeft size={16} />
-              Back to Profile
-            </button>
-          </div>
-        </div>
-
-        {/* Main content — single column, no right sidebar */}
-        <div className="dashboard__body dashboard__body--single">
-          <div className="dashboard__main">
-            {isLoading ? (
-              <div className="edit-profile__loading">
-                <LoadingSpinner size="md" />
-              </div>
-            ) : (
-              <ProfileEditForm
-                initialProfile={profile}
-                onSave={handleSave}
-                isSaving={isSaving}
-                saveError={saveError}
-                onAvatarUpload={handleAvatarUpload}
-                onBannerUpload={handleBannerUpload}
-                currentAvatarUrl={currentAvatarUrl}
-                currentBannerUrl={currentBannerUrl}
-                fallbackInitials={fallbackInitials}
-              />
-            )}
-          </div>
+    <div className="dashboard">
+      {/* Top bar */}
+      <div className="dashboard__topbar">
+        <h1 className="dashboard__page-title">Edit Profile</h1>
+        <div className="dashboard__topbar-right">
+          <button
+            className="dashboard__back-btn"
+            onClick={() => router.push("/")}
+          >
+            <ArrowLeft size={16} />
+            Back to Profile
+          </button>
         </div>
       </div>
-    </AuthGuard>
+
+      {/* Main content — single column, no right sidebar */}
+      <div className="dashboard__body dashboard__body--single">
+        <div className="dashboard__main">
+          {isLoading ? (
+            <div className="edit-profile__loading">
+              <LoadingSpinner size="md" />
+            </div>
+          ) : (
+            <ProfileEditForm
+              initialProfile={profile}
+              onSave={handleSave}
+              isSaving={isSaving}
+              saveError={saveError}
+              onAvatarUpload={handleAvatarUpload}
+              onBannerUpload={handleBannerUpload}
+              currentAvatarUrl={currentAvatarUrl}
+              currentBannerUrl={currentBannerUrl}
+              fallbackInitials={fallbackInitials}
+            />
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
