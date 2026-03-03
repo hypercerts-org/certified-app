@@ -17,6 +17,7 @@ const SignInPreviewCard = dynamic(() => import("@/components/dashboard/sign-in-p
 const IdentityOverviewCard = dynamic(() => import("@/components/dashboard/identity-overview-card"));
 const RecentActivityCard = dynamic(() => import("@/components/dashboard/recent-activity-card"));
 const ConnectedAppsList = dynamic(() => import("@/components/dashboard/connected-apps-list"));
+const UsernameCard = dynamic(() => import("@/components/dashboard/username-card"));
 
 // Landing sections — only loaded for unauthenticated users
 const WhatYouGet = dynamic(() => import("@/components/landing/sections/what-you-get"));
@@ -27,8 +28,8 @@ const Faq = dynamic(() => import("@/components/landing/sections/faq"));
 const ReadyCta = dynamic(() => import("@/components/landing/sections/ready-cta"));
 
 export default function HomeClient() {
-  const { isLoading, isAuthenticated, did, openSignUp } = useAuth();
-  const { profile, avatarUrl } = useProfile();
+  const { isLoading, isAuthenticated, did, openSignUp, pdsUrl } = useAuth();
+  const { profile, avatarUrl, bannerUrl, isFallback } = useProfile();
   const { setVariant } = useNavbarVariant();
   const { handle, email } = useSession();
 
@@ -70,6 +71,11 @@ export default function HomeClient() {
           <div className="dashboard__main">
             {/* Profile header card */}
             <div className="dash-card">
+              <div className="profile-card__banner">
+                {bannerUrl ? (
+                  <img src={bannerUrl} alt="" />
+                ) : null}
+              </div>
               <div className="profile-card">
                 <Avatar size="lg" src={avatarUrl || undefined} fallbackInitials={initials} bordered />
                 <div className="profile-card__info">
@@ -79,35 +85,56 @@ export default function HomeClient() {
                     <p className="profile-card__bio">{profile.description}</p>
                   )}
                 </div>
-                <Link href="/settings/edit-profile">
-                  <Button variant="secondary" size="sm">
-                    <Pencil size={14} />
-                    Edit Profile
-                  </Button>
-                </Link>
+
               </div>
             </div>
 
-            {/* Personal Information card */}
+            {/* Username card */}
+            <UsernameCard handle={handle} pdsUrl={pdsUrl || undefined} />
+
+            {/* Account Details card */}
             <div className="dash-card mt-4">
-              <h2 className="dash-card__title">Personal Information</h2>
-              <p className="dash-card__desc">This information is shared when you sign in to apps using Certified.</p>
+              <div className="username-card__header">
+                <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Account Details</h2>
+                <Link href="/settings/edit-profile">
+                  <Button variant="ghost" size="sm">
+                    <Pencil size={14} />
+                    Edit
+                  </Button>
+                </Link>
+              </div>
+              {isFallback && (
+                <div className="profile-fallback-note">
+                  <p>This information was imported from your Bluesky profile. Edit your Certified profile to customize it.</p>
+                </div>
+              )}
               <dl className="personal-info__grid">
                 <div>
-                  <dt className="personal-info__label">First Name</dt>
-                  <dd className="personal-info__field">{profile?.displayName?.split(" ")[0] || "—"}</dd>
+                  <dt className="personal-info__label">Display Name</dt>
+                  <dd className="personal-info__field">{profile?.displayName || "—"}</dd>
                 </div>
                 <div>
-                  <dt className="personal-info__label">Last Name</dt>
-                  <dd className="personal-info__field">{profile?.displayName?.split(" ").slice(1).join(" ") || "—"}</dd>
-                </div>
-                <div className="mt-4">
                   <dt className="personal-info__label">Email Address</dt>
                   <dd className="personal-info__field">{email || "—"}</dd>
                 </div>
-                <div className="mt-4">
-                  <dt className="personal-info__label">Handle (DID)</dt>
+                <div className="personal-info__full-width">
+                  <dt className="personal-info__label">About</dt>
+                  <dd className="personal-info__field">{profile?.description || "—"}</dd>
+                </div>
+                <div className="personal-info__full-width">
+                  <dt className="personal-info__label">Website</dt>
+                  <dd className="personal-info__field">
+                    {profile?.website ? (
+                      <a href={profile.website} target="_blank" rel="noopener noreferrer" className="personal-info__field--link">
+                        {profile.website}
+                      </a>
+                    ) : "—"}
+                  </dd>
+                </div>
+                <div className="personal-info__full-width">
+                  <dt className="personal-info__label">Identifier</dt>
                   <dd className="personal-info__field personal-info__field--mono">{did}</dd>
+                  <p className="personal-info__hint">Your stable decentralized identifier (DID) — this never changes, even if you update your username.</p>
                 </div>
               </dl>
             </div>

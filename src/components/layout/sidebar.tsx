@@ -61,7 +61,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
               className={`sidebar__item ${pathname === "/settings/connected-apps" ? "sidebar__item--active" : ""}`}
             >
               <LayoutGrid size={18} />
-              Connected Apps
+              Apps
             </Link>
           </li>
           <li>

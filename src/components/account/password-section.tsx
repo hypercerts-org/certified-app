@@ -196,7 +196,7 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
         )}
         {state === "idle" && !hasSetPassword && (
           <p className="text-xs text-gray-400 mt-1">
-            Set a password to sign in to other AT Protocol apps (like Bluesky) with your handle.
+            Set a password to sign in to other AT Protocol apps (like Bluesky) with your username.
           </p>
         )}
         {idleError && (

@@ -1,5 +1,6 @@
 import {
   CertifiedProfile,
+  BlueskyProfile,
   HypercertsUri,
   HypercertsSmallImage,
   HypercertsLargeImage,
@@ -7,6 +8,7 @@ import {
 import { authFetch } from "@/lib/auth/fetch";
 
 const COLLECTION = "app.certified.actor.profile";
+const BSKY_COLLECTION = "app.bsky.actor.profile";
 const RKEY = "self";
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024; // 5MB
@@ -38,6 +40,59 @@ export async function getProfile(
   }
   const data = await res.json();
   return data.value as CertifiedProfile;
+}
+
+/**
+ * Get a user's Bluesky profile record (app.bsky.actor.profile)
+ * Used as fallback when no Certified profile exists
+ */
+export async function getBlueskyProfile(
+  did: string,
+  signal?: AbortSignal
+): Promise<BlueskyProfile | null> {
+  const res = await authFetch(
+    `/api/xrpc/com/atproto/repo/getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(BSKY_COLLECTION)}&rkey=${encodeURIComponent(RKEY)}`,
+    { signal }
+  );
+  if (!res.ok) {
+    if (res.status === 400 || res.status === 404) return null;
+    // Don't throw for Bluesky profile — it's a fallback, not critical
+    return null;
+  }
+  const data = await res.json();
+  return data.value as BlueskyProfile;
+}
+
+/**
+ * Get the URL for a Bluesky profile avatar
+ */
+export function getBlueskyAvatarUrl(
+  profile: BlueskyProfile,
+  did: string,
+  pdsUrl: string
+): string | null {
+  if (!profile.avatar) return null;
+  const avatar = profile.avatar as { ref?: { $link: string } };
+  if (avatar.ref?.$link) {
+    return `${pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${did}&cid=${avatar.ref.$link}`;
+  }
+  return null;
+}
+
+/**
+ * Get the URL for a Bluesky profile banner
+ */
+export function getBlueskyBannerUrl(
+  profile: BlueskyProfile,
+  did: string,
+  pdsUrl: string
+): string | null {
+  if (!profile.banner) return null;
+  const banner = profile.banner as { ref?: { $link: string } };
+  if (banner.ref?.$link) {
+    return `${pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${did}&cid=${banner.ref.$link}`;
+  }
+  return null;
 }
 
 /**
