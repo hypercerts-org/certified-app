@@ -1498,7 +1498,7 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 12px 12px;
   border-radius: var(--radius);
   font-size: 0.875rem;
   font-weight: 500;
@@ -1562,6 +1562,11 @@ h1, h2, h3, h4, h5, h6 {
   cursor: pointer;
   border-radius: var(--radius);
   transition: all var(--transition-fast);
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .sidebar__signout:hover {
@@ -1750,6 +1755,7 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.6875rem;
   font-family: monospace;
   color: var(--color-mid-gray);
+  word-break: break-all;
 }
 
 .my-data__code {
@@ -1759,6 +1765,7 @@ h1, h2, h3, h4, h5, h6 {
   padding: 2px 6px;
   border-radius: var(--radius);
   color: var(--color-navy);
+  overflow-wrap: break-word;
 }
 
 .my-data__did-info {
@@ -2010,10 +2017,15 @@ h1, h2, h3, h4, h5, h6 {
 .wallet-card__delete {
   background: none;
   border: none;
-  padding: 4px;
+  padding: 12px;
   cursor: pointer;
   color: var(--color-mid-gray);
   transition: color var(--transition-fast);
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .wallet-card__delete:hover {
@@ -2108,8 +2120,8 @@ h1, h2, h3, h4, h5, h6 {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border: none;
     background: none;
     color: var(--color-navy);
@@ -2148,8 +2160,8 @@ h1, h2, h3, h4, h5, h6 {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     border: none;
     background: none;
     color: rgba(255, 255, 255, 0.6);
@@ -2320,5 +2332,17 @@ h1, h2, h3, h4, h5, h6 {
   /* Footer: hide for authenticated (sidebar has signout) */
   .app-shell .footer {
     display: none;
+  }
+
+  /* Wallet card: stack row vertically */
+  .wallet-card__row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .wallet-card__actions {
+    flex-wrap: wrap;
+    gap: 8px;
   }
 }
