@@ -21,7 +21,7 @@ const Footer: React.FC = () => {
         <p className="footer__copy">&copy; 2026 Certified. All rights reserved.</p>
         <div className="footer__links">
           <Link href="/terms">Terms</Link>
-          <Link href="/privacy">Policy</Link>
+          <Link href="/privacy">Privacy</Link>
         </div>
       </div>
     </footer>

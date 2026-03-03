@@ -29,7 +29,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const initials = getInitials(profile?.displayName, null);
 
   return (
-    <aside className={`sidebar ${isOpen ? "sidebar--open" : ""}`}>
+    <aside className={`sidebar ${isOpen ? "sidebar--open" : ""}`} aria-label="Main navigation">
       {/* Top: Logo + close button */}
       <div className="sidebar__logo">
         <Link href="/">

@@ -11,7 +11,7 @@ export default function PartnerApps() {
         <div className="landing-partners">
           {CONNECTED_APPS.map((app) => (
             <div key={app.name} className="landing-chip">
-              <Image src={app.logo} alt="" width={36} height={36} className="landing-chip__logo" />
+              <Image src={app.logo} alt={`${app.name} logo`} width={36} height={36} className="landing-chip__logo" />
               <div className="landing-chip__text">
                 <span className="landing-chip__name">{app.name}</span>
                 <span className="landing-chip__desc">{app.desc}</span>

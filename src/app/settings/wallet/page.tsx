@@ -19,7 +19,7 @@ export default function WalletPage() {
           <div className="dashboard__main">
             {/* Intro card */}
             <div className="dash-card">
-              <h3 className="dash-card__title">Linked Wallets</h3>
+              <h2 className="dash-card__title">Linked Wallets</h2>
               <p className="dash-card__desc">
                 Link your Ethereum wallets to your Certified identity. Each link is a signed attestation stored in your personal data server, proving you own the wallet address.
               </p>

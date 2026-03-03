@@ -97,7 +97,7 @@ export default function MyDataPage() {
           <div className="dashboard__main">
             {/* Info card */}
             <div className="dash-card">
-              <h3 className="dash-card__title">Hypercerts Claims</h3>
+              <h2 className="dash-card__title">Hypercerts Claims</h2>
               <p className="dash-card__desc">
                 These are your claim activity records stored on your Personal Data Server (PDS). They represent contributions and impact claims tracked through the Hypercerts protocol.
               </p>
@@ -153,7 +153,7 @@ export default function MyDataPage() {
 
             {/* Raw data info */}
             <div className="dash-card mt-4">
-              <h3 className="dash-card__title">About Your Data</h3>
+              <h2 className="dash-card__title">About Your Data</h2>
               <p className="dash-card__desc">
                 All your data is stored on your Personal Data Server (PDS) under the collection <code className="my-data__code">{COLLECTION}</code>. Because your data lives on the AT Protocol, it is portable — you can move it to any compatible server at any time.
               </p>
