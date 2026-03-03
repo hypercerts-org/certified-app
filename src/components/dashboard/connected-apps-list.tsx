@@ -20,7 +20,7 @@ export default function ConnectedAppsList() {
               <p className="connected-apps__desc">{app.desc}</p>
             </div>
             <span className="connected-apps__status">
-              <span className="connected-apps__dot" />
+              <span className="connected-apps__dot" aria-hidden="true" />
               Connected
             </span>
           </div>

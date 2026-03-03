@@ -12,7 +12,7 @@
   --color-off-white: #F7F8FA;
   --color-gray-100: #EEF0F4;
   --color-light-gray: #E2E5EB;
-  --color-mid-gray: #8A92A0;
+  --color-mid-gray: #6B7280;
   --color-dark-gray: #3B4251;
 
   /* Accent Variations */
@@ -34,6 +34,7 @@
 
   /* Semantic */
   --color-success: #2ECC71;
+  --color-success-text: #047857;
   --color-warning: #F5A623;
   --color-error: #E74C3C;
   --color-info: var(--color-accent);
@@ -48,6 +49,14 @@
 
   /* Navbar */
   --navbar-height: 56px;
+}
+
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -346,7 +355,7 @@ h1, h2, h3, h4, h5, h6 {
 .landing-footer p,
 .landing-footer__links a {
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.6);
   text-decoration: none;
   transition: color var(--transition-fast);
 }
@@ -357,7 +366,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .landing-footer__links a:hover {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 @media (max-width: 768px) {
@@ -1289,7 +1298,7 @@ h1, h2, h3, h4, h5, h6 {
   gap: 6px;
   font-size: 0.75rem;
   font-weight: 500;
-  color: var(--color-success);
+  color: var(--color-success-text);
   flex-shrink: 0;
 }
 
@@ -1470,7 +1479,7 @@ h1, h2, h3, h4, h5, h6 {
 .sidebar__section-label {
   font-size: 0.6875rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.65);
   letter-spacing: 0.06em;
   padding: 0 12px;
   margin-bottom: 8px;
@@ -1493,7 +1502,7 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: var(--radius);
   font-size: 0.875rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.75);
   text-decoration: none;
   transition: all var(--transition-fast);
 }
@@ -1538,7 +1547,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .sidebar__user-handle {
   font-size: 0.6875rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.65);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1870,7 +1879,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .security__2fa-badge--on {
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(46, 204, 113, 0.1);
   color: var(--color-success);
 }
 
@@ -1973,7 +1982,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .wallet-card__badge--verified {
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(46, 204, 113, 0.1);
   color: var(--color-success);
 }
 

@@ -74,11 +74,11 @@ const LinkWalletFlow: React.FC<LinkWalletFlowProps> = ({ did, onComplete, onCanc
       </div>
 
       {error && (
-        <p className="wallet-flow__error">{error}</p>
+        <p className="wallet-flow__error" role="alert">{error}</p>
       )}
 
       {!isSupported && (
-        <p className="wallet-flow__warning">
+        <p className="wallet-flow__warning" role="alert">
           Switch to Ethereum, Base, Optimism, or Arbitrum to continue.
         </p>
       )}
