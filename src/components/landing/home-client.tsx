@@ -6,7 +6,6 @@ import dynamic from "next/dynamic";
 import { Pencil } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useNavbarVariant } from "@/lib/navbar-context";
-import Image from "next/image";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
 import Avatar from "@/components/ui/avatar";
@@ -74,7 +73,7 @@ export default function HomeClient() {
             <div className="dash-card">
               <div className="profile-card__banner">
                 {bannerUrl ? (
-                  <Image src={bannerUrl} alt="" fill style={{ objectFit: "cover" }} />
+                  <img src={bannerUrl} alt="" />
                 ) : null}
               </div>
               <div className="profile-card">
