@@ -7,7 +7,7 @@ import { checkCsrf } from "@/lib/auth/csrf"
 
 const ALLOWED_WRITE_COLLECTIONS = [
   "org.impactindexer.link.attestation",
-  "org.hypercerts.profile",
+  "app.certified.actor.profile",
 ]
 
 const ALLOWED_BLOB_CONTENT_TYPES = [
