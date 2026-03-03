@@ -30,7 +30,7 @@ const ReadyCta = dynamic(() => import("@/components/landing/sections/ready-cta")
 
 export default function HomeClient() {
   const { isLoading, isAuthenticated, did, openSignUp } = useAuth();
-  const { profile, avatarUrl, bannerUrl } = useProfile();
+  const { profile, avatarUrl, bannerUrl, isFallback } = useProfile();
   const { setVariant } = useNavbarVariant();
   const { handle, email } = useSession();
 
@@ -102,6 +102,11 @@ export default function HomeClient() {
             <div className="dash-card mt-4">
               <h2 className="dash-card__title">Account Details</h2>
               <p className="dash-card__desc">This information is shared when you sign in to apps using Certified.</p>
+              {isFallback && (
+                <div className="profile-fallback-note">
+                  <p>This information was imported from your Bluesky profile. Edit your Certified profile to customize it.</p>
+                </div>
+              )}
               <dl className="personal-info__grid">
                 <div>
                   <dt className="personal-info__label">Display Name</dt>

@@ -1477,6 +1477,21 @@ h1, h2, h3, h4, h5, h6 {
   grid-column: 1 / -1;
 }
 
+.profile-fallback-note {
+  background: #fef9e7;
+  border: 1px solid #f5d76e;
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.profile-fallback-note p {
+  font-size: 0.8125rem;
+  color: #7d6608;
+  line-height: 1.5;
+  margin: 0;
+}
+
 /* Personal Information form fields */
 .personal-info__grid {
   display: grid;
