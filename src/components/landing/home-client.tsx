@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { Pencil } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useNavbarVariant } from "@/lib/navbar-context";
+import Image from "next/image";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
 import Avatar from "@/components/ui/avatar";
@@ -17,6 +18,7 @@ const SignInPreviewCard = dynamic(() => import("@/components/dashboard/sign-in-p
 const IdentityOverviewCard = dynamic(() => import("@/components/dashboard/identity-overview-card"));
 const RecentActivityCard = dynamic(() => import("@/components/dashboard/recent-activity-card"));
 const ConnectedAppsList = dynamic(() => import("@/components/dashboard/connected-apps-list"));
+const UsernameCard = dynamic(() => import("@/components/dashboard/username-card"));
 
 // Landing sections — only loaded for unauthenticated users
 const WhatYouGet = dynamic(() => import("@/components/landing/sections/what-you-get"));
@@ -28,7 +30,7 @@ const ReadyCta = dynamic(() => import("@/components/landing/sections/ready-cta")
 
 export default function HomeClient() {
   const { isLoading, isAuthenticated, did, openSignUp } = useAuth();
-  const { profile, avatarUrl } = useProfile();
+  const { profile, avatarUrl, bannerUrl } = useProfile();
   const { setVariant } = useNavbarVariant();
   const { handle, email } = useSession();
 
@@ -70,6 +72,11 @@ export default function HomeClient() {
           <div className="dashboard__main">
             {/* Profile header card */}
             <div className="dash-card">
+              <div className="profile-card__banner">
+                {bannerUrl ? (
+                  <Image src={bannerUrl} alt="" width={800} height={160} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : null}
+              </div>
               <div className="profile-card">
                 <Avatar size="lg" src={avatarUrl || undefined} fallbackInitials={initials} bordered />
                 <div className="profile-card__info">
@@ -88,26 +95,40 @@ export default function HomeClient() {
               </div>
             </div>
 
-            {/* Personal Information card */}
+            {/* Username card */}
+            <UsernameCard handle={handle} />
+
+            {/* Account Details card */}
             <div className="dash-card mt-4">
-              <h2 className="dash-card__title">Personal Information</h2>
+              <h2 className="dash-card__title">Account Details</h2>
               <p className="dash-card__desc">This information is shared when you sign in to apps using Certified.</p>
               <dl className="personal-info__grid">
                 <div>
-                  <dt className="personal-info__label">First Name</dt>
-                  <dd className="personal-info__field">{profile?.displayName?.split(" ")[0] || "—"}</dd>
+                  <dt className="personal-info__label">Display Name</dt>
+                  <dd className="personal-info__field">{profile?.displayName || "—"}</dd>
                 </div>
                 <div>
-                  <dt className="personal-info__label">Last Name</dt>
-                  <dd className="personal-info__field">{profile?.displayName?.split(" ").slice(1).join(" ") || "—"}</dd>
-                </div>
-                <div className="mt-4">
                   <dt className="personal-info__label">Email Address</dt>
                   <dd className="personal-info__field">{email || "—"}</dd>
                 </div>
-                <div className="mt-4">
-                  <dt className="personal-info__label">Handle (DID)</dt>
+                <div className="personal-info__full-width">
+                  <dt className="personal-info__label">About</dt>
+                  <dd className="personal-info__field">{profile?.description || "—"}</dd>
+                </div>
+                <div className="personal-info__full-width">
+                  <dt className="personal-info__label">Website</dt>
+                  <dd className="personal-info__field">
+                    {profile?.website ? (
+                      <a href={profile.website} target="_blank" rel="noopener noreferrer" className="personal-info__field--link">
+                        {profile.website}
+                      </a>
+                    ) : "—"}
+                  </dd>
+                </div>
+                <div className="personal-info__full-width">
+                  <dt className="personal-info__label">Identifier</dt>
                   <dd className="personal-info__field personal-info__field--mono">{did}</dd>
+                  <p className="personal-info__hint">Your stable decentralized identifier (DID) — this never changes, even if you update your username.</p>
                 </div>
               </dl>
             </div>

@@ -19,7 +19,7 @@ export default function SecurityPage() {
           <div className="dash-card">
             <h2 className="dash-card__title">Password</h2>
             <p className="dash-card__desc">
-              Set a password to sign in to other AT Protocol apps (like Bluesky) with your Certified handle. Your primary sign-in method remains the email code.
+              Set a password to sign in to other AT Protocol apps (like Bluesky) with your Certified username. Your primary sign-in method remains the email code.
             </p>
             <div className="security__section">
               {sessionLoading ? (
@@ -36,7 +36,7 @@ export default function SecurityPage() {
           <div className="dash-card mt-4">
             <h2 className="dash-card__title">Two-Factor Authentication</h2>
             <p className="dash-card__desc">
-              Add an extra layer of security to your account. When enabled, you&apos;ll need to enter a code from your authenticator app in addition to your password.
+              Add an extra layer of security to your account.
             </p>
             <div className="security__2fa">
               <div className="security__2fa-status">

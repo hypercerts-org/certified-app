@@ -8,7 +8,7 @@ export default function ConnectedAppsPage() {
   return (
     <div className="dashboard">
       <div className="dashboard__topbar">
-        <h1 className="dashboard__page-title">Connected Apps</h1>
+        <h1 className="dashboard__page-title">Apps</h1>
       </div>
 
       <div className="dashboard__body dashboard__body--single">
