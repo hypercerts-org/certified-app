@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 import { CONNECTED_APPS } from "@/lib/constants/apps";
 
 export default function PartnerApps() {
@@ -10,7 +11,7 @@ export default function PartnerApps() {
         <div className="landing-partners">
           {CONNECTED_APPS.map((app) => (
             <div key={app.name} className="landing-chip">
-              <img src={app.logo} alt="" className="landing-chip__logo" />
+              <Image src={app.logo} alt="" width={36} height={36} className="landing-chip__logo" />
               <div className="landing-chip__text">
                 <span className="landing-chip__name">{app.name}</span>
                 <span className="landing-chip__desc">{app.desc}</span>

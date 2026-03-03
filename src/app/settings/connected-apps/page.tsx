@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import AuthGuard from "@/components/layout/auth-guard";
 import { CONNECTED_APPS, EXPLORE_APPS } from "@/lib/constants/apps";
 
@@ -17,7 +18,7 @@ export default function ConnectedAppsPage() {
             {/* Connected apps section */}
             <div className="dash-card">
               <div className="connected-apps__header">
-                <h3 className="dash-card__title">Connected</h3>
+                <h2 className="dash-card__title">Connected</h2>
                 <span className="connected-apps__count">{CONNECTED_APPS.length} apps</span>
               </div>
               <p className="dash-card__desc">
@@ -33,7 +34,7 @@ export default function ConnectedAppsPage() {
                     className="connected-apps__item connected-apps__item--link"
                   >
                     <div className="connected-apps__icon">
-                      <img src={app.logo} alt="" className="connected-apps__logo" />
+                      <Image src={app.logo} alt="" width={40} height={40} className="connected-apps__logo" />
                     </div>
                     <div className="connected-apps__info">
                       <p className="connected-apps__name">{app.name}</p>
@@ -51,7 +52,7 @@ export default function ConnectedAppsPage() {
             {/* Explore more apps section */}
             <div className="dash-card mt-4">
               <div className="connected-apps__header">
-                <h3 className="dash-card__title">Explore more apps</h3>
+                <h2 className="dash-card__title">Explore more apps</h2>
                 <span className="connected-apps__count">{EXPLORE_APPS.length} apps</span>
               </div>
               <p className="dash-card__desc">
@@ -67,7 +68,7 @@ export default function ConnectedAppsPage() {
                     className="connected-apps__item connected-apps__item--link"
                   >
                     <div className="connected-apps__icon">
-                      <img src={app.logo} alt="" className="connected-apps__logo" />
+                      <Image src={app.logo} alt="" width={40} height={40} className="connected-apps__logo" />
                     </div>
                     <div className="connected-apps__info">
                       <p className="connected-apps__name">{app.name}</p>

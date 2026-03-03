@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { CONNECTED_APPS } from "@/lib/constants/apps";
 
 export default function ConnectedAppsList() {
@@ -12,7 +13,7 @@ export default function ConnectedAppsList() {
         {CONNECTED_APPS.map((app) => (
           <div key={app.name} className="connected-apps__item">
             <div className="connected-apps__icon">
-              <img src={app.logo} alt="" className="connected-apps__logo" />
+              <Image src={app.logo} alt="" width={40} height={40} className="connected-apps__logo" />
             </div>
             <div className="connected-apps__info">
               <p className="connected-apps__name">{app.name}</p>
