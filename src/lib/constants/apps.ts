@@ -5,7 +5,7 @@ export const CONNECTED_APPS = [
     longDesc:
       "Ma Earth connects communities with regenerative projects, enabling transparent funding and impact tracking through hypercerts.",
     logo: "/assets/partners/maearth_logo.jpeg",
-    url: "https://maearth.app",
+    url: "https://maearth.com",
   },
   {
     name: "GainForest",
@@ -13,7 +13,7 @@ export const CONNECTED_APPS = [
     longDesc:
       "GainForest uses AI and blockchain to monitor forests and reward conservation efforts with verifiable impact certificates.",
     logo: "/assets/partners/gainforest_logo.jpeg",
-    url: "https://gainforest.app",
+    url: "https://gainforest.earth",
   },
   {
     name: "Silvi",
