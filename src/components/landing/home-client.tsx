@@ -2,23 +2,29 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { Pencil } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useNavbarVariant } from "@/lib/navbar-context";
 import { useProfile } from "@/hooks/use-profile";
 import { authFetch } from "@/lib/auth/fetch";
 import Avatar from "@/components/ui/avatar";
+import { getInitials } from "@/lib/utils/initials";
 import Button from "@/components/ui/button";
-import SignInPreviewCard from "@/components/dashboard/sign-in-preview-card";
-import IdentityOverviewCard from "@/components/dashboard/identity-overview-card";
-import RecentActivityCard from "@/components/dashboard/recent-activity-card";
-import ConnectedAppsList from "@/components/dashboard/connected-apps-list";
-import WhatYouGet from "@/components/landing/sections/what-you-get";
-import HowItWorks from "@/components/landing/sections/how-it-works";
-import PartnerApps from "@/components/landing/sections/partner-apps";
-import BuiltForTrust from "@/components/landing/sections/built-for-trust";
-import Faq from "@/components/landing/sections/faq";
-import ReadyCta from "@/components/landing/sections/ready-cta";
+
+// Dashboard components — only loaded for authenticated users
+const SignInPreviewCard = dynamic(() => import("@/components/dashboard/sign-in-preview-card"));
+const IdentityOverviewCard = dynamic(() => import("@/components/dashboard/identity-overview-card"));
+const RecentActivityCard = dynamic(() => import("@/components/dashboard/recent-activity-card"));
+const ConnectedAppsList = dynamic(() => import("@/components/dashboard/connected-apps-list"));
+
+// Landing sections — only loaded for unauthenticated users
+const WhatYouGet = dynamic(() => import("@/components/landing/sections/what-you-get"));
+const HowItWorks = dynamic(() => import("@/components/landing/sections/how-it-works"));
+const PartnerApps = dynamic(() => import("@/components/landing/sections/partner-apps"));
+const BuiltForTrust = dynamic(() => import("@/components/landing/sections/built-for-trust"));
+const Faq = dynamic(() => import("@/components/landing/sections/faq"));
+const ReadyCta = dynamic(() => import("@/components/landing/sections/ready-cta"));
 
 export default function HomeClient() {
   const { isLoading, isAuthenticated, did, openSignUp } = useAuth();
@@ -48,12 +54,7 @@ export default function HomeClient() {
     }
   }, [isAuthenticated]);
 
-  const initials = (() => {
-    const name = profile?.displayName || null;
-    if (!name) return did?.slice(4, 6) || "?";
-    const parts = name.trim().split(/\s+/);
-    return parts.length >= 2 ? `${parts[0][0]}${parts[1][0]}` : name.slice(0, 2);
-  })();
+  const initials = getInitials(profile?.displayName, did);
 
   if (isLoading) {
     return (

@@ -1,9 +1,4 @@
-const CONNECTED_APPS = [
-  { name: "Ma Earth", desc: "Collective Funding for Regenerating Earth", logo: "/assets/partners/maearth_logo.jpeg" },
-  { name: "GainForest", desc: "Co-creating a fair future for nature stewards", logo: "/assets/partners/gainforest_logo.jpeg" },
-  { name: "Silvi", desc: "Planting the right trees in the right place at the right time", logo: "/assets/partners/silvi_logo.jpeg" },
-  { name: "Hyperboards", desc: "Visualizing and recognizing those who create real value", logo: "/assets/hyperboards_brandmark.webp" },
-];
+import { CONNECTED_APPS } from "@/lib/constants/apps";
 
 export default function ConnectedAppsList() {
   return (

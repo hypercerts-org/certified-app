@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import { authFetch } from "@/lib/auth/fetch";
 import Avatar from "@/components/ui/avatar";
+import { getInitials } from "@/lib/utils/initials";
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -34,15 +35,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     if (onClose) onClose();
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const initials = profile?.displayName
-    ? (() => {
-        const parts = profile.displayName.trim().split(/\s+/);
-        if (parts.length >= 2) {
-          return `${parts[0][0]}${parts[1][0]}`;
-        }
-        return profile.displayName.slice(0, 2);
-      })()
-    : "?";
+  const initials = getInitials(profile?.displayName, null);
 
   return (
     <aside className={`sidebar ${isOpen ? "sidebar--open" : ""}`}>
