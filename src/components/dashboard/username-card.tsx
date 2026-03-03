@@ -9,9 +9,24 @@ import { clearSessionCache } from "@/hooks/use-session";
 
 interface UsernameCardProps {
   handle: string | null;
+  pdsUrl?: string;
 }
 
-export default function UsernameCard({ handle }: UsernameCardProps) {
+function isOurHandle(handle: string | null, pdsUrl?: string): boolean {
+  if (!handle) return false;
+  // Extract hostname from PDS URL (e.g., "https://epds1.test.certified.app" → "epds1.test.certified.app")
+  if (pdsUrl) {
+    try {
+      const pdsHostname = new URL(pdsUrl).hostname;
+      if (handle.endsWith(`.${pdsHostname}`)) return true;
+    } catch { /* ignore invalid URL */ }
+  }
+  // Also match known certified domains
+  return handle.endsWith(".certified.is") || handle.endsWith(".certified.app");
+}
+
+export default function UsernameCard({ handle, pdsUrl }: UsernameCardProps) {
+  const canEdit = isOurHandle(handle, pdsUrl);
   const [isEditing, setIsEditing] = useState(false);
   const [newHandle, setNewHandle] = useState(handle || "");
   const [isSaving, setIsSaving] = useState(false);
@@ -67,7 +82,7 @@ export default function UsernameCard({ handle }: UsernameCardProps) {
       <div className="username-card">
         <div className="username-card__header">
           <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Username</h2>
-          {!isEditing && (
+          {canEdit && !isEditing && (
             <Button variant="ghost" size="sm" onClick={handleEdit}>
               <Pencil size={14} />
               Edit

@@ -28,7 +28,7 @@ const Faq = dynamic(() => import("@/components/landing/sections/faq"));
 const ReadyCta = dynamic(() => import("@/components/landing/sections/ready-cta"));
 
 export default function HomeClient() {
-  const { isLoading, isAuthenticated, did, openSignUp } = useAuth();
+  const { isLoading, isAuthenticated, did, openSignUp, pdsUrl } = useAuth();
   const { profile, avatarUrl, bannerUrl, isFallback } = useProfile();
   const { setVariant } = useNavbarVariant();
   const { handle, email } = useSession();
@@ -90,7 +90,7 @@ export default function HomeClient() {
             </div>
 
             {/* Username card */}
-            <UsernameCard handle={handle} />
+            <UsernameCard handle={handle} pdsUrl={pdsUrl || undefined} />
 
             {/* Account Details card */}
             <div className="dash-card mt-4">
