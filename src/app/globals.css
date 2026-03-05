@@ -169,6 +169,40 @@ h1, h2, h3, h4, h5, h6 {
   gap: 12px;
 }
 
+.navbar__signin {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-white);
+  background: var(--color-navy);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.navbar__signin:hover {
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 0 12px rgba(96, 161, 226, 0.2);
+  transform: translateY(-1px);
+}
+
+.navbar__signin:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.navbar__signin-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+}
+
 /* ========== Hero ========== */
 .hero {
   position: relative;
@@ -256,16 +290,18 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 1rem;
   font-weight: 500;
   color: var(--color-white);
-  background: rgba(96, 161, 226, 0.1);
-  border: 1px solid rgba(96, 161, 226, 0.2);
+  background: var(--color-navy);
+  border: 1px solid var(--color-navy);
   cursor: pointer;
   transition: all var(--transition-fast);
   text-decoration: none;
 }
 
 .hero__btn-primary:hover {
-  background: rgba(96, 161, 226, 0.15);
-  border-color: rgba(96, 161, 226, 0.35);
+  background: var(--color-navy);
+  border-color: rgba(96, 161, 226, 0.4);
+  box-shadow: 0 0 16px rgba(96, 161, 226, 0.25);
+  transform: translateY(-1px);
   color: var(--color-white);
 }
 
