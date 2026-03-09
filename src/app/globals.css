@@ -1261,6 +1261,13 @@ h1, h2, h3, h4, h5, h6 {
   gap: 8px;
 }
 
+.username-card__switch-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 .username-card__domain-btn {
   display: inline-flex;
   align-items: center;
@@ -1274,7 +1281,6 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-accent);
   cursor: pointer;
   transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
-  margin-top: 4px;
   width: fit-content;
 }
 
@@ -1286,6 +1292,75 @@ h1, h2, h3, h4, h5, h6 {
 .username-card__domain-btn:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+}
+
+.username-card__form-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--color-mid-gray);
+  margin-bottom: 2px;
+}
+
+.username-card__subdomain-row {
+  display: flex;
+  align-items: center;
+}
+
+.username-card__subdomain-input {
+  height: 40px;
+  flex: 1;
+  min-width: 0;
+  border: 1px solid rgba(15, 37, 68, 0.15);
+  border-right: none;
+  border-radius: var(--radius) 0 0 var(--radius);
+  padding: 0 12px;
+  font-size: 0.875rem;
+  color: var(--color-navy);
+  background: var(--color-white);
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.username-card__subdomain-input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(96, 161, 226, 0.15);
+  z-index: 1;
+}
+
+.username-card__subdomain-input::placeholder {
+  color: var(--color-mid-gray);
+}
+
+.username-card__subdomain-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.username-card__subdomain-suffix {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  background: var(--color-off-white);
+  border: 1px solid rgba(15, 37, 68, 0.15);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font-size: 0.75rem;
+  color: var(--color-mid-gray);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.username-card__subdomain-hint {
+  font-size: 0.6875rem;
+  color: var(--color-mid-gray);
+  margin-top: 4px;
+}
+
+.username-card__error {
+  font-size: 0.75rem;
+  color: var(--color-error);
+  margin: 0;
 }
 
 /* ========== Custom Domain Modal ========== */
