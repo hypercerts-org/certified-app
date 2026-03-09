@@ -87,7 +87,7 @@ export default function HomeClient() {
             </div>
 
             {/* Username card */}
-            <UsernameCard handle={handle} pdsUrl={pdsUrl || undefined} />
+            <UsernameCard handle={handle} pdsUrl={pdsUrl || undefined} did={did || undefined} />
 
             {/* Account Details card */}
             <div className="dash-card mt-4">
