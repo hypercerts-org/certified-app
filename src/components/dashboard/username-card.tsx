@@ -1,15 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
-import { Pencil } from "lucide-react";
+import { Pencil, Globe } from "lucide-react";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import { authFetch } from "@/lib/auth/fetch";
 import { clearSessionCache } from "@/hooks/use-session";
+import CustomDomainModal from "@/components/dashboard/custom-domain-modal";
 
 interface UsernameCardProps {
   handle: string | null;
   pdsUrl?: string;
+  did?: string;
 }
 
 function isOurHandle(handle: string | null, pdsUrl?: string): boolean {
@@ -25,12 +27,13 @@ function isOurHandle(handle: string | null, pdsUrl?: string): boolean {
   return handle.endsWith(".certified.app");
 }
 
-export default function UsernameCard({ handle, pdsUrl }: UsernameCardProps) {
+export default function UsernameCard({ handle, pdsUrl, did }: UsernameCardProps) {
   const canEdit = isOurHandle(handle, pdsUrl);
   const [isEditing, setIsEditing] = useState(false);
   const [newHandle, setNewHandle] = useState(handle || "");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDomainModalOpen, setIsDomainModalOpen] = useState(false);
 
   const handleEdit = () => {
     setNewHandle(handle || "");
@@ -78,39 +81,62 @@ export default function UsernameCard({ handle, pdsUrl }: UsernameCardProps) {
   };
 
   return (
-    <div className="dash-card mt-4">
-      <div className="username-card">
-        <div className="username-card__header">
-          <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Username</h2>
-          {canEdit && !isEditing && (
-            <Button variant="ghost" size="sm" onClick={handleEdit}>
-              <Pencil size={14} />
-              Edit
-            </Button>
+    <>
+      <div className="dash-card mt-4">
+        <div className="username-card">
+          <div className="username-card__header">
+            <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Username</h2>
+            {canEdit && !isEditing && (
+              <Button variant="ghost" size="sm" onClick={handleEdit}>
+                <Pencil size={14} />
+                Edit
+              </Button>
+            )}
+          </div>
+          {isEditing ? (
+            <div className="username-card__form">
+              <Input
+                label="New username"
+                value={newHandle}
+                onChange={(e) => setNewHandle(e.target.value)}
+                placeholder="your-username.certified.app"
+                error={error ?? undefined}
+              />
+              <div className="username-card__actions">
+                <Button variant="ghost" size="sm" onClick={handleCancel} disabled={isSaving}>
+                  Cancel
+                </Button>
+                <Button variant="primary" size="sm" onClick={handleSave} loading={isSaving} disabled={isSaving}>
+                  Save
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className="username-card__value">@{handle || "..."}</p>
+          )}
+
+          {/* Use my own domain button — always visible when not editing */}
+          {!isEditing && did && (
+            <button
+              className="username-card__domain-btn"
+              onClick={() => setIsDomainModalOpen(true)}
+              type="button"
+            >
+              <Globe size={14} aria-hidden="true" />
+              Use my own domain
+            </button>
           )}
         </div>
-        {isEditing ? (
-          <div className="username-card__form">
-            <Input
-              label="New username"
-              value={newHandle}
-              onChange={(e) => setNewHandle(e.target.value)}
-              placeholder="your-username.certified.app"
-              error={error ?? undefined}
-            />
-            <div className="username-card__actions">
-              <Button variant="ghost" size="sm" onClick={handleCancel} disabled={isSaving}>
-                Cancel
-              </Button>
-              <Button variant="primary" size="sm" onClick={handleSave} loading={isSaving} disabled={isSaving}>
-                Save
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <p className="username-card__value">@{handle || "..."}</p>
-        )}
       </div>
-    </div>
+
+      {/* Custom domain modal */}
+      {did && (
+        <CustomDomainModal
+          isOpen={isDomainModalOpen}
+          onClose={() => setIsDomainModalOpen(false)}
+          did={did}
+        />
+      )}
+    </>
   );
 }
