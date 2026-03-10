@@ -2569,6 +2569,168 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-mid-gray);
 }
 
+/* App Passwords */
+.app-pw__created {
+  background: rgba(46, 204, 113, 0.06);
+  border: 1px solid rgba(46, 204, 113, 0.2);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.app-pw__created-heading {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-navy);
+  margin-bottom: 4px;
+}
+
+.app-pw__created-warning {
+  font-size: 0.75rem;
+  color: var(--color-mid-gray);
+  margin-bottom: 12px;
+}
+
+.app-pw__created-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.app-pw__created-value {
+  flex: 1;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 0.875rem;
+  letter-spacing: 0.02em;
+  color: var(--color-navy);
+  background: var(--color-white);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  user-select: all;
+}
+
+.app-pw__copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-accent);
+  background: var(--color-white);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.app-pw__copy-btn:hover {
+  border-color: var(--border-hover);
+  background: var(--color-off-white);
+}
+
+.app-pw__error {
+  font-size: 0.8125rem;
+  color: var(--color-error);
+  margin-bottom: 12px;
+}
+
+.app-pw__create-form {
+  margin-bottom: 16px;
+}
+
+.app-pw__create-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.app-pw__list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+}
+
+.app-pw__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.app-pw__item:last-child {
+  border-bottom: none;
+}
+
+.app-pw__item-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-pw__item-icon {
+  color: var(--color-mid-gray);
+  flex-shrink: 0;
+}
+
+.app-pw__item-name {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-navy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-pw__item-date {
+  font-size: 0.75rem;
+  color: var(--color-mid-gray);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.app-pw__revoke-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-error);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.app-pw__revoke-btn:hover {
+  background: rgba(231, 76, 60, 0.06);
+  border-color: rgba(231, 76, 60, 0.2);
+}
+
+.app-pw__revoke-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.app-pw__empty {
+  font-size: 0.8125rem;
+  color: var(--color-mid-gray);
+  font-style: italic;
+  margin-bottom: 12px;
+}
+
+.app-pw__add-btn {
+  margin-top: 4px;
+}
+
 /* ========== Wallet Page ========== */
 .wallet-card__header {
   display: flex;

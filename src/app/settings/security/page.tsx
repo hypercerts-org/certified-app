@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import AppPasswordSection from "@/components/account/app-password-section";
 
 export default function SecurityPage() {
   return (
@@ -20,9 +21,18 @@ export default function SecurityPage() {
             <p className="security__2fa-note">This will be available soon.</p>
           </div>
 
+          {/* App Passwords card */}
+          <div className="dash-card mt-4">
+            <h2 className="dash-card__title">App passwords</h2>
+            <p className="dash-card__desc">
+              Use app passwords to sign in to other apps without giving full access to your account or your password.
+            </p>
+            <AppPasswordSection />
+          </div>
+
           {/* 2FA card */}
           <div className="dash-card mt-4">
-            <h2 className="dash-card__title">Two-Factor Authentication</h2>
+            <h2 className="dash-card__title">Two-factor authentication</h2>
             <p className="dash-card__desc">
               Add an extra layer of security to your account.
             </p>

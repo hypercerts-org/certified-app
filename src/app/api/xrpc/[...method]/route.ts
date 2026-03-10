@@ -75,6 +75,10 @@ export async function GET(
           },
         })
       }
+      case "com.atproto.server.listAppPasswords": {
+        const result = await agent.com.atproto.server.listAppPasswords()
+        return NextResponse.json(result.data)
+      }
       default:
         return NextResponse.json(
           { error: `Unknown method: ${methodName}` },
@@ -195,6 +199,14 @@ export async function POST(
       }
       case "com.atproto.server.resetPassword": {
         await agent.com.atproto.server.resetPassword(body as any)
+        return NextResponse.json({})
+      }
+      case "com.atproto.server.createAppPassword": {
+        const result = await agent.com.atproto.server.createAppPassword(body as any)
+        return NextResponse.json(result.data)
+      }
+      case "com.atproto.server.revokeAppPassword": {
+        await agent.com.atproto.server.revokeAppPassword(body as any)
         return NextResponse.json({})
       }
       default:
