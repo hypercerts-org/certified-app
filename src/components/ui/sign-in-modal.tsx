@@ -118,7 +118,7 @@ export default function SignInModal({
         </div>
 
         <div className="signin-modal__body">
-            <form onSubmit={handleSubmit} className="signin-modal__form" aria-label="Sign in">
+            <form onSubmit={handleSubmit} className="signin-modal__form" method="post" aria-label="Sign in">
               <label className="signin-modal__label" htmlFor={isCertified ? "email" : "username"}>
                 {isCertified ? "Email address" : "Handle (username)"}
               </label>
@@ -127,6 +127,7 @@ export default function SignInModal({
                 id={isCertified ? "email" : "username"}
                 name={isCertified ? "email" : "username"}
                 type={isCertified ? "email" : "text"}
+                inputMode={isCertified ? "email" : "text"}
                 className="signin-modal__input"
                 placeholder={isCertified ? "you@example.com" : "you.bsky.social"}
                 value={inputValue}
