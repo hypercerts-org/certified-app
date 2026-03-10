@@ -13,7 +13,6 @@ type State = "idle" | "requesting" | "form" | "success";
 
 const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
   const [state, setState] = useState<State>("idle");
-  const [hasSetPassword, setHasSetPassword] = useState(false);
 
   // Form fields
   const [token, setToken] = useState("");
@@ -107,7 +106,6 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
         const data = await pwRes.json().catch(() => ({}));
         throw new Error((data as { error?: string }).error || pwRes.statusText);
       }
-      setHasSetPassword(true);
       clearFormState();
       setState("success");
       setTimeout(() => setState("idle"), 4000);
@@ -197,19 +195,17 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
           onClick={handleRequestReset}
           disabled={state === "requesting"}
         >
-          {state === "requesting" ? "Sending…" : hasSetPassword ? "Change Password" : "Set Password"}
+          {state === "requesting" ? "Sending…" : "Set or change password"}
         </Button>
       </div>
       {state === "success" ? (
         <p className="password-section__status password-section__status--success">Password updated successfully.</p>
-      ) : hasSetPassword ? (
-        <p className="password-section__masked">••••••••••••</p>
       ) : (
-        <p className="password-section__status password-section__status--empty">Not set</p>
+        <p className="password-section__masked">••••••••••••</p>
       )}
-      {state === "idle" && !hasSetPassword && (
+      {state === "idle" && (
         <p className="password-section__hint">
-          Set a password to sign in to other AT Protocol apps (like Bluesky) with your Certified username. Your primary sign-in method remains the email code.
+          Use the password to sign in to other AT Protocol apps (like Bluesky) with your Certified username. Your primary sign-in method for Certified apps remains the passwordless email code.
         </p>
       )}
       {idleError && (
