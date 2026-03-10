@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { useSession } from "@/hooks/use-session";
 
 const UsernameCard = dynamic(() => import("@/components/dashboard/username-card"));
+const PasswordSection = dynamic(() => import("@/components/account/password-section"));
 
 export default function SettingsPage() {
   const { did, pdsUrl } = useAuth();
@@ -29,13 +30,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Password card */}
-          <div className="dash-card mt-4">
-            <h2 className="dash-card__title">Password</h2>
-            <p className="dash-card__desc">
-              Set a password to sign in to other AT Protocol apps (like Bluesky) with your Certified username. Your primary sign-in method remains the email code.
-            </p>
-            <p className="settings__note">This will be available soon.</p>
-          </div>
+          <PasswordSection email={email || ""} />
 
           {/* App Passwords card */}
           <div className="dash-card mt-4">

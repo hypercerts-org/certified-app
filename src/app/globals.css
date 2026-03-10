@@ -1296,6 +1296,64 @@ h1, h2, h3, h4, h5, h6 {
   margin: 0;
 }
 
+/* ========== Password Section ========== */
+.password-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.password-section--form {
+  display: flex;
+  flex-direction: column;
+}
+
+.password-section__status {
+  font-size: 0.875rem;
+  color: var(--color-navy);
+}
+
+.password-section__status--empty {
+  color: var(--color-mid-gray);
+  font-style: italic;
+}
+
+.password-section__status--success {
+  color: var(--color-success-text);
+  margin-top: 4px;
+}
+
+.password-section__hint {
+  font-size: 0.8125rem;
+  color: var(--color-mid-gray);
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+.password-section--form .password-section__hint {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.password-section__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.password-section__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.password-section__error {
+  font-size: 0.8125rem;
+  color: var(--color-error);
+  margin-top: 8px;
+}
+
 /* ========== Custom Domain Modal ========== */
 .domain-modal__backdrop {
   position: fixed;
