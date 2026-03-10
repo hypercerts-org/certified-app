@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from "react"
 
 interface SignInModalProps {
   isOpen: boolean
-  authMode: "sign-in" | "sign-up"
   error: string | null
   onClose: () => void
   onSubmitEmail: (email: string) => Promise<void>
@@ -15,7 +14,6 @@ type ModalView = "certified" | "atproto"
 
 export default function SignInModal({
   isOpen,
-  authMode,
   error,
   onClose,
   onSubmitEmail,
@@ -84,15 +82,11 @@ export default function SignInModal({
   const isCertified = view === "certified"
 
   const title = isCertified
-    ? authMode === "sign-up"
-      ? "Create your Certified ID"
-      : "Sign in to Certified"
+    ? "Sign in to Certified"
     : "Sign in with ATProto"
 
   const buttonLabel = isCertified
-    ? authMode === "sign-up"
-      ? "Sign up for Certified"
-      : "Sign in with Certified"
+    ? "Sign in with Certified"
     : "Sign in"
 
   const switchLabel = isCertified
@@ -125,7 +119,7 @@ export default function SignInModal({
 
         <div className="signin-modal__body">
             <form onSubmit={handleSubmit} className="signin-modal__form">
-              <label className="signin-modal__label">
+              <label className="signin-modal__label" htmlFor={isCertified ? "email" : "username"}>
                 {isCertified ? "Email address" : "Handle (username)"}
               </label>
               <input

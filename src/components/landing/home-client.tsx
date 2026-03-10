@@ -25,7 +25,7 @@ const Faq = dynamic(() => import("@/components/landing/sections/faq"));
 const ReadyCta = dynamic(() => import("@/components/landing/sections/ready-cta"));
 
 export default function HomeClient() {
-  const { isLoading, isAuthenticated, did, openSignUp, pdsUrl } = useAuth();
+  const { isLoading, isAuthenticated, did, openSignIn, pdsUrl } = useAuth();
   const { profile, avatarUrl, bannerUrl, isFallback } = useProfile();
   const { setVariant } = useNavbarVariant();
   const { handle, email } = useSession();
@@ -159,7 +159,7 @@ export default function HomeClient() {
           </p>
           <div className="hero-reveal">
             <div className="hero__actions">
-              <button className="hero__btn-primary" onClick={openSignUp}>
+              <button className="hero__btn-primary" onClick={openSignIn}>
                 <img src="/assets/certified_brandmark.svg" alt="" className="hero__btn-icon" />
                 Sign in with Certified
               </button>
