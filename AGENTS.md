@@ -117,7 +117,7 @@ hb list --all          # List all issues including closed
 2. Connected Apps (`/settings/connected-apps`)
 3. Wallet (`/settings/wallet`)
 4. My Data (`/settings/my-data`)
-5. Security (`/settings/security`)
+5. Settings (`/settings/account`)
 
 ### Mobile
 - Hamburger menu triggers sidebar overlay with body scroll lock
@@ -149,7 +149,7 @@ hb list --all          # List all issues including closed
 ### Session Management
 - `useSession()` hook with module-level cache — only ONE `getSession` fetch per page load regardless of how many components use it
 - Cache cleared on sign-out via `clearSessionCache()`
-- Used by sidebar, home-client, and security page
+- Used by sidebar, home-client, and settings (account) page
 
 ### Performance
 - Landing sections and dashboard components loaded via `next/dynamic` (code-split)
@@ -176,7 +176,7 @@ src/
 │   │   │   ├── layout.tsx             # WagmiProvider scoped here
 │   │   │   └── page.tsx
 │   │   ├── my-data/page.tsx
-│   │   └── security/page.tsx
+│   │   └── account/page.tsx
 │   ├── api/
 │   │   ├── auth/                      # login, logout, session, callback-handler
 │   │   └── xrpc/[...method]/route.ts  # XRPC proxy with security
@@ -337,10 +337,10 @@ Hero, CTA buttons, content sections.
 What You Get, How It Works, Partner Apps, Built for Trust, FAQ, Ready CTA. Animated mesh gradient hero. Deleted `/why-certified`.
 
 ### 8. Authenticated App Redesign (epic `oxt`, 13 tasks) — Sidebar layout
-Left sidebar nav, right sidebar cards, connected apps, edit profile, security, my data, wallet pages. Mobile hamburger sidebar. Responsive CSS.
+Left sidebar nav, right sidebar cards, connected apps, edit profile, settings, my data, wallet pages. Mobile hamburger sidebar. Responsive CSS.
 
 ### 9. Post-Design Fixes — Polish
-Footer hidden for auth users, loading states, wallet page, connected apps split, security nav position.
+Footer hidden for auth users, loading states, wallet page, connected apps split, settings nav position.
 
 ### 10. Code Review Fixes (epic `dqp`, 14 tasks + 1 integration bug) — Comprehensive audit
 10-reviewer audit covering security, CSS, mobile, components, a11y, data flow, TypeScript, routing, performance. All fixes implemented:
@@ -354,7 +354,7 @@ Footer hidden for auth users, loading states, wallet page, connected apps split,
 
 ## Known Limitations / Future Work
 
-- **2FA/TOTP:** Not implemented on the ePDS — security page shows "coming soon" placeholder
+- **2FA/TOTP:** Not implemented on the ePDS — settings page (`/settings/account`) shows "coming soon" placeholder
 - **ERC-1271 verification:** Smart contract wallet signatures return `verified: false` (on-chain verification not yet supported)
 - **My Data:** Fetches `org.hypercerts.claim.activity` records — collection may not exist for most users, so empty state is shown
 - **`account-settings.tsx`:** Legacy component, heavily Tailwind — not yet migrated to BEM CSS

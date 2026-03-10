@@ -8,8 +8,16 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "**.certified.app",
       },
-
     ],
+  },
+  async redirects() {
+    return [
+      {
+        source: "/settings/security",
+        destination: "/settings/account",
+        permanent: true,
+      },
+    ];
   },
 };
 

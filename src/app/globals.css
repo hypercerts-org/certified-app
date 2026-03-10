@@ -2534,24 +2534,24 @@ h1, h2, h3, h4, h5, h6 {
   opacity: 0.8;
 }
 
-/* ========== Security Page ========== */
-.security__section,
-.security__2fa {
+/* ========== Settings (Account) Page ========== */
+.settings__section,
+.settings__2fa {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--border-subtle);
 }
 
-.security__loading {
+.settings__loading {
   font-size: 0.8125rem;
   color: var(--color-mid-gray);
 }
 
-.security__2fa-status {
+.settings__2fa-status {
   margin-bottom: 12px;
 }
 
-.security__2fa-badge {
+.settings__2fa-badge {
   display: inline-flex;
   align-items: center;
   padding: 4px 12px;
@@ -2560,17 +2560,17 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 500;
 }
 
-.security__2fa-badge--off {
+.settings__2fa-badge--off {
   background: var(--color-off-white);
   color: var(--color-mid-gray);
 }
 
-.security__2fa-badge--on {
+.settings__2fa-badge--on {
   background: rgba(46, 204, 113, 0.1);
   color: var(--color-success);
 }
 
-.security__2fa-note {
+.settings__note {
   font-size: 0.8125rem;
   line-height: 1.6;
   color: var(--color-mid-gray);

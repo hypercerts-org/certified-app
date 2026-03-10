@@ -67,8 +67,8 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
 
           <li>
             <Link
-              href="/settings/security"
-              className={`sidebar__item ${pathname === "/settings/security" ? "sidebar__item--active" : ""}`}
+              href="/settings/account"
+              className={`sidebar__item ${pathname === "/settings/account" ? "sidebar__item--active" : ""}`}
             >
               <Shield size={18} />
               Settings

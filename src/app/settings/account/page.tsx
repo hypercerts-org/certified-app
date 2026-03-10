@@ -34,7 +34,7 @@ export default function SettingsPage() {
             <p className="dash-card__desc">
               Set a password to sign in to other AT Protocol apps (like Bluesky) with your Certified username. Your primary sign-in method remains the email code.
             </p>
-            <p className="security__2fa-note">This will be available soon.</p>
+            <p className="settings__note">This will be available soon.</p>
           </div>
 
           {/* App Passwords card */}
@@ -43,7 +43,7 @@ export default function SettingsPage() {
             <p className="dash-card__desc">
               Use app passwords to sign in to other apps without giving full access to your account or your password.
             </p>
-            <p className="security__2fa-note">This will be available soon.</p>
+            <p className="settings__note">This will be available soon.</p>
           </div>
 
           {/* 2FA card */}
@@ -52,7 +52,7 @@ export default function SettingsPage() {
             <p className="dash-card__desc">
               Add an extra layer of security to your account.
             </p>
-            <p className="security__2fa-note">This will be available soon.</p>
+            <p className="settings__note">This will be available soon.</p>
           </div>
         </div>
       </div>
