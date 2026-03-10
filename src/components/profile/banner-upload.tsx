@@ -20,7 +20,7 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB — Vercel serverless limit is ~4.5MB
   const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
   const handleClick = () => {
@@ -41,7 +41,7 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      setError("Image must be 10MB or smaller");
+      setError("Image must be 4MB or smaller");
       return;
     }
 
@@ -102,7 +102,7 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
             ) : (
               <>
                 <ImageIcon className="h-6 w-6 text-white" />
-                <span className="text-white font-mono text-xs tracking-wider">Change banner</span>
+                <span className="text-white text-xs">Change banner</span>
               </>
             )}
           </div>

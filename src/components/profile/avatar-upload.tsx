@@ -23,7 +23,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB — Vercel serverless limit is ~4.5MB
   const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
   const handleClick = () => {
@@ -44,7 +44,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      setError("Image must be 5MB or smaller");
+      setError("Image must be 4MB or smaller");
       return;
     }
 

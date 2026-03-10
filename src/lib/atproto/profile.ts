@@ -11,8 +11,8 @@ const COLLECTION = "app.certified.actor.profile";
 const BSKY_COLLECTION = "app.bsky.actor.profile";
 const RKEY = "self";
 
-const MAX_AVATAR_SIZE = 5 * 1024 * 1024; // 5MB
-const MAX_BANNER_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_AVATAR_SIZE = 4 * 1024 * 1024; // 4MB — Vercel serverless limit is ~4.5MB
+const MAX_BANNER_SIZE = 4 * 1024 * 1024; // 4MB — Vercel serverless limit is ~4.5MB
 
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
