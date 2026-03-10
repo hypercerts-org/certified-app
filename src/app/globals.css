@@ -188,9 +188,9 @@ h1, h2, h3, h4, h5, h6 {
   inset: 0;
   z-index: 0;
   background:
-    radial-gradient(ellipse 80% 50% at 20% 40%, rgba(96,161,226,0.15) 0%, transparent 70%),
-    radial-gradient(ellipse 60% 80% at 80% 20%, rgba(26,58,107,0.2) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 60% at 50% 80%, rgba(96,161,226,0.08) 0%, transparent 50%);
+    radial-gradient(ellipse 80% 50% at 20% 40%, rgba(85,85,85,0.15) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 80% at 80% 20%, rgba(51,51,51,0.2) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 60% at 50% 80%, rgba(85,85,85,0.08) 0%, transparent 50%);
   background-size: 200% 200%, 200% 200%, 200% 200%;
   animation: meshShift 20s ease-in-out infinite;
 }
@@ -256,16 +256,16 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 1rem;
   font-weight: 500;
   color: var(--color-white);
-  background: rgba(96, 161, 226, 0.1);
-  border: 1px solid rgba(96, 161, 226, 0.2);
+  background: rgba(85, 85, 85, 0.1);
+  border: 1px solid rgba(85, 85, 85, 0.2);
   cursor: pointer;
   transition: all var(--transition-fast);
   text-decoration: none;
 }
 
 .hero__btn-primary:hover {
-  background: rgba(96, 161, 226, 0.15);
-  border-color: rgba(96, 161, 226, 0.35);
+  background: rgba(85, 85, 85, 0.15);
+  border-color: rgba(85, 85, 85, 0.35);
   color: var(--color-white);
 }
 
@@ -479,7 +479,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .signin-modal__input:focus {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(96, 161, 226, 0.15);
+  box-shadow: 0 0 0 3px rgba(85, 85, 85, 0.15);
 }
 
 .signin-modal__input:disabled {
@@ -935,8 +935,8 @@ h1, h2, h3, h4, h5, h6 {
   width: 40px;
   height: 40px;
   border-radius: var(--radius);
-  background: rgba(96, 161, 226, 0.1);
-  border: 1px solid rgba(96, 161, 226, 0.2);
+  background: rgba(85, 85, 85, 0.1);
+  border: 1px solid rgba(85, 85, 85, 0.2);
   color: var(--color-accent);
   font-size: 1rem;
   font-weight: 700;
@@ -1020,7 +1020,7 @@ h1, h2, h3, h4, h5, h6 {
 .landing-trust-sub a {
   color: var(--color-accent);
   text-decoration: none;
-  border-bottom: 1px solid rgba(96, 161, 226, 0.3);
+  border-bottom: 1px solid rgba(85, 85, 85, 0.3);
   transition: border-color var(--transition-fast);
 }
 
@@ -1218,7 +1218,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .username-card__domain-btn:hover {
-  background: rgba(96, 161, 226, 0.06);
+  background: rgba(85, 85, 85, 0.06);
   border-color: var(--color-accent);
 }
 
@@ -1257,7 +1257,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .username-card__subdomain-input:focus {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(96, 161, 226, 0.15);
+  box-shadow: 0 0 0 3px rgba(85, 85, 85, 0.15);
   z-index: 1;
 }
 
@@ -1536,7 +1536,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .domain-modal__input:focus {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(96, 161, 226, 0.15);
+  box-shadow: 0 0 0 3px rgba(85, 85, 85, 0.15);
 }
 
 .domain-modal__hint {
@@ -1616,7 +1616,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .domain-modal__copy-btn:hover {
   color: var(--color-accent);
-  background: rgba(96, 161, 226, 0.1);
+  background: rgba(85, 85, 85, 0.1);
 }
 
 /* Info box */
@@ -2076,7 +2076,7 @@ h1, h2, h3, h4, h5, h6 {
   overflow: hidden;
   margin: -24px -24px 16px -24px;
   border-radius: var(--radius) var(--radius) 0 0;
-  background: linear-gradient(135deg, #e8eef5 0%, #dce4ed 100%);
+  background: linear-gradient(135deg, #e8e8e8 0%, #dcdcdc 100%);
 }
 
 .profile-card__banner img {
