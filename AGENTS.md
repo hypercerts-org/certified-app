@@ -83,7 +83,7 @@ hb list --all          # List all issues including closed
 - Focus-visible styles are globally defined for `a`, `button`, `[role="button"]`, `[tabindex]`
 
 ### Data
-- `CONNECTED_APPS` and `EXPLORE_APPS` arrays live in `src/lib/constants/apps.ts` — single source of truth
+- `CONNECTED_APPS` array lives in `src/lib/constants/apps.ts` — single source of truth
 - `getInitials()` utility lives in `src/lib/utils/initials.ts`
 - API response types (`SessionResponse`, `ListRecordsResponse`, `PutRecordResponse`) in `src/lib/types/api.ts`
 
@@ -140,8 +140,7 @@ hb list --all          # List all issues including closed
 - Repo DID validation on write operations
 
 ### Connected Apps
-- "Connected" section: Ma Earth, GainForest, Silvi, Hyperboards (with real logos from `/public/assets/partners/`)
-- "Explore more apps" section: Bluesky, Leaflet (with "Available" status)
+- Ma Earth, GainForest, Silvi, Hyperboards (with real logos from `/public/assets/partners/`)
 - Data defined in `src/lib/constants/apps.ts`
 
 ### Session Management
@@ -211,8 +210,7 @@ src/
 │   │   ├── identity-link-card.tsx     # Wallet list with verify/delete
 │   │   └── link-wallet-flow.tsx       # Multi-step connect + sign
 │   ├── account/
-│   │   ├── password-section.tsx       # Set/change password
-│   │   └── account-settings.tsx       # Legacy (Tailwind-heavy)
+│   │   └── password-section.tsx       # Set/change password (not yet wired into settings page)
 │   ├── profile/
 │   │   └── profile-edit-form.tsx
 │   └── ui/                            # Shared UI primitives
@@ -242,7 +240,7 @@ src/
     ├── atproto/
     │   └── profile.ts                 # Profile fetch/update
     ├── constants/
-    │   └── apps.ts                    # CONNECTED_APPS + EXPLORE_APPS
+    │   └── apps.ts                    # CONNECTED_APPS
     ├── types/
     │   └── api.ts                     # API response types
     ├── utils/
@@ -354,9 +352,8 @@ Footer hidden for auth users, loading states, wallet page, connected apps split,
 
 ## Known Limitations / Future Work
 
-- **2FA/TOTP:** Not implemented on the ePDS — settings page (`/settings/account`) shows "coming soon" placeholder
+- **2FA/TOTP:** Not implemented on the ePDS — settings page (`/settings`) shows "coming soon" placeholder
 - **ERC-1271 verification:** Smart contract wallet signatures return `verified: false` (on-chain verification not yet supported)
 - **My Data:** Fetches `org.hypercerts.claim.activity` records — collection may not exist for most users, so empty state is shown
-- **`account-settings.tsx`:** Legacy component, heavily Tailwind — not yet migrated to BEM CSS
 - **No test suite:** No unit or integration tests exist. Quality gates are `tsc --noEmit` + `next build`.
 - **`certified_brandmark 2.png`:** Duplicate untracked file in `public/assets/` — can be deleted
