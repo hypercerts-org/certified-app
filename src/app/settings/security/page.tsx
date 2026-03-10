@@ -1,18 +1,29 @@
 "use client";
 
 import React from "react";
+import dynamic from "next/dynamic";
+import { useAuth } from "@/lib/auth/auth-context";
+import { useSession } from "@/hooks/use-session";
 
-export default function SecurityPage() {
+const UsernameCard = dynamic(() => import("@/components/dashboard/username-card"));
+
+export default function SettingsPage() {
+  const { did, pdsUrl } = useAuth();
+  const { handle } = useSession();
+
   return (
     <div className="dashboard">
       <div className="dashboard__topbar">
-        <h1 className="dashboard__page-title">Security</h1>
+        <h1 className="dashboard__page-title">Settings</h1>
       </div>
 
       <div className="dashboard__body dashboard__body--single">
         <div className="dashboard__main">
+          {/* Username card */}
+          <UsernameCard handle={handle} pdsUrl={pdsUrl || undefined} did={did || undefined} />
+
           {/* Password card */}
-          <div className="dash-card">
+          <div className="dash-card mt-4">
             <h2 className="dash-card__title">Password</h2>
             <p className="dash-card__desc">
               Set a password to sign in to other AT Protocol apps (like Bluesky) with your Certified username. Your primary sign-in method remains the email code.

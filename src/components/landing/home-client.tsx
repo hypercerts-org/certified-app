@@ -14,8 +14,6 @@ import Button from "@/components/ui/button";
 
 // Dashboard components — only loaded for authenticated users
 const SignInPreviewCard = dynamic(() => import("@/components/dashboard/sign-in-preview-card"));
-const UsernameCard = dynamic(() => import("@/components/dashboard/username-card"));
-
 // Landing sections — only loaded for unauthenticated users
 const WhatYouGet = dynamic(() => import("@/components/landing/sections/what-you-get"));
 const HowItWorks = dynamic(() => import("@/components/landing/sections/how-it-works"));
@@ -25,7 +23,7 @@ const Faq = dynamic(() => import("@/components/landing/sections/faq"));
 const ReadyCta = dynamic(() => import("@/components/landing/sections/ready-cta"));
 
 export default function HomeClient() {
-  const { isLoading, isAuthenticated, did, openSignIn, pdsUrl } = useAuth();
+  const { isLoading, isAuthenticated, did, openSignIn } = useAuth();
   const { profile, avatarUrl, bannerUrl, isFallback } = useProfile();
   const { setVariant } = useNavbarVariant();
   const { handle, email } = useSession();
@@ -85,9 +83,6 @@ export default function HomeClient() {
 
               </div>
             </div>
-
-            {/* Username card */}
-            <UsernameCard handle={handle} pdsUrl={pdsUrl || undefined} did={did || undefined} />
 
             {/* Account Details card */}
             <div className="dash-card mt-4">

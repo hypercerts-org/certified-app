@@ -71,7 +71,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
               className={`sidebar__item ${pathname === "/settings/security" ? "sidebar__item--active" : ""}`}
             >
               <Shield size={18} />
-              Security
+              Settings
             </Link>
           </li>
         </ul>
