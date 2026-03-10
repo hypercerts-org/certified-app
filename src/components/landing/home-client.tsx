@@ -77,11 +77,18 @@ export default function HomeClient() {
                   <h2 className="profile-card__name">{profile?.displayName || "Anonymous"}</h2>
                   <p className="profile-card__handle">@{handle}</p>
                 </div>
+                <Link href="/settings/edit-profile">
+                  <Button variant="ghost" size="sm">
+                    <Pencil size={14} />
+                    Edit
+                  </Button>
+                </Link>
               </div>
-              <div className="profile-card__did">
-                <p className="personal-info__field personal-info__field--mono">{did}</p>
-                <p className="personal-info__hint">Your stable decentralized identifier (DID) — this never changes, even if you update your username.</p>
-              </div>
+              <dl className="profile-card__did">
+                <dt className="personal-info__label">Identifier</dt>
+                <dd className="personal-info__field personal-info__field--mono">{did}</dd>
+                <dd className="personal-info__hint">Your stable decentralized identifier (DID) — this never changes, even if you update your username.</dd>
+              </dl>
             </div>
 
             {/* Account Details card */}

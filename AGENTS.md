@@ -112,12 +112,10 @@ hb list --all          # List all issues including closed
 - `settings/layout.tsx` wraps all settings pages in `AuthGuard` (centralized, not per-page)
 - `AuthGuard` redirects to `/?returnTo=<path>` when unauthenticated
 
-### Sidebar Navigation (5 items, in order)
-1. Profile (`/settings/edit-profile`)
-2. Connected Apps (`/settings/connected-apps`)
-3. Wallet (`/settings/wallet`)
-4. My Data (`/settings/my-data`)
-5. Settings (`/settings/account`)
+### Sidebar Navigation (3 items, in order)
+1. Profile (`/` and `/settings/edit-profile`)
+2. Apps (`/connected-apps`)
+3. Settings (`/settings`)
 
 ### Mobile
 - Hamburger menu triggers sidebar overlay with body scroll lock
@@ -168,15 +166,17 @@ src/
 │   ├── page.tsx                       # Home page entry + metadata
 │   ├── error.tsx                      # Global error boundary
 │   ├── not-found.tsx                  # 404 page
+│   ├── connected-apps/
+│   │   ├── layout.tsx                 # AuthGuard for connected-apps
+│   │   └── page.tsx
 │   ├── settings/
 │   │   ├── layout.tsx                 # Centralized AuthGuard for all settings
+│   │   ├── page.tsx                   # Settings index (username, email, password, 2FA)
 │   │   ├── edit-profile/page.tsx
-│   │   ├── connected-apps/page.tsx
 │   │   ├── wallet/
 │   │   │   ├── layout.tsx             # WagmiProvider scoped here
 │   │   │   └── page.tsx
-│   │   ├── my-data/page.tsx
-│   │   └── account/page.tsx
+│   │   └── my-data/page.tsx
 │   ├── api/
 │   │   ├── auth/                      # login, logout, session, callback-handler
 │   │   └── xrpc/[...method]/route.ts  # XRPC proxy with security
