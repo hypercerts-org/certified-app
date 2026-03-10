@@ -76,9 +76,6 @@ export default function HomeClient() {
                 <div className="profile-card__info">
                   <h2 className="profile-card__name">{profile?.displayName || "Anonymous"}</h2>
                   <p className="profile-card__handle">@{handle}</p>
-                  {profile?.description && (
-                    <p className="profile-card__bio">{profile.description}</p>
-                  )}
                 </div>
                 <div className="profile-card__did">
                   <p className="personal-info__field personal-info__field--mono">{did}</p>
@@ -107,6 +104,10 @@ export default function HomeClient() {
                 <div>
                   <dt className="personal-info__label">Display Name</dt>
                   <dd className="personal-info__field">{profile?.displayName || "—"}</dd>
+                </div>
+                <div className="personal-info__full-width">
+                  <dt className="personal-info__label">About</dt>
+                  <dd className="personal-info__field">{profile?.description || "—"}</dd>
                 </div>
                 <div className="personal-info__full-width">
                   <dt className="personal-info__label">Website</dt>
