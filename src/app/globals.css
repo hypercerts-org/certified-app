@@ -749,40 +749,27 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
-.landing-card-grid {
+.landing-features {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  gap: 48px 64px;
 }
 
 @media (max-width: 768px) {
-  .landing-card-grid {
-    grid-template-columns: 1fr;
-  }
+  .landing-features { grid-template-columns: 1fr; gap: 32px; }
 }
 
-.landing-card {
-  background: var(--color-white);
-  border: 1px solid var(--color-light-gray);
-  border-radius: var(--radius);
-  padding: 24px;
-  transition: border-color var(--transition-fast);
-}
-
-.landing-card:hover {
-  border-color: var(--border-hover);
-}
-
-.landing-card h3 {
-  font-size: 1.0625rem;
+.landing-feature h3 {
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--color-navy);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+  line-height: 1.3;
 }
 
-.landing-card p {
+.landing-feature p {
   font-size: 0.9375rem;
-  line-height: 1.6;
+  line-height: 1.7;
   color: var(--color-mid-gray);
   margin: 0;
 }
@@ -865,49 +852,39 @@ h1, h2, h3, h4, h5, h6 {
 .landing-steps {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 48px;
+  margin-bottom: 24px;
 }
 
 @media (max-width: 768px) {
-  .landing-steps {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
+  .landing-steps { grid-template-columns: 1fr; gap: 40px; }
 }
 
 .landing-step {
-  text-align: center;
-  padding: 32px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius);
+  text-align: left;
+  /* NO border, NO padding, NO background */
 }
 
 .landing-step__number {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius);
-  background: rgba(85, 85, 85, 0.1);
-  border: 1px solid rgba(85, 85, 85, 0.2);
-  color: var(--color-accent);
-  font-size: 1rem;
-  font-weight: 700;
+  display: block;
+  font-size: 3.5rem;
+  font-weight: 200;
+  color: rgba(255, 255, 255, 0.2);
+  line-height: 1;
   margin-bottom: 16px;
+  /* NO background, NO border, NO width/height, NO border-radius, NO inline-flex */
 }
 
 .landing-step h3 {
-  font-size: 1rem;
+  font-size: 1.0625rem;
   font-weight: 600;
   color: var(--color-white);
   margin-bottom: 8px;
 }
 
 .landing-step p {
-  font-size: 0.875rem;
-  line-height: 1.6;
+  font-size: 0.9375rem;
+  line-height: 1.7;
   color: rgba(255, 255, 255, 0.5);
   margin: 0;
 }
@@ -915,7 +892,7 @@ h1, h2, h3, h4, h5, h6 {
 .landing-reassurance {
   text-align: center;
   font-size: 0.875rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.3);
 }
 
 /* ========== Built for Trust Section ========== */
