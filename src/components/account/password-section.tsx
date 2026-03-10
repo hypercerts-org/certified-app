@@ -135,8 +135,10 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
   if (state === "form") {
     return (
       <div className="dash-card mt-4">
-        <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Password</h2>
-        <div className="password-section password-section--form">
+        <div className="password-section__header">
+          <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Password</h2>
+        </div>
+        <div className="password-section--form">
           <p className="password-section__hint">
             We sent a password reset code to your email. Enter it below with your new password.
           </p>
@@ -187,25 +189,8 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
 
   return (
     <div className="dash-card mt-4">
-      <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Password</h2>
-      <div className="password-section">
-        <div>
-          {state === "success" ? (
-            <p className="password-section__status password-section__status--success">Password updated successfully.</p>
-          ) : hasSetPassword ? (
-            <p className="password-section__status">Password set</p>
-          ) : (
-            <p className="password-section__status password-section__status--empty">Not set</p>
-          )}
-          {state === "idle" && !hasSetPassword && (
-            <p className="password-section__hint">
-              Set a password to sign in to other AT Protocol apps (like Bluesky) with your Certified username. Your primary sign-in method remains the email code.
-            </p>
-          )}
-          {idleError && (
-            <p className="password-section__error" role="alert">{idleError}</p>
-          )}
-        </div>
+      <div className="password-section__header">
+        <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Password</h2>
         <Button
           variant="ghost"
           size="sm"
@@ -215,6 +200,21 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
           {state === "requesting" ? "Sending…" : hasSetPassword ? "Change Password" : "Set Password"}
         </Button>
       </div>
+      {state === "success" ? (
+        <p className="password-section__status password-section__status--success">Password updated successfully.</p>
+      ) : hasSetPassword ? (
+        <p className="password-section__masked">••••••••••••</p>
+      ) : (
+        <p className="password-section__status password-section__status--empty">Not set</p>
+      )}
+      {state === "idle" && !hasSetPassword && (
+        <p className="password-section__hint">
+          Set a password to sign in to other AT Protocol apps (like Bluesky) with your Certified username. Your primary sign-in method remains the email code.
+        </p>
+      )}
+      {idleError && (
+        <p className="password-section__error" role="alert">{idleError}</p>
+      )}
     </div>
   );
 };

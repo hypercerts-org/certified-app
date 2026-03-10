@@ -1297,11 +1297,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ========== Password Section ========== */
-.password-section {
+.password-section__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  margin-bottom: 8px;
 }
 
 .password-section--form {
@@ -1321,6 +1321,13 @@ h1, h2, h3, h4, h5, h6 {
 
 .password-section__status--success {
   color: var(--color-success-text);
+  margin-top: 4px;
+}
+
+.password-section__masked {
+  font-size: 1.125rem;
+  letter-spacing: 3px;
+  color: var(--color-navy);
   margin-top: 4px;
 }
 
