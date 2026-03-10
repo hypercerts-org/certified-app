@@ -118,7 +118,7 @@ export default function SignInModal({
         </div>
 
         <div className="signin-modal__body">
-            <form onSubmit={handleSubmit} className="signin-modal__form" autoComplete="on" aria-label="Sign in">
+            <form onSubmit={handleSubmit} className="signin-modal__form" aria-label="Sign in">
               <label className="signin-modal__label" htmlFor={isCertified ? "email" : "username"}>
                 {isCertified ? "Email address" : "Handle (username)"}
               </label>
