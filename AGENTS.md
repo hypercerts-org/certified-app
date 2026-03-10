@@ -56,7 +56,7 @@ hb list --all          # List all issues including closed
 - **Auth:** AT Protocol OAuth 2.0 + OTP email codes via `@atproto/oauth-client-node` (server-side). No passwords for login — password management uses `requestPasswordReset` + `resetPassword` XRPC flow.
 - **Wallet:** wagmi 2.x + viem 2.x for EIP-712 typed data signing (scoped to wallet page only via `settings/wallet/layout.tsx`)
 - **State:** React Query (`@tanstack/react-query`) for server state, React context for auth
-- **Deployment:** Vercel (deploy from branch with `vercel deploy --prod`, no merge required)
+- **Deployment:** Vercel — production via `vercel deploy --prod`, staging via preview deploy + alias (see "Git & Deployment" below)
 - **Issue Tracking:** heartbeads (`hb` CLI), stored in `.beads/` directory
 
 ## Design System & Conventions
@@ -281,11 +281,35 @@ UPSTASH_REDIS_REST_TOKEN=<Upstash Redis token>
 
 ## Git & Deployment
 
-- **Current branch:** `feat/app-sidebar-layout` (all work happens here)
-- **PRs:** #1 (landing page) and #2 (sidebar layout) — both MERGED
-- **Deploy:** `vercel deploy --prod` from branch (no merge to main required)
+- **Branches:** `main` (production), `staging` (preview/testing)
 - **Build check:** `npx tsc --noEmit && npx next build` (must pass before deploy)
 - **Config:** `next.config.ts` has `serverExternalPackages: ["@atproto/oauth-client-node"]`
+
+### Deploying to production (`certified.app`)
+
+```bash
+git checkout main
+vercel deploy --prod   # Uses Production env vars (PUBLIC_URL=https://certified.app)
+# Auto-aliased to certified.app
+```
+
+### Deploying to staging (`staging.certified.app`)
+
+```bash
+git checkout staging
+vercel deploy          # Preview deploy — uses Preview (staging) env vars
+vercel alias set <deployment-url> staging.certified.app --scope hypercerts-foundation
+```
+
+**⚠️ CRITICAL:** Do NOT use `vercel deploy --prod` for staging. The `--prod` flag uses Production env vars where `PUBLIC_URL=https://certified.app`. This breaks OAuth login because:
+- The OAuth `client_id` and `redirect_uris` are derived from `PUBLIC_URL` (see `src/lib/auth/oauth-client.ts`)
+- The CSRF origin check compares `Origin` header against `PUBLIC_URL` (see `src/lib/auth/csrf.ts`)
+- If `PUBLIC_URL` doesn't match the actual domain, OAuth redirects go to the wrong place and CSRF rejects all POST requests
+
+Vercel env var setup for this to work:
+- **Production:** `PUBLIC_URL=https://certified.app`
+- **Preview (staging branch):** `PUBLIC_URL=https://staging.certified.app`
+- Preview deploys from the `staging` branch pick up the branch-scoped override automatically.
 
 ## Completed Work (All Epics Closed)
 
