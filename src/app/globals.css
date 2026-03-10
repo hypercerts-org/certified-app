@@ -291,7 +291,7 @@ h1, h2, h3, h4, h5, h6 {
 .landing-footer {
   background: var(--color-navy);
   padding: 24px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .landing-footer__inner {
@@ -601,16 +601,18 @@ h1, h2, h3, h4, h5, h6 {
 /* ========== Landing CTA Section ========== */
 .landing-cta {
   text-align: center;
-  padding: 80px 32px 96px;
+  padding: 96px 32px 112px;
 }
 
 .landing-cta h2 {
   margin-bottom: 12px;
+  font-size: clamp(1.5rem, 3vw + 0.5rem, 2.5rem);
+  font-weight: 700;
 }
 
 .landing-cta p {
   font-size: 1rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.4);
   margin-bottom: 32px;
 }
 
@@ -772,11 +774,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .landing-faq-item {
-  border-bottom: 1px solid var(--color-light-gray);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .landing-faq-item:first-child {
-  border-top: 1px solid var(--color-light-gray);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .landing-faq-btn {
@@ -797,7 +799,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .landing-faq-btn:hover {
-  color: var(--color-accent);
+  color: #000000;
 }
 
 .landing-faq-btn:focus-visible {
@@ -810,7 +812,7 @@ h1, h2, h3, h4, h5, h6 {
   flex-shrink: 0;
   width: 18px;
   height: 18px;
-  color: var(--color-accent);
+  color: var(--color-navy);
   transition: transform var(--transition-fast);
 }
 
