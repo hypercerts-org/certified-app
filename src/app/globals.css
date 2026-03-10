@@ -4,33 +4,33 @@
 
 :root {
   /* Core */
-  --color-navy: #0F2544;
-  --color-accent: #60A1E2;
+  --color-navy: #111111;
+  --color-accent: #555555;
   --color-white: #FFFFFF;
 
   /* Neutrals */
-  --color-off-white: #F7F8FA;
-  --color-gray-100: #EEF0F4;
-  --color-light-gray: #E2E5EB;
-  --color-mid-gray: #6B7280;
-  --color-dark-gray: #3B4251;
+  --color-off-white: #F5F5F5;
+  --color-gray-100: #EEEEEE;
+  --color-light-gray: #E0E0E0;
+  --color-mid-gray: #666666;
+  --color-dark-gray: #222222;
 
   /* Accent Variations */
-  --color-accent-hover: #4e93d8;
+  --color-accent-hover: #333333;
 
   /* Borders */
-  --border-subtle: rgba(15, 37, 68, 0.06);
-  --border-light: rgba(15, 37, 68, 0.08);
-  --border-default: rgba(15, 37, 68, 0.1);
-  --border-medium: rgba(15, 37, 68, 0.12);
-  --border-hover: rgba(15, 37, 68, 0.2);
-  --border-hover-soft: rgba(15, 37, 68, 0.18);
-  --border-strong: rgba(15, 37, 68, 0.25);
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-light: rgba(0, 0, 0, 0.08);
+  --border-default: rgba(0, 0, 0, 0.1);
+  --border-medium: rgba(0, 0, 0, 0.12);
+  --border-hover: rgba(0, 0, 0, 0.2);
+  --border-hover-soft: rgba(0, 0, 0, 0.18);
+  --border-strong: rgba(0, 0, 0, 0.25);
 
   /* Navy overlays */
-  --navy-overlay-30: rgba(15, 37, 68, 0.3);
-  --navy-overlay-70: rgba(15, 37, 68, 0.7);
-  --navy-overlay-85: rgba(15, 37, 68, 0.85);
+  --navy-overlay-30: rgba(0, 0, 0, 0.3);
+  --navy-overlay-70: rgba(0, 0, 0, 0.7);
+  --navy-overlay-85: rgba(0, 0, 0, 0.85);
 
   /* Semantic */
   --color-success: #2ECC71;
@@ -1244,7 +1244,7 @@ h1, h2, h3, h4, h5, h6 {
   height: 40px;
   flex: 1;
   min-width: 0;
-  border: 1px solid rgba(15, 37, 68, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.15);
   border-right: none;
   border-radius: var(--radius) 0 0 var(--radius);
   padding: 0 12px;
@@ -1276,7 +1276,7 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   padding: 0 12px;
   background: var(--color-off-white);
-  border: 1px solid rgba(15, 37, 68, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 0 var(--radius) var(--radius) 0;
   font-size: 0.75rem;
   color: var(--color-mid-gray);
