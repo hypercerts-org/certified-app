@@ -9,10 +9,10 @@ export default {
   theme: {
     extend: {
       colors: {
-        navy: "#0F2544",
-        accent: "#60A1E2",
-        sky: "#A3CDF2",
-        deep: "#1A3A6B",
+        navy: "#111111",
+        accent: "#555555",
+        sky: "#CCCCCC",
+        deep: "#333333",
         gray: {
           50: "#F7F8FA",
           100: "#EEF0F4",
@@ -52,10 +52,10 @@ export default {
         ],
       },
       boxShadow: {
-        "elevation-1": "0 1px 3px rgba(15, 37, 68, 0.06)",
-        "elevation-2": "0 4px 12px rgba(15, 37, 68, 0.10)",
-        "elevation-3": "0 16px 48px rgba(15, 37, 68, 0.16)",
-        "elevation-4": "0 8px 24px rgba(15, 37, 68, 0.14)",
+        "elevation-1": "0 1px 2px rgba(0, 0, 0, 0.06)",
+        "elevation-2": "0 2px 4px rgba(0, 0, 0, 0.10)",
+        "elevation-3": "0 4px 8px rgba(0, 0, 0, 0.16)",
+        "elevation-4": "0 8px 16px rgba(0, 0, 0, 0.14)",
       },
       borderRadius: {
         button: "6px",
