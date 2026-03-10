@@ -144,7 +144,6 @@ export default function HomeClient() {
   return (
     <>
       <section className="hero hero--landing">
-        <div className="hero__bg" aria-hidden="true" />
         <div className="hero__inner">
           <h1 className="hero__title hero-reveal">One account.<br />Any app.</h1>
           <p className="hero__subtitle hero-reveal">
