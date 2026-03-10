@@ -119,11 +119,13 @@ export default function SignInModal({
 
         <div className="signin-modal__body">
             <form onSubmit={handleSubmit} className="signin-modal__form" aria-label="Sign in">
-              <label className="signin-modal__label">
+              <label className="signin-modal__label" htmlFor={isCertified ? "email" : "username"}>
                 {isCertified ? "Email address" : "Handle (username)"}
               </label>
               <input
                 ref={inputRef}
+                id={isCertified ? "email" : "username"}
+                name={isCertified ? "email" : "username"}
                 type={isCertified ? "email" : "text"}
                 className="signin-modal__input"
                 placeholder={isCertified ? "you@example.com" : "you.bsky.social"}
