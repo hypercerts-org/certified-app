@@ -209,7 +209,7 @@ function OrbitingLogosInner({
         el.style.filter = "grayscale(0%) brightness(1)";
         el.style.opacity = "1";
         el.style.cursor = "grabbing";
-        el.style.boxShadow = "0 0 24px rgba(85,85,85,0.4)";
+        el.style.boxShadow = "0 0 24px rgba(96,161,226,0.4)";
         el.style.zIndex = "10";
       };
 

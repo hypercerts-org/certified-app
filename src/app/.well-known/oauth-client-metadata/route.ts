@@ -11,8 +11,8 @@ export async function GET() {
   const metadata: Record<string, unknown> = {
     ...client.clientMetadata,
     // Add the extra fields that the ePDS needs but are not part of the OAuth client config
-    brand_color: "#555555",
-    background_color: "#111111",
+    brand_color: "#60A1E2",
+    background_color: "#0F2544",
     tos_uri: `${origin}/terms`,
     policy_uri: `${origin}/privacy`,
     email_template_uri: `${origin}/assets/otp-email-template.html`,

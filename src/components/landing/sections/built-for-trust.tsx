@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function BuiltForTrust() {
   return (
     <section id="built-for-trust" className="landing-section landing-section--dark">

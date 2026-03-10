@@ -21,7 +21,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           rows={rows}
           className={`w-full border ${
-            error ? "border-error/40" : "border-[rgba(0,0,0,0.15)]"
+            error ? "border-error/40" : "border-[rgba(15,37,68,0.15)]"
           } rounded bg-white px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-accent focus:ring-1 focus:ring-accent/20 focus:outline-none transition-all duration-150 resize-y ${className}`}
           {...props}
         />

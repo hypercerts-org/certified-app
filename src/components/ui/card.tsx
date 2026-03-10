@@ -12,10 +12,10 @@ const Card: React.FC<CardProps> = ({
   hoverable = false,
 }) => {
   const baseStyles =
-    "bg-white border border-[rgba(0,0,0,0.1)] rounded p-6";
+    "bg-white border border-[rgba(15,37,68,0.1)] rounded p-6";
 
   const hoverStyles = hoverable
-    ? "transition-all duration-150 hover:border-[rgba(0,0,0,0.18)]"
+    ? "transition-all duration-150 hover:border-[rgba(15,37,68,0.18)]"
     : "";
 
   return (

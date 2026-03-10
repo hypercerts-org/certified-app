@@ -27,7 +27,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variantStyles = {
       primary:
-        "bg-accent/10 text-accent border border-accent/20 hover:bg-accent/15 hover:border-accent/35 hover:text-sky",
+        "bg-accent/10 text-accent border border-accent/20 hover:bg-accent/15 hover:border-accent/35 hover:text-[#A3CDF2]",
       secondary:
         "bg-transparent text-navy border border-navy/20 hover:border-navy/40",
       ghost: "bg-transparent text-accent hover:bg-accent/10",

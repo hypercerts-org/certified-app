@@ -42,7 +42,7 @@ const Navbar: React.FC = () => {
 
   const wordmarkSrc = isTransparent
     ? "/assets/certified_wordmark_white.svg"
-    : "/assets/certified_wordmark_black.svg";
+    : "/assets/certified_wordmark_darkblue.svg";
 
   return (
     <nav className={navClasses}>
