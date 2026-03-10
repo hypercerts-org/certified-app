@@ -26,7 +26,7 @@ export default function HomeClient() {
   const { isLoading, isAuthenticated, did, openSignIn } = useAuth();
   const { profile, avatarUrl, bannerUrl, isFallback } = useProfile();
   const { setVariant } = useNavbarVariant();
-  const { handle, email } = useSession();
+  const { handle } = useSession();
 
   useEffect(() => {
     if (!isAuthenticated && !isLoading) {
@@ -80,7 +80,10 @@ export default function HomeClient() {
                     <p className="profile-card__bio">{profile.description}</p>
                   )}
                 </div>
-
+                <div className="profile-card__did">
+                  <p className="personal-info__field personal-info__field--mono">{did}</p>
+                  <p className="personal-info__hint">Your stable decentralized identifier (DID) — this never changes, even if you update your username.</p>
+                </div>
               </div>
             </div>
 
@@ -105,14 +108,6 @@ export default function HomeClient() {
                   <dt className="personal-info__label">Display Name</dt>
                   <dd className="personal-info__field">{profile?.displayName || "—"}</dd>
                 </div>
-                <div>
-                  <dt className="personal-info__label">Email Address</dt>
-                  <dd className="personal-info__field">{email || "—"}</dd>
-                </div>
-                <div className="personal-info__full-width">
-                  <dt className="personal-info__label">About</dt>
-                  <dd className="personal-info__field">{profile?.description || "—"}</dd>
-                </div>
                 <div className="personal-info__full-width">
                   <dt className="personal-info__label">Website</dt>
                   <dd className="personal-info__field">
@@ -122,11 +117,6 @@ export default function HomeClient() {
                       </a>
                     ) : "—"}
                   </dd>
-                </div>
-                <div className="personal-info__full-width">
-                  <dt className="personal-info__label">Identifier</dt>
-                  <dd className="personal-info__field personal-info__field--mono">{did}</dd>
-                  <p className="personal-info__hint">Your stable decentralized identifier (DID) — this never changes, even if you update your username.</p>
                 </div>
               </dl>
             </div>

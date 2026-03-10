@@ -2031,6 +2031,12 @@ h1, h2, h3, h4, h5, h6 {
   margin-top: 8px;
 }
 
+.profile-card__did {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
 .profile-card__banner {
   width: calc(100% + 48px);
   height: 160px;
