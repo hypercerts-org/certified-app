@@ -20,11 +20,11 @@ function getPdsHostname(pdsUrl?: string): string {
       return new URL(pdsUrl).hostname;
     } catch { /* ignore */ }
   }
-  const url = process.env.NEXT_PUBLIC_PDS_URL || "https://epds1.test.certified.app";
+  const url = process.env.NEXT_PUBLIC_PDS_URL || "https://certified.one";
   try {
     return new URL(url).hostname;
   } catch {
-    return "epds1.test.certified.app";
+    return "certified.one";
   }
 }
 

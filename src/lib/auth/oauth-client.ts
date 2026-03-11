@@ -6,7 +6,7 @@ import { RedisStateStore, RedisSessionStore } from "./stores"
 export const PDS_URL =
   process.env.PDS_URL ||
   process.env.NEXT_PUBLIC_PDS_URL ||
-  "https://epds1.test.certified.app"
+  "https://certified.one"
 
 let clientInstance: NodeOAuthClient | null = null
 
