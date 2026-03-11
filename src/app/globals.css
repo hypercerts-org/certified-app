@@ -290,18 +290,16 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 1rem;
   font-weight: 500;
   color: var(--color-white);
-  background: var(--color-navy);
-  border: 1px solid var(--color-navy);
+  background: rgba(96, 161, 226, 0.1);
+  border: 1px solid rgba(96, 161, 226, 0.2);
   cursor: pointer;
   transition: all var(--transition-fast);
   text-decoration: none;
 }
 
 .hero__btn-primary:hover {
-  background: var(--color-navy);
-  border-color: rgba(96, 161, 226, 0.4);
-  box-shadow: 0 0 16px rgba(96, 161, 226, 0.25);
-  transform: translateY(-1px);
+  background: rgba(96, 161, 226, 0.15);
+  border-color: rgba(96, 161, 226, 0.35);
   color: var(--color-white);
 }
 
