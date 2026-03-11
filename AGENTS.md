@@ -56,7 +56,7 @@ hb list --all          # List all issues including closed
 - **Auth:** AT Protocol OAuth 2.0 + OTP email codes via `@atproto/oauth-client-node` (server-side). No passwords for login — password management uses `requestPasswordReset` + `resetPassword` XRPC flow.
 - **Wallet:** wagmi 2.x + viem 2.x for EIP-712 typed data signing (scoped to wallet page only via `settings/wallet/layout.tsx`)
 - **State:** React Query (`@tanstack/react-query`) for server state, React context for auth
-- **Deployment:** Vercel (deploy from branch with `vercel deploy --prod`, no merge required)
+- **Deployment:** Vercel — production via `vercel deploy --prod`, staging via preview deploy + alias (see "Git & Deployment" below)
 - **Issue Tracking:** heartbeads (`hb` CLI), stored in `.beads/` directory
 
 ## Design System & Conventions
@@ -83,7 +83,7 @@ hb list --all          # List all issues including closed
 - Focus-visible styles are globally defined for `a`, `button`, `[role="button"]`, `[tabindex]`
 
 ### Data
-- `CONNECTED_APPS` and `EXPLORE_APPS` arrays live in `src/lib/constants/apps.ts` — single source of truth
+- `CONNECTED_APPS` array lives in `src/lib/constants/apps.ts` — single source of truth
 - `getInitials()` utility lives in `src/lib/utils/initials.ts`
 - API response types (`SessionResponse`, `ListRecordsResponse`, `PutRecordResponse`) in `src/lib/types/api.ts`
 
@@ -112,12 +112,10 @@ hb list --all          # List all issues including closed
 - `settings/layout.tsx` wraps all settings pages in `AuthGuard` (centralized, not per-page)
 - `AuthGuard` redirects to `/?returnTo=<path>` when unauthenticated
 
-### Sidebar Navigation (5 items, in order)
-1. Profile (`/settings/edit-profile`)
-2. Connected Apps (`/settings/connected-apps`)
-3. Wallet (`/settings/wallet`)
-4. My Data (`/settings/my-data`)
-5. Security (`/settings/security`)
+### Sidebar Navigation (3 items, in order)
+1. Profile (`/` and `/settings/edit-profile`)
+2. Apps (`/connected-apps`)
+3. Settings (`/settings`)
 
 ### Mobile
 - Hamburger menu triggers sidebar overlay with body scroll lock
@@ -142,14 +140,13 @@ hb list --all          # List all issues including closed
 - Repo DID validation on write operations
 
 ### Connected Apps
-- "Connected" section: Ma Earth, GainForest, Silvi, Hyperboards (with real logos from `/public/assets/partners/`)
-- "Explore more apps" section: Bluesky, Leaflet (with "Available" status)
+- Ma Earth, GainForest, Silvi, Hyperboards (with real logos from `/public/assets/partners/`)
 - Data defined in `src/lib/constants/apps.ts`
 
 ### Session Management
 - `useSession()` hook with module-level cache — only ONE `getSession` fetch per page load regardless of how many components use it
 - Cache cleared on sign-out via `clearSessionCache()`
-- Used by sidebar, home-client, and security page
+- Used by sidebar, home-client, and settings (account) page
 
 ### Performance
 - Landing sections and dashboard components loaded via `next/dynamic` (code-split)
@@ -168,15 +165,17 @@ src/
 │   ├── page.tsx                       # Home page entry + metadata
 │   ├── error.tsx                      # Global error boundary
 │   ├── not-found.tsx                  # 404 page
+│   ├── connected-apps/
+│   │   ├── layout.tsx                 # AuthGuard for connected-apps
+│   │   └── page.tsx
 │   ├── settings/
 │   │   ├── layout.tsx                 # Centralized AuthGuard for all settings
+│   │   ├── page.tsx                   # Settings index (username, email, password, 2FA)
 │   │   ├── edit-profile/page.tsx
-│   │   ├── connected-apps/page.tsx
 │   │   ├── wallet/
 │   │   │   ├── layout.tsx             # WagmiProvider scoped here
 │   │   │   └── page.tsx
-│   │   ├── my-data/page.tsx
-│   │   └── security/page.tsx
+│   │   └── my-data/page.tsx
 │   ├── api/
 │   │   ├── auth/                      # login, logout, session, callback-handler
 │   │   └── xrpc/[...method]/route.ts  # XRPC proxy with security
@@ -211,8 +210,7 @@ src/
 │   │   ├── identity-link-card.tsx     # Wallet list with verify/delete
 │   │   └── link-wallet-flow.tsx       # Multi-step connect + sign
 │   ├── account/
-│   │   ├── password-section.tsx       # Set/change password
-│   │   └── account-settings.tsx       # Legacy (Tailwind-heavy)
+│   │   └── password-section.tsx       # Set/change password (not yet wired into settings page)
 │   ├── profile/
 │   │   └── profile-edit-form.tsx
 │   └── ui/                            # Shared UI primitives
@@ -242,7 +240,7 @@ src/
     ├── atproto/
     │   └── profile.ts                 # Profile fetch/update
     ├── constants/
-    │   └── apps.ts                    # CONNECTED_APPS + EXPLORE_APPS
+    │   └── apps.ts                    # CONNECTED_APPS
     ├── types/
     │   └── api.ts                     # API response types
     ├── utils/
@@ -281,11 +279,35 @@ UPSTASH_REDIS_REST_TOKEN=<Upstash Redis token>
 
 ## Git & Deployment
 
-- **Current branch:** `feat/app-sidebar-layout` (all work happens here)
-- **PRs:** #1 (landing page) and #2 (sidebar layout) — both MERGED
-- **Deploy:** `vercel deploy --prod` from branch (no merge to main required)
+- **Branches:** `main` (production), `staging` (preview/testing)
 - **Build check:** `npx tsc --noEmit && npx next build` (must pass before deploy)
 - **Config:** `next.config.ts` has `serverExternalPackages: ["@atproto/oauth-client-node"]`
+
+### Deploying to production (`certified.app`)
+
+```bash
+git checkout main
+vercel deploy --prod   # Uses Production env vars (PUBLIC_URL=https://certified.app)
+# Auto-aliased to certified.app
+```
+
+### Deploying to staging (`staging.certified.app`)
+
+```bash
+git checkout staging
+vercel deploy          # Preview deploy — uses Preview (staging) env vars
+vercel alias set <deployment-url> staging.certified.app --scope hypercerts-foundation
+```
+
+**⚠️ CRITICAL:** Do NOT use `vercel deploy --prod` for staging. The `--prod` flag uses Production env vars where `PUBLIC_URL=https://certified.app`. This breaks OAuth login because:
+- The OAuth `client_id` and `redirect_uris` are derived from `PUBLIC_URL` (see `src/lib/auth/oauth-client.ts`)
+- The CSRF origin check compares `Origin` header against `PUBLIC_URL` (see `src/lib/auth/csrf.ts`)
+- If `PUBLIC_URL` doesn't match the actual domain, OAuth redirects go to the wrong place and CSRF rejects all POST requests
+
+Vercel env var setup for this to work:
+- **Production:** `PUBLIC_URL=https://certified.app`
+- **Preview (staging branch):** `PUBLIC_URL=https://staging.certified.app`
+- Preview deploys from the `staging` branch pick up the branch-scoped override automatically.
 
 ## Completed Work (All Epics Closed)
 
@@ -313,10 +335,10 @@ Hero, CTA buttons, content sections.
 What You Get, How It Works, Partner Apps, Built for Trust, FAQ, Ready CTA. Animated mesh gradient hero. Deleted `/why-certified`.
 
 ### 8. Authenticated App Redesign (epic `oxt`, 13 tasks) — Sidebar layout
-Left sidebar nav, right sidebar cards, connected apps, edit profile, security, my data, wallet pages. Mobile hamburger sidebar. Responsive CSS.
+Left sidebar nav, right sidebar cards, connected apps, edit profile, settings, my data, wallet pages. Mobile hamburger sidebar. Responsive CSS.
 
 ### 9. Post-Design Fixes — Polish
-Footer hidden for auth users, loading states, wallet page, connected apps split, security nav position.
+Footer hidden for auth users, loading states, wallet page, connected apps split, settings nav position.
 
 ### 10. Code Review Fixes (epic `dqp`, 14 tasks + 1 integration bug) — Comprehensive audit
 10-reviewer audit covering security, CSS, mobile, components, a11y, data flow, TypeScript, routing, performance. All fixes implemented:
@@ -330,9 +352,8 @@ Footer hidden for auth users, loading states, wallet page, connected apps split,
 
 ## Known Limitations / Future Work
 
-- **2FA/TOTP:** Not implemented on the ePDS — security page shows "coming soon" placeholder
+- **2FA/TOTP:** Not implemented on the ePDS — settings page (`/settings`) shows "coming soon" placeholder
 - **ERC-1271 verification:** Smart contract wallet signatures return `verified: false` (on-chain verification not yet supported)
 - **My Data:** Fetches `org.hypercerts.claim.activity` records — collection may not exist for most users, so empty state is shown
-- **`account-settings.tsx`:** Legacy component, heavily Tailwind — not yet migrated to BEM CSS
 - **No test suite:** No unit or integration tests exist. Quality gates are `tsc --noEmit` + `next build`.
 - **`certified_brandmark 2.png`:** Duplicate untracked file in `public/assets/` — can be deleted

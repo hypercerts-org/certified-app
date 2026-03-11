@@ -15,7 +15,6 @@ import Button from "@/components/ui/button";
 // Dashboard components — only loaded for authenticated users
 const SignInPreviewCard = dynamic(() => import("@/components/dashboard/sign-in-preview-card"));
 const UsernameCard = dynamic(() => import("@/components/dashboard/username-card"));
-
 // Landing sections — only loaded for unauthenticated users
 const WhatYouGet = dynamic(() => import("@/components/landing/sections/what-you-get"));
 const HowItWorks = dynamic(() => import("@/components/landing/sections/how-it-works"));
@@ -25,10 +24,10 @@ const Faq = dynamic(() => import("@/components/landing/sections/faq"));
 const ReadyCta = dynamic(() => import("@/components/landing/sections/ready-cta"));
 
 export default function HomeClient() {
-  const { isLoading, isAuthenticated, did, openSignUp, pdsUrl } = useAuth();
+  const { isLoading, isAuthenticated, did, pdsUrl, openSignIn } = useAuth();
   const { profile, avatarUrl, bannerUrl, isFallback } = useProfile();
   const { setVariant } = useNavbarVariant();
-  const { handle, email } = useSession();
+  const { handle } = useSession();
 
   useEffect(() => {
     if (!isAuthenticated && !isLoading) {
@@ -78,12 +77,19 @@ export default function HomeClient() {
                 <div className="profile-card__info">
                   <h2 className="profile-card__name">{profile?.displayName || "Anonymous"}</h2>
                   <p className="profile-card__handle">@{handle}</p>
-                  {profile?.description && (
-                    <p className="profile-card__bio">{profile.description}</p>
-                  )}
                 </div>
-
+                <Link href="/settings/edit-profile">
+                  <Button variant="ghost" size="sm">
+                    <Pencil size={14} />
+                    Edit
+                  </Button>
+                </Link>
               </div>
+              <dl className="profile-card__did">
+                <dt className="personal-info__label">Identifier</dt>
+                <dd className="personal-info__field personal-info__field--mono">{did}</dd>
+                <dd className="personal-info__hint">Your stable decentralized identifier (DID) — this never changes, even if you update your username.</dd>
+              </dl>
             </div>
 
             {/* Username card */}
@@ -110,10 +116,6 @@ export default function HomeClient() {
                   <dt className="personal-info__label">Display Name</dt>
                   <dd className="personal-info__field">{profile?.displayName || "—"}</dd>
                 </div>
-                <div>
-                  <dt className="personal-info__label">Email Address</dt>
-                  <dd className="personal-info__field">{email || "—"}</dd>
-                </div>
                 <div className="personal-info__full-width">
                   <dt className="personal-info__label">About</dt>
                   <dd className="personal-info__field">{profile?.description || "—"}</dd>
@@ -127,11 +129,6 @@ export default function HomeClient() {
                       </a>
                     ) : "—"}
                   </dd>
-                </div>
-                <div className="personal-info__full-width">
-                  <dt className="personal-info__label">Identifier</dt>
-                  <dd className="personal-info__field personal-info__field--mono">{did}</dd>
-                  <p className="personal-info__hint">Your stable decentralized identifier (DID) — this never changes, even if you update your username.</p>
                 </div>
               </dl>
             </div>
@@ -159,7 +156,7 @@ export default function HomeClient() {
           </p>
           <div className="hero-reveal">
             <div className="hero__actions">
-              <button className="hero__btn-primary" onClick={openSignUp}>
+              <button className="hero__btn-primary" onClick={openSignIn}>
                 <img src="/assets/certified_brandmark.svg" alt="" className="hero__btn-icon" />
                 Sign in with Certified
               </button>

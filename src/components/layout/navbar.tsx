@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useNavbarVariant } from "@/lib/navbar-context";
 import { useProfile } from "@/hooks/use-profile";
@@ -13,7 +12,6 @@ const Navbar: React.FC = () => {
   const { isLoading, isAuthenticated, did, openSignIn, signOut } = useAuth();
   const { variant } = useNavbarVariant();
   const { profile, avatarUrl } = useProfile();
-  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -26,11 +24,11 @@ const Navbar: React.FC = () => {
 
   const avatarInitials = getInitials(profile?.displayName, did);
 
-  // Hide navbar for authenticated users (sidebar replaces it)
-  if (!isLoading && isAuthenticated) return null;
+  // Don't render navbar while auth is loading — prevents white flash
+  if (isLoading) return null;
 
-  // Hide navbar on app pages during loading (sidebar is shown instead)
-  if (isLoading && pathname.startsWith("/settings")) return null;
+  // Hide navbar for authenticated users (sidebar replaces it)
+  if (isAuthenticated) return null;
 
   const isTransparent = variant === "transparent";
 

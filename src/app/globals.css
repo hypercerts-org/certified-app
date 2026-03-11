@@ -69,7 +69,7 @@ button:focus-visible,
 body {
   font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
   color: var(--color-dark-gray);
-  background: var(--color-white);
+  background: var(--color-navy); /* prevents white flash during auth loading transition */
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -621,38 +621,6 @@ h1, h2, h3, h4, h5, h6 {
   padding: 32px 24px;
 }
 
-/* ========== Profile ========== */
-.profile-banner {
-  width: 100%;
-  height: 180px;
-  border-radius: var(--radius);
-  overflow: hidden;
-  position: relative;
-}
-
-.profile-banner img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.profile-banner__fallback {
-  width: 100%;
-  height: 100%;
-  background: var(--color-navy);
-  position: relative;
-  overflow: hidden;
-}
-
-.profile-banner__fallback::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  opacity: 0.4;
-  background-image: url("data:image/svg+xml,%3Csvg width='10' height='10' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='2' height='2' fill='%231A3A6B'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-}
-
 /* ========== Cards (app pages) ========== */
 .app-card {
   background: var(--color-white);
@@ -678,6 +646,7 @@ h1, h2, h3, h4, h5, h6 {
 .footer {
   padding: 24px 0;
   border-top: 1px solid var(--border-subtle);
+  background: var(--color-off-white);
 }
 
 .footer__inner {
@@ -1361,6 +1330,71 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.75rem;
   color: var(--color-error);
   margin: 0;
+}
+
+/* ========== Password Section ========== */
+.password-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.password-section--form {
+  display: flex;
+  flex-direction: column;
+}
+
+.password-section__status {
+  font-size: 0.875rem;
+  color: var(--color-navy);
+}
+
+.password-section__status--empty {
+  color: var(--color-mid-gray);
+  font-style: italic;
+}
+
+.password-section__status--success {
+  color: var(--color-success-text);
+  margin-top: 4px;
+}
+
+.password-section__masked {
+  font-size: 1.125rem;
+  letter-spacing: 3px;
+  color: var(--color-navy);
+  margin-top: 4px;
+}
+
+.password-section__hint {
+  font-size: 0.8125rem;
+  color: var(--color-mid-gray);
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+.password-section--form .password-section__hint {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.password-section__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.password-section__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.password-section__error {
+  font-size: 0.8125rem;
+  color: var(--color-error);
+  margin-top: 8px;
 }
 
 /* ========== Custom Domain Modal ========== */
@@ -2067,6 +2101,11 @@ h1, h2, h3, h4, h5, h6 {
   margin-top: 8px;
 }
 
+.profile-card__did {
+  margin-top: 16px;
+  word-break: break-all;
+}
+
 .profile-card__banner {
   width: calc(100% + 48px);
   height: 160px;
@@ -2563,24 +2602,24 @@ h1, h2, h3, h4, h5, h6 {
   opacity: 0.8;
 }
 
-/* ========== Security Page ========== */
-.security__section,
-.security__2fa {
+/* ========== Settings (Account) Page ========== */
+.settings__section,
+.settings__2fa {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--border-subtle);
 }
 
-.security__loading {
+.settings__loading {
   font-size: 0.8125rem;
   color: var(--color-mid-gray);
 }
 
-.security__2fa-status {
+.settings__2fa-status {
   margin-bottom: 12px;
 }
 
-.security__2fa-badge {
+.settings__2fa-badge {
   display: inline-flex;
   align-items: center;
   padding: 4px 12px;
@@ -2589,17 +2628,17 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 500;
 }
 
-.security__2fa-badge--off {
+.settings__2fa-badge--off {
   background: var(--color-off-white);
   color: var(--color-mid-gray);
 }
 
-.security__2fa-badge--on {
+.settings__2fa-badge--on {
   background: rgba(46, 204, 113, 0.1);
   color: var(--color-success);
 }
 
-.security__2fa-note {
+.settings__note {
   font-size: 0.8125rem;
   line-height: 1.6;
   color: var(--color-mid-gray);

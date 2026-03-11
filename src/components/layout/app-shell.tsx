@@ -45,9 +45,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [sidebarOpen]);
 
-  // Settings pages always show the app shell (even while loading)
+  // App pages always show the shell (even while loading)
   // so the user sees the sidebar + a spinner instead of the landing logo
-  const isAppPage = pathname.startsWith("/settings");
+  const isAppPage = pathname.startsWith("/settings") || pathname.startsWith("/connected-apps");
   const showShell = isAppPage || (!isLoading && isAuthenticated);
 
   if (!showShell) {

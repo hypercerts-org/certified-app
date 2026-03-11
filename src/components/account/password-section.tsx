@@ -13,7 +13,6 @@ type State = "idle" | "requesting" | "form" | "success";
 
 const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
   const [state, setState] = useState<State>("idle");
-  const [hasSetPassword, setHasSetPassword] = useState(false);
 
   // Form fields
   const [token, setToken] = useState("");
@@ -107,7 +106,6 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
         const data = await pwRes.json().catch(() => ({}));
         throw new Error((data as { error?: string }).error || pwRes.statusText);
       }
-      setHasSetPassword(true);
       clearFormState();
       setState("success");
       setTimeout(() => setState("idle"), 4000);
@@ -134,84 +132,85 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
 
   if (state === "form") {
     return (
-      <div>
-        <p className="app-card__label mb-2">Password</p>
-        <p className="text-xs text-gray-500 mb-3">
-          We sent a password reset code to your email. Enter it below with your new password.
-        </p>
-        <div className="flex flex-col gap-3">
-          <Input
-            label="Reset code"
-            type="text"
-            placeholder="Enter code from email"
-            autoComplete="one-time-code"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            error={tokenError ?? undefined}
-          />
-          <Input
-            label="New password"
-            type="password"
-            placeholder="Enter new password"
-            minLength={8}
-            maxLength={256}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            error={passwordError ?? undefined}
-          />
-          <Input
-            label="Confirm password"
-            type="password"
-            placeholder="Confirm new password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            error={confirmPasswordError ?? undefined}
-          />
+      <div className="dash-card mt-4">
+        <div className="password-section__header">
+          <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Password</h2>
         </div>
-        {formError && (
-          <p className="text-body-sm text-error mt-2">{formError}</p>
-        )}
-        <div className="flex gap-2 mt-3">
-          <Button size="sm" onClick={handleSubmit} disabled={saving}>
-            {saving ? "Saving…" : "Save"}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleCancel} disabled={saving}>
-            Cancel
-          </Button>
+        <div className="password-section--form">
+          <p className="password-section__hint">
+            We sent a password reset code to your email. Enter it below with your new password.
+          </p>
+          <div className="password-section__fields">
+            <Input
+              label="Reset code"
+              type="text"
+              placeholder="Enter code from email"
+              autoComplete="one-time-code"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              error={tokenError ?? undefined}
+            />
+            <Input
+              label="New password"
+              type="password"
+              placeholder="Enter new password"
+              minLength={8}
+              maxLength={256}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              error={passwordError ?? undefined}
+            />
+            <Input
+              label="Confirm password"
+              type="password"
+              placeholder="Confirm new password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              error={confirmPasswordError ?? undefined}
+            />
+          </div>
+          {formError && (
+            <p className="password-section__error" role="alert">{formError}</p>
+          )}
+          <div className="password-section__actions">
+            <Button size="sm" onClick={handleSubmit} disabled={saving}>
+              {saving ? "Saving…" : "Save"}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleCancel} disabled={saving}>
+              Cancel
+            </Button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="app-card__label">Password</p>
-        {state === "success" ? (
-          <p className="text-body-sm text-success mt-1">Password updated successfully.</p>
-        ) : hasSetPassword ? (
-          <p className="text-body text-gray-700">Password set</p>
-        ) : (
-          <p className="text-body text-gray-400 italic">Not set</p>
-        )}
-        {state === "idle" && !hasSetPassword && (
-          <p className="text-xs text-gray-400 mt-1">
-            Set a password to sign in to other AT Protocol apps (like Bluesky) with your username.
-          </p>
-        )}
-        {idleError && (
-          <p className="text-body-sm text-error mt-2">{idleError}</p>
-        )}
+    <div className="dash-card mt-4">
+      <div className="password-section__header">
+        <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Password</h2>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleRequestReset}
+          disabled={state === "requesting"}
+        >
+          {state === "requesting" ? "Sending…" : "Set or change password"}
+        </Button>
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleRequestReset}
-        disabled={state === "requesting"}
-        className="ml-4 flex-shrink-0"
-      >
-        {state === "requesting" ? "Sending…" : hasSetPassword ? "Change Password" : "Set Password"}
-      </Button>
+      {state === "success" ? (
+        <p className="password-section__status password-section__status--success">Password updated successfully.</p>
+      ) : (
+        <p className="password-section__masked">••••••••••••</p>
+      )}
+      {state === "idle" && (
+        <p className="password-section__hint">
+          Use the password to sign in to other AT Protocol apps (like Bluesky) with your Certified username. Your primary sign-in method for Certified apps remains the passwordless email code.
+        </p>
+      )}
+      {idleError && (
+        <p className="password-section__error" role="alert">{idleError}</p>
+      )}
     </div>
   );
 };

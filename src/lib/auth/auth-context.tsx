@@ -23,7 +23,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [pdsUrl, setPdsUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [isRedirectingToProvider, setIsRedirectingToProvider] = useState(false);
 
   // Initialize auth on mount by checking server-side session
@@ -126,13 +125,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const openSignIn = useCallback(() => {
-    setAuthMode("sign-in");
-    setError(null);
-    setIsModalOpen(true);
-  }, []);
-
-  const openSignUp = useCallback(() => {
-    setAuthMode("sign-up");
     setError(null);
     setIsModalOpen(true);
   }, []);
@@ -146,7 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const submitEmail = useCallback(async (email: string) => {
     try {
       setError(null);
-      const prompt = authMode === "sign-up" ? "create" : "login";
+      const prompt = "login";
 
       // Show loading overlay immediately while we fetch the auth URL
       setIsRedirectingToProvider(true);
@@ -171,7 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsModalOpen(true);
       setError(err instanceof Error ? err.message : "Failed to sign in");
     }
-  }, [authMode]);
+  }, []);
 
   // ATProto handle sign-in: calls /api/auth/login with mode "handle" and redirects
   const submitHandle = useCallback(async (handle: string) => {
@@ -241,9 +233,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error,
     isModalOpen,
     isRedirectingToProvider,
-    authMode,
     openSignIn,
-    openSignUp,
     closeModal,
     submitEmail,
     submitHandle,
@@ -256,7 +246,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {isRedirectingToProvider && <ProviderRedirectOverlay />}
       <SignInModal
         isOpen={isModalOpen}
-        authMode={authMode}
         error={error}
         onClose={closeModal}
         onSubmitEmail={submitEmail}

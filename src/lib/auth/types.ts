@@ -13,15 +13,11 @@ export interface AuthState {
   isModalOpen: boolean;
   /** Whether we are waiting for the external provider redirect (overlay shown) */
   isRedirectingToProvider: boolean;
-  /** Which mode the modal opened in: sign-in or sign-up */
-  authMode: "sign-in" | "sign-up";
-  /** Open the modal in sign-in mode */
+  /** Open the sign-in modal */
   openSignIn: () => void;
-  /** Open the modal in sign-up mode */
-  openSignUp: () => void;
   /** Close the modal */
   closeModal: () => void;
-  /** Submit Certified email (Flow 1) — calls /api/auth/login with mode "email" */
+  /** Submit Certified email — calls /api/auth/login with mode "email" */
   submitEmail: (email: string) => Promise<void>;
   /** Submit ATProto handle — calls /api/auth/login with mode "handle" */
   submitHandle: (handle: string) => Promise<void>;

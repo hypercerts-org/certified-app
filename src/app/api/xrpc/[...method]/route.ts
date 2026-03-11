@@ -18,7 +18,7 @@ const ALLOWED_BLOB_CONTENT_TYPES = [
   "image/svg+xml",
 ]
 
-const MAX_BLOB_SIZE = 1048576 // 1MB
+const MAX_BLOB_SIZE = 4 * 1024 * 1024 // 4MB — Vercel serverless functions have a ~4.5MB request body limit
 
 export async function GET(
   request: NextRequest,

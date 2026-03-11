@@ -32,22 +32,3 @@ export const CONNECTED_APPS = [
     url: "https://hyperboards.org",
   },
 ];
-
-export const EXPLORE_APPS = [
-  {
-    name: "Bluesky",
-    desc: "Decentralized social networking",
-    longDesc:
-      "Decentralized social networking built on the AT Protocol. Bluesky gives you control over your social experience with algorithmic choice and portable identity.",
-    logo: "/assets/partners/bluesky_logo.svg",
-    url: "https://bsky.app",
-  },
-  {
-    name: "Leaflet",
-    desc: "A writing tool for the open internet",
-    longDesc:
-      "Leaflet lets you publish long-form content on the AT Protocol, giving you full ownership of your writing and audience.",
-    logo: "/assets/partners/leaflet_logo.svg",
-    url: "https://leaflet.pub",
-  },
-];
