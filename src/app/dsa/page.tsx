@@ -54,10 +54,10 @@ export default function DsaPage() {
               Holzmarktstraße 25, 10243 Berlin, Germany
               <br />
               <a
-                href="mailto:holke@hypercerts.org"
+                href="mailto:legal@hypercerts.org"
                 className="text-blue-600 underline hover:text-blue-800"
               >
-                holke@hypercerts.org
+                legal@hypercerts.org
               </a>
             </p>
           </section>
