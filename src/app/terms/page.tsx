@@ -6,7 +6,7 @@ export default function TermsPage() {
           Terms of Service — Certified
         </h1>
 
-        <p className="text-sm text-gray-500 mb-8">Last updated: March 14, 2026</p>
+        <p className="text-sm text-gray-500 mb-8">Last updated: March 15, 2026</p>
 
         <div className="prose prose-navy max-w-none space-y-8">
           <section>
@@ -344,13 +344,12 @@ export default function TermsPage() {
 
             <h3 className="font-mono text-lg text-navy mt-6 mb-3">Termination by you</h3>
             <p>
-              You may close your account at any time by using the account closure functionality
-              provided through certified.app, or by contacting us at{" "}
+              To delete your account, contact us at{" "}
               <a
-                href="mailto:legal@hypercerts.org"
+                href="mailto:support@hypercerts.org"
                 className="text-blue-600 underline hover:text-blue-800"
               >
-                legal@hypercerts.org
+                support@hypercerts.org
               </a>
               .
             </p>
