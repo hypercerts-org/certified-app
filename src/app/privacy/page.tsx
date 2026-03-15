@@ -6,7 +6,7 @@ export default function PrivacyPage() {
           Privacy Policy — Certified
         </h1>
 
-        <p className="text-sm text-gray-500 mb-8">Last updated: March 14, 2026</p>
+        <p className="text-sm text-gray-500 mb-8">Last updated: March 15, 2026</p>
 
         <div className="prose prose-navy max-w-none space-y-8">
           <section>
@@ -299,7 +299,14 @@ export default function PrivacyPage() {
               obligations.
             </p>
             <p className="mt-4">
-              If you close your account, we will delete account-related data from our infrastructure
+              To delete your account, contact us at{" "}
+              <a
+                href="mailto:support@hypercerts.org"
+                className="text-blue-600 underline hover:text-blue-800"
+              >
+                support@hypercerts.org
+              </a>
+              . We will delete account-related data from our infrastructure
               within a reasonable period, subject to:
             </p>
             <ul className="list-disc pl-6 mt-2 space-y-2">

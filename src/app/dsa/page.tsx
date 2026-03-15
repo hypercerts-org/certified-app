@@ -6,7 +6,7 @@ export default function DsaPage() {
           Digital Services Act — Compliance Information
         </h1>
 
-        <p className="text-sm text-gray-500 mb-8">Last updated: March 14, 2026</p>
+        <p className="text-sm text-gray-500 mb-8">Last updated: March 15, 2026</p>
 
         <div className="prose prose-navy max-w-none space-y-8">
           <section>
