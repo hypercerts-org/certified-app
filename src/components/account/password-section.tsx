@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Pencil } from "lucide-react";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import { authFetch } from "@/lib/auth/fetch";
@@ -195,7 +196,14 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
           onClick={handleRequestReset}
           disabled={state === "requesting"}
         >
-          {state === "requesting" ? "Sending…" : "Set or change password"}
+          {state === "requesting" ? (
+            "Sending…"
+          ) : (
+            <>
+              <Pencil size={14} />
+              Edit
+            </>
+          )}
         </Button>
       </div>
       {state === "success" ? (

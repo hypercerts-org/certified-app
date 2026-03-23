@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { useSession } from "@/hooks/use-session";
 
 const UsernameCard = dynamic(() => import("@/components/dashboard/username-card"));
+const EmailSection = dynamic(() => import("@/components/account/email-section"));
 const PasswordSection = dynamic(() => import("@/components/account/password-section"));
 
 export default function SettingsPage() {
@@ -23,11 +24,8 @@ export default function SettingsPage() {
           {/* Username card */}
           <UsernameCard handle={handle} pdsUrl={pdsUrl || undefined} did={did || undefined} />
 
-          {/* Email card */}
-          <div className="dash-card mt-4">
-            <h2 className="dash-card__title">Email address</h2>
-            <p className="personal-info__field">{email || "—"}</p>
-          </div>
+          {/* Email section */}
+          <EmailSection email={email || ""} />
 
           {/* Password card */}
           <PasswordSection email={email || ""} />
