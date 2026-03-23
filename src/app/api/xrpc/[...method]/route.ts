@@ -197,6 +197,14 @@ export async function POST(
         await agent.com.atproto.server.resetPassword(body as any)
         return NextResponse.json({})
       }
+      case "com.atproto.server.requestEmailUpdate": {
+        const result = await agent.com.atproto.server.requestEmailUpdate()
+        return NextResponse.json(result.data)
+      }
+      case "com.atproto.server.updateEmail": {
+        await agent.com.atproto.server.updateEmail(body as any)
+        return NextResponse.json({})
+      }
       default:
         return NextResponse.json(
           { error: `Unknown method: ${methodName}` },
