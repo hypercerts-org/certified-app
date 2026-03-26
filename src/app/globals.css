@@ -1413,9 +1413,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .dash-card__title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--color-navy);
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--color-primary);
   margin-bottom: 12px;
 }
 
@@ -1437,7 +1438,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .dash-card__preview-label {
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
   color: var(--color-mid-gray);
   margin-bottom: 12px;
 }
@@ -1554,7 +1558,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .username-card__value {
   font-size: 0.875rem;
-  color: var(--color-navy);
+  color: var(--color-primary);
 }
 
 .username-card__form {
@@ -2314,7 +2318,7 @@ h1, h2, h3, h4, h5, h6 {
 .connected-apps__name {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--color-navy);
+  color: var(--color-primary);
 }
 
 .connected-apps__desc {
@@ -2374,15 +2378,15 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 32px;
-  background: var(--color-white);
-  border-bottom: 1px solid var(--border-light);
+  padding: 24px 32px 8px;
+  background: transparent;
 }
 
 .dashboard__page-title {
-  font-size: 1.375rem;
-  font-weight: 600;
-  color: var(--color-navy);
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-primary);
 }
 
 .dashboard__topbar-right {
@@ -2423,9 +2427,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .profile-card__name {
+  font-family: var(--font-headline), 'Noto Serif', serif;
   font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--color-navy);
+  font-weight: 700;
+  color: var(--color-primary);
 }
 
 .profile-card__handle {
@@ -2507,8 +2512,10 @@ h1, h2, h3, h4, h5, h6 {
 
 .personal-info__label {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.625rem;
   font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
   color: var(--color-mid-gray);
   margin-bottom: 6px;
 }
@@ -2524,9 +2531,13 @@ h1, h2, h3, h4, h5, h6 {
 
 .personal-info__field--mono {
   font-family: monospace;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
   color: var(--color-mid-gray);
   word-break: break-all;
+  background: var(--color-surface);
+  border: 1px solid var(--color-light-gray);
+  padding: 12px 16px;
 }
 
 /* Utility */
@@ -2542,6 +2553,10 @@ h1, h2, h3, h4, h5, h6 {
   bottom: 0;
   width: 240px;
   background: var(--color-navy);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
   display: flex;
   flex-direction: column;
   z-index: 40;
@@ -2565,10 +2580,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .sidebar__section-label {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.65);
-  letter-spacing: 0.06em;
+  font-size: 0.625rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
   padding: 0 12px;
   margin-bottom: 8px;
 }
