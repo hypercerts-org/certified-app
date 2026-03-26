@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Pencil } from "lucide-react";
@@ -44,7 +44,7 @@ export default function HomeClient() {
       <div className="loading-screen">
         <div className="loading-screen__inner">
           <img
-            src="/assets/certified_brandmark.svg"
+            src="/assets/certified_brandmark_black.svg"
             alt=""
             className="loading-screen__logo"
           />
@@ -144,19 +144,36 @@ export default function HomeClient() {
   return (
     <>
       <section className="hero hero--landing">
-        <div className="hero__bg" aria-hidden="true" />
+        {/* Line-art pattern background */}
+        <div className="hero__pattern" aria-hidden="true">
+          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
+                <path d="M 100 0 L 0 0 0 100" fill="none" stroke="currentColor" strokeWidth="0.5" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+            <circle cx="50%" cy="50%" r="300" fill="none" stroke="currentColor" strokeWidth="0.3" />
+            <circle cx="50%" cy="50%" r="400" fill="none" stroke="currentColor" strokeWidth="0.15" />
+            <line x1="0%" y1="0%" x2="100%" y2="100%" stroke="currentColor" strokeWidth="0.15" />
+            <line x1="100%" y1="0%" x2="0%" y2="100%" stroke="currentColor" strokeWidth="0.15" />
+          </svg>
+        </div>
+
         <div className="hero__inner">
-          <h1 className="hero__title hero-reveal">One account.<br />Any app.</h1>
+          <span className="hero__label">Built on AT Protocol</span>
+          <h1 className="hero__title hero-reveal">
+            One account.<br />
+            <span className="hero__title-accent">Any app.</span>
+          </h1>
           <p className="hero__subtitle hero-reveal">
-            Your identity and data — everywhere you go.
+            Your identity and data — everywhere you go. One account across many platforms, with no new logins and no lock-in.
           </p>
           <div className="hero-reveal">
             <div className="hero__actions">
-              <button className="hero__btn-primary" onClick={openSignIn}>
-                <img src="/assets/certified_brandmark.svg" alt="" className="hero__btn-icon" />
-                Sign in with Certified
+              <button className="hero__btn-signin" onClick={openSignIn}>
+                <img src="/assets/sign_in_with_certified_black.svg" alt="Sign in with Certified" className="hero__btn-signin-img" />
               </button>
-
             </div>
           </div>
         </div>
@@ -168,8 +185,11 @@ export default function HomeClient() {
       <Faq />
       <ReadyCta />
       <footer className="landing-footer">
-        <div className="landing-footer__inner">
-          <p>&copy; 2026 Certified. All rights reserved.</p>
+        <div className="landing-footer__bar">
+          <div className="landing-footer__left">
+            <img src="/assets/certified_wordmark_black_green.png" alt="Certified" className="landing-footer__logo-img" />
+            <span className="landing-footer__copy">&copy; 2026 Certified. All rights reserved.</span>
+          </div>
           <div className="landing-footer__links">
             <Link href="/terms">Terms</Link>
             <Link href="/privacy">Privacy</Link>

@@ -61,11 +61,11 @@ export default function OAuthCallbackPage() {
     <div className="loading-screen">
       <div className="loading-screen__inner">
         <img
-          src="/assets/certified_brandmark.svg"
+          src="/assets/certified_brandmark_black.svg"
           alt="Certified"
           className="loading-screen__logo"
         />
-        <p className="mt-6 text-sm text-white/40 font-mono">Completing sign in...</p>
+        <p className="mt-6 text-sm text-black/30 font-mono">Completing sign in...</p>
       </div>
     </div>
   )

@@ -6,11 +6,11 @@ export default function ProviderRedirectOverlay() {
     >
       <div className="loading-screen__inner">
         <img
-          src="/assets/certified_brandmark.svg"
+          src="/assets/certified_brandmark_black.svg"
           alt=""
           className="loading-screen__logo"
         />
-        <p className="mt-6 text-sm text-white/40 font-sans tracking-wide">
+        <p className="mt-6 text-sm text-black/30 font-sans tracking-wide">
           Redirecting...
         </p>
       </div>

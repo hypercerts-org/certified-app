@@ -104,7 +104,7 @@ export default function SignInModal({
     >
       <div className="signin-modal">
         <div className="signin-modal__header">
-          <img src="/assets/certified_brandmark.svg" alt="" className="signin-modal__logo" />
+          <img src="/assets/certified_brandmark_black.svg" alt="" className="signin-modal__logo" />
           <span className="signin-modal__title">{title}</span>
           <button
             className="signin-modal__close"

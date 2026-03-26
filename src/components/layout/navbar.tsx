@@ -40,18 +40,11 @@ const Navbar: React.FC = () => {
     .filter(Boolean)
     .join(" ");
 
-  const wordmarkSrc = isTransparent
-    ? "/assets/certified_wordmark_white.svg"
-    : "/assets/certified_wordmark_darkblue.svg";
-
   return (
     <nav className={navClasses}>
       <div className="navbar__inner">
         <Link href="/" className="navbar__logo">
-          <img
-            src={wordmarkSrc}
-            alt="Certified"
-          />
+          <img src="/assets/certified_wordmark_black_green.png" alt="Certified" className="navbar__logo-img" />
         </Link>
 
         <div className="navbar__right">
@@ -67,11 +60,7 @@ const Navbar: React.FC = () => {
               </Link>
               <button
                 onClick={signOut}
-                className={`font-mono text-xs tracking-wider px-3 py-1.5 rounded transition-colors duration-150 ${
-                  isTransparent
-                    ? "text-white/60 hover:text-white/90"
-                    : "text-gray-400 hover:text-navy"
-                }`}
+                className="navbar__signout"
               >
                 Sign out
               </button>
@@ -81,8 +70,7 @@ const Navbar: React.FC = () => {
               onClick={openSignIn}
               className="navbar__signin"
             >
-              <img src="/assets/certified_brandmark.svg" alt="" className="navbar__signin-icon" />
-              Sign in
+              <img src="/assets/sign_in_black_small.svg" alt="Sign in" className="navbar__signin-img" />
             </button>
           )}
         </div>

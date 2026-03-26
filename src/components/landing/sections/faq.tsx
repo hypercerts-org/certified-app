@@ -25,14 +25,9 @@ const FAQ_ITEMS = [
       "Yes. Your data is portable — you can export it or simply stop using the service at any time.",
   },
   {
-    question: "Is my data safe?",
-    answer:
-      "We use encrypted connections and one-time email codes. You control where you use Certified.",
-  },
-  {
     question: "What apps support Certified?",
     answer:
-      "Currently Ma Earth, GainForest, Hyperboards, and Silvi. More apps are joining over time.",
+      "Currently Ma Earth, GainForest, Simocracy, and Hyperboards. More apps are joining over time.",
   },
 ];
 
@@ -40,9 +35,12 @@ export default function Faq() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
-    <section id="faq" className="landing-section landing-section--light">
+    <section id="faq" className="landing-section landing-section--subtle">
       <div className="landing-section__inner">
-        <h2>Frequently asked questions</h2>
+        <div className="landing-section__header landing-section__header--center">
+          <span className="landing-label">Common Questions</span>
+          <h2>Frequently asked questions</h2>
+        </div>
         <div className="landing-faq">
           {FAQ_ITEMS.map((item, index) => {
             const isOpen = openFaq === index;
