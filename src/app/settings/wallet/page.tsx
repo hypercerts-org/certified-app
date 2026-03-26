@@ -24,7 +24,7 @@ export default function WalletPage() {
           </div>
 
           {/* Identity Link Card */}
-          <div className="dash-card mt-4">
+          <div className="dash-card">
             <IdentityLinkCard did={did} />
           </div>
         </div>

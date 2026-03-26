@@ -23,13 +23,13 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      "rounded font-mono text-sm font-medium tracking-wider transition-all duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 inline-flex items-center justify-center gap-2";
+      "rounded text-sm font-medium tracking-wider transition-all duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 inline-flex items-center justify-center gap-2";
 
     const variantStyles = {
       primary:
-        "bg-accent/10 text-accent border border-accent/20 hover:bg-accent/15 hover:border-accent/35 hover:text-[#A3CDF2]",
+        "bg-[var(--color-navy)] text-white border-none hover:opacity-90",
       secondary:
-        "bg-transparent text-navy border border-navy/20 hover:border-navy/40",
+        "bg-transparent text-[var(--color-navy)] border border-[var(--color-navy)]/15 hover:border-[var(--color-navy)]/40",
       ghost: "bg-transparent text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700",
       destructive: "bg-error/10 text-error border border-error/20 hover:bg-error/15 hover:border-error/35",
     };

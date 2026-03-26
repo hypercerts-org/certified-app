@@ -9,11 +9,9 @@ const Footer: React.FC = () => {
   const pathname = usePathname();
   const { isAuthenticated } = useAuth();
 
-  // Hide footer for authenticated users (sidebar layout replaces it)
-  if (isAuthenticated) return null;
-
-  // Hide footer on landing page (has its own footer)
-  if (pathname === "/") return null;
+  // Hide footer on landing page (has its own inline footer) — but show it
+  // when authenticated since "/" is the profile page in that case
+  if (pathname === "/" && !isAuthenticated) return null;
 
   return (
     <footer className="landing-footer">

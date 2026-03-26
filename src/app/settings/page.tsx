@@ -31,7 +31,7 @@ export default function SettingsPage() {
           <PasswordSection email={email || ""} />
 
           {/* App Passwords card */}
-          <div className="dash-card mt-4">
+          <div className="dash-card">
             <h2 className="dash-card__title">App passwords</h2>
             <p className="dash-card__desc">
               Use app passwords to sign in to other apps without giving full access to your account or your password.
@@ -40,7 +40,7 @@ export default function SettingsPage() {
           </div>
 
           {/* 2FA card */}
-          <div className="dash-card mt-4">
+          <div className="dash-card">
             <h2 className="dash-card__title">Two-factor authentication</h2>
             <p className="dash-card__desc">
               Add an extra layer of security to your account.
