@@ -12,8 +12,6 @@ import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
 import Button from "@/components/ui/button";
 
-// Dashboard components — only loaded for authenticated users
-const SignInPreviewCard = dynamic(() => import("@/components/dashboard/sign-in-preview-card"));
 // Landing sections — only loaded for unauthenticated users
 const WhatYouGet = dynamic(() => import("@/components/landing/sections/what-you-get"));
 const HowItWorks = dynamic(() => import("@/components/landing/sections/how-it-works"));
@@ -92,7 +90,7 @@ export default function HomeClient() {
             </div>
 
             {/* Account Details card */}
-            <div className="dash-card mt-4">
+            <div className="dash-card">
               <div className="username-card__header">
                 <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Account Details</h2>
                 <Link href="/settings/edit-profile">
@@ -130,11 +128,6 @@ export default function HomeClient() {
             </div>
 
           </div>
-
-          {/* Right sidebar */}
-          <div className="dashboard__aside">
-            <SignInPreviewCard />
-          </div>
         </div>
       </div>
     );
@@ -167,7 +160,7 @@ export default function HomeClient() {
             <span className="hero__title-accent">Any app.</span>
           </h1>
           <p className="hero__subtitle hero-reveal">
-            Your identity and data — everywhere you go. One account across many platforms, with no new logins and no lock-in.
+            Your identity and data — everywhere you go.
           </p>
           <div className="hero-reveal">
             <div className="hero__actions">
