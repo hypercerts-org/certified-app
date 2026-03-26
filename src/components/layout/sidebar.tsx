@@ -33,7 +33,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       {/* Top: Logo + close button */}
       <div className="sidebar__logo">
         <Link href="/">
-          <img src="/assets/certified_wordmark_white.svg" alt="Certified" />
+          <img src="/assets/certified_wordmark_white_green.svg" alt="Certified" />
         </Link>
         {onClose && (
           <button className="sidebar__close" onClick={onClose} aria-label="Close menu">

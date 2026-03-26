@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Your sign-in code</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #F7F8FA; font-family: Arial, Helvetica, sans-serif;">
-  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F7F8FA;">
+<body style="margin: 0; padding: 0; background-color: #f9f9f9; font-family: Arial, Helvetica, sans-serif;">
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f9f9f9;">
     <tr>
       <td align="center" style="padding: 32px 16px;">
         <table border="0" cellpadding="0" cellspacing="0" width="480" style="max-width: 480px; width: 100%;">
 
           <!-- Header -->
           <tr>
-            <td align="center" bgcolor="#0F2544" style="background-color: #0F2544; padding: 24px 32px; border-radius: 8px 8px 0 0;">
+            <td align="center" bgcolor="#111111" style="background-color: #111111; padding: 24px 32px; border-radius: 8px 8px 0 0;">
               <img src="{{logo_uri}}" height="40" alt="Certified" style="display: block; height: 40px; border: 0;" />
             </td>
           </tr>
@@ -23,17 +23,17 @@
             <td bgcolor="#FFFFFF" style="background-color: #FFFFFF; padding: 32px 32px 24px 32px;">
               <table border="0" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
-                  <td style="font-family: Arial, Helvetica, sans-serif; font-size: 20px; font-weight: bold; color: #0F2544; padding-bottom: 16px;">
+                  <td style="font-family: Arial, Helvetica, sans-serif; font-size: 20px; font-weight: bold; color: #111111; padding-bottom: 16px;">
                     Your sign-in code
                   </td>
                 </tr>
                 <tr>
-                  <td style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #3B4251; line-height: 1.6; padding-bottom: 8px;">
+                  <td style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #4c4546; line-height: 1.6; padding-bottom: 8px;">
                     Hi there,
                   </td>
                 </tr>
                 <tr>
-                  <td style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #3B4251; line-height: 1.6; padding-bottom: 24px;">
+                  <td style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #4c4546; line-height: 1.6; padding-bottom: 24px;">
                     Enter this code to sign in to {{app_name}}:
                   </td>
                 </tr>
@@ -41,28 +41,28 @@
                   <td align="center" style="padding-bottom: 24px;">
                     <table border="0" cellpadding="0" cellspacing="0">
                       <tr>
-                        <td align="center" bgcolor="#F7F8FA" style="background-color: #F7F8FA; border: 1px solid #E2E5EB; border-radius: 8px; padding: 16px 24px;">
-                          <span style="font-family: Arial, Helvetica, sans-serif; font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #0F2544;">{{code}}</span>
+                        <td align="center" bgcolor="#f9f9f9" style="background-color: #f9f9f9; border: 1px solid #e2e2e2; border-radius: 8px; padding: 16px 24px;">
+                          <span style="font-family: Arial, Helvetica, sans-serif; font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #111111;">{{code}}</span>
                         </td>
                       </tr>
                     </table>
                   </td>
                 </tr>
                 <tr>
-                  <td style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #3B4251; line-height: 1.6; padding-bottom: 16px;">
+                  <td style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #4c4546; line-height: 1.6; padding-bottom: 16px;">
                     This code expires in 10 minutes.
                   </td>
                 </tr>
                 {{#is_new_user}}
                 <tr>
-                  <td style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #3B4251; line-height: 1.6; padding-bottom: 8px;">
+                  <td style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #4c4546; line-height: 1.6; padding-bottom: 8px;">
                     Welcome! Your account has been created.
                   </td>
                 </tr>
                 {{/is_new_user}}
                 {{^is_new_user}}
                 <tr>
-                  <td style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #3B4251; line-height: 1.6; padding-bottom: 8px;">
+                  <td style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #4c4546; line-height: 1.6; padding-bottom: 8px;">
                     Welcome back!
                   </td>
                 </tr>
@@ -73,10 +73,10 @@
 
           <!-- Footer -->
           <tr>
-            <td bgcolor="#F7F8FA" style="background-color: #F7F8FA; padding: 20px 32px; border-top: 1px solid #E2E5EB; border-radius: 0 0 8px 8px;">
+            <td bgcolor="#f9f9f9" style="background-color: #f9f9f9; padding: 20px 32px; border-top: 1px solid #e2e2e2; border-radius: 0 0 8px 8px;">
               <table border="0" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
-                  <td style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #8A92A0; line-height: 1.6;">
+                  <td style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #7e7576; line-height: 1.6;">
                     You received this email because someone requested a sign-in code for {{app_name}}. If this wasn't you, you can safely ignore it.
                   </td>
                 </tr>

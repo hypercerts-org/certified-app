@@ -16,10 +16,13 @@ const Footer: React.FC = () => {
   if (pathname === "/") return null;
 
   return (
-    <footer className="footer">
-      <div className="footer__inner">
-        <p className="footer__copy">&copy; 2026 Certified. All rights reserved.</p>
-        <div className="footer__links">
+    <footer className="landing-footer">
+      <div className="landing-footer__bar">
+        <div className="landing-footer__left">
+          <img src="/assets/certified_wordmark_black_green.png" alt="Certified" className="landing-footer__logo-img" />
+          <span className="landing-footer__copy">&copy; 2026 Hypercerts Foundation</span>
+        </div>
+        <div className="landing-footer__links">
           <Link href="/terms">Terms</Link>
           <Link href="/privacy">Privacy</Link>
         </div>

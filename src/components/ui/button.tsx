@@ -30,7 +30,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         "bg-accent/10 text-accent border border-accent/20 hover:bg-accent/15 hover:border-accent/35 hover:text-[#A3CDF2]",
       secondary:
         "bg-transparent text-navy border border-navy/20 hover:border-navy/40",
-      ghost: "bg-transparent text-accent hover:bg-accent/10",
+      ghost: "bg-transparent text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700",
       destructive: "bg-error/10 text-error border border-error/20 hover:bg-error/15 hover:border-error/35",
     };
 

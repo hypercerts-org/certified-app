@@ -16,12 +16,12 @@ export const CONNECTED_APPS = [
     url: "https://gainforest.earth",
   },
   {
-    name: "Silvi",
-    desc: "Planting the right trees in the right place at the right time",
+    name: "Simocracy",
+    desc: "Democratic governance for the digital age",
     longDesc:
-      "Silvi tracks tree planting and growth with verifiable data, connecting planters with funders through impact claims.",
-    logo: "/assets/partners/silvi_logo.jpeg",
-    url: "https://silvi.earth",
+      "Simocracy enables transparent democratic decision-making with verifiable identity and portable civic participation records.",
+    logo: "/assets/partners/simocracy_logo.jpg",
+    url: "https://simocracy.org",
   },
   {
     name: "Hyperboards",

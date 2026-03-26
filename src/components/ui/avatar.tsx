@@ -35,7 +35,7 @@ const Avatar: React.FC<AvatarProps> = ({
       className={`${sizeMap[size]} rounded-full overflow-hidden flex items-center justify-center ${borderStyles} ${className}`}
     >
       {showFallback ? (
-        <div className="w-full h-full bg-navy text-white font-semibold flex items-center justify-center">
+        <div className="w-full h-full bg-neutral-600 text-white font-semibold flex items-center justify-center">
           {fallbackInitials.slice(0, 2).toUpperCase()}
         </div>
       ) : (

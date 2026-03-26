@@ -1,26 +1,37 @@
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="landing-section landing-section--dark">
+    <section id="how-it-works" className="landing-section landing-section--subtle">
       <div className="landing-section__inner">
-        <h2>How it works</h2>
-        <div className="landing-steps">
-          <div className="landing-step">
-            <div className="landing-step__number">1</div>
-            <h3>Create your Certified ID</h3>
-            <p>Enter your email. We send a one-time code.</p>
+        <div className="landing-section__header landing-section__header--center">
+          <span className="landing-label">Simple Process</span>
+          <h2>How it works</h2>
+          <p className="landing-protocol__intro">
+            Three steps to a portable identity.
+          </p>
+        </div>
+        <div className="landing-protocol__steps">
+          <div className="landing-protocol__step">
+            <span className="landing-protocol__num">01</span>
+            <div>
+              <h4>Create your Certified ID</h4>
+              <p>Enter your email. We send a one-time code.</p>
+            </div>
           </div>
-          <div className="landing-step">
-            <div className="landing-step__number">2</div>
-            <h3>Sign in to partner apps</h3>
-            <p>Use it anywhere you see &apos;Sign in with Certified&apos;.</p>
+          <div className="landing-protocol__step">
+            <span className="landing-protocol__num">02</span>
+            <div>
+              <h4>Sign in to partner apps</h4>
+              <p>Use it anywhere you see &apos;Sign in with Certified&apos;.</p>
+            </div>
           </div>
-          <div className="landing-step">
-            <div className="landing-step__number">3</div>
-            <h3>Your profile is already there</h3>
-            <p>Your profile and records follow you automatically.</p>
+          <div className="landing-protocol__step">
+            <span className="landing-protocol__num">03</span>
+            <div>
+              <h4>Your profile is already there</h4>
+              <p>Your profile and records follow you automatically.</p>
+            </div>
           </div>
         </div>
-        <p className="landing-reassurance">That&apos;s it — no extra setup.</p>
       </div>
     </section>
   );

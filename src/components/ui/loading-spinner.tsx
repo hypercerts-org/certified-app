@@ -36,7 +36,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   return (
     <div className={`flex items-center justify-center ${className}`}>
       <img
-        src="/assets/certified_brandmark.svg"
+        src="/assets/certified_brandmark_black.svg"
         alt="Loading"
         className={`${sizeMap[size]} animate-pulse`}
         onError={() => setUseFallback(true)}

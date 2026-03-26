@@ -7,10 +7,7 @@ export default function SignInPreviewCard() {
       </p>
       <div className="dash-card__preview">
         <p className="dash-card__preview-label">Look out for</p>
-        <div className="dash-card__preview-btn">
-          <img src="/assets/certified_brandmark.svg" alt="" className="dash-card__preview-icon" />
-          Sign in with Certified
-        </div>
+        <img src="/assets/sign_in_with_certified_black.svg" alt="Sign in with Certified" style={{ height: 48, display: "block" }} />
       </div>
     </div>
   );

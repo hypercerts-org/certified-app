@@ -59,7 +59,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* Mobile header — visible only on small screens */}
       <div className="mobile-header">
         <Link href="/" className="mobile-header__logo">
-          <img src="/assets/certified_wordmark_darkblue.svg" alt="Certified" />
+          <img src="/assets/certified_wordmark_white_green.svg" alt="Certified" />
         </Link>
         <button
           ref={hamburgerRef}
