@@ -29,7 +29,7 @@ export async function getOAuthClient(): Promise<NodeOAuthClient> {
     client_id: `${publicUrl}/.well-known/oauth-client-metadata`,
     client_name: "Certified",
     client_uri: publicUrl,
-    logo_uri: `${publicUrl}/assets/certified_brandmark.png`,
+    logo_uri: `${publicUrl}/assets/certified_brandmark_black.png`,
     redirect_uris: [`${publicUrl}/oauth/callback`],
     response_types: ["code"],
     grant_types: ["authorization_code", "refresh_token"],
