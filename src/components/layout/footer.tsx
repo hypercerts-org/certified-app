@@ -20,7 +20,7 @@ const Footer: React.FC = () => {
       <div className="landing-footer__bar">
         <div className="landing-footer__left">
           <img src="/assets/certified_wordmark_black_green.png" alt="Certified" className="landing-footer__logo-img" />
-          <span className="landing-footer__copy">&copy; 2026 Certified. All rights reserved.</span>
+          <span className="landing-footer__copy">&copy; 2026 Hypercerts Foundation</span>
         </div>
         <div className="landing-footer__links">
           <Link href="/terms">Terms</Link>

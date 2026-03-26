@@ -274,7 +274,7 @@ h1, h2, h3, h4, h5, h6 {
 .hero__title {
   font-family: var(--font-headline), 'Noto Serif', serif;
   color: var(--color-primary);
-  font-size: clamp(3rem, 7vw + 1rem, 7rem);
+  font-size: clamp(5rem, 7vw + 1rem, 7rem);
   font-weight: 700;
   line-height: 0.9;
   letter-spacing: -0.02em;
@@ -473,7 +473,13 @@ h1, h2, h3, h4, h5, h6 {
 
 .landing-footer__links {
   display: flex;
-  gap: 16px;
+  gap: 0;
+}
+
+.landing-footer__links a + a {
+  margin-left: 16px;
+  padding-left: 16px;
+  border-left: 1px solid var(--color-light-gray);
 }
 
 .landing-footer__links a {
@@ -489,16 +495,20 @@ h1, h2, h3, h4, h5, h6 {
 
 @media (max-width: 768px) {
   .landing-footer {
-    padding: 20px;
+    padding: 24px 20px;
   }
   .landing-footer__bar {
     flex-direction: column;
-    gap: 12px;
-    text-align: center;
+    align-items: center;
+    gap: 0;
   }
-  .landing-footer__right {
-    flex-direction: column;
-    gap: 8px;
+  .landing-footer__left {
+    align-items: center;
+    text-align: center;
+    margin-bottom: 12px;
+  }
+  .landing-footer__links {
+    margin-top: 4px;
   }
 }
 
