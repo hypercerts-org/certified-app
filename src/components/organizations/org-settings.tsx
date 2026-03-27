@@ -136,6 +136,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
       setPendingMembers([])
       setNewMemberRole("member")
       await fetchMembers()
+      await fetchAudit()
     } catch (err) {
       setAddError(err instanceof Error ? err.message : "Failed to add member")
     } finally {
@@ -184,6 +185,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
     try {
       await removeOrgMember(groupDid, memberDid)
       await fetchMembers()
+      await fetchAudit()
     } catch (err) {
       setMemberError(
         err instanceof Error ? err.message : "Failed to remove member"
@@ -195,6 +197,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
     try {
       await setOrgMemberRole(groupDid, memberDid, role)
       await fetchMembers()
+      await fetchAudit()
     } catch (err) {
       setMemberError(
         err instanceof Error ? err.message : "Failed to change role"
