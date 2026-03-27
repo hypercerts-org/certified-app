@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { Building2, Plus, LogOut, UserCheck, UserX } from "lucide-react"
 import { useOrg } from "@/lib/organizations/org-context"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -18,8 +17,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import Button from "@/components/ui/button"
 
 export default function OrganizationsPage() {
-  const router = useRouter()
-  const { organizations, isLoading, switchOrg, refetchOrgs } = useOrg()
+  const { organizations, isLoading, refetchOrgs } = useOrg()
   const { did } = useAuth()
   const [leaveOrg, setLeaveOrg] = useState<{ groupDid: string; name: string } | null>(null)
   const [isLeaving, setIsLeaving] = useState(false)
@@ -90,16 +88,6 @@ export default function OrganizationsPage() {
       </div>
       <span className="org-list__item-role">{org.role}</span>
       <div className="org-list__item-actions">
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={() => {
-            switchOrg(org)
-            router.push("/")
-          }}
-        >
-          Switch
-        </Button>
         {org.accepted ? (
           <button
             className="org-list__remove-public-btn"
@@ -217,7 +205,7 @@ export default function OrganizationsPage() {
                 <span className="org-list__count">{organizations.length}</span>
               </div>
               <p className="dash-card__desc">
-                Select a group to manage it, or switch into it to act on its behalf.
+                Groups you belong to. Use the profile switcher to act on behalf of a group.
               </p>
               <div className="org-list__items">
                 {acceptedOrgs.map(renderOrgItem)}
