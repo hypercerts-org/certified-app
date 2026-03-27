@@ -137,6 +137,8 @@ const GROUP_LEXICONS: LexiconDoc[] = [
             actorDid: { type: "string" },
             action: { type: "string" },
             collection: { type: "string" },
+            limit: { type: "integer" },
+            cursor: { type: "string" },
           },
         },
         output: { encoding: "application/json", schema: { type: "object", properties: {} } },
