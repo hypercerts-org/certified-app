@@ -72,6 +72,9 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
 
   const fetchOrgs = useCallback(
     async (signal?: AbortSignal) => {
+      // Don't clear state while auth is still loading — the persisted org
+      // from localStorage should survive until auth resolves
+      if (authLoading) return
       if (!isAuthenticated || !did) {
         setOrganizations([])
         setActiveOrg(null)
@@ -106,7 +109,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
         }
       }
     },
-    [isAuthenticated, did]
+    [authLoading, isAuthenticated, did]
   )
 
   useEffect(() => {
