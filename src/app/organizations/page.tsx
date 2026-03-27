@@ -73,16 +73,12 @@ export default function OrganizationsPage() {
   const renderOrgItem = (org: (typeof sortedOrgs)[number]) => (
     <div key={org.groupDid} className="org-list__item">
       <div className="org-list__item-avatar">
-        {org.avatarUrl ? (
-          <Avatar
-            src={org.avatarUrl}
-            alt={org.displayName || org.handle}
-            size="sm"
-            fallbackInitials={(org.displayName || org.handle).slice(0, 2)}
-          />
-        ) : (
-          <Building2 size={20} />
-        )}
+        <Avatar
+          src={org.avatarUrl}
+          alt={org.displayName || org.handle}
+          size="sm"
+          fallbackInitials={(org.displayName || org.handle).slice(0, 2)}
+        />
       </div>
       <div className="org-list__item-info">
         <p className="org-list__item-name">

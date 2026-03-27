@@ -11,7 +11,7 @@ import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
 import { useOrg } from "@/lib/organizations/org-context";
 import { useOrgProfile } from "@/hooks/use-org-profile";
-import { Menu, X, ChevronDown, Building2, User } from "lucide-react";
+import { Menu, X, ChevronDown, User } from "lucide-react";
 
 const PERSONAL_NAV_LINKS = [
   { href: "/", label: "Profile" },
@@ -171,16 +171,12 @@ const Navbar: React.FC = () => {
                               router.push("/");
                             }}
                           >
-                            {org.avatarUrl ? (
-                              <Avatar
-                                src={org.avatarUrl}
-                                alt={org.displayName || org.handle}
-                                size="sm"
-                                fallbackInitials={(org.displayName || org.handle).slice(0, 2)}
-                              />
-                            ) : (
-                              <Building2 size={16} />
-                            )}
+                            <Avatar
+                              src={org.avatarUrl}
+                              alt={org.displayName || org.handle}
+                              size="sm"
+                              fallbackInitials={(org.displayName || org.handle).slice(0, 2)}
+                            />
                             <div>
                               <p className="account-switcher__item-name">
                                 {org.displayName || org.handle}
