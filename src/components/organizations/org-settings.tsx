@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useCallback } from "react"
-import { UserPlus, Trash2, ChevronDown, Pencil } from "lucide-react"
+import { UserPlus, Trash2, ChevronDown } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import {
   listOrgMembers,
@@ -13,8 +13,8 @@ import {
 import type { Organization, OrgMember, AuditEntry, OrgRole } from "@/lib/organizations/types"
 import { authFetch } from "@/lib/auth/fetch"
 import Button from "@/components/ui/button"
-import Input from "@/components/ui/input"
 import HandleSearch from "@/components/organizations/handle-search"
+import UsernameCard from "@/components/dashboard/username-card"
 
 interface ResolvedMember extends OrgMember {
   handle?: string
@@ -32,18 +32,6 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   const { did } = useAuth()
   const isOwner = org.role === "owner"
   const isAdmin = org.role === "admin" || isOwner
-
-  // Handle editing — split into editable prefix and fixed suffix
-  const handleSuffix = org.handle.includes(".")
-    ? org.handle.slice(org.handle.indexOf("."))
-    : ""
-  const handlePrefix = org.handle.includes(".")
-    ? org.handle.slice(0, org.handle.indexOf("."))
-    : org.handle
-  const [isEditingHandle, setIsEditingHandle] = useState(false)
-  const [newHandlePrefix, setNewHandlePrefix] = useState("")
-  const [isSavingHandle, setIsSavingHandle] = useState(false)
-  const [handleError, setHandleError] = useState<string | null>(null)
 
   // Members state
   const [members, setMembers] = useState<ResolvedMember[]>([])
@@ -154,38 +142,6 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
     setPendingMembers((prev) => prev.filter((m) => m.did !== did))
   }
 
-  const handleSaveHandle = async () => {
-    const trimmed = newHandlePrefix.trim()
-    if (!trimmed) {
-      setHandleError("Handle cannot be empty")
-      return
-    }
-    const fullHandle = trimmed + handleSuffix
-    setIsSavingHandle(true)
-    setHandleError(null)
-    try {
-      // Use the group service proxy to update the handle via identity.updateHandle
-      const res = await authFetch(
-        `/api/organizations/${encodeURIComponent(groupDid)}/handle`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ handle: fullHandle }),
-        }
-      )
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error((data as { error?: string }).error || "Failed to update handle")
-      }
-      setIsEditingHandle(false)
-      window.location.reload()
-    } catch (err) {
-      setHandleError(err instanceof Error ? err.message : "Failed to update handle")
-    } finally {
-      setIsSavingHandle(false)
-    }
-  }
-
   const handleRemoveMember = async (memberDid: string) => {
     if (!confirm("Remove this member?")) return
     try {
@@ -220,46 +176,19 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
       <div className="dashboard__body dashboard__body--single">
         <div className="dashboard__main">
           {/* Handle section */}
-          <div className="dash-card">
-            <div className="username-card__header">
-              <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Handle</h2>
-              {isAdmin && !isEditingHandle && (
-                <Button variant="ghost" size="sm" onClick={() => { setNewHandlePrefix(handlePrefix); setIsEditingHandle(true); setHandleError(null); }}>
-                  <Pencil size={14} />
-                  Edit
-                </Button>
-              )}
+          {isAdmin && (
+            <UsernameCard
+              handle={org.handle}
+              did={org.groupDid}
+              groupDid={org.groupDid}
+            />
+          )}
+          {!isAdmin && (
+            <div className="dash-card">
+              <h2 className="dash-card__title">Handle</h2>
+              <p className="username-card__value">@{org.handle}</p>
             </div>
-            {isEditingHandle ? (
-              <div className="username-card__form">
-                <div className="handle-edit__row">
-                  <Input
-                    label="Handle prefix"
-                    value={newHandlePrefix}
-                    onChange={(e) => setNewHandlePrefix(e.target.value)}
-                    placeholder="my-group"
-                    error={handleError ?? undefined}
-                  />
-                  <span className="handle-edit__suffix">{handleSuffix}</span>
-                </div>
-                <div className="username-card__actions">
-                  <Button variant="ghost" size="sm" onClick={() => setIsEditingHandle(false)} disabled={isSavingHandle}>
-                    Cancel
-                  </Button>
-                  <Button variant="primary" size="sm" onClick={handleSaveHandle} loading={isSavingHandle} disabled={isSavingHandle}>
-                    Save
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <p className="dash-card__desc">
-                  The organization&apos;s handle on the network.
-                </p>
-                <p className="username-card__value">@{org.handle}</p>
-              </>
-            )}
-          </div>
+          )}
 
           {/* Members section */}
           <div className="dash-card">

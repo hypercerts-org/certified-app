@@ -12,6 +12,7 @@ interface UsernameCardProps {
   handle: string | null;
   pdsUrl?: string;
   did?: string;
+  groupDid?: string;  // When set, handle changes go through the org proxy
 }
 
 function getPdsHostname(pdsUrl?: string): string {
@@ -39,7 +40,7 @@ function isOurHandle(handle: string | null, pdsUrl?: string): boolean {
   return handle.endsWith(".certified.app");
 }
 
-export default function UsernameCard({ handle, pdsUrl, did }: UsernameCardProps) {
+export default function UsernameCard({ handle, pdsUrl, did, groupDid }: UsernameCardProps) {
   const isCertifiedHandle = isOurHandle(handle, pdsUrl);
   const pdsHostname = useMemo(() => getPdsHostname(pdsUrl), [pdsUrl]);
 
@@ -104,11 +105,25 @@ export default function UsernameCard({ handle, pdsUrl, did }: UsernameCardProps)
     setError(null);
 
     try {
-      const res = await authFetch("/api/xrpc/com/atproto/identity/updateHandle", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ handle: newHandleValue }),
-      });
+      let res: Response;
+      if (groupDid) {
+        // Route through the org handle API
+        res = await authFetch(
+          `/api/organizations/${encodeURIComponent(groupDid)}/handle`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ handle: newHandleValue }),
+          }
+        );
+      } else {
+        // Route through the standard XRPC proxy
+        res = await authFetch("/api/xrpc/com/atproto/identity/updateHandle", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ handle: newHandleValue }),
+        });
+      }
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -141,7 +156,7 @@ export default function UsernameCard({ handle, pdsUrl, did }: UsernameCardProps)
       <div className="dash-card mt-4">
         <div className="username-card">
           <div className="username-card__header">
-            <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Username</h2>
+            <h2 className="dash-card__title" style={{ marginBottom: 0 }}>{groupDid ? "Handle" : "Username"}</h2>
             {isCertifiedHandle && !showingForm && (
               <Button variant="ghost" size="sm" onClick={handleEdit}>
                 <Pencil size={14} />
