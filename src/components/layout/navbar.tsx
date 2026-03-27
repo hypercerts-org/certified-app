@@ -220,11 +220,61 @@ const Navbar: React.FC = () => {
                   {link.label}
                 </Link>
               ))}
+
+              {/* Mobile: profile switcher */}
+              <div className="navbar__dropdown-switcher">
+                <p className="account-switcher__section-label">User</p>
+                <button
+                  className={`account-switcher__item ${!activeOrg ? "account-switcher__item--active" : ""}`}
+                  onClick={() => { switchOrg(null); setDropdownOpen(false); router.push("/"); }}
+                >
+                  <Avatar
+                    src={avatarUrl || undefined}
+                    alt={profile?.displayName || "Personal"}
+                    size="sm"
+                    fallbackInitials={getInitials(profile?.displayName || handle || "?")}
+                  />
+                  <div>
+                    <p className="account-switcher__item-name">
+                      {profile?.displayName || "Personal"}
+                    </p>
+                    <p className="account-switcher__item-handle">@{handle}</p>
+                  </div>
+                </button>
+
+                {organizations.length > 0 && (
+                  <>
+                    <div className="account-switcher__divider" />
+                    <p className="account-switcher__section-label">Groups</p>
+                    {sortedOrgs.map((org) => (
+                      <button
+                        key={org.groupDid}
+                        className={`account-switcher__item ${activeOrg?.groupDid === org.groupDid ? "account-switcher__item--active" : ""}`}
+                        onClick={() => {
+                          switchOrg(org);
+                          setDropdownOpen(false);
+                          router.push("/");
+                        }}
+                      >
+                        <Avatar
+                          src={org.avatarUrl}
+                          alt={org.displayName || org.handle}
+                          size="sm"
+                          fallbackInitials={(org.displayName || org.handle).slice(0, 2)}
+                        />
+                        <div>
+                          <p className="account-switcher__item-name">
+                            {org.displayName || org.handle}
+                          </p>
+                          <p className="account-switcher__item-handle">{org.role}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </>
+                )}
+              </div>
+
               <div className="navbar__dropdown-user">
-                <div className="navbar__dropdown-user-info">
-                  <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
-                  <span className="navbar__dropdown-user-name">{displayName || `@${handle}`}</span>
-                </div>
                 <button onClick={signOut} className="navbar__signout">
                   Sign out
                 </button>

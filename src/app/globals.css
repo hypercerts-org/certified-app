@@ -317,24 +317,22 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-primary);
 }
 
-.navbar__dropdown-user {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 16px;
+.navbar__dropdown-switcher {
+  padding-top: 12px;
   border-top: 1px solid var(--border-light);
 }
 
-.navbar__dropdown-user-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.navbar__dropdown-switcher .account-switcher__item {
+  width: 100%;
+  border-radius: var(--radius);
 }
 
-.navbar__dropdown-user-name {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--color-primary);
+.navbar__dropdown-user {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-light);
 }
 
 @media (max-width: 768px) {
