@@ -4257,6 +4257,37 @@ h1, h2, h3, h4, h5, h6 {
   margin: 4px 0;
 }
 
+.account-switcher__user-row {
+  display: flex;
+  align-items: center;
+}
+
+.account-switcher__user-row .account-switcher__item {
+  flex: 1;
+  min-width: 0;
+}
+
+.account-switcher__signout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  margin-right: 12px;
+  border: none;
+  background: none;
+  color: var(--color-mid-gray);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.account-switcher__signout:hover {
+  color: var(--color-error);
+  background: rgba(186, 26, 26, 0.06);
+}
+
 /* Bottom sheet (mobile profile switcher) */
 .bottom-sheet__backdrop {
   display: none;
