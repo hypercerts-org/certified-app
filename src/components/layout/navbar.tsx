@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -91,6 +91,45 @@ const Navbar: React.FC = () => {
       return () => { document.body.style.overflow = ""; };
     }
   }, [switcherOpen]);
+
+  // Bottom sheet swipe-to-dismiss
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const dragStartY = useRef(0);
+  const dragCurrentY = useRef(0);
+  const isDragging = useRef(false);
+
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    dragStartY.current = e.touches[0].clientY;
+    dragCurrentY.current = e.touches[0].clientY;
+    isDragging.current = true;
+    if (sheetRef.current) {
+      sheetRef.current.style.transition = "none";
+    }
+  }, []);
+
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isDragging.current) return;
+    dragCurrentY.current = e.touches[0].clientY;
+    const dy = Math.max(0, dragCurrentY.current - dragStartY.current);
+    if (sheetRef.current) {
+      sheetRef.current.style.transform = `translateY(${dy}px)`;
+    }
+  }, []);
+
+  const onTouchEnd = useCallback(() => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    const dy = dragCurrentY.current - dragStartY.current;
+    if (sheetRef.current) {
+      sheetRef.current.style.transition = "transform 0.2s ease-out";
+      if (dy > 80) {
+        sheetRef.current.style.transform = "translateY(100%)";
+        setTimeout(() => setSwitcherOpen(false), 200);
+      } else {
+        sheetRef.current.style.transform = "translateY(0)";
+      }
+    }
+  }, []);
 
   // Derive display state from org context
   const navLinks = activeOrg ? ORG_NAV_LINKS : PERSONAL_NAV_LINKS;
@@ -226,7 +265,13 @@ const Navbar: React.FC = () => {
               {switcherOpen && createPortal(
                 <>
                   <div className="bottom-sheet__backdrop" onClick={() => setSwitcherOpen(false)} />
-                  <div className="bottom-sheet">
+                  <div
+                    className="bottom-sheet"
+                    ref={sheetRef}
+                    onTouchStart={onTouchStart}
+                    onTouchMove={onTouchMove}
+                    onTouchEnd={onTouchEnd}
+                  >
                     <div className="bottom-sheet__handle" />
                     <div className="bottom-sheet__content">
                       <p className="account-switcher__section-label">User</p>
