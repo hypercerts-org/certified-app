@@ -338,10 +338,6 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 50%;
 }
 
-.navbar__mobile-switcher .account-switcher__menu {
-  right: 0;
-  left: auto;
-}
 
 @media (max-width: 768px) {
   .navbar__app-links {
@@ -4259,6 +4255,80 @@ h1, h2, h3, h4, h5, h6 {
   height: 1px;
   background: var(--border-light);
   margin: 4px 0;
+}
+
+/* Bottom sheet (mobile profile switcher) */
+.bottom-sheet__backdrop {
+  display: none;
+}
+
+.bottom-sheet {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .bottom-sheet__backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 70;
+    animation: bottomSheetFadeIn 0.2s ease-out;
+  }
+
+  .bottom-sheet {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 70vh;
+    background: var(--color-white);
+    border-radius: 16px 16px 0 0;
+    z-index: 71;
+    animation: bottomSheetSlideUp 0.3s ease-out;
+    overflow: hidden;
+  }
+
+  .bottom-sheet__handle {
+    display: flex;
+    justify-content: center;
+    padding: 12px 0 4px;
+    flex-shrink: 0;
+  }
+
+  .bottom-sheet__handle::after {
+    content: "";
+    width: 36px;
+    height: 4px;
+    background: var(--border-default);
+    border-radius: 2px;
+  }
+
+  .bottom-sheet__content {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+
+  @keyframes bottomSheetSlideUp {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes bottomSheetFadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
 }
 
 @media (max-width: 768px) {

@@ -83,6 +83,14 @@ const Navbar: React.FC = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [switcherOpen]);
 
+  // Lock body scroll when bottom sheet is open (mobile only)
+  useEffect(() => {
+    if (switcherOpen && window.innerWidth <= 768) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [switcherOpen]);
+
   // Derive display state from org context
   const navLinks = activeOrg ? ORG_NAV_LINKS : PERSONAL_NAV_LINKS;
   const displayName = activeOrg
@@ -215,62 +223,68 @@ const Navbar: React.FC = () => {
                   <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
                 </button>
               {switcherOpen && (
-                <div className="account-switcher__menu">
-                  <p className="account-switcher__section-label">User</p>
-                  <button
-                    className={`account-switcher__item ${!activeOrg ? "account-switcher__item--active" : ""}`}
-                    onClick={() => { switchOrg(null); setSwitcherOpen(false); router.push("/"); }}
-                  >
-                    <Avatar
-                      src={avatarUrl || undefined}
-                      alt={profile?.displayName || "Personal"}
-                      size="sm"
-                      fallbackInitials={getInitials(profile?.displayName || handle || "?")}
-                    />
-                    <div>
-                      <p className="account-switcher__item-name">
-                        {profile?.displayName || "Personal"}
-                      </p>
-                      <p className="account-switcher__item-handle">@{handle}</p>
-                    </div>
-                  </button>
+                <>
+                  <div className="bottom-sheet__backdrop" onClick={() => setSwitcherOpen(false)} />
+                  <div className="bottom-sheet">
+                    <div className="bottom-sheet__handle" />
+                    <div className="bottom-sheet__content">
+                      <p className="account-switcher__section-label">User</p>
+                      <button
+                        className={`account-switcher__item ${!activeOrg ? "account-switcher__item--active" : ""}`}
+                        onClick={() => { switchOrg(null); setSwitcherOpen(false); router.push("/"); }}
+                      >
+                        <Avatar
+                          src={avatarUrl || undefined}
+                          alt={profile?.displayName || "Personal"}
+                          size="sm"
+                          fallbackInitials={getInitials(profile?.displayName || handle || "?")}
+                        />
+                        <div>
+                          <p className="account-switcher__item-name">
+                            {profile?.displayName || "Personal"}
+                          </p>
+                          <p className="account-switcher__item-handle">@{handle}</p>
+                        </div>
+                      </button>
 
-                  {organizations.length > 0 && (
-                    <>
+                      {organizations.length > 0 && (
+                        <>
+                          <div className="account-switcher__divider" />
+                          <p className="account-switcher__section-label">Groups</p>
+                          {sortedOrgs.map((org) => (
+                            <button
+                              key={org.groupDid}
+                              className={`account-switcher__item ${activeOrg?.groupDid === org.groupDid ? "account-switcher__item--active" : ""}`}
+                              onClick={() => {
+                                switchOrg(org);
+                                setSwitcherOpen(false);
+                                router.push("/");
+                              }}
+                            >
+                              <Avatar
+                                src={org.avatarUrl}
+                                alt={org.displayName || org.handle}
+                                size="sm"
+                                fallbackInitials={(org.displayName || org.handle).slice(0, 2)}
+                              />
+                              <div>
+                                <p className="account-switcher__item-name">
+                                  {org.displayName || org.handle}
+                                </p>
+                                <p className="account-switcher__item-handle">{org.role}</p>
+                              </div>
+                            </button>
+                          ))}
+                        </>
+                      )}
+
                       <div className="account-switcher__divider" />
-                      <p className="account-switcher__section-label">Groups</p>
-                      {sortedOrgs.map((org) => (
-                        <button
-                          key={org.groupDid}
-                          className={`account-switcher__item ${activeOrg?.groupDid === org.groupDid ? "account-switcher__item--active" : ""}`}
-                          onClick={() => {
-                            switchOrg(org);
-                            setSwitcherOpen(false);
-                            router.push("/");
-                          }}
-                        >
-                          <Avatar
-                            src={org.avatarUrl}
-                            alt={org.displayName || org.handle}
-                            size="sm"
-                            fallbackInitials={(org.displayName || org.handle).slice(0, 2)}
-                          />
-                          <div>
-                            <p className="account-switcher__item-name">
-                              {org.displayName || org.handle}
-                            </p>
-                            <p className="account-switcher__item-handle">{org.role}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </>
-                  )}
-
-                  <div className="account-switcher__divider" />
-                  <button onClick={signOut} className="account-switcher__item" style={{ color: "var(--color-error)" }}>
-                    Sign out
-                  </button>
-                </div>
+                      <button onClick={signOut} className="account-switcher__item" style={{ color: "var(--color-error)" }}>
+                        Sign out
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
               </div>
 
