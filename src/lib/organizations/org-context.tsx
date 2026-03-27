@@ -57,18 +57,18 @@ function getInitialOrg(): Organization | null {
 }
 
 export function OrgProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, did } = useAuth()
+  const { isAuthenticated, isLoading: authLoading, did } = useAuth()
   const [activeOrg, setActiveOrg] = useState<Organization | null>(getInitialOrg)
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
-  // Clear org when logged out
+  // Clear org when logged out (only after auth has finished loading)
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!authLoading && !isAuthenticated) {
       setActiveOrg(null)
       persistOrg(null)
     }
-  }, [isAuthenticated])
+  }, [authLoading, isAuthenticated])
 
   const fetchOrgs = useCallback(
     async (signal?: AbortSignal) => {
