@@ -420,25 +420,39 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                       <div key={entry.id} className="org-audit__item">
                         <div className="org-audit__item-main">
                           <span className="org-audit__action">{entry.action}</span>
-                          {entry.collection && (
-                            <span className="org-audit__collection">
-                              {entry.collection}
-                            </span>
-                          )}
-                        </div>
-                        <div className="org-audit__item-meta">
-                          <span className="org-audit__actor">
-                            {entry.actorDid.slice(0, 20)}...
-                          </span>
-                          <span className="org-audit__time">
-                            {new Date(entry.createdAt).toLocaleString()}
-                          </span>
                           <span
                             className={`org-audit__result org-audit__result--${entry.result}`}
                           >
                             {entry.result}
                           </span>
                         </div>
+                        <div className="org-audit__item-meta">
+                          <span className="org-audit__actor">
+                            {entry.actorDid}
+                          </span>
+                          <span className="org-audit__time">
+                            {new Date(entry.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                        {(entry.collection || entry.rkey || (entry.detail && Object.keys(entry.detail).length > 0)) && (
+                          <div className="org-audit__detail">
+                            {entry.collection && (
+                              <span className="org-audit__detail-item">
+                                collection: {entry.collection}
+                              </span>
+                            )}
+                            {entry.rkey && (
+                              <span className="org-audit__detail-item">
+                                rkey: {entry.rkey}
+                              </span>
+                            )}
+                            {entry.detail && Object.entries(entry.detail).map(([key, value]) => (
+                              <span key={key} className="org-audit__detail-item">
+                                {key}: {typeof value === "object" ? JSON.stringify(value) : String(value)}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

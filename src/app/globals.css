@@ -4136,6 +4136,24 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.6875rem;
   font-family: monospace;
   color: var(--color-mid-gray);
+  word-break: break-all;
+}
+
+.org-audit__detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.org-audit__detail-item {
+  font-size: 0.6875rem;
+  font-family: monospace;
+  color: var(--color-mid-gray);
+  background: var(--color-off-white);
+  padding: 2px 6px;
+  border-radius: var(--radius);
+  word-break: break-all;
 }
 
 .org-audit__time {
