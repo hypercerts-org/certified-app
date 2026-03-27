@@ -33,9 +33,15 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   const isOwner = org.role === "owner"
   const isAdmin = org.role === "admin" || isOwner
 
-  // Handle editing
+  // Handle editing — split into editable prefix and fixed suffix
+  const handleSuffix = org.handle.includes(".")
+    ? org.handle.slice(org.handle.indexOf("."))
+    : ""
+  const handlePrefix = org.handle.includes(".")
+    ? org.handle.slice(0, org.handle.indexOf("."))
+    : org.handle
   const [isEditingHandle, setIsEditingHandle] = useState(false)
-  const [newHandle, setNewHandle] = useState("")
+  const [newHandlePrefix, setNewHandlePrefix] = useState("")
   const [isSavingHandle, setIsSavingHandle] = useState(false)
   const [handleError, setHandleError] = useState<string | null>(null)
 
@@ -149,22 +155,22 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   }
 
   const handleSaveHandle = async () => {
-    const trimmed = newHandle.trim()
+    const trimmed = newHandlePrefix.trim()
     if (!trimmed) {
       setHandleError("Handle cannot be empty")
       return
     }
+    const fullHandle = trimmed + handleSuffix
     setIsSavingHandle(true)
     setHandleError(null)
     try {
-      const groupAgent = await import("@/lib/organizations/api").then((m) => m)
       // Use the group service proxy to update the handle via identity.updateHandle
       const res = await authFetch(
         `/api/organizations/${encodeURIComponent(groupDid)}/handle`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ handle: trimmed }),
+          body: JSON.stringify({ handle: fullHandle }),
         }
       )
       if (!res.ok) {
@@ -218,7 +224,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
             <div className="username-card__header">
               <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Handle</h2>
               {isAdmin && !isEditingHandle && (
-                <Button variant="ghost" size="sm" onClick={() => { setNewHandle(org.handle); setIsEditingHandle(true); setHandleError(null); }}>
+                <Button variant="ghost" size="sm" onClick={() => { setNewHandlePrefix(handlePrefix); setIsEditingHandle(true); setHandleError(null); }}>
                   <Pencil size={14} />
                   Edit
                 </Button>
@@ -226,13 +232,16 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
             </div>
             {isEditingHandle ? (
               <div className="username-card__form">
-                <Input
-                  label="New handle"
-                  value={newHandle}
-                  onChange={(e) => setNewHandle(e.target.value)}
-                  placeholder="new-handle"
-                  error={handleError ?? undefined}
-                />
+                <div className="handle-edit__row">
+                  <Input
+                    label="Handle prefix"
+                    value={newHandlePrefix}
+                    onChange={(e) => setNewHandlePrefix(e.target.value)}
+                    placeholder="my-group"
+                    error={handleError ?? undefined}
+                  />
+                  <span className="handle-edit__suffix">{handleSuffix}</span>
+                </div>
                 <div className="username-card__actions">
                   <Button variant="ghost" size="sm" onClick={() => setIsEditingHandle(false)} disabled={isSavingHandle}>
                     Cancel

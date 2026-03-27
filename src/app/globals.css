@@ -1710,6 +1710,29 @@ h1, h2, h3, h4, h5, h6 {
   gap: 8px;
 }
 
+.handle-edit__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+}
+
+.handle-edit__row .input-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.handle-edit__suffix {
+  font-size: 0.875rem;
+  font-family: monospace;
+  color: var(--color-mid-gray);
+  padding: 8px 0 8px 2px;
+  white-space: nowrap;
+  line-height: 1.5;
+  height: 38px;
+  display: flex;
+  align-items: center;
+}
+
 .username-card__switch-btns {
   display: flex;
   flex-wrap: wrap;
