@@ -76,7 +76,9 @@ const Navbar: React.FC = () => {
       const target = e.target as Node;
       const inDesktop = switcherRef.current?.contains(target);
       const inMobile = mobileSwitcherRef.current?.contains(target);
-      if (!inDesktop && !inMobile) {
+      const inSheet = sheetRef.current?.contains(target);
+      const inBackdrop = (target as Element).classList?.contains("bottom-sheet__backdrop");
+      if (!inDesktop && !inMobile && !inSheet && !inBackdrop) {
         setSwitcherOpen(false);
       }
     };
