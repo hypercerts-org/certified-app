@@ -179,7 +179,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
           <div className="dash-card">
             <h2 className="dash-card__title">Handle</h2>
             <p className="dash-card__desc">
-              The group&apos;s handle on the network. Set during registration.
+              The group&apos;s handle on the network. Set during registration. Function to edit the handle coming soon.
             </p>
             <p className="username-card__value">@{org.handle}</p>
           </div>
