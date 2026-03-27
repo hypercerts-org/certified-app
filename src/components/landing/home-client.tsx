@@ -105,7 +105,7 @@ export default function HomeClient() {
                 <dd className="personal-info__field personal-info__field--mono">{displayDid}</dd>
                 <dd className="personal-info__hint">
                   {isOrgMode
-                    ? "The organization's decentralized identifier (DID)."
+                    ? "The organization's decentralized identifier (DID) — this never changes, even if you update the handle."
                     : "Your stable decentralized identifier (DID) — this never changes, even if you update your username."}
                 </dd>
               </dl>
