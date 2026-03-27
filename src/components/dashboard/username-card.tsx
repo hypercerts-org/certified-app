@@ -15,12 +15,18 @@ interface UsernameCardProps {
   groupDid?: string;  // When set, handle changes go through the org proxy
 }
 
-function getPdsHostname(pdsUrl?: string): string {
+function getPdsHostname(pdsUrl?: string, handle?: string | null): string {
+  // Derive from PDS URL if available
   if (pdsUrl) {
     try {
       return new URL(pdsUrl).hostname;
     } catch { /* ignore */ }
   }
+  // Derive from handle — everything after the first dot
+  if (handle && handle.includes(".")) {
+    return handle.slice(handle.indexOf(".") + 1);
+  }
+  // Fallback to env
   const url = process.env.NEXT_PUBLIC_PDS_URL || "https://certified.one";
   try {
     return new URL(url).hostname;
@@ -37,12 +43,15 @@ function isOurHandle(handle: string | null, pdsUrl?: string): boolean {
       if (handle.endsWith(`.${pdsHostname}`)) return true;
     } catch { /* ignore invalid URL */ }
   }
+  // If handle has a dot, it's a subdomain-style handle (not a custom domain like alice.com)
+  // Consider it "ours" if it has 2+ dots (prefix.pds.host.tld)
+  if (handle.split(".").length >= 3) return true;
   return handle.endsWith(".certified.app");
 }
 
 export default function UsernameCard({ handle, pdsUrl, did, groupDid }: UsernameCardProps) {
   const isCertifiedHandle = isOurHandle(handle, pdsUrl);
-  const pdsHostname = useMemo(() => getPdsHostname(pdsUrl), [pdsUrl]);
+  const pdsHostname = useMemo(() => getPdsHostname(pdsUrl, handle), [pdsUrl, handle]);
 
   const [isEditing, setIsEditing] = useState(false);
   const [newHandle, setNewHandle] = useState(handle || "");
