@@ -49,6 +49,7 @@ const Navbar: React.FC = () => {
     });
   }, [organizations]);
   const switcherRef = useRef<HTMLDivElement>(null);
+  const mobileSwitcherRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -71,7 +72,10 @@ const Navbar: React.FC = () => {
   useEffect(() => {
     if (!switcherOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
-      if (switcherRef.current && !switcherRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const inDesktop = switcherRef.current?.contains(target);
+      const inMobile = mobileSwitcherRef.current?.contains(target);
+      if (!inDesktop && !inMobile) {
         setSwitcherOpen(false);
       }
     };
@@ -200,16 +204,85 @@ const Navbar: React.FC = () => {
               </button>
             </div>
 
+            {/* Mobile: profile avatar + switcher */}
+            <div className="navbar__mobile-switcher" ref={mobileSwitcherRef}>
+              <button
+                className="navbar__mobile-avatar"
+                onClick={() => { setSwitcherOpen(!switcherOpen); setDropdownOpen(false); }}
+                aria-label="Switch account"
+              >
+                <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
+              </button>
+              {switcherOpen && (
+                <div className="account-switcher__menu">
+                  <p className="account-switcher__section-label">User</p>
+                  <button
+                    className={`account-switcher__item ${!activeOrg ? "account-switcher__item--active" : ""}`}
+                    onClick={() => { switchOrg(null); setSwitcherOpen(false); router.push("/"); }}
+                  >
+                    <Avatar
+                      src={avatarUrl || undefined}
+                      alt={profile?.displayName || "Personal"}
+                      size="sm"
+                      fallbackInitials={getInitials(profile?.displayName || handle || "?")}
+                    />
+                    <div>
+                      <p className="account-switcher__item-name">
+                        {profile?.displayName || "Personal"}
+                      </p>
+                      <p className="account-switcher__item-handle">@{handle}</p>
+                    </div>
+                  </button>
+
+                  {organizations.length > 0 && (
+                    <>
+                      <div className="account-switcher__divider" />
+                      <p className="account-switcher__section-label">Groups</p>
+                      {sortedOrgs.map((org) => (
+                        <button
+                          key={org.groupDid}
+                          className={`account-switcher__item ${activeOrg?.groupDid === org.groupDid ? "account-switcher__item--active" : ""}`}
+                          onClick={() => {
+                            switchOrg(org);
+                            setSwitcherOpen(false);
+                            router.push("/");
+                          }}
+                        >
+                          <Avatar
+                            src={org.avatarUrl}
+                            alt={org.displayName || org.handle}
+                            size="sm"
+                            fallbackInitials={(org.displayName || org.handle).slice(0, 2)}
+                          />
+                          <div>
+                            <p className="account-switcher__item-name">
+                              {org.displayName || org.handle}
+                            </p>
+                            <p className="account-switcher__item-handle">{org.role}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </>
+                  )}
+
+                  <div className="account-switcher__divider" />
+                  <button onClick={signOut} className="account-switcher__item" style={{ color: "var(--color-error)" }}>
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Mobile: hamburger */}
             <button
               className="navbar__hamburger"
-              onClick={() => setDropdownOpen(!dropdownOpen)}
+              onClick={() => { setDropdownOpen(!dropdownOpen); setSwitcherOpen(false); }}
               aria-label={dropdownOpen ? "Close menu" : "Open menu"}
             >
               {dropdownOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
 
-            {/* Mobile: dropdown */}
+            {/* Mobile: nav dropdown */}
             <div className={`navbar__dropdown ${dropdownOpen ? "navbar__dropdown--open" : ""}`}>
               {navLinks.map((link) => (
                 <Link
@@ -220,65 +293,6 @@ const Navbar: React.FC = () => {
                   {link.label}
                 </Link>
               ))}
-
-              {/* Mobile: profile switcher */}
-              <div className="navbar__dropdown-switcher">
-                <p className="account-switcher__section-label">User</p>
-                <button
-                  className={`account-switcher__item ${!activeOrg ? "account-switcher__item--active" : ""}`}
-                  onClick={() => { switchOrg(null); setDropdownOpen(false); router.push("/"); }}
-                >
-                  <Avatar
-                    src={avatarUrl || undefined}
-                    alt={profile?.displayName || "Personal"}
-                    size="sm"
-                    fallbackInitials={getInitials(profile?.displayName || handle || "?")}
-                  />
-                  <div>
-                    <p className="account-switcher__item-name">
-                      {profile?.displayName || "Personal"}
-                    </p>
-                    <p className="account-switcher__item-handle">@{handle}</p>
-                  </div>
-                </button>
-
-                {organizations.length > 0 && (
-                  <>
-                    <div className="account-switcher__divider" />
-                    <p className="account-switcher__section-label">Groups</p>
-                    {sortedOrgs.map((org) => (
-                      <button
-                        key={org.groupDid}
-                        className={`account-switcher__item ${activeOrg?.groupDid === org.groupDid ? "account-switcher__item--active" : ""}`}
-                        onClick={() => {
-                          switchOrg(org);
-                          setDropdownOpen(false);
-                          router.push("/");
-                        }}
-                      >
-                        <Avatar
-                          src={org.avatarUrl}
-                          alt={org.displayName || org.handle}
-                          size="sm"
-                          fallbackInitials={(org.displayName || org.handle).slice(0, 2)}
-                        />
-                        <div>
-                          <p className="account-switcher__item-name">
-                            {org.displayName || org.handle}
-                          </p>
-                          <p className="account-switcher__item-handle">{org.role}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </>
-                )}
-              </div>
-
-              <div className="navbar__dropdown-user">
-                <button onClick={signOut} className="navbar__signout">
-                  Sign out
-                </button>
-              </div>
             </div>
           </>
         ) : (
