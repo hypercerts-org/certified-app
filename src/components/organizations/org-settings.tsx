@@ -14,7 +14,7 @@ import type { Organization, OrgMember, AuditEntry, OrgRole } from "@/lib/organiz
 import { authFetch } from "@/lib/auth/fetch"
 import Button from "@/components/ui/button"
 import HandleSearch from "@/components/organizations/handle-search"
-import UsernameCard from "@/components/dashboard/username-card"
+
 
 interface ResolvedMember extends OrgMember {
   handle?: string
@@ -175,20 +175,14 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
 
       <div className="dashboard__body dashboard__body--single">
         <div className="dashboard__main">
-          {/* Handle section */}
-          {isAdmin && (
-            <UsernameCard
-              handle={org.handle}
-              did={org.groupDid}
-              groupDid={org.groupDid}
-            />
-          )}
-          {!isAdmin && (
-            <div className="dash-card">
-              <h2 className="dash-card__title">Handle</h2>
-              <p className="username-card__value">@{org.handle}</p>
-            </div>
-          )}
+          {/* Handle section (read-only — group service doesn't support handle changes after registration) */}
+          <div className="dash-card">
+            <h2 className="dash-card__title">Handle</h2>
+            <p className="dash-card__desc">
+              The group&apos;s handle on the network. Set during registration.
+            </p>
+            <p className="username-card__value">@{org.handle}</p>
+          </div>
 
           {/* Members section */}
           <div className="dash-card">

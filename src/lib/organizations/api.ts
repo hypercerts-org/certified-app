@@ -353,15 +353,14 @@ export async function queryOrgAuditLog(
   let cursor: string | undefined
 
   do {
-    const params = new URLSearchParams()
+    const params = new URLSearchParams({ limit: "100" })
     if (filters?.actorDid) params.set("actorDid", filters.actorDid)
     if (filters?.action) params.set("action", filters.action)
     if (filters?.collection) params.set("collection", filters.collection)
     if (cursor) params.set("cursor", cursor)
-    const qs = params.toString()
 
     const res = await authFetch(
-      `/api/organizations/${encodeURIComponent(groupDid)}/audit${qs ? `?${qs}` : ""}`,
+      `/api/organizations/${encodeURIComponent(groupDid)}/audit?${params.toString()}`,
       { signal }
     )
     if (!res.ok) throw new Error("Failed to fetch audit log")
