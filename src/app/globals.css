@@ -1712,11 +1712,11 @@ h1, h2, h3, h4, h5, h6 {
 
 .handle-edit__row {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 0;
 }
 
-.handle-edit__row .input-wrapper {
+.handle-edit__row > div:first-child {
   flex: 1;
   min-width: 0;
 }
@@ -1725,10 +1725,11 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.875rem;
   font-family: monospace;
   color: var(--color-mid-gray);
-  padding: 8px 0 8px 2px;
+  padding: 0 0 0 2px;
   white-space: nowrap;
-  line-height: 1.5;
-  height: 38px;
+  /* Align with the input field: label height (~20px + 6px margin) + input padding */
+  margin-top: 26px;
+  height: 44px;
   display: flex;
   align-items: center;
 }
