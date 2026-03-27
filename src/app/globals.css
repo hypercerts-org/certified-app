@@ -4202,12 +4202,13 @@ h1, h2, h3, h4, h5, h6 {
   top: calc(100% + 8px);
   right: 0;
   min-width: 260px;
+  max-height: 70vh;
+  overflow-y: auto;
   background: var(--color-white);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   z-index: 60;
-  overflow: hidden;
 }
 
 .account-switcher__section-label {
