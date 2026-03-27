@@ -8,7 +8,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   // App pages always show the shell (even while loading)
-  const isAppPage = pathname.startsWith("/settings") || pathname.startsWith("/connected-apps");
+  const isAppPage = pathname.startsWith("/settings") || pathname.startsWith("/connected-apps") || pathname.startsWith("/organizations");
   const showShell = isAppPage || (!isLoading && isAuthenticated);
 
   if (!showShell) {

@@ -87,11 +87,11 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
         onMouseLeave={() => setIsHovered(false)}
       >
         {/* Avatar */}
-        <div className="h-24 w-24">
+        <div className="h-16 w-16">
           <Avatar
             src={displayUrl || undefined}
             fallbackInitials={fallbackInitials}
-            size="xl"
+            size="lg"
           />
         </div>
 

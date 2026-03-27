@@ -214,10 +214,8 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
 
   return (
     <div className="edit-profile">
-      {/* Media card: banner + avatar */}
+      {/* Banner + avatar — mirrors profile page layout */}
       <div className="dash-card">
-        <h3 className="dash-card__title">Profile Media</h3>
-        <p className="dash-card__desc">Upload a banner and avatar for your profile.</p>
         <BannerUpload
           currentBannerUrl={currentBannerUrl}
           onUpload={handleBannerUpload}
@@ -230,22 +228,22 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
             onUpload={handleAvatarUpload}
             isUploading={isUploadingAvatar}
           />
+          <div className="edit-profile__name-field">
+            <Input
+              label="Display name"
+              value={displayName}
+              onChange={handleDisplayNameChange}
+              maxLength={640}
+              placeholder="Your display name"
+              error={displayNameError}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Details card: form fields */}
+      {/* Fields */}
       <div className="dash-card">
-        <h3 className="dash-card__title">Profile Details</h3>
-        <p className="dash-card__desc">This information is visible on your public profile.</p>
         <div className="edit-profile__fields">
-          <Input
-            label="Display name"
-            value={displayName}
-            onChange={handleDisplayNameChange}
-            maxLength={640}
-            placeholder="Your display name"
-            error={displayNameError}
-          />
           <div>
             <Textarea
               label="About"

@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import { putProfile, uploadAvatar, uploadBanner } from "@/lib/atproto/profile";
@@ -55,16 +54,7 @@ export default function EditProfilePage() {
     <div className="dashboard">
       {/* Top bar */}
       <div className="dashboard__topbar">
-        <h1 className="dashboard__page-title">Edit Profile</h1>
-        <div className="dashboard__topbar-right">
-          <button
-            className="dashboard__back-btn"
-            onClick={() => router.push("/")}
-          >
-            <ArrowLeft size={16} />
-            Back to Profile
-          </button>
-        </div>
+        <h1 className="dashboard__page-title">Edit</h1>
       </div>
 
       {/* Main content — single column, no right sidebar */}

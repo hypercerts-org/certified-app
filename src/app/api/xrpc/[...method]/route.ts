@@ -8,6 +8,8 @@ import { checkCsrf } from "@/lib/auth/csrf"
 const ALLOWED_WRITE_COLLECTIONS = [
   "org.impactindexer.link.attestation",
   "app.certified.actor.profile",
+  "app.certified.actor.membership",
+  "app.certified.actor.organization",
 ]
 
 const ALLOWED_BLOB_CONTENT_TYPES = [
