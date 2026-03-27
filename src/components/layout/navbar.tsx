@@ -204,15 +204,16 @@ const Navbar: React.FC = () => {
               </button>
             </div>
 
-            {/* Mobile: profile avatar + switcher */}
-            <div className="navbar__mobile-switcher" ref={mobileSwitcherRef}>
-              <button
-                className="navbar__mobile-avatar"
-                onClick={() => { setSwitcherOpen(!switcherOpen); setDropdownOpen(false); }}
-                aria-label="Switch account"
-              >
-                <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
-              </button>
+            {/* Mobile: avatar + hamburger, right-aligned */}
+            <div className="navbar__mobile-actions">
+              <div className="navbar__mobile-switcher" ref={mobileSwitcherRef}>
+                <button
+                  className="navbar__mobile-avatar"
+                  onClick={() => { setSwitcherOpen(!switcherOpen); setDropdownOpen(false); }}
+                  aria-label="Switch account"
+                >
+                  <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
+                </button>
               {switcherOpen && (
                 <div className="account-switcher__menu">
                   <p className="account-switcher__section-label">User</p>
@@ -271,16 +272,17 @@ const Navbar: React.FC = () => {
                   </button>
                 </div>
               )}
-            </div>
+              </div>
 
-            {/* Mobile: hamburger */}
-            <button
-              className="navbar__hamburger"
-              onClick={() => { setDropdownOpen(!dropdownOpen); setSwitcherOpen(false); }}
-              aria-label={dropdownOpen ? "Close menu" : "Open menu"}
-            >
-              {dropdownOpen ? <X size={22} /> : <Menu size={22} />}
-            </button>
+              {/* Mobile: hamburger */}
+              <button
+                className="navbar__hamburger"
+                onClick={() => { setDropdownOpen(!dropdownOpen); setSwitcherOpen(false); }}
+                aria-label={dropdownOpen ? "Close menu" : "Open menu"}
+              >
+                {dropdownOpen ? <X size={22} /> : <Menu size={22} />}
+              </button>
+            </div>
 
             {/* Mobile: nav dropdown */}
             <div className={`navbar__dropdown ${dropdownOpen ? "navbar__dropdown--open" : ""}`}>

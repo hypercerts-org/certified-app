@@ -317,8 +317,13 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-primary);
 }
 
-.navbar__mobile-switcher {
+.navbar__mobile-actions {
   display: none;
+  align-items: center;
+  gap: 4px;
+}
+
+.navbar__mobile-switcher {
   position: relative;
 }
 
@@ -347,8 +352,8 @@ h1, h2, h3, h4, h5, h6 {
     display: none;
   }
 
-  .navbar__mobile-switcher {
-    display: block;
+  .navbar__mobile-actions {
+    display: flex;
   }
 
   .navbar__hamburger {
