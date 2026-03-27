@@ -92,44 +92,55 @@ const Navbar: React.FC = () => {
     }
   }, [switcherOpen]);
 
-  // Bottom sheet swipe-to-dismiss
+  // Bottom sheet drag handle + expand/collapse/dismiss
   const sheetRef = useRef<HTMLDivElement>(null);
+  const [sheetExpanded, setSheetExpanded] = useState(false);
   const dragStartY = useRef(0);
-  const dragCurrentY = useRef(0);
   const isDragging = useRef(false);
 
-  const onTouchStart = useCallback((e: React.TouchEvent) => {
+  // Reset expanded state when sheet closes
+  useEffect(() => {
+    if (!switcherOpen) setSheetExpanded(false);
+  }, [switcherOpen]);
+
+  const onHandleTouchStart = useCallback((e: React.TouchEvent) => {
     dragStartY.current = e.touches[0].clientY;
-    dragCurrentY.current = e.touches[0].clientY;
     isDragging.current = true;
     if (sheetRef.current) {
       sheetRef.current.style.transition = "none";
     }
   }, []);
 
-  const onTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isDragging.current) return;
-    dragCurrentY.current = e.touches[0].clientY;
-    const dy = Math.max(0, dragCurrentY.current - dragStartY.current);
-    if (sheetRef.current) {
+  const onHandleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isDragging.current || !sheetRef.current) return;
+    e.preventDefault();
+    const dy = e.touches[0].clientY - dragStartY.current;
+    // Dragging down: translate sheet down (only positive values)
+    // Dragging up: no transform needed, we'll expand on release
+    if (dy > 0) {
       sheetRef.current.style.transform = `translateY(${dy}px)`;
     }
   }, []);
 
-  const onTouchEnd = useCallback(() => {
-    if (!isDragging.current) return;
+  const onHandleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!isDragging.current || !sheetRef.current) return;
     isDragging.current = false;
-    const dy = dragCurrentY.current - dragStartY.current;
-    if (sheetRef.current) {
-      sheetRef.current.style.transition = "transform 0.2s ease-out";
-      if (dy > 80) {
-        sheetRef.current.style.transform = "translateY(100%)";
-        setTimeout(() => setSwitcherOpen(false), 200);
-      } else {
-        sheetRef.current.style.transform = "translateY(0)";
-      }
+    const dy = e.changedTouches[0].clientY - dragStartY.current;
+    sheetRef.current.style.transition = "transform 0.3s ease-out, max-height 0.3s ease-out";
+    sheetRef.current.style.transform = "translateY(0)";
+
+    if (dy > 80) {
+      // Swiped down far enough — dismiss
+      sheetRef.current.style.transform = "translateY(100%)";
+      setTimeout(() => setSwitcherOpen(false), 250);
+    } else if (dy < -40) {
+      // Swiped up — expand to full height
+      setSheetExpanded(true);
+    } else if (dy > 20 && sheetExpanded) {
+      // Small swipe down while expanded — collapse back
+      setSheetExpanded(false);
     }
-  }, []);
+  }, [sheetExpanded]);
 
   // Derive display state from org context
   const navLinks = activeOrg ? ORG_NAV_LINKS : PERSONAL_NAV_LINKS;
@@ -266,13 +277,15 @@ const Navbar: React.FC = () => {
                 <>
                   <div className="bottom-sheet__backdrop" onClick={() => setSwitcherOpen(false)} />
                   <div
-                    className="bottom-sheet"
+                    className={`bottom-sheet ${sheetExpanded ? "bottom-sheet--expanded" : ""}`}
                     ref={sheetRef}
-                    onTouchStart={onTouchStart}
-                    onTouchMove={onTouchMove}
-                    onTouchEnd={onTouchEnd}
                   >
-                    <div className="bottom-sheet__handle" />
+                    <div
+                      className="bottom-sheet__handle"
+                      onTouchStart={onHandleTouchStart}
+                      onTouchMove={onHandleTouchMove}
+                      onTouchEnd={onHandleTouchEnd}
+                    />
                     <div className="bottom-sheet__content">
                       <p className="account-switcher__section-label">User</p>
                       <div className="account-switcher__user-row">
