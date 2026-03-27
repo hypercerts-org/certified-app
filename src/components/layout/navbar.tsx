@@ -209,23 +209,32 @@ const Navbar: React.FC = () => {
                   <div className="account-switcher__menu">
                     {/* User section */}
                     <p className="account-switcher__section-label">User</p>
-                    <button
-                      className={`account-switcher__item ${!activeOrg ? "account-switcher__item--active" : ""}`}
-                      onClick={() => { switchOrg(null); setSwitcherOpen(false); router.push("/"); }}
-                    >
-                      <Avatar
-                        src={avatarUrl || undefined}
-                        alt={profile?.displayName || "Personal"}
-                        size="sm"
-                        fallbackInitials={getInitials(profile?.displayName || handle || "?")}
-                      />
-                      <div>
-                        <p className="account-switcher__item-name">
-                          {profile?.displayName || "Personal"}
-                        </p>
-                        <p className="account-switcher__item-handle">@{handle}</p>
-                      </div>
-                    </button>
+                    <div className="account-switcher__user-row">
+                      <button
+                        className={`account-switcher__item ${!activeOrg ? "account-switcher__item--active" : ""}`}
+                        onClick={() => { switchOrg(null); setSwitcherOpen(false); router.push("/"); }}
+                      >
+                        <Avatar
+                          src={avatarUrl || undefined}
+                          alt={profile?.displayName || "Personal"}
+                          size="sm"
+                          fallbackInitials={getInitials(profile?.displayName || handle || "?")}
+                        />
+                        <div>
+                          <p className="account-switcher__item-name">
+                            {profile?.displayName || "Personal"}
+                          </p>
+                          <p className="account-switcher__item-handle">@{handle}</p>
+                        </div>
+                      </button>
+                      <button
+                        className="account-switcher__signout"
+                        onClick={(e) => { e.stopPropagation(); signOut(); }}
+                        title="Sign out"
+                      >
+                        <LogOut size={16} />
+                      </button>
+                    </div>
 
                     {organizations.length > 0 && (
                       <>
@@ -260,9 +269,6 @@ const Navbar: React.FC = () => {
                   </div>
                 )}
               </div>
-              <button onClick={signOut} className="navbar__signout">
-                Sign out
-              </button>
             </div>
 
             {/* Mobile: avatar + hamburger, right-aligned */}
