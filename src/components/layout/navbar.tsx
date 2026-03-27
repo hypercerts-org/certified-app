@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -35,6 +35,19 @@ const Navbar: React.FC = () => {
   const router = useRouter();
   const { activeOrg, organizations, switchOrg } = useOrg();
   const { orgAvatarUrl } = useOrgProfile();
+
+  const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
+  const sortedOrgs = useMemo(() => {
+    return [...organizations].sort((a, b) => {
+      if (a.accepted !== b.accepted) return a.accepted ? -1 : 1;
+      const roleA = ROLE_ORDER[a.role] ?? 3;
+      const roleB = ROLE_ORDER[b.role] ?? 3;
+      if (roleA !== roleB) return roleA - roleB;
+      const nameA = (a.displayName || a.handle).toLowerCase();
+      const nameB = (b.displayName || b.handle).toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+  }, [organizations]);
   const switcherRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -148,7 +161,7 @@ const Navbar: React.FC = () => {
                       <>
                         <div className="account-switcher__divider" />
                         <p className="account-switcher__section-label">Groups</p>
-                        {organizations.map((org) => (
+                        {sortedOrgs.map((org) => (
                           <button
                             key={org.groupDid}
                             className={`account-switcher__item ${activeOrg?.groupDid === org.groupDid ? "account-switcher__item--active" : ""}`}
@@ -158,7 +171,16 @@ const Navbar: React.FC = () => {
                               router.push("/");
                             }}
                           >
-                            <Building2 size={16} />
+                            {org.avatarUrl ? (
+                              <Avatar
+                                src={org.avatarUrl}
+                                alt={org.displayName || org.handle}
+                                size="sm"
+                                fallbackInitials={(org.displayName || org.handle).slice(0, 2)}
+                              />
+                            ) : (
+                              <Building2 size={16} />
+                            )}
                             <div>
                               <p className="account-switcher__item-name">
                                 {org.displayName || org.handle}
