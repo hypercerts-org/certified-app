@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -222,7 +223,7 @@ const Navbar: React.FC = () => {
                 >
                   <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
                 </button>
-              {switcherOpen && (
+              {switcherOpen && createPortal(
                 <>
                   <div className="bottom-sheet__backdrop" onClick={() => setSwitcherOpen(false)} />
                   <div className="bottom-sheet">
@@ -284,7 +285,8 @@ const Navbar: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                </>
+                </>,
+                document.body
               )}
               </div>
 
