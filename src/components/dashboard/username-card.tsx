@@ -55,7 +55,11 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
   const [subdomainValue, setSubdomainValue] = useState("");
 
   const handleEdit = () => {
-    setNewHandle(handle || "");
+    // Extract just the prefix from the current handle
+    const currentPrefix = handle && handle.includes(".")
+      ? handle.slice(0, handle.indexOf("."))
+      : handle || "";
+    setNewHandle(currentPrefix);
     setError(null);
     setIsEditing(true);
     setIsChoosingCertified(false);
@@ -75,12 +79,20 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
   };
 
   const handleSave = async () => {
-    const trimmed = newHandle.trim();
+    const trimmed = newHandle.trim().toLowerCase();
     if (!trimmed) {
       setError("Username cannot be empty.");
       return;
     }
-    await submitHandle(trimmed);
+    if (trimmed.length < 3 || trimmed.length > 18) {
+      setError("Username must be 3-18 characters.");
+      return;
+    }
+    if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(trimmed) && trimmed.length > 2) {
+      setError("Only lowercase letters, numbers, and hyphens. Cannot start or end with a hyphen.");
+      return;
+    }
+    await submitHandle(`${trimmed}.${pdsHostname}`);
   };
 
   const handleSaveCertified = async () => {
@@ -168,13 +180,22 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
           {/* Inline edit for certified handle */}
           {isEditing && (
             <div className="username-card__form">
-              <Input
-                label="New username"
-                value={newHandle}
-                onChange={(e) => setNewHandle(e.target.value)}
-                placeholder="your-username.certified.app"
-                error={error ?? undefined}
-              />
+              <label className="username-card__form-label">{groupDid ? "Handle" : "Username"}</label>
+              <div className="username-card__subdomain-row">
+                <input
+                  type="text"
+                  className="username-card__subdomain-input"
+                  value={newHandle}
+                  onChange={(e) => setNewHandle(e.target.value.replace(/[^a-zA-Z0-9-]/g, ""))}
+                  placeholder="yourname"
+                  disabled={isSaving}
+                />
+                <span className="username-card__subdomain-suffix">.{pdsHostname}</span>
+              </div>
+              <p className="username-card__subdomain-hint">3-18 characters. Letters, numbers, and hyphens only.</p>
+              {error && (
+                <p className="username-card__error" role="alert">{error}</p>
+              )}
               <div className="username-card__actions">
                 <Button variant="ghost" size="sm" onClick={handleCancel} disabled={isSaving}>
                   Cancel
