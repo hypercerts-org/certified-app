@@ -13,6 +13,7 @@ import {
   listOrgMembers,
 } from "@/lib/organizations/api"
 import type { OrgRole } from "@/lib/organizations/types"
+import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Button from "@/components/ui/button"
 
@@ -72,7 +73,16 @@ export default function OrganizationsPage() {
   const renderOrgItem = (org: (typeof sortedOrgs)[number]) => (
     <div key={org.groupDid} className="org-list__item">
       <div className="org-list__item-avatar">
-        <Building2 size={20} />
+        {org.avatarUrl ? (
+          <Avatar
+            src={org.avatarUrl}
+            alt={org.displayName || org.handle}
+            size="sm"
+            fallbackInitials={(org.displayName || org.handle).slice(0, 2)}
+          />
+        ) : (
+          <Building2 size={20} />
+        )}
       </div>
       <div className="org-list__item-info">
         <p className="org-list__item-name">
@@ -218,7 +228,7 @@ export default function OrganizationsPage() {
                 {pendingOrgs.length > 0 && (
                   <div className="org-list__divider">
                     <span className="org-list__divider-text">
-                      Pending public acceptance — you can still interact with these groups
+                      Groups without public membership — you can still interact with these groups
                     </span>
                   </div>
                 )}

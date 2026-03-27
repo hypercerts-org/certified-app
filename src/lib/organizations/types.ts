@@ -4,6 +4,7 @@ export interface Organization {
   displayName?: string
   role: OrgRole
   accepted: boolean
+  avatarUrl?: string
   rkey?: string
 }
 

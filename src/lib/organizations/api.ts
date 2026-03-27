@@ -1,5 +1,7 @@
 import { authFetch } from "@/lib/auth/fetch"
-import { resolveHandle } from "@/lib/atproto/did"
+import { resolveHandle, resolvePdsUrl } from "@/lib/atproto/did"
+import { getAvatarUrl } from "@/lib/atproto/profile"
+import type { CertifiedProfile } from "@/lib/atproto/types"
 import type {
   Organization,
   OrgProfile,
@@ -414,13 +416,23 @@ export async function resolveOrganizations(
   for (const rm of remoteMemberships) {
     let displayName: string | undefined
     let handle = rm.groupDid
+    let avatarUrl: string | undefined
     try {
-      const [profile, resolvedHandle] = await Promise.all([
+      const [profile, resolvedHandle, pdsUrl] = await Promise.all([
         getOrgProfile(rm.groupDid, signal).catch(() => null),
         resolveHandle(rm.groupDid).catch(() => null),
+        resolvePdsUrl(rm.groupDid).catch(() => null),
       ])
       if (profile?.displayName) displayName = profile.displayName
       if (resolvedHandle) handle = resolvedHandle
+      if (profile && pdsUrl) {
+        const url = getAvatarUrl(
+          profile as CertifiedProfile,
+          rm.groupDid,
+          pdsUrl
+        )
+        if (url) avatarUrl = url
+      }
     } catch {
       // ignore — profile or handle may not resolve
     }
@@ -430,6 +442,7 @@ export async function resolveOrganizations(
       displayName,
       role: rm.role,
       accepted: acceptedSet.has(rm.groupDid),
+      avatarUrl,
       rkey: rm.groupDid.replace(/[^a-zA-Z0-9]/g, "-"),
     })
   }
