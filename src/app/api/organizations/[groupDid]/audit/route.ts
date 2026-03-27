@@ -24,12 +24,10 @@ export async function GET(
     const actorDid = request.nextUrl.searchParams.get("actorDid")
     const action = request.nextUrl.searchParams.get("action")
     const collection = request.nextUrl.searchParams.get("collection")
-    const limit = request.nextUrl.searchParams.get("limit")
     const cursor = request.nextUrl.searchParams.get("cursor")
     if (actorDid) queryParams.actorDid = actorDid
     if (action) queryParams.action = action
     if (collection) queryParams.collection = collection
-    if (limit) queryParams.limit = limit
     if (cursor) queryParams.cursor = cursor
 
     const { data } = await groupAgent.call(

@@ -342,7 +342,7 @@ export async function setOrgMemberRole(
 
 /**
  * Query the organization audit log.
- * Paginates through all pages to return the complete log.
+ * Paginates if the endpoint returns a cursor.
  */
 export async function queryOrgAuditLog(
   groupDid: string,
@@ -353,14 +353,15 @@ export async function queryOrgAuditLog(
   let cursor: string | undefined
 
   do {
-    const params = new URLSearchParams({ limit: "100" })
+    const params = new URLSearchParams()
     if (filters?.actorDid) params.set("actorDid", filters.actorDid)
     if (filters?.action) params.set("action", filters.action)
     if (filters?.collection) params.set("collection", filters.collection)
     if (cursor) params.set("cursor", cursor)
+    const qs = params.toString()
 
     const res = await authFetch(
-      `/api/organizations/${encodeURIComponent(groupDid)}/audit?${params.toString()}`,
+      `/api/organizations/${encodeURIComponent(groupDid)}/audit${qs ? `?${qs}` : ""}`,
       { signal }
     )
     if (!res.ok) throw new Error("Failed to fetch audit log")
