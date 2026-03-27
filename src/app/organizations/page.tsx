@@ -1,14 +1,16 @@
 "use client"
 
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Building2, Plus, LogOut, UserCheck } from "lucide-react"
+import { Building2, Plus, LogOut, UserCheck, UserX } from "lucide-react"
 import { useOrg } from "@/lib/organizations/org-context"
 import { useAuth } from "@/lib/auth/auth-context"
 import {
   putMembership,
   deleteMembership,
+  removeOrgMember,
+  listOrgMembers,
 } from "@/lib/organizations/api"
 import type { OrgRole } from "@/lib/organizations/types"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -21,6 +23,8 @@ export default function OrganizationsPage() {
   const [leaveOrg, setLeaveOrg] = useState<{ groupDid: string; name: string } | null>(null)
   const [isLeaving, setIsLeaving] = useState(false)
   const [acceptingOrg, setAcceptingOrg] = useState<string | null>(null)
+  const [canLeaveMap, setCanLeaveMap] = useState<Record<string, boolean>>({})
+  const [removingPublic, setRemovingPublic] = useState<string | null>(null)
 
   const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 }
 
@@ -41,6 +45,29 @@ export default function OrganizationsPage() {
 
   const acceptedOrgs = sortedOrgs.filter((o) => o.accepted)
   const pendingOrgs = sortedOrgs.filter((o) => !o.accepted)
+
+  const checkCanLeave = useCallback(async () => {
+    if (!organizations.length || !did) return
+    const map: Record<string, boolean> = {}
+    for (const org of organizations) {
+      if (org.role !== "owner") {
+        map[org.groupDid] = true
+        continue
+      }
+      try {
+        const members = await listOrgMembers(org.groupDid)
+        const ownerCount = members.filter((m) => m.role === "owner").length
+        map[org.groupDid] = ownerCount > 1
+      } catch {
+        map[org.groupDid] = false
+      }
+    }
+    setCanLeaveMap(map)
+  }, [organizations, did])
+
+  useEffect(() => {
+    checkCanLeave()
+  }, [checkCanLeave])
 
   const renderOrgItem = (org: (typeof sortedOrgs)[number]) => (
     <div key={org.groupDid} className="org-list__item">
@@ -69,11 +96,12 @@ export default function OrganizationsPage() {
         </Button>
         {org.accepted ? (
           <button
-            className="org-members__remove-btn"
-            onClick={() => setLeaveOrg({ groupDid: org.groupDid, name: org.displayName || org.handle })}
-            title="Leave group"
+            className="org-list__remove-public-btn"
+            onClick={() => handleRemovePublicMembership(org.groupDid)}
+            disabled={removingPublic === org.groupDid}
+            title="Remove public membership"
           >
-            <LogOut size={14} />
+            <UserX size={14} />
           </button>
         ) : (
           <button
@@ -85,15 +113,39 @@ export default function OrganizationsPage() {
             <UserCheck size={14} />
           </button>
         )}
+        <button
+          className="org-list__leave-btn"
+          onClick={() => setLeaveOrg({ groupDid: org.groupDid, name: org.displayName || org.handle })}
+          disabled={!canLeaveMap[org.groupDid]}
+          title={canLeaveMap[org.groupDid] === false ? "Transfer ownership before leaving" : "Leave group"}
+        >
+          <LogOut size={14} />
+        </button>
       </div>
     </div>
   )
+
+  const handleRemovePublicMembership = async (groupDid: string) => {
+    if (!did) return
+    setRemovingPublic(groupDid)
+    try {
+      await deleteMembership(did, groupDid)
+      await refetchOrgs()
+    } catch {
+      // ignore
+    } finally {
+      setRemovingPublic(null)
+    }
+  }
 
   const handleLeaveOrg = async () => {
     if (!did || !leaveOrg) return
     setIsLeaving(true)
     try {
-      await deleteMembership(did, leaveOrg.groupDid)
+      // Remove from group service (actual access removal)
+      await removeOrgMember(leaveOrg.groupDid, did)
+      // Also clean up local PDS record if it exists
+      await deleteMembership(did, leaveOrg.groupDid).catch(() => {})
       await refetchOrgs()
       setLeaveOrg(null)
     } catch {
@@ -188,7 +240,7 @@ export default function OrganizationsPage() {
             </div>
             <div className="signin-modal__body">
               <p className="dash-card__desc" style={{ marginBottom: 20 }}>
-                Are you sure you want to leave <strong>{leaveOrg.name}</strong>? This will remove the group from your account.
+                Are you sure you want to leave <strong>{leaveOrg.name}</strong>? You will lose access to this group. An admin will need to re-invite you if you want to rejoin.
               </p>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
                 <Button variant="ghost" onClick={() => setLeaveOrg(null)} disabled={isLeaving}>
