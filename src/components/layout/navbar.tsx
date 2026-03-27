@@ -11,7 +11,7 @@ import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
 import { useOrg } from "@/lib/organizations/org-context";
 import { useOrgProfile } from "@/hooks/use-org-profile";
-import { Menu, X, ChevronDown, User } from "lucide-react";
+import { Menu, X, ChevronDown } from "lucide-react";
 
 const PERSONAL_NAV_LINKS = [
   { href: "/", label: "Profile" },
@@ -148,7 +148,12 @@ const Navbar: React.FC = () => {
                       className={`account-switcher__item ${!activeOrg ? "account-switcher__item--active" : ""}`}
                       onClick={() => { switchOrg(null); setSwitcherOpen(false); router.push("/"); }}
                     >
-                      <User size={16} />
+                      <Avatar
+                        src={avatarUrl || undefined}
+                        alt={profile?.displayName || "Personal"}
+                        size="sm"
+                        fallbackInitials={getInitials(profile?.displayName || handle || "?")}
+                      />
                       <div>
                         <p className="account-switcher__item-name">
                           {profile?.displayName || "Personal"}
