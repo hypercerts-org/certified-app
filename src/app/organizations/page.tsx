@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Building2, Plus, LogOut, UserCheck } from "lucide-react"
@@ -21,6 +21,73 @@ export default function OrganizationsPage() {
   const [leaveOrg, setLeaveOrg] = useState<{ groupDid: string; name: string } | null>(null)
   const [isLeaving, setIsLeaving] = useState(false)
   const [acceptingOrg, setAcceptingOrg] = useState<string | null>(null)
+
+  const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 }
+
+  const sortedOrgs = useMemo(() => {
+    return [...organizations].sort((a, b) => {
+      // Accepted first
+      if (a.accepted !== b.accepted) return a.accepted ? -1 : 1
+      // Then by role
+      const roleA = ROLE_ORDER[a.role] ?? 3
+      const roleB = ROLE_ORDER[b.role] ?? 3
+      if (roleA !== roleB) return roleA - roleB
+      // Then by name
+      const nameA = (a.displayName || a.handle).toLowerCase()
+      const nameB = (b.displayName || b.handle).toLowerCase()
+      return nameA.localeCompare(nameB)
+    })
+  }, [organizations])
+
+  const acceptedOrgs = sortedOrgs.filter((o) => o.accepted)
+  const pendingOrgs = sortedOrgs.filter((o) => !o.accepted)
+
+  const renderOrgItem = (org: (typeof sortedOrgs)[number]) => (
+    <div key={org.groupDid} className="org-list__item">
+      <div className="org-list__item-avatar">
+        <Building2 size={20} />
+      </div>
+      <div className="org-list__item-info">
+        <p className="org-list__item-name">
+          {org.displayName || org.handle}
+        </p>
+        <p className="org-list__item-handle">
+          {org.handle}
+        </p>
+      </div>
+      <span className="org-list__item-role">{org.role}</span>
+      <div className="org-list__item-actions">
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => {
+            switchOrg(org)
+            router.push("/")
+          }}
+        >
+          Switch
+        </Button>
+        {org.accepted ? (
+          <button
+            className="org-members__remove-btn"
+            onClick={() => setLeaveOrg({ groupDid: org.groupDid, name: org.displayName || org.handle })}
+            title="Leave group"
+          >
+            <LogOut size={14} />
+          </button>
+        ) : (
+          <button
+            className="org-list__accept-btn"
+            onClick={() => handleAcceptMembership(org.groupDid, org.role)}
+            disabled={acceptingOrg === org.groupDid}
+            title="Accept membership publicly"
+          >
+            <UserCheck size={14} />
+          </button>
+        )}
+      </div>
+    </div>
+  )
 
   const handleLeaveOrg = async () => {
     if (!did || !leaveOrg) return
@@ -52,7 +119,7 @@ export default function OrganizationsPage() {
   return (
     <div className="dashboard">
       <div className="dashboard__topbar">
-        <h1 className="dashboard__page-title">Organizations</h1>
+        <h1 className="dashboard__page-title">Groups</h1>
         <div className="dashboard__topbar-right">
           <Link href="/organizations/create">
             <Button variant="primary" size="sm">
@@ -72,15 +139,15 @@ export default function OrganizationsPage() {
           ) : organizations.length === 0 ? (
             <div className="org-list__empty">
               <Building2 size={48} className="org-list__empty-icon" />
-              <h3 className="org-list__empty-title">No organizations yet</h3>
+              <h3 className="org-list__empty-title">No groups yet</h3>
               <p className="org-list__empty-desc">
-                Create a new organization or wait for an invite to appear here automatically.
+                Create a new group or wait for an invite to appear here automatically.
               </p>
               <div className="org-list__empty-actions">
                 <Link href="/organizations/create">
                   <Button variant="primary">
                     <Plus size={16} />
-                    Create Organization
+                    Create Group
                   </Button>
                 </Link>
               </div>
@@ -88,59 +155,22 @@ export default function OrganizationsPage() {
           ) : (
             <div className="dash-card">
               <div className="org-list__header">
-                <h2 className="dash-card__title">Your organizations</h2>
+                <h2 className="dash-card__title">Your groups</h2>
                 <span className="org-list__count">{organizations.length}</span>
               </div>
               <p className="dash-card__desc">
-                Select an organization to manage it, or switch into it to act on its behalf.
+                Select a group to manage it, or switch into it to act on its behalf.
               </p>
               <div className="org-list__items">
-                {organizations.map((org) => (
-                  <div key={org.groupDid} className="org-list__item">
-                    <div className="org-list__item-avatar">
-                      <Building2 size={20} />
-                    </div>
-                    <div className="org-list__item-info">
-                      <p className="org-list__item-name">
-                        {org.displayName || org.handle}
-                      </p>
-                      <p className="org-list__item-handle">
-                        {org.handle}
-                      </p>
-                    </div>
-                    <span className="org-list__item-role">{org.role}</span>
-                    <div className="org-list__item-actions">
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => {
-                          switchOrg(org)
-                          router.push("/")
-                        }}
-                      >
-                        Switch
-                      </Button>
-                      {org.accepted ? (
-                        <button
-                          className="org-members__remove-btn"
-                          onClick={() => setLeaveOrg({ groupDid: org.groupDid, name: org.displayName || org.handle })}
-                          title="Leave organization"
-                        >
-                          <LogOut size={14} />
-                        </button>
-                      ) : (
-                        <button
-                          className="org-list__accept-btn"
-                          onClick={() => handleAcceptMembership(org.groupDid, org.role)}
-                          disabled={acceptingOrg === org.groupDid}
-                          title="Accept membership publicly"
-                        >
-                          <UserCheck size={14} />
-                        </button>
-                      )}
-                    </div>
+                {acceptedOrgs.map(renderOrgItem)}
+                {pendingOrgs.length > 0 && (
+                  <div className="org-list__divider">
+                    <span className="org-list__divider-text">
+                      Pending public acceptance — you can still interact with these groups
+                    </span>
                   </div>
-                ))}
+                )}
+                {pendingOrgs.map(renderOrgItem)}
               </div>
             </div>
           )}
@@ -151,14 +181,14 @@ export default function OrganizationsPage() {
         <div className="signin-modal__backdrop" onClick={() => setLeaveOrg(null)}>
           <div className="signin-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
             <div className="signin-modal__header">
-              <span className="signin-modal__title">Leave Organization</span>
+              <span className="signin-modal__title">Leave Group</span>
               <button className="signin-modal__close" onClick={() => setLeaveOrg(null)}>
                 <LogOut size={18} />
               </button>
             </div>
             <div className="signin-modal__body">
               <p className="dash-card__desc" style={{ marginBottom: 20 }}>
-                Are you sure you want to leave <strong>{leaveOrg.name}</strong>? This will remove the organization from your account.
+                Are you sure you want to leave <strong>{leaveOrg.name}</strong>? This will remove the group from your account.
               </p>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
                 <Button variant="ghost" onClick={() => setLeaveOrg(null)} disabled={isLeaving}>

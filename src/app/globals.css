@@ -3751,6 +3751,28 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: center;
 }
 
+.org-list__divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0 8px;
+  margin-top: 4px;
+}
+
+.org-list__divider::before,
+.org-list__divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-subtle);
+}
+
+.org-list__divider-text {
+  font-size: 0.75rem;
+  color: var(--color-mid-gray);
+  white-space: nowrap;
+}
+
 .org-list__accept-btn {
   display: flex;
   align-items: center;

@@ -1,17 +1,26 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useNavbarVariant } from "@/lib/navbar-context";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
 import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
-import { Menu, X } from "lucide-react";
+import { useOrg } from "@/lib/organizations/org-context";
+import { useOrgProfile } from "@/hooks/use-org-profile";
+import { Menu, X, ChevronDown, Building2, User } from "lucide-react";
 
-const NAV_LINKS = [
+const PERSONAL_NAV_LINKS = [
+  { href: "/", label: "Profile" },
+  { href: "/organizations", label: "Groups" },
+  { href: "/connected-apps", label: "Apps" },
+  { href: "/settings", label: "Settings" },
+];
+
+const ORG_NAV_LINKS = [
   { href: "/", label: "Profile" },
   { href: "/connected-apps", label: "Apps" },
   { href: "/settings", label: "Settings" },
@@ -23,8 +32,13 @@ const Navbar: React.FC = () => {
   const { profile, avatarUrl } = useProfile();
   const { handle } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
+  const { activeOrg, organizations, switchOrg } = useOrg();
+  const { orgAvatarUrl } = useOrgProfile();
+  const switcherRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -34,12 +48,33 @@ const Navbar: React.FC = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Close dropdown on navigation
+  // Close dropdowns on navigation
   useEffect(() => {
     setDropdownOpen(false);
+    setSwitcherOpen(false);
   }, [pathname]);
 
-  const avatarInitials = getInitials(profile?.displayName, did);
+  // Close account switcher on outside click
+  useEffect(() => {
+    if (!switcherOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (switcherRef.current && !switcherRef.current.contains(e.target as Node)) {
+        setSwitcherOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [switcherOpen]);
+
+  // Derive display state from org context
+  const navLinks = activeOrg ? ORG_NAV_LINKS : PERSONAL_NAV_LINKS;
+  const displayName = activeOrg
+    ? (activeOrg.displayName || activeOrg.handle)
+    : profile?.displayName;
+  const avatarInitials = activeOrg
+    ? (activeOrg.displayName || activeOrg.handle || "O").slice(0, 2).toUpperCase()
+    : getInitials(profile?.displayName, did);
+  const displayAvatarUrl = activeOrg ? (orgAvatarUrl || undefined) : (avatarUrl || undefined);
 
   // Don't render navbar while auth is loading — prevents white flash
   if (isLoading) return null;
@@ -70,7 +105,7 @@ const Navbar: React.FC = () => {
           <>
             {/* Desktop: nav links */}
             <div className="navbar__app-links">
-              {NAV_LINKS.map((link) => (
+              {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
@@ -81,11 +116,62 @@ const Navbar: React.FC = () => {
               ))}
             </div>
 
-            {/* Desktop: user + sign out */}
+            {/* Desktop: account switcher + sign out */}
             <div className="navbar__user">
-              <Link href="/">
-                <Avatar size="sm" src={avatarUrl || undefined} fallbackInitials={avatarInitials} />
-              </Link>
+              <div className="account-switcher" ref={switcherRef}>
+                <button
+                  className="account-switcher__trigger"
+                  onClick={() => setSwitcherOpen(!switcherOpen)}
+                  aria-label="Switch account"
+                >
+                  <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
+                  <ChevronDown size={14} />
+                </button>
+                {switcherOpen && (
+                  <div className="account-switcher__menu">
+                    {/* User section */}
+                    <p className="account-switcher__section-label">User</p>
+                    <button
+                      className={`account-switcher__item ${!activeOrg ? "account-switcher__item--active" : ""}`}
+                      onClick={() => { switchOrg(null); setSwitcherOpen(false); router.push("/"); }}
+                    >
+                      <User size={16} />
+                      <div>
+                        <p className="account-switcher__item-name">
+                          {profile?.displayName || "Personal"}
+                        </p>
+                        <p className="account-switcher__item-handle">@{handle}</p>
+                      </div>
+                    </button>
+
+                    {organizations.length > 0 && (
+                      <>
+                        <div className="account-switcher__divider" />
+                        <p className="account-switcher__section-label">Groups</p>
+                        {organizations.map((org) => (
+                          <button
+                            key={org.groupDid}
+                            className={`account-switcher__item ${activeOrg?.groupDid === org.groupDid ? "account-switcher__item--active" : ""}`}
+                            onClick={() => {
+                              switchOrg(org);
+                              setSwitcherOpen(false);
+                              router.push("/");
+                            }}
+                          >
+                            <Building2 size={16} />
+                            <div>
+                              <p className="account-switcher__item-name">
+                                {org.displayName || org.handle}
+                              </p>
+                              <p className="account-switcher__item-handle">{org.role}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
               <button onClick={signOut} className="navbar__signout">
                 Sign out
               </button>
@@ -102,7 +188,7 @@ const Navbar: React.FC = () => {
 
             {/* Mobile: dropdown */}
             <div className={`navbar__dropdown ${dropdownOpen ? "navbar__dropdown--open" : ""}`}>
-              {NAV_LINKS.map((link) => (
+              {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
@@ -113,8 +199,8 @@ const Navbar: React.FC = () => {
               ))}
               <div className="navbar__dropdown-user">
                 <div className="navbar__dropdown-user-info">
-                  <Avatar size="sm" src={avatarUrl || undefined} fallbackInitials={avatarInitials} />
-                  <span className="navbar__dropdown-user-name">{profile?.displayName || `@${handle}`}</span>
+                  <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
+                  <span className="navbar__dropdown-user-name">{displayName || `@${handle}`}</span>
                 </div>
                 <button onClick={signOut} className="navbar__signout">
                   Sign out
