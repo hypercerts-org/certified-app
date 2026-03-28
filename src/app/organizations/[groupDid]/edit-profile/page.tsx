@@ -193,8 +193,8 @@ export default function EditOrgProfilePage() {
                       label="Display name"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
-                      maxLength={640}
-                      placeholder="Organization name"
+                      maxLength={64}
+                      placeholder="Group name"
                     />
                   </div>
                 </div>
@@ -209,8 +209,8 @@ export default function EditOrgProfilePage() {
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       rows={4}
-                      maxLength={2560}
-                      placeholder="Describe your organization"
+                      maxLength={256}
+                      placeholder="Describe your group"
                     />
                     <div className="edit-profile__char-count">
                       {description.length}/256 characters
@@ -221,7 +221,7 @@ export default function EditOrgProfilePage() {
                     type="url"
                     value={website}
                     onChange={(e) => setWebsite(e.target.value)}
-                    maxLength={2560}
+                    maxLength={256}
                     placeholder="https://example.org"
                   />
                   <Input

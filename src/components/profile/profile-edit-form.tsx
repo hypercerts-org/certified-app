@@ -233,7 +233,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
               label="Display name"
               value={displayName}
               onChange={handleDisplayNameChange}
-              maxLength={640}
+              maxLength={64}
               placeholder="Your display name"
               error={displayNameError}
             />
@@ -250,7 +250,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
               value={description}
               onChange={handleDescriptionChange}
               rows={4}
-              maxLength={2560}
+              maxLength={256}
               placeholder="Tell us about yourself"
               error={descriptionError}
             />
@@ -263,7 +263,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
             type="url"
             value={website}
             onChange={handleWebsiteChange}
-            maxLength={2560}
+            maxLength={256}
             placeholder="https://example.com"
             error={websiteError}
           />
