@@ -381,7 +381,9 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                                 rkey: {entry.rkey}
                               </span>
                             )}
-                            {entry.detail && Object.entries(entry.detail).map(([key, value]) => (
+                            {entry.detail && Object.entries(entry.detail)
+                              .filter(([key]) => key !== "collection" && key !== "rkey")
+                              .map(([key, value]) => (
                               <span key={key} className="org-audit__detail-item">
                                 {key}: {typeof value === "object" ? JSON.stringify(value) : String(value)}
                               </span>
