@@ -310,7 +310,6 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                         >
                           <option value="member">Member</option>
                           <option value="admin">Admin</option>
-                          <option value="owner">Owner</option>
                         </select>
                       </div>
                       {addError && <ErrorMessage message={addError} />}
