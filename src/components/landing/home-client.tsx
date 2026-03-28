@@ -114,7 +114,7 @@ export default function HomeClient() {
             {/* Account Details card */}
             <div className="dash-card">
               <h2 className="dash-card__title">
-                {isOrgMode ? "Organization Details" : "Account Details"}
+                {isOrgMode ? "Group Details" : "Account Details"}
               </h2>
               {!isOrgMode && isFallback && (
                 <div className="profile-fallback-note">
