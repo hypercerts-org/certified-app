@@ -66,12 +66,20 @@ export async function POST(request: NextRequest) {
         allGroups.map(async (g) => {
           try {
             const groupAgent = createGroupAgent(auth.agent, g.groupDid)
-            const { data } = await groupAgent.call(
-              "app.certified.group.member.list",
-              { limit: 100 }
-            )
-            const members = (data as { members?: { did: string; addedBy: string }[] }).members || []
-            return members.some(
+            const allMembers: { did: string; addedBy: string }[] = []
+            let memberCursor: string | undefined
+            do {
+              const params: Record<string, unknown> = { limit: 100 }
+              if (memberCursor) params.cursor = memberCursor
+              const { data } = await groupAgent.call(
+                "app.certified.group.member.list",
+                params
+              )
+              const page = data as { members?: { did: string; addedBy: string }[]; cursor?: string }
+              allMembers.push(...(page.members || []))
+              memberCursor = page.cursor
+            } while (memberCursor)
+            return allMembers.some(
               (m) => m.did === ownerDid && m.addedBy === ownerDid
             )
           } catch {

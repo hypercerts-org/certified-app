@@ -48,7 +48,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
 
   // Audit log
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([])
-  const [auditLoading, setAuditLoading] = useState(false)
+  const [auditLoading, setAuditLoading] = useState(true)
   const [auditPage, setAuditPage] = useState(0)
   const AUDIT_PER_PAGE = 20
 

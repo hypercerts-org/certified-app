@@ -204,7 +204,7 @@ export default function CreateOrganizationPage() {
                   setName(e.target.value)
                   validateName(e.target.value)
                 }}
-                maxLength={640}
+                maxLength={64}
                 placeholder="My Organization"
                 error={nameError}
               />

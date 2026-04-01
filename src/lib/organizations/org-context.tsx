@@ -60,7 +60,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading: authLoading, did } = useAuth()
   const [activeOrg, setActiveOrg] = useState<Organization | null>(getInitialOrg)
   const [organizations, setOrganizations] = useState<Organization[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   // Clear org when logged out (only after auth has finished loading)
   useEffect(() => {
