@@ -3,10 +3,12 @@
 import React, { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User, Settings, LayoutGrid, LogOut, X } from "lucide-react";
+import { User, Settings, LayoutGrid, Building2, LogOut, X } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
+import { useOrg } from "@/lib/organizations/org-context";
+import { useOrgProfile } from "@/hooks/use-org-profile";
 import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
 
@@ -19,6 +21,8 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const { signOut } = useAuth();
   const { profile, avatarUrl } = useProfile();
   const { handle } = useSession();
+  const { activeOrg } = useOrg();
+  const { orgAvatarUrl } = useOrgProfile();
   const pathname = usePathname();
 
   // Close sidebar on navigation (mobile)
@@ -26,7 +30,15 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     if (onClose) onClose();
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const initials = getInitials(profile?.displayName, null);
+  const isOrgMode = !!activeOrg;
+  const displayName = isOrgMode
+    ? (activeOrg.displayName || activeOrg.handle)
+    : (profile?.displayName || "Anonymous");
+  const displayHandle = isOrgMode ? activeOrg.handle : (handle || "...");
+  const displayAvatar = isOrgMode ? (orgAvatarUrl || undefined) : (avatarUrl || undefined);
+  const displayInitials = isOrgMode
+    ? (activeOrg.displayName || activeOrg.handle || "O").slice(0, 2).toUpperCase()
+    : getInitials(profile?.displayName, null);
 
   return (
     <aside className={`sidebar ${isOpen ? "sidebar--open" : ""}`} aria-label="Main navigation">
@@ -55,6 +67,19 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
               Profile
             </Link>
           </li>
+
+          {!isOrgMode && (
+            <li>
+              <Link
+                href="/organizations"
+                className={`sidebar__item ${pathname.startsWith("/organizations") ? "sidebar__item--active" : ""}`}
+              >
+                <Building2 size={18} />
+                Groups
+              </Link>
+            </li>
+          )}
+
           <li>
             <Link
               href="/connected-apps"
@@ -79,10 +104,10 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
 
       {/* Bottom: User card */}
       <div className="sidebar__user">
-        <Avatar size="sm" src={avatarUrl || undefined} fallbackInitials={initials} />
+        <Avatar size="sm" src={displayAvatar} fallbackInitials={displayInitials} />
         <div className="sidebar__user-info">
-          <p className="sidebar__user-name">{profile?.displayName || "Anonymous"}</p>
-          <p className="sidebar__user-handle">@{handle || "..."}</p>
+          <p className="sidebar__user-name">{displayName}</p>
+          <p className="sidebar__user-handle">@{displayHandle}</p>
         </div>
         <button onClick={signOut} className="sidebar__signout" aria-label="Sign out">
           <LogOut size={18} />

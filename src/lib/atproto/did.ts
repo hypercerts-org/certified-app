@@ -1,10 +1,53 @@
 interface DidDocument {
   id: string;
+  alsoKnownAs?: string[];
   service?: Array<{
     id: string;
     type: string;
     serviceEndpoint: string;
   }>;
+}
+
+/**
+ * Resolves a DID to its handle from the DID document's alsoKnownAs field.
+ * The handle is extracted from the `at://` URI in alsoKnownAs.
+ */
+export async function resolveHandle(did: string): Promise<string | null> {
+  try {
+    let url: string;
+    if (did.startsWith("did:plc:")) {
+      url = `https://plc.directory/${did}`;
+    } else if (did.startsWith("did:web:")) {
+      const withoutPrefix = did.slice("did:web:".length);
+      const parts = withoutPrefix.split(":");
+      const domain = parts[0];
+      const path = parts.length > 1 ? parts.slice(1).join("/") : ".well-known";
+      url = `https://${domain}/${path}/did.json`;
+    } else {
+      return null;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    let response: Response;
+    try {
+      response = await fetch(url, { signal: controller.signal });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    if (!response.ok) return null;
+
+    const doc = (await response.json()) as DidDocument;
+    if (!Array.isArray(doc.alsoKnownAs)) return null;
+
+    const atUri = doc.alsoKnownAs.find((aka) => aka.startsWith("at://"));
+    if (!atUri) return null;
+
+    return atUri.replace("at://", "");
+  } catch {
+    return null;
+  }
 }
 
 /**

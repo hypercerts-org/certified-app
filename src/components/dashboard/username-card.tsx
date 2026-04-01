@@ -12,14 +12,21 @@ interface UsernameCardProps {
   handle: string | null;
   pdsUrl?: string;
   did?: string;
+  groupDid?: string;  // When set, handle changes go through the org proxy
 }
 
-function getPdsHostname(pdsUrl?: string): string {
+function getPdsHostname(pdsUrl?: string, handle?: string | null): string {
+  // Derive from PDS URL if available
   if (pdsUrl) {
     try {
       return new URL(pdsUrl).hostname;
     } catch { /* ignore */ }
   }
+  // Derive from handle — everything after the first dot
+  if (handle && handle.includes(".")) {
+    return handle.slice(handle.indexOf(".") + 1);
+  }
+  // Fallback to env
   const url = process.env.NEXT_PUBLIC_PDS_URL || "https://certified.one";
   try {
     return new URL(url).hostname;
@@ -36,12 +43,15 @@ function isOurHandle(handle: string | null, pdsUrl?: string): boolean {
       if (handle.endsWith(`.${pdsHostname}`)) return true;
     } catch { /* ignore invalid URL */ }
   }
+  // If handle has a dot, it's a subdomain-style handle (not a custom domain like alice.com)
+  // Consider it "ours" if it has 2+ dots (prefix.pds.host.tld)
+  if (handle.split(".").length >= 3) return true;
   return handle.endsWith(".certified.app");
 }
 
-export default function UsernameCard({ handle, pdsUrl, did }: UsernameCardProps) {
+export default function UsernameCard({ handle, pdsUrl, did, groupDid }: UsernameCardProps) {
   const isCertifiedHandle = isOurHandle(handle, pdsUrl);
-  const pdsHostname = useMemo(() => getPdsHostname(pdsUrl), [pdsUrl]);
+  const pdsHostname = useMemo(() => getPdsHostname(pdsUrl, handle), [pdsUrl, handle]);
 
   const [isEditing, setIsEditing] = useState(false);
   const [newHandle, setNewHandle] = useState(handle || "");
@@ -54,7 +64,11 @@ export default function UsernameCard({ handle, pdsUrl, did }: UsernameCardProps)
   const [subdomainValue, setSubdomainValue] = useState("");
 
   const handleEdit = () => {
-    setNewHandle(handle || "");
+    // Extract just the prefix from the current handle
+    const currentPrefix = handle && handle.includes(".")
+      ? handle.slice(0, handle.indexOf("."))
+      : handle || "";
+    setNewHandle(currentPrefix);
     setError(null);
     setIsEditing(true);
     setIsChoosingCertified(false);
@@ -74,12 +88,20 @@ export default function UsernameCard({ handle, pdsUrl, did }: UsernameCardProps)
   };
 
   const handleSave = async () => {
-    const trimmed = newHandle.trim();
+    const trimmed = newHandle.trim().toLowerCase();
     if (!trimmed) {
       setError("Username cannot be empty.");
       return;
     }
-    await submitHandle(trimmed);
+    if (trimmed.length < 3 || trimmed.length > 18) {
+      setError("Username must be 3-18 characters.");
+      return;
+    }
+    if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(trimmed) && trimmed.length > 2) {
+      setError("Only lowercase letters, numbers, and hyphens. Cannot start or end with a hyphen.");
+      return;
+    }
+    await submitHandle(`${trimmed}.${pdsHostname}`);
   };
 
   const handleSaveCertified = async () => {
@@ -104,11 +126,25 @@ export default function UsernameCard({ handle, pdsUrl, did }: UsernameCardProps)
     setError(null);
 
     try {
-      const res = await authFetch("/api/xrpc/com/atproto/identity/updateHandle", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ handle: newHandleValue }),
-      });
+      let res: Response;
+      if (groupDid) {
+        // Route through the org handle API
+        res = await authFetch(
+          `/api/organizations/${encodeURIComponent(groupDid)}/handle`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ handle: newHandleValue }),
+          }
+        );
+      } else {
+        // Route through the standard XRPC proxy
+        res = await authFetch("/api/xrpc/com/atproto/identity/updateHandle", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ handle: newHandleValue }),
+        });
+      }
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -141,7 +177,7 @@ export default function UsernameCard({ handle, pdsUrl, did }: UsernameCardProps)
       <div className="dash-card mt-4">
         <div className="username-card">
           <div className="username-card__header">
-            <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Username</h2>
+            <h2 className="dash-card__title" style={{ marginBottom: 0 }}>{groupDid ? "Handle" : "Username"}</h2>
             {isCertifiedHandle && !showingForm && (
               <Button variant="ghost" size="sm" onClick={handleEdit}>
                 <Pencil size={14} />
@@ -153,13 +189,22 @@ export default function UsernameCard({ handle, pdsUrl, did }: UsernameCardProps)
           {/* Inline edit for certified handle */}
           {isEditing && (
             <div className="username-card__form">
-              <Input
-                label="New username"
-                value={newHandle}
-                onChange={(e) => setNewHandle(e.target.value)}
-                placeholder="your-username.certified.app"
-                error={error ?? undefined}
-              />
+              <label className="username-card__form-label">{groupDid ? "Handle" : "Username"}</label>
+              <div className="username-card__subdomain-row">
+                <input
+                  type="text"
+                  className="username-card__subdomain-input"
+                  value={newHandle}
+                  onChange={(e) => setNewHandle(e.target.value.replace(/[^a-zA-Z0-9-]/g, ""))}
+                  placeholder="yourname"
+                  disabled={isSaving}
+                />
+                <span className="username-card__subdomain-suffix">.{pdsHostname}</span>
+              </div>
+              <p className="username-card__subdomain-hint">3-18 characters. Letters, numbers, and hyphens only.</p>
+              {error && (
+                <p className="username-card__error" role="alert">{error}</p>
+              )}
               <div className="username-card__actions">
                 <Button variant="ghost" size="sm" onClick={handleCancel} disabled={isSaving}>
                   Cancel

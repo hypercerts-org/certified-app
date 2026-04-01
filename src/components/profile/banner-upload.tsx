@@ -78,7 +78,8 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
   return (
     <div className="flex flex-col gap-2">
       <div
-        className="relative w-full h-48 rounded overflow-hidden cursor-pointer"
+        className="profile-card__banner relative cursor-pointer"
+        style={{ marginBottom: 0 }}
         onClick={handleClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -88,11 +89,8 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
           <img
             src={displayUrl}
             alt="Profile banner"
-            className="w-full h-full object-cover"
           />
-        ) : (
-          <div className="w-full h-full bg-gray-200" />
-        )}
+        ) : null}
 
         {/* Overlay */}
         {(isHovered || isUploading) && (

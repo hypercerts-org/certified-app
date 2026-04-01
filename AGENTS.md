@@ -309,6 +309,51 @@ Vercel env var setup for this to work:
 - **Preview (staging branch):** `PUBLIC_URL=https://staging.certified.app`
 - Preview deploys from the `staging` branch pick up the branch-scoped override automatically.
 
+## Local Dev with Cloudflare Tunnel (for Browser Testing)
+
+When you need to test the app in a real browser (e.g., via the `agent-browser` skill), you need a publicly-reachable URL. Use Cloudflare's quick tunnel feature.
+
+### Prerequisites
+- `cloudflared` installed: `brew install cloudflared` (already on this machine)
+- Dev server running on `localhost:3000`
+
+### Steps
+
+1. **Start the dev server:**
+   ```bash
+   npm run dev
+   ```
+
+2. **Start a Cloudflare tunnel** (use the system binary, NOT `npx` — the npx wrapper buffers stdout and you'll never see the URL):
+   ```bash
+   cloudflared tunnel --url http://localhost:3000 > /tmp/cf-tunnel.log 2>&1 &
+   sleep 10 && grep "trycloudflare" /tmp/cf-tunnel.log
+   ```
+   This prints a URL like `https://random-words.trycloudflare.com`.
+
+3. **Update `PUBLIC_URL` in `.env.local`** to the tunnel URL:
+   ```bash
+   # Replace the existing PUBLIC_URL line
+   sed -i '' "s|^PUBLIC_URL=.*|PUBLIC_URL=https://your-tunnel-url.trycloudflare.com|" .env.local
+   ```
+   Then restart the dev server (`Ctrl+C` + `npm run dev`) so it picks up the new env var.
+
+4. **Open the headed browser** via `agent-browser`:
+   ```bash
+   agent-browser --headed open https://your-tunnel-url.trycloudflare.com
+   ```
+   Use `--headed` so the Chrome window is visible on screen. Without it, agent-browser runs headless (invisible).
+
+### Why PUBLIC_URL matters
+The app's OAuth `client_id`, `redirect_uris`, and CSRF origin check all derive from `PUBLIC_URL`. If it doesn't match the actual domain the browser hits, login will fail. When using a tunnel, `PUBLIC_URL` must be the tunnel URL.
+
+### ⚠️ Gotchas
+- **Don't use `npx cloudflared`** — it buffers output, so you'll never see the tunnel URL in logs. Use the system binary directly.
+- **Tunnel URLs are ephemeral** — you get a new random URL each time. Update `.env.local` and restart the dev server each time.
+- **Restore `PUBLIC_URL` when done** — set it back to production/staging URL before committing or deploying.
+- **OAuth may not work** — the ePDS needs to accept the tunnel URL as a valid redirect. For basic page testing this is fine; for full login flow testing, use the staging deploy instead.
+- **Always use `--headed`** — without it, agent-browser runs headless (no visible window). Use `agent-browser --headed open <url>` so you can see what's happening.
+
 ## Completed Work (All Epics Closed)
 
 All heartbeads issues are closed. Zero open issues remain.
