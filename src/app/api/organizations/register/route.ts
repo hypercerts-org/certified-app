@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getAuthenticatedAgent, getServiceAuthToken } from "@/lib/organizations/proxy-agent"
-import { GROUP_SERVICE } from "@/lib/organizations/constants"
+import { getAuthenticatedAgent, getServiceAuthToken, createGroupAgent } from "@/lib/organizations/proxy-agent"
+import { GROUP_SERVICE, GROUP_SERVICE_DID, MAX_SELF_CREATED_ORGS } from "@/lib/organizations/constants"
 import { checkCsrf } from "@/lib/auth/csrf"
 
 export async function POST(request: NextRequest) {
@@ -32,6 +32,63 @@ export async function POST(request: NextRequest) {
         { error: "ownerDid must match authenticated user" },
         { status: 403 }
       )
+    }
+
+    // Check org creation limit: fetch all memberships, then check addedBy
+    try {
+      const { data: { token: membershipToken } } =
+        await auth.agent.com.atproto.server.getServiceAuth({
+          aud: GROUP_SERVICE_DID,
+          lxm: "app.certified.groups.membership.list",
+        })
+
+      const allGroups: { groupDid: string }[] = []
+      let cursor: string | undefined
+      do {
+        const url = new URL(`${GROUP_SERVICE}/xrpc/app.certified.groups.membership.list`)
+        url.searchParams.set("limit", "100")
+        if (cursor) url.searchParams.set("cursor", cursor)
+
+        const membershipsRes = await fetch(url.toString(), {
+          headers: { Authorization: `Bearer ${membershipToken}` },
+        })
+        if (membershipsRes.ok) {
+          const data = await membershipsRes.json()
+          allGroups.push(...(data.groups || []))
+          cursor = data.cursor
+        } else {
+          cursor = undefined
+        }
+      } while (cursor)
+
+      // For each group, check if the user's member entry has addedBy === ownerDid
+      const results = await Promise.all(
+        allGroups.map(async (g) => {
+          try {
+            const groupAgent = createGroupAgent(auth.agent, g.groupDid)
+            const { data } = await groupAgent.call(
+              "app.certified.group.member.list",
+              { limit: 100 }
+            )
+            const members = (data as { members?: { did: string; addedBy: string }[] }).members || []
+            return members.some(
+              (m) => m.did === ownerDid && m.addedBy === ownerDid
+            )
+          } catch {
+            return false
+          }
+        })
+      )
+      const selfCreatedCount = results.filter(Boolean).length
+
+      if (selfCreatedCount >= MAX_SELF_CREATED_ORGS) {
+        return NextResponse.json(
+          { error: `You have reached the maximum number of organizations you can create (${MAX_SELF_CREATED_ORGS})` },
+          { status: 403 }
+        )
+      }
+    } catch {
+      // If limit check fails, allow creation (fail open)
     }
 
     // Get service auth JWT for group registration

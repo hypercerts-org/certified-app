@@ -12,7 +12,7 @@ import type {
   OrgRole,
   RemoteMembership,
 } from "./types"
-import { ORG_MEMBERSHIP_COLLECTION } from "./constants"
+import { ORG_MEMBERSHIP_COLLECTION, MAX_SELF_CREATED_ORGS } from "./constants"
 
 // ─── Membership records (stored in user's own PDS) ───────────────────
 
@@ -402,6 +402,34 @@ export async function fetchRemoteMemberships(
   } while (cursor)
 
   return all
+}
+
+/**
+ * Count how many organizations the user created themselves.
+ * An org is "self-created" if the user's member entry has addedBy === userDid.
+ */
+export async function getSelfCreatedOrgCount(
+  userDid: string,
+  organizations: Organization[],
+  signal?: AbortSignal
+): Promise<number> {
+  const memberLists = await Promise.all(
+    organizations.map((org) =>
+      listOrgMembers(org.groupDid, signal)
+        .then((members) => members)
+        .catch(() => [] as OrgMember[])
+    )
+  )
+
+  let count = 0
+  for (const members of memberLists) {
+    const selfEntry = members.find(
+      (m) => m.did === userDid && m.addedBy === userDid
+    )
+    if (selfEntry) count++
+  }
+
+  return count
 }
 
 /**

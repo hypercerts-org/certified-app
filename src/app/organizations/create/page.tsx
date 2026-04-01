@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/organizations/org-context"
+import { useOrgCreationLimit } from "@/lib/organizations/use-org-limit"
+import { MAX_SELF_CREATED_ORGS } from "@/lib/organizations/constants"
 import { registerOrganization, putMembership, putOrgProfile, putOrgMetadata, createBskyProfile } from "@/lib/organizations/api"
 import Input from "@/components/ui/input"
 import Button from "@/components/ui/button"
@@ -14,6 +16,7 @@ export default function CreateOrganizationPage() {
   const router = useRouter()
   const { did } = useAuth()
   const { refetchOrgs } = useOrg()
+  const { isChecking, limitReached } = useOrgCreationLimit()
 
   const [name, setName] = useState("")
   const [handle, setHandle] = useState("")
@@ -111,6 +114,62 @@ export default function CreateOrganizationPage() {
     } finally {
       setIsCreating(false)
     }
+  }
+
+  if (isChecking) {
+    return (
+      <div className="dashboard">
+        <div className="dashboard__topbar">
+          <h1 className="dashboard__page-title">Create Organization</h1>
+          <div className="dashboard__topbar-right">
+            <button
+              className="dashboard__back-btn"
+              onClick={() => router.push("/organizations")}
+            >
+              <ArrowLeft size={16} />
+              Back
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (limitReached) {
+    return (
+      <div className="dashboard">
+        <div className="dashboard__topbar">
+          <h1 className="dashboard__page-title">Create Organization</h1>
+          <div className="dashboard__topbar-right">
+            <button
+              className="dashboard__back-btn"
+              onClick={() => router.push("/organizations")}
+            >
+              <ArrowLeft size={16} />
+              Back
+            </button>
+          </div>
+        </div>
+        <div className="dashboard__body dashboard__body--single">
+          <div className="dashboard__main">
+            <div className="dash-card">
+              <h2 className="dash-card__title">Organization limit reached</h2>
+              <p className="dash-card__desc">
+                You have created {MAX_SELF_CREATED_ORGS} organizations that you
+                are currently part of, which is the maximum allowed per account.
+                If you need additional organizations, please contact{" "}
+                <a href="mailto:team@hypercerts.org">team@hypercerts.org</a>.
+              </p>
+              <div className="org-create__actions">
+                <Button variant="ghost" onClick={() => router.push("/organizations")}>
+                  Back to Groups
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
