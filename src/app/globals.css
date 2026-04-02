@@ -4650,7 +4650,7 @@ h1, h2, h3, h4, h5, h6 {
   .bottom-sheet__handle {
     display: flex;
     justify-content: center;
-    padding: 12px 0 4px;
+    padding: 14px 0 10px;
     flex-shrink: 0;
     cursor: grab;
     touch-action: none;

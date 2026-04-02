@@ -47,11 +47,8 @@ export default function FeedbackModal() {
 
   useEffect(() => {
     if (isOpen) {
-      setMessage("")
-      setEmail("")
       setEmailError("")
       setError("")
-      setSubmitted(false)
       setExpanded(false)
       setSheetExpanded(false)
       setTimeout(() => textareaRef.current?.focus(), 100)
@@ -133,7 +130,12 @@ export default function FeedbackModal() {
     e.preventDefault()
     const dy = e.touches[0].clientY - dragStartY.current
     if (dy > 0) {
+      // Dragging down — slide sheet down
       sheetRef.current.style.transform = `translateY(${dy}px)`
+    } else {
+      // Dragging up — grow the sheet with a dampened translateY
+      const dampened = dy * 0.3
+      sheetRef.current.style.transform = `translateY(${dampened}px)`
     }
   }, [])
 
@@ -179,6 +181,8 @@ export default function FeedbackModal() {
       })
       if (!res.ok) throw new Error("Failed to send feedback")
       setSubmitted(true)
+      setMessage("")
+      setEmail("")
     } catch {
       setError("Something went wrong. Please try again.")
     } finally {
@@ -241,7 +245,7 @@ export default function FeedbackModal() {
 
   return (
     <>
-      <button
+      {!isOpen && <button
         className="feedback-trigger"
         style={{ bottom: `${bottomOffset}px` }}
         onClick={() => setIsOpen(true)}
@@ -249,7 +253,7 @@ export default function FeedbackModal() {
       >
         <MessageSquare size={16} />
         <span>Share Feedback</span>
-      </button>
+      </button>}
 
       {isOpen && (
         <>
