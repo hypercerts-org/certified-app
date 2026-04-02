@@ -8,6 +8,7 @@ import Footer from "@/components/layout/footer";
 import { Providers } from "@/lib/providers";
 import AppShell from "@/components/layout/app-shell";
 import { OrgProvider } from "@/lib/organizations/org-context";
+import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -55,6 +56,7 @@ export default function RootLayout({
             </OrgProvider>
           </AuthProvider>
         </Providers>
+        <Analytics />
       </body>
     </html>
   );

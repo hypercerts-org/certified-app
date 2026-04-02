@@ -14,6 +14,7 @@
     "@atproto/oauth-client-node": "^0.3.17",
     "@tanstack/react-query": "^5.90.21",
     "@upstash/redis": "^1.36.3",
+    "@vercel/analytics": "^2.0.1",
     "lucide-react": "^0.468.0",
     "next": "^16.1.6",
     "react": "^19.0.0",
