@@ -177,6 +177,7 @@ const Navbar: React.FC = () => {
       <div className="navbar__inner">
         <Link href="/" className="navbar__logo">
           <img src="/assets/certified_wordmark_black_green.png" alt="Certified" className="navbar__logo-img" />
+          <span className="navbar__beta-label">beta</span>
         </Link>
 
         {isAuthenticated ? (

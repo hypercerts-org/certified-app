@@ -8,6 +8,7 @@ import Footer from "@/components/layout/footer";
 import { Providers } from "@/lib/providers";
 import AppShell from "@/components/layout/app-shell";
 import { OrgProvider } from "@/lib/organizations/org-context";
+import FeedbackModal from "@/components/ui/feedback-modal";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -51,6 +52,7 @@ export default function RootLayout({
                   <AppShell>{children}</AppShell>
                 </main>
                 <Footer />
+                <FeedbackModal />
               </NavbarProvider>
             </OrgProvider>
           </AuthProvider>
