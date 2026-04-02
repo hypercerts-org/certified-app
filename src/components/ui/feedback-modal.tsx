@@ -270,11 +270,13 @@ export default function FeedbackModal() {
             className="feedback-modal__backdrop feedback-modal__backdrop--desktop"
             ref={backdropRef}
             onClick={(e) => { if (e.target === backdropRef.current) setIsOpen(false) }}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Share feedback"
           >
-            <div className={`feedback-modal ${expanded ? "feedback-modal--expanded" : ""}`}>
+            <div
+              className={`feedback-modal ${expanded ? "feedback-modal--expanded" : ""}`}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Share feedback"
+            >
               <div className="feedback-modal__header">
                 <button
                   className="feedback-modal__expand"

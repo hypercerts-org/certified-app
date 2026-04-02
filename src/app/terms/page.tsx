@@ -6,7 +6,7 @@ export default function TermsPage() {
           Terms of Service — Certified
         </h1>
 
-        <p className="text-sm text-gray-500 mb-8">Last updated: March 15, 2026</p>
+        <p className="text-sm text-gray-500 mb-8">Last updated: April 1, 2026</p>
 
         <div className="prose prose-navy max-w-none space-y-8">
           <section>
@@ -115,7 +115,24 @@ export default function TermsPage() {
 
           <section>
             <h2 className="font-mono text-xl text-navy mb-4">
-              5. Intellectual property
+              5. Group and organization accounts
+            </h2>
+            <p>
+              For group or organization accounts, the users designated in the interface as
+              &quot;owners&quot; (the &quot;Account Controller&quot;) manage access to the account.
+              Each user is responsible for the content they create or submit. Being designated as an
+              &quot;owner&quot; does not by itself make a user responsible for content created by
+              other users; however, content published under a shared account is attributed to that
+              account, and those who control the account may share responsibility for its use.
+              Certified (operated by Hypercerts Foundation) provides hosting infrastructure only and
+              is not the publisher of user content, but may remove or restrict content to comply
+              with legal obligations or these Terms.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-mono text-xl text-navy mb-4">
+              6. Intellectual property
             </h2>
             <p>
               The Hypercerts Foundation retains all rights, title, and interest in the services,
@@ -137,7 +154,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">6. Acceptable use</h2>
+            <h2 className="font-mono text-xl text-navy mb-4">7. Acceptable use</h2>
             <p>
               You may use Certified only for lawful purposes and in a manner that does not
               interfere with the operation or stability of the services.
@@ -172,7 +189,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="font-mono text-xl text-navy mb-4">
-              7. Infrastructure and service operation
+              8. Infrastructure and service operation
             </h2>
             <p>
               certified.one hosts Personal Data Servers that store AT Protocol identity records and
@@ -202,7 +219,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="font-mono text-xl text-navy mb-4">
-              8. Third-party services
+              9. Third-party services
             </h2>
             <p>
               The services may interact with or reference third-party applications, websites, or
@@ -218,7 +235,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="font-mono text-xl text-navy mb-4">
-              9. Privacy and data protection
+              10. Privacy and data protection
             </h2>
             <p>
               Personal data is processed in accordance with applicable data protection laws,
@@ -236,7 +253,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="font-mono text-xl text-navy mb-4">
-              10. Handling unlawful data and legal orders
+              11. Handling unlawful data and legal orders
             </h2>
             <p>
               The Hypercerts Foundation does not routinely monitor all information stored on Personal
@@ -284,7 +301,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="font-mono text-xl text-navy mb-4">
-              11. Availability, modification, and discontinuation
+              12. Availability, modification, and discontinuation
             </h2>
             <p>Certified services are provided on a best-effort basis.</p>
             <p className="mt-4">
@@ -299,7 +316,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="font-mono text-xl text-navy mb-4">
-              12. Data persistence in federated systems
+              13. Data persistence in federated systems
             </h2>
             <p>
               Because the AT Protocol operates as a federated network, data published through the
@@ -313,7 +330,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="font-mono text-xl text-navy mb-4">
-              13. Account security
+              14. Account security
             </h2>
             <p>
               You are responsible for protecting your account credentials and authentication
@@ -340,7 +357,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">14. Termination</h2>
+            <h2 className="font-mono text-xl text-navy mb-4">15. Termination</h2>
 
             <h3 className="font-mono text-lg text-navy mt-6 mb-3">Termination by you</h3>
             <p>
@@ -369,7 +386,7 @@ export default function TermsPage() {
               <li>
                 we are required to do so by law or in response to a valid legal order
               </li>
-              <li>the services are discontinued in accordance with Section 11</li>
+              <li>the services are discontinued in accordance with Section 12</li>
             </ul>
             <p className="mt-4">
               Where reasonably possible, we will provide notice before terminating an account. In
@@ -386,7 +403,7 @@ export default function TermsPage() {
               subject to any legal retention obligations.
             </p>
             <p className="mt-4">
-              As described in Section 12, data previously published through the AT Protocol may
+              As described in Section 13, data previously published through the AT Protocol may
               continue to exist on third-party servers or applications. The Hypercerts Foundation
               cannot ensure deletion of such data from federated systems.
             </p>
@@ -400,7 +417,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">15. Feedback</h2>
+            <h2 className="font-mono text-xl text-navy mb-4">16. Feedback</h2>
             <p>
               If you provide suggestions, ideas, or feedback regarding the services, the Hypercerts
               Foundation may use such feedback{" "}
@@ -410,7 +427,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="font-mono text-xl text-navy mb-4">
-              16. Disclaimer of warranties
+              17. Disclaimer of warranties
             </h2>
             <p>
               The services are provided &quot;as is&quot; and &quot;as available.&quot;
@@ -431,7 +448,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="font-mono text-xl text-navy mb-4">
-              17. Limitation of liability
+              18. Limitation of liability
             </h2>
             <p>
               Nothing in these Terms limits liability where such limitation is prohibited by law.
@@ -454,7 +471,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="font-mono text-xl text-navy mb-4">
-              18. Indemnification
+              19. Indemnification
             </h2>
             <p>
               To the extent permitted by applicable law, you agree to indemnify and hold harmless
@@ -474,7 +491,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="font-mono text-xl text-navy mb-4">
-              19. Consumer protections
+              20. Consumer protections
             </h2>
             <p>
               If you use the services as a consumer, you may have mandatory rights under applicable
@@ -484,7 +501,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="font-mono text-xl text-navy mb-4">
-              20. Validity and waiver
+              21. Validity and waiver
             </h2>
             <p>
               If any provision of these Terms is found unenforceable by a court of competent
@@ -498,7 +515,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="font-mono text-xl text-navy mb-4">
-              21. Changes to these Terms
+              22. Changes to these Terms
             </h2>
             <p>
               The Hypercerts Foundation may update these Terms from time to time. We will notify
@@ -514,13 +531,13 @@ export default function TermsPage() {
             </p>
             <p className="mt-4">
               If you do not agree with the updated Terms, you may close your account in accordance
-              with Section 14.
+              with Section 15.
             </p>
           </section>
 
           <section>
             <h2 className="font-mono text-xl text-navy mb-4">
-              22. Transfer of rights
+              23. Transfer of rights
             </h2>
             <p>
               Users may not transfer their rights or obligations under these Terms without the prior
@@ -533,7 +550,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">23. Governing law</h2>
+            <h2 className="font-mono text-xl text-navy mb-4">24. Governing law</h2>
             <p>
               These Terms are governed by the laws of the State of California, regardless of
               conflict of laws rules.
@@ -552,7 +569,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="font-mono text-xl text-navy mb-4">
-              24. Entire agreement
+              25. Entire agreement
             </h2>
             <p>
               These Terms of Service and the Certified Privacy Policy constitute the entire
@@ -563,7 +580,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">25. Contact</h2>
+            <h2 className="font-mono text-xl text-navy mb-4">26. Contact</h2>
             <p>
               For all inquiries — including support, legal notices, Digital Services Act
               communications, and privacy matters:

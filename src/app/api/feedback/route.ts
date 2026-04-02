@@ -14,7 +14,16 @@ export async function POST(req: NextRequest) {
     // CSRF origin check
     const origin = req.headers.get("origin");
     const host = req.headers.get("host");
-    if (!origin || !host || !origin.includes(host.split(":")[0])) {
+    if (!origin || !host) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    try {
+      const originHostname = new URL(origin).hostname;
+      const hostHostname = host.split(":")[0];
+      if (originHostname !== hostHostname) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    } catch {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
