@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     if (mode === "email") {
       const url = await client.authorize(PDS_URL, {
         scope: "atproto transition:generic identity:handle account:email",
-        prompt: prompt || "login",
+        ...(prompt ? { prompt } : {}),
       })
       url.searchParams.set("login_hint", input)
       return NextResponse.json({ url: url.href })

@@ -138,8 +138,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const submitEmail = useCallback(async (email: string) => {
     try {
       setError(null);
-      const prompt = "login";
-
       // Show loading overlay immediately while we fetch the auth URL
       setIsRedirectingToProvider(true);
       setIsModalOpen(false);
@@ -147,7 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input: email, mode: "email", prompt }),
+        body: JSON.stringify({ input: email, mode: "email" }),
       });
 
       if (!res.ok) {
