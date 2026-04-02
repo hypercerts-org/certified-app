@@ -1064,6 +1064,29 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--color-accent);
 }
 
+.feedback-modal__success-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.feedback-modal__more {
+  padding: 8px 24px;
+  background: none;
+  color: var(--color-primary);
+  border: 1px solid var(--color-light-gray);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.feedback-modal__more:hover {
+  background: var(--color-off-white);
+  border-color: var(--color-mid-gray);
+}
+
 /* Mobile bottom sheet for feedback (reuses .bottom-sheet base classes) */
 .feedback-bottom-sheet__backdrop {
   display: none;

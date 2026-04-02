@@ -193,12 +193,20 @@ export default function FeedbackModal() {
   const formContent = submitted ? (
     <div className="feedback-modal__success">
       <p>Thank you for your feedback!</p>
-      <button
-        className="feedback-modal__done"
-        onClick={() => setIsOpen(false)}
-      >
-        Close
-      </button>
+      <div className="feedback-modal__success-actions">
+        <button
+          className="feedback-modal__done"
+          onClick={() => setIsOpen(false)}
+        >
+          Close
+        </button>
+        <button
+          className="feedback-modal__more"
+          onClick={() => setSubmitted(false)}
+        >
+          More Feedback
+        </button>
+      </div>
     </div>
   ) : (
     <form onSubmit={handleSubmit}>
