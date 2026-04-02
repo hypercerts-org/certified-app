@@ -289,21 +289,18 @@ export default function FeedbackModal() {
           {/* Mobile bottom sheet */}
           {createPortal(
             <>
+              <div className="bottom-sheet__backdrop feedback-bottom-sheet__backdrop" onClick={() => setIsOpen(false)} />
               <div
-                className="feedback-sheet__backdrop"
-                onClick={() => setIsOpen(false)}
-              />
-              <div
-                className={`feedback-sheet ${sheetExpanded ? "feedback-sheet--expanded" : ""}`}
+                className={`bottom-sheet feedback-bottom-sheet ${sheetExpanded ? "bottom-sheet--expanded" : ""}`}
                 ref={sheetRef}
               >
                 <div
-                  className="feedback-sheet__handle"
+                  className="bottom-sheet__handle"
                   onTouchStart={onHandleTouchStart}
                   onTouchMove={onHandleTouchMove}
                   onTouchEnd={onHandleTouchEnd}
                 />
-                <div className="feedback-sheet__content">
+                <div className="bottom-sheet__content">
                   <div className="feedback-modal__body">
                     {formContent}
                   </div>

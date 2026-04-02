@@ -969,6 +969,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .feedback-modal__textarea {
+  box-sizing: border-box;
   width: 100%;
   min-height: 120px;
   padding: 12px;
@@ -988,6 +989,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .feedback-modal__input {
+  box-sizing: border-box;
   width: 100%;
   height: 44px;
   padding: 0 12px;
@@ -1062,12 +1064,12 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--color-accent);
 }
 
-/* Mobile bottom sheet for feedback */
-.feedback-sheet__backdrop {
+/* Mobile bottom sheet for feedback (reuses .bottom-sheet base classes) */
+.feedback-bottom-sheet__backdrop {
   display: none;
 }
 
-.feedback-sheet {
+.feedback-bottom-sheet {
   display: none;
 }
 
@@ -1083,66 +1085,31 @@ h1, h2, h3, h4, h5, h6 {
     display: none;
   }
 
-  .feedback-sheet__backdrop {
+  .feedback-bottom-sheet__backdrop {
     display: block;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
     z-index: 10000;
-    animation: modalFadeIn 200ms ease-out;
   }
 
-  .feedback-sheet {
+  .feedback-bottom-sheet {
     display: flex;
-    flex-direction: column;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
     z-index: 10001;
-    background: var(--color-white);
-    border-radius: 16px 16px 0 0;
-    max-height: 60vh;
-    transition: transform 0.3s ease-out, max-height 0.3s ease-out;
-    animation: modalSlideUp 300ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  .feedback-sheet--expanded {
-    max-height: 92vh;
-  }
-
-  .feedback-sheet__handle {
-    display: flex;
-    justify-content: center;
-    padding: 12px 0 4px;
-    flex-shrink: 0;
-    cursor: grab;
-  }
-
-  .feedback-sheet__handle::after {
-    content: "";
-    width: 36px;
-    height: 4px;
-    background: var(--border-default);
-    border-radius: 2px;
-  }
-
-  .feedback-sheet__content {
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: env(safe-area-inset-bottom, 16px);
-  }
-
-  .feedback-sheet .feedback-modal__textarea {
+  .feedback-bottom-sheet .feedback-modal__textarea {
     resize: none;
     min-height: 80px;
+    font-size: 16px;
   }
 
-  .feedback-sheet--expanded .feedback-modal__textarea {
+  .feedback-bottom-sheet.bottom-sheet--expanded .feedback-modal__textarea {
     min-height: 120px;
   }
 
-  .feedback-sheet .feedback-modal__body {
+  .feedback-bottom-sheet .feedback-modal__input {
+    font-size: 16px;
+  }
+
+  .feedback-bottom-sheet .feedback-modal__body {
     padding: 16px 20px;
   }
 
