@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 
+if (!process.env.RESEND_API_KEY) {
+  console.warn("RESEND_API_KEY is not set — feedback emails will fail");
+}
+
 const resend = new Resend(process.env.RESEND_API_KEY);
 const SUPPORT_EMAIL = "support@hypercerts.org";
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "Certified <no-reply@certified.one>";
 
 export async function POST(req: NextRequest) {
   try {
+    // CSRF origin check
+    const origin = req.headers.get("origin");
+    const host = req.headers.get("host");
+    if (!origin || !host || !origin.includes(host.split(":")[0])) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { message, email } = await req.json();
 
     if (!message || typeof message !== "string" || !message.trim()) {

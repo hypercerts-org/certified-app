@@ -237,9 +237,9 @@ export default function FeedbackModal() {
         placeholder="your@email.com"
         disabled={isSubmitting}
       />
-      {emailError && <p className="feedback-modal__error">{emailError}</p>}
+      {emailError && <p className="feedback-modal__error" role="alert">{emailError}</p>}
 
-      {error && <p className="feedback-modal__error">{error}</p>}
+      {error && <p className="feedback-modal__error" role="alert">{error}</p>}
 
       <button
         type="submit"
@@ -305,6 +305,9 @@ export default function FeedbackModal() {
               <div
                 className={`bottom-sheet feedback-bottom-sheet ${sheetExpanded ? "bottom-sheet--expanded" : ""}`}
                 ref={sheetRef}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Share feedback"
               >
                 <div
                   className="bottom-sheet__handle"
