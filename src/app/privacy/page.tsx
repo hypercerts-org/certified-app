@@ -6,7 +6,7 @@ export default function PrivacyPage() {
           Privacy Policy — Certified
         </h1>
 
-        <p className="text-sm text-gray-500 mb-8">Last updated: March 15, 2026</p>
+        <p className="text-sm text-gray-500 mb-8">Last updated: April 1, 2026</p>
 
         <div className="prose prose-navy max-w-none space-y-8">
           <section>
@@ -258,7 +258,7 @@ export default function PrivacyPage() {
             <ul className="list-disc pl-6 mt-2 space-y-2">
               <li>
                 with service providers that support the operation of the services and process data
-                on our behalf
+                on our behalf, including Vercel Inc. (hosting and anonymous web analytics)
               </li>
               <li>
                 with third-party services that users choose to connect to their accounts
@@ -283,8 +283,15 @@ export default function PrivacyPage() {
               that track individual users across websites.
             </p>
             <p className="mt-4">
-              If our use of cookies changes in the future, we will update this policy and provide
-              appropriate notice and controls.
+              We use Vercel Web Analytics to collect anonymous, aggregated usage data such as page
+              views, referrer information, and general device or browser type. Vercel Web Analytics
+              does not use cookies and does not collect personal data or track individual users.
+              This data is processed by Vercel Inc. (US) under Standard Contractual Clauses (SCCs)
+              as the legal mechanism for international data transfers.
+            </p>
+            <p className="mt-4">
+              If our use of cookies or analytics changes in the future, we will update this policy
+              and provide appropriate notice and controls.
             </p>
           </section>
 
