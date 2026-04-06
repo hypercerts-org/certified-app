@@ -8,11 +8,19 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { input, mode, prompt } = body as {
+    const { input: rawInput, mode, prompt } = body as {
       input: string
       mode: "email" | "handle"
       prompt?: "login" | "create"
     }
+
+    if (typeof rawInput !== "string" || (mode !== "email" && mode !== "handle")) {
+      return NextResponse.json({ error: "Invalid input or mode" }, { status: 400 })
+    }
+
+    // Strip invisible Unicode characters and whitespace that can sneak in via clipboard paste
+    const stripped = rawInput.replace(/[\u200B-\u200F\u2028-\u202F\u2060-\u206F\uFEFF\u00AD\u034F\u061C\u180E\s]/g, '')
+    const input = mode === "handle" ? stripped.replace(/^@/, '') : stripped.toLowerCase()
 
     const client = await getOAuthClient()
 
