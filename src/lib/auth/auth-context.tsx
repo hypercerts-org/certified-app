@@ -10,6 +10,13 @@ import React, {
 import type { AuthState } from "./types";
 import { resolvePdsUrl } from "@/lib/atproto/did";
 import SignInModal from "@/components/ui/sign-in-modal";
+
+/** Strip invisible Unicode chars and whitespace that can sneak in via clipboard paste. */
+const stripInvisible = (s: string) =>
+  s.replace(/[\u200B-\u200F\u2028-\u202F\u2060-\u206F\uFEFF\u00AD\u034F\u061C\u180E\s]/g, '');
+
+const sanitizeEmail = (s: string) => stripInvisible(s).toLowerCase();
+const sanitizeHandle = (s: string) => stripInvisible(s).replace(/^@/, '');
 import ProviderRedirectOverlay from "@/components/ui/provider-redirect-overlay";
 import { setOnUnauthorized } from "./fetch";
 import { clearSessionCache } from "@/hooks/use-session";
@@ -99,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ input: input.trim(), mode: "handle" }),
+          body: JSON.stringify({ input: sanitizeHandle(input), mode: "handle" }),
         });
 
         if (!res.ok) {
@@ -145,7 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input: email, mode: "email" }),
+        body: JSON.stringify({ input: sanitizeEmail(email), mode: "email" }),
       });
 
       if (!res.ok) {
@@ -173,7 +180,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input: handle.trim(), mode: "handle" }),
+        body: JSON.stringify({ input: sanitizeHandle(handle), mode: "handle" }),
       });
 
       if (!res.ok) {
