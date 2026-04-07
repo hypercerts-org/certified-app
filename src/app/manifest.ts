@@ -12,8 +12,14 @@ export default function manifest(): MetadataRoute.Manifest {
     icons: [
       {
         src: "/assets/certified_brandmark_black.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        src: "/assets/certified_brandmark_black.png",
         sizes: "512x512",
         type: "image/png",
+        purpose: "any",
       },
     ],
   };

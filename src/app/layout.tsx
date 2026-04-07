@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Noto_Serif, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth/auth-context";
@@ -55,9 +55,10 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     images: ["/assets/certified-hero-1200x630.png"],
   },
-  other: {
-    "theme-color": "#f9f9f6",
-  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#f9f9f6",
 };
 
 const organizationJsonLd = {
