@@ -1,404 +1,181 @@
 # Agent Instructions
 
-This project uses **hb** (heartbeads) for issue tracking. Run `hb sync && hb ready` to find available work.
+See `README.md` for project overview, architecture, and setup.
 
 ## Quick Reference
 
 ```bash
-hb sync                # Sync with git
-hb ready               # Find available work
-hb show <id>           # View issue details
-hb update <id> --status in_progress  # Claim work
-hb close <id> --reason "<hash> <msg>"  # Complete work
-hb list --all          # List all issues including closed
+npm run dev              # Start dev server
+npm run build            # Production build (quality gate)
+npx tsc --noEmit         # Type check only
+npm run lint             # ESLint
 ```
 
-## Landing the Plane (Session Completion)
-
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
-
-**MANDATORY WORKFLOW:**
-
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - `npx tsc --noEmit && npx next build`
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   hb sync
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
-
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
-
----
-
-## Project Overview
-
-**Certified** is a web app for decentralized identity management built on the AT Protocol (atproto). Users get DIDs, handles, can link Ethereum wallets, manage connected apps, and control their data. The app connects to an ePDS (extended Personal Data Server) that handles OAuth + OTP email authentication.
-
-**Production URL:** https://certified-app-hypercerts-foundation.vercel.app
-**Repo:** https://github.com/hypercerts-org/certified-app
-
-## Tech Stack
-
-- **Framework:** Next.js 16.1.6 (App Router, Turbopack)
-- **React:** 19.x
-- **CSS:** Tailwind 3.4 + extensive custom CSS in `globals.css` (~2400 lines). New components use BEM-like classes with component prefixes (sidebar__, dash-card__, wallet-card__, etc.) in globals.css. Don't use Tailwind for layout in new components.
-- **Auth:** AT Protocol OAuth 2.0 + OTP email codes via `@atproto/oauth-client-node` (server-side). No passwords for login — password management uses `requestPasswordReset` + `resetPassword` XRPC flow.
-- **Wallet:** wagmi 2.x + viem 2.x for EIP-712 typed data signing (scoped to wallet page only via `settings/wallet/layout.tsx`)
-- **State:** React Query (`@tanstack/react-query`) for server state, React context for auth
-- **Deployment:** Vercel — production via `vercel deploy --prod`, staging via preview deploy + alias (see "Git & Deployment" below)
-- **Issue Tracking:** heartbeads (`hb` CLI), stored in `.beads/` directory
-
-## Design System & Conventions
-
-### Visual
-- **Font:** Inter everywhere. No JetBrains Mono. No uppercase text anywhere.
-- **Border radius:** `var(--radius)` (4px) everywhere. Only `50%` for circles (dots, avatars).
-- **Colors:** Sidebar bg `#0F2544` (navy), main content bg `#F7F8FA` (off-white), cards white with `var(--border-subtle)` border
-- **Border variables:** `--border-subtle`, `--border-light`, `--border-default`, `--border-hover` (all derived from `rgba(15,37,68,...)`)
-- **No search bar or bell icon** in the dashboard topbar — only the page title
+## Coding Conventions
 
 ### CSS
-- All custom CSS lives in `src/app/globals.css` — component-prefixed BEM classes
-- CSS variables defined in `:root` for colors, borders, radius, fonts
-- `body` uses `var(--font-inter)` (set by `next/font` in layout.tsx)
-- No duplicate `@import` for Google Fonts — font loaded via `next/font`
-- Dead selectors and variables have been cleaned out; keep it tidy
+- All custom CSS lives in `src/app/globals.css` — BEM-like classes with component prefixes
+- CSS variables defined in `:root` for colors, borders, radius, transitions
+- Warning colors use `--color-warning-bg`, `--color-warning-border`, `--color-warning-text`
+- Transitions use `--transition-fast`, `--transition-base`, `--transition-slow`
+- New components: use BEM classes in globals.css, not Tailwind for layout
+- No `100vw` (causes horizontal overflow with scrollbar) — use `100%` instead
 
 ### Components
-- Use `next/image` (not `<img>`) for all images
-- Use `next/link` (not `<a>`) for internal navigation
-- Semantic HTML: `dl/dt/dd` for key-value pairs, `h2` for card titles (not h3), ARIA roles on errors (`role="alert"`) and loading states (`role="status"`)
-- `aria-hidden="true"` on decorative elements (dots, icons)
-- Focus-visible styles are globally defined for `a`, `button`, `[role="button"]`, `[tabindex]`
+- Use `next/link` for internal navigation, raw `<img>` for SVG buttons (not `next/image`)
+- `aria-describedby` + `aria-invalid` on form inputs — see `input.tsx` and `textarea.tsx` for pattern
+- `aria-haspopup` + `aria-expanded` on dropdown triggers — see `navbar.tsx`
+- Focus trapping in modals — use `useFocusTrap` hook from `src/hooks/use-focus-trap.ts`
+- Skip nav link exists in `layout.tsx` — `<main id="main-content">`
 
-### Data
-- `CONNECTED_APPS` array lives in `src/lib/constants/apps.ts` — single source of truth
-- `getInitials()` utility lives in `src/lib/utils/initials.ts`
-- API response types (`SessionResponse`, `ListRecordsResponse`, `PutRecordResponse`) in `src/lib/types/api.ts`
+### Auth
+- OAuth via `@atproto/oauth-client-node` (server-side only)
+- Session cookie: `certified_session` (httpOnly, HMAC-signed)
+- All API calls go through `authFetch()` → `/api/xrpc/[...method]` proxy
+- CSRF Origin check on all POST routes (`src/lib/auth/csrf.ts`)
+- Sanitize input: strip invisible Unicode chars client-side AND server-side (defense in depth)
+- Sanitize error messages: never return raw `err.message` from auth routes to clients
 
-## Architecture
-
-### Authentication Flow
-1. User clicks "Sign in" → `POST /api/auth/login` with email → redirects to ePDS OAuth
-2. ePDS sends OTP email → user enters code → redirects back to `/oauth/callback`
-3. Callback hits `GET /api/auth/callback-handler` → stores OAuth tokens server-side, sets session cookie
-4. Client calls `GET /api/auth/session` to check auth state
-5. All API calls go through `authFetch()` → `POST/GET /api/xrpc/[...method]` proxy → server adds OAuth tokens → forwards to ePDS
-
-### Key Auth Details
-- `authFetch` is a thin wrapper around fetch that calls `/api/xrpc/...` proxy routes
-- Server-side proxy reads session cookies and uses stored OAuth tokens
-- Session cookie uses HMAC signature with timing-safe comparison
-- CSRF Origin check on all POST routes
-- 401 responses trigger client-side re-authentication
-- `clearSessionCache()` is called on sign-out to prevent stale data
+### Routing
+- Middleware (`src/middleware.ts`) redirects `/` → `/welcome` when no session cookie
+- `/welcome` — landing page (server-rendered, transparent navbar)
+- `/` — profile dashboard (authenticated only)
+- `HomeClient` redirects to `/welcome` via useEffect if auth check fails (expired session)
+- `AuthGuard` in `settings/layout.tsx` protects settings routes
 
 ### Layout System
-- `layout.tsx` (server component) → `Providers` → `AuthProvider` → `NavbarProvider` → `AppShell` → children
-- `AppShell` (client component) conditionally renders sidebar for authenticated users on `/settings/*`
-- Navbar hidden for authenticated users (sidebar replaces it), shown for unauthenticated (landing page)
-- Footer hidden for authenticated users
-- `settings/layout.tsx` wraps all settings pages in `AuthGuard` (centralized, not per-page)
-- `AuthGuard` redirects to `/?returnTo=<path>` when unauthenticated
+- Root `layout.tsx` → Providers → AuthProvider → OrgProvider → NavbarProvider → Navbar + AppShell + Footer + FeedbackModal
+- `/welcome` has its own `layout.tsx` that sets navbar variant to `"transparent"`
+- `AppShell` wraps children in `.app-shell` div (skipped on `/welcome`)
+- `Footer` renders on all pages (single footer, no duplicates)
+- Feedback button avoids footer overlap via scroll listener on `.landing-footer`
 
-### Sidebar Navigation (3 items, in order)
-1. Profile (`/` and `/settings/edit-profile`)
-2. Apps (`/connected-apps`)
-3. Settings (`/settings`)
+### SEO / GEO
+- JSON-LD: Organization + WebSite in `layout.tsx`, SoftwareApplication + FAQPage in `welcome/page.tsx`
+- OG/Twitter meta: defaults in `layout.tsx`, overrides per page
+- Title template: `"%s — Certified"` (layout), pages export specific titles
+- `robots.ts`, `sitemap.ts`, `manifest.ts` in `src/app/`
+- `public/llms.txt` for AI crawlers
+- All public pages need `canonical` URL in `alternates`
 
-### Mobile
-- Hamburger menu triggers sidebar overlay with body scroll lock
-- Escape key closes sidebar, focus returns to hamburger button
-- All interactive elements have 44px minimum touch targets
-- Sidebar auto-closes on navigation
+## Security Rules
 
-### Wallet / Identity Link
-- EIP-712 typed data signing for wallet attestations
-- Random nonce per attestation (prevents replay)
-- Client-side signature verification using viem's `verifyTypedData` (EOA only)
-- ERC-1271/ERC-6492 (smart contract wallets) returns `verified: false` with explanation
-- Runtime type guard (`isAttestation`) validates PDS records
-- `asHex()` helper validates hex strings (no unsafe `as` casts)
-- WagmiProvider scoped to `/settings/wallet` only (not app-wide) — saves ~140KB on other pages
-- Supports Ethereum, Base, Optimism, Arbitrum chains
-
-### API Proxy Security
-- Collection allowlist for writes: only `org.impactindexer.link.attestation` and `org.hypercerts.profile`
+- Redis operations must be wrapped in try/catch (see `session.ts`)
+- CSRF URL parsing is wrapped in try/catch (see `csrf.ts`)
+- Invalidate existing session before creating new one in callback handler
+- Collection allowlist for writes in XRPC proxy
 - Blob uploads: 1MB max, allowed types: jpeg, png, webp, gif, svg+xml
-- 5xx errors sanitized to "Internal server error" (no upstream leak)
-- Repo DID validation on write operations
+- 5xx errors sanitized — never leak upstream error details
 
-### Connected Apps
-- Ma Earth, GainForest, Silvi, Hyperboards (with real logos from `/public/assets/partners/`)
-- Data defined in `src/lib/constants/apps.ts`
+## Git & Deployment
 
-### Session Management
-- `useSession()` hook with module-level cache — only ONE `getSession` fetch per page load regardless of how many components use it
-- Cache cleared on sign-out via `clearSessionCache()`
-- Used by sidebar, home-client, and settings (account) page
-
-### Performance
-- Landing sections and dashboard components loaded via `next/dynamic` (code-split)
-- No duplicate Google Fonts `@import` — font loaded via `next/font/google`
-- WagmiProvider scoped to wallet page only
-- `useProfile` and `useIdentityLinks` hooks use AbortControllers for cleanup
-- `isLoading` initializes to `true` (not `false`) to prevent flash of empty content
+- **Branches:** `main` (production), `staging` (preview/testing)
+- **Quality gate:** `npm run build` must pass before pushing
+- **Production:** `certified.app` — deploys from `main` via Vercel
+- **Staging:** `staging.certified.app` — deploys from `staging` via Vercel
+- **PR workflow:** push to `staging`, create PR to `main`
+- **`PUBLIC_URL`** must match the deployed domain — OAuth client_id, redirect_uris, and CSRF check all derive from it
 
 ## File Map
 
 ```
 src/
+├── middleware.ts                       # Redirect / → /welcome when no session
 ├── app/
-│   ├── globals.css                    # ALL custom CSS (~2400 lines)
-│   ├── layout.tsx                     # Root layout (server component)
-│   ├── page.tsx                       # Home page entry + metadata
-│   ├── error.tsx                      # Global error boundary
-│   ├── not-found.tsx                  # 404 page
-│   ├── connected-apps/
-│   │   ├── layout.tsx                 # AuthGuard for connected-apps
-│   │   └── page.tsx
+│   ├── layout.tsx                      # Root layout, providers, JSON-LD, skip nav
+│   ├── page.tsx                        # Profile dashboard (auth only)
+│   ├── globals.css                     # All custom CSS
+│   ├── icon.png                        # Favicon
+│   ├── manifest.ts                     # PWA manifest
+│   ├── robots.ts                       # Robots.txt
+│   ├── sitemap.ts                      # Sitemap
+│   ├── error.tsx                       # Global error boundary
+│   ├── not-found.tsx                   # 404 page
+│   ├── welcome/                        # Landing page
+│   │   ├── layout.tsx                  # Transparent navbar variant
+│   │   └── page.tsx                    # Landing content + JSON-LD
+│   ├── about/page.tsx                  # About page
+│   ├── terms/page.tsx                  # Terms of Service
+│   ├── privacy/page.tsx                # Privacy Policy
+│   ├── dsa/page.tsx                    # DSA compliance
 │   ├── settings/
-│   │   ├── layout.tsx                 # Centralized AuthGuard for all settings
-│   │   ├── page.tsx                   # Settings index (username, email, password, 2FA)
+│   │   ├── layout.tsx                  # AuthGuard for all settings
+│   │   ├── page.tsx                    # Settings index
 │   │   ├── edit-profile/page.tsx
-│   │   ├── wallet/
-│   │   │   ├── layout.tsx             # WagmiProvider scoped here
-│   │   │   └── page.tsx
-│   │   └── my-data/page.tsx
+│   │   ├── my-data/page.tsx
+│   │   └── wallet/
+│   │       ├── layout.tsx              # WagmiProvider (scoped here only)
+│   │       └── page.tsx
+│   ├── connected-apps/
+│   │   ├── layout.tsx                  # AuthGuard
+│   │   └── page.tsx
+│   ├── organizations/                  # Org management routes
+│   ├── oauth/callback/page.tsx         # OAuth redirect handler
 │   ├── api/
-│   │   ├── auth/                      # login, logout, session, callback-handler
-│   │   └── xrpc/[...method]/route.ts  # XRPC proxy with security
-│   ├── oauth/callback/                # OAuth redirect handler
-│   ├── privacy/                       # Privacy policy page
-│   ├── terms/                         # Terms of service page
-│   └── .well-known/                   # OAuth client metadata, JWKS
+│   │   ├── auth/                       # login, logout, session, callback-handler
+│   │   ├── xrpc/[...method]/route.ts   # XRPC proxy with security
+│   │   ├── organizations/              # Org API routes
+│   │   ├── feedback/route.ts           # Feedback email via Resend
+│   │   ├── resolve-handle/route.ts
+│   │   ├── resolve-did/route.ts
+│   │   └── search-actors/route.ts
+│   └── .well-known/                    # OAuth client metadata, JWKS
 │
 ├── components/
 │   ├── landing/
-│   │   ├── home-client.tsx            # Landing (unauth) + Dashboard (auth)
-│   │   ├── orbiting-logos.tsx          # Animated logo orbit
-│   │   └── sections/                  # 6 landing sections (code-split)
-│   │       ├── what-you-get.tsx
-│   │       ├── how-it-works.tsx
-│   │       ├── partner-apps.tsx
-│   │       ├── built-for-trust.tsx
-│   │       ├── faq.tsx
-│   │       └── ready-cta.tsx
+│   │   ├── landing-page.tsx            # Server-rendered landing sections
+│   │   ├── home-client.tsx             # Profile dashboard (client component)
+│   │   ├── hero-signin-button.tsx      # Client island for hero CTA
+│   │   ├── orbiting-logos.tsx           # Animated logo orbit (IntersectionObserver)
+│   │   └── sections/                   # Landing sections (server + client islands)
 │   ├── layout/
-│   │   ├── app-shell.tsx              # Conditional sidebar wrapper + mobile header
-│   │   ├── sidebar.tsx                # Left nav (5 items + user card + signout)
-│   │   ├── navbar.tsx                 # Top nav (landing only)
-│   │   ├── auth-guard.tsx             # Auth redirect with returnTo
-│   │   └── footer.tsx                 # Hidden for auth users
-│   ├── dashboard/
-│   │   ├── sign-in-preview-card.tsx
-│   │   ├── identity-overview-card.tsx
-│   │   ├── recent-activity-card.tsx
-│   │   └── connected-apps-list.tsx    # Compact list (dashboard sidebar)
-│   ├── identity-link/
-│   │   ├── identity-link-card.tsx     # Wallet list with verify/delete
-│   │   └── link-wallet-flow.tsx       # Multi-step connect + sign
-│   ├── account/
-│   │   └── password-section.tsx       # Set/change password (not yet wired into settings page)
-│   ├── profile/
-│   │   └── profile-edit-form.tsx
-│   └── ui/                            # Shared UI primitives
-│       ├── button.tsx, input.tsx, textarea.tsx
-│       ├── avatar.tsx
-│       └── loading-spinner.tsx
+│   │   ├── app-shell.tsx               # App wrapper (skipped on /welcome)
+│   │   ├── navbar.tsx                  # Top nav with account switcher
+│   │   ├── footer.tsx                  # Global footer (all pages)
+│   │   ├── sidebar.tsx                 # Left nav for settings
+│   │   └── auth-guard.tsx              # Auth redirect with returnTo
+│   ├── dashboard/                      # Dashboard cards and lists
+│   ├── organizations/                  # Org management components
+│   ├── profile/                        # Profile editing
+│   ├── identity-link/                  # Wallet attestation
+│   ├── account/                        # Email and password sections
+│   └── ui/                             # Shared primitives (button, input, modal, etc.)
 │
 ├── hooks/
-│   ├── use-session.ts                 # Cached session data (handle, email)
-│   ├── use-profile.ts                 # Profile data with AbortController
-│   ├── use-identity-links.ts          # Wallet attestations with verification
-│   └── use-attestation-signing.ts     # EIP-712 signing flow
+│   ├── use-session.ts                  # Cached session data (handle, email)
+│   ├── use-profile.ts                  # Profile data with AbortController
+│   ├── use-org-profile.ts              # Organization profile
+│   ├── use-identity-links.ts           # Wallet attestations
+│   ├── use-attestation-signing.ts      # EIP-712 signing
+│   └── use-focus-trap.ts              # Modal focus trapping
 │
 └── lib/
-    ├── auth/
-    │   ├── auth-context.tsx           # React auth provider
-    │   ├── oauth-client.ts            # NodeOAuthClient singleton
-    │   ├── session.ts                 # Cookie session helpers
-    │   ├── stores.ts                  # In-memory state/session stores
-    │   ├── csrf.ts                    # CSRF Origin check
-    │   ├── fetch.ts                   # authFetch utility
-    │   └── types.ts                   # Auth types
-    ├── identity-link/
-    │   ├── attestation.ts             # EIP-712 domain, types, message builder
-    │   ├── pds.ts                     # PDS read/write with type guards
-    │   └── types.ts                   # Attestation types + asHex helper
-    ├── atproto/
-    │   └── profile.ts                 # Profile fetch/update
-    ├── constants/
-    │   └── apps.ts                    # CONNECTED_APPS
-    ├── types/
-    │   └── api.ts                     # API response types
-    ├── utils/
-    │   └── initials.ts                # getInitials() utility
-    ├── providers.tsx                   # Minimal root provider (no wagmi)
-    ├── navbar-context.tsx             # Navbar visibility context
-    └── wagmi.ts                       # Wagmi config (injected, Coinbase, WC)
+    ├── auth/                           # OAuth client, session, CSRF, fetch wrapper
+    ├── organizations/                  # Org API, context, constants, types
+    ├── identity-link/                  # EIP-712 attestation, PDS read/write
+    ├── atproto/                        # DID resolution, profile fetch/update
+    ├── constants/apps.ts               # CONNECTED_APPS (single source of truth)
+    ├── types/api.ts                    # API response types
+    ├── utils/initials.ts               # getInitials() utility
+    ├── navbar-context.tsx              # Navbar variant state
+    ├── providers.tsx                   # Root provider (no wagmi)
+    └── wagmi.ts                        # Wagmi config (wallet page only)
 
-public/assets/
-├── partners/                          # Real partner logos
-│   ├── maearth_logo.jpeg
-│   ├── gainforest_logo.jpeg
-│   ├── silvi_logo.jpeg
-│   ├── bluesky_logo.svg
-│   ├── leaflet_logo.svg
-│   ├── fundingthecommons_logo.jpeg
-│   └── protocollabs_logo.png
-├── hyperboards_brandmark.webp
-├── certified_brandmark.svg/png
-├── certified_wordmark_white.svg
-├── certified_wordmark_darkblue.svg
-├── certified_sign_in_button_darkblue.svg
-└── otp-email-template.html
+public/
+├── llms.txt                            # AI crawler description
+└── assets/
+    ├── partners/                       # Partner app logos
+    ├── certified_brandmark*.svg/png    # Brand assets
+    ├── certified_wordmark*.svg/png     # Wordmarks
+    ├── certified-hero-1200x630.png     # OG image
+    ├── sign_in_with_certified*.svg/png # Sign-in button assets
+    ├── guilloche_02.svg                # Decorative background (SVGO optimized)
+    └── otp-email-template.html         # Branded OTP email
 ```
 
-## Environment Variables
+## Known Limitations
 
-Required in `.env.local` (and Vercel Production + Preview):
-```
-COOKIE_SECRET=<32+ char secret for HMAC session cookies>
-NEXT_PUBLIC_PDS_URL=<ePDS URL, e.g. https://certified.one>
-PUBLIC_URL=<app URL, e.g. https://certified-app-hypercerts-foundation.vercel.app>
-UPSTASH_REDIS_REST_URL=<Upstash Redis URL for OAuth state>
-UPSTASH_REDIS_REST_TOKEN=<Upstash Redis token>
-```
-
-## Git & Deployment
-
-- **Branches:** `main` (production), `staging` (preview/testing)
-- **Build check:** `npx tsc --noEmit && npx next build` (must pass before deploy)
-- **Config:** `next.config.ts` has `serverExternalPackages: ["@atproto/oauth-client-node"]`
-
-### Deploying to production (`certified.app`)
-
-```bash
-git checkout main
-vercel deploy --prod   # Uses Production env vars (PUBLIC_URL=https://certified.app)
-# Auto-aliased to certified.app
-```
-
-### Deploying to staging (`staging.certified.app`)
-
-```bash
-git checkout staging
-vercel deploy          # Preview deploy — uses Preview (staging) env vars
-vercel alias set <deployment-url> staging.certified.app --scope hypercerts-foundation
-```
-
-**⚠️ CRITICAL:** Do NOT use `vercel deploy --prod` for staging. The `--prod` flag uses Production env vars where `PUBLIC_URL=https://certified.app`. This breaks OAuth login because:
-- The OAuth `client_id` and `redirect_uris` are derived from `PUBLIC_URL` (see `src/lib/auth/oauth-client.ts`)
-- The CSRF origin check compares `Origin` header against `PUBLIC_URL` (see `src/lib/auth/csrf.ts`)
-- If `PUBLIC_URL` doesn't match the actual domain, OAuth redirects go to the wrong place and CSRF rejects all POST requests
-
-Vercel env var setup for this to work:
-- **Production:** `PUBLIC_URL=https://certified.app`
-- **Preview (staging branch):** `PUBLIC_URL=https://staging.certified.app`
-- Preview deploys from the `staging` branch pick up the branch-scoped override automatically.
-
-## Local Dev with Cloudflare Tunnel (for Browser Testing)
-
-When you need to test the app in a real browser (e.g., via the `agent-browser` skill), you need a publicly-reachable URL. Use Cloudflare's quick tunnel feature.
-
-### Prerequisites
-- `cloudflared` installed: `brew install cloudflared` (already on this machine)
-- Dev server running on `localhost:3000`
-
-### Steps
-
-1. **Start the dev server:**
-   ```bash
-   npm run dev
-   ```
-
-2. **Start a Cloudflare tunnel** (use the system binary, NOT `npx` — the npx wrapper buffers stdout and you'll never see the URL):
-   ```bash
-   cloudflared tunnel --url http://localhost:3000 > /tmp/cf-tunnel.log 2>&1 &
-   sleep 10 && grep "trycloudflare" /tmp/cf-tunnel.log
-   ```
-   This prints a URL like `https://random-words.trycloudflare.com`.
-
-3. **Update `PUBLIC_URL` in `.env.local`** to the tunnel URL:
-   ```bash
-   # Replace the existing PUBLIC_URL line
-   sed -i '' "s|^PUBLIC_URL=.*|PUBLIC_URL=https://your-tunnel-url.trycloudflare.com|" .env.local
-   ```
-   Then restart the dev server (`Ctrl+C` + `npm run dev`) so it picks up the new env var.
-
-4. **Open the headed browser** via `agent-browser`:
-   ```bash
-   agent-browser --headed open https://your-tunnel-url.trycloudflare.com
-   ```
-   Use `--headed` so the Chrome window is visible on screen. Without it, agent-browser runs headless (invisible).
-
-### Why PUBLIC_URL matters
-The app's OAuth `client_id`, `redirect_uris`, and CSRF origin check all derive from `PUBLIC_URL`. If it doesn't match the actual domain the browser hits, login will fail. When using a tunnel, `PUBLIC_URL` must be the tunnel URL.
-
-### ⚠️ Gotchas
-- **Don't use `npx cloudflared`** — it buffers output, so you'll never see the tunnel URL in logs. Use the system binary directly.
-- **Tunnel URLs are ephemeral** — you get a new random URL each time. Update `.env.local` and restart the dev server each time.
-- **Restore `PUBLIC_URL` when done** — set it back to production/staging URL before committing or deploying.
-- **OAuth may not work** — the ePDS needs to accept the tunnel URL as a valid redirect. For basic page testing this is fine; for full login flow testing, use the staging deploy instead.
-- **Always use `--headed`** — without it, agent-browser runs headless (no visible window). Use `agent-browser --headed open <url>` so you can see what's happening.
-
-## Completed Work (All Epics Closed)
-
-All heartbeads issues are closed. Zero open issues remain.
-
-### 1. OAuth Migration (epic `5g6`) — Server-side OAuth
-Migrated from browser-based `@atproto/oauth-client-browser` to server-side `@atproto/oauth-client-node`. Created API proxy routes, session cookies, CSRF protection.
-
-### 2. OAuth Hardening (epic `zny`) — Production security
-HMAC timing-safe comparison, CSRF Origin checks, repo DID validation, 401 interceptor, session rotation, dependency cleanup.
-
-### 3. Identity Link / Wallet (epic `eex`) — EIP-712 wallet linking
-Full wallet attestation system: EIP-712 signing, PDS storage, client-side verification, multi-chain support.
-
-### 4. Password Management (epic `700`) — Set/change password
-PasswordSection component using `requestPasswordReset` + `resetPassword` XRPC flow.
-
-### 5. ePDS Branding (epic `kqx`) — Branded login screen
-OAuth client metadata colors, branded OTP email template.
-
-### 6. Landing Page v1 (epic `5v7`) — Initial landing redesign
-Hero, CTA buttons, content sections.
-
-### 7. Landing Page v2 (epic `ysx`) — Final landing with 6 sections
-What You Get, How It Works, Partner Apps, Built for Trust, FAQ, Ready CTA. Animated mesh gradient hero. Deleted `/why-certified`.
-
-### 8. Authenticated App Redesign (epic `oxt`, 13 tasks) — Sidebar layout
-Left sidebar nav, right sidebar cards, connected apps, edit profile, settings, my data, wallet pages. Mobile hamburger sidebar. Responsive CSS.
-
-### 9. Post-Design Fixes — Polish
-Footer hidden for auth users, loading states, wallet page, connected apps split, settings nav position.
-
-### 10. Code Review Fixes (epic `dqp`, 14 tasks + 1 integration bug) — Comprehensive audit
-10-reviewer audit covering security, CSS, mobile, components, a11y, data flow, TypeScript, routing, performance. All fixes implemented:
-- **Security:** Random nonces, ERC-1271 bypass fix, collection allowlist, blob limits, sanitized errors
-- **A11y:** Color contrast (WCAG AA), focus-visible, ARIA roles, semantic HTML, FAQ aria-labelledby
-- **Performance:** Removed duplicate font import, scoped WagmiProvider, code-split with next/dynamic
-- **Architecture:** Shared constants, useSession hook, centralized AuthGuard, API response types, asHex helper
-- **Mobile:** 44px touch targets, body scroll lock, Escape key, focus management, content overflow
-- **Routing:** settings/layout.tsx, error.tsx, not-found.tsx, returnTo URL, sidebar active state
-- **Integration bug:** useSession cache cleared on sign-out
-
-## Known Limitations / Future Work
-
-- **2FA/TOTP:** Not implemented on the ePDS — settings page (`/settings`) shows "coming soon" placeholder
-- **ERC-1271 verification:** Smart contract wallet signatures return `verified: false` (on-chain verification not yet supported)
-- **My Data:** Fetches `org.hypercerts.claim.activity` records — collection may not exist for most users, so empty state is shown
-- **No test suite:** No unit or integration tests exist. Quality gates are `tsc --noEmit` + `next build`.
-- **`certified_brandmark 2.png`:** Duplicate untracked file in `public/assets/` — can be deleted
+- **No test suite** — quality gates are `tsc --noEmit` + `next build`
+- **2FA/TOTP** — not implemented on the ePDS, settings page shows placeholder
+- **ERC-1271** — smart contract wallet signatures return `verified: false` (no on-chain verification)
+- **TypeScript** — widespread `as` casts on API request/response bodies (improvement tracked separately)

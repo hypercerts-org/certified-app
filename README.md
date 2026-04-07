@@ -1,6 +1,6 @@
 # Certified
 
-Certified is a passwordless identity platform built on [AT Protocol](https://atproto.com), operated by the [Hypercerts Foundation](https://hypercerts.org). It lets users create a single account that works across partner applications with full data portability and no vendor lock-in.
+Certified is a passwordless identity platform built on [AT Protocol](https://atproto.com), operated by the [Hypercerts Foundation](https://hypercerts.org). It lets users create an account that works across partner applications with full data portability and no vendor lock-in.
 
 **Live:** [certified.app](https://certified.app)
 
