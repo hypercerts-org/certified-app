@@ -42,8 +42,9 @@ export default function AboutPage() {
             <p className="mt-4">
               When you sign up for Certified, you get an AT Protocol identity and a Personal Data
               Server (PDS) hosted at <strong>certified.one</strong>. Your profile, preferences,
-              and activity travel with you to every app that supports Certified — currently
-              including Ma Earth, GainForest, Simocracy, and Hyperboards.
+              and activity travel with you to every app that supports AT Protocol — and
+              if the app supports Certified directly, you can sign in with just your email,
+              no password needed.
             </p>
           </section>
 
@@ -57,8 +58,7 @@ export default function AboutPage() {
               service that speaks AT Protocol.
             </p>
             <p className="mt-4">
-              Your data lives on your Personal Data Server. Applications read from it with your
-              permission. If you ever want to leave, you can export everything or migrate your
+              Your data lives on your Personal Data Server. If you ever want to leave, you can export everything or migrate your
               identity to a different PDS provider — no data is locked inside Certified.
             </p>
           </section>
@@ -192,6 +192,15 @@ export default function AboutPage() {
             </p>
             <p className="mt-4">
               <a
+                href="https://bsky.app/profile/hypercerts.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline hover:text-blue-800"
+              >
+                Bluesky
+              </a>
+              {" · "}
+              <a
                 href="https://x.com/hypercerts"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -207,15 +216,6 @@ export default function AboutPage() {
                 className="text-blue-600 underline hover:text-blue-800"
               >
                 LinkedIn
-              </a>
-              {" · "}
-              <a
-                href="https://bsky.app/profile/hypercerts.org"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 underline hover:text-blue-800"
-              >
-                Bluesky
               </a>
               {" · "}
               <a

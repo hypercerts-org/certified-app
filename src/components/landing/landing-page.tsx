@@ -36,12 +36,6 @@ export default function LandingPage() {
           <p className="hero__subtitle hero-reveal">
             Your identity and data — everywhere you go.
           </p>
-          <p className="hero__description hero-reveal">
-            Certified is a passwordless identity platform built on AT Protocol, operated by the
-            Hypercerts Foundation. Create a single account that works across partner applications
-            like Ma Earth, GainForest, Simocracy, and Hyperboards — with full data portability
-            and no vendor lock-in.
-          </p>
           <div className="hero-reveal">
             <HeroSignInButton />
           </div>
