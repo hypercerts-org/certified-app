@@ -171,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = await res.json() as { url: string };
-      window.location.href = data.url;
+      safeRedirect(data.url);
     } catch (err) {
       console.error("Email sign-in error:", err);
       setIsRedirectingToProvider(false);
@@ -199,7 +199,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = await res.json() as { url: string };
-      window.location.href = data.url;
+      safeRedirect(data.url);
     } catch (err) {
       console.error("Handle sign-in error:", err);
       setIsRedirectingToProvider(false);

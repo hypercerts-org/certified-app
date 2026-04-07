@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description:
     "Certified is a passwordless identity platform built on AT Protocol, operated by the Hypercerts Foundation. Create a single account that works across partner apps with full data portability and no vendor lock-in.",
   alternates: {
-    canonical: "https://certified.app/",
+    canonical: "https://certified.app/welcome",
   },
   openGraph: {
     title: "Certified — One account, any app",

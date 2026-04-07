@@ -137,10 +137,12 @@ export default function SignInModal({
                 required
                 autoComplete={isCertified ? "email" : "username"}
                 disabled={isSubmitting}
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? "signin-error" : undefined}
               />
 
               {error && (
-                <p className="signin-modal__error">{error}</p>
+                <p id="signin-error" className="signin-modal__error" role="alert">{error}</p>
               )}
 
               <button

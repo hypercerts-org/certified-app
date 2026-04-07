@@ -1,5 +1,10 @@
-import React from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Page Not Found",
+  robots: { index: false, follow: false },
+};
 
 export default function NotFoundPage() {
   return (
@@ -11,7 +16,7 @@ export default function NotFoundPage() {
         <div className="dashboard__main">
           <div className="dash-card">
             <p className="dash-card__desc">The page you&apos;re looking for doesn&apos;t exist.</p>
-            <Link href="/" className="dashboard__back-btn">
+            <Link href="/welcome" className="dashboard__back-btn">
               Go home
             </Link>
           </div>

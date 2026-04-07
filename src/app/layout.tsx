@@ -56,6 +56,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    site: "@hypercerts",
+    creator: "@hypercerts",
     images: ["/assets/certified-hero-1200x630.png"],
   },
 };
