@@ -1,3 +1,18 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Digital Services Act — Compliance Information",
+  description:
+    "DSA compliance information for Certified, operated by the Hypercerts Foundation. Includes notice-and-action procedures and contact information.",
+  alternates: { canonical: "https://certified.app/dsa" },
+  openGraph: {
+    title: "DSA Compliance — Certified",
+    description:
+      "Digital Services Act compliance information for Certified, operated by the Hypercerts Foundation.",
+    url: "https://certified.app/dsa",
+  },
+};
+
 export default function DsaPage() {
   return (
     <div className="app-page">

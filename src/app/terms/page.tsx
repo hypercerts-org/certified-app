@@ -1,3 +1,18 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Terms of Service",
+  description:
+    "Terms of Service for Certified, the identity platform operated by the Hypercerts Foundation. Covers account usage, data ownership, AT Protocol identity, and acceptable use.",
+  alternates: { canonical: "https://certified.app/terms" },
+  openGraph: {
+    title: "Terms of Service — Certified",
+    description:
+      "Terms of Service for Certified, the identity platform operated by the Hypercerts Foundation.",
+    url: "https://certified.app/terms",
+  },
+};
+
 export default function TermsPage() {
   return (
     <div className="app-page">

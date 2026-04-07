@@ -1,3 +1,18 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description:
+    "Privacy Policy for Certified, the identity platform operated by the Hypercerts Foundation. Covers data processing, GDPR compliance, cookies, and your rights.",
+  alternates: { canonical: "https://certified.app/privacy" },
+  openGraph: {
+    title: "Privacy Policy — Certified",
+    description:
+      "Privacy Policy for Certified, the identity platform operated by the Hypercerts Foundation.",
+    url: "https://certified.app/privacy",
+  },
+};
+
 export default function PrivacyPage() {
   return (
     <div className="app-page">
