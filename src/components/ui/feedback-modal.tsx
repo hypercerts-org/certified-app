@@ -27,6 +27,7 @@ export default function FeedbackModal() {
 
   const updateButtonPosition = useCallback(() => {
     const footer = document.getElementById("landing-footer")
+      || document.querySelector(".landing-footer")
     if (!footer) { setBottomOffset(20); return }
     const footerRect = footer.getBoundingClientRect()
     const viewportHeight = window.innerHeight
