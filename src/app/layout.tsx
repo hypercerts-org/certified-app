@@ -55,6 +55,9 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     images: ["/assets/certified-hero-1200x630.png"],
   },
+  other: {
+    "theme-color": "#f9f9f6",
+  },
 };
 
 const organizationJsonLd = {

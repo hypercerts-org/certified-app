@@ -10,6 +10,7 @@ export const metadata: Metadata = {
     description:
       "Terms of Service for Certified, the identity platform operated by the Hypercerts Foundation.",
     url: "https://certified.app/terms",
+    type: "website",
   },
 };
 

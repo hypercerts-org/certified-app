@@ -10,6 +10,7 @@ export const metadata: Metadata = {
     description:
       "Digital Services Act compliance information for Certified, operated by the Hypercerts Foundation.",
     url: "https://certified.app/dsa",
+    type: "website",
   },
 };
 
