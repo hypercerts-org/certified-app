@@ -30,7 +30,8 @@ export default function FeedbackModal() {
     if (!footer) { setBottomOffset(20); return }
     const footerRect = footer.getBoundingClientRect()
     const viewportHeight = window.innerHeight
-    if (footerRect.top < viewportHeight) {
+    // Only push button up when footer is visible from below, not when scrolled past
+    if (footerRect.top < viewportHeight && footerRect.bottom > 0) {
       setBottomOffset(viewportHeight - footerRect.top + 12)
     } else {
       setBottomOffset(20)
