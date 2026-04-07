@@ -2,9 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Hide server-rendered landing page when session cookie detected (prevents flash) */
-.has-session .landing-ssr { display: none; }
-
 /* Skip navigation link — visible only on focus */
 .skip-nav {
   position: absolute;

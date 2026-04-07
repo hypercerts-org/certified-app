@@ -116,9 +116,6 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <script
-          dangerouslySetInnerHTML={{ __html: `if(document.cookie.includes('certified_logged_in')){document.documentElement.classList.add('has-session')}` }}
-        />
-        <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />

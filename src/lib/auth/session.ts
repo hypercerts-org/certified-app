@@ -3,7 +3,6 @@ import { randomBytes, createHmac, timingSafeEqual } from "crypto"
 import { getRedis } from "./stores"
 
 const COOKIE_NAME = "certified_session"
-const HINT_COOKIE = "certified_logged_in"
 const COOKIE_SECRET = process.env.COOKIE_SECRET
 if (!COOKIE_SECRET && process.env.NODE_ENV === "production") {
   throw new Error(
@@ -37,14 +36,6 @@ export async function createSession(did: string): Promise<void> {
   const cookieStore = await cookies()
   cookieStore.set(COOKIE_NAME, cookieValue, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: SESSION_TTL,
-  })
-  // Non-httpOnly hint cookie so client JS can hide the landing page before hydration
-  cookieStore.set(HINT_COOKIE, "1", {
-    httpOnly: false,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
@@ -98,5 +89,4 @@ export async function deleteSession(): Promise<void> {
   }
 
   cookieStore.delete(COOKIE_NAME)
-  cookieStore.delete(HINT_COOKIE)
 }

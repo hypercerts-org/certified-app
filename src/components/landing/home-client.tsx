@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 import { Pencil } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
-import { useNavbarVariant } from "@/lib/navbar-context";
 import { useProfile } from "@/hooks/use-profile";
 import { useOrgProfile } from "@/hooks/use-org-profile";
 import { useOrg } from "@/lib/organizations/org-context";
@@ -14,28 +12,11 @@ import { getInitials } from "@/lib/utils/initials";
 import Button from "@/components/ui/button";
 
 export default function HomeClient() {
-  const { isLoading, isAuthenticated, did, openSignIn } = useAuth();
+  const { isLoading, isAuthenticated, did } = useAuth();
   const { profile, avatarUrl, bannerUrl, isFallback } = useProfile();
   const { activeOrg } = useOrg();
   const { orgProfile, orgMetadata, orgAvatarUrl, orgBannerUrl } = useOrgProfile();
-  const { setVariant } = useNavbarVariant();
   const { handle } = useSession();
-
-  useEffect(() => {
-    if (!isAuthenticated && !isLoading) {
-      setVariant("transparent");
-    }
-    return () => {
-      setVariant("default");
-    };
-  }, [isAuthenticated, isLoading, setVariant]);
-
-  // Show/hide the server-rendered landing page via CSS class (set by inline script in <head>)
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      document.documentElement.classList.remove("has-session");
-    }
-  }, [isLoading, isAuthenticated]);
 
   const initials = getInitials(profile?.displayName, did);
 
@@ -182,6 +163,6 @@ export default function HomeClient() {
     );
   }
 
-  // Not authenticated — landing page is server-rendered, just return null
+  // Not authenticated — middleware should have redirected to /welcome
   return null;
 }
