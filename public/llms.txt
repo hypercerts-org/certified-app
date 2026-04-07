@@ -1,0 +1,26 @@
+# Certified
+
+> Certified is a passwordless identity platform built on AT Protocol, operated by the Hypercerts Foundation. It lets users create a single account that works across partner applications with full data portability and no vendor lock-in.
+
+## Main
+
+- [Home](https://certified.app): Create your Certified identity and use one account across partner apps
+- [About](https://certified.app/about): About Certified and the Hypercerts Foundation
+- [Terms of Service](https://certified.app/terms): Service terms for Certified and certified.one infrastructure
+- [Privacy Policy](https://certified.app/privacy): Data processing practices, GDPR compliance, cookie policy
+- [DSA Compliance](https://certified.app/dsa): Digital Services Act compliance information
+
+## About
+
+- [Hypercerts Foundation](https://hypercerts.org): Parent organization building open-source protocols for impact funding
+- [GitHub](https://github.com/hypercerts-org): Open source repositories for Certified and related projects
+- [Twitter](https://x.com/hypercerts): Hypercerts on X/Twitter
+- [LinkedIn](https://www.linkedin.com/company/hypercerts): Hypercerts on LinkedIn
+- [Bluesky](https://bsky.app/profile/hypercerts.org): Hypercerts on Bluesky
+
+## Partner Apps
+
+- [Ma Earth](https://maearth.com): Collective funding for regenerating Earth
+- [GainForest](https://gainforest.earth): AI-powered forest monitoring and conservation rewards
+- [Simocracy](https://simocracy.org): Democratic governance with verifiable identity
+- [Hyperboards](https://hyperboards.org): Visual leaderboards for impact contributions

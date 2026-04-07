@@ -21,6 +21,7 @@ const Footer: React.FC = () => {
           <span className="landing-footer__copy">&copy; 2026 Hypercerts Foundation</span>
         </div>
         <div className="landing-footer__links">
+          <Link href="/about">About</Link>
           <Link href="/terms">Terms</Link>
           <Link href="/privacy">Privacy</Link>
         </div>

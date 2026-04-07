@@ -32,8 +32,75 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "Certified",
+  title: {
+    default: "Certified",
+    template: "%s — Certified",
+  },
   description: "Your identity, everywhere.",
+  metadataBase: new URL("https://certified.app"),
+  openGraph: {
+    siteName: "Certified",
+    locale: "en_US",
+    type: "website",
+    images: [
+      {
+        url: "/assets/certified-hero-1200x630.png",
+        width: 1200,
+        height: 630,
+        alt: "Certified — One account, any app",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/assets/certified-hero-1200x630.png"],
+  },
+};
+
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Hypercerts Foundation",
+  legalName: "Hypercerts Foundation",
+  url: "https://hypercerts.org",
+  logo: "https://certified.app/assets/certified_brandmark_black.png",
+  description:
+    "A Delaware nonstock corporation that develops open infrastructure for the hypercerts ecosystem, operating the Certified identity platform.",
+  foundingDate: "2023-02-03",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "1209 Orange St.",
+    addressLocality: "Wilmington",
+    addressRegion: "DE",
+    postalCode: "19801",
+    addressCountry: "US",
+  },
+  contactPoint: {
+    "@type": "ContactPoint",
+    email: "legal@hypercerts.org",
+    contactType: "legal",
+  },
+  sameAs: [
+    "https://github.com/hypercerts-org",
+    "https://x.com/hypercerts",
+    "https://www.linkedin.com/company/hypercerts",
+    "https://bsky.app/profile/hypercerts.org",
+  ],
+};
+
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Certified",
+  url: "https://certified.app",
+  description:
+    "Create your Certified identity and use one account across partner apps. No passwords, no lock-in.",
+  publisher: {
+    "@type": "Organization",
+    name: "Hypercerts Foundation",
+    url: "https://hypercerts.org",
+  },
+  inLanguage: "en",
 };
 
 export default function RootLayout({
@@ -43,6 +110,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
+      </head>
       <body className={`${inter.variable} ${notoSerif.variable} ${instrumentSerif.variable} min-h-screen flex flex-col`}>
         <Providers>
           <AuthProvider>
