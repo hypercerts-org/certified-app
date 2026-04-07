@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Agent } from "@atproto/api"
 import { getOAuthClient } from "@/lib/auth/oauth-client"
-import { createSession } from "@/lib/auth/session"
+import { createSession, deleteSession } from "@/lib/auth/session"
 
 /** Collections that should always have a "self" record after sign-in */
 const PROFILE_COLLECTIONS = [
@@ -17,6 +17,8 @@ export async function GET(request: NextRequest) {
     const client = await getOAuthClient()
     const { session } = await client.callback(params)
 
+    // Invalidate any existing session to prevent session fixation
+    await deleteSession().catch(() => {})
     await createSession(session.did)
 
     // Best-effort: ensure profile records exist (don't fail sign-in if this errors)
@@ -24,14 +26,14 @@ export async function GET(request: NextRequest) {
       const oauthSession = await client.restore(session.did)
       const agent = new Agent(oauthSession)
       await ensureProfileRecords(agent, session.did)
-    } catch {
-      // Silently ignore — profile seeding is not critical for sign-in
+    } catch (err) {
+      console.error("[Auth] Profile seeding failed for", session.did, err)
     }
 
     return NextResponse.json({ did: session.did })
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error"
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.error("[Auth] Callback error:", err)
+    return NextResponse.json({ error: "Authentication failed" }, { status: 500 })
   }
 }
 

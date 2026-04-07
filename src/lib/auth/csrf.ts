@@ -12,11 +12,15 @@ export function checkCsrf(request: NextRequest): NextResponse | null {
   // Browsers always send Origin on cross-origin POST requests.
   if (!origin) return null
 
-  const expectedOrigin = new URL(PUBLIC_URL).origin
-  const requestOrigin = new URL(origin).origin
+  try {
+    const expectedOrigin = new URL(PUBLIC_URL).origin
+    const requestOrigin = new URL(origin).origin
 
-  if (requestOrigin !== expectedOrigin) {
+    if (requestOrigin !== expectedOrigin) {
+      return NextResponse.json({ error: "Forbidden: invalid origin" }, { status: 403 })
+    }
+    return null
+  } catch {
     return NextResponse.json({ error: "Forbidden: invalid origin" }, { status: 403 })
   }
-  return null
 }

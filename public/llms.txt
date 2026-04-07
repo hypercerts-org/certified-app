@@ -4,7 +4,7 @@
 
 ## Main
 
-- [Home](https://certified.app): Create your Certified identity and use one account across partner apps
+- [Home](https://certified.app/welcome): Create your Certified identity and use one account across partner apps
 - [About](https://certified.app/about): About Certified and the Hypercerts Foundation
 - [Terms of Service](https://certified.app/terms): Service terms for Certified and certified.one infrastructure
 - [Privacy Policy](https://certified.app/privacy): Data processing practices, GDPR compliance, cookie policy

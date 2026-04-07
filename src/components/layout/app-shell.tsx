@@ -1,17 +1,12 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useAuth } from "@/lib/auth/auth-context";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
   const pathname = usePathname();
 
-  // App pages always show the shell (even while loading)
-  const isAppPage = pathname.startsWith("/settings") || pathname.startsWith("/connected-apps") || pathname.startsWith("/organizations");
-  const showShell = isAppPage || (!isLoading && isAuthenticated);
-
-  if (!showShell) {
+  // Landing page doesn't use the app shell
+  if (pathname === "/welcome") {
     return <>{children}</>;
   }
 

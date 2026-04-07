@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Pencil } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
-import { useNavbarVariant } from "@/lib/navbar-context";
 import { useProfile } from "@/hooks/use-profile";
 import { useOrgProfile } from "@/hooks/use-org-profile";
 import { useOrg } from "@/lib/organizations/org-context";
@@ -14,35 +14,19 @@ import { getInitials } from "@/lib/utils/initials";
 import Button from "@/components/ui/button";
 
 export default function HomeClient() {
-  const { isLoading, isAuthenticated, did, openSignIn } = useAuth();
+  const router = useRouter();
+  const { isLoading, isAuthenticated, did } = useAuth();
   const { profile, avatarUrl, bannerUrl, isFallback } = useProfile();
   const { activeOrg } = useOrg();
   const { orgProfile, orgMetadata, orgAvatarUrl, orgBannerUrl } = useOrgProfile();
-  const { setVariant } = useNavbarVariant();
   const { handle } = useSession();
 
+  // Redirect to /welcome if not authenticated (handles expired sessions, sign-out)
   useEffect(() => {
-    if (!isAuthenticated && !isLoading) {
-      setVariant("transparent");
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/welcome");
     }
-    return () => {
-      setVariant("default");
-    };
-  }, [isAuthenticated, isLoading, setVariant]);
-
-  // Hide or show the server-rendered landing page based on auth state
-  useEffect(() => {
-    const landingSsr = document.querySelector(".landing-ssr") as HTMLElement | null;
-    if (!landingSsr) return;
-
-    if (isLoading) {
-      landingSsr.style.display = "none";
-    } else if (isAuthenticated) {
-      landingSsr.style.display = "none";
-    } else {
-      landingSsr.style.display = "";
-    }
-  }, [isLoading, isAuthenticated]);
+  }, [isLoading, isAuthenticated, router]);
 
   const initials = getInitials(profile?.displayName, did);
 
@@ -189,6 +173,6 @@ export default function HomeClient() {
     );
   }
 
-  // Not authenticated — landing page is server-rendered, just return null
+  // Not authenticated — useEffect above will redirect to /welcome
   return null;
 }

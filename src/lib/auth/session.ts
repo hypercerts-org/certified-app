@@ -19,20 +19,19 @@ function sign(sessionId: string): string {
 }
 
 export async function createSession(did: string): Promise<void> {
-  // Note: we don't scan/invalidate old sessions for this DID in Redis
-  // because scanning is expensive. The old session cookie on the client
-  // will simply be overwritten, and the orphaned Redis key will expire
-  // via TTL.
-
   const sessionId = randomBytes(32).toString("hex")
   const signature = sign(sessionId)
   const cookieValue = `${sessionId}.${signature}`
 
-  // Store session-to-DID mapping in Redis
-  const redis = getRedis()
-  await redis.set(`${SESSION_DID_PREFIX}${sessionId}`, did, {
-    ex: SESSION_TTL,
-  })
+  try {
+    const redis = getRedis()
+    await redis.set(`${SESSION_DID_PREFIX}${sessionId}`, did, {
+      ex: SESSION_TTL,
+    })
+  } catch (err) {
+    console.error("[Session] Failed to store session in Redis:", err)
+    throw new Error("Failed to create session")
+  }
 
   const cookieStore = await cookies()
   cookieStore.set(COOKIE_NAME, cookieValue, {
@@ -62,9 +61,14 @@ export async function getSessionDid(): Promise<string | null> {
     return null
   }
 
-  const redis = getRedis()
-  const did = await redis.get<string>(`${SESSION_DID_PREFIX}${sessionId}`)
-  return did ?? null
+  try {
+    const redis = getRedis()
+    const did = await redis.get<string>(`${SESSION_DID_PREFIX}${sessionId}`)
+    return did ?? null
+  } catch (err) {
+    console.error("[Session] Failed to read session from Redis:", err)
+    return null
+  }
 }
 
 export async function deleteSession(): Promise<void> {
@@ -75,8 +79,12 @@ export async function deleteSession(): Promise<void> {
     const dotIndex = cookie.value.lastIndexOf(".")
     if (dotIndex !== -1) {
       const sessionId = cookie.value.slice(0, dotIndex)
-      const redis = getRedis()
-      await redis.del(`${SESSION_DID_PREFIX}${sessionId}`)
+      try {
+        const redis = getRedis()
+        await redis.del(`${SESSION_DID_PREFIX}${sessionId}`)
+      } catch (err) {
+        console.error("[Session] Failed to delete session from Redis:", err)
+      }
     }
   }
 

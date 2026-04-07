@@ -129,8 +129,9 @@ export default function RootLayout({
           <AuthProvider>
             <OrgProvider>
               <NavbarProvider>
+                <a href="#main-content" className="skip-nav">Skip to main content</a>
                 <Navbar />
-                <main className="flex-1">
+                <main id="main-content" className="flex-1">
                   <AppShell>{children}</AppShell>
                 </main>
                 <Footer />

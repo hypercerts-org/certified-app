@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useRef, useState } from "react"
+import { useFocusTrap } from "@/hooks/use-focus-trap"
 
 interface SignInModalProps {
   isOpen: boolean
@@ -20,6 +21,7 @@ export default function SignInModal({
   onSubmitHandle,
 }: SignInModalProps) {
   const backdropRef = useRef<HTMLDivElement>(null)
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen)
   const inputRef = useRef<HTMLInputElement>(null)
   const [view, setView] = useState<ModalView>("certified")
   const [inputValue, setInputValue] = useState("")
@@ -102,7 +104,7 @@ export default function SignInModal({
       aria-modal="true"
       aria-label={title}
     >
-      <div className="signin-modal">
+      <div className="signin-modal" ref={focusTrapRef}>
         <div className="signin-modal__header">
           <img src="/assets/certified_brandmark_black.svg" alt="" className="signin-modal__logo" />
           <span className="signin-modal__title">{title}</span>

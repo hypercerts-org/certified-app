@@ -2,17 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useAuth } from "@/lib/auth/auth-context";
 
 const Footer: React.FC = () => {
-  const pathname = usePathname();
-  const { isAuthenticated } = useAuth();
-
-  // Hide footer on landing page (has its own inline footer) — but show it
-  // when authenticated since "/" is the profile page in that case
-  if (pathname === "/" && !isAuthenticated) return null;
-
   return (
     <footer className="landing-footer">
       <div className="landing-footer__bar">
