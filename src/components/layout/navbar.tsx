@@ -209,7 +209,7 @@ const Navbar: React.FC = () => {
                   <ChevronDown size={14} />
                 </button>
                 {switcherOpen && (
-                  <div className="account-switcher__menu">
+                  <div className="account-switcher__menu" role="menu">
                     {/* User section */}
                     <p className="account-switcher__section-label">User</p>
                     <div className="account-switcher__user-row">
@@ -233,7 +233,7 @@ const Navbar: React.FC = () => {
                       <button
                         className="account-switcher__signout"
                         onClick={(e) => { e.stopPropagation(); signOut(); }}
-                        title="Sign out"
+                        aria-label="Sign out"
                       >
                         <LogOut size={16} />
                       </button>
@@ -320,7 +320,7 @@ const Navbar: React.FC = () => {
                         <button
                           className="account-switcher__signout"
                           onClick={(e) => { e.stopPropagation(); signOut(); }}
-                          title="Sign out"
+                          aria-label="Sign out"
                         >
                           <LogOut size={16} />
                         </button>

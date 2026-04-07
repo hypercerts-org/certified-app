@@ -4,7 +4,7 @@ export function middleware(request: NextRequest) {
   const hasSession = request.cookies.has("certified_session")
 
   if (!hasSession) {
-    return NextResponse.redirect(new URL("/welcome", request.url))
+    return NextResponse.redirect(new URL("/welcome", request.url), 308)
   }
 
   return NextResponse.next()

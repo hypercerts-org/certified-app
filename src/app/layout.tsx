@@ -15,6 +15,7 @@ const inter = Inter({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   variable: "--font-inter",
+  display: "swap",
 });
 
 const notoSerif = Noto_Serif({
@@ -22,6 +23,7 @@ const notoSerif = Noto_Serif({
   weight: ["400", "700"],
   style: ["normal", "italic"],
   variable: "--font-headline",
+  display: "swap",
 });
 
 const instrumentSerif = Instrument_Serif({
@@ -29,6 +31,7 @@ const instrumentSerif = Instrument_Serif({
   weight: ["400"],
   style: ["normal", "italic"],
   variable: "--font-serif-alt",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -67,7 +70,12 @@ const organizationJsonLd = {
   name: "Hypercerts Foundation",
   legalName: "Hypercerts Foundation",
   url: "https://hypercerts.org",
-  logo: "https://certified.app/assets/certified_brandmark_black.png",
+  logo: {
+    "@type": "ImageObject",
+    url: "https://certified.app/assets/certified_brandmark_black.png",
+    width: 512,
+    height: 512,
+  },
   description:
     "A Delaware nonstock corporation that develops open infrastructure for the hypercerts ecosystem, operating the Certified identity platform.",
   foundingDate: "2023-02-03",

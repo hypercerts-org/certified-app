@@ -16,7 +16,9 @@ export default function FeedbackModal() {
   const [error, setError] = useState("")
   const [bottomOffset, setBottomOffset] = useState(20)
   const backdropRef = useRef<HTMLDivElement>(null)
-  const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen)
+  const isMobile = typeof window !== "undefined" && window.innerWidth <= 768
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen && !isMobile)
+  const mobileFocusTrapRef = useFocusTrap<HTMLDivElement>(isOpen && isMobile)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Bottom sheet drag state (mobile)
@@ -239,8 +241,10 @@ export default function FeedbackModal() {
         onBlur={() => validateEmail(email)}
         placeholder="your@email.com"
         disabled={isSubmitting}
+        aria-invalid={emailError ? true : undefined}
+        aria-describedby={emailError ? "feedback-email-error" : undefined}
       />
-      {emailError && <p className="feedback-modal__error" role="alert">{emailError}</p>}
+      {emailError && <p id="feedback-email-error" className="feedback-modal__error" role="alert">{emailError}</p>}
 
       {error && <p className="feedback-modal__error" role="alert">{error}</p>}
 
@@ -310,7 +314,7 @@ export default function FeedbackModal() {
               <div className="bottom-sheet__backdrop feedback-bottom-sheet__backdrop" onClick={() => setIsOpen(false)} />
               <div
                 className={`bottom-sheet feedback-bottom-sheet ${sheetExpanded ? "bottom-sheet--expanded" : ""}`}
-                ref={sheetRef}
+                ref={(el) => { (sheetRef as React.MutableRefObject<HTMLDivElement | null>).current = el; (mobileFocusTrapRef as React.MutableRefObject<HTMLDivElement | null>).current = el; }}
                 role="dialog"
                 aria-modal="true"
                 aria-label="Share feedback"

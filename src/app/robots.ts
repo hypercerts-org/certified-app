@@ -5,7 +5,16 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
+        allow: ["/", "/welcome", "/about", "/terms", "/privacy", "/dsa"],
+        disallow: [
+          "/settings",
+          "/settings/*",
+          "/organizations",
+          "/organizations/*",
+          "/connected-apps",
+          "/oauth/*",
+          "/api/*",
+        ],
       },
     ],
     sitemap: "https://certified.app/sitemap.xml",

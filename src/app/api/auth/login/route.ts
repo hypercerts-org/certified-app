@@ -53,10 +53,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: "Invalid mode" }, { status: 400 })
   } catch (err) {
-    const raw = err instanceof Error ? err.message : ""
-    const message = raw.includes("Invalid") || raw.includes("invalid")
-      ? raw
-      : "Authentication failed"
-    return NextResponse.json({ error: message }, { status: 400 })
+    console.error("[Auth] Login error:", err)
+    return NextResponse.json({ error: "Authentication failed" }, { status: 400 })
   }
 }

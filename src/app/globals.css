@@ -78,6 +78,10 @@
   --color-warning-border: #f5d880;
   --color-warning-text: #7a6420;
 
+  /* Focus / Success accents */
+  --color-focus-green: #94BB51;
+  --color-success-icon: #28a745;
+
   /* Transitions */
   --transition-fast: 150ms ease-out;
   --transition-base: 250ms ease-out;
@@ -774,7 +778,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .signin-modal__input:focus {
-  border-color: #94BB51;
+  border-color: var(--color-focus-green);
   box-shadow: 0 0 0 3px rgba(148, 187, 81, 0.15);
 }
 
@@ -2650,7 +2654,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .domain-modal__success-icon {
-  color: #28a745;
+  color: var(--color-success-icon);
 }
 
 .domain-modal__success-title {

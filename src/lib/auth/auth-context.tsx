@@ -17,6 +17,15 @@ const stripInvisible = (s: string) =>
 
 const sanitizeEmail = (s: string) => stripInvisible(s).toLowerCase();
 const sanitizeHandle = (s: string) => stripInvisible(s).replace(/^@/, '');
+
+/** Validate and navigate to a URL returned by the auth API. Prevents protocol injection. */
+const safeRedirect = (url: string) => {
+  const parsed = new URL(url);
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    throw new Error("Invalid redirect URL");
+  }
+  window.location.href = parsed.href;
+};
 import ProviderRedirectOverlay from "@/components/ui/provider-redirect-overlay";
 import { setOnUnauthorized } from "./fetch";
 import { clearSessionCache } from "@/hooks/use-session";
@@ -94,6 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Listen for switch-provider postMessage from PDS OAuth UI iframe
   useEffect(() => {
     const handleSwitchProvider = async (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
       if (event.data?.type !== "switch-provider") return;
       const input = event.data.input;
       if (!input || typeof input !== "string") return;
@@ -115,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         const data = await res.json() as { url: string };
-        window.location.href = data.url;
+        safeRedirect(data.url);
       } catch (err) {
         console.error("External provider sign-in error:", err);
         setIsRedirectingToProvider(false);

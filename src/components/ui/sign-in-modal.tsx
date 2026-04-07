@@ -98,13 +98,13 @@ export default function SignInModal({
   return (
     <div
       className="signin-modal__backdrop"
-      ref={backdropRef}
+      ref={(el) => { (backdropRef as React.MutableRefObject<HTMLDivElement | null>).current = el; (focusTrapRef as React.MutableRefObject<HTMLDivElement | null>).current = el; }}
       onClick={(e) => { if (e.target === backdropRef.current) onClose() }}
       role="dialog"
       aria-modal="true"
       aria-label={title}
     >
-      <div className="signin-modal" ref={focusTrapRef}>
+      <div className="signin-modal">
         <div className="signin-modal__header">
           <img src="/assets/certified_brandmark_black.svg" alt="" className="signin-modal__logo" />
           <span className="signin-modal__title">{title}</span>
