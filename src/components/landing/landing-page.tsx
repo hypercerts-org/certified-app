@@ -47,7 +47,7 @@ export default function LandingPage() {
       <BuiltForTrust />
       <FaqSection />
       <ReadyCtaSection />
-      <footer className="landing-footer">
+      <footer className="landing-footer" id="landing-footer">
         <div className="landing-footer__bar">
           <div className="landing-footer__left">
             <img src="/assets/certified_wordmark_black_green.png" alt="Certified" className="landing-footer__logo-img" />
