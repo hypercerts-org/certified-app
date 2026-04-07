@@ -11,6 +11,7 @@ export const metadata: Metadata = {
     description:
       "Certified is a passwordless identity platform built on AT Protocol, operated by the Hypercerts Foundation.",
     url: "https://certified.app/about",
+    type: "website",
   },
 };
 

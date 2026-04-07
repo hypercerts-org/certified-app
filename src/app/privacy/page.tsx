@@ -10,6 +10,7 @@ export const metadata: Metadata = {
     description:
       "Privacy Policy for Certified, the identity platform operated by the Hypercerts Foundation.",
     url: "https://certified.app/privacy",
+    type: "website",
   },
 };
 
