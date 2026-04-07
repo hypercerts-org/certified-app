@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Pencil } from "lucide-react";
@@ -19,6 +20,13 @@ export default function HomeClient() {
   const { activeOrg } = useOrg();
   const { orgProfile, orgMetadata, orgAvatarUrl, orgBannerUrl } = useOrgProfile();
   const { handle } = useSession();
+
+  // Redirect to /welcome if not authenticated (handles expired sessions, sign-out)
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/welcome");
+    }
+  }, [isLoading, isAuthenticated, router]);
 
   const initials = getInitials(profile?.displayName, did);
 
@@ -165,8 +173,6 @@ export default function HomeClient() {
     );
   }
 
-  // Not authenticated — redirect to /welcome (middleware handles this for fresh visits,
-  // but this catches edge cases like expired sessions)
-  router.replace("/welcome");
+  // Not authenticated — useEffect above will redirect to /welcome
   return null;
 }
