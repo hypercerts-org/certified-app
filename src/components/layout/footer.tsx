@@ -2,14 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
 const Footer: React.FC = () => {
-  const pathname = usePathname();
-
-  // Hide footer on /welcome (landing page has its own inline footer)
-  if (pathname === "/welcome") return null;
-
   return (
     <footer className="landing-footer">
       <div className="landing-footer__bar">

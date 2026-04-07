@@ -26,8 +26,7 @@ export default function FeedbackModal() {
   const isDragging = useRef(false)
 
   const updateButtonPosition = useCallback(() => {
-    const footer = document.getElementById("landing-footer")
-      || document.querySelector(".landing-footer")
+    const footer = document.querySelector(".landing-footer")
     if (!footer) { setBottomOffset(20); return }
     const footerRect = footer.getBoundingClientRect()
     const viewportHeight = window.innerHeight
