@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Pencil } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -12,6 +13,7 @@ import { getInitials } from "@/lib/utils/initials";
 import Button from "@/components/ui/button";
 
 export default function HomeClient() {
+  const router = useRouter();
   const { isLoading, isAuthenticated, did } = useAuth();
   const { profile, avatarUrl, bannerUrl, isFallback } = useProfile();
   const { activeOrg } = useOrg();
@@ -163,6 +165,8 @@ export default function HomeClient() {
     );
   }
 
-  // Not authenticated — middleware should have redirected to /welcome
+  // Not authenticated — redirect to /welcome (middleware handles this for fresh visits,
+  // but this catches edge cases like expired sessions)
+  router.replace("/welcome");
   return null;
 }
