@@ -116,6 +116,9 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <script
+          dangerouslySetInnerHTML={{ __html: `if(document.cookie.includes('certified_session')){document.documentElement.classList.add('has-session')}` }}
+        />
+        <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
@@ -129,8 +132,9 @@ export default function RootLayout({
           <AuthProvider>
             <OrgProvider>
               <NavbarProvider>
+                <a href="#main-content" className="skip-nav">Skip to main content</a>
                 <Navbar />
-                <main className="flex-1">
+                <main id="main-content" className="flex-1">
                   <AppShell>{children}</AppShell>
                 </main>
                 <Footer />

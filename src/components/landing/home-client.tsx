@@ -30,17 +30,10 @@ export default function HomeClient() {
     };
   }, [isAuthenticated, isLoading, setVariant]);
 
-  // Hide or show the server-rendered landing page based on auth state
+  // Show/hide the server-rendered landing page via CSS class (set by inline script in <head>)
   useEffect(() => {
-    const landingSsr = document.querySelector(".landing-ssr") as HTMLElement | null;
-    if (!landingSsr) return;
-
-    if (isLoading) {
-      landingSsr.style.display = "none";
-    } else if (isAuthenticated) {
-      landingSsr.style.display = "none";
-    } else {
-      landingSsr.style.display = "";
+    if (!isLoading && !isAuthenticated) {
+      document.documentElement.classList.remove("has-session");
     }
   }, [isLoading, isAuthenticated]);
 

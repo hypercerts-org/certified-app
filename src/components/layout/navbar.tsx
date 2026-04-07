@@ -202,6 +202,8 @@ const Navbar: React.FC = () => {
                   className="account-switcher__trigger"
                   onClick={() => setSwitcherOpen(!switcherOpen)}
                   aria-label="Switch account"
+                  aria-haspopup="menu"
+                  aria-expanded={switcherOpen}
                 >
                   <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
                   <ChevronDown size={14} />
@@ -368,6 +370,8 @@ const Navbar: React.FC = () => {
                 className="navbar__hamburger"
                 onClick={() => { setDropdownOpen(!dropdownOpen); setSwitcherOpen(false); }}
                 aria-label={dropdownOpen ? "Close menu" : "Open menu"}
+                aria-haspopup="menu"
+                aria-expanded={dropdownOpen}
               >
                 {dropdownOpen ? <X size={22} /> : <Menu size={22} />}
               </button>

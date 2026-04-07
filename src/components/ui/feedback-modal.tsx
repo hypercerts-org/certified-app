@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { MessageSquare, X, Maximize2, Minimize2 } from "lucide-react"
+import { useFocusTrap } from "@/hooks/use-focus-trap"
 
 export default function FeedbackModal() {
   const [isOpen, setIsOpen] = useState(false)
@@ -15,6 +16,7 @@ export default function FeedbackModal() {
   const [error, setError] = useState("")
   const [bottomOffset, setBottomOffset] = useState(20)
   const backdropRef = useRef<HTMLDivElement>(null)
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Bottom sheet drag state (mobile)
@@ -273,6 +275,7 @@ export default function FeedbackModal() {
           >
             <div
               className={`feedback-modal ${expanded ? "feedback-modal--expanded" : ""}`}
+              ref={focusTrapRef}
               role="dialog"
               aria-modal="true"
               aria-label="Share feedback"

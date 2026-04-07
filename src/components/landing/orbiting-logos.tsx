@@ -149,8 +149,25 @@ function OrbitingLogosInner({
     const rect = container.getBoundingClientRect();
     initOrbits(rect.width || window.innerWidth, rect.height || window.innerHeight);
 
+    // Pause animation when off-screen to save battery/CPU
+    let isVisible = true;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        isVisible = entry.isIntersecting;
+        if (isVisible && !rafRef.current) {
+          rafRef.current = requestAnimationFrame(animate);
+        }
+      },
+      { threshold: 0 }
+    );
+    observer.observe(container);
+
     // Animation loop
     function animate(timestamp: number) {
+      if (!isVisible) {
+        rafRef.current = null;
+        return;
+      }
       if (reducedMotionRef.current) {
         // No animation, just keep positions
         rafRef.current = requestAnimationFrame(animate);
@@ -270,6 +287,7 @@ function OrbitingLogosInner({
         rafRef.current = null;
       }
       resizeObserver.disconnect();
+      observer.disconnect();
       lastTimeRef.current = null;
 
       logoRefs.current.forEach((el, i) => {
