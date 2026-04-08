@@ -15,11 +15,6 @@ import type {
 } from "./types"
 import { ORG_MEMBERSHIP_COLLECTION } from "./constants"
 
-/** Derive a stable AT Protocol rkey from a group DID.
- *  Note: this mapping is lossy but collision-free in practice since all
- *  DIDs start with "did:" and use restricted character sets. */
-const toRkey = (did: string) => did.replace(/[^a-zA-Z0-9]/g, "-")
-
 // ─── Membership records (stored in user's own PDS) ───────────────────
 
 /**
@@ -49,14 +44,18 @@ export async function listMemberships(
 
 /**
  * Create a membership record in the user's PDS.
+ * Uses createRecord so the PDS assigns a TID-based rkey.
+ * If a membership for this groupDid already exists, this is a no-op.
  */
 export async function putMembership(
   did: string,
   groupDid: string,
   role: OrgRole
 ): Promise<void> {
-  // Use a stable rkey derived from the group DID
-  const rkey = toRkey(groupDid)
+  // Check if membership already exists to avoid duplicates
+  const existing = await listMemberships(did)
+  if (existing.some((m) => m.groupDid === groupDid)) return
+
   const record: MembershipRecord = {
     $type: "app.certified.actor.membership",
     groupDid,
@@ -69,7 +68,6 @@ export async function putMembership(
     body: JSON.stringify({
       repo: did,
       collection: ORG_MEMBERSHIP_COLLECTION,
-      rkey,
       record,
     }),
   })
@@ -80,19 +78,24 @@ export async function putMembership(
 
 /**
  * Delete a membership record from the user's PDS.
+ * Finds the record by groupDid, then deletes by its TID rkey.
  */
 export async function deleteMembership(
   did: string,
   groupDid: string
 ): Promise<void> {
-  const rkey = toRkey(groupDid)
+  // Find the membership record to get its rkey
+  const memberships = await listMemberships(did)
+  const membership = memberships.find((m) => m.groupDid === groupDid)
+  if (!membership?.rkey) return // Nothing to delete
+
   const res = await authFetch("/api/xrpc/com/atproto/repo/deleteRecord", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       repo: did,
       collection: ORG_MEMBERSHIP_COLLECTION,
-      rkey,
+      rkey: membership.rkey,
     }),
   })
   if (!res.ok) {
@@ -452,6 +455,8 @@ export async function resolveGroups(
       } catch {
         // ignore — profile or handle may not resolve
       }
+      // Get rkey from the local membership record (if accepted)
+      const localRecord = localMemberships.find((m) => m.groupDid === rm.groupDid)
       return {
         groupDid: rm.groupDid,
         handle,
@@ -459,7 +464,7 @@ export async function resolveGroups(
         role: rm.role,
         accepted: acceptedSet.has(rm.groupDid),
         avatarUrl,
-        rkey: toRkey(rm.groupDid),
+        rkey: localRecord?.rkey,
       } satisfies Group
     })
   )

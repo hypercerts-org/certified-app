@@ -53,6 +53,8 @@ export interface MembershipRecord {
   groupDid: string
   role: OrgRole
   joinedAt: string
+  /** The record key (TID), extracted from the AT URI after listing. */
+  rkey?: string
 }
 
 export interface AuditEntry {
