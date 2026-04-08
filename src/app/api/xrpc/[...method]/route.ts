@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Agent } from "@atproto/api"
 import type {
+  ComAtprotoRepoCreateRecord,
   ComAtprotoRepoPutRecord,
   ComAtprotoRepoDeleteRecord,
   ComAtprotoIdentityUpdateHandle,
@@ -165,7 +166,7 @@ export async function POST(
     }
 
     // Validate repo on write methods — reject cross-repo writes
-    const REPO_METHODS = ["com.atproto.repo.putRecord", "com.atproto.repo.deleteRecord"]
+    const REPO_METHODS = ["com.atproto.repo.createRecord", "com.atproto.repo.putRecord", "com.atproto.repo.deleteRecord"]
     if (body && REPO_METHODS.includes(methodName)) {
       if (body.repo && body.repo !== did) {
         return NextResponse.json(
@@ -186,6 +187,12 @@ export async function POST(
     }
 
     switch (methodName) {
+      case "com.atproto.repo.createRecord": {
+        const result = await agent.com.atproto.repo.createRecord(
+          body as ComAtprotoRepoCreateRecord.InputSchema
+        )
+        return NextResponse.json(result.data)
+      }
       case "com.atproto.repo.putRecord": {
         const result = await agent.com.atproto.repo.putRecord(
           body as ComAtprotoRepoPutRecord.InputSchema

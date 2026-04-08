@@ -15,21 +15,6 @@ import type {
 } from "./types"
 import { ORG_MEMBERSHIP_COLLECTION } from "./constants"
 
-/** Generate an AT Protocol TID (timestamp-based identifier) for use as an rkey. */
-function generateTid(): string {
-  const now = BigInt(Date.now()) * BigInt(1000) // microseconds
-  const clockId = BigInt(Math.floor(Math.random() * 1024)) // 10-bit random
-  const tid = (now << BigInt(10)) | clockId
-  const chars = "234567abcdefghijklmnopqrstuvwxyz"
-  let s = ""
-  let v = tid
-  for (let i = 0; i < 13; i++) {
-    s = chars[Number(v & BigInt(31))] + s
-    v >>= BigInt(5)
-  }
-  return s
-}
-
 // ─── Membership records (stored in user's own PDS) ───────────────────
 
 /**
@@ -77,13 +62,12 @@ export async function putMembership(
     role,
     joinedAt: new Date().toISOString(),
   }
-  const res = await authFetch("/api/xrpc/com/atproto/repo/putRecord", {
+  const res = await authFetch("/api/xrpc/com/atproto/repo/createRecord", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       repo: did,
       collection: ORG_MEMBERSHIP_COLLECTION,
-      rkey: generateTid(),
       record,
     }),
   })
