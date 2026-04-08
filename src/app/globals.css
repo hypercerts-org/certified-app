@@ -4631,11 +4631,20 @@ h1, h2, h3, h4, h5, h6 {
 .account-switcher__user-row {
   display: flex;
   align-items: center;
+  overflow: hidden;
 }
 
 .account-switcher__user-row .account-switcher__item {
   flex: 1;
   min-width: 0;
+  width: auto;
+}
+
+.account-switcher__user-row .account-switcher__item-name,
+.account-switcher__user-row .account-switcher__item-handle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .account-switcher__signout {
@@ -4716,6 +4725,7 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .bottom-sheet__content {
+    overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     padding-bottom: env(safe-area-inset-bottom, 16px);
