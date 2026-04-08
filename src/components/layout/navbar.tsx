@@ -214,6 +214,7 @@ const Navbar: React.FC = () => {
                     <p className="account-switcher__section-label">User</p>
                     <div className="account-switcher__user-row">
                       <button
+                        role="menuitem"
                         className={`account-switcher__item ${!activeOrg ? "account-switcher__item--active" : ""}`}
                         onClick={() => { switchOrg(null); setSwitcherOpen(false); router.push("/"); }}
                       >
@@ -231,6 +232,7 @@ const Navbar: React.FC = () => {
                         </div>
                       </button>
                       <button
+                        role="menuitem"
                         className="account-switcher__signout"
                         onClick={(e) => { e.stopPropagation(); signOut(); }}
                         aria-label="Sign out"
@@ -245,6 +247,7 @@ const Navbar: React.FC = () => {
                         <p className="account-switcher__section-label">Groups</p>
                         {sortedOrgs.map((org) => (
                           <button
+                            role="menuitem"
                             key={org.groupDid}
                             className={`account-switcher__item ${activeOrg?.groupDid === org.groupDid ? "account-switcher__item--active" : ""}`}
                             onClick={() => {
@@ -301,6 +304,7 @@ const Navbar: React.FC = () => {
                       <p className="account-switcher__section-label">User</p>
                       <div className="account-switcher__user-row">
                         <button
+                          role="menuitem"
                           className={`account-switcher__item ${!activeOrg ? "account-switcher__item--active" : ""}`}
                           onClick={() => { switchOrg(null); setSwitcherOpen(false); router.push("/"); }}
                         >
@@ -318,6 +322,7 @@ const Navbar: React.FC = () => {
                           </div>
                         </button>
                         <button
+                          role="menuitem"
                           className="account-switcher__signout"
                           onClick={(e) => { e.stopPropagation(); signOut(); }}
                           aria-label="Sign out"
@@ -332,6 +337,7 @@ const Navbar: React.FC = () => {
                           <p className="account-switcher__section-label">Groups</p>
                           {sortedOrgs.map((org) => (
                             <button
+                              role="menuitem"
                               key={org.groupDid}
                               className={`account-switcher__item ${activeOrg?.groupDid === org.groupDid ? "account-switcher__item--active" : ""}`}
                               onClick={() => {

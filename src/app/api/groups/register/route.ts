@@ -124,6 +124,13 @@ export async function POST(request: NextRequest) {
     )
 
     if (!res.ok) {
+      // Sanitize upstream 5xx — don't leak internal error details
+      if (res.status >= 500) {
+        return NextResponse.json(
+          { error: "Registration failed" },
+          { status: 502 }
+        )
+      }
       return NextResponse.json(
         { error: await extractError(res, `Registration failed: ${res.status}`) },
         { status: res.status }

@@ -57,7 +57,7 @@ export async function resolveHandle(did: string): Promise<string | null> {
     const doc = await fetchDidDocument(did);
     if (!doc || !Array.isArray(doc.alsoKnownAs)) return null;
 
-    const atUri = doc.alsoKnownAs.find((aka) => aka.startsWith("at://"));
+    const atUri = doc.alsoKnownAs.find((aka) => typeof aka === "string" && aka.startsWith("at://"));
     if (!atUri) return null;
 
     return atUri.replace("at://", "");
@@ -83,7 +83,7 @@ export async function resolvePdsUrl(did: string): Promise<string | null> {
     if (!doc || !Array.isArray(doc.service)) return null;
 
     const pdsService = doc.service.find((s) =>
-      s.id === "#atproto_pds" || s.id.endsWith("#atproto_pds")
+      typeof s.id === "string" && (s.id === "#atproto_pds" || s.id.endsWith("#atproto_pds"))
     );
 
     if (!pdsService) return null;

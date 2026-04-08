@@ -1,10 +1,7 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata: Metadata = {
-  title: "Page Not Found",
-  robots: { index: false, follow: false },
-};
+// Note: Next.js does not support metadata exports in not-found.tsx.
+// 404 pages are not indexed by search engines by default.
 
 export default function NotFoundPage() {
   return (

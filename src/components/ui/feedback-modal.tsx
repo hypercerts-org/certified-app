@@ -23,19 +23,16 @@ export default function FeedbackModal() {
     window.addEventListener("resize", update)
     return () => window.removeEventListener("resize", update)
   }, [])
-  const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen && !isMobile)
-  const mobileFocusTrapRef = useFocusTrap<HTMLDivElement>(isOpen && isMobile)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  // Sync mobile focus trap ref with sheet ref so both point to the same element
-  useEffect(() => {
-    if (isMobile && sheetRef.current) {
-      (mobileFocusTrapRef as React.MutableRefObject<HTMLDivElement | null>).current = sheetRef.current;
-    }
-  }, [isMobile, isOpen, mobileFocusTrapRef])
-
-  // Bottom sheet drag state (mobile)
+  // Bottom sheet drag state (mobile) — declared before focus trap so sheetRef is available
   const sheetRef = useRef<HTMLDivElement>(null)
+
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen && !isMobile)
+  // Wire mobile focus trap directly to sheetRef (avoids useEffect timing issue)
+  const mobileFocusTrapRef = useFocusTrap<HTMLDivElement>(isOpen && isMobile)
+  if (isMobile && sheetRef.current) {
+    (mobileFocusTrapRef as React.MutableRefObject<HTMLDivElement | null>).current = sheetRef.current
+  }
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [sheetExpanded, setSheetExpanded] = useState(false)
   const dragStartY = useRef(0)
   const isDragging = useRef(false)
@@ -316,7 +313,7 @@ export default function FeedbackModal() {
                 </button>
               </div>
               <div className="feedback-modal__body">
-                {formContent}
+                {!isMobile && formContent}
               </div>
             </div>
           </div>
@@ -340,7 +337,7 @@ export default function FeedbackModal() {
                 />
                 <div className="bottom-sheet__content">
                   <div className="feedback-modal__body">
-                    {formContent}
+                    {isMobile && formContent}
                   </div>
                 </div>
               </div>
