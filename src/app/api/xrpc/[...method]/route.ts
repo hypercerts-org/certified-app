@@ -1,9 +1,17 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server"
 import { Agent } from "@atproto/api"
+import type {
+  ComAtprotoRepoPutRecord,
+  ComAtprotoRepoDeleteRecord,
+  ComAtprotoIdentityUpdateHandle,
+  ComAtprotoServerRequestPasswordReset,
+  ComAtprotoServerResetPassword,
+  ComAtprotoServerUpdateEmail,
+} from "@atproto/api"
 import { getOAuthClient } from "@/lib/auth/oauth-client"
 import { getSessionDid, deleteSession } from "@/lib/auth/session"
 import { checkCsrf } from "@/lib/auth/csrf"
+import { LIMIT_MIN, LIMIT_MAX } from "@/lib/utils/constants"
 
 const ALLOWED_WRITE_COLLECTIONS = [
   "org.impactindexer.link.attestation",
@@ -21,6 +29,25 @@ const ALLOWED_BLOB_CONTENT_TYPES = [
 ]
 
 const MAX_BLOB_SIZE = 4 * 1024 * 1024 // 4MB — Vercel serverless functions have a ~4.5MB request body limit
+
+/** Extract a usable HTTP status + message from an unknown XRPC error. */
+function xrpcError(err: unknown): { status: number; message: string } {
+  const error = err as { status?: number; statusCode?: number; message?: string }
+  const status = error?.status ?? error?.statusCode ?? 500
+  const message =
+    status >= 500
+      ? "Internal server error"
+      : (error?.message ?? "Internal server error")
+  return { status, message }
+}
+
+/** Clamp and validate a limit query param. */
+function parseLimit(raw: string | undefined): number | undefined {
+  if (!raw) return undefined
+  const n = parseInt(raw, 10)
+  if (isNaN(n)) return undefined
+  return Math.min(Math.max(LIMIT_MIN, n), LIMIT_MAX)
+}
 
 export async function GET(
   request: NextRequest,
@@ -44,22 +71,36 @@ export async function GET(
     }
     const agent = new Agent(oauthSession)
 
-    const queryParams = Object.fromEntries(
+    // Query params come as Record<string, string> from URLSearchParams.
+    // AT Protocol SDK expects specific typed params — we validate the required
+    // fields per-method below and cast through unknown for the proxy pattern.
+    const queryParams: Record<string, string> = Object.fromEntries(
       request.nextUrl.searchParams.entries()
     )
 
     switch (methodName) {
       case "com.atproto.repo.getRecord": {
-        const result = await agent.com.atproto.repo.getRecord(
-          queryParams as any
-        )
+        const { repo, collection, rkey, cid } = queryParams
+        if (!repo || !collection || !rkey) {
+          return NextResponse.json({ error: "repo, collection, and rkey are required" }, { status: 400 })
+        }
+        const result = await agent.com.atproto.repo.getRecord({ repo, collection, rkey, cid })
         return NextResponse.json(result.data)
       }
       case "com.atproto.repo.listRecords": {
+        const { repo, collection, cursor, reverse, rkeyEnd, rkeyStart } = queryParams
+        if (!repo || !collection) {
+          return NextResponse.json({ error: "repo and collection are required" }, { status: 400 })
+        }
         const result = await agent.com.atproto.repo.listRecords({
-          ...queryParams,
-          limit: queryParams.limit ? Number(queryParams.limit) : undefined,
-        } as any)
+          repo,
+          collection,
+          limit: parseLimit(queryParams.limit),
+          cursor,
+          reverse: reverse === "true" ? true : undefined,
+          rkeyEnd,
+          rkeyStart,
+        })
         return NextResponse.json(result.data)
       }
       case "com.atproto.server.getSession": {
@@ -67,10 +108,13 @@ export async function GET(
         return NextResponse.json(result.data)
       }
       case "com.atproto.sync.getBlob": {
-        const result = await agent.com.atproto.sync.getBlob(
-          queryParams as any
-        )
-        return new NextResponse(result.data as any, {
+        const { did: blobDid, cid } = queryParams
+        if (!blobDid || !cid) {
+          return NextResponse.json({ error: "did and cid are required" }, { status: 400 })
+        }
+        const result = await agent.com.atproto.sync.getBlob({ did: blobDid, cid })
+        const blob = result.data as Uint8Array
+        return new NextResponse(Buffer.from(blob), {
           headers: {
             "Content-Type":
               result.headers["content-type"] || "application/octet-stream",
@@ -84,12 +128,7 @@ export async function GET(
         )
     }
   } catch (err: unknown) {
-    const error = err as { status?: number; statusCode?: number; message?: string }
-    const status = error?.status ?? error?.statusCode ?? 500
-    const message =
-      status >= 500
-        ? "Internal server error"
-        : (error?.message ?? "Internal server error")
+    const { status, message } = xrpcError(err)
     return NextResponse.json({ error: message }, { status })
   }
 }
@@ -148,11 +187,15 @@ export async function POST(
 
     switch (methodName) {
       case "com.atproto.repo.putRecord": {
-        const result = await agent.com.atproto.repo.putRecord(body as any)
+        const result = await agent.com.atproto.repo.putRecord(
+          body as ComAtprotoRepoPutRecord.InputSchema
+        )
         return NextResponse.json(result.data)
       }
       case "com.atproto.repo.deleteRecord": {
-        const result = await agent.com.atproto.repo.deleteRecord(body as any)
+        const result = await agent.com.atproto.repo.deleteRecord(
+          body as ComAtprotoRepoDeleteRecord.InputSchema
+        )
         return NextResponse.json(result.data)
       }
       case "com.atproto.repo.uploadBlob": {
@@ -188,15 +231,22 @@ export async function POST(
         return NextResponse.json(result.data)
       }
       case "com.atproto.identity.updateHandle": {
-        await agent.com.atproto.identity.updateHandle(body as any)
+        await agent.com.atproto.identity.updateHandle(
+          body as ComAtprotoIdentityUpdateHandle.InputSchema
+        )
+        // Void operation — no data to return
         return NextResponse.json({})
       }
       case "com.atproto.server.requestPasswordReset": {
-        await agent.com.atproto.server.requestPasswordReset(body as any)
+        await agent.com.atproto.server.requestPasswordReset(
+          body as ComAtprotoServerRequestPasswordReset.InputSchema
+        )
         return NextResponse.json({})
       }
       case "com.atproto.server.resetPassword": {
-        await agent.com.atproto.server.resetPassword(body as any)
+        await agent.com.atproto.server.resetPassword(
+          body as ComAtprotoServerResetPassword.InputSchema
+        )
         return NextResponse.json({})
       }
       case "com.atproto.server.requestEmailUpdate": {
@@ -204,7 +254,9 @@ export async function POST(
         return NextResponse.json(result.data)
       }
       case "com.atproto.server.updateEmail": {
-        await agent.com.atproto.server.updateEmail(body as any)
+        await agent.com.atproto.server.updateEmail(
+          body as ComAtprotoServerUpdateEmail.InputSchema
+        )
         return NextResponse.json({})
       }
       default:
@@ -214,12 +266,7 @@ export async function POST(
         )
     }
   } catch (err: unknown) {
-    const error = err as { status?: number; statusCode?: number; message?: string }
-    const status = error?.status ?? error?.statusCode ?? 500
-    const message =
-      status >= 500
-        ? "Internal server error"
-        : (error?.message ?? "Internal server error")
+    const { status, message } = xrpcError(err)
     return NextResponse.json({ error: message }, { status })
   }
 }

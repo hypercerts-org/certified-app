@@ -80,7 +80,11 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
       <div
         className="profile-card__banner relative cursor-pointer"
         style={{ marginBottom: 0 }}
+        role="button"
+        tabIndex={0}
+        aria-label="Upload banner"
         onClick={handleClick}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClick(); } }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >

@@ -4,8 +4,10 @@ import {
   HypercertsUri,
   HypercertsSmallImage,
   HypercertsLargeImage,
+  getBlobRefLink,
 } from "./types";
 import { authFetch } from "@/lib/auth/fetch";
+import { extractError } from "@/lib/utils/api";
 
 const COLLECTION = "app.certified.actor.profile";
 const BSKY_COLLECTION = "app.bsky.actor.profile";
@@ -118,8 +120,7 @@ export async function putProfile(
     }),
   });
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error((data as { error?: string }).error || res.statusText);
+    throw new Error(await extractError(res, res.statusText));
   }
 }
 
@@ -146,8 +147,7 @@ export async function uploadBlob(
   });
 
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error((data as { error?: string }).error || res.statusText);
+    throw new Error(await extractError(res, res.statusText));
   }
 
   const data = await res.json();
@@ -213,7 +213,7 @@ export function getAvatarUrl(
     "org.hypercerts.defs#smallImage"
   ) {
     const image = (profile.avatar as HypercertsSmallImage).image;
-    return `${pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${did}&cid=${(image.ref as unknown as { $link: string })["$link"]}`;
+    return `${pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${did}&cid=${getBlobRefLink(image.ref)}`;
   }
 
   return null;
@@ -246,7 +246,7 @@ export function getBannerUrl(
     "org.hypercerts.defs#largeImage"
   ) {
     const image = (profile.banner as HypercertsLargeImage).image;
-    return `${pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${did}&cid=${(image.ref as unknown as { $link: string })["$link"]}`;
+    return `${pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${did}&cid=${getBlobRefLink(image.ref)}`;
   }
 
   return null;

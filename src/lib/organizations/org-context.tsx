@@ -109,7 +109,8 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
         }
       }
     },
-    [authLoading, isAuthenticated, did]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- authLoading is only used as a guard, not a trigger
+    [isAuthenticated, did]
   )
 
   useEffect(() => {

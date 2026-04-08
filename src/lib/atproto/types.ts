@@ -1,5 +1,17 @@
 import { BlobRef } from "@atproto/api";
 
+/**
+ * Extract the CID $link from a BlobRef, handling both typed and JSON-deserialized forms.
+ * When a BlobRef comes from the AT Protocol SDK it has a typed `ref` property,
+ * but when deserialized from JSON the `ref` becomes a plain `{ $link: string }` object.
+ */
+export function getBlobRefLink(ref: BlobRef["ref"]): string {
+  if (typeof ref === "object" && ref !== null && "$link" in (ref as Record<string, unknown>)) {
+    return (ref as unknown as { $link: string }).$link;
+  }
+  return String(ref);
+}
+
 /** Matches org.hypercerts.defs#uri */
 export interface HypercertsUri {
   $type: "org.hypercerts.defs#uri";

@@ -10,6 +10,8 @@ export function middleware(request: NextRequest) {
   return NextResponse.next()
 }
 
+// Only the root route needs middleware-based redirect to /welcome.
+// Other authenticated pages handle auth checks client-side via AuthProvider + AuthGuard.
 export const config = {
   matcher: ["/"],
 }

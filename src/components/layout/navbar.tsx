@@ -69,6 +69,12 @@ const Navbar: React.FC = () => {
     setSwitcherOpen(false);
   }, [pathname]);
 
+  // Bottom sheet drag handle + expand/collapse/dismiss
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const [sheetExpanded, setSheetExpanded] = useState(false);
+  const dragStartY = useRef(0);
+  const isDragging = useRef(false);
+
   // Close account switcher on outside click
   useEffect(() => {
     if (!switcherOpen) return;
@@ -93,12 +99,6 @@ const Navbar: React.FC = () => {
       return () => { document.body.style.overflow = ""; };
     }
   }, [switcherOpen]);
-
-  // Bottom sheet drag handle + expand/collapse/dismiss
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const [sheetExpanded, setSheetExpanded] = useState(false);
-  const dragStartY = useRef(0);
-  const isDragging = useRef(false);
 
   // Reset expanded state when sheet closes
   useEffect(() => {

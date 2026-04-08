@@ -47,21 +47,19 @@ export default function OrganizationsPage() {
 
   const checkCanLeave = useCallback(async () => {
     if (!organizations.length || !did) return
-    const map: Record<string, boolean> = {}
-    for (const org of organizations) {
-      if (org.role !== "owner") {
-        map[org.groupDid] = true
-        continue
-      }
-      try {
-        const members = await listOrgMembers(org.groupDid)
-        const ownerCount = members.filter((m) => m.role === "owner").length
-        map[org.groupDid] = ownerCount > 1
-      } catch {
-        map[org.groupDid] = false
-      }
-    }
-    setCanLeaveMap(map)
+    const entries = await Promise.all(
+      organizations.map(async (org) => {
+        if (org.role !== "owner") return [org.groupDid, true] as const
+        try {
+          const members = await listOrgMembers(org.groupDid)
+          const ownerCount = members.filter((m) => m.role === "owner").length
+          return [org.groupDid, ownerCount > 1] as const
+        } catch {
+          return [org.groupDid, false] as const
+        }
+      })
+    )
+    setCanLeaveMap(Object.fromEntries(entries))
   }, [organizations, did])
 
   useEffect(() => {
@@ -125,8 +123,8 @@ export default function OrganizationsPage() {
     try {
       await deleteMembership(did, groupDid)
       await refetchOrgs()
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error("Failed to remove public membership:", err)
     } finally {
       setRemovingPublic(null)
     }
@@ -142,8 +140,8 @@ export default function OrganizationsPage() {
       await deleteMembership(did, leaveOrg.groupDid).catch(() => {})
       await refetchOrgs()
       setLeaveOrg(null)
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error("Failed to leave organization:", err)
     } finally {
       setIsLeaving(false)
     }
@@ -155,8 +153,8 @@ export default function OrganizationsPage() {
     try {
       await putMembership(did, groupDid, role)
       await refetchOrgs()
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error("Failed to accept membership:", err)
     } finally {
       setAcceptingOrg(null)
     }
@@ -224,11 +222,11 @@ export default function OrganizationsPage() {
       </div>
 
       {leaveOrg && (
-        <div className="signin-modal__backdrop" onClick={() => setLeaveOrg(null)}>
-          <div className="signin-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+        <div className="signin-modal__backdrop" role="presentation" onClick={() => setLeaveOrg(null)}>
+          <div className="signin-modal" role="dialog" aria-modal="true" aria-label="Leave Group" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
             <div className="signin-modal__header">
               <span className="signin-modal__title">Leave Group</span>
-              <button className="signin-modal__close" onClick={() => setLeaveOrg(null)}>
+              <button className="signin-modal__close" onClick={() => setLeaveOrg(null)} aria-label="Close">
                 <LogOut size={18} />
               </button>
             </div>

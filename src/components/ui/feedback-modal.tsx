@@ -18,8 +18,11 @@ export default function FeedbackModal() {
   const backdropRef = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(false)
   useEffect(() => {
-    setIsMobile(window.innerWidth <= 768)
-  }, [isOpen])
+    const update = () => setIsMobile(window.innerWidth <= 768)
+    update()
+    window.addEventListener("resize", update)
+    return () => window.removeEventListener("resize", update)
+  }, [])
   const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen && !isMobile)
   const mobileFocusTrapRef = useFocusTrap<HTMLDivElement>(isOpen && isMobile)
   const textareaRef = useRef<HTMLTextAreaElement>(null)

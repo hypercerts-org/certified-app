@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getAuthenticatedAgent, getServiceAuthToken, createGroupAgent } from "@/lib/organizations/proxy-agent"
 import { GROUP_SERVICE, GROUP_SERVICE_DID, MAX_SELF_CREATED_ORGS } from "@/lib/organizations/constants"
 import { checkCsrf } from "@/lib/auth/csrf"
+import { extractError } from "@/lib/utils/api"
 
 export async function POST(request: NextRequest) {
   const csrfError = checkCsrf(request)
@@ -95,8 +96,12 @@ export async function POST(request: NextRequest) {
           { status: 403 }
         )
       }
-    } catch {
-      // If limit check fails, allow creation (fail open)
+    } catch (err) {
+      console.error("Org creation limit check failed:", err)
+      return NextResponse.json(
+        { error: "Unable to verify organization creation limit. Please try again." },
+        { status: 503 }
+      )
     }
 
     // Get service auth JWT for group registration
@@ -119,9 +124,8 @@ export async function POST(request: NextRequest) {
     )
 
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
       return NextResponse.json(
-        { error: (data as { message?: string }).message || `Registration failed: ${res.status}` },
+        { error: await extractError(res, `Registration failed: ${res.status}`) },
         { status: res.status }
       )
     }

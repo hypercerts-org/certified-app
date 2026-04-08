@@ -69,10 +69,8 @@ export async function PUT(
     const body = await request.json()
     const groupAgent = createGroupAgent(auth.agent, groupDid)
 
-    console.log("PUT org profile: writing to", groupDid, "body:", JSON.stringify(body).slice(0, 200))
-
     // Use custom NSID for writes — PDS proxies to group service
-    const writeResult = await groupAgent.call(
+    await groupAgent.call(
       "app.certified.group.repo.putRecord",
       {},
       {
@@ -87,7 +85,6 @@ export async function PUT(
       { encoding: "application/json" }
     )
 
-    console.log("PUT org profile: success", JSON.stringify(writeResult.data).slice(0, 200))
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
     console.error("PUT org profile error:", err)

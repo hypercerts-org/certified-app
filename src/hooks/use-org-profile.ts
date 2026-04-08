@@ -53,7 +53,8 @@ export function useOrgProfile(): {
         if (!signal?.aborted) setIsLoading(false)
       }
     },
-    [activeOrg]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- depend on groupDid string, not object ref
+    [activeOrg?.groupDid]
   )
 
   useEffect(() => {

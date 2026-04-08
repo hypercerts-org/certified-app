@@ -1,6 +1,7 @@
 import { authFetch } from "@/lib/auth/fetch"
 import { resolveHandle, resolvePdsUrl } from "@/lib/atproto/did"
 import { getAvatarUrl } from "@/lib/atproto/profile"
+import { extractError } from "@/lib/utils/api"
 import type { CertifiedProfile } from "@/lib/atproto/types"
 import type {
   Organization,
@@ -12,7 +13,10 @@ import type {
   OrgRole,
   RemoteMembership,
 } from "./types"
-import { ORG_MEMBERSHIP_COLLECTION, MAX_SELF_CREATED_ORGS } from "./constants"
+import { ORG_MEMBERSHIP_COLLECTION } from "./constants"
+
+/** Derive a stable AT Protocol rkey from a group DID. */
+const toRkey = (did: string) => did.replace(/[^a-zA-Z0-9]/g, "-")
 
 // ─── Membership records (stored in user's own PDS) ───────────────────
 
@@ -50,7 +54,7 @@ export async function putMembership(
   role: OrgRole
 ): Promise<void> {
   // Use a stable rkey derived from the group DID
-  const rkey = groupDid.replace(/[^a-zA-Z0-9]/g, "-")
+  const rkey = toRkey(groupDid)
   const record: MembershipRecord = {
     $type: "app.certified.actor.membership",
     groupDid,
@@ -68,10 +72,7 @@ export async function putMembership(
     }),
   })
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error(
-      (data as { error?: string }).error || "Failed to save membership"
-    )
+    throw new Error(await extractError(res, "Failed to save membership"))
   }
 }
 
@@ -82,7 +83,7 @@ export async function deleteMembership(
   did: string,
   groupDid: string
 ): Promise<void> {
-  const rkey = groupDid.replace(/[^a-zA-Z0-9]/g, "-")
+  const rkey = toRkey(groupDid)
   const res = await authFetch("/api/xrpc/com/atproto/repo/deleteRecord", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -93,10 +94,7 @@ export async function deleteMembership(
     }),
   })
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error(
-      (data as { error?: string }).error || "Failed to delete membership"
-    )
+    throw new Error(await extractError(res, "Failed to delete membership"))
   }
 }
 
@@ -119,8 +117,7 @@ export async function uploadOrgBlob(
     }
   )
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error((data as { error?: string }).error || "Failed to upload image")
+    throw new Error(await extractError(res, "Failed to upload image"))
   }
   const data = await res.json()
   return data.blob as Record<string, unknown>
@@ -141,10 +138,7 @@ export async function createBskyProfile(
     }
   )
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error(
-      (data as { error?: string }).error || "Failed to create Bluesky profile"
-    )
+    throw new Error(await extractError(res, "Failed to create Bluesky profile"))
   }
 }
 
@@ -162,10 +156,7 @@ export async function registerOrganization(
     body: JSON.stringify({ handle, ownerDid, email }),
   })
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error(
-      (data as { error?: string }).error || "Failed to register organization"
-    )
+    throw new Error(await extractError(res, "Failed to register organization"))
   }
   return res.json()
 }
@@ -204,10 +195,7 @@ export async function putOrgProfile(
     }
   )
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error(
-      (data as { error?: string }).error || "Failed to update org profile"
-    )
+    throw new Error(await extractError(res, "Failed to update org profile"))
   }
 }
 
@@ -245,10 +233,7 @@ export async function putOrgMetadata(
     }
   )
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error(
-      (data as { error?: string }).error || "Failed to update org metadata"
-    )
+    throw new Error(await extractError(res, "Failed to update org metadata"))
   }
 }
 
@@ -285,10 +270,7 @@ export async function addOrgMember(
     }
   )
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error(
-      (data as { error?: string }).error || "Failed to add member"
-    )
+    throw new Error(await extractError(res, "Failed to add member"))
   }
   return res.json()
 }
@@ -309,10 +291,7 @@ export async function removeOrgMember(
     }
   )
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error(
-      (data as { error?: string }).error || "Failed to remove member"
-    )
+    throw new Error(await extractError(res, "Failed to remove member"))
   }
 }
 
@@ -333,10 +312,7 @@ export async function setOrgMemberRole(
     }
   )
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error(
-      (data as { error?: string }).error || "Failed to set role"
-    )
+    throw new Error(await extractError(res, "Failed to set role"))
   }
 }
 
@@ -481,7 +457,7 @@ export async function resolveOrganizations(
       role: rm.role,
       accepted: acceptedSet.has(rm.groupDid),
       avatarUrl,
-      rkey: rm.groupDid.replace(/[^a-zA-Z0-9]/g, "-"),
+      rkey: toRkey(rm.groupDid),
     })
   }
 

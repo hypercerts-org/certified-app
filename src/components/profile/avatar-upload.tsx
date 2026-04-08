@@ -82,7 +82,11 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
     <div className="flex flex-col items-center gap-2">
       <div
         className="relative cursor-pointer"
+        role="button"
+        tabIndex={0}
+        aria-label="Upload avatar"
         onClick={handleClick}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClick(); } }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >

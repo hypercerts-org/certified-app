@@ -32,14 +32,14 @@ export default function SignInModal({
       setView("certified")
       setInputValue("")
       setIsSubmitting(false)
-      setTimeout(() => inputRef.current?.focus(), 100)
+      requestAnimationFrame(() => inputRef.current?.focus())
     }
   }, [isOpen])
 
   // Focus input when switching views
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 50)
+      requestAnimationFrame(() => inputRef.current?.focus())
     }
   }, [view, isOpen])
 
@@ -105,7 +105,7 @@ export default function SignInModal({
     >
       <div className="signin-modal">
         <div className="signin-modal__header">
-          <img src="/assets/certified_brandmark_black.svg" alt="" className="signin-modal__logo" />
+          <img src="/assets/certified_brandmark_black.svg" alt="" aria-hidden="true" className="signin-modal__logo" />
           <span className="signin-modal__title">{title}</span>
           <button
             className="signin-modal__close"

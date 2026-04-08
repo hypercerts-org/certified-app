@@ -20,11 +20,12 @@ export async function GET(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
 
     const groupAgent = createGroupAgent(auth.agent, groupDid)
-    const limit = request.nextUrl.searchParams.get("limit") || "50"
+    const rawLimit = parseInt(request.nextUrl.searchParams.get("limit") || "50", 10)
+    const limit = isNaN(rawLimit) ? 50 : Math.min(Math.max(1, rawLimit), 100)
 
     const { data } = await groupAgent.call(
       "app.certified.group.member.list",
-      { limit: Number(limit) }
+      { limit }
     )
 
     return NextResponse.json(data)

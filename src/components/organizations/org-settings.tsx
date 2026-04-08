@@ -129,8 +129,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
       }
       setPendingMembers([])
       setNewMemberRole("member")
-      await fetchMembers()
-      await fetchAudit()
+      await Promise.all([fetchMembers(), fetchAudit()])
     } catch (err) {
       setAddError(err instanceof Error ? err.message : "Failed to add member")
     } finally {
@@ -146,8 +145,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
     if (!confirm("Remove this member?")) return
     try {
       await removeOrgMember(groupDid, memberDid)
-      await fetchMembers()
-      await fetchAudit()
+      await Promise.all([fetchMembers(), fetchAudit()])
     } catch (err) {
       setMemberError(
         err instanceof Error ? err.message : "Failed to remove member"
@@ -158,8 +156,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   const handleRoleChange = async (memberDid: string, role: OrgRole) => {
     try {
       await setOrgMemberRole(groupDid, memberDid, role)
-      await fetchMembers()
-      await fetchAudit()
+      await Promise.all([fetchMembers(), fetchAudit()])
     } catch (err) {
       setMemberError(
         err instanceof Error ? err.message : "Failed to change role"

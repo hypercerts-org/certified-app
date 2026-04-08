@@ -114,15 +114,18 @@ export default function AddOrgModal({ did, onClose, onAdded }: AddOrgModalProps)
   }
 
   return (
-    <div className="signin-modal__backdrop" onClick={onClose}>
+    <div className="signin-modal__backdrop" role="presentation" onClick={onClose}>
       <div
         className="signin-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Add Existing Organization"
         onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: 480 }}
       >
         <div className="signin-modal__header">
           <span className="signin-modal__title">Add Existing Organization</span>
-          <button className="signin-modal__close" onClick={onClose}>
+          <button className="signin-modal__close" onClick={onClose} aria-label="Close">
             <X size={18} />
           </button>
         </div>

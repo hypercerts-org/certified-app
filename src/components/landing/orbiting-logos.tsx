@@ -169,8 +169,8 @@ function OrbitingLogosInner({
         return;
       }
       if (reducedMotionRef.current) {
-        // No animation, just keep positions
-        rafRef.current = requestAnimationFrame(animate);
+        // No animation — stop the loop instead of re-scheduling frames
+        rafRef.current = null;
         return;
       }
 
@@ -297,7 +297,8 @@ function OrbitingLogosInner({
         if (pointerUpHandlers[i]) el.removeEventListener("pointerup", pointerUpHandlers[i]);
       });
     };
-  }, [logos]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refs are stable and don't need to be deps
+  }, [logos]);
 
   return (
     <div

@@ -34,7 +34,7 @@ export default function MembershipSyncModal({
       >
         <div className="signin-modal__header">
           <span className="signin-modal__title">Membership Changes Detected</span>
-          <button className="signin-modal__close" onClick={onClose}>
+          <button className="signin-modal__close" onClick={onClose} aria-label="Close">
             <X size={18} />
           </button>
         </div>

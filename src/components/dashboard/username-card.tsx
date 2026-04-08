@@ -189,9 +189,10 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
           {/* Inline edit for certified handle */}
           {isEditing && (
             <div className="username-card__form">
-              <label className="username-card__form-label">{groupDid ? "Handle" : "Username"}</label>
+              <label className="username-card__form-label" htmlFor="username-input">{groupDid ? "Handle" : "Username"}</label>
               <div className="username-card__subdomain-row">
                 <input
+                  id="username-input"
                   type="text"
                   className="username-card__subdomain-input"
                   value={newHandle}
@@ -219,9 +220,10 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
           {/* Subdomain picker for switching back to certified */}
           {isChoosingCertified && (
             <div className="username-card__form">
-              <label className="username-card__form-label">Choose a Certified username</label>
+              <label className="username-card__form-label" htmlFor="certified-username-input">Choose a Certified username</label>
               <div className="username-card__subdomain-row">
                 <input
+                  id="certified-username-input"
                   type="text"
                   className="username-card__subdomain-input"
                   value={subdomainValue}

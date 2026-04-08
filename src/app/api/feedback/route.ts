@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { checkCsrf } from "@/lib/auth/csrf";
+import { stripInvisible } from "@/lib/utils/sanitize";
 
 if (!process.env.RESEND_API_KEY) {
   console.warn("RESEND_API_KEY is not set — feedback emails will fail");
@@ -16,8 +17,6 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const stripInvisible = (s: string) =>
-      s.replace(/[\u200B-\u200F\u2028-\u202F\u2060-\u206F\uFEFF\u00AD\u034F\u061C\u180E]/g, "").trim();
     const message = typeof body?.message === "string" ? stripInvisible(body.message) : "";
     const email = typeof body?.email === "string" ? stripInvisible(body.email) : "";
 

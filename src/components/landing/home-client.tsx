@@ -26,7 +26,8 @@ export default function HomeClient() {
     if (!isLoading && !isAuthenticated) {
       router.replace("/welcome");
     }
-  }, [isLoading, isAuthenticated, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- router is stable, omitting to prevent re-renders
+  }, [isLoading, isAuthenticated]);
 
   const initials = getInitials(profile?.displayName, did);
 
@@ -37,6 +38,7 @@ export default function HomeClient() {
           <img
             src="/assets/certified_brandmark_black.svg"
             alt=""
+            aria-hidden="true"
             className="loading-screen__logo"
           />
         </div>

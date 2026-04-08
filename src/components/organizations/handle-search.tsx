@@ -172,6 +172,7 @@ export default function HandleSearch({
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
+          aria-label={label || "Search for user"}
         />
         {isSearching && (
           <span className="handle-search__spinner" />

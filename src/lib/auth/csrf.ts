@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-
-const PUBLIC_URL = process.env.PUBLIC_URL || "http://localhost:3000"
+import { PUBLIC_URL } from "@/lib/utils/config"
 
 /**
  * Validates the Origin header on POST requests to prevent CSRF.
