@@ -425,41 +425,42 @@ export async function resolveOrganizations(
   // Build set of locally-accepted groupDids
   const acceptedSet = new Set(localMemberships.map((m) => m.groupDid))
 
-  // Resolve each remote membership into a full Organization
-  const orgs: Organization[] = []
-  for (const rm of remoteMemberships) {
-    let displayName: string | undefined
-    let handle = rm.groupDid
-    let avatarUrl: string | undefined
-    try {
-      const [profile, resolvedHandle, pdsUrl] = await Promise.all([
-        getOrgProfile(rm.groupDid, signal).catch(() => null),
-        resolveHandle(rm.groupDid).catch(() => null),
-        resolvePdsUrl(rm.groupDid).catch(() => null),
-      ])
-      if (profile?.displayName) displayName = profile.displayName
-      if (resolvedHandle) handle = resolvedHandle
-      if (profile && pdsUrl) {
-        const url = getAvatarUrl(
-          profile as CertifiedProfile,
-          rm.groupDid,
-          pdsUrl
-        )
-        if (url) avatarUrl = url
+  // Resolve all remote memberships in parallel (profile, handle, PDS per org)
+  const orgs = await Promise.all(
+    remoteMemberships.map(async (rm) => {
+      let displayName: string | undefined
+      let handle = rm.groupDid
+      let avatarUrl: string | undefined
+      try {
+        const [profile, resolvedHandle, pdsUrl] = await Promise.all([
+          getOrgProfile(rm.groupDid, signal).catch(() => null),
+          resolveHandle(rm.groupDid).catch(() => null),
+          resolvePdsUrl(rm.groupDid).catch(() => null),
+        ])
+        if (profile?.displayName) displayName = profile.displayName
+        if (resolvedHandle) handle = resolvedHandle
+        if (profile && pdsUrl) {
+          const url = getAvatarUrl(
+            profile as CertifiedProfile,
+            rm.groupDid,
+            pdsUrl
+          )
+          if (url) avatarUrl = url
+        }
+      } catch {
+        // ignore — profile or handle may not resolve
       }
-    } catch {
-      // ignore — profile or handle may not resolve
-    }
-    orgs.push({
-      groupDid: rm.groupDid,
-      handle,
-      displayName,
-      role: rm.role,
-      accepted: acceptedSet.has(rm.groupDid),
-      avatarUrl,
-      rkey: toRkey(rm.groupDid),
+      return {
+        groupDid: rm.groupDid,
+        handle,
+        displayName,
+        role: rm.role,
+        accepted: acceptedSet.has(rm.groupDid),
+        avatarUrl,
+        rkey: toRkey(rm.groupDid),
+      } satisfies Organization
     })
-  }
+  )
 
   return orgs
 }
