@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo, useEffect, useCallback } from "react"
+import React, { useState, useMemo } from "react"
 import Link from "next/link"
 import { Building2, Plus, LogOut, UserCheck, UserX } from "lucide-react"
 import { useOrg } from "@/lib/organizations/org-context"
@@ -9,7 +9,6 @@ import {
   putMembership,
   deleteMembership,
   removeOrgMember,
-  listOrgMembers,
 } from "@/lib/organizations/api"
 import type { OrgRole } from "@/lib/organizations/types"
 import Avatar from "@/components/ui/avatar"
@@ -22,7 +21,6 @@ export default function OrganizationsPage() {
   const [leaveOrg, setLeaveOrg] = useState<{ groupDid: string; name: string } | null>(null)
   const [isLeaving, setIsLeaving] = useState(false)
   const [acceptingOrg, setAcceptingOrg] = useState<string | null>(null)
-  const [canLeaveMap, setCanLeaveMap] = useState<Record<string, boolean>>({})
   const [removingPublic, setRemovingPublic] = useState<string | null>(null)
 
   const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 }
@@ -45,26 +43,14 @@ export default function OrganizationsPage() {
   const acceptedOrgs = sortedOrgs.filter((o) => o.accepted)
   const pendingOrgs = sortedOrgs.filter((o) => !o.accepted)
 
-  const checkCanLeave = useCallback(async () => {
-    if (!organizations.length || !did) return
-    const entries = await Promise.all(
-      organizations.map(async (org) => {
-        if (org.role !== "owner") return [org.groupDid, true] as const
-        try {
-          const members = await listOrgMembers(org.groupDid)
-          const ownerCount = members.filter((m) => m.role === "owner").length
-          return [org.groupDid, ownerCount > 1] as const
-        } catch {
-          return [org.groupDid, false] as const
-        }
-      })
-    )
-    setCanLeaveMap(Object.fromEntries(entries))
-  }, [organizations, did])
-
-  useEffect(() => {
-    checkCanLeave()
-  }, [checkCanLeave])
+  // Owners can never leave — grey out the button. Non-owners can always leave.
+  const canLeaveMap = useMemo(() => {
+    const map: Record<string, boolean> = {}
+    for (const org of organizations) {
+      map[org.groupDid] = org.role !== "owner"
+    }
+    return map
+  }, [organizations])
 
   const renderOrgItem = (org: (typeof sortedOrgs)[number]) => (
     <div key={org.groupDid} className="org-list__item">
@@ -109,7 +95,7 @@ export default function OrganizationsPage() {
           className="org-list__leave-btn"
           onClick={() => setLeaveOrg({ groupDid: org.groupDid, name: org.displayName || org.handle })}
           disabled={!canLeaveMap[org.groupDid]}
-          title={canLeaveMap[org.groupDid] === false ? "Transfer ownership before leaving" : "Leave group"}
+          title={!canLeaveMap[org.groupDid] ? "Owners can't leave the group" : "Leave group"}
         >
           <LogOut size={14} />
         </button>
