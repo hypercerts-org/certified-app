@@ -78,6 +78,10 @@
   --color-warning-border: #f5d880;
   --color-warning-text: #7a6420;
 
+  /* Focus / Success accents */
+  --color-focus-green: #94BB51;
+  --color-success-icon: #28a745;
+
   /* Transitions */
   --transition-fast: 150ms ease-out;
   --transition-base: 250ms ease-out;
@@ -774,7 +778,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .signin-modal__input:focus {
-  border-color: #94BB51;
+  border-color: var(--color-focus-green);
   box-shadow: 0 0 0 3px rgba(148, 187, 81, 0.15);
 }
 
@@ -2650,7 +2654,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .domain-modal__success-icon {
-  color: #28a745;
+  color: var(--color-success-icon);
 }
 
 .domain-modal__success-title {
@@ -4630,18 +4634,35 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .account-switcher__user-row .account-switcher__item {
-  flex: 1;
+  flex: 1 1 0%;
   min-width: 0;
+  padding-right: 0;
+  background: none;
+}
+
+.account-switcher__user-row .account-switcher__item > div {
+  min-width: 0;
+}
+
+.account-switcher__user-row .account-switcher__item-name,
+.account-switcher__user-row .account-switcher__item-handle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-switcher__user-row:has(.account-switcher__item--active) {
+  background: var(--color-off-white);
 }
 
 .account-switcher__signout {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
-  margin-right: 12px;
+  margin-right: 8px;
   border: none;
   background: none;
   color: var(--color-mid-gray);
@@ -4712,6 +4733,7 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .bottom-sheet__content {
+    overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     padding-bottom: env(safe-area-inset-bottom, 16px);

@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const { session } = await client.callback(params)
 
     // Invalidate any existing session to prevent session fixation
-    await deleteSession().catch(() => {})
+    await deleteSession().catch((err) => console.error("[Auth] Old session cleanup failed:", err))
     await createSession(session.did)
 
     // Best-effort: ensure profile records exist (don't fail sign-in if this errors)

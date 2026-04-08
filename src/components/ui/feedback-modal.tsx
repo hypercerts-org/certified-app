@@ -16,11 +16,23 @@ export default function FeedbackModal() {
   const [error, setError] = useState("")
   const [bottomOffset, setBottomOffset] = useState(20)
   const backdropRef = useRef<HTMLDivElement>(null)
-  const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  // Bottom sheet drag state (mobile)
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const update = () => setIsMobile(window.innerWidth <= 768)
+    update()
+    window.addEventListener("resize", update)
+    return () => window.removeEventListener("resize", update)
+  }, [])
+  // Bottom sheet drag state (mobile) — declared before focus trap so sheetRef is available
   const sheetRef = useRef<HTMLDivElement>(null)
+
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen && !isMobile)
+  // Wire mobile focus trap directly to sheetRef (avoids useEffect timing issue)
+  const mobileFocusTrapRef = useFocusTrap<HTMLDivElement>(isOpen && isMobile)
+  if (isMobile && sheetRef.current) {
+    (mobileFocusTrapRef as React.MutableRefObject<HTMLDivElement | null>).current = sheetRef.current
+  }
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [sheetExpanded, setSheetExpanded] = useState(false)
   const dragStartY = useRef(0)
   const isDragging = useRef(false)
@@ -239,8 +251,10 @@ export default function FeedbackModal() {
         onBlur={() => validateEmail(email)}
         placeholder="your@email.com"
         disabled={isSubmitting}
+        aria-invalid={emailError ? true : undefined}
+        aria-describedby={emailError ? "feedback-email-error" : undefined}
       />
-      {emailError && <p className="feedback-modal__error" role="alert">{emailError}</p>}
+      {emailError && <p id="feedback-email-error" className="feedback-modal__error" role="alert">{emailError}</p>}
 
       {error && <p className="feedback-modal__error" role="alert">{error}</p>}
 
@@ -299,7 +313,7 @@ export default function FeedbackModal() {
                 </button>
               </div>
               <div className="feedback-modal__body">
-                {formContent}
+                {!isMobile && formContent}
               </div>
             </div>
           </div>
@@ -323,7 +337,7 @@ export default function FeedbackModal() {
                 />
                 <div className="bottom-sheet__content">
                   <div className="feedback-modal__body">
-                    {formContent}
+                    {isMobile && formContent}
                   </div>
                 </div>
               </div>

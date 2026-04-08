@@ -9,6 +9,7 @@ import ErrorMessage from "@/components/ui/error-message";
 import AvatarUpload from "@/components/profile/avatar-upload";
 import BannerUpload from "@/components/profile/banner-upload";
 import type { CertifiedProfile, HypercertsSmallImage, HypercertsLargeImage } from "@/lib/atproto/types";
+import type { BlobRef } from "@atproto/api";
 
 export interface ProfileEditFormProps {
   initialProfile: CertifiedProfile | null;
@@ -184,8 +185,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     if (avatarBlob) {
       const avatarImage: HypercertsSmallImage = {
         $type: "org.hypercerts.defs#smallImage",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        image: avatarBlob as any,
+        image: avatarBlob as unknown as BlobRef,
       };
       profile.avatar = avatarImage;
     } else if (initialProfile?.avatar) {
@@ -196,8 +196,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     if (bannerBlob) {
       const bannerImage: HypercertsLargeImage = {
         $type: "org.hypercerts.defs#largeImage",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        image: bannerBlob as any,
+        image: bannerBlob as unknown as BlobRef,
       };
       profile.banner = bannerImage;
     } else if (initialProfile?.banner) {

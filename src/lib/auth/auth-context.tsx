@@ -6,20 +6,30 @@ import React, {
   useEffect,
   useState,
   useCallback,
+  useMemo,
 } from "react";
 import type { AuthState } from "./types";
 import { resolvePdsUrl } from "@/lib/atproto/did";
+import { sanitizeEmail, sanitizeHandle } from "@/lib/utils/sanitize";
 import SignInModal from "@/components/ui/sign-in-modal";
-
-/** Strip invisible Unicode chars and whitespace that can sneak in via clipboard paste. */
-const stripInvisible = (s: string) =>
-  s.replace(/[\u200B-\u200F\u2028-\u202F\u2060-\u206F\uFEFF\u00AD\u034F\u061C\u180E\s]/g, '');
-
-const sanitizeEmail = (s: string) => stripInvisible(s).toLowerCase();
-const sanitizeHandle = (s: string) => stripInvisible(s).replace(/^@/, '');
 import ProviderRedirectOverlay from "@/components/ui/provider-redirect-overlay";
 import { setOnUnauthorized } from "./fetch";
 import { clearSessionCache } from "@/hooks/use-session";
+
+/**
+ * Validate and navigate to a URL returned by the auth API.
+ * Only allows https: URLs (and http: in development). Prevents protocol injection.
+ * Note: this intentionally allows cross-origin redirects because the OAuth flow
+ * redirects to external PDS authorization servers.
+ */
+const safeRedirect = (url: string) => {
+  const parsed = new URL(url);
+  const allowHttp = process.env.NODE_ENV === "development";
+  if (parsed.protocol !== "https:" && !(allowHttp && parsed.protocol === "http:")) {
+    throw new Error("Invalid redirect URL");
+  }
+  window.location.href = parsed.href;
+};
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
@@ -32,22 +42,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRedirectingToProvider, setIsRedirectingToProvider] = useState(false);
 
+  // Shared session fetch — used by both init and OAuth callback
+  const refreshSession = useCallback(async () => {
+    const res = await fetch("/api/auth/session");
+    if (!res.ok) {
+      setIsAuthenticated(false);
+      setDid(null);
+      setPdsUrl(null);
+      return;
+    }
+    const data = await res.json() as { did: string | null };
+    if (data.did) {
+      setIsAuthenticated(true);
+      setDid(data.did);
+      setPdsUrl(null); // Clear stale PDS URL before resolving new one
+      const resolvedPdsUrl = await resolvePdsUrl(data.did);
+      setPdsUrl(resolvedPdsUrl);
+    } else {
+      setIsAuthenticated(false);
+      setDid(null);
+      setPdsUrl(null);
+    }
+  }, []);
+
   // Initialize auth on mount by checking server-side session
   useEffect(() => {
     const initAuth = async () => {
       try {
         setIsLoading(true);
         setError(null);
-
-        const res = await fetch("/api/auth/session");
-        const data = await res.json() as { did: string | null };
-
-        if (data.did) {
-          setIsAuthenticated(true);
-          setDid(data.did);
-          const resolvedPdsUrl = await resolvePdsUrl(data.did);
-          setPdsUrl(resolvedPdsUrl);
-        }
+        await refreshSession();
       } catch (err) {
         console.error("Auth initialization error:", err);
         setError(
@@ -59,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     initAuth();
-  }, []);
+  }, [refreshSession]);
 
   // Listen for postMessage from iframe callback (oauth-callback-complete)
   useEffect(() => {
@@ -68,15 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event.data?.type !== "oauth-callback-complete") return;
 
       try {
-        const res = await fetch("/api/auth/session");
-        const data = await res.json() as { did: string | null };
-
-        if (data.did) {
-          setIsAuthenticated(true);
-          setDid(data.did);
-          const resolvedPdsUrl = await resolvePdsUrl(data.did);
-          setPdsUrl(resolvedPdsUrl);
-        }
+        await refreshSession();
       } catch (err) {
         console.error("Session refresh error:", err);
         setError(
@@ -89,11 +105,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, []);
+  }, [refreshSession]);
 
   // Listen for switch-provider postMessage from PDS OAuth UI iframe
   useEffect(() => {
     const handleSwitchProvider = async (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
       if (event.data?.type !== "switch-provider") return;
       const input = event.data.input;
       if (!input || typeof input !== "string") return;
@@ -115,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         const data = await res.json() as { url: string };
-        window.location.href = data.url;
+        safeRedirect(data.url);
       } catch (err) {
         console.error("External provider sign-in error:", err);
         setIsRedirectingToProvider(false);
@@ -161,7 +178,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = await res.json() as { url: string };
-      window.location.href = data.url;
+      safeRedirect(data.url);
     } catch (err) {
       console.error("Email sign-in error:", err);
       setIsRedirectingToProvider(false);
@@ -189,7 +206,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = await res.json() as { url: string };
-      window.location.href = data.url;
+      safeRedirect(data.url);
     } catch (err) {
       console.error("Handle sign-in error:", err);
       setIsRedirectingToProvider(false);
@@ -230,7 +247,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => setOnUnauthorized(null);
   }, []);
 
-  const value: AuthState = {
+  const value = useMemo<AuthState>(() => ({
     isLoading,
     isAuthenticated,
     did,
@@ -243,7 +260,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     submitEmail,
     submitHandle,
     signOut,
-  };
+  }), [isLoading, isAuthenticated, did, pdsUrl, error, isModalOpen, isRedirectingToProvider, openSignIn, closeModal, submitEmail, submitHandle, signOut]);
 
   return (
     <AuthContext.Provider value={value}>

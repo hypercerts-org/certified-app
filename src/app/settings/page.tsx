@@ -4,8 +4,8 @@ import React from "react";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useSession } from "@/hooks/use-session";
-import { useOrg } from "@/lib/organizations/org-context";
-import OrgSettings from "@/components/organizations/org-settings";
+import { useOrg } from "@/lib/groups/org-context";
+import OrgSettings from "@/components/groups/org-settings";
 
 const UsernameCard = dynamic(() => import("@/components/dashboard/username-card"));
 const EmailSection = dynamic(() => import("@/components/account/email-section"));
@@ -16,7 +16,7 @@ export default function SettingsPage() {
   const { handle, email } = useSession();
   const { activeOrg } = useOrg();
 
-  // When acting as an organization, show org settings
+  // When acting as a group, show org settings
   if (activeOrg) {
     return <OrgSettings groupDid={activeOrg.groupDid} org={activeOrg} />;
   }

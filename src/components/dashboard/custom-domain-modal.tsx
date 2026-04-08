@@ -182,10 +182,11 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
                 You can use a domain you own as your username. For example, if you own <strong>alice.com</strong>, your
                 username will become <strong>@alice.com</strong>.
               </p>
-              <label className="domain-modal__label">
+              <label className="domain-modal__label" htmlFor="domain-input">
                 Domain
               </label>
               <input
+                id="domain-input"
                 ref={inputRef}
                 type="text"
                 className="domain-modal__input"

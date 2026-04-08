@@ -2,6 +2,7 @@ import { NodeOAuthClient } from "@atproto/oauth-client-node"
 import { JoseKey } from "@atproto/jwk-jose"
 import type { OAuthClientMetadataInput } from "@atproto/oauth-types"
 import { RedisStateStore, RedisSessionStore } from "./stores"
+import { PUBLIC_URL_STRICT } from "@/lib/utils/config"
 
 export const PDS_URL =
   process.env.PDS_URL ||
@@ -13,11 +14,7 @@ let clientInstance: NodeOAuthClient | null = null
 export async function getOAuthClient(): Promise<NodeOAuthClient> {
   if (clientInstance) return clientInstance
 
-  const publicUrl =
-    process.env.PUBLIC_URL ||
-    (process.env.NODE_ENV === "production"
-      ? undefined
-      : "http://localhost:3000")
+  const publicUrl = PUBLIC_URL_STRICT
 
   if (!publicUrl) {
     throw new Error("PUBLIC_URL environment variable is required in production")

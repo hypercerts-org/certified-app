@@ -5,15 +5,28 @@ const FOCUSABLE_SELECTOR =
 
 /**
  * Traps keyboard focus within a container element while active.
+ * Restores focus to the previously focused element when deactivated.
  * Returns a ref to attach to the container element.
  */
 export function useFocusTrap<T extends HTMLElement>(active: boolean) {
   const containerRef = useRef<T>(null);
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active) {
+      // Restore focus when deactivated
+      if (previousActiveElementRef.current?.isConnected) {
+        previousActiveElementRef.current.focus();
+        previousActiveElementRef.current = null;
+      }
+      return;
+    }
+
     const container = containerRef.current;
     if (!container) return;
+
+    // Save the currently focused element
+    previousActiveElementRef.current = document.activeElement as HTMLElement;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Tab") return;

@@ -51,7 +51,7 @@ npm run lint             # ESLint
 - Feedback button avoids footer overlap via scroll listener on `.landing-footer`
 
 ### SEO / GEO
-- JSON-LD: Organization + WebSite in `layout.tsx`, SoftwareApplication + FAQPage in `welcome/page.tsx`
+- JSON-LD: Organization (schema.org) + WebSite in `layout.tsx`, SoftwareApplication + FAQPage in `welcome/page.tsx`
 - OG/Twitter meta: defaults in `layout.tsx`, overrides per page
 - Title template: `"%s — Certified"` (layout), pages export specific titles
 - `robots.ts`, `sitemap.ts`, `manifest.ts` in `src/app/`
@@ -109,12 +109,12 @@ src/
 │   ├── connected-apps/
 │   │   ├── layout.tsx                  # AuthGuard
 │   │   └── page.tsx
-│   ├── organizations/                  # Org management routes
+│   ├── groups/                         # Group management routes
 │   ├── oauth/callback/page.tsx         # OAuth redirect handler
 │   ├── api/
 │   │   ├── auth/                       # login, logout, session, callback-handler
 │   │   ├── xrpc/[...method]/route.ts   # XRPC proxy with security
-│   │   ├── organizations/              # Org API routes
+│   │   ├── groups/                     # Group API routes
 │   │   ├── feedback/route.ts           # Feedback email via Resend
 │   │   ├── resolve-handle/route.ts
 │   │   ├── resolve-did/route.ts
@@ -135,7 +135,7 @@ src/
 │   │   ├── sidebar.tsx                 # Left nav for settings
 │   │   └── auth-guard.tsx              # Auth redirect with returnTo
 │   ├── dashboard/                      # Dashboard cards and lists
-│   ├── organizations/                  # Org management components
+│   ├── groups/                         # Group management components
 │   ├── profile/                        # Profile editing
 │   ├── identity-link/                  # Wallet attestation
 │   ├── account/                        # Email and password sections
@@ -144,14 +144,14 @@ src/
 ├── hooks/
 │   ├── use-session.ts                  # Cached session data (handle, email)
 │   ├── use-profile.ts                  # Profile data with AbortController
-│   ├── use-org-profile.ts              # Organization profile
+│   ├── use-org-profile.ts              # Group profile
 │   ├── use-identity-links.ts           # Wallet attestations
 │   ├── use-attestation-signing.ts      # EIP-712 signing
 │   └── use-focus-trap.ts              # Modal focus trapping
 │
 └── lib/
     ├── auth/                           # OAuth client, session, CSRF, fetch wrapper
-    ├── organizations/                  # Org API, context, constants, types
+    ├── groups/                         # Group API, context, constants, types
     ├── identity-link/                  # EIP-712 attestation, PDS read/write
     ├── atproto/                        # DID resolution, profile fetch/update
     ├── constants/apps.ts               # CONNECTED_APPS (single source of truth)

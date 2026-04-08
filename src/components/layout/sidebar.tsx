@@ -7,7 +7,7 @@ import { User, Settings, LayoutGrid, Building2, LogOut, X } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
-import { useOrg } from "@/lib/organizations/org-context";
+import { useOrg } from "@/lib/groups/org-context";
 import { useOrgProfile } from "@/hooks/use-org-profile";
 import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
@@ -71,8 +71,8 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           {!isOrgMode && (
             <li>
               <Link
-                href="/organizations"
-                className={`sidebar__item ${pathname.startsWith("/organizations") ? "sidebar__item--active" : ""}`}
+                href="/groups"
+                className={`sidebar__item ${pathname.startsWith("/groups") ? "sidebar__item--active" : ""}`}
               >
                 <Building2 size={18} />
                 Groups

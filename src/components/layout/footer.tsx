@@ -1,9 +1,8 @@
 "use client";
 
-import React from "react";
 import Link from "next/link";
 
-const Footer: React.FC = () => {
+export default function Footer() {
   return (
     <footer className="landing-footer">
       <div className="landing-footer__bar">
@@ -19,6 +18,4 @@ const Footer: React.FC = () => {
       </div>
     </footer>
   );
-};
-
-export default Footer;
+}

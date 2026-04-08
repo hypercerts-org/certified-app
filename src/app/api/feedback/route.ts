@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
+import { checkCsrf } from "@/lib/auth/csrf";
+import { stripInvisible } from "@/lib/utils/sanitize";
 
 if (!process.env.RESEND_API_KEY) {
   console.warn("RESEND_API_KEY is not set — feedback emails will fail");
@@ -10,26 +12,22 @@ const SUPPORT_EMAIL = "support@hypercerts.org";
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "Certified <no-reply@certified.one>";
 
 export async function POST(req: NextRequest) {
+  const csrfError = checkCsrf(req);
+  if (csrfError) return csrfError;
+
+  let body: unknown;
   try {
-    // CSRF origin check
-    const origin = req.headers.get("origin");
-    const host = req.headers.get("host");
-    if (!origin || !host) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    try {
-      const originHostname = new URL(origin).hostname;
-      const hostHostname = host.split(":")[0];
-      if (originHostname !== hostHostname) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-    } catch {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
-    const { message, email } = await req.json();
+  try {
+    const b = body as { message?: unknown; email?: unknown };
+    const message = typeof b.message === "string" ? stripInvisible(b.message) : "";
+    const email = typeof b.email === "string" ? stripInvisible(b.email) : "";
 
-    if (!message || typeof message !== "string" || !message.trim()) {
+    if (!message) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
     }
 

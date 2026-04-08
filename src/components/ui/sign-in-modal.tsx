@@ -20,7 +20,6 @@ export default function SignInModal({
   onSubmitEmail,
   onSubmitHandle,
 }: SignInModalProps) {
-  const backdropRef = useRef<HTMLDivElement>(null)
   const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen)
   const inputRef = useRef<HTMLInputElement>(null)
   const [view, setView] = useState<ModalView>("certified")
@@ -33,14 +32,14 @@ export default function SignInModal({
       setView("certified")
       setInputValue("")
       setIsSubmitting(false)
-      setTimeout(() => inputRef.current?.focus(), 100)
+      requestAnimationFrame(() => inputRef.current?.focus())
     }
   }, [isOpen])
 
   // Focus input when switching views
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 50)
+      requestAnimationFrame(() => inputRef.current?.focus())
     }
   }, [view, isOpen])
 
@@ -98,15 +97,15 @@ export default function SignInModal({
   return (
     <div
       className="signin-modal__backdrop"
-      ref={backdropRef}
-      onClick={(e) => { if (e.target === backdropRef.current) onClose() }}
+      ref={focusTrapRef}
+      onClick={(e) => { if (e.target === focusTrapRef.current) onClose() }}
       role="dialog"
       aria-modal="true"
       aria-label={title}
     >
-      <div className="signin-modal" ref={focusTrapRef}>
+      <div className="signin-modal">
         <div className="signin-modal__header">
-          <img src="/assets/certified_brandmark_black.svg" alt="" className="signin-modal__logo" />
+          <img src="/assets/certified_brandmark_black.svg" alt="" aria-hidden="true" className="signin-modal__logo" />
           <span className="signin-modal__title">{title}</span>
           <button
             className="signin-modal__close"
@@ -137,10 +136,12 @@ export default function SignInModal({
                 required
                 autoComplete={isCertified ? "email" : "username"}
                 disabled={isSubmitting}
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? "signin-error" : undefined}
               />
 
               {error && (
-                <p className="signin-modal__error">{error}</p>
+                <p id="signin-error" className="signin-modal__error" role="alert">{error}</p>
               )}
 
               <button

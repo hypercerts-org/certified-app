@@ -1,5 +1,7 @@
-import React from "react";
 import Link from "next/link";
+
+// Note: Next.js does not support metadata exports in not-found.tsx.
+// 404 pages are not indexed by search engines by default.
 
 export default function NotFoundPage() {
   return (
@@ -11,7 +13,7 @@ export default function NotFoundPage() {
         <div className="dashboard__main">
           <div className="dash-card">
             <p className="dash-card__desc">The page you&apos;re looking for doesn&apos;t exist.</p>
-            <Link href="/" className="dashboard__back-btn">
+            <Link href="/welcome" className="dashboard__back-btn">
               Go home
             </Link>
           </div>
