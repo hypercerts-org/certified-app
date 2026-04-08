@@ -1,16 +1,16 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useOrg } from "@/lib/organizations/org-context"
-import { getOrgProfile, getOrgMetadata } from "@/lib/organizations/api"
+import { useOrg } from "@/lib/groups/org-context"
+import { getOrgProfile, getOrgMetadata } from "@/lib/groups/api"
 import { resolvePdsUrl } from "@/lib/atproto/did"
 import { getAvatarUrl, getBannerUrl } from "@/lib/atproto/profile"
-import type { OrgProfile, OrgOrganization } from "@/lib/organizations/types"
+import type { OrgProfile, GroupMetadata } from "@/lib/groups/types"
 import type { CertifiedProfile } from "@/lib/atproto/types"
 
 export function useOrgProfile(): {
   orgProfile: OrgProfile | null
-  orgMetadata: OrgOrganization | null
+  orgMetadata: GroupMetadata | null
   orgAvatarUrl: string | null
   orgBannerUrl: string | null
   isLoading: boolean
@@ -18,7 +18,7 @@ export function useOrgProfile(): {
 } {
   const { activeOrg } = useOrg()
   const [orgProfile, setOrgProfile] = useState<OrgProfile | null>(null)
-  const [orgMetadata, setOrgMetadata] = useState<OrgOrganization | null>(null)
+  const [orgMetadata, setOrgMetadata] = useState<GroupMetadata | null>(null)
   const [pdsUrl, setPdsUrl] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 

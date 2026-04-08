@@ -130,7 +130,7 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
       if (groupDid) {
         // Route through the org handle API
         res = await authFetch(
-          `/api/organizations/${encodeURIComponent(groupDid)}/handle`,
+          `/api/groups/${encodeURIComponent(groupDid)}/handle`,
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },

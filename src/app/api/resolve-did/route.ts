@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { resolveHandle } from "@/lib/atproto/did"
-import { getAuthenticatedAgent } from "@/lib/organizations/proxy-agent"
+import { getAuthenticatedAgent } from "@/lib/groups/proxy-agent"
 
 /**
  * GET /api/resolve-did?did=<did>

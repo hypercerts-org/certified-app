@@ -109,12 +109,12 @@ src/
 │   ├── connected-apps/
 │   │   ├── layout.tsx                  # AuthGuard
 │   │   └── page.tsx
-│   ├── organizations/                  # Org management routes
+│   ├── groups/                         # Group management routes
 │   ├── oauth/callback/page.tsx         # OAuth redirect handler
 │   ├── api/
 │   │   ├── auth/                       # login, logout, session, callback-handler
 │   │   ├── xrpc/[...method]/route.ts   # XRPC proxy with security
-│   │   ├── organizations/              # Org API routes
+│   │   ├── groups/                     # Group API routes
 │   │   ├── feedback/route.ts           # Feedback email via Resend
 │   │   ├── resolve-handle/route.ts
 │   │   ├── resolve-did/route.ts
@@ -135,7 +135,7 @@ src/
 │   │   ├── sidebar.tsx                 # Left nav for settings
 │   │   └── auth-guard.tsx              # Auth redirect with returnTo
 │   ├── dashboard/                      # Dashboard cards and lists
-│   ├── organizations/                  # Org management components
+│   ├── groups/                         # Group management components
 │   ├── profile/                        # Profile editing
 │   ├── identity-link/                  # Wallet attestation
 │   ├── account/                        # Email and password sections
@@ -151,7 +151,7 @@ src/
 │
 └── lib/
     ├── auth/                           # OAuth client, session, CSRF, fetch wrapper
-    ├── organizations/                  # Org API, context, constants, types
+    ├── groups/                         # Group API, context, constants, types
     ├── identity-link/                  # EIP-712 attestation, PDS read/write
     ├── atproto/                        # DID resolution, profile fetch/update
     ├── constants/apps.ts               # CONNECTED_APPS (single source of truth)

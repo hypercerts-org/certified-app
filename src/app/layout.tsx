@@ -7,7 +7,7 @@ import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 import { Providers } from "@/lib/providers";
 import AppShell from "@/components/layout/app-shell";
-import { OrgProvider } from "@/lib/organizations/org-context";
+import { OrgProvider } from "@/lib/groups/org-context";
 import FeedbackModal from "@/components/ui/feedback-modal";
 import { Analytics } from "@vercel/analytics/next";
 
@@ -66,7 +66,7 @@ export const viewport: Viewport = {
   themeColor: "#f9f9f6",
 };
 
-const organizationJsonLd = {
+const groupJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "Hypercerts Foundation",
@@ -127,7 +127,7 @@ export default function RootLayout({
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(groupJsonLd) }}
         />
         <script
           type="application/ld+json"

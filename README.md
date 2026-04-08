@@ -26,7 +26,7 @@ When a user signs up, they get an AT Protocol identity and a Personal Data Serve
 | `/` | Profile dashboard (authenticated) |
 | `/settings` | Account settings |
 | `/connected-apps` | Manage connected applications |
-| `/organizations` | Organization management |
+| `/groups` | Group management |
 | `/about` | About Certified and the Hypercerts Foundation |
 | `/terms` | Terms of Service |
 | `/privacy` | Privacy Policy |

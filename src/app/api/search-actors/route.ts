@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getAuthenticatedAgent } from "@/lib/organizations/proxy-agent"
+import { getAuthenticatedAgent } from "@/lib/groups/proxy-agent"
 
 /**
  * GET /api/search-actors?q=<query>&limit=<n>

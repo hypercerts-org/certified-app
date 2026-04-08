@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getAuthenticatedAgent } from "@/lib/organizations/proxy-agent"
+import { getAuthenticatedAgent } from "@/lib/groups/proxy-agent"
 
 /**
  * GET /api/resolve-handle?handle=<handle>

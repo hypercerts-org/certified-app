@@ -7,7 +7,7 @@ import { Pencil } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import { useOrgProfile } from "@/hooks/use-org-profile";
-import { useOrg } from "@/lib/organizations/org-context";
+import { useOrg } from "@/lib/groups/org-context";
 import { useSession } from "@/hooks/use-session";
 import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
@@ -47,7 +47,7 @@ export default function HomeClient() {
   }
 
   if (isAuthenticated) {
-    // When acting as an organization, show the org profile
+    // When acting as a group, show the org profile
     const isOrgMode = !!activeOrg;
     const displayProfile = isOrgMode ? orgProfile : profile;
     const displayAvatar = isOrgMode ? (orgAvatarUrl || undefined) : (avatarUrl || undefined);
@@ -58,7 +58,7 @@ export default function HomeClient() {
     const displayHandle = isOrgMode ? activeOrg.handle : handle;
     const displayDid = isOrgMode ? activeOrg.groupDid : did;
     const editHref = isOrgMode
-      ? `/organizations/${encodeURIComponent(activeOrg.groupDid)}/edit-profile`
+      ? `/groups/${encodeURIComponent(activeOrg.groupDid)}/edit-profile`
       : "/settings/edit-profile";
 
     return (
@@ -96,7 +96,7 @@ export default function HomeClient() {
                 <dd className="personal-info__field personal-info__field--mono">{displayDid}</dd>
                 <dd className="personal-info__hint">
                   {isOrgMode
-                    ? "The organization's decentralized identifier (DID) — this never changes, even if you update the handle."
+                    ? "The group's decentralized identifier (DID) — this never changes, even if you update the handle."
                     : "Your stable decentralized identifier (DID) — this never changes, even if you update your username."}
                 </dd>
               </dl>

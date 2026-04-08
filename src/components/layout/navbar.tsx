@@ -10,13 +10,13 @@ import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
 import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
-import { useOrg } from "@/lib/organizations/org-context";
+import { useOrg } from "@/lib/groups/org-context";
 import { useOrgProfile } from "@/hooks/use-org-profile";
 import { Menu, X, ChevronDown, LogOut } from "lucide-react";
 
 const PERSONAL_NAV_LINKS = [
   { href: "/", label: "Profile" },
-  { href: "/organizations", label: "Groups" },
+  { href: "/groups", label: "Groups" },
   { href: "/connected-apps", label: "Apps" },
   { href: "/settings", label: "Settings" },
 ];
@@ -34,12 +34,12 @@ const Navbar: React.FC = () => {
   const { handle } = useSession();
   const pathname = usePathname();
   const router = useRouter();
-  const { activeOrg, organizations, switchOrg } = useOrg();
+  const { activeOrg, groups, switchOrg } = useOrg();
   const { orgAvatarUrl } = useOrgProfile();
 
   const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
   const sortedOrgs = useMemo(() => {
-    return [...organizations].sort((a, b) => {
+    return [...groups].sort((a, b) => {
       if (a.accepted !== b.accepted) return a.accepted ? -1 : 1;
       const roleA = ROLE_ORDER[a.role] ?? 3;
       const roleB = ROLE_ORDER[b.role] ?? 3;
@@ -48,7 +48,7 @@ const Navbar: React.FC = () => {
       const nameB = (b.displayName || b.handle).toLowerCase();
       return nameA.localeCompare(nameB);
     });
-  }, [organizations]);
+  }, [groups]);
   const switcherRef = useRef<HTMLDivElement>(null);
   const mobileSwitcherRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
@@ -239,7 +239,7 @@ const Navbar: React.FC = () => {
                       </button>
                     </div>
 
-                    {organizations.length > 0 && (
+                    {groups.length > 0 && (
                       <>
                         <div className="account-switcher__divider" />
                         <p className="account-switcher__section-label">Groups</p>
@@ -326,7 +326,7 @@ const Navbar: React.FC = () => {
                         </button>
                       </div>
 
-                      {organizations.length > 0 && (
+                      {groups.length > 0 && (
                         <>
                           <div className="account-switcher__divider" />
                           <p className="account-switcher__section-label">Groups</p>

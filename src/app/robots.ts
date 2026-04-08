@@ -9,8 +9,8 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [
           "/settings",
           "/settings/*",
-          "/organizations",
-          "/organizations/*",
+          "/groups",
+          "/groups/*",
           "/connected-apps",
           "/oauth/*",
           "/api/*",
