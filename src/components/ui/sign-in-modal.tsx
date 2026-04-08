@@ -20,7 +20,6 @@ export default function SignInModal({
   onSubmitEmail,
   onSubmitHandle,
 }: SignInModalProps) {
-  const backdropRef = useRef<HTMLDivElement>(null)
   const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen)
   const inputRef = useRef<HTMLInputElement>(null)
   const [view, setView] = useState<ModalView>("certified")
@@ -98,8 +97,8 @@ export default function SignInModal({
   return (
     <div
       className="signin-modal__backdrop"
-      ref={(el) => { (backdropRef as React.MutableRefObject<HTMLDivElement | null>).current = el; (focusTrapRef as React.MutableRefObject<HTMLDivElement | null>).current = el; }}
-      onClick={(e) => { if (e.target === backdropRef.current) onClose() }}
+      ref={focusTrapRef}
+      onClick={(e) => { if (e.target === focusTrapRef.current) onClose() }}
       role="dialog"
       aria-modal="true"
       aria-label={title}

@@ -24,6 +24,13 @@ export default function FeedbackModal() {
   const mobileFocusTrapRef = useFocusTrap<HTMLDivElement>(isOpen && isMobile)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  // Sync mobile focus trap ref with sheet ref so both point to the same element
+  useEffect(() => {
+    if (isMobile && sheetRef.current) {
+      (mobileFocusTrapRef as React.MutableRefObject<HTMLDivElement | null>).current = sheetRef.current;
+    }
+  }, [isMobile, isOpen, mobileFocusTrapRef])
+
   // Bottom sheet drag state (mobile)
   const sheetRef = useRef<HTMLDivElement>(null)
   const [sheetExpanded, setSheetExpanded] = useState(false)
@@ -317,7 +324,7 @@ export default function FeedbackModal() {
               <div className="bottom-sheet__backdrop feedback-bottom-sheet__backdrop" onClick={() => setIsOpen(false)} />
               <div
                 className={`bottom-sheet feedback-bottom-sheet ${sheetExpanded ? "bottom-sheet--expanded" : ""}`}
-                ref={(el) => { (sheetRef as React.MutableRefObject<HTMLDivElement | null>).current = el; (mobileFocusTrapRef as React.MutableRefObject<HTMLDivElement | null>).current = el; }}
+                ref={sheetRef}
                 role="dialog"
                 aria-modal="true"
                 aria-label="Share feedback"

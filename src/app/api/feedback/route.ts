@@ -15,10 +15,13 @@ export async function POST(req: NextRequest) {
   if (csrfError) return csrfError;
 
   try {
+    const body = await req.json();
+    const stripInvisible = (s: string) =>
+      s.replace(/[\u200B-\u200F\u2028-\u202F\u2060-\u206F\uFEFF\u00AD\u034F\u061C\u180E]/g, "").trim();
+    const message = typeof body?.message === "string" ? stripInvisible(body.message) : "";
+    const email = typeof body?.email === "string" ? stripInvisible(body.email) : "";
 
-    const { message, email } = await req.json();
-
-    if (!message || typeof message !== "string" || !message.trim()) {
+    if (!message) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
     }
 
