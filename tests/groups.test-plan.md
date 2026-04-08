@@ -15,18 +15,18 @@
 1. Navigate to http://localhost:3000/groups
 2. Verify the page title "Groups" is displayed
 3. Verify empty state with "No groups yet" message is shown
-4. Verify "Create Organization" button is visible
+4. Verify "Create Group" button is visible
 5. Verify "Add Existing" button is visible
 
-## T3: Create Organization page — Renders correctly
+## T3: Create Group page — Renders correctly
 1. Click "Create" button on the Groups page (or navigate to /groups/create)
-2. Verify page title "Create Organization" is displayed
-3. Verify "Organization name" input field exists
+2. Verify page title "Create Group" is displayed
+3. Verify "Group name" input field exists
 4. Verify "Handle" input field exists
-5. Verify "Cancel" and "Create Organization" buttons exist
-6. Verify "Create Organization" button is disabled when fields are empty
+5. Verify "Cancel" and "Create Group" buttons exist
+6. Verify "Create Group" button is disabled when fields are empty
 
-## T4: Create Organization — Form validation
+## T4: Create Group — Form validation
 1. Navigate to /groups/create
 2. Type a name longer than 64 characters → verify error message
 3. Clear name, type a handle with uppercase → verify it auto-lowercases
@@ -34,20 +34,20 @@
 5. Type a handle shorter than 2 chars → verify error on blur/submit
 6. Fill valid name "Test Org" and handle "test-org" → verify button becomes enabled
 
-## T5: Create Organization — Submission (requires group service)
+## T5: Create Group — Submission (requires group service)
 1. Fill name "Test Org" and handle "test-org"
-2. Click "Create Organization"
+2. Click "Create Group"
 3. Observe loading state on button
 4. If group service is unavailable, verify error message is shown gracefully
 5. If group service responds, verify redirect to /groups
 
-## T6: Add Existing Organization modal
+## T6: Add Existing Group modal
 1. Navigate to /groups
 2. Click "Add Existing" button
-3. Verify modal appears with title "Add Existing Organization"
-4. Verify "Organization DID" input field exists
+3. Verify modal appears with title "Add Existing Group"
+4. Verify "Group DID" input field exists
 5. Verify "Your role" dropdown exists with options: Member, Admin, Owner
-6. Verify "Cancel" and "Add Organization" buttons exist
+6. Verify "Cancel" and "Add Group" buttons exist
 7. Click "Cancel" → verify modal closes
 
 ## T7: Account Switcher — Dropdown renders
@@ -56,30 +56,30 @@
 3. Verify "User" section with personal account is shown
 4. If groups exist, verify "Groups" section appears
 
-## T8: Organization Profile page — Renders
+## T8: Group Profile page — Renders
 1. If an org exists, navigate to /groups/{groupDid}
 2. Verify the org name is displayed
 3. Verify DID is shown in the Identity section
 4. Verify "Edit Profile", "Apps", and "Settings" actions exist
 
-## T9: Organization Edit Profile page — Renders
+## T9: Group Edit Profile page — Renders
 1. Navigate to /groups/{groupDid}/edit-profile
 2. Verify "Display name", "About", and "Website" fields exist
 3. Verify "Cancel" and "Save Changes" buttons exist
 
-## T10: Organization Apps page — Mirrors personal
+## T10: Group Apps page — Mirrors personal
 1. Navigate to /groups/{groupDid}/apps
 2. Verify "Explore apps" section appears
 3. Verify the same apps from the personal apps page are listed
 
-## T11: Organization Settings page — Members section
+## T11: Group Settings page — Members section
 1. Navigate to /groups/{groupDid}/settings
 2. Verify "Handle" section shows the org handle
 3. Verify "Members & Roles" section exists
 4. If admin, verify "Add member" form with DID input and role dropdown
 5. Verify "Activity Log" section exists (for admin+)
 
-## T12: Organization Settings — Activity log empty state
+## T12: Group Settings — Activity log empty state
 1. Navigate to /groups/{groupDid}/settings
 2. Verify "Activity Log" section shows "No activity recorded yet." when empty
 

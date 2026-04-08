@@ -51,7 +51,7 @@ npm run lint             # ESLint
 - Feedback button avoids footer overlap via scroll listener on `.landing-footer`
 
 ### SEO / GEO
-- JSON-LD: Organization + WebSite in `layout.tsx`, SoftwareApplication + FAQPage in `welcome/page.tsx`
+- JSON-LD: Organization (schema.org) + WebSite in `layout.tsx`, SoftwareApplication + FAQPage in `welcome/page.tsx`
 - OG/Twitter meta: defaults in `layout.tsx`, overrides per page
 - Title template: `"%s — Certified"` (layout), pages export specific titles
 - `robots.ts`, `sitemap.ts`, `manifest.ts` in `src/app/`
@@ -144,7 +144,7 @@ src/
 ├── hooks/
 │   ├── use-session.ts                  # Cached session data (handle, email)
 │   ├── use-profile.ts                  # Profile data with AbortController
-│   ├── use-org-profile.ts              # Organization profile
+│   ├── use-org-profile.ts              # Group profile
 │   ├── use-identity-links.ts           # Wallet attestations
 │   ├── use-attestation-signing.ts      # EIP-712 signing
 │   └── use-focus-trap.ts              # Modal focus trapping
