@@ -4637,6 +4637,7 @@ h1, h2, h3, h4, h5, h6 {
   flex: 1 1 0%;
   min-width: 0;
   padding-right: 0;
+  background: none;
 }
 
 .account-switcher__user-row .account-switcher__item > div {
@@ -4650,6 +4651,10 @@ h1, h2, h3, h4, h5, h6 {
   white-space: nowrap;
 }
 
+.account-switcher__user-row:has(.account-switcher__item--active) {
+  background: var(--color-off-white);
+}
+
 .account-switcher__signout {
   display: flex;
   align-items: center;
@@ -4657,6 +4662,7 @@ h1, h2, h3, h4, h5, h6 {
   width: 40px;
   height: 40px;
   flex-shrink: 0;
+  margin-right: 8px;
   border: none;
   background: none;
   color: var(--color-mid-gray);
