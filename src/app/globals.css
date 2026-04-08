@@ -4631,13 +4631,12 @@ h1, h2, h3, h4, h5, h6 {
 .account-switcher__user-row {
   display: flex;
   align-items: center;
-  max-width: 100%;
 }
 
 .account-switcher__user-row .account-switcher__item {
-  flex: 1;
+  flex: 1 1 0%;
   min-width: 0;
-  width: auto;
+  padding-right: 0;
 }
 
 .account-switcher__user-row .account-switcher__item > div {
@@ -4655,10 +4654,9 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
-  margin-right: 4px;
   border: none;
   background: none;
   color: var(--color-mid-gray);
