@@ -15,10 +15,17 @@ export async function POST(req: NextRequest) {
   const csrfError = checkCsrf(req);
   if (csrfError) return csrfError;
 
+  let body: unknown;
   try {
-    const body = await req.json();
-    const message = typeof body?.message === "string" ? stripInvisible(body.message) : "";
-    const email = typeof body?.email === "string" ? stripInvisible(body.email) : "";
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  try {
+    const b = body as { message?: unknown; email?: unknown };
+    const message = typeof b.message === "string" ? stripInvisible(b.message) : "";
+    const email = typeof b.email === "string" ? stripInvisible(b.email) : "";
 
     if (!message) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });

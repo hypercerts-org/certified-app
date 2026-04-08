@@ -24,7 +24,8 @@ import { clearSessionCache } from "@/hooks/use-session";
  */
 const safeRedirect = (url: string) => {
   const parsed = new URL(url);
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+  const allowHttp = process.env.NODE_ENV === "development";
+  if (parsed.protocol !== "https:" && !(allowHttp && parsed.protocol === "http:")) {
     throw new Error("Invalid redirect URL");
   }
   window.location.href = parsed.href;
@@ -44,12 +45,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Shared session fetch — used by both init and OAuth callback
   const refreshSession = useCallback(async () => {
     const res = await fetch("/api/auth/session");
+    if (!res.ok) {
+      setIsAuthenticated(false);
+      setDid(null);
+      setPdsUrl(null);
+      return;
+    }
     const data = await res.json() as { did: string | null };
     if (data.did) {
       setIsAuthenticated(true);
       setDid(data.did);
+      setPdsUrl(null); // Clear stale PDS URL before resolving new one
       const resolvedPdsUrl = await resolvePdsUrl(data.did);
       setPdsUrl(resolvedPdsUrl);
+    } else {
+      setIsAuthenticated(false);
+      setDid(null);
+      setPdsUrl(null);
     }
   }, []);
 

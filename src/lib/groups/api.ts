@@ -15,7 +15,9 @@ import type {
 } from "./types"
 import { ORG_MEMBERSHIP_COLLECTION } from "./constants"
 
-/** Derive a stable AT Protocol rkey from a group DID. */
+/** Derive a stable AT Protocol rkey from a group DID.
+ *  Note: this mapping is lossy but collision-free in practice since all
+ *  DIDs start with "did:" and use restricted character sets. */
 const toRkey = (did: string) => did.replace(/[^a-zA-Z0-9]/g, "-")
 
 // ─── Membership records (stored in user's own PDS) ───────────────────

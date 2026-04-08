@@ -7,8 +7,8 @@ export async function extractError(
   fallback: string
 ): Promise<string> {
   try {
-    const data = (await res.json()) as { error?: string }
-    return data.error || fallback
+    const data = (await res.json()) as { error?: unknown }
+    return typeof data.error === "string" ? data.error : fallback
   } catch {
     return fallback
   }
