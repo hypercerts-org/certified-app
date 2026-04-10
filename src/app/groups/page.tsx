@@ -162,6 +162,20 @@ export default function GroupsPage() {
 
       <div className="dashboard__body dashboard__body--single">
         <div className="dashboard__main">
+          <div
+            style={{
+              padding: "10px 14px",
+              marginBottom: 16,
+              borderRadius: 8,
+              background: "var(--color-warning-bg)",
+              border: "1px solid var(--color-warning-border)",
+              color: "var(--color-warning-text)",
+              fontSize: 13,
+              lineHeight: 1.5,
+            }}
+          >
+            <strong>Heads up:</strong> Groups are in beta and currently run on a test server. Data may be reset or removed without notice — please don't rely on it for anything important yet.
+          </div>
           {isLoading ? (
             <div className="org-list__loading">
               <LoadingSpinner size="md" />
