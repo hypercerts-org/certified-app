@@ -60,6 +60,11 @@ export const metadata: Metadata = {
     creator: "@hypercerts",
     images: ["/assets/certified-hero-1200x630.png"],
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Certified",
+  },
 };
 
 export const viewport: Viewport = {
