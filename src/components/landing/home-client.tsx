@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Pencil } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -15,9 +15,12 @@ import Button from "@/components/ui/button";
 
 export default function HomeClient() {
   const router = useRouter();
+  const pathname = usePathname();
+  const params = useParams();
+  const urlDid = typeof params?.did === "string" ? decodeURIComponent(params.did) : null;
   const { isLoading, isAuthenticated, did } = useAuth();
   const { profile, avatarUrl, bannerUrl, isFallback } = useProfile();
-  const { activeOrg } = useOrg();
+  const { activeOrg, groups, isLoading: orgsLoading, switchOrg } = useOrg();
   const { orgProfile, orgMetadata, orgAvatarUrl, orgBannerUrl } = useOrgProfile();
   const { handle } = useSession();
 
@@ -29,9 +32,42 @@ export default function HomeClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- router is stable, omitting to prevent re-renders
   }, [isLoading, isAuthenticated]);
 
+  // Canonicalize URL: `/` → `/profile/{did}` (of user or active org)
+  useEffect(() => {
+    if (isLoading || !isAuthenticated || !did) return;
+    if (pathname !== "/") return;
+    const targetDid = activeOrg?.groupDid || did;
+    router.replace(`/profile/${encodeURIComponent(targetDid)}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- router is stable
+  }, [isLoading, isAuthenticated, did, pathname, activeOrg?.groupDid]);
+
+  // Sync active org with URL DID when on `/profile/[did]`
+  useEffect(() => {
+    if (isLoading || orgsLoading || !isAuthenticated || !did || !urlDid) return;
+
+    if (urlDid === did) {
+      if (activeOrg !== null) switchOrg(null);
+      return;
+    }
+
+    const matchingGroup = groups.find((g) => g.groupDid === urlDid);
+    if (matchingGroup) {
+      if (activeOrg?.groupDid !== matchingGroup.groupDid) switchOrg(matchingGroup);
+      return;
+    }
+
+    // URL DID doesn't match user or any of their groups — redirect to self.
+    const selfDid = activeOrg?.groupDid || did;
+    if (urlDid !== selfDid) {
+      router.replace(`/profile/${encodeURIComponent(selfDid)}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- router is stable
+  }, [isLoading, orgsLoading, isAuthenticated, did, urlDid, groups, activeOrg?.groupDid]);
+
   const initials = getInitials(profile?.displayName, did);
 
-  if (isLoading) {
+  // Show loading screen while loading, or while on `/` (redirecting to /profile/{did})
+  if (isLoading || (isAuthenticated && pathname === "/")) {
     return (
       <div className="loading-screen">
         <div className="loading-screen__inner">
