@@ -66,8 +66,13 @@ export default function HomeClient() {
 
   const initials = getInitials(profile?.displayName, did);
 
-  // Show loading screen while loading, or while on `/` (redirecting to /profile/{did})
-  if (isLoading || (isAuthenticated && pathname === "/")) {
+  // Stay in loading state when the URL DID hasn't been reconciled with
+  // activeOrg yet — prevents a flash of the wrong profile before the sync
+  // effect can switchOrg or redirect.
+  const displayedDid = activeOrg?.groupDid || did;
+  const urlOutOfSync = Boolean(urlDid) && urlDid !== displayedDid;
+
+  if (isLoading || (isAuthenticated && pathname === "/") || urlOutOfSync) {
     return (
       <div className="loading-screen">
         <div className="loading-screen__inner">
