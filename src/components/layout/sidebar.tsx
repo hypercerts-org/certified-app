@@ -18,12 +18,18 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
-  const { signOut } = useAuth();
+  const { signOut, did } = useAuth();
   const { profile, avatarUrl } = useProfile();
   const { handle } = useSession();
   const { activeOrg } = useOrg();
   const { orgAvatarUrl } = useOrgProfile();
   const pathname = usePathname();
+  const profileDid = activeOrg?.groupDid || did;
+  const profileHref = profileDid ? `/profile/${encodeURIComponent(profileDid)}` : "/";
+  const isProfileActive =
+    pathname === "/" ||
+    pathname.startsWith("/profile/") ||
+    pathname === "/settings/edit-profile";
 
   // Close sidebar on navigation (mobile)
   useEffect(() => {
@@ -60,8 +66,8 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         <ul className="sidebar__menu">
           <li>
             <Link
-              href="/"
-              className={`sidebar__item ${pathname === "/" || pathname === "/settings/edit-profile" ? "sidebar__item--active" : ""}`}
+              href={profileHref}
+              className={`sidebar__item ${isProfileActive ? "sidebar__item--active" : ""}`}
             >
               <User size={18} />
               Profile
