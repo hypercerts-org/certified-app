@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useParams, usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Pencil } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -16,11 +16,9 @@ import Button from "@/components/ui/button";
 export default function HomeClient() {
   const router = useRouter();
   const pathname = usePathname();
-  const params = useParams();
-  const urlDid = typeof params?.did === "string" ? decodeURIComponent(params.did) : null;
   const { isLoading, isAuthenticated, did } = useAuth();
   const { profile, avatarUrl, bannerUrl, isFallback } = useProfile();
-  const { activeOrg, groups, isLoading: orgsLoading, switchOrg } = useOrg();
+  const { activeOrg, isLoading: orgsLoading } = useOrg();
   const { orgProfile, orgMetadata, orgAvatarUrl, orgBannerUrl } = useOrgProfile();
   const { handle } = useSession();
 
@@ -32,47 +30,20 @@ export default function HomeClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- router is stable, omitting to prevent re-renders
   }, [isLoading, isAuthenticated]);
 
-  // Canonicalize URL: `/` → `/profile/{did}` (of user or active org)
+  // Canonicalize URL: `/` → `/profile/{did}`. Wait for orgs so we don't
+  // redirect to a stale activeOrg persisted in localStorage.
   useEffect(() => {
-    if (isLoading || !isAuthenticated || !did) return;
+    if (isLoading || orgsLoading || !isAuthenticated || !did) return;
     if (pathname !== "/") return;
     const targetDid = activeOrg?.groupDid || did;
     router.replace(`/profile/${encodeURIComponent(targetDid)}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- router is stable
-  }, [isLoading, isAuthenticated, did, pathname, activeOrg?.groupDid]);
-
-  // Sync active org with URL DID when on `/profile/[did]`
-  useEffect(() => {
-    if (isLoading || orgsLoading || !isAuthenticated || !did || !urlDid) return;
-
-    if (urlDid === did) {
-      if (activeOrg !== null) switchOrg(null);
-      return;
-    }
-
-    const matchingGroup = groups.find((g) => g.groupDid === urlDid);
-    if (matchingGroup) {
-      if (activeOrg?.groupDid !== matchingGroup.groupDid) switchOrg(matchingGroup);
-      return;
-    }
-
-    // URL DID doesn't match user or any of their groups — redirect to self.
-    const selfDid = activeOrg?.groupDid || did;
-    if (urlDid !== selfDid) {
-      router.replace(`/profile/${encodeURIComponent(selfDid)}`);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- router is stable
-  }, [isLoading, orgsLoading, isAuthenticated, did, urlDid, groups, activeOrg?.groupDid]);
+  }, [isLoading, orgsLoading, isAuthenticated, did, pathname, activeOrg?.groupDid]);
 
   const initials = getInitials(profile?.displayName, did);
 
-  // Stay in loading state when the URL DID hasn't been reconciled with
-  // activeOrg yet — prevents a flash of the wrong profile before the sync
-  // effect can switchOrg or redirect.
-  const displayedDid = activeOrg?.groupDid || did;
-  const urlOutOfSync = Boolean(urlDid) && urlDid !== displayedDid;
-
-  if (isLoading || (isAuthenticated && pathname === "/") || urlOutOfSync) {
+  // Show loading while redirecting from `/`
+  if (isLoading || (isAuthenticated && pathname === "/")) {
     return (
       <div className="loading-screen">
         <div className="loading-screen__inner">
