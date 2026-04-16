@@ -11,6 +11,7 @@ import { resolveHandle, resolvePdsUrl } from "@/lib/atproto/did";
 import { getAvatarUrl, getBannerUrl } from "@/lib/atproto/profile";
 import type { OrgProfile, GroupMetadata } from "@/lib/groups/types";
 import type { CertifiedProfile } from "@/lib/atproto/types";
+import { safeExternalUrl } from "@/lib/utils/url";
 import Avatar from "@/components/ui/avatar";
 import Button from "@/components/ui/button";
 import LoadingSpinner from "@/components/ui/loading-spinner";
@@ -193,18 +194,22 @@ export default function ProfileClient() {
               <div className="personal-info__full-width">
                 <dt className="personal-info__label">Website</dt>
                 <dd className="personal-info__field">
-                  {profile?.website ? (
-                    <a
-                      href={profile.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="personal-info__field--link"
-                    >
-                      {profile.website}
-                    </a>
-                  ) : (
-                    "—"
-                  )}
+                  {(() => {
+                    const safe = safeExternalUrl(profile?.website);
+                    if (safe) {
+                      return (
+                        <a
+                          href={safe}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="personal-info__field--link"
+                        >
+                          {profile!.website}
+                        </a>
+                      );
+                    }
+                    return profile?.website || "—";
+                  })()}
                 </dd>
               </div>
               {isOrg && (
@@ -230,26 +235,32 @@ export default function ProfileClient() {
                     </dd>
                   </div>
                 )}
-              {isOrg && metadata?.urls && metadata.urls.length > 0 && (
-                <div className="personal-info__full-width">
-                  <dt className="personal-info__label">Links</dt>
-                  <dd className="personal-info__field">
-                    {metadata.urls.map((u, i) => (
-                      <span key={i}>
-                        {i > 0 && " · "}
-                        <a
-                          href={u.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="personal-info__field--link"
-                        >
-                          {u.label || u.url}
-                        </a>
-                      </span>
-                    ))}
-                  </dd>
-                </div>
-              )}
+              {isOrg && metadata?.urls && metadata.urls.length > 0 && (() => {
+                const safeLinks = metadata.urls
+                  .map((u) => ({ ...u, safeHref: safeExternalUrl(u.url) }))
+                  .filter((u) => !!u.safeHref);
+                if (safeLinks.length === 0) return null;
+                return (
+                  <div className="personal-info__full-width">
+                    <dt className="personal-info__label">Links</dt>
+                    <dd className="personal-info__field">
+                      {safeLinks.map((u, i) => (
+                        <span key={i}>
+                          {i > 0 && " · "}
+                          <a
+                            href={u.safeHref!}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="personal-info__field--link"
+                          >
+                            {u.label || u.url}
+                          </a>
+                        </span>
+                      ))}
+                    </dd>
+                  </div>
+                );
+              })()}
             </dl>
           </div>
         </div>

@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { getOrgProfile } from "@/lib/groups/api"
 import type { OrgProfile } from "@/lib/groups/types"
+import { safeExternalUrl } from "@/lib/utils/url"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Button from "@/components/ui/button"
 import Avatar from "@/components/ui/avatar"
@@ -87,18 +88,25 @@ export default function OrgProfilePage() {
                     {profile?.description && (
                       <p className="profile-card__bio">{profile.description}</p>
                     )}
-                    {profile?.website && (
-                      <p className="profile-card__bio">
-                        <a
-                          href={profile.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="personal-info__field--link"
-                        >
-                          {profile.website}
-                        </a>
-                      </p>
-                    )}
+                    {profile?.website && (() => {
+                      const safe = safeExternalUrl(profile.website)
+                      return (
+                        <p className="profile-card__bio">
+                          {safe ? (
+                            <a
+                              href={safe}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="personal-info__field--link"
+                            >
+                              {profile.website}
+                            </a>
+                          ) : (
+                            profile.website
+                          )}
+                        </p>
+                      )
+                    })()}
                   </div>
                 </div>
                 {canEdit && (
