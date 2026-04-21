@@ -163,13 +163,15 @@ src/
 
 public/
 ├── llms.txt                            # AI crawler description
-└── assets/
-    ├── partners/                       # Partner app logos
-    ├── certified_brandmark*.svg/png    # Brand assets
-    ├── certified_wordmark*.svg/png     # Wordmarks
-    ├── certified-hero-1200x630.png     # OG image
-    ├── sign_in_with_certified*.svg/png # Sign-in button assets
-    ├── guilloche_02.svg                # Decorative background (SVGO optimized)
+├── assets/
+│   ├── partners/                       # Partner app logos
+│   ├── certified_brandmark*.svg/png    # Brand assets
+│   ├── certified_wordmark*.svg/png     # Wordmarks
+│   ├── certified-hero-1200x630.png     # OG image
+│   ├── certified_signin_black.svg/png     # Sign-in button assets
+│   ├── certified_signinwith_black.svg/png # Sign-in-with button assets
+│   └── guilloche_02.svg                # Decorative background (SVGO optimized)
+└── email/
     └── otp-email-template.html         # Branded OTP email
 ```
 
