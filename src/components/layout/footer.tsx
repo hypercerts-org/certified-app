@@ -7,7 +7,7 @@ export default function Footer() {
     <footer className="landing-footer">
       <div className="landing-footer__bar">
         <div className="landing-footer__left">
-          <img src="/assets/certified_wordmark_black_green.png" alt="Certified" className="landing-footer__logo-img" />
+          <img src="/assets/certified_wordmark_black.svg" alt="Certified" className="landing-footer__logo-img" />
           <span className="landing-footer__copy">&copy; 2026 Hypercerts Foundation</span>
         </div>
         <div className="landing-footer__links">

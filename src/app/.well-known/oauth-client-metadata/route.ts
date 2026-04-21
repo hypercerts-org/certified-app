@@ -15,7 +15,7 @@ export async function GET() {
     background_color: "#f9f9f9",
     tos_uri: `${origin}/terms`,
     policy_uri: `${origin}/privacy`,
-    email_template_uri: `${origin}/assets/otp-email-template.html`,
+    email_template_uri: `${origin}/email/otp-email-template.html`,
     email_subject_template: "{{code}} — Your Certified sign-in code",
   }
 

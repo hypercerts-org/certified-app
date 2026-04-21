@@ -28,7 +28,7 @@ export const CONNECTED_APPS = [
     desc: "Visualizing and recognizing those who create real value",
     longDesc:
       "Hyperboards creates leaderboards and visual displays of hypercerts holders, making impact contributions visible and shareable.",
-    logo: "/assets/hyperboards_brandmark.webp",
+    logo: "/assets/partners/hyperboards_brandmark.webp",
     url: "https://hyperboards.org",
   },
 ];

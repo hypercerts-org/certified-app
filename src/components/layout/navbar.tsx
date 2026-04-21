@@ -182,7 +182,7 @@ const Navbar: React.FC = () => {
     <nav className={navClasses}>
       <div className="navbar__inner">
         <Link href="/" className="navbar__logo">
-          <img src="/assets/certified_wordmark_black_green.png" alt="Certified" className="navbar__logo-img" />
+          <img src="/assets/certified_wordmark_black.svg" alt="Certified" className="navbar__logo-img" />
           <span className="navbar__beta-label">beta</span>
         </Link>
 
@@ -408,7 +408,7 @@ const Navbar: React.FC = () => {
               onClick={openSignIn}
               className="navbar__signin"
             >
-              <img src="/assets/sign_in_black_small.svg" alt="Sign in" className="navbar__signin-img" />
+              <img src="/assets/certified_signin_black.svg" alt="Sign in" className="navbar__signin-img" />
             </button>
           </div>
         )}
