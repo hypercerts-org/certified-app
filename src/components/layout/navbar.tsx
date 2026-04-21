@@ -14,15 +14,15 @@ import { useOrg } from "@/lib/groups/org-context";
 import { useOrgProfile } from "@/hooks/use-org-profile";
 import { Menu, X, ChevronDown, LogOut } from "lucide-react";
 
-const PERSONAL_NAV_LINKS = [
-  { href: "/", label: "Profile" },
+const PERSONAL_NAV_LINKS = (profileHref: string) => [
+  { href: profileHref, label: "Profile" },
   { href: "/groups", label: "Groups" },
   { href: "/connected-apps", label: "Apps" },
   { href: "/settings", label: "Settings" },
 ];
 
-const ORG_NAV_LINKS = [
-  { href: "/", label: "Profile" },
+const ORG_NAV_LINKS = (profileHref: string) => [
+  { href: profileHref, label: "Profile" },
   { href: "/connected-apps", label: "Apps" },
   { href: "/settings", label: "Settings" },
 ];
@@ -145,7 +145,10 @@ const Navbar: React.FC = () => {
   }, [sheetExpanded]);
 
   // Derive display state from org context
-  const navLinks = activeOrg ? ORG_NAV_LINKS : PERSONAL_NAV_LINKS;
+  const profileDid = activeOrg?.groupDid || did;
+  const profileHref = profileDid ? `/profile/${encodeURIComponent(profileDid)}` : "/";
+  const selfProfileHref = did ? `/profile/${encodeURIComponent(did)}` : "/";
+  const navLinks = activeOrg ? ORG_NAV_LINKS(profileHref) : PERSONAL_NAV_LINKS(profileHref);
   const displayName = activeOrg
     ? (activeOrg.displayName || activeOrg.handle)
     : profile?.displayName;
@@ -169,6 +172,9 @@ const Navbar: React.FC = () => {
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/" || pathname === "/settings/edit-profile";
+    if (href.startsWith("/profile/")) {
+      return pathname === "/" || pathname.startsWith("/profile/") || pathname === "/settings/edit-profile";
+    }
     return pathname.startsWith(href);
   };
 
@@ -216,7 +222,7 @@ const Navbar: React.FC = () => {
                       <button
                         role="menuitem"
                         className={`account-switcher__item ${!activeOrg ? "account-switcher__item--active" : ""}`}
-                        onClick={() => { switchOrg(null); setSwitcherOpen(false); router.push("/"); }}
+                        onClick={() => { switchOrg(null); setSwitcherOpen(false); router.push(selfProfileHref); }}
                       >
                         <Avatar
                           src={avatarUrl || undefined}
@@ -253,7 +259,7 @@ const Navbar: React.FC = () => {
                             onClick={() => {
                               switchOrg(org);
                               setSwitcherOpen(false);
-                              router.push("/");
+                              router.push(`/profile/${encodeURIComponent(org.groupDid)}`);
                             }}
                           >
                             <Avatar
@@ -306,7 +312,7 @@ const Navbar: React.FC = () => {
                         <button
                           role="menuitem"
                           className={`account-switcher__item ${!activeOrg ? "account-switcher__item--active" : ""}`}
-                          onClick={() => { switchOrg(null); setSwitcherOpen(false); router.push("/"); }}
+                          onClick={() => { switchOrg(null); setSwitcherOpen(false); router.push(selfProfileHref); }}
                         >
                           <Avatar
                             src={avatarUrl || undefined}
@@ -343,7 +349,7 @@ const Navbar: React.FC = () => {
                               onClick={() => {
                                 switchOrg(org);
                                 setSwitcherOpen(false);
-                                router.push("/");
+                                router.push(`/profile/${encodeURIComponent(org.groupDid)}`);
                               }}
                             >
                               <Avatar
