@@ -10,6 +10,9 @@ export default function LandingPage() {
   return (
     <>
       <section className="hero hero--landing">
+        {/* Soft radial brand glow (blue) sits behind the grid pattern */}
+        <div className="hero__glow" aria-hidden="true" />
+
         {/* Line-art pattern background */}
         <div className="hero__pattern" aria-hidden="true">
           <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
@@ -27,17 +30,28 @@ export default function LandingPage() {
         </div>
 
         <div className="hero__inner">
-          <span className="hero__label">Built on AT Protocol</span>
+          <a className="hero__chip hero-reveal" href="#built-for-trust">
+            <span className="hero__chip-dot" aria-hidden="true" />
+            Built on AT Protocol
+            <span className="hero__chip-arrow" aria-hidden="true">→</span>
+          </a>
           <h1 className="hero__title hero-reveal">
             One account.<br />
             <span className="hero__title-accent">Any app.</span>
           </h1>
           <p className="hero__subtitle hero-reveal">
-            Your identity and data — everywhere you go.
+            A passwordless identity that travels with you.
+            Your profile and data follow you across every app you use —
+            with no lock-in, ever.
           </p>
           <div className="hero-reveal">
             <HeroSignInButton />
           </div>
+          <ul className="hero__trust hero-reveal" aria-label="Why Certified">
+            <li><span className="hero__trust-check" aria-hidden="true">✓</span> Free</li>
+            <li><span className="hero__trust-check" aria-hidden="true">✓</span> No passwords</li>
+            <li><span className="hero__trust-check" aria-hidden="true">✓</span> No vendor lock-in</li>
+          </ul>
         </div>
       </section>
       <WhatYouGet />
