@@ -7,10 +7,11 @@ export default function WhatYouGet() {
           <h2>What you get</h2>
         </div>
         <div className="landing-bento">
-          {/* Highlight card — first slot uses brand-blue fill so the eye lands
-              here first. The other three remain neutral white for rhythm. */}
-          <div className="landing-bento__card landing-bento__card--brand">
-            <div className="landing-bento__icon-wrap landing-bento__icon-wrap--brand">
+          {/* All four cards are uniform — minimal cream surface, the
+              accent only shows up on the icon stroke. No highlight
+              card; let the typography carry the rhythm. */}
+          <div className="landing-bento__card">
+            <div className="landing-bento__icon-wrap">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             </div>
             <h3>One account across apps</h3>

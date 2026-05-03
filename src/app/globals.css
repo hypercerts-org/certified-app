@@ -30,44 +30,46 @@
 
 :root {
   /* Core */
-  --color-primary: #111111;
-  --color-navy: #111111;
-  --color-accent: #5e5e5e;
+  --color-primary: #141413;
+  --color-navy: #141413;
+  --color-accent: #726a60;
   --color-white: #FFFFFF;
 
-  /* Brand — "Certified blue" (introduced 2026-05 redesign).
-     Distinct from Bluesky's electric #0085FF; deeper, more notarial. */
-  --color-brand: #1d4ed8;
-  --color-brand-hover: #1e3fb8;
-  --color-brand-soft: #eef2ff;
-  --color-brand-soft-hover: #e0e7ff;
-  --color-brand-tint: #dbeafe;
-  --color-brand-text: #1e40af;
+  /* Brand — "Certified warm" palette (revised 2026-05, MaEarth-aligned).
+     Replaces the Bluesky-inspired electric blue with a parchment-and-sienna
+     editorial system. Sparingly applied: most surfaces stay cream, accent
+     earns its place only on key affordances. */
+  --color-brand: #c68b5a;          /* warm sienna — the only accent */
+  --color-brand-hover: #b07a4d;    /* darker for hover */
+  --color-brand-soft: #f5ebdd;     /* very soft tint background */
+  --color-brand-soft-hover: #f0dfc8;
+  --color-brand-tint: #f2e0cb;     /* badge / icon background */
+  --color-brand-text: #8a5d34;     /* darker accent for text */
 
-  /* Neutrals */
-  --color-off-white: #f9f9f9;
-  --color-gray-100: #eeeeee;
-  --color-light-gray: #e2e2e2;
-  --color-mid-gray: #7e7576;
-  --color-dark-gray: #4c4546;
+  /* Neutrals — retuned to warm cream/parchment family */
+  --color-off-white: #f7f1eb;      /* MaEarth cream */
+  --color-gray-100: #f2e9dd;       /* warm tonal step */
+  --color-light-gray: #e8ddd1;     /* warm hairline */
+  --color-mid-gray: #726a60;       /* warm secondary text */
+  --color-dark-gray: #2a2622;      /* warm body text */
 
-  /* Surface hierarchy */
-  --color-surface: #f9f9f9;
-  --color-surface-container: #eeeeee;
-  --color-surface-container-low: #f3f3f3;
-  --color-surface-container-high: #e8e8e8;
+  /* Surface hierarchy — cream-shifted */
+  --color-surface: #f7f1eb;            /* page surface */
+  --color-surface-container: #f2e9dd;  /* tonal step up */
+  --color-surface-container-low: #fcfaf7;  /* lighter card */
+  --color-surface-container-high: #ede2d4;
 
   /* Accent Variations */
-  --color-accent-hover: #454747;
+  --color-accent-hover: #4a4540;
 
-  /* Borders */
-  --border-subtle: rgba(0, 0, 0, 0.04);
-  --border-light: rgba(0, 0, 0, 0.06);
-  --border-default: rgba(0, 0, 0, 0.08);
-  --border-medium: rgba(0, 0, 0, 0.1);
-  --border-hover: rgba(0, 0, 0, 0.15);
-  --border-hover-soft: rgba(0, 0, 0, 0.12);
-  --border-strong: rgba(0, 0, 0, 0.2);
+  /* Borders — warm-tinted to harmonize with the cream surface */
+  --border-subtle: rgba(50, 35, 20, 0.05);
+  --border-light: rgba(50, 35, 20, 0.07);
+  --border-default: rgba(50, 35, 20, 0.10);
+  --border-medium: rgba(50, 35, 20, 0.13);
+  --border-hover: rgba(50, 35, 20, 0.18);
+  --border-hover-soft: rgba(50, 35, 20, 0.14);
+  --border-strong: rgba(50, 35, 20, 0.22);
 
   /* Dark overlays */
   --navy-overlay-30: rgba(0, 0, 0, 0.3);
@@ -121,7 +123,7 @@ button:focus-visible,
 body {
   font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
   color: var(--color-dark-gray);
-  background: var(--color-primary); /* prevents white flash during auth loading transition */
+  background: var(--color-surface); /* warm cream — no flash, no cold white */
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -408,24 +410,20 @@ h1, h2, h3, h4, h5, h6 {
   padding: calc(var(--navbar-height) + 48px) 32px 48px;
 }
 
-/* Soft brand-blue radial glow behind the hero copy.
-   Subtle on purpose — the type stays the protagonist. */
+/* No more radial glow — the cream surface speaks for itself.
+   Element kept (still rendered in markup) but rendered as a no-op so we
+   don't have to touch the React tree. */
 .hero__glow {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse 60% 50% at 50% 45%, rgba(29, 78, 216, 0.10), transparent 70%),
-    radial-gradient(ellipse 30% 25% at 30% 30%, rgba(29, 78, 216, 0.06), transparent 70%),
-    radial-gradient(ellipse 30% 25% at 70% 70%, rgba(29, 78, 216, 0.05), transparent 70%);
+  display: none;
 }
 
+/* Grid pattern dialed way back — should read as faint paper texture
+   rather than tech grid. */
 .hero__pattern {
   position: absolute;
   inset: 0;
   z-index: 0;
-  opacity: 0.18;
+  opacity: 0.08;
   pointer-events: none;
   color: var(--color-primary);
 }
@@ -454,50 +452,53 @@ h1, h2, h3, h4, h5, h6 {
   margin-bottom: 24px;
 }
 
-/* Pill chip above the headline. Replaces the bare uppercase label.
-   Doubles as an in-page anchor to "Built for trust". */
+/* Pill chip above the headline. MaEarth-style: cream surface with a
+   warm hairline border. The dot is the one place the sienna accent
+   appears in the hero. */
 .hero__chip {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   padding: 7px 16px 7px 12px;
-  margin-bottom: 32px;
+  margin-bottom: 36px;
   border-radius: 999px;
-  background: var(--color-brand-soft);
-  color: var(--color-brand-text);
+  background: var(--color-surface-container-low);
+  color: var(--color-primary);
   font-size: 0.8125rem;
   font-weight: 500;
   letter-spacing: 0.02em;
   text-decoration: none;
-  border: 1px solid rgba(29, 78, 216, 0.12);
-  transition: background var(--transition-fast), transform var(--transition-fast);
+  border: 1px solid var(--color-light-gray);
+  transition: border-color var(--transition-base), background var(--transition-base);
 }
 .hero__chip:hover {
-  background: var(--color-brand-soft-hover);
-  transform: translateY(-1px);
+  border-color: var(--border-medium);
+  background: var(--color-white);
 }
 .hero__chip-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--color-brand);
-  box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.12);
 }
 .hero__chip-arrow {
   font-size: 0.875rem;
-  transition: transform var(--transition-fast);
+  color: var(--color-mid-gray);
+  transition: transform var(--transition-fast), color var(--transition-fast);
 }
 .hero__chip:hover .hero__chip-arrow {
   transform: translateX(2px);
+  color: var(--color-primary);
 }
 
-/* Trust microcopy sitting under the primary CTA. */
+/* Trust microcopy sitting under the primary CTA. Quiet: no badges,
+   no colored circles — just text with hairline separators. */
 .hero__trust {
   list-style: none;
   padding: 0;
-  margin: 24px 0 0;
+  margin: 28px 0 0;
   display: flex;
-  gap: 24px;
+  gap: 0;
   flex-wrap: wrap;
   justify-content: center;
   font-size: 0.8125rem;
@@ -506,19 +507,14 @@ h1, h2, h3, h4, h5, h6 {
 .hero__trust li {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  padding: 0 18px;
+  border-right: 1px solid var(--color-light-gray);
+}
+.hero__trust li:last-child {
+  border-right: none;
 }
 .hero__trust-check {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--color-brand-tint);
-  color: var(--color-brand);
-  font-size: 0.625rem;
-  font-weight: 700;
+  display: none; /* the hairline separators carry the rhythm now */
 }
 
 .hero__title {
@@ -732,33 +728,33 @@ h1, h2, h3, h4, h5, h6 {
   margin: 0;
 }
 
-/* Subtle pill linking out to atproto.com — reinforces the protocol
-   credential without competing with the brand mark. */
+/* Subtle pill linking out to atproto.com. Cream surface, hairline
+   border, only the dot carries the sienna accent. */
 .landing-footer__atproto {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   align-self: flex-start;
   margin-top: 8px;
-  padding: 6px 12px;
+  padding: 6px 14px;
   border-radius: 999px;
-  background: var(--color-brand-soft);
-  border: 1px solid rgba(29, 78, 216, 0.12);
-  color: var(--color-brand-text);
+  background: transparent;
+  border: 1px solid var(--color-light-gray);
+  color: var(--color-mid-gray);
   font-size: 0.75rem;
   font-weight: 500;
   text-decoration: none;
-  transition: background var(--transition-fast);
+  transition: border-color var(--transition-fast), color var(--transition-fast);
 }
 .landing-footer__atproto:hover {
-  background: var(--color-brand-soft-hover);
+  border-color: var(--border-medium);
+  color: var(--color-primary);
 }
 .landing-footer__atproto-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: var(--color-brand);
-  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
 }
 
 .landing-footer__nav {
@@ -789,7 +785,7 @@ h1, h2, h3, h4, h5, h6 {
   transition: color var(--transition-fast);
 }
 .landing-footer__col a:hover {
-  color: var(--color-brand);
+  color: var(--color-primary);
 }
 
 .landing-footer__bottom {
@@ -1416,39 +1412,37 @@ h1, h2, h3, h4, h5, h6 {
 /* ========== Landing CTA Section ========== */
 .landing-cta {
   text-align: center;
-  padding: 96px 32px;
+  padding: 0;
 }
 
-.landing-cta .landing-label {
-  justify-content: center;
-}
-
-.landing-cta h2 {
-  margin-bottom: 16px;
-}
-
-.landing-cta > p {
-  font-size: 1.125rem;
-  color: var(--color-mid-gray);
-  margin-bottom: 40px;
-  max-width: 560px;
+.landing-cta__headline {
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-size: clamp(2.5rem, 4vw + 0.5rem, 3.75rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--color-primary);
+  margin: 0 0 20px;
+  max-width: 720px;
   margin-left: auto;
   margin-right: auto;
+}
+
+.landing-cta__lede {
+  font-size: 1.125rem;
+  color: var(--color-mid-gray);
+  margin: 0 auto 36px;
+  max-width: 520px;
   line-height: 1.6;
 }
 
-/* Trust microcopy below the closing CTA button. */
+/* Trust microcopy below the closing CTA button. Editorial: small,
+   warm-gray text with em-dash separators. */
 .landing-cta__micro {
-  margin-top: 24px;
+  margin: 24px 0 0;
   font-size: 0.8125rem;
-  color: rgba(255, 255, 255, 0.7) !important;
-  letter-spacing: 0.01em;
-}
-.landing-cta__micro span[aria-hidden="true"] {
-  display: inline-block;
-  margin-right: 4px;
-  color: rgba(255, 255, 255, 0.95);
-  font-weight: 700;
+  color: var(--color-mid-gray);
+  letter-spacing: 0.02em;
 }
 
 .landing-cta__actions {
@@ -1489,9 +1483,11 @@ h1, h2, h3, h4, h5, h6 {
 .landing-network {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-top: 40px;
+  gap: 0;
+  margin-top: 48px;
   margin-bottom: 32px;
+  border-top: 1px solid var(--color-light-gray);
+  border-bottom: 1px solid var(--color-light-gray);
 }
 
 .landing-network__cell {
@@ -1500,57 +1496,64 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   justify-content: flex-start;
   gap: 14px;
-  padding: 32px 20px 28px;
-  background: var(--color-white);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  padding: 40px 24px 36px;
+  background: transparent;
+  border-right: 1px solid var(--color-light-gray);
+  border-radius: 0;
   text-decoration: none;
-  transition: border-color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base);
+  transition: background var(--transition-base);
 }
-
+.landing-network__cell:last-child {
+  border-right: none;
+}
 .landing-network__cell:hover {
-  border-color: rgba(29, 78, 216, 0.18);
-  box-shadow: 0 12px 32px rgba(15, 37, 68, 0.07);
-  transform: translateY(-2px);
+  background: var(--color-surface-container-low);
+  border-color: var(--color-light-gray);
+  box-shadow: none;
+  transform: none;
 }
 
-/* Logos now display in full color always — the previous greyscale
-   filter made them look like placeholders. We keep a small ring on
-   hover for affordance. */
+/* Logos always color, framed by a soft warm ring — no electric blue
+   on hover, just a subtle warm-up. */
 .landing-network__logo {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
   object-fit: cover;
   background: var(--color-white);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 0 0 1px var(--border-light);
   transition: box-shadow var(--transition-fast);
 }
-
 .landing-network__cell:hover .landing-network__logo {
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.08),
-    0 0 0 3px rgba(29, 78, 216, 0.18);
+  box-shadow: 0 0 0 1px var(--border-medium);
 }
 
 .landing-network__name {
   font-family: var(--font-headline), 'Noto Serif', serif;
-  font-size: 1.125rem;
-  font-weight: 700;
+  font-size: 1.0625rem;
+  font-weight: 600;
   color: var(--color-primary);
-  transition: color var(--transition-fast);
-}
-
-.landing-network__cell:hover .landing-network__name {
-  color: var(--color-brand);
+  letter-spacing: -0.01em;
 }
 
 .landing-network__desc {
   font-size: 0.8125rem;
   color: var(--color-mid-gray);
   text-align: center;
-  line-height: 1.5;
+  line-height: 1.55;
   max-width: 200px;
+}
+
+@media (max-width: 768px) {
+  .landing-network {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .landing-network__cell:nth-child(2n) {
+    border-right: none;
+  }
+  .landing-network__cell:nth-child(-n+2) {
+    border-bottom: 1px solid var(--color-light-gray);
+  }
 }
 
 @media (max-width: 768px) {
@@ -1582,7 +1585,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .landing-section--light {
-  background: var(--color-off-white);
+  background: var(--color-surface);
   color: var(--color-dark-gray);
 }
 
@@ -1590,8 +1593,10 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-primary);
 }
 
+/* Inverted section — deep ink instead of pure black. Cream-leaning
+   tone harmonizes better with the warm body palette. */
 .landing-section--dark {
-  background: var(--color-navy);
+  background: #1f1c19;
   color: var(--color-white);
 }
 
@@ -1599,8 +1604,10 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-white);
 }
 
+/* Subtle: a half-step warmer than the page surface, used to mark
+   How-it-works and FAQ as paragraph breaks. */
 .landing-section--subtle {
-  background: var(--color-surface-container-low);
+  background: var(--color-surface-container);
   color: var(--color-dark-gray);
 }
 
@@ -1617,22 +1624,29 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-primary);
 }
 
-/* Brand-blue gradient section — used for the closing CTA so the
-   final call-to-action lands as a clear visual moment. */
+/* Quiet cream variant for the closing CTA. Replaces the loud blue
+   gradient with the same parchment surface as the rest of the page,
+   only with extra vertical padding so it reads as a closing moment. */
+.landing-section--cream {
+  background: var(--color-surface);
+  color: var(--color-dark-gray);
+  padding-top: 128px;
+  padding-bottom: 128px;
+  border-top: 1px solid var(--color-light-gray);
+}
+
+.landing-section--cream h2 {
+  color: var(--color-primary);
+}
+
+/* Legacy brand variant kept inert in the warm palette — if anything
+   still references it, it now renders as a quiet cream block. */
 .landing-section--brand {
-  background:
-    radial-gradient(ellipse 60% 70% at 50% 30%, rgba(255, 255, 255, 0.08), transparent 70%),
-    linear-gradient(160deg, var(--color-brand) 0%, #1e3a8a 100%);
-  color: rgba(255, 255, 255, 0.9);
+  background: var(--color-surface);
+  color: var(--color-dark-gray);
 }
-
-.landing-section--brand h2 {
-  color: var(--color-white);
-}
-
-.landing-section--brand p {
-  color: rgba(255, 255, 255, 0.78);
-}
+.landing-section--brand h2 { color: var(--color-primary); }
+.landing-section--brand p { color: var(--color-mid-gray); }
 
 .landing-section__inner {
   max-width: 1536px;
@@ -1685,15 +1699,17 @@ h1, h2, h3, h4, h5, h6 {
   z-index: 1;
 }
 
+/* Eyebrow label — quiet warm gray, no longer using the accent.
+   The accent is now reserved for hover affordances and the chip dot. */
 .landing-label {
   display: flex;
   align-items: center;
   font-size: 0.6875rem;
   font-weight: 500;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--color-accent);
-  margin-bottom: 12px;
+  color: var(--color-mid-gray);
+  margin-bottom: 14px;
 }
 
 .landing-label--light {
@@ -1706,11 +1722,12 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
-/* ── Bento Grid (What You Get) ───────────────────────────────────────── */
+/* ── Bento Grid (What You Get) — editorial 2×2 with hairline tops */
 .landing-bento {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
+  column-gap: 64px;
+  row-gap: 48px;
 }
 
 @media (max-width: 768px) {
@@ -1721,75 +1738,60 @@ h1, h2, h3, h4, h5, h6 {
 
 .landing-bento__card {
   position: relative;
-  background: var(--color-white);
-  padding: 36px 32px;
-  min-height: 220px;
+  background: transparent;
+  padding: 12px 0 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  transition: box-shadow 300ms ease-out, border-color 300ms ease-out, transform 300ms ease-out;
+  border: 0;
+  border-top: 1px solid var(--color-light-gray);
+  border-radius: 0;
+  transition: border-color 300ms ease-out;
 }
 
 .landing-bento__card:hover {
-  box-shadow: 0 20px 50px rgba(15, 37, 68, 0.08);
-  border-color: rgba(29, 78, 216, 0.18);
-  transform: translateY(-2px);
+  border-top-color: var(--border-medium);
+  box-shadow: none;
+  transform: none;
 }
 
-/* Brand-tinted highlight card (top-left of the bento) — the one card
-   that breaks the white grid so the eye finds an entry point. */
-.landing-bento__card--brand {
-  background: linear-gradient(155deg, var(--color-brand) 0%, #1e3a8a 100%);
-  color: var(--color-white);
-  border-color: transparent;
-}
-.landing-bento__card--brand:hover {
-  box-shadow: 0 20px 50px rgba(29, 78, 216, 0.25);
-  border-color: transparent;
-}
-.landing-bento__card--brand h3 {
-  color: var(--color-white);
-}
-.landing-bento__card--brand p {
-  color: rgba(255, 255, 255, 0.82);
-}
-
-/* Legacy variant kept for back-compat with any old usage */
+/* Legacy brand-fill variants kept inert for back-compat. The new
+   minimal layout doesn't use them. */
+.landing-bento__card--brand,
 .landing-bento__card--highlight {
-  background: var(--color-primary);
-  color: var(--color-white);
+  background: transparent;
+  color: inherit;
+  border: 0;
+  border-top: 1px solid var(--color-light-gray);
 }
-.landing-bento__card--highlight h3 { color: var(--color-white); }
-.landing-bento__card--highlight p { color: rgba(255, 255, 255, 0.7); }
-.landing-bento__card--highlight .landing-bento__icon { color: var(--color-white); }
+.landing-bento__card--brand h3,
+.landing-bento__card--highlight h3 { color: var(--color-primary); }
+.landing-bento__card--brand p,
+.landing-bento__card--highlight p { color: var(--color-mid-gray); }
 
-/* Tinted icon circle replaces the bare 32px stroke-icon — gives each
-   card a clear visual anchor. Defaults to brand-tint, brand-fill on the
-   highlighted card. */
+/* Icon: monochrome stroke, sienna on hover. No tinted circle, no
+   filled background — stays editorial. */
 .landing-bento__icon-wrap {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
-  margin-bottom: 24px;
-  border-radius: 12px;
-  background: var(--color-brand-soft);
-  color: var(--color-brand);
-  transition: background var(--transition-fast), transform var(--transition-fast);
+  width: 32px;
+  height: 32px;
+  margin-bottom: 20px;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-primary);
+  transition: color var(--transition-fast);
 }
 .landing-bento__card:hover .landing-bento__icon-wrap {
-  background: var(--color-brand-tint);
-  transform: scale(1.04);
+  background: transparent;
+  color: var(--color-brand);
+  transform: none;
 }
 .landing-bento__icon-wrap--brand {
-  background: rgba(255, 255, 255, 0.16);
-  color: var(--color-white);
-}
-.landing-bento__card--brand:hover .landing-bento__icon-wrap--brand {
-  background: rgba(255, 255, 255, 0.22);
+  background: transparent;
+  color: var(--color-primary);
 }
 
 /* Legacy single-icon class kept so old markup still renders. */
@@ -1800,28 +1802,26 @@ h1, h2, h3, h4, h5, h6 {
 
 .landing-bento__card h3 {
   font-family: var(--font-headline), 'Noto Serif', serif;
-  font-size: 1.375rem;
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 600;
   color: var(--color-primary);
   margin-bottom: 12px;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
 }
 
 .landing-bento__card p {
-  font-size: 1rem;
-  line-height: 1.6;
+  font-size: 0.9375rem;
+  line-height: 1.65;
   color: var(--color-mid-gray);
   margin: 0;
+  max-width: 36ch;
 }
 
-/* Brand-card text overrides — placed after generic h3/p so they win
-   on equal specificity. */
-.landing-bento__card--brand h3 {
-  color: var(--color-white);
-}
-.landing-bento__card--brand p {
-  color: rgba(255, 255, 255, 0.86);
-}
+/* Legacy brand-card overrides — inert in the new minimal layout but
+   left here so old markup doesn't break. */
+.landing-bento__card--brand h3 { color: var(--color-primary); }
+.landing-bento__card--brand p { color: var(--color-mid-gray); }
 
 /* ============================================================
    FAQ section
@@ -1865,7 +1865,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .landing-faq-btn:focus-visible {
   outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
+  outline-offset: -2px;
   border-radius: 2px;
 }
 
@@ -1916,75 +1916,59 @@ h1, h2, h3, h4, h5, h6 {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  max-width: 600px;
+  gap: 0;
+  max-width: 640px;
   margin: 0 auto;
-}
-
-/* Vertical connector behind the numbered step circles. */
-.landing-protocol__steps::before {
-  content: "";
-  position: absolute;
-  left: 23px;
-  top: 24px;
-  bottom: 24px;
-  width: 2px;
-  background: linear-gradient(
-    to bottom,
-    var(--color-brand-tint) 0%,
-    var(--color-brand-soft) 50%,
-    var(--color-brand-tint) 100%
-  );
-  z-index: 0;
 }
 
 .landing-protocol__step {
   position: relative;
   display: flex;
-  gap: 24px;
+  gap: 32px;
   align-items: flex-start;
-  padding: 16px 0;
-  z-index: 1;
+  padding: 28px 0;
+  border-top: 1px solid var(--color-light-gray);
+}
+.landing-protocol__step:last-child {
+  border-bottom: 1px solid var(--color-light-gray);
 }
 
+/* Numerals are now flat editorial figures — monospaced look from the
+   serif, no circle, no ring, no fill. The accent shows only on hover. */
 .landing-protocol__num {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--color-white);
-  border: 2px solid var(--color-brand);
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-style: normal;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--color-brand);
+  display: inline-block;
+  width: 56px;
+  font-family: var(--font-serif-alt), 'Instrument Serif', serif;
+  font-style: italic;
+  font-size: 1.875rem;
+  font-weight: 400;
+  color: var(--color-mid-gray);
   line-height: 1;
   flex-shrink: 0;
-  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+  margin-top: 4px;
+  transition: color var(--transition-fast);
 }
 
 .landing-protocol__step:hover .landing-protocol__num {
-  background: var(--color-brand);
-  color: var(--color-white);
-  transform: scale(1.05);
+  color: var(--color-brand);
 }
 
 .landing-protocol__step h4 {
-  font-size: 1.125rem;
-  font-weight: 700;
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-size: 1.25rem;
+  font-weight: 600;
   color: var(--color-primary);
-  margin-bottom: 4px;
-  margin-top: 12px;
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+  margin-top: 0;
 }
 
 .landing-protocol__step p {
   font-size: 0.9375rem;
-  line-height: 1.6;
+  line-height: 1.65;
   color: var(--color-mid-gray);
   margin: 0;
+  max-width: 48ch;
 }
 
 /* Protocol visual card */
@@ -2141,36 +2125,35 @@ h1, h2, h3, h4, h5, h6 {
   align-items: flex-start;
 }
 
+/* Trust icons — just the stroke, no filled circle. Same sienna accent
+   the rest of the page uses, so the page reads as one system. */
 .landing-trust__check {
   flex-shrink: 0;
-  width: 44px;
-  height: 44px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
-  background: rgba(96, 161, 226, 0.14);
-  color: #8db8ee;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.landing-trust__item:hover .landing-trust__check {
-  background: rgba(96, 161, 226, 0.22);
-  color: #b8d4f5;
+  background: transparent;
+  color: var(--color-brand);
+  margin-top: 2px;
 }
 
 .landing-trust__item h4 {
-  font-size: 1.0625rem;
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--color-white);
   margin-bottom: 8px;
+  letter-spacing: -0.01em;
 }
 
 .landing-trust__item p {
   font-size: 0.9375rem;
   line-height: 1.65;
-  color: rgba(255, 255, 255, 0.62);
+  color: rgba(255, 255, 255, 0.65);
   margin: 0;
+  max-width: 36ch;
 }
 
 /* ========== Dashboard Cards (right sidebar) ========== */
