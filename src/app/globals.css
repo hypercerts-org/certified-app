@@ -36,29 +36,30 @@
   --color-white: #FFFFFF;
 
   /* Brand — "Certified editorial" palette (revised 2026-05, atproto-aligned).
-     Editorial vermillion red on parchment cream. Inspired by classic print
-     and the open social internet. Sparingly applied: most surfaces stay
-     cream, the red earns its place only on key affordances — italic
+     Editorial vermillion red on near-white off-white. Inspired by classic
+     print and the open social internet. Sparingly applied: most surfaces
+     stay quiet, the red earns its place only on key affordances — italic
      emphasis, eyebrow labels, numerals, dot accents, and the AT badge. */
-  --color-brand: #c2392c;          /* editorial vermillion — the only accent */
-  --color-brand-hover: #a82e22;    /* darker for hover */
-  --color-brand-soft: #f7e8e3;     /* very soft tint background */
-  --color-brand-soft-hover: #f0d6cd;
-  --color-brand-tint: #f2dcd5;     /* badge / icon background */
-  --color-brand-text: #9a2a1f;     /* darker accent for text */
+  --color-brand: #d04636;          /* editorial vermillion — the only accent */
+  --color-brand-hover: #b3382a;    /* darker for hover */
+  --color-brand-soft: #faeae5;     /* very soft tint background */
+  --color-brand-soft-hover: #f3d6cd;
+  --color-brand-tint: #f5dcd5;     /* badge / icon background */
+  --color-brand-text: #a3301f;     /* darker accent for text */
 
-  /* Neutrals — retuned to warm cream/parchment family */
-  --color-off-white: #f6f1e8;      /* parchment cream */
-  --color-gray-100: #ece5d8;       /* warm tonal step */
-  --color-light-gray: #e1d8c8;     /* warm hairline */
-  --color-mid-gray: #6a6258;       /* warm secondary text */
+  /* Neutrals — near-white off-white with the faintest warm tint. Reads
+     as paper-white, not cream. */
+  --color-off-white: #faf9f5;      /* off-white page surface */
+  --color-gray-100: #f1efe8;       /* warm tonal step */
+  --color-light-gray: #e4e0d4;     /* warm hairline */
+  --color-mid-gray: #6e665c;       /* warm secondary text */
   --color-dark-gray: #2a2622;      /* warm body text */
 
-  /* Surface hierarchy — cream-shifted */
-  --color-surface: #f6f1e8;            /* page surface */
-  --color-surface-container: #ece5d8;  /* tonal step up */
-  --color-surface-container-low: #fcfaf6;  /* lighter card */
-  --color-surface-container-high: #e6dccb;
+  /* Surface hierarchy — paper-white shifted */
+  --color-surface: #faf9f5;             /* page surface (off-white) */
+  --color-surface-container: #f1efe8;   /* tonal step up */
+  --color-surface-container-low: #fdfdf9; /* lighter card */
+  --color-surface-container-high: #ebe7da;
 
   /* Accent Variations */
   --color-accent-hover: #4a4540;
@@ -939,7 +940,7 @@ h1, h2, h3, h4, h5, h6 {
   left: 50%;
   transform: translateX(-50%);
   padding: 6px 14px;
-  background: var(--color-surface);
+  background: #ffffff;
   border: 1px solid var(--color-light-gray);
   border-radius: 4px;
   font-size: 0.75rem;
@@ -991,7 +992,7 @@ h1, h2, h3, h4, h5, h6 {
   transform: translate(-50%, -55%);
   width: 36%;
   min-width: 230px;
-  background: var(--color-surface);
+  background: #ffffff;
   border: 1px solid var(--color-light-gray);
   border-radius: 4px;
   padding: 22px 20px 24px;
@@ -1093,7 +1094,7 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  background: var(--color-surface);
+  background: #ffffff;
   border: 1px solid var(--color-light-gray);
   border-radius: 4px;
   font-family: var(--font-inter);
@@ -1154,7 +1155,7 @@ h1, h2, h3, h4, h5, h6 {
   align-items: stretch;
   border: 1.5px solid var(--color-brand);
   border-radius: 2px;
-  background: var(--color-surface);
+  background: #ffffff;
   padding: 0;
   z-index: 4;
 }
@@ -2386,11 +2387,14 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-white);
 }
 
-/* Subtle: a half-step warmer than the page surface, used to mark
-   How-it-works and FAQ as paragraph breaks. */
+/* Subtle: in the editorial system, sections share the same paper-white
+   background and rely on hairline borders for separation. The class is
+   kept (and now adds a top hairline) so sections still feel sequential
+   without changing colour. */
 .landing-section--subtle {
-  background: var(--color-surface-container);
+  background: var(--color-surface);
   color: var(--color-dark-gray);
+  border-top: 1px solid var(--color-light-gray);
 }
 
 .landing-section--subtle h2 {
@@ -2406,9 +2410,9 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-primary);
 }
 
-/* Quiet cream variant for the closing CTA. Replaces the loud blue
-   gradient with the same parchment surface as the rest of the page,
-   only with extra vertical padding so it reads as a closing moment. */
+/* Quiet variant for the closing CTA. Same off-white surface as the rest
+   of the page, only with extra vertical padding so it reads as a closing
+   moment. */
 .landing-section--cream {
   background: var(--color-surface);
   color: var(--color-dark-gray);
