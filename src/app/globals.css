@@ -1085,6 +1085,29 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-primary);
 }
 
+/* Bluesky butterfly logo — keep its native sky-blue fill instead of
+   inheriting the primary ink color the other inline icons use. */
+.hero-diagram__app-icon--bluesky img {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+/* Open "Your app" slot — visibly different from the named partner
+   cards: dashed warm hairline + muted text + sienna plus icon, so it
+   reads as an invitation rather than a real product card. */
+.hero-diagram__app--placeholder {
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--border-medium);
+  color: var(--color-mid-gray);
+  box-shadow: none;
+  font-style: italic;
+}
+.hero-diagram__app--placeholder .hero-diagram__app-icon {
+  color: var(--color-brand);
+}
+
 .hero-diagram__app--lt { top: 24%; left: 2%; }
 .hero-diagram__app--lm { top: 47%; left: 2%; }
 .hero-diagram__app--lb { top: 70%; left: 2%; }
