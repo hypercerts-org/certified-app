@@ -403,14 +403,33 @@ const Navbar: React.FC = () => {
             </div>
           </>
         ) : (
-          <div className="navbar__right">
-            <button
-              onClick={openSignIn}
-              className="navbar__signin"
-            >
-              <img src="/assets/certified_signin_black.svg" alt="Sign in" className="navbar__signin-img" />
-            </button>
-          </div>
+          <>
+            {/* Center: editorial anchor nav (only on landing) */}
+            <div className="navbar__public-links" aria-label="Sections">
+              <Link href="/welcome#what-you-get" className="navbar__public-link">Benefits</Link>
+              <Link href="/welcome#how-it-works" className="navbar__public-link">How it works</Link>
+              <Link href="/welcome#partner-apps" className="navbar__public-link">Apps</Link>
+              <Link href="/welcome#faq" className="navbar__public-link">FAQ</Link>
+            </div>
+
+            {/* Right: Sign in (text) + Get started (black) */}
+            <div className="navbar__right">
+              <button
+                onClick={openSignIn}
+                className="navbar__signin-link"
+                type="button"
+              >
+                Sign in
+              </button>
+              <button
+                onClick={openSignIn}
+                className="btn btn--primary btn--sm navbar__cta"
+                type="button"
+              >
+                Get started
+              </button>
+            </div>
+          </>
         )}
       </div>
     </nav>

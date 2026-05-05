@@ -9,24 +9,31 @@ export default {
   theme: {
     extend: {
       colors: {
-        navy: "#0F2544",
-        accent: "#60A1E2",
-        sky: "#A3CDF2",
-        deep: "#1A3A6B",
+        // Editorial palette (parchment + vermillion)
+        navy: "#141413",        // dark warm ink (was navy)
+        accent: "#c2392c",      // editorial vermillion (was electric blue)
+        sky: "#f7e8e3",         // soft red tint (was light blue)
+        deep: "#2a2622",        // body text
+        cream: "#f6f1e8",       // page surface
+        parchment: "#ece5d8",   // tonal step
+        brand: "#c2392c",
+        "brand-soft": "#f7e8e3",
         gray: {
-          50: "#F7F8FA",
-          100: "#EEF0F4",
-          200: "#E2E5EB",
-          400: "#8A92A0",
-          600: "#525B6A",
-          700: "#3B4251",
+          50: "#fcfaf6",
+          100: "#ece5d8",
+          200: "#e1d8c8",
+          400: "#a8a092",
+          600: "#6a6258",
+          700: "#3b3733",
         },
         success: "#2ECC71",
         warning: "#F5A623",
-        error: "#E74C3C",
+        error: "#c2392c",
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        serif: ["Noto Serif", "Georgia", "serif"],
+        "serif-italic": ["Instrument Serif", "Georgia", "serif"],
         mono: ["Inter", "system-ui", "-apple-system", "sans-serif"],
       },
       fontSize: {
