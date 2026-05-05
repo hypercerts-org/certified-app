@@ -105,6 +105,25 @@
 
   /* Navbar */
   --navbar-height: 64px;
+
+  /* Shared landing container — single alignment line for navbar, hero,
+     hero pillars, all landing sections, and the footer. Slightly more
+     inset than the legacy 1480/1536 widths so the page reads as one
+     calm column on wide desktops. */
+  --container-max: 1280px;
+  --container-pad-x: 32px;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --container-pad-x: 20px;
+  }
+}
+
+@media (max-width: 380px) {
+  :root {
+    --container-pad-x: 16px;
+  }
 }
 
 a:focus-visible,
@@ -205,9 +224,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .navbar__inner {
-  max-width: 1536px;
+  max-width: var(--container-max);
   margin: 0 auto;
-  padding: 0 32px;
+  padding: 0 var(--container-pad-x);
   height: 100%;
   display: flex;
   align-items: center;
@@ -307,7 +326,7 @@ h1, h2, h3, h4, h5, h6 {
   .navbar__beta-label { display: none; }
 }
 @media (max-width: 380px) {
-  .navbar__inner { padding: 0 16px; }
+  /* .navbar__inner pad is owned by --container-pad-x at this breakpoint. */
   .navbar__cta { padding: 8px 12px; font-size: 0.75rem; }
 }
 
@@ -480,9 +499,9 @@ h1, h2, h3, h4, h5, h6 {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 1480px;
+  max-width: var(--container-max);
   margin: 0 auto;
-  padding: 24px 32px 36px;
+  padding: 24px var(--container-pad-x) 36px;
   display: grid;
   grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.1fr);
   gap: 32px;
@@ -493,21 +512,22 @@ h1, h2, h3, h4, h5, h6 {
   .hero__split {
     grid-template-columns: 1fr;
     gap: 56px;
-    padding: 32px 24px 32px;
+    padding: 32px var(--container-pad-x) 32px;
   }
 }
 
 /* ── LEFT: typography column ───────────────────────────── */
+/* No internal left padding — the hero text aligns to the same vertical
+   line as the navbar, hero pillars, and every landing-section below. */
 .hero__copy {
   position: relative;
   display: flex;
   align-items: stretch;
   gap: 28px;
-  padding-left: 32px;
 }
 
 @media (max-width: 1024px) {
-  .hero__copy { padding-left: 0; gap: 20px; }
+  .hero__copy { gap: 20px; }
 }
 
 .hero__copy-inner {
@@ -816,19 +836,22 @@ h1, h2, h3, h4, h5, h6 {
     padding: calc(var(--navbar-height) + 24px) 0 0;
   }
   .hero__split {
-    padding: 24px 20px;
+    padding: 24px var(--container-pad-x);
     gap: 40px;
   }
 }
 
-/* ── RIGHT: identity diagram ─────────────────────────── */
+/* ── RIGHT: identity diagram ───────────────────────────── */
+/* No internal right padding — the diagram column hugs the same shared
+   alignment line on the right that the typography column hugs on the
+   left, so the watercolor blob and the rail sit flush with the page
+   gutter. */
 .hero__visual {
   position: relative;
   width: 100%;
   display: flex;
   align-items: stretch;
   justify-content: center;
-  padding-right: 32px;
   gap: 20px;
 }
 
@@ -1100,9 +1123,9 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--color-surface);
 }
 .hero-pillars__inner {
-  max-width: 1480px;
+  max-width: var(--container-max);
   margin: 0 auto;
-  padding: 32px 64px;
+  padding: 32px var(--container-pad-x);
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0;
@@ -1116,7 +1139,10 @@ h1, h2, h3, h4, h5, h6 {
   padding: 8px 32px;
   border-right: 1px solid var(--color-light-gray);
 }
-.hero-pillar:last-child { border-right: none; }
+/* First/last pillars hug the container edge so the leftmost icon and
+   the rightmost text both sit on the shared alignment line. */
+.hero-pillar:first-child { padding-left: 0; }
+.hero-pillar:last-child { padding-right: 0; border-right: none; }
 .hero-pillar__icon {
   width: 44px;
   height: 44px;
@@ -1160,21 +1186,23 @@ h1, h2, h3, h4, h5, h6 {
   max-width: 28ch;
 }
 @media (max-width: 1024px) {
-  .hero-pillars__inner { padding: 32px 24px; gap: 24px; }
-  .hero-pillar { padding: 8px 12px; }
+  .hero-pillars__inner { gap: 24px; }
+  .hero-pillar { padding: 8px 16px; }
+  .hero-pillar:first-child { padding-left: 0; }
+  .hero-pillar:last-child { padding-right: 0; }
   .hero-pillar__num { font-size: 1.375rem; }
 }
 @media (max-width: 768px) {
   .hero-pillars__inner {
     grid-template-columns: 1fr;
-    padding: 24px 20px;
   }
   .hero-pillar {
     border-right: none;
     border-bottom: 1px solid var(--color-light-gray);
     padding: 16px 0;
   }
-  .hero-pillar:last-child { border-bottom: none; }
+  .hero-pillar:first-child { padding-left: 0; padding-top: 8px; }
+  .hero-pillar:last-child { padding-right: 0; border-bottom: none; }
 }
 
 /* ── Shared editorial buttons (used across the site) ─────────── */
@@ -1247,19 +1275,22 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ========== Landing Footer (multi-column redesign) ========== */
+/* Same pattern as the landing sections: outer keeps vertical padding
+   only, inner owns horizontal padding so the footer sits on the same
+   alignment line as everything above it. */
 .landing-footer {
   background: var(--color-surface-container-low);
-  padding: 64px 32px 24px;
+  padding: 64px 0 24px;
   border-top: 1px solid var(--border-light);
 }
 
 .landing-footer__inner {
-  max-width: 1280px;
+  max-width: var(--container-max);
   margin: 0 auto;
   display: grid;
   grid-template-columns: minmax(260px, 1.2fr) minmax(0, 2fr);
   gap: 48px;
-  padding-bottom: 48px;
+  padding: 0 var(--container-pad-x) 48px;
   border-bottom: 1px solid var(--border-light);
 }
 
@@ -1346,9 +1377,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .landing-footer__bottom {
-  max-width: 1280px;
+  max-width: var(--container-max);
   margin: 0 auto;
-  padding-top: 24px;
+  padding: 24px var(--container-pad-x) 0;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -1372,7 +1403,7 @@ h1, h2, h3, h4, h5, h6 {
 
 @media (max-width: 768px) {
   .landing-footer {
-    padding: 48px 20px 20px;
+    padding: 48px 0 20px;
   }
   .landing-footer__inner {
     grid-template-columns: 1fr;
@@ -2260,8 +2291,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ========== Landing Sections ========== */
+/* Vertical padding only — the horizontal padding lives on
+   .landing-section__inner so content lines up with the navbar, hero
+   typography column, and the hero pillars row. */
 .landing-section {
-  padding: 96px 32px;
+  padding: 96px 0;
 }
 
 .landing-section--light {
@@ -2309,7 +2343,8 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Quiet variant for the closing CTA. Same off-white surface as the rest
    of the page, only with extra vertical padding so it reads as a closing
-   moment. */
+   moment. Horizontal padding is intentionally absent — it's owned by
+   .landing-section__inner so it stays on the shared alignment line. */
 .landing-section--cream {
   background: var(--color-surface);
   color: var(--color-dark-gray);
@@ -2332,7 +2367,8 @@ h1, h2, h3, h4, h5, h6 {
 .landing-section--brand p { color: var(--color-mid-gray); }
 
 .landing-section__inner {
-  max-width: 1536px;
+  max-width: var(--container-max);
+  padding: 0 var(--container-pad-x);
   margin: 0 auto;
 }
 
@@ -2401,7 +2437,7 @@ h1, h2, h3, h4, h5, h6 {
 
 @media (max-width: 768px) {
   .landing-section {
-    padding: 64px 20px;
+    padding: 64px 0;
   }
 }
 
