@@ -968,10 +968,17 @@ h1, h2, h3, h4, h5, h6 {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 60%;
-  height: 84%;
+  width: 58%;
+  height: auto;
+  aspect-ratio: 1 / 1;
   z-index: 0;
   pointer-events: none;
+  /* Multiply blends the white paper bg from the painted PNG into the
+     off-white page surface so only the dusty-blue pigment remains
+     visible — keeps the painterly soft edges intact. Opacity tuned
+     down so the circle reads as a quiet wash, not a dominant element. */
+  mix-blend-mode: multiply;
+  opacity: 0.55;
 }
 
 .hero-diagram__lines {

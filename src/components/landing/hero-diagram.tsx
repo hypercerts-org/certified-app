@@ -21,41 +21,16 @@ export default function HeroDiagram() {
       {/* Top tag */}
       <div className="hero-diagram__top-tag">Your open identity</div>
 
-      {/* Watercolor blue blob (SVG so it scales) */}
-      <svg
+      {/* Watercolor blue circle — a real painted PNG (generated via
+          openai_image, saved into the repo) rather than an SVG ellipse.
+          Mix-blend-multiply lets the white paper background blend into
+          our off-white page surface so only the pigment shows. */}
+      <img
+        src="/assets/watercolor-blue-circle.png"
+        alt=""
         className="hero-diagram__blob"
-        viewBox="0 0 400 400"
-        xmlns="http://www.w3.org/2000/svg"
         aria-hidden="true"
-      >
-        <defs>
-          <radialGradient id="blob-grad" cx="50%" cy="50%" r="55%">
-            <stop offset="0%" stopColor="#b8c8e0" stopOpacity="0.95" />
-            <stop offset="45%" stopColor="#c9d4e6" stopOpacity="0.7" />
-            <stop offset="75%" stopColor="#dde4f0" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#ece6d8" stopOpacity="0" />
-          </radialGradient>
-          <radialGradient id="blob-grad-inner" cx="45%" cy="40%" r="35%">
-            <stop offset="0%" stopColor="#a4b8d4" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="#a4b8d4" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-        {/* Slightly imperfect ellipse — watercolor feel */}
-        <path
-          d="M 200 30 C 290 30 370 110 370 200 C 370 290 290 370 200 370 C 110 370 30 290 30 200 C 30 110 110 30 200 30 Z"
-          fill="url(#blob-grad)"
-        />
-        <ellipse cx="180" cy="160" rx="120" ry="100" fill="url(#blob-grad-inner)" />
-        <ellipse
-          cx="200"
-          cy="200"
-          rx="170"
-          ry="170"
-          fill="none"
-          stroke="rgba(60, 90, 140, 0.08)"
-          strokeWidth="1"
-        />
-      </svg>
+      />
 
       {/* Dotted connector lines layer (positioned absolutely, behind cards) */}
       <svg
