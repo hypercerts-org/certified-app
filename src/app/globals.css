@@ -47,16 +47,19 @@
   --color-brand-tint: #f5dcd5;     /* badge / icon background */
   --color-brand-text: #a3301f;     /* darker accent for text */
 
-  /* Neutrals — near-white off-white with the faintest warm tint. Reads
-     as paper-white, not cream. */
-  --color-off-white: #faf9f5;      /* off-white page surface */
+  /* Neutrals — near-white page surface tuned to match the watercolor
+     blob PNG's #fefefe bounding box, so the hero diagram blends
+     seamlessly into the page. */
+  --color-off-white: #fefefe;      /* near-white page surface */
   --color-gray-100: #f1efe8;       /* warm tonal step */
   --color-light-gray: #e4e0d4;     /* warm hairline */
   --color-mid-gray: #6e665c;       /* warm secondary text */
   --color-dark-gray: #2a2622;      /* warm body text */
 
-  /* Surface hierarchy — paper-white shifted */
-  --color-surface: #faf9f5;             /* page surface (off-white) */
+  /* Surface hierarchy — page surface matches the watercolor PNG so its
+     rectangular bounds disappear; container tones above keep the warm
+     hierarchy for cards and inset surfaces. */
+  --color-surface: #fefefe;             /* page surface (near-white, matches blob bg) */
   --color-surface-container: #f1efe8;   /* tonal step up */
   --color-surface-container-low: #fdfdf9; /* lighter card */
   --color-surface-container-high: #ebe7da;
