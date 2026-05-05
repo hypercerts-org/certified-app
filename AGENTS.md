@@ -88,7 +88,7 @@ Source: `.env.local.example` and `src/lib/utils/config.ts`.
 | Variable | Required | Purpose |
 |---|---|---|
 | `NEXT_PUBLIC_PDS_URL` | yes | PDS / handle resolver URL. Defaults to `https://certified.one`. |
-| `PUBLIC_URL` | production | Public URL of this app. Used to derive OAuth `client_id`, `redirect_uris`, and the CSRF Origin allowlist. Falls back to `http://localhost:3000` in dev. |
+| `PUBLIC_URL` | production | Public URL of this app. Used to derive OAuth `client_id`, `redirect_uris`, and the CSRF Origin allowlist. Falls back to `http://localhost:3000` in dev. **For local atproto OAuth sign-in to actually complete, set this to `http://127.0.0.1:3000`** — see [§22 Common Pitfalls](#22-common-pitfalls) #3. |
 | `COOKIE_SECRET` | production | HMAC secret for the `certified_session` cookie. Generate with `openssl rand -hex 32`. In dev a fallback string is used. |
 | `UPSTASH_REDIS_REST_URL` | yes | Upstash REST URL. |
 | `UPSTASH_REDIS_REST_TOKEN` | yes | Upstash REST token. |
@@ -211,7 +211,7 @@ Only `/` runs through the proxy. If `certified_session` cookie is missing it 307
 
 ### Components
 
-- **OAuth client** — `src/lib/auth/oauth-client.ts` builds a `NodeOAuthClient` (singleton). It always uses the user's PDS-resolver host (`PDS_URL`) as the `handleResolver`, registers Redis-backed state and session stores, and conditionally enables `private_key_jwt` when `ATPROTO_PRIVATE_KEY` is set.
+- **OAuth client** — `src/lib/auth/oauth-client.ts` builds a `NodeOAuthClient` (singleton). It always uses the user's PDS-resolver host (`PDS_URL`) as the `handleResolver`, registers Redis-backed state and session stores, and conditionally enables `private_key_jwt` when `ATPROTO_PRIVATE_KEY` is set. In **loopback dev mode** (`NODE_ENV !== "production"` AND `PUBLIC_URL` is missing or `http://`) it skips the normal `${PUBLIC_URL}/.well-known/oauth-client-metadata` `client_id` and uses `buildAtprotoLoopbackClientMetadata` instead, because the spec only allows `https://` or the literal `http://localhost` (no port) as a `client_id`.
 - **Stores** — `src/lib/auth/stores.ts` wraps Upstash Redis. `RedisStateStore` (10 min TTL) is for the short-lived OAuth flow. `RedisSessionStore` (30 day TTL) holds long-lived atproto sessions (tokens + DPoP key). Both key by `oauth:state:<key>` / `oauth:session:<key>`.
 - **App session** — `src/lib/auth/session.ts` issues the `certified_session` cookie:
   - Cookie value = `<32-byte hex sessionId>.<HMAC-SHA256 signature>`.
@@ -773,7 +773,14 @@ certified-app/
 
 1. **`useAttestationSigning` outside `/settings/wallet`** — it depends on `WagmiProvider` which is mounted only in `src/app/settings/wallet/layout.tsx`. Calling it elsewhere will throw "useConfig must be used within WagmiConfig".
 2. **Using `fetch` instead of `authFetch`** — the 401 interceptor is the only thing surfacing session expiry to the user. Raw `fetch` will silently fail.
-3. **Origin check failures in dev** — if you set `PUBLIC_URL=https://certified.app` in `.env.local` and run `npm run dev` on localhost, every POST will 403. Either unset `PUBLIC_URL` or match it to `http://localhost:3000`.
+3. **Origin check failures in dev** — if you set `PUBLIC_URL=https://certified.app` in `.env.local` and run `npm run dev` on localhost, every POST will 403. Match `PUBLIC_URL` to whatever host your browser actually hits (use `http://127.0.0.1:3000` if you want sign-in to work — see next pitfall).
+
+3a. **atproto OAuth in dev requires the loopback metadata helper, not just `PUBLIC_URL`.** The spec only accepts a `client_id` that is either a real `https://` URL or the literal `http://localhost` origin (no port, no path). Pointing `client_id` at `http://localhost:3000/...` or `http://127.0.0.1:3000/...` makes `NodeOAuthClient` throw `URL must use the "https:" protocol` (Zod). The fix — already wired into `src/lib/auth/oauth-client.ts` — is to detect dev mode (`NODE_ENV !== "production"` AND `PUBLIC_URL` missing or `http://`) and swap to `buildAtprotoLoopbackClientMetadata({ scope, redirect_uris: ["http://127.0.0.1:<port>/oauth/callback"] })`. Notes:
+   - The `client_id` becomes a virtual `http://localhost?redirect_uri=...&scope=...`, which is what the AS expects for loopback dev.
+   - The `redirect_uri` host must be `127.0.0.1` (or `[::1]`); `localhost` is NOT allowed there even though it IS the only allowed `client_id` host. Yes, this is inverted from intuition; it's the spec.
+   - Cookies don't cross `localhost` ↔ `127.0.0.1`. Pick one host for the whole flow. Since the redirect comes back on `127.0.0.1`, navigate to `http://127.0.0.1:3000/welcome`.
+   - The PDS will show "atproto loopback client" on the consent screen instead of Certified branding. To get real branding in dev, run a tunnel (e.g. `cloudflared`, `ngrok`) and set `PUBLIC_URL=https://<tunnel>.example.com` so the production code path runs.
+   - `ATPROTO_PRIVATE_KEY` is ignored in loopback dev mode — the helper hard-codes `token_endpoint_auth_method: "none"`.
 4. **Wrong cookie name** — it's `certified_session`. Anything else (`session`, `sid`) is wrong.
 5. **Forgetting to add a new write collection to `ALLOWED_WRITE_COLLECTIONS`** — `createRecord`/`putRecord`/`deleteRecord` will silently 403 with `Collection not allowed`.
 6. **Cross-repo writes** — `body.repo` must equal session DID. If you need to write to another repo (e.g. a group's repo), use the `createGroupAgent` proxy pattern, not the XRPC proxy.
