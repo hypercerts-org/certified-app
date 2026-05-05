@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Noto_Serif, Instrument_Serif } from "next/font/google";
+import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth/auth-context";
 import { NavbarProvider } from "@/lib/navbar-context";
@@ -11,25 +11,39 @@ import { OrgProvider } from "@/lib/groups/org-context";
 import FeedbackModal from "@/components/ui/feedback-modal";
 import { Analytics } from "@vercel/analytics/next";
 
-const inter = Inter({
+/**
+ * Type system — atproto.com aligned.
+ *
+ * The site lives on two faces of the IBM Plex superfamily:
+ *  • IBM Plex Sans for body / UI copy
+ *  • IBM Plex Mono for display headlines, eyebrows, numerals, code
+ *
+ * Variable names are kept as `--font-inter` / `--font-headline` /
+ * `--font-serif-alt` for backwards compatibility with the existing
+ * BEM CSS in globals.css, but they now point at Plex Sans / Plex Mono.
+ */
+const plexSans = IBM_Plex_Sans({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
+  style: ["normal", "italic"],
   variable: "--font-inter",
   display: "swap",
 });
 
-const notoSerif = Noto_Serif({
+const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
-  weight: ["400", "700"],
+  weight: ["300", "400", "500", "600", "700"],
   style: ["normal", "italic"],
   variable: "--font-headline",
   display: "swap",
 });
 
-const instrumentSerif = Instrument_Serif({
+// Italic-accent slot — same Plex Mono family, separate variable so any
+// CSS rule that wants to force italic via `--font-serif-alt` keeps working.
+const plexMonoItalic = IBM_Plex_Mono({
   subsets: ["latin"],
-  weight: ["400"],
-  style: ["normal", "italic"],
+  weight: ["400", "500"],
+  style: ["italic"],
   variable: "--font-serif-alt",
   display: "swap",
 });
@@ -139,7 +153,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
       </head>
-      <body className={`${inter.variable} ${notoSerif.variable} ${instrumentSerif.variable} min-h-screen flex flex-col`}>
+      <body className={`${plexSans.variable} ${plexMono.variable} ${plexMonoItalic.variable} min-h-screen flex flex-col`}>
         <Providers>
           <AuthProvider>
             <OrgProvider>

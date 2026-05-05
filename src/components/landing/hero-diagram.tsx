@@ -6,8 +6,7 @@
  * globe, a handle, a DID, four pill chips, and a lock; six partner-app
  * cards floating left/right connected by dotted lines with `+` joints;
  * a "Your open identity" tag at top, a caption at the bottom, a vertical
- * "OPEN WEB" rail at the right edge, and an "AT / Protocol" badge in the
- * bottom-right corner.
+ * "OPEN WEB" rail at the right edge.
  *
  * Pure decoration — no inputs, no interactivity. Sized for a desktop
  * 12-col split, collapses cleanly on tablet/mobile via CSS.
@@ -160,15 +159,9 @@ export default function HeroDiagram() {
       <p className="hero-diagram__caption">
         Your data. Your control.
         <br />
-        Anywhere on the open web.
+        In every app you use.
       </p>
 
-      {/* AT Protocol badge */}
-      <div className="hero-diagram__badge" aria-hidden="true">
-        <span className="hero-diagram__badge-mark">AT</span>
-        <span className="hero-diagram__badge-divider" />
-        <span className="hero-diagram__badge-text">PROTOCOL</span>
-      </div>
     </div>
   );
 }

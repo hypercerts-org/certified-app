@@ -6,7 +6,6 @@ import FaqSection from "@/components/landing/sections/faq-content";
 import ReadyCtaSection from "@/components/landing/sections/ready-cta-content";
 import HeroActions from "@/components/landing/hero-actions";
 import HeroDiagram from "@/components/landing/hero-diagram";
-import ChopSeal from "@/components/landing/chop-seal";
 import { Shield, Lock, User } from "lucide-react";
 
 /**
@@ -44,9 +43,6 @@ export default function LandingPage() {
             {/* Vertical rail on the far-left edge */}
             <aside className="hero__rail" aria-hidden="true">
               <span className="hero__rail-text">Your identity, your choice.</span>
-              <span className="hero__rail-seal">
-                <ChopSeal />
-              </span>
             </aside>
 
             <div className="hero__copy-inner">
@@ -79,9 +75,9 @@ export default function LandingPage() {
           <div className="hero__visual">
             <HeroDiagram />
             <aside className="hero__rail hero__rail--right" aria-hidden="true">
-              <span className="hero__rail-eyebrow">OPEN WEB</span>
+              <span className="hero__rail-eyebrow">ONE ACCOUNT</span>
               <span className="hero__rail-redseal" />
-              <span className="hero__rail-text hero__rail-text--right">Open web</span>
+              <span className="hero__rail-text hero__rail-text--right">Sign in anywhere.</span>
             </aside>
           </div>
         </div>
@@ -108,7 +104,7 @@ export default function LandingPage() {
               <div className="hero-pillar__body">
                 <h3>Connect</h3>
                 <p className="hero-pillar__lede">One sign-in, everywhere</p>
-                <p>Use your identity across apps built on the open web.</p>
+                <p>Use your identity across every app you sign in to.</p>
               </div>
             </article>
             <article className="hero-pillar">

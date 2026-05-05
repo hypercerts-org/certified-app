@@ -31,10 +31,41 @@ export default {
         error: "#c2392c",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
-        serif: ["Noto Serif", "Georgia", "serif"],
-        "serif-italic": ["Instrument Serif", "Georgia", "serif"],
-        mono: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        // atproto.com-aligned: Plex Sans for body, Plex Mono for display.
+        // The CSS variables come from next/font/google in src/app/layout.tsx.
+        sans: [
+          "var(--font-inter)",
+          "IBM Plex Sans",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif",
+        ],
+        serif: [
+          // "serif" is retained as an alias for any legacy class that hasn't
+          // been migrated; it now points at the Plex Mono display face.
+          "var(--font-headline)",
+          "IBM Plex Mono",
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "monospace",
+        ],
+        "serif-italic": [
+          "var(--font-serif-alt)",
+          "IBM Plex Mono",
+          "ui-monospace",
+          "monospace",
+        ],
+        mono: [
+          "var(--font-headline)",
+          "IBM Plex Mono",
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "Monaco",
+          "Consolas",
+          "monospace",
+        ],
       },
       fontSize: {
         display: [
