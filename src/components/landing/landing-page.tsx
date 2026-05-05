@@ -40,11 +40,6 @@ export default function LandingPage() {
         <div className="hero__split">
           {/* LEFT — editorial typography */}
           <div className="hero__copy">
-            {/* Vertical rail on the far-left edge */}
-            <aside className="hero__rail" aria-hidden="true">
-              <span className="hero__rail-text">Your identity, your choice.</span>
-            </aside>
-
             <div className="hero__copy-inner">
               <span className="hero__eyebrow">The universal identity</span>
               <h1 className="hero__title">

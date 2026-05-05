@@ -12,14 +12,11 @@
  * 12-col split, collapses cleanly on tablet/mobile via CSS.
  */
 
-import { Copy, Lock, Globe, Briefcase, Globe2, UserCircle, Repeat } from "lucide-react";
+import { Copy, Lock, Globe } from "lucide-react";
 
 export default function HeroDiagram() {
   return (
     <div className="hero-diagram" aria-hidden="true">
-      {/* Top tag */}
-      <div className="hero-diagram__top-tag">Your open identity</div>
-
       {/* Watercolor blue circle — a real painted PNG (generated via
           openai_image, saved into the repo) rather than an SVG ellipse.
           Mix-blend-multiply lets the white paper background blend into
@@ -39,8 +36,6 @@ export default function HeroDiagram() {
         xmlns="http://www.w3.org/2000/svg"
         aria-hidden="true"
       >
-        {/* Top tag connector to centre */}
-        <line x1="400" y1="36" x2="400" y2="100" stroke="currentColor" strokeWidth="1" strokeDasharray="2 4" />
         {/* Centre to bottom caption */}
         <line x1="400" y1="500" x2="400" y2="560" stroke="currentColor" strokeWidth="1" strokeDasharray="2 4" />
 
@@ -93,20 +88,6 @@ export default function HeroDiagram() {
         <div className="hero-diagram__card-did">
           <span>did:plc:7c6u…xly7</span>
           <Copy size={12} strokeWidth={1.5} />
-        </div>
-        <div className="hero-diagram__card-pills">
-          <span className="hero-diagram__pill">
-            <Briefcase size={11} strokeWidth={1.5} /> portable
-          </span>
-          <span className="hero-diagram__pill">
-            <Globe2 size={11} strokeWidth={1.5} /> open
-          </span>
-          <span className="hero-diagram__pill">
-            <UserCircle size={11} strokeWidth={1.5} /> user-owned
-          </span>
-          <span className="hero-diagram__pill">
-            <Repeat size={11} strokeWidth={1.5} /> interoperable
-          </span>
         </div>
       </div>
 

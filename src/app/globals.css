@@ -510,32 +510,6 @@ h1, h2, h3, h4, h5, h6 {
   .hero__copy { padding-left: 0; gap: 20px; }
 }
 
-.hero__rail {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-  width: 44px;
-  padding: 8px 0;
-  min-height: 460px;
-}
-@media (max-width: 1024px) {
-  .hero__rail { display: none; }
-}
-
-.hero__rail-text {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  font-family: var(--font-headline), "IBM Plex Mono", ui-monospace, monospace;
-  font-style: italic;
-  font-size: 0.9375rem;
-  letter-spacing: 0.04em;
-  color: var(--color-mid-gray);
-  white-space: nowrap;
-  padding: 0;
-}
-
 .hero__copy-inner {
   flex: 1;
   min-width: 0;
@@ -941,22 +915,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 @media (max-width: 1024px) { .hero-diagram__rail { display: none; } }
 
-.hero-diagram__top-tag {
-  position: absolute;
-  top: 4%;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 6px 14px;
-  background: #ffffff;
-  border: 1px solid var(--color-light-gray);
-  border-radius: 4px;
-  font-size: 0.75rem;
-  color: var(--color-primary);
-  font-weight: 500;
-  z-index: 3;
-  white-space: nowrap;
-}
-
 .hero-diagram__caption {
   position: absolute;
   bottom: 4%;
@@ -1059,31 +1017,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 .hero-diagram__card-did svg { color: var(--color-mid-gray); cursor: pointer; }
 
-.hero-diagram__card-pills {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  width: 100%;
-}
-.hero-diagram__pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--color-light-gray);
-  background: var(--color-surface-container-low);
-  font-size: 0.625rem;
-  color: var(--color-mid-gray);
-  font-weight: 500;
-  white-space: nowrap;
-  justify-content: center;
-}
-.hero-diagram__pill > span:first-child {
-  font-size: 0.625rem;
-  filter: grayscale(0.2);
-}
-
 .hero-diagram__lock {
   position: absolute;
   bottom: 14%;
@@ -1143,7 +1076,6 @@ h1, h2, h3, h4, h5, h6 {
   }
   .hero-diagram__lines { display: none; }
   .hero-diagram__app { display: none; }
-  .hero-diagram__top-tag { top: 0; font-size: 0.6875rem; padding: 4px 10px; }
   .hero-diagram__caption { bottom: 8%; font-size: 0.75rem; }
   .hero-diagram__card {
     width: 80%;
@@ -1151,12 +1083,10 @@ h1, h2, h3, h4, h5, h6 {
     padding: 24px 20px 28px;
     transform: translate(-50%, -55%);
   }
-  .hero-diagram__card-pills { grid-template-columns: 1fr 1fr; gap: 5px; }
   .hero-diagram__card-globe { width: 52px; height: 52px; margin-bottom: 12px; }
   .hero-diagram__card-name { font-size: 1rem; }
   .hero-diagram__card-uri { font-size: 0.6875rem; margin-bottom: 10px; }
   .hero-diagram__card-did { font-size: 0.625rem; padding: 4px 8px; margin-bottom: 12px; }
-  .hero-diagram__pill { font-size: 0.5625rem; padding: 3px 6px; }
   .hero-diagram__lock { bottom: 16%; width: 30px; height: 30px; }
   .hero-diagram__blob { width: 90%; height: 80%; }
 }

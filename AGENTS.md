@@ -2,6 +2,8 @@
 
 This document is the canonical reference for coding agents working in this repository. It supersedes the shorter `AGENTS.md` and complements `README.md`. Read it end-to-end on a fresh clone; treat the file map and security rules as authoritative.
 
+> **Before you touch anything: work from a git worktree, not the main checkout.** See [§19 Git & Deployment](#19-git--deployment) for the exact commands. The main `/Users/sharfy/Code/certified-app` checkout is the user's active working tree — every task gets its own `../certified-app-<slug>` worktree.
+
 ## Table of Contents
 
 1. [Project Overview](#1-project-overview)
@@ -547,6 +549,18 @@ When adding a new public page: set `metadata.title`, `description`, `alternates.
 
 ## 19. Git & Deployment
 
+- **ALWAYS work from a git worktree, never directly in the main checkout** at `/Users/sharfy/Code/certified-app`. At the start of any work session:
+  1. Check current state: `pwd && git worktree list && git branch --show-current`.
+  2. If you're sitting in the main checkout, create a worktree for the task before making any edits:
+     ```bash
+     # New branch off the current HEAD (or off origin/main / origin/staging as appropriate)
+     git worktree add ../certified-app-<short-task-slug> -b <branch-name>
+     # Or check out an existing branch into a new worktree:
+     git worktree add ../certified-app-<short-task-slug> <existing-branch>
+     ```
+  3. `cd` into the new worktree path and do all reads/edits/commands from there. Tell the user the new path so they can follow along.
+  4. When the task is done, leave the worktree in place until the user confirms it can be removed; clean up with `git worktree remove ../certified-app-<short-task-slug>` (and `git branch -d <branch-name>` if the branch is merged).
+- **Why:** the main checkout is the user's working tree — switching branches there clobbers their in-flight changes. Worktrees keep each task isolated and let multiple sessions / dev servers run in parallel without stepping on each other.
 - **Branches:**
   - `main` → production (`certified.app`)
   - `staging` → preview (`staging.certified.app`)
