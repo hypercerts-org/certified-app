@@ -51,7 +51,7 @@ export default function LandingPage() {
                 Portable<br />
                 identity<br />
                 for the<br />
-                <span className="hero__title-accent">atmosphere</span>.
+                <span className="hero__title-accent">atmosphere</span>
               </h1>
               <p className="hero__subtitle">
                 One secure account. Sign in anywhere.
