@@ -13,6 +13,7 @@ import { getInitials } from "@/lib/utils/initials";
 import { useOrg } from "@/lib/groups/org-context";
 import { useOrgProfile } from "@/hooks/use-org-profile";
 import { Menu, X, ChevronDown, LogOut } from "lucide-react";
+import NavbarSearch from "./navbar-search";
 
 const PERSONAL_NAV_LINKS = (profileHref: string) => [
   { href: profileHref, label: "Profile" },
@@ -188,6 +189,9 @@ const Navbar: React.FC = () => {
 
         {isAuthenticated ? (
           <>
+            {/* Desktop: search bar */}
+            <NavbarSearch className="navbar__search" />
+
             {/* Desktop: nav links */}
             <div className="navbar__app-links">
               {navLinks.map((link) => (
@@ -404,6 +408,9 @@ const Navbar: React.FC = () => {
           </>
         ) : (
           <>
+            {/* Desktop: search bar (works without auth via public Bluesky AppView) */}
+            <NavbarSearch className="navbar__search" />
+
             {/* Center: editorial anchor nav (only on landing) */}
             <div className="navbar__public-links" aria-label="Sections">
               <Link href="/welcome#what-you-get" className="navbar__public-link">Benefits</Link>
