@@ -23,7 +23,7 @@ export default function PrivacyPage() {
           Privacy Policy — Certified
         </h1>
 
-        <p className="text-sm text-gray-500 mb-8">Last updated: April 1, 2026</p>
+        <p className="text-sm text-gray-500 mb-8">Last updated: May 6, 2026</p>
 
         <div className="prose prose-navy max-w-none space-y-8">
           <section>
@@ -182,6 +182,10 @@ export default function PrivacyPage() {
             <ul className="list-disc pl-6 mt-2 space-y-2">
               <li>operate and maintain certified.app and certified.one</li>
               <li>authenticate users and manage accounts</li>
+              <li>
+                send service-related notifications such as authentication, account, and security
+                communications
+              </li>
               <li>operate AT Protocol Personal Data Servers</li>
               <li>ensure the stability and security of the infrastructure</li>
               <li>detect and prevent abuse or malicious activity</li>
@@ -233,9 +237,12 @@ export default function PrivacyPage() {
               <strong>European Union</strong>.
             </p>
             <p className="mt-4">
-              Operational service providers may process limited data outside the European Union.
-              Where this occurs, appropriate safeguards are implemented in accordance with
-              applicable data protection laws.
+              Some operational service providers process limited data outside the European Union.
+              Specifically, transactional email delivery is handled by a US-based provider (see
+              Section 8), and certain corporate operations of our hosting providers may take place
+              in the United States. Where personal data is transferred outside the European Union,
+              transfers are protected by Standard Contractual Clauses (SCCs) approved by the
+              European Commission, in accordance with Article 46 GDPR.
             </p>
           </section>
 
@@ -261,8 +268,10 @@ export default function PrivacyPage() {
             </p>
             <p className="mt-4">
               Once data is shared through the federated network, the Hypercerts Foundation cannot
-              control how third-party services process or store that information. Those services act
-              as <strong>independent data controllers</strong> for any processing they perform.
+              control how third-party services process or store that information. The legal status
+              of those operators under data protection law depends on their specific activities; in
+              many cases they will themselves be <strong>data controllers</strong> for their own
+              processing.
             </p>
           </section>
 
@@ -275,7 +284,15 @@ export default function PrivacyPage() {
             <ul className="list-disc pl-6 mt-2 space-y-2">
               <li>
                 with service providers that support the operation of the services and process data
-                on our behalf, including Vercel Inc. (hosting and anonymous web analytics)
+                on our behalf, including:
+                <ul className="list-disc pl-6 mt-2 space-y-2">
+                  <li>Vercel Inc. (web application hosting and anonymous web analytics)</li>
+                  <li>Railway Corporation (application and database hosting infrastructure)</li>
+                  <li>
+                    Plus Five Five, Inc. (d/b/a Resend) (transactional email delivery for account,
+                    security, and operational notifications)
+                  </li>
+                </ul>
               </li>
               <li>
                 with third-party services that users choose to connect to their accounts

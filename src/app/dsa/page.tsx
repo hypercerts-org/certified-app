@@ -23,7 +23,7 @@ export default function DsaPage() {
           Digital Services Act — Compliance Information
         </h1>
 
-        <p className="text-sm text-gray-500 mb-8">Last updated: March 15, 2026</p>
+        <p className="text-sm text-gray-500 mb-8">Last updated: May 6, 2026</p>
 
         <div className="prose prose-navy max-w-none space-y-8">
           <section>
@@ -44,9 +44,18 @@ export default function DsaPage() {
             <h2 className="font-mono text-xl text-navy mb-4">2. Service provider</h2>
             <p>
               <strong>Hypercerts Foundation</strong>
-              <br />A Delaware nonstock corporation
+              <br />
+              A Delaware nonstock corporation
+              <br />
+              1209 Orange St.
+              <br />
+              Wilmington, DE 19801
+              <br />
+              United States
             </p>
             <p className="mt-4">
+              Phone: +1 302 658 7581
+              <br />
               Contact:{" "}
               <a
                 href="mailto:legal@hypercerts.org"
