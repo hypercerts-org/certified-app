@@ -4,9 +4,8 @@
  * Editorial portrait of the Certified identity at the centre of the open
  * web: a watercolor blue blob backdrop, a cream identity card with a
  * globe, a handle, a DID, four pill chips, and a lock; six partner-app
- * cards floating left/right connected by dotted lines with `+` joints;
- * a "Your open identity" tag at top, a caption at the bottom, a vertical
- * "OPEN WEB" rail at the right edge.
+ * cards floating left/right; a caption at the bottom and a vertical
+ * "ONE ACCOUNT" rail at the right edge.
  *
  * Pure decoration — no inputs, no interactivity. Sized for a desktop
  * 12-col split, collapses cleanly on tablet/mobile via CSS.
@@ -28,56 +27,6 @@ export default function HeroDiagram() {
         className="hero-diagram__blob"
         aria-hidden="true"
       />
-
-      {/* Dotted connector lines layer (positioned absolutely, behind cards) */}
-      <svg
-        className="hero-diagram__lines"
-        viewBox="0 0 800 600"
-        preserveAspectRatio="none"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-      >
-        {/* Centre to bottom caption */}
-        <line x1="400" y1="500" x2="400" y2="560" stroke="currentColor" strokeWidth="1" strokeDasharray="2 4" />
-
-        {/* Left side connectors (3 cards on left) */}
-        <path d="M 240 165 L 320 165 L 320 230 L 360 230" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="2 4" />
-        <path d="M 240 280 L 360 280" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="2 4" />
-        <path d="M 240 395 L 320 395 L 320 330 L 360 330" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="2 4" />
-
-        {/* Right side connectors (3 cards on right) */}
-        <path d="M 560 165 L 480 165 L 480 230 L 440 230" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="2 4" />
-        <path d="M 560 280 L 440 280" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="2 4" />
-        <path d="M 560 395 L 480 395 L 480 330 L 440 330" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="2 4" />
-
-        {/* Plus joints at line corners */}
-        <g stroke="currentColor" strokeWidth="1" strokeLinecap="round">
-          {/* Left-top corner */}
-          <line x1="316" y1="161" x2="324" y2="161" />
-          <line x1="320" y1="157" x2="320" y2="165" />
-          {/* Left-top inner */}
-          <line x1="316" y1="226" x2="324" y2="226" />
-          <line x1="320" y1="222" x2="320" y2="230" />
-          {/* Left-bottom corner */}
-          <line x1="316" y1="395" x2="324" y2="395" />
-          <line x1="320" y1="391" x2="320" y2="399" />
-          {/* Left-bottom inner */}
-          <line x1="316" y1="330" x2="324" y2="330" />
-          <line x1="320" y1="326" x2="320" y2="334" />
-          {/* Right-top corner */}
-          <line x1="476" y1="161" x2="484" y2="161" />
-          <line x1="480" y1="157" x2="480" y2="165" />
-          {/* Right-top inner */}
-          <line x1="476" y1="226" x2="484" y2="226" />
-          <line x1="480" y1="222" x2="480" y2="230" />
-          {/* Right-bottom corner */}
-          <line x1="476" y1="395" x2="484" y2="395" />
-          <line x1="480" y1="391" x2="480" y2="399" />
-          {/* Right-bottom inner */}
-          <line x1="476" y1="330" x2="484" y2="330" />
-          <line x1="480" y1="326" x2="480" y2="334" />
-        </g>
-      </svg>
 
       {/* Centre identity card */}
       <div className="hero-diagram__card">

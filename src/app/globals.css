@@ -947,17 +947,6 @@ h1, h2, h3, h4, h5, h6 {
   opacity: 0.65;
 }
 
-.hero-diagram__lines {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-  color: var(--color-mid-gray);
-  opacity: 0.55;
-  pointer-events: none;
-}
-
 .hero-diagram__card {
   position: absolute;
   top: 50%;
@@ -1075,7 +1064,6 @@ h1, h2, h3, h4, h5, h6 {
     aspect-ratio: 1 / 1.1;
     margin-top: 24px;
   }
-  .hero-diagram__lines { display: none; }
   .hero-diagram__app { display: none; }
   .hero-diagram__caption { bottom: 8%; font-size: 0.75rem; }
   .hero-diagram__card {
