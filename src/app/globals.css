@@ -3978,6 +3978,190 @@ h1, h2, h3, h4, h5, h6 {
   white-space: nowrap;
 }
 
+/* ========== Navbar Search (top-bar typeahead) ========== */
+.navbar-search {
+  position: relative;
+  flex: 1 1 auto;
+  max-width: 420px;
+  min-width: 0;
+  margin: 0 24px;
+}
+
+.navbar-search__field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 12px;
+  /* Whisper-soft warm white — only a hair off the page surface (#fefefe),
+     so the fill barely registers and the hairline border carries the
+     shape. Reads like a pill of unbleached paper rather than a control. */
+  background: #fdfcf9;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.navbar-search__field:hover {
+  border-color: var(--border-default);
+}
+
+.navbar-search__field:focus-within {
+  background: #ffffff;
+  border-color: var(--border-medium);
+  box-shadow: 0 0 0 3px rgba(50, 35, 20, 0.05);
+}
+
+.navbar-search__icon {
+  flex: 0 0 auto;
+  color: var(--color-mid-gray);
+  margin-right: 8px;
+}
+
+.navbar-search__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.875rem;
+  color: var(--color-primary);
+  padding: 0;
+}
+
+.navbar-search__input::placeholder {
+  color: var(--color-mid-gray);
+}
+
+.navbar-search__clear {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-left: 4px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-mid-gray);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.navbar-search__clear:hover {
+  background: var(--color-gray-100);
+  color: var(--color-primary);
+}
+
+.navbar-search__clear:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.navbar-search__dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--color-white, #ffffff);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.10);
+  z-index: 60;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.navbar-search__empty {
+  padding: 14px 12px;
+  font-size: 0.8125rem;
+  color: var(--color-mid-gray);
+  text-align: left;
+}
+
+.navbar-search__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+  user-select: none;
+  box-shadow: inset 2px 0 0 transparent;
+}
+
+.navbar-search__item:hover {
+  background: var(--color-gray-100);
+}
+
+.navbar-search__item--highlighted {
+  background: var(--color-gray-100);
+  box-shadow: inset 2px 0 0 var(--color-primary);
+}
+
+.navbar-search__item-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.navbar-search__item-name {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navbar-search__item-handle {
+  font-size: 0.6875rem;
+  color: var(--color-mid-gray);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .navbar-search { max-width: 320px; margin: 0 16px; }
+}
+
+@media (max-width: 768px) {
+  /* On tablet/mobile the app-links / public-links / desktop user cluster all
+     hide — letting the search expand into the freed middle space keeps it
+     usable next to the logo and the mobile actions (avatar + hamburger,
+     or sign-in / get-started). */
+  .navbar-search {
+    max-width: none;
+    margin: 0 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar-search { margin: 0 8px; }
+  .navbar-search__field { padding: 0 10px; height: 36px; }
+  .navbar-search__icon { margin-right: 6px; }
+  .navbar-search__input { font-size: 0.8125rem; }
+  /* Drop the placeholder text on very narrow screens — the icon is enough
+     visual cue and the few extra pixels matter when the navbar is tight. */
+  .navbar-search__input::placeholder { color: transparent; }
+}
+
+@media (max-width: 380px) {
+  .navbar-search { margin: 0 6px; }
+  .navbar-search__field { padding: 0 8px; }
+}
+
 /* ========== Organizations ========== */
 
 /* Organization list page */
