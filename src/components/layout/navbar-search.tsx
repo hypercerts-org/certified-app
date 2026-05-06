@@ -48,6 +48,10 @@ export default function NavbarSearch({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Lets us drop stale responses when the user keeps typing.
   const requestSeq = useRef(0);
+  // Set when we update `query` programmatically after a selection so the
+  // debounced search effect skips the auto-fire for that one update — without
+  // this we'd immediately re-search for the selected user's display name.
+  const suppressNextSearchRef = useRef(false);
 
   // Debounced fetch.
   const search = useCallback(async (q: string, seq: number) => {
@@ -89,6 +93,12 @@ export default function NavbarSearch({
   // Run the debounced search whenever `query` changes.
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    // Skip the search once when we set `query` programmatically after a
+    // selection — the user already picked someone, no need to re-query.
+    if (suppressNextSearchRef.current) {
+      suppressNextSearchRef.current = false;
+      return;
+    }
     if (!query.trim()) {
       setResults([]);
       setIsOpen(false);
@@ -137,9 +147,15 @@ export default function NavbarSearch({
 
   const select = useCallback(
     (actor: Actor) => {
-      setQuery("");
+      // Keep the selected user visible in the search bar instead of clearing
+      // it — confirms the selection and matches what the user navigated to.
+      // Suppress the next debounced search so we don't immediately re-fire a
+      // request for the display name we just set.
+      suppressNextSearchRef.current = true;
+      setQuery(actor.displayName || actor.handle);
       setResults([]);
       setIsOpen(false);
+      setIsSearching(false);
       setHighlight(-1);
       // Blur so the dropdown doesn't reappear on the destination page.
       inputRef.current?.blur();
@@ -226,7 +242,11 @@ export default function NavbarSearch({
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={() => {
-            if (results.length > 0 || query.trim().length > 0) setIsOpen(true);
+            // Only reopen if there are actual results to show. After a
+            // selection results is empty but the input still holds the picked
+            // user's name — refocusing in that state shouldn't pop a stale or
+            // empty dropdown.
+            if (results.length > 0) setIsOpen(true);
           }}
           role="combobox"
           aria-label="Search people on atproto"
