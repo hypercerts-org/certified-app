@@ -454,12 +454,14 @@ h1, h2, h3, h4, h5, h6 {
 
 .hero__glow { display: none; }
 
-/* Grid pattern dialed way back — reads as faint paper texture, not tech. */
+/* Faded grid + concentric rings + corner diagonals — reads as a soft
+   architectural drawing behind the hero, echoing the original
+   certified.app/welcome backdrop. */
 .hero__pattern {
   position: absolute;
   inset: 0;
   z-index: 0;
-  opacity: 0.04;
+  opacity: 0.18;
   pointer-events: none;
   color: var(--color-primary);
 }

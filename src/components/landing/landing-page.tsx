@@ -25,7 +25,8 @@ export default function LandingPage() {
   return (
     <>
       <section className="hero hero--landing">
-        {/* Faint paper-grid texture, dialed way back */}
+        {/* Faded paper-grid texture, concentric rings, and corner-to-corner
+            diagonals — echoes the original certified.app/welcome backdrop. */}
         <div className="hero__pattern" aria-hidden="true">
           <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -34,6 +35,10 @@ export default function LandingPage() {
               </pattern>
             </defs>
             <rect width="100%" height="100%" fill="url(#grid)" />
+            <circle cx="50%" cy="50%" r="300" fill="none" stroke="currentColor" strokeWidth="0.3" />
+            <circle cx="50%" cy="50%" r="400" fill="none" stroke="currentColor" strokeWidth="0.15" />
+            <line x1="0%" y1="0%" x2="100%" y2="100%" stroke="currentColor" strokeWidth="0.15" />
+            <line x1="100%" y1="0%" x2="0%" y2="100%" stroke="currentColor" strokeWidth="0.15" />
           </svg>
         </div>
 
