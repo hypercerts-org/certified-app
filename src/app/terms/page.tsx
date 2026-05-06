@@ -23,7 +23,7 @@ export default function TermsPage() {
           Terms of Service — Certified
         </h1>
 
-        <p className="text-sm text-gray-500 mb-8">Last updated: April 1, 2026</p>
+        <p className="text-sm text-gray-500 mb-8">Last updated: May 6, 2026</p>
 
         <div className="prose prose-navy max-w-none space-y-8">
           <section>
@@ -222,8 +222,9 @@ export default function TermsPage() {
               operational tasks such as:
             </p>
             <ul className="list-disc pl-6 mt-2 space-y-2">
+              <li>application and database hosting</li>
               <li>system monitoring</li>
-              <li>communications</li>
+              <li>transactional email delivery</li>
               <li>analytics</li>
               <li>technical support</li>
             </ul>
@@ -427,9 +428,9 @@ export default function TermsPage() {
 
             <h3 className="font-mono text-lg text-navy mt-6 mb-3">Survival</h3>
             <p>
-              Sections 5 (intellectual property), 12 (data persistence), 15 (feedback), 16
-              (disclaimer of warranties), 17 (limitation of liability), 18 (indemnification), 19
-              (consumer protections), and 23 (governing law) survive termination of these Terms.
+              Sections 6 (intellectual property), 13 (data persistence), 16 (feedback), 17
+              (disclaimer of warranties), 18 (limitation of liability), 19 (indemnification), 20
+              (consumer protections), and 24 (governing law) survive termination of these Terms.
             </p>
           </section>
 
