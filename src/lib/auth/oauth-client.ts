@@ -113,11 +113,18 @@ export async function getOAuthClient(): Promise<NodeOAuthClient> {
       : undefined
   }
 
+  // Note: we intentionally do NOT pass `handleResolver` here. The default
+  // `AtprotoHandleResolverNode` does proper DNS-TXT + HTTP-well-known
+  // resolution and works for any atproto handle (Certified, Bluesky,
+  // custom domain). Passing `handleResolver: PDS_URL` would force the
+  // OAuth client to call certified.one's resolveHandle XRPC for every
+  // input, which fails for handles certified.one doesn't host (e.g.
+  // any *.bsky.social handle). Email-mode logins pass `PDS_URL` directly
+  // to `client.authorize`, so this change doesn't affect them.
   clientInstance = new NodeOAuthClient({
     clientMetadata,
     stateStore: new RedisStateStore(),
     sessionStore: new RedisSessionStore(),
-    handleResolver: PDS_URL,
     ...(keyset ? { keyset } : {}),
   })
 
