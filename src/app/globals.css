@@ -940,12 +940,11 @@ h1, h2, h3, h4, h5, h6 {
   aspect-ratio: 1 / 1;
   z-index: 0;
   pointer-events: none;
-  /* Multiply blends the white paper bg from the painted PNG into the
-     off-white page surface so only the dusty-blue pigment remains
-     visible — keeps the painterly soft edges intact. Opacity tuned
-     down so the circle reads as a quiet wash, not a dominant element. */
-  mix-blend-mode: multiply;
-  opacity: 0.55;
+  /* The PNG has a real alpha channel (white paper baked out via
+     `255 - min(r,g,b)`), so the cream surface and grid pattern show
+     through cleanly behind the blob — no blend mode needed.
+     Opacity tuned down so the circle reads as a quiet wash. */
+  opacity: 0.65;
 }
 
 .hero-diagram__lines {

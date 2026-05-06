@@ -19,8 +19,9 @@ export default function HeroDiagram() {
     <div className="hero-diagram" aria-hidden="true">
       {/* Watercolor blue circle — a real painted PNG (generated via
           openai_image, saved into the repo) rather than an SVG ellipse.
-          Mix-blend-multiply lets the white paper background blend into
-          our off-white page surface so only the pigment shows. */}
+          The PNG carries a real alpha channel (white paper matted out
+          via `255 - min(r,g,b)`), so the cream surface and the hero
+          grid pattern show through cleanly behind the blob. */}
       <img
         src="/assets/watercolor-blue-circle.png"
         alt=""
