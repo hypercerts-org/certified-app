@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [pdsUrl, setPdsUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalInitialView, setModalInitialView] = useState<"certified" | "atproto">("certified");
   const [isRedirectingToProvider, setIsRedirectingToProvider] = useState(false);
 
   // Shared session fetch — used by both init and OAuth callback
@@ -186,8 +187,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [submitDefault]);
 
   // Manual fallback — opens the modal so the user can pick email or a handle.
-  const openSignInModal = useCallback(() => {
+  const openSignInModal = useCallback((view: "certified" | "atproto" = "certified") => {
     setError(null);
+    setModalInitialView(view);
     setIsModalOpen(true);
   }, []);
 
@@ -307,6 +309,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {isRedirectingToProvider && <ProviderRedirectOverlay />}
       <SignInModal
         isOpen={isModalOpen}
+        initialView={modalInitialView}
         error={error}
         onClose={closeModal}
         onSubmitEmail={submitEmail}

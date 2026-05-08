@@ -13,9 +13,9 @@ export default function ReadyCtaButton() {
       <button
         type="button"
         className="signin-alt-link"
-        onClick={openSignInModal}
+        onClick={() => openSignInModal("atproto")}
       >
-        Use a different account
+        Use AT Protocol or Bluesky account
       </button>
     </div>
   );

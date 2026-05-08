@@ -22,8 +22,8 @@ export interface AuthState {
   openSignIn: () => Promise<void>;
   /** Open the modal explicitly — for users who want to sign in with a different
    * account, an external ATProto handle, or via email rather than relying on an
-   * existing PDS session. */
-  openSignInModal: () => void;
+   * existing PDS session. Pass "atproto" to open directly on the handle view. */
+  openSignInModal: (view?: "certified" | "atproto") => void;
   /** Close the modal */
   closeModal: () => void;
   /** Submit Certified email — calls /api/auth/login with mode "email" */
