@@ -45,17 +45,26 @@ function isLoopbackDev(): boolean {
  *
  * The port is taken from PUBLIC_URL when present, else defaults to 3000
  * (Next.js's default dev port).
+ *
+ * Fails fast if PUBLIC_URL points at `localhost` — the redirect_uri would
+ * land on a different origin than the browser, breaking cookies and the
+ * iframe postMessage callback.
  */
 function loopbackRedirectUri(): OAuthLoopbackRedirectURI {
   let port = "3000"
   const url = process.env.PUBLIC_URL
   if (url) {
-    try {
-      const parsed = new URL(url)
-      if (parsed.port) port = parsed.port
-    } catch {
-      /* keep default */
+    let parsed: URL | null = null
+    try { parsed = new URL(url) } catch { /* malformed, fall through */ }
+    if (parsed?.hostname === "localhost") {
+      throw new Error(
+        'PUBLIC_URL must use 127.0.0.1 in dev, not localhost. RFC 8252 forbids ' +
+        '"localhost" as an OAuth loopback redirect_uri host, and cookies do not ' +
+        'cross localhost ↔ 127.0.0.1. Set PUBLIC_URL=http://127.0.0.1:3000 and ' +
+        'browse to 127.0.0.1.'
+      )
     }
+    if (parsed?.port) port = parsed.port
   }
   return `http://127.0.0.1:${port}/oauth/callback` as OAuthLoopbackRedirectURI
 }

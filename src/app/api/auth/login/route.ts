@@ -8,15 +8,22 @@ export async function POST(request: NextRequest) {
   if (csrfError) return csrfError
 
   try {
-    const body = await request.json()
+    const body: unknown = await request.json()
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
+    }
     const { input: rawInput, mode, prompt } = body as {
-      input?: string
-      mode: "email" | "handle" | "default"
-      prompt?: "login" | "create"
+      input?: unknown
+      mode?: unknown
+      prompt?: unknown
     }
 
     if (mode !== "email" && mode !== "handle" && mode !== "default") {
       return NextResponse.json({ error: "Invalid mode" }, { status: 400 })
+    }
+
+    if (prompt !== undefined && prompt !== "login" && prompt !== "create") {
+      return NextResponse.json({ error: "Invalid prompt" }, { status: 400 })
     }
 
     if ((mode === "email" || mode === "handle") && typeof rawInput !== "string") {
@@ -41,6 +48,10 @@ export async function POST(request: NextRequest) {
     const input = mode === "handle"
       ? sanitizeHandle(rawInput as string)
       : sanitizeEmail(rawInput as string)
+
+    if (!input) {
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 })
+    }
 
     if (mode === "email") {
       const url = await client.authorize(PDS_URL, {
