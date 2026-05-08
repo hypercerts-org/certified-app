@@ -148,7 +148,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("message", handleSwitchProvider);
   }, []);
 
-  const openSignIn = useCallback(() => {
+  // Trigger the default Certified-PDS OAuth flow with no login_hint.
+  // If the PDS has an active session for this browser (e.g. from another partner
+  // app), this returns silently with a code; otherwise the PDS shows its own UI.
+  const submitDefault = useCallback(async () => {
+    try {
+      setError(null);
+      setIsRedirectingToProvider(true);
+      setIsModalOpen(false);
+
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "default" }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json() as { error?: string };
+        throw new Error(data.error ?? "Failed to sign in");
+      }
+
+      const data = await res.json() as { url: string };
+      safeRedirect(data.url);
+    } catch (err) {
+      console.error("Default sign-in error:", err);
+      // Hide the redirect overlay and fall back to the modal so the user can
+      // try email or an ATProto handle manually.
+      setIsRedirectingToProvider(false);
+      setError(err instanceof Error ? err.message : "Failed to sign in");
+      setIsModalOpen(true);
+    }
+  }, []);
+
+  // Primary public entry point. Triggers the silent-default flow above.
+  const openSignIn = useCallback(async () => {
+    await submitDefault();
+  }, [submitDefault]);
+
+  // Manual fallback — opens the modal so the user can pick email or a handle.
+  const openSignInModal = useCallback(() => {
     setError(null);
     setIsModalOpen(true);
   }, []);
@@ -256,11 +294,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isModalOpen,
     isRedirectingToProvider,
     openSignIn,
+    openSignInModal,
     closeModal,
     submitEmail,
     submitHandle,
     signOut,
-  }), [isLoading, isAuthenticated, did, pdsUrl, error, isModalOpen, isRedirectingToProvider, openSignIn, closeModal, submitEmail, submitHandle, signOut]);
+  }), [isLoading, isAuthenticated, did, pdsUrl, error, isModalOpen, isRedirectingToProvider, openSignIn, openSignInModal, closeModal, submitEmail, submitHandle, signOut]);
 
   return (
     <AuthContext.Provider value={value}>

@@ -10,18 +10,37 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { input: rawInput, mode, prompt } = body as {
-      input: string
-      mode: "email" | "handle"
+      input?: string
+      mode: "email" | "handle" | "default"
       prompt?: "login" | "create"
     }
 
-    if (typeof rawInput !== "string" || (mode !== "email" && mode !== "handle")) {
-      return NextResponse.json({ error: "Invalid input or mode" }, { status: 400 })
+    if (mode !== "email" && mode !== "handle" && mode !== "default") {
+      return NextResponse.json({ error: "Invalid mode" }, { status: 400 })
     }
 
-    const input = mode === "handle" ? sanitizeHandle(rawInput) : sanitizeEmail(rawInput)
+    if ((mode === "email" || mode === "handle") && typeof rawInput !== "string") {
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 })
+    }
 
     const client = await getOAuthClient()
+
+    // Default mode: bounce straight to the Certified PDS authorization server with
+    // no login_hint. If the user already has a session at the PDS (e.g. they signed
+    // in via another partner app on this browser), the auth server can return a code
+    // immediately without asking for credentials. Otherwise the PDS shows its own
+    // login UI. Either way, we never have to collect an email here.
+    if (mode === "default") {
+      const url = await client.authorize(PDS_URL, {
+        scope: "atproto transition:generic identity:handle account:email",
+        ...(prompt ? { prompt } : {}),
+      })
+      return NextResponse.json({ url: url.href })
+    }
+
+    const input = mode === "handle"
+      ? sanitizeHandle(rawInput as string)
+      : sanitizeEmail(rawInput as string)
 
     if (mode === "email") {
       const url = await client.authorize(PDS_URL, {
