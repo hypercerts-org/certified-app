@@ -7,6 +7,7 @@ import { resolvePdsUrl } from "@/lib/atproto/did"
 import { getAvatarUrl, getBannerUrl } from "@/lib/atproto/profile"
 import type { OrgProfile, GroupMetadata } from "@/lib/groups/types"
 import type { CertifiedProfile, HypercertsSmallImage, HypercertsLargeImage } from "@/lib/atproto/types"
+import { normalizeWebsiteUrl } from "@/lib/utils/url"
 import Input from "@/components/ui/input"
 import Textarea from "@/components/ui/textarea"
 import Button from "@/components/ui/button"
@@ -31,6 +32,7 @@ export default function EditOrgProfilePage() {
   const [displayName, setDisplayName] = useState("")
   const [description, setDescription] = useState("")
   const [website, setWebsite] = useState("")
+  const [websiteError, setWebsiteError] = useState("")
 
   // Group metadata fields
   const [foundedDate, setFoundedDate] = useState("")
@@ -106,7 +108,22 @@ export default function EditOrgProfilePage() {
     ? displayName.slice(0, 2).toUpperCase()
     : "O"
 
+  const handleWebsiteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setWebsite(value)
+    const result = normalizeWebsiteUrl(value)
+    setWebsiteError(result.ok ? "" : "Please enter a valid URL")
+  }
+
   const handleSave = async () => {
+    // Re-validate website (accepts bare hostnames; prepends https:// on save).
+    const websiteResult = normalizeWebsiteUrl(website)
+    if (!websiteResult.ok) {
+      setWebsiteError("Please enter a valid URL")
+      return
+    }
+    setWebsiteError("")
+
     setIsSaving(true)
     setSaveError(null)
     try {
@@ -115,7 +132,7 @@ export default function EditOrgProfilePage() {
         createdAt: profile?.createdAt || new Date().toISOString(),
         ...(displayName.trim() && { displayName: displayName.trim() }),
         ...(description.trim() && { description: description.trim() }),
-        ...(website.trim() && { website: website.trim() }),
+        ...(websiteResult.url && { website: websiteResult.url }),
       }
 
       // Handle avatar
@@ -220,9 +237,10 @@ export default function EditOrgProfilePage() {
                     label="Website"
                     type="url"
                     value={website}
-                    onChange={(e) => setWebsite(e.target.value)}
+                    onChange={handleWebsiteChange}
                     maxLength={256}
                     placeholder="https://example.org"
+                    error={websiteError}
                   />
                   <Input
                     label="Founded date"
@@ -238,7 +256,7 @@ export default function EditOrgProfilePage() {
                   <Button variant="ghost" onClick={() => router.push("/")} disabled={isSaving}>
                     Cancel
                   </Button>
-                  <Button variant="primary" onClick={handleSave} loading={isSaving} disabled={isSaving}>
+                  <Button variant="primary" onClick={handleSave} loading={isSaving} disabled={isSaving || !!websiteError}>
                     Save Changes
                   </Button>
                 </div>

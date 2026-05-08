@@ -10,6 +10,7 @@ import AvatarUpload from "@/components/profile/avatar-upload";
 import BannerUpload from "@/components/profile/banner-upload";
 import type { CertifiedProfile, HypercertsSmallImage, HypercertsLargeImage } from "@/lib/atproto/types";
 import type { BlobRef } from "@atproto/api";
+import { normalizeWebsiteUrl } from "@/lib/utils/url";
 
 export interface ProfileEditFormProps {
   initialProfile: CertifiedProfile | null;
@@ -95,20 +96,16 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     return true;
   };
 
-  // Validate website
+  // Validate website. Accepts bare hostnames (e.g. "www.gainforest.earth") and
+  // adds the https:// scheme on save via normalizeWebsiteUrl.
   const validateWebsite = (value: string) => {
-    if (value.trim() === "") {
-      setWebsiteError("");
-      return true;
-    }
-    try {
-      new URL(value);
-      setWebsiteError("");
-      return true;
-    } catch {
+    const result = normalizeWebsiteUrl(value);
+    if (!result.ok) {
       setWebsiteError("Please enter a valid URL");
       return false;
     }
+    setWebsiteError("");
+    return true;
   };
 
   // Handle avatar upload
@@ -171,6 +168,11 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
       return;
     }
 
+    // Normalize website (prepends https:// when the user entered a bare host).
+    // validateWebsite has already confirmed this resolves successfully.
+    const websiteNormalized = normalizeWebsiteUrl(website);
+    const websiteValue = websiteNormalized.ok ? websiteNormalized.url : "";
+
     // Construct profile
     const profile: CertifiedProfile = {
       // Set createdAt: use existing or new
@@ -178,7 +180,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
       // Add text fields (trim and omit empty strings)
       ...(displayName.trim() && { displayName: displayName.trim() }),
       ...(description.trim() && { description: description.trim() }),
-      ...(website.trim() && { website: website.trim() }),
+      ...(websiteValue && { website: websiteValue }),
     };
 
     // Handle avatar: use new blob if uploaded, otherwise preserve existing
