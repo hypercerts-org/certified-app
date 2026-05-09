@@ -147,18 +147,29 @@ export async function getOAuthClient(): Promise<NodeOAuthClient> {
 // wrapper passes a Request to fetch, and bsky's PDS reliably returns 401 +
 // DPoP-Nonce on the first hit, triggering the bug. Buffer the body once and
 // re-issue with (url, init) form so Next.js's wrapper never sees a Request.
+//
+// Note on uploadBlob: the route handler in `src/app/api/xrpc/[...method]`
+// already buffers the upload to an ArrayBuffer, and the atproto Agent then
+// constructs a Request whose body we buffer again here. The transient ~8MB
+// double-buffer is acceptable on Vercel's 1GB function memory.
 const safeFetch: typeof fetch = async (input, init) => {
   if (input instanceof Request) {
+    // Preserve "had a body" — sending `undefined` for a 0-byte POST/PUT would
+    // strip Content-Length: 0 and the server would see a missing body.
     const buffer = input.body ? await input.arrayBuffer() : undefined
+    // The dpop wrapper always invokes us as `fetch.call(this, request)` with
+    // no second argument, so `init` is null in practice. Don't spread it here
+    // — if a future caller did pass `init.body`, the spread would overwrite
+    // our buffered body and re-introduce the very bug this fix prevents.
+    void init
     return globalThis.fetch(input.url, {
       method: input.method,
       headers: input.headers,
-      body: buffer && buffer.byteLength > 0 ? buffer : undefined,
+      body: input.body ? buffer : undefined,
       signal: input.signal,
       redirect: input.redirect,
       credentials: input.credentials,
       cache: input.cache,
-      ...init,
     })
   }
   return globalThis.fetch(input, init)

@@ -20,7 +20,7 @@ function formatJoinedDate(iso?: string): string | null {
   if (!iso) return null
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return null
-  return date.toLocaleDateString("en-US", JOINED_DATE_FORMAT)
+  return date.toLocaleDateString(undefined, JOINED_DATE_FORMAT)
 }
 
 type SortMode = "joined-asc" | "joined-desc" | "name-asc" | "name-desc"

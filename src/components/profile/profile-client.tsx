@@ -136,7 +136,7 @@ export default function ProfileClient() {
           <div className="dash-card">
             {bannerUrl && (
               <div className="profile-card__banner">
-                <img src={bannerUrl} alt="" />
+                <img src={bannerUrl} alt="" aria-hidden="true" />
               </div>
             )}
             <div className="profile-card">

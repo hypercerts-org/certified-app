@@ -31,6 +31,20 @@ const ALLOWED_BLOB_CONTENT_TYPES = [
 
 const MAX_BLOB_SIZE = 4 * 1024 * 1024 // 4MB — Vercel serverless functions have a ~4.5MB request body limit
 
+/**
+ * Strip secrets out of strings before they hit logs. Targets the things we've
+ * actually seen leak from atproto SDK error messages — JWTs (DPoP proofs and
+ * bearer tokens both match), the `Authorization`/`DPoP`/`Cookie` header lines
+ * that show up in serialized Request inspections, and email addresses.
+ */
+function redactSecrets(s: string): string {
+  return s
+    .replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "<jwt>")
+    .replace(/(Authorization|DPoP|Cookie|Set-Cookie):\s*\S+/gi, "$1: <redacted>")
+    .replace(/(access_token|refresh_token|id_token)=[A-Za-z0-9._~+/-]+=*/gi, "$1=<redacted>")
+    .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, "<email>")
+}
+
 /** Extract a usable HTTP status + message from an unknown XRPC error. */
 function xrpcError(err: unknown): { status: number; message: string } {
   const error = err as {
@@ -38,7 +52,6 @@ function xrpcError(err: unknown): { status: number; message: string } {
     statusCode?: number
     message?: string
     error?: string
-    cause?: unknown
   }
   const status = error?.status ?? error?.statusCode ?? 500
   const message =
@@ -47,15 +60,25 @@ function xrpcError(err: unknown): { status: number; message: string } {
       : (error?.message ?? "Internal server error")
   // Server-side log so the masked-to-client message can still be diagnosed
   // from Vercel logs. Client never sees the original PDS error body.
+  // We deliberately drop `err.cause` and `err.stack` because the atproto SDK
+  // attaches the upstream Request (with DPoP proofs and Bearer tokens) on
+  // `cause`, and stack traces include the same Request via util.inspect.
   console.error("[xrpc] upstream error", {
     name: (err as Error)?.name,
     status,
     error: error?.error,
-    message: error?.message,
-    cause: error?.cause,
-    stack: (err as Error)?.stack,
+    message: typeof error?.message === "string" ? redactSecrets(error.message) : undefined,
   })
   return { status, message }
+}
+
+/** Log an unknown error safely — name + redacted message only, no cause/stack. */
+function logSafe(prefix: string, err: unknown): void {
+  const e = err as { name?: string; message?: string }
+  console.error(prefix, {
+    name: e?.name,
+    message: typeof e?.message === "string" ? redactSecrets(e.message) : undefined,
+  })
 }
 
 /** Clamp and validate a limit query param. */
@@ -83,7 +106,7 @@ export async function GET(
     try {
       oauthSession = await client.restore(did)
     } catch (err) {
-      console.error("[xrpc] oauth restore failed", err)
+      logSafe("[xrpc] oauth restore failed", err)
       await deleteSession()
       return NextResponse.json({ error: "Session expired" }, { status: 401 })
     }
@@ -169,7 +192,7 @@ export async function POST(
     try {
       oauthSession = await client.restore(did)
     } catch (err) {
-      console.error("[xrpc] oauth restore failed", err)
+      logSafe("[xrpc] oauth restore failed", err)
       await deleteSession()
       return NextResponse.json({ error: "Session expired" }, { status: 401 })
     }
