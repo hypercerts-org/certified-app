@@ -4062,54 +4062,45 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: var(--radius);
 }
 
-.org-list__sort {
+.org-list__header-right {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 8px;
-  margin: 12px 0 4px;
 }
 
-.org-list__sort-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--color-mid-gray);
-}
-
-.org-list__sort-select {
+.org-list__sort-icon-btn {
   position: relative;
-  flex-shrink: 0;
-}
-
-.org-list__sort-dropdown {
-  appearance: none;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--color-primary);
-  background: var(--color-off-white);
-  border: 1px solid var(--border-default);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
   border-radius: var(--radius);
-  padding: 6px 28px 6px 10px;
+  color: var(--color-mid-gray);
   cursor: pointer;
-  transition: border-color var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
-.org-list__sort-dropdown:hover {
-  border-color: var(--border-hover);
+.org-list__sort-icon-btn:hover {
+  background: var(--color-off-white);
+  color: var(--color-primary);
 }
 
-.org-list__sort-dropdown:focus-visible {
+.org-list__sort-icon-btn:focus-within {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
-.org-list__sort-icon {
+.org-list__sort-icon-select {
   position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--color-mid-gray);
-  pointer-events: none;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  appearance: none;
+  border: none;
+  background: transparent;
 }
 
 .org-list__items {

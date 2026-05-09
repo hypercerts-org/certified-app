@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react"
 import Link from "next/link"
-import { Building2, Plus, LogOut, ChevronDown } from "lucide-react"
+import { Building2, Plus, LogOut, ArrowUpDown } from "lucide-react"
 import { useOrg } from "@/lib/groups/org-context"
 import { useAuth } from "@/lib/auth/auth-context"
 import { deleteMembership, removeOrgMember } from "@/lib/groups/api"
@@ -165,33 +165,33 @@ export default function GroupsPage() {
             <div className="dash-card">
               <div className="org-list__header">
                 <h2 className="dash-card__title">Your groups</h2>
-                <span className="org-list__count">{groups.length}</span>
+                <div className="org-list__header-right">
+                  <span className="org-list__count">{groups.length}</span>
+                  {groups.length > 1 && (
+                    <div
+                      className="org-list__sort-icon-btn"
+                      title={`Sort: ${SORT_OPTIONS.find((o) => o.value === sortMode)?.label}`}
+                    >
+                      <ArrowUpDown size={14} aria-hidden />
+                      <select
+                        aria-label="Sort groups"
+                        value={sortMode}
+                        onChange={(e) => setSortMode(e.target.value as SortMode)}
+                        className="org-list__sort-icon-select"
+                      >
+                        {SORT_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
               </div>
               <p className="dash-card__desc">
                 Groups you belong to. Switch your profile in the top right to act as a group.
               </p>
-              {groups.length > 1 && (
-                <div className="org-list__sort">
-                  <label className="org-list__sort-label" htmlFor="org-sort">
-                    Sort
-                  </label>
-                  <div className="org-list__sort-select">
-                    <select
-                      id="org-sort"
-                      value={sortMode}
-                      onChange={(e) => setSortMode(e.target.value as SortMode)}
-                      className="org-list__sort-dropdown"
-                    >
-                      {SORT_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown size={14} className="org-list__sort-icon" />
-                  </div>
-                </div>
-              )}
               <div className="org-list__items">
                 {sortedOrgs.map(renderOrgItem)}
               </div>
