@@ -32,7 +32,11 @@ const SORT_OPTIONS: ReadonlyArray<{ value: SortMode; label: string }> = [
   { value: "name-desc", label: "Name (Z → A)" },
 ]
 
-const SORT_VALUES: ReadonlySet<SortMode> = new Set(SORT_OPTIONS.map((o) => o.value))
+const SORT_VALUES: ReadonlySet<string> = new Set(SORT_OPTIONS.map((o) => o.value))
+
+function isSortMode(v: string): v is SortMode {
+  return SORT_VALUES.has(v)
+}
 
 export default function GroupsPage() {
   const { groups, isLoading, refetchOrgs } = useOrg()
@@ -43,7 +47,9 @@ export default function GroupsPage() {
 
   const sortedOrgs = useMemo(() => {
     // Decorate-sort-undecorate: parse joinedAt once per group rather than per
-    // comparison, and reuse the lowercased label for name comparisons.
+    // comparison, and cache the display label for case/accent-insensitive
+    // name comparisons. Array.prototype.sort is stable as of ES2019, so equal
+    // keys preserve input order without needing an explicit tiebreak.
     type Decorated = {
       org: (typeof groups)[number]
       ts: number | null
@@ -71,7 +77,8 @@ export default function GroupsPage() {
     return decorated.map((d) => d.org)
   }, [groups, sortMode])
 
-  const currentSortLabel = SORT_OPTIONS.find((o) => o.value === sortMode)?.label ?? ""
+  const currentSortLabel =
+    SORT_OPTIONS.find((o) => o.value === sortMode)?.label ?? ""
 
   // Owners can never leave — grey out the button. Non-owners can always leave.
   const canLeaveMap = useMemo(() => {
@@ -187,14 +194,12 @@ export default function GroupsPage() {
                     <div className="org-list__sort-icon-btn">
                       <ArrowUpDown size={14} aria-hidden="true" />
                       <select
-                        aria-label={`Sort groups, current: ${currentSortLabel}`}
+                        aria-label="Sort groups"
                         title={`Sort: ${currentSortLabel}`}
                         value={sortMode}
                         onChange={(e) => {
                           const next = e.target.value
-                          if (SORT_VALUES.has(next as SortMode)) {
-                            setSortMode(next as SortMode)
-                          }
+                          if (isSortMode(next)) setSortMode(next)
                         }}
                         className="org-list__sort-icon-select"
                       >
