@@ -33,12 +33,28 @@ const MAX_BLOB_SIZE = 4 * 1024 * 1024 // 4MB — Vercel serverless functions hav
 
 /** Extract a usable HTTP status + message from an unknown XRPC error. */
 function xrpcError(err: unknown): { status: number; message: string } {
-  const error = err as { status?: number; statusCode?: number; message?: string }
+  const error = err as {
+    status?: number
+    statusCode?: number
+    message?: string
+    error?: string
+    cause?: unknown
+  }
   const status = error?.status ?? error?.statusCode ?? 500
   const message =
     status >= 500
       ? "Internal server error"
       : (error?.message ?? "Internal server error")
+  // Server-side log so the masked-to-client message can still be diagnosed
+  // from Vercel logs. Client never sees the original PDS error body.
+  console.error("[xrpc] upstream error", {
+    name: (err as Error)?.name,
+    status,
+    error: error?.error,
+    message: error?.message,
+    cause: error?.cause,
+    stack: (err as Error)?.stack,
+  })
   return { status, message }
 }
 
@@ -66,7 +82,8 @@ export async function GET(
     let oauthSession
     try {
       oauthSession = await client.restore(did)
-    } catch {
+    } catch (err) {
+      console.error("[xrpc] oauth restore failed", err)
       await deleteSession()
       return NextResponse.json({ error: "Session expired" }, { status: 401 })
     }
@@ -153,7 +170,8 @@ export async function POST(
     let oauthSession
     try {
       oauthSession = await client.restore(did)
-    } catch {
+    } catch (err) {
+      console.error("[xrpc] oauth restore failed", err)
       await deleteSession()
       return NextResponse.json({ error: "Session expired" }, { status: 401 })
     }
