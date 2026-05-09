@@ -134,8 +134,32 @@ export async function getOAuthClient(): Promise<NodeOAuthClient> {
     clientMetadata,
     stateStore: new RedisStateStore(),
     sessionStore: new RedisSessionStore(),
+    fetch: safeFetch,
     ...(keyset ? { keyset } : {}),
   })
 
   return clientInstance
+}
+
+// Workaround for vercel/next.js#90826: on Node ≥ 24.14, Next.js's patched
+// fetch throws `expected non-null body source` when given a Request whose
+// body has been consumed and the response is an error. The atproto DPoP
+// wrapper passes a Request to fetch, and bsky's PDS reliably returns 401 +
+// DPoP-Nonce on the first hit, triggering the bug. Buffer the body once and
+// re-issue with (url, init) form so Next.js's wrapper never sees a Request.
+const safeFetch: typeof fetch = async (input, init) => {
+  if (input instanceof Request) {
+    const buffer = input.body ? await input.arrayBuffer() : undefined
+    return globalThis.fetch(input.url, {
+      method: input.method,
+      headers: input.headers,
+      body: buffer && buffer.byteLength > 0 ? buffer : undefined,
+      signal: input.signal,
+      redirect: input.redirect,
+      credentials: input.credentials,
+      cache: input.cache,
+      ...init,
+    })
+  }
+  return globalThis.fetch(input, init)
 }
