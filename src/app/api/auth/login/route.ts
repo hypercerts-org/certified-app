@@ -8,20 +8,50 @@ export async function POST(request: NextRequest) {
   if (csrfError) return csrfError
 
   try {
-    const body = await request.json()
+    const body: unknown = await request.json()
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
+    }
     const { input: rawInput, mode, prompt } = body as {
-      input: string
-      mode: "email" | "handle"
-      prompt?: "login" | "create"
+      input?: unknown
+      mode?: unknown
+      prompt?: unknown
     }
 
-    if (typeof rawInput !== "string" || (mode !== "email" && mode !== "handle")) {
-      return NextResponse.json({ error: "Invalid input or mode" }, { status: 400 })
+    if (mode !== "email" && mode !== "handle" && mode !== "default") {
+      return NextResponse.json({ error: "Invalid mode" }, { status: 400 })
     }
 
-    const input = mode === "handle" ? sanitizeHandle(rawInput) : sanitizeEmail(rawInput)
+    if (prompt !== undefined && prompt !== "login" && prompt !== "create") {
+      return NextResponse.json({ error: "Invalid prompt" }, { status: 400 })
+    }
+
+    if ((mode === "email" || mode === "handle") && typeof rawInput !== "string") {
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 })
+    }
 
     const client = await getOAuthClient()
+
+    // Default mode: bounce straight to the Certified PDS authorization server with
+    // no login_hint. If the user already has a session at the PDS (e.g. they signed
+    // in via another partner app on this browser), the auth server can return a code
+    // immediately without asking for credentials. Otherwise the PDS shows its own
+    // login UI. Either way, we never have to collect an email here.
+    if (mode === "default") {
+      const url = await client.authorize(PDS_URL, {
+        scope: "atproto transition:generic identity:handle account:email",
+        ...(prompt ? { prompt } : {}),
+      })
+      return NextResponse.json({ url: url.href })
+    }
+
+    const input = mode === "handle"
+      ? sanitizeHandle(rawInput as string)
+      : sanitizeEmail(rawInput as string)
+
+    if (!input) {
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 })
+    }
 
     if (mode === "email") {
       const url = await client.authorize(PDS_URL, {

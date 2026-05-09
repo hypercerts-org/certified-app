@@ -461,9 +461,33 @@ h1, h2, h3, h4, h5, h6 {
 
 .hero__actions {
   display: flex;
-  gap: 24px;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   flex-wrap: wrap;
   justify-content: center;
+}
+
+/* Secondary link below the primary Sign-in button — opens the manual sign-in modal
+   for users who want to pick a different account or use an external ATProto handle. */
+.signin-alt-link {
+  background: none;
+  border: none;
+  font-size: 0.8125rem;
+  color: var(--color-mid-gray);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius);
+  transition: color var(--transition-fast);
+}
+
+.signin-alt-link:hover {
+  color: var(--color-accent);
+}
+
+.signin-alt-link:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .hero__btn-primary {
@@ -1271,8 +1295,10 @@ h1, h2, h3, h4, h5, h6 {
 
 .landing-cta__actions {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 

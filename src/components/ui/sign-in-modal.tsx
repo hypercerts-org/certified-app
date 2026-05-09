@@ -3,18 +3,20 @@
 import React, { useEffect, useRef, useState } from "react"
 import { useFocusTrap } from "@/hooks/use-focus-trap"
 
+type ModalView = "certified" | "atproto"
+
 interface SignInModalProps {
   isOpen: boolean
+  initialView?: ModalView
   error: string | null
   onClose: () => void
   onSubmitEmail: (email: string) => Promise<void>
   onSubmitHandle: (handle: string) => Promise<void>
 }
 
-type ModalView = "certified" | "atproto"
-
 export default function SignInModal({
   isOpen,
+  initialView = "certified",
   error,
   onClose,
   onSubmitEmail,
@@ -22,19 +24,19 @@ export default function SignInModal({
 }: SignInModalProps) {
   const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen)
   const inputRef = useRef<HTMLInputElement>(null)
-  const [view, setView] = useState<ModalView>("certified")
+  const [view, setView] = useState<ModalView>(initialView)
   const [inputValue, setInputValue] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
-      setView("certified")
+      setView(initialView)
       setInputValue("")
       setIsSubmitting(false)
       requestAnimationFrame(() => inputRef.current?.focus())
     }
-  }, [isOpen])
+  }, [isOpen, initialView])
 
   // Focus input when switching views
   useEffect(() => {
@@ -84,14 +86,14 @@ export default function SignInModal({
 
   const title = isCertified
     ? "Sign in to Certified"
-    : "Sign in with ATProto"
+    : "Sign in with AT Protocol"
 
   const buttonLabel = isCertified
     ? "Sign in with Certified"
     : "Sign in"
 
   const switchLabel = isCertified
-    ? "Sign in with ATProto/Bluesky"
+    ? "Sign in with AT Protocol or Bluesky"
     : "Sign in with Certified"
 
   return (

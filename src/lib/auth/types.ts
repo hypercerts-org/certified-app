@@ -13,8 +13,17 @@ export interface AuthState {
   isModalOpen: boolean;
   /** Whether we are waiting for the external provider redirect (overlay shown) */
   isRedirectingToProvider: boolean;
-  /** Open the sign-in modal */
-  openSignIn: () => void;
+  /**
+   * Primary sign-in entry point. Triggers a default OAuth redirect to the Certified PDS
+   * with no login_hint — if the user already has an active session at the PDS (e.g.
+   * because they signed in via another partner app), they're returned immediately
+   * without seeing any credential UI. Falls back to the PDS's own login screen otherwise.
+   */
+  openSignIn: () => Promise<void>;
+  /** Open the modal explicitly — for users who want to sign in with a different
+   * account, an external ATProto handle, or via email rather than relying on an
+   * existing PDS session. Pass "atproto" to open directly on the handle view. */
+  openSignInModal: (view?: "certified" | "atproto") => void;
   /** Close the modal */
   closeModal: () => void;
   /** Submit Certified email — calls /api/auth/login with mode "email" */
