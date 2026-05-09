@@ -31,15 +31,54 @@ const ALLOWED_BLOB_CONTENT_TYPES = [
 
 const MAX_BLOB_SIZE = 4 * 1024 * 1024 // 4MB — Vercel serverless functions have a ~4.5MB request body limit
 
+/**
+ * Strip secrets out of strings before they hit logs. Targets the things we've
+ * actually seen leak from atproto SDK error messages — JWTs (DPoP proofs and
+ * bearer tokens both match), the `Authorization`/`DPoP`/`Cookie` header lines
+ * that show up in serialized Request inspections, and email addresses.
+ */
+function redactSecrets(s: string): string {
+  return s
+    .replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "<jwt>")
+    .replace(/(Authorization|DPoP|Cookie|Set-Cookie):\s*\S+/gi, "$1: <redacted>")
+    .replace(/(access_token|refresh_token|id_token)=[A-Za-z0-9._~+/-]+=*/gi, "$1=<redacted>")
+    .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, "<email>")
+}
+
 /** Extract a usable HTTP status + message from an unknown XRPC error. */
 function xrpcError(err: unknown): { status: number; message: string } {
-  const error = err as { status?: number; statusCode?: number; message?: string }
+  const error = err as {
+    status?: number
+    statusCode?: number
+    message?: string
+    error?: string
+  }
   const status = error?.status ?? error?.statusCode ?? 500
   const message =
     status >= 500
       ? "Internal server error"
       : (error?.message ?? "Internal server error")
+  // Server-side log so the masked-to-client message can still be diagnosed
+  // from Vercel logs. Client never sees the original PDS error body.
+  // We deliberately drop `err.cause` and `err.stack` because the atproto SDK
+  // attaches the upstream Request (with DPoP proofs and Bearer tokens) on
+  // `cause`, and stack traces include the same Request via util.inspect.
+  console.error("[xrpc] upstream error", {
+    name: (err as Error)?.name,
+    status,
+    error: error?.error,
+    message: typeof error?.message === "string" ? redactSecrets(error.message) : undefined,
+  })
   return { status, message }
+}
+
+/** Log an unknown error safely — name + redacted message only, no cause/stack. */
+function logSafe(prefix: string, err: unknown): void {
+  const e = err as { name?: string; message?: string }
+  console.error(prefix, {
+    name: e?.name,
+    message: typeof e?.message === "string" ? redactSecrets(e.message) : undefined,
+  })
 }
 
 /** Clamp and validate a limit query param. */
@@ -66,7 +105,8 @@ export async function GET(
     let oauthSession
     try {
       oauthSession = await client.restore(did)
-    } catch {
+    } catch (err) {
+      logSafe("[xrpc] oauth restore failed", err)
       await deleteSession()
       return NextResponse.json({ error: "Session expired" }, { status: 401 })
     }
@@ -89,7 +129,7 @@ export async function GET(
         return NextResponse.json(result.data)
       }
       case "com.atproto.repo.listRecords": {
-        const { repo, collection, cursor, reverse, rkeyEnd, rkeyStart } = queryParams
+        const { repo, collection, cursor, reverse } = queryParams
         if (!repo || !collection) {
           return NextResponse.json({ error: "repo and collection are required" }, { status: 400 })
         }
@@ -99,8 +139,6 @@ export async function GET(
           limit: parseLimit(queryParams.limit),
           cursor,
           reverse: reverse === "true" ? true : undefined,
-          rkeyEnd,
-          rkeyStart,
         })
         return NextResponse.json(result.data)
       }
@@ -153,7 +191,8 @@ export async function POST(
     let oauthSession
     try {
       oauthSession = await client.restore(did)
-    } catch {
+    } catch (err) {
+      logSafe("[xrpc] oauth restore failed", err)
       await deleteSession()
       return NextResponse.json({ error: "Session expired" }, { status: 401 })
     }
@@ -189,19 +228,19 @@ export async function POST(
     switch (methodName) {
       case "com.atproto.repo.createRecord": {
         const result = await agent.com.atproto.repo.createRecord(
-          body as ComAtprotoRepoCreateRecord.InputSchema
+          body as unknown as ComAtprotoRepoCreateRecord.InputSchema
         )
         return NextResponse.json(result.data)
       }
       case "com.atproto.repo.putRecord": {
         const result = await agent.com.atproto.repo.putRecord(
-          body as ComAtprotoRepoPutRecord.InputSchema
+          body as unknown as ComAtprotoRepoPutRecord.InputSchema
         )
         return NextResponse.json(result.data)
       }
       case "com.atproto.repo.deleteRecord": {
         const result = await agent.com.atproto.repo.deleteRecord(
-          body as ComAtprotoRepoDeleteRecord.InputSchema
+          body as unknown as ComAtprotoRepoDeleteRecord.InputSchema
         )
         return NextResponse.json(result.data)
       }
@@ -239,20 +278,20 @@ export async function POST(
       }
       case "com.atproto.identity.updateHandle": {
         await agent.com.atproto.identity.updateHandle(
-          body as ComAtprotoIdentityUpdateHandle.InputSchema
+          body as unknown as ComAtprotoIdentityUpdateHandle.InputSchema
         )
         // Void operation — no data to return
         return NextResponse.json({})
       }
       case "com.atproto.server.requestPasswordReset": {
         await agent.com.atproto.server.requestPasswordReset(
-          body as ComAtprotoServerRequestPasswordReset.InputSchema
+          body as unknown as ComAtprotoServerRequestPasswordReset.InputSchema
         )
         return NextResponse.json({})
       }
       case "com.atproto.server.resetPassword": {
         await agent.com.atproto.server.resetPassword(
-          body as ComAtprotoServerResetPassword.InputSchema
+          body as unknown as ComAtprotoServerResetPassword.InputSchema
         )
         return NextResponse.json({})
       }
@@ -262,7 +301,7 @@ export async function POST(
       }
       case "com.atproto.server.updateEmail": {
         await agent.com.atproto.server.updateEmail(
-          body as ComAtprotoServerUpdateEmail.InputSchema
+          body as unknown as ComAtprotoServerUpdateEmail.InputSchema
         )
         return NextResponse.json({})
       }

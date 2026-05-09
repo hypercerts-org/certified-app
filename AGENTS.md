@@ -55,7 +55,7 @@ Certified is a passwordless identity platform built on **AT Protocol** (atproto)
 | React | 19.x |
 | Language | TypeScript 5 (strict, `paths: { "@/*": ["./src/*"] }`) |
 | Styling | Tailwind CSS 3.4 (utilities only) + custom CSS in `globals.css` (BEM-like) |
-| Atproto SDK | `@atproto/api` 0.13, `@atproto/oauth-client-node` 0.3, `@atproto/jwk-jose` 0.1 |
+| Atproto SDK | `@atproto/api` 0.19, `@atproto/oauth-client-node` 0.3, `@atproto/jwk-jose` 0.1 (`@atproto/oauth-client` 0.6 pulled in transitively) |
 | Session/State store | Upstash Redis (`@upstash/redis`) — REST-based, serverless-safe |
 | Server actions | None — all server work is in route handlers (`src/app/api/**`) |
 | Wallets | `wagmi` 2.x + `viem` 2.x + `@tanstack/react-query` (mounted only on `/settings/wallet`) |

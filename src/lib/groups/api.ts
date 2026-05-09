@@ -465,6 +465,7 @@ export async function resolveGroups(
         accepted: acceptedSet.has(rm.groupDid),
         avatarUrl,
         rkey: localRecord?.rkey,
+        joinedAt: rm.joinedAt,
       } satisfies Group
     })
   )

@@ -6,6 +6,8 @@ export interface Group {
   accepted: boolean
   avatarUrl?: string
   rkey?: string
+  /** ISO timestamp from the group service indicating when the user joined. */
+  joinedAt?: string
 }
 
 export interface RemoteMembership {
