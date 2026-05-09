@@ -32,6 +32,8 @@ const SORT_OPTIONS: ReadonlyArray<{ value: SortMode; label: string }> = [
   { value: "name-desc", label: "Name (Z → A)" },
 ]
 
+const SORT_VALUES: ReadonlySet<SortMode> = new Set(SORT_OPTIONS.map((o) => o.value))
+
 export default function GroupsPage() {
   const { groups, isLoading, refetchOrgs } = useOrg()
   const { did } = useAuth()
@@ -40,24 +42,36 @@ export default function GroupsPage() {
   const [sortMode, setSortMode] = useState<SortMode>("joined-asc")
 
   const sortedOrgs = useMemo(() => {
-    const arr = [...groups]
-    arr.sort((a, b) => {
+    // Decorate-sort-undecorate: parse joinedAt once per group rather than per
+    // comparison, and reuse the lowercased label for name comparisons.
+    type Decorated = {
+      org: (typeof groups)[number]
+      ts: number | null
+      label: string
+    }
+    const decorated: Decorated[] = groups.map((org) => {
+      const t = org.joinedAt ? new Date(org.joinedAt).getTime() : NaN
+      return {
+        org,
+        ts: Number.isNaN(t) ? null : t,
+        label: org.displayName || org.handle,
+      }
+    })
+    decorated.sort((a, b) => {
       if (sortMode === "joined-asc" || sortMode === "joined-desc") {
         // Missing joinedAt always sorts to the end, regardless of direction.
-        const ta = a.joinedAt ? new Date(a.joinedAt).getTime() : null
-        const tb = b.joinedAt ? new Date(b.joinedAt).getTime() : null
-        if (ta === null && tb === null) return 0
-        if (ta === null) return 1
-        if (tb === null) return -1
-        return sortMode === "joined-asc" ? ta - tb : tb - ta
+        if (a.ts === null && b.ts === null) return 0
+        if (a.ts === null) return 1
+        if (b.ts === null) return -1
+        return sortMode === "joined-asc" ? a.ts - b.ts : b.ts - a.ts
       }
-      const nameA = (a.displayName || a.handle).toLowerCase()
-      const nameB = (b.displayName || b.handle).toLowerCase()
-      const diff = nameA.localeCompare(nameB)
+      const diff = a.label.localeCompare(b.label, undefined, { sensitivity: "base" })
       return sortMode === "name-asc" ? diff : -diff
     })
-    return arr
+    return decorated.map((d) => d.org)
   }, [groups, sortMode])
+
+  const currentSortLabel = SORT_OPTIONS.find((o) => o.value === sortMode)?.label ?? ""
 
   // Owners can never leave — grey out the button. Non-owners can always leave.
   const canLeaveMap = useMemo(() => {
@@ -69,24 +83,22 @@ export default function GroupsPage() {
   }, [groups])
 
   const renderOrgItem = (org: (typeof sortedOrgs)[number]) => {
+    const displayLabel = org.displayName || org.handle
     const joinedLabel = formatJoinedDate(org.joinedAt)
+    const canLeave = canLeaveMap[org.groupDid]
     return (
       <div key={org.groupDid} className="org-list__item">
         <div className="org-list__item-avatar">
           <Avatar
             src={org.avatarUrl}
-            alt={org.displayName || org.handle}
+            alt={displayLabel}
             size="sm"
-            fallbackInitials={(org.displayName || org.handle).slice(0, 2)}
+            fallbackInitials={displayLabel.slice(0, 2)}
           />
         </div>
         <div className="org-list__item-info">
-          <p className="org-list__item-name">
-            {org.displayName || org.handle}
-          </p>
-          <p className="org-list__item-handle">
-            {org.handle}
-          </p>
+          <p className="org-list__item-name">{displayLabel}</p>
+          <p className="org-list__item-handle">{org.handle}</p>
           {joinedLabel && (
             <p className="org-list__item-meta">
               Joined {joinedLabel}
@@ -97,9 +109,13 @@ export default function GroupsPage() {
         <div className="org-list__item-actions">
           <button
             className="org-list__leave-btn"
-            onClick={() => setLeaveOrg({ groupDid: org.groupDid, name: org.displayName || org.handle })}
-            disabled={!canLeaveMap[org.groupDid]}
-            title={!canLeaveMap[org.groupDid] ? "Owners can't leave the group" : "Leave group"}
+            onClick={() => setLeaveOrg({ groupDid: org.groupDid, name: displayLabel })}
+            disabled={!canLeave}
+            title={
+              canLeave
+                ? "Leave group"
+                : "Owners can't leave — transfer ownership in group settings first"
+            }
           >
             <LogOut size={14} />
           </button>
@@ -168,15 +184,18 @@ export default function GroupsPage() {
                 <div className="org-list__header-right">
                   <span className="org-list__count">{groups.length}</span>
                   {groups.length > 1 && (
-                    <div
-                      className="org-list__sort-icon-btn"
-                      title={`Sort: ${SORT_OPTIONS.find((o) => o.value === sortMode)?.label}`}
-                    >
-                      <ArrowUpDown size={14} aria-hidden />
+                    <div className="org-list__sort-icon-btn">
+                      <ArrowUpDown size={14} aria-hidden="true" />
                       <select
-                        aria-label="Sort groups"
+                        aria-label={`Sort groups, current: ${currentSortLabel}`}
+                        title={`Sort: ${currentSortLabel}`}
                         value={sortMode}
-                        onChange={(e) => setSortMode(e.target.value as SortMode)}
+                        onChange={(e) => {
+                          const next = e.target.value
+                          if (SORT_VALUES.has(next as SortMode)) {
+                            setSortMode(next as SortMode)
+                          }
+                        }}
                         className="org-list__sort-icon-select"
                       >
                         {SORT_OPTIONS.map((opt) => (
