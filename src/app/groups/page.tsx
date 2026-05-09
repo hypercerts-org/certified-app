@@ -2,46 +2,45 @@
 
 import React, { useState, useMemo } from "react"
 import Link from "next/link"
-import { Building2, Plus, LogOut, UserCheck, UserX } from "lucide-react"
+import { Building2, Plus, LogOut } from "lucide-react"
 import { useOrg } from "@/lib/groups/org-context"
 import { useAuth } from "@/lib/auth/auth-context"
-import {
-  putMembership,
-  deleteMembership,
-  removeOrgMember,
-} from "@/lib/groups/api"
-import type { OrgRole } from "@/lib/groups/types"
+import { deleteMembership, removeOrgMember } from "@/lib/groups/api"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Button from "@/components/ui/button"
+
+const JOINED_DATE_FORMAT: Intl.DateTimeFormatOptions = {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+}
+
+function formatJoinedDate(iso?: string): string | null {
+  if (!iso) return null
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toLocaleDateString("en-US", JOINED_DATE_FORMAT)
+}
 
 export default function GroupsPage() {
   const { groups, isLoading, refetchOrgs } = useOrg()
   const { did } = useAuth()
   const [leaveOrg, setLeaveOrg] = useState<{ groupDid: string; name: string } | null>(null)
   const [isLeaving, setIsLeaving] = useState(false)
-  const [acceptingOrg, setAcceptingOrg] = useState<string | null>(null)
-  const [removingPublic, setRemovingPublic] = useState<string | null>(null)
 
   const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 }
 
   const sortedOrgs = useMemo(() => {
     return [...groups].sort((a, b) => {
-      // Accepted first
-      if (a.accepted !== b.accepted) return a.accepted ? -1 : 1
-      // Then by role
       const roleA = ROLE_ORDER[a.role] ?? 3
       const roleB = ROLE_ORDER[b.role] ?? 3
       if (roleA !== roleB) return roleA - roleB
-      // Then by name
       const nameA = (a.displayName || a.handle).toLowerCase()
       const nameB = (b.displayName || b.handle).toLowerCase()
       return nameA.localeCompare(nameB)
     })
   }, [groups])
-
-  const acceptedOrgs = sortedOrgs.filter((o) => o.accepted)
-  const pendingOrgs = sortedOrgs.filter((o) => !o.accepted)
 
   // Owners can never leave — grey out the button. Non-owners can always leave.
   const canLeaveMap = useMemo(() => {
@@ -52,68 +51,44 @@ export default function GroupsPage() {
     return map
   }, [groups])
 
-  const renderOrgItem = (org: (typeof sortedOrgs)[number]) => (
-    <div key={org.groupDid} className="org-list__item">
-      <div className="org-list__item-avatar">
-        <Avatar
-          src={org.avatarUrl}
-          alt={org.displayName || org.handle}
-          size="sm"
-          fallbackInitials={(org.displayName || org.handle).slice(0, 2)}
-        />
-      </div>
-      <div className="org-list__item-info">
-        <p className="org-list__item-name">
-          {org.displayName || org.handle}
-        </p>
-        <p className="org-list__item-handle">
-          {org.handle}
-        </p>
-      </div>
-      <span className="org-list__item-role">{org.role}</span>
-      <div className="org-list__item-actions">
-        {org.accepted ? (
+  const renderOrgItem = (org: (typeof sortedOrgs)[number]) => {
+    const joinedLabel = formatJoinedDate(org.joinedAt)
+    return (
+      <div key={org.groupDid} className="org-list__item">
+        <div className="org-list__item-avatar">
+          <Avatar
+            src={org.avatarUrl}
+            alt={org.displayName || org.handle}
+            size="sm"
+            fallbackInitials={(org.displayName || org.handle).slice(0, 2)}
+          />
+        </div>
+        <div className="org-list__item-info">
+          <p className="org-list__item-name">
+            {org.displayName || org.handle}
+          </p>
+          <p className="org-list__item-handle">
+            {org.handle}
+          </p>
+          {joinedLabel && (
+            <p className="org-list__item-meta">
+              Joined {joinedLabel}
+            </p>
+          )}
+        </div>
+        <span className="org-list__item-role">{org.role}</span>
+        <div className="org-list__item-actions">
           <button
-            className="org-list__remove-public-btn"
-            onClick={() => handleRemovePublicMembership(org.groupDid)}
-            disabled={removingPublic === org.groupDid}
-            title="Remove public membership"
+            className="org-list__leave-btn"
+            onClick={() => setLeaveOrg({ groupDid: org.groupDid, name: org.displayName || org.handle })}
+            disabled={!canLeaveMap[org.groupDid]}
+            title={!canLeaveMap[org.groupDid] ? "Owners can't leave the group" : "Leave group"}
           >
-            <UserX size={14} />
+            <LogOut size={14} />
           </button>
-        ) : (
-          <button
-            className="org-list__accept-btn"
-            onClick={() => handleAcceptMembership(org.groupDid, org.role)}
-            disabled={acceptingOrg === org.groupDid}
-            title="Accept membership publicly"
-          >
-            <UserCheck size={14} />
-          </button>
-        )}
-        <button
-          className="org-list__leave-btn"
-          onClick={() => setLeaveOrg({ groupDid: org.groupDid, name: org.displayName || org.handle })}
-          disabled={!canLeaveMap[org.groupDid]}
-          title={!canLeaveMap[org.groupDid] ? "Owners can't leave the group" : "Leave group"}
-        >
-          <LogOut size={14} />
-        </button>
+        </div>
       </div>
-    </div>
-  )
-
-  const handleRemovePublicMembership = async (groupDid: string) => {
-    if (!did) return
-    setRemovingPublic(groupDid)
-    try {
-      await deleteMembership(did, groupDid)
-      await refetchOrgs()
-    } catch (err) {
-      console.error("Failed to remove public membership:", err)
-    } finally {
-      setRemovingPublic(null)
-    }
+    )
   }
 
   const handleLeaveOrg = async () => {
@@ -130,19 +105,6 @@ export default function GroupsPage() {
       console.error("Failed to leave group:", err)
     } finally {
       setIsLeaving(false)
-    }
-  }
-
-  const handleAcceptMembership = async (groupDid: string, role: OrgRole) => {
-    if (!did) return
-    setAcceptingOrg(groupDid)
-    try {
-      await putMembership(did, groupDid, role)
-      await refetchOrgs()
-    } catch (err) {
-      console.error("Failed to accept membership:", err)
-    } finally {
-      setAcceptingOrg(null)
     }
   }
 
@@ -192,15 +154,7 @@ export default function GroupsPage() {
                 Groups you belong to. Switch your profile in the top right to act as a group.
               </p>
               <div className="org-list__items">
-                {acceptedOrgs.map(renderOrgItem)}
-                {pendingOrgs.length > 0 && (
-                  <div className="org-list__divider">
-                    <span className="org-list__divider-text">
-                      Groups where your membership is private. You can still act on behalf of these groups.
-                    </span>
-                  </div>
-                )}
-                {pendingOrgs.map(renderOrgItem)}
+                {sortedOrgs.map(renderOrgItem)}
               </div>
             </div>
           )}
