@@ -106,7 +106,7 @@ export async function GET(
         return NextResponse.json(result.data)
       }
       case "com.atproto.repo.listRecords": {
-        const { repo, collection, cursor, reverse, rkeyEnd, rkeyStart } = queryParams
+        const { repo, collection, cursor, reverse } = queryParams
         if (!repo || !collection) {
           return NextResponse.json({ error: "repo and collection are required" }, { status: 400 })
         }
@@ -116,8 +116,6 @@ export async function GET(
           limit: parseLimit(queryParams.limit),
           cursor,
           reverse: reverse === "true" ? true : undefined,
-          rkeyEnd,
-          rkeyStart,
         })
         return NextResponse.json(result.data)
       }
@@ -207,19 +205,19 @@ export async function POST(
     switch (methodName) {
       case "com.atproto.repo.createRecord": {
         const result = await agent.com.atproto.repo.createRecord(
-          body as ComAtprotoRepoCreateRecord.InputSchema
+          body as unknown as ComAtprotoRepoCreateRecord.InputSchema
         )
         return NextResponse.json(result.data)
       }
       case "com.atproto.repo.putRecord": {
         const result = await agent.com.atproto.repo.putRecord(
-          body as ComAtprotoRepoPutRecord.InputSchema
+          body as unknown as ComAtprotoRepoPutRecord.InputSchema
         )
         return NextResponse.json(result.data)
       }
       case "com.atproto.repo.deleteRecord": {
         const result = await agent.com.atproto.repo.deleteRecord(
-          body as ComAtprotoRepoDeleteRecord.InputSchema
+          body as unknown as ComAtprotoRepoDeleteRecord.InputSchema
         )
         return NextResponse.json(result.data)
       }
@@ -257,20 +255,20 @@ export async function POST(
       }
       case "com.atproto.identity.updateHandle": {
         await agent.com.atproto.identity.updateHandle(
-          body as ComAtprotoIdentityUpdateHandle.InputSchema
+          body as unknown as ComAtprotoIdentityUpdateHandle.InputSchema
         )
         // Void operation — no data to return
         return NextResponse.json({})
       }
       case "com.atproto.server.requestPasswordReset": {
         await agent.com.atproto.server.requestPasswordReset(
-          body as ComAtprotoServerRequestPasswordReset.InputSchema
+          body as unknown as ComAtprotoServerRequestPasswordReset.InputSchema
         )
         return NextResponse.json({})
       }
       case "com.atproto.server.resetPassword": {
         await agent.com.atproto.server.resetPassword(
-          body as ComAtprotoServerResetPassword.InputSchema
+          body as unknown as ComAtprotoServerResetPassword.InputSchema
         )
         return NextResponse.json({})
       }
@@ -280,7 +278,7 @@ export async function POST(
       }
       case "com.atproto.server.updateEmail": {
         await agent.com.atproto.server.updateEmail(
-          body as ComAtprotoServerUpdateEmail.InputSchema
+          body as unknown as ComAtprotoServerUpdateEmail.InputSchema
         )
         return NextResponse.json({})
       }
