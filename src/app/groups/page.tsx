@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react"
 import Link from "next/link"
-import { Building2, Plus, LogOut } from "lucide-react"
+import { Building2, Plus, LogOut, ChevronDown } from "lucide-react"
 import { useOrg } from "@/lib/groups/org-context"
 import { useAuth } from "@/lib/auth/auth-context"
 import { deleteMembership, removeOrgMember } from "@/lib/groups/api"
@@ -23,24 +23,41 @@ function formatJoinedDate(iso?: string): string | null {
   return date.toLocaleDateString("en-US", JOINED_DATE_FORMAT)
 }
 
+type SortMode = "joined-asc" | "joined-desc" | "name-asc" | "name-desc"
+
+const SORT_OPTIONS: ReadonlyArray<{ value: SortMode; label: string }> = [
+  { value: "joined-asc", label: "Joined (oldest first)" },
+  { value: "joined-desc", label: "Joined (newest first)" },
+  { value: "name-asc", label: "Name (A → Z)" },
+  { value: "name-desc", label: "Name (Z → A)" },
+]
+
 export default function GroupsPage() {
   const { groups, isLoading, refetchOrgs } = useOrg()
   const { did } = useAuth()
   const [leaveOrg, setLeaveOrg] = useState<{ groupDid: string; name: string } | null>(null)
   const [isLeaving, setIsLeaving] = useState(false)
-
-  const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 }
+  const [sortMode, setSortMode] = useState<SortMode>("joined-asc")
 
   const sortedOrgs = useMemo(() => {
-    return [...groups].sort((a, b) => {
-      const roleA = ROLE_ORDER[a.role] ?? 3
-      const roleB = ROLE_ORDER[b.role] ?? 3
-      if (roleA !== roleB) return roleA - roleB
+    const arr = [...groups]
+    arr.sort((a, b) => {
+      if (sortMode === "joined-asc" || sortMode === "joined-desc") {
+        // Missing joinedAt always sorts to the end, regardless of direction.
+        const ta = a.joinedAt ? new Date(a.joinedAt).getTime() : null
+        const tb = b.joinedAt ? new Date(b.joinedAt).getTime() : null
+        if (ta === null && tb === null) return 0
+        if (ta === null) return 1
+        if (tb === null) return -1
+        return sortMode === "joined-asc" ? ta - tb : tb - ta
+      }
       const nameA = (a.displayName || a.handle).toLowerCase()
       const nameB = (b.displayName || b.handle).toLowerCase()
-      return nameA.localeCompare(nameB)
+      const diff = nameA.localeCompare(nameB)
+      return sortMode === "name-asc" ? diff : -diff
     })
-  }, [groups])
+    return arr
+  }, [groups, sortMode])
 
   // Owners can never leave — grey out the button. Non-owners can always leave.
   const canLeaveMap = useMemo(() => {
@@ -153,6 +170,28 @@ export default function GroupsPage() {
               <p className="dash-card__desc">
                 Groups you belong to. Switch your profile in the top right to act as a group.
               </p>
+              {groups.length > 1 && (
+                <div className="org-list__sort">
+                  <label className="org-list__sort-label" htmlFor="org-sort">
+                    Sort
+                  </label>
+                  <div className="org-list__sort-select">
+                    <select
+                      id="org-sort"
+                      value={sortMode}
+                      onChange={(e) => setSortMode(e.target.value as SortMode)}
+                      className="org-list__sort-dropdown"
+                    >
+                      {SORT_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={14} className="org-list__sort-icon" />
+                  </div>
+                </div>
+              )}
               <div className="org-list__items">
                 {sortedOrgs.map(renderOrgItem)}
               </div>
