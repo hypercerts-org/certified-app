@@ -134,9 +134,11 @@ export default function ProfileClient() {
         <div className="dashboard__main">
           {/* Profile header card */}
           <div className="dash-card">
-            <div className="profile-card__banner">
-              {bannerUrl ? <img src={bannerUrl} alt="" /> : null}
-            </div>
+            {bannerUrl && (
+              <div className="profile-card__banner">
+                <img src={bannerUrl} alt="" />
+              </div>
+            )}
             <div className="profile-card">
               <Avatar
                 size="lg"
