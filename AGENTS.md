@@ -683,11 +683,7 @@ certified-app/
     │   │   ├── footer.tsx                 # Global footer (single instance, in root layout)
     │   │   └── navbar.tsx                 # Top nav with account switcher, mobile bottom sheet
     │   ├── dashboard/
-    │   │   ├── connected-apps-list.tsx
     │   │   ├── custom-domain-modal.tsx
-    │   │   ├── identity-overview-card.tsx
-    │   │   ├── recent-activity-card.tsx
-    │   │   ├── sign-in-preview-card.tsx
     │   │   └── username-card.tsx
     │   ├── groups/
     │   │   ├── add-org-modal.tsx
@@ -773,7 +769,7 @@ certified-app/
 - **App passwords** — same status: placeholder card on `/settings`.
 - **ERC-1271 / ERC-6492 verification** — `useIdentityLinks` returns `verified: false` for smart-contract-wallet signatures with `verificationError: "On-chain verification not yet supported"`. The signing path can produce these (the `signatureType` field exists), but the verifier doesn't make on-chain `isValidSignature` calls yet.
 - **TypeScript `as` casts** — widespread on API request/response bodies (e.g. the XRPC proxy and most route handlers cast through `as`). Improving this requires pulling in the official atproto SDK input/output types per method; tracked separately.
-- **Group service is staging-only** — default `GROUP_SERVICE` points at a Railway staging deployment. The groups page shows a "Heads up: Groups are in beta" banner. Don't rely on group data for production-critical flows.
+- **Group service is staging-only** — default `GROUP_SERVICE` points at a Railway staging deployment. Don't rely on group data for production-critical flows.
 - **No avatar / banner CDN** — image URLs are direct PDS `getBlob` calls. Heavy traffic would put load on the PDS.
 - **No rate limiting** in the BFF beyond what Vercel and Upstash provide.
 - **No structured logging** — `console.error("[Auth] …", err)` is the convention. Logs end up in Vercel's serverless logs.

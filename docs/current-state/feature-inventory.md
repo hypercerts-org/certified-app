@@ -77,12 +77,6 @@ The OAuth flow is the most security-sensitive surface in the app. Section 8 of `
 | Custom domain (DNS-based handle) | `CustomDomainModal` (`src/components/dashboard/custom-domain-modal.tsx`, 353 lines) | Shipped | 3-step flow: enter domain → show TXT record (`_atproto.<domain>` → DID) → verify by triggering `updateHandle`. Cleans pasted protocols/paths; surfaces specific DNS-not-yet-propagated copy on failure. |
 | My Data — claims log | `/settings/my-data` | Shipped | Lists records from collection `org.hypercerts.claim.activity` on the user's PDS via `listRecords`. Empty state copy. Empty if collection doesn't exist. |
 | Email read display | `EmailSection` | Shipped | Read-only. (Edit is a Gap, see §2.) |
-| Recent activity card | `RecentActivityCard` | Unverified — exists but currently not wired into any rendered page. Worth confirming before cleanup. |
-| Sign-in preview card | `SignInPreviewCard` | Unverified — same: defined in `dashboard/`, not referenced from any page in the current build. Likely retired. |
-| Identity overview card | `IdentityOverviewCard` | Unverified — defined in `dashboard/`, not visible in routes. Retired? |
-| Connected apps list (dashboard) | `ConnectedAppsList` | Unverified — defined but not mounted from any page. The standalone `/connected-apps` route uses its own inline rendering. |
-
-> **Planning seed (dashboard cleanup):** Several `dashboard/*` cards (recent-activity, sign-in-preview, identity-overview, connected-apps-list) appear unmounted — either retire them or repurpose into a unified profile-detail dashboard.
 
 ---
 
@@ -107,9 +101,8 @@ The most feature-rich domain. Beta-flagged by the team. `AGENTS.md` §15 is cano
 | Audit log | `/groups/[groupDid]/settings` (admin only) → `queryOrgAuditLog` | Shipped | Lists `app.certified.group.audit.query` results. Pagination at 20/page. Result badge (success/error). |
 | Group profile auto-fallback to bsky | Same pattern as personal profiles | Shipped | The group registration flow seeds `app.bsky.actor.profile` for cross-app discoverability. |
 | Membership change detection | `MembershipSyncModal` (`src/components/groups/membership-sync-modal.tsx`) | Shipped | Diffs remote-vs-local membership and prompts the user to acknowledge role changes / removals on next visit. Wired by `OrgProvider`. |
-| "Groups are in beta" banner | (seen in source, banner copy in `AGENTS.md` §21) | **Beta** | Group service defaults to a Railway staging deployment; team explicitly warns not to use group data for production-critical flows. |
 
-> **Planning seed (groups productionisation):** the group service is staging; surface metadata (founded date, organization type, urls, location) is partially defined in `GroupMetadata` but only `foundedDate` has UI. `organizationType` and `urls` exist on the read path (rendered on the profile view) but no edit affordance.
+> **Planning seed (groups productionisation):** the group service still defaults to a Railway staging deployment. Surface metadata (founded date, organization type, urls, location) is partially exposed: `foundedDate` and `organizationType` have edit affordances; `urls` and `location` are still read-only on the profile view with no editor.
 
 ---
 
@@ -305,14 +298,13 @@ EVM ↔ atproto cross-attestation. Source: `AGENTS.md` §16.
 | **2FA / TOTP** placeholder | High-trust users will expect this on a "passwordless identity platform". |
 | **Email change** has no UI | Backend is wired (`requestEmailUpdate` / `updateEmail` are whitelisted) — UI gap. |
 | **ERC-1271 / ERC-6492 verification** | Smart-account users get `Unverified` badge today. Implementing requires `eth_call` per chain. |
-| **Group service is staging-only** | `GROUP_SERVICE` defaults to a Railway staging URL. Beta banner in place. |
+| **Group service is staging-only** | `GROUP_SERVICE` defaults to a Railway staging URL. |
 | **No avatar/banner CDN** | All avatar URLs are direct PDS `getBlob` calls. Heavy traffic puts load on the PDS. |
 | **No automated tests** | `tests/groups.test-plan.md` is manual. Build + tsc are the only gates. |
 | **No structured logging** | `console.error("[Auth] …")` convention only. |
 | **No rate limiting** in BFF | Only Vercel + Upstash defaults. |
 | **TypeScript `as` casts** in BFF route handlers | XRPC proxy and most route handlers cast through `as`. Pulling in atproto SDK input/output types per method is tracked. |
-| **Unmounted dashboard cards** (`recent-activity`, `sign-in-preview`, `identity-overview`, `connected-apps-list` in `dashboard/`) | Dead or pending integration — clean up or surface on the user dashboard. |
-| **Group metadata fields without UI** (`organizationType`, `urls`, `location`) | Read path renders them; edit affordance is missing. |
+| **Group metadata fields without UI** (`urls`, `location`) | Read path renders them on the profile view; edit affordance is missing. |
 | **Connected-apps catalogue is static** | An "actually connected apps" view (with revoke) would be a more meaningful surface. |
 | **Profile dashboard route** | Current `/profile/[did]` is a single profile card. There's no aggregate "your activity across atproto" view. |
 | **Group profile shows handle but no edit** | `/groups/[groupDid]/settings` shows the handle as read-only. Backend `PUT /api/groups/[groupDid]/handle` exists. |
