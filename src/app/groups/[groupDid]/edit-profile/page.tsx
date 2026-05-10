@@ -36,6 +36,7 @@ export default function EditOrgProfilePage() {
 
   // Group metadata fields
   const [foundedDate, setFoundedDate] = useState("")
+  const [organizationType, setOrganizationType] = useState("")
 
   // Image upload state
   const [avatarBlob, setAvatarBlob] = useState<Record<string, unknown> | null>(null)
@@ -60,6 +61,9 @@ export default function EditOrgProfilePage() {
         setWebsite(p?.website || "")
         if (m?.foundedDate) {
           setFoundedDate(m.foundedDate.split("T")[0])
+        }
+        if (m?.organizationType?.length) {
+          setOrganizationType(m.organizationType.join(", "))
         }
       }
     } catch {
@@ -155,10 +159,24 @@ export default function EditOrgProfilePage() {
         updatedProfile.banner = profile.banner
       }
 
+      // Parse comma-separated organization types: trim, dedupe (case-insensitive),
+      // drop empties. Omit the field entirely when empty so the PDS record stays
+      // minimal.
+      const types: string[] = []
+      const seen = new Set<string>()
+      for (const raw of organizationType.split(",")) {
+        const trimmed = raw.trim()
+        if (!trimmed) continue
+        const key = trimmed.toLowerCase()
+        if (seen.has(key)) continue
+        seen.add(key)
+        types.push(trimmed)
+      }
+
       // Build metadata update
       const updatedMetadata: GroupMetadata = {
         createdAt: metadata?.createdAt || new Date().toISOString(),
-        ...(metadata?.organizationType && { organizationType: metadata.organizationType }),
+        ...(types.length > 0 && { organizationType: types }),
         ...(metadata?.urls && { urls: metadata.urls }),
         ...(metadata?.location && { location: metadata.location }),
         ...(foundedDate && { foundedDate: new Date(foundedDate).toISOString() }),
@@ -247,6 +265,14 @@ export default function EditOrgProfilePage() {
                     type="date"
                     value={foundedDate}
                     onChange={(e) => setFoundedDate(e.target.value)}
+                  />
+                  <Input
+                    label="Type"
+                    value={organizationType}
+                    onChange={(e) => setOrganizationType(e.target.value)}
+                    maxLength={256}
+                    placeholder="Foundation, Nonprofit"
+                    helperText="Comma-separated. Shown on the group profile."
                   />
                 </div>
 
