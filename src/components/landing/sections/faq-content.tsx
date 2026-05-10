@@ -19,7 +19,7 @@ export const FAQ_ITEMS = [
   {
     question: "Can I stop using Certified later?",
     answer:
-      "Yes. Your data is portable — you can export it or simply stop using the service at any time.",
+      "Yes. Your data is portable, so you can export it or simply stop using the service at any time.",
   },
   {
     question: "What apps support Certified?",
@@ -33,7 +33,6 @@ export default function FaqSection() {
     <section id="faq" className="landing-section landing-section--subtle">
       <div className="landing-section__inner">
         <div className="landing-section__header landing-section__header--center">
-          <span className="landing-label">Common Questions</span>
           <h2>Frequently asked questions</h2>
         </div>
         <FaqAccordion items={FAQ_ITEMS} />

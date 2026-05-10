@@ -37,7 +37,7 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
   title: {
     default: "Certified",
-    template: "%s — Certified",
+    template: "%s · Certified",
   },
   description: "Your identity, everywhere.",
   metadataBase: new URL("https://certified.app"),
@@ -50,7 +50,7 @@ export const metadata: Metadata = {
         url: "/assets/certified-hero-1200x630.png",
         width: 1200,
         height: 630,
-        alt: "Certified — One account, any app",
+        alt: "Certified · One account, any app",
       },
     ],
   },

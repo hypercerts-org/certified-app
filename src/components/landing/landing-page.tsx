@@ -4,7 +4,7 @@ import PartnerApps from "@/components/landing/sections/partner-apps";
 import BuiltForTrust from "@/components/landing/sections/built-for-trust";
 import FaqSection from "@/components/landing/sections/faq-content";
 import ReadyCtaSection from "@/components/landing/sections/ready-cta-content";
-import HeroSignInButton from "@/components/landing/hero-signin-button";
+import SignInWithCertifiedButton from "@/components/landing/sign-in-with-certified-button";
 
 export default function LandingPage() {
   return (
@@ -33,10 +33,10 @@ export default function LandingPage() {
             <span className="hero__title-accent">Any app.</span>
           </h1>
           <p className="hero__subtitle hero-reveal">
-            Your identity and data — everywhere you go.
+            Your identity and data, everywhere you go.
           </p>
           <div className="hero-reveal">
-            <HeroSignInButton />
+            <SignInWithCertifiedButton variant="hero" />
           </div>
         </div>
       </section>

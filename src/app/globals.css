@@ -1552,11 +1552,6 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  transition: box-shadow 500ms;
-}
-
-.landing-bento__card:hover {
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.06);
 }
 
 .landing-bento__card--highlight {
@@ -1700,10 +1695,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .landing-protocol__num {
-  font-family: var(--font-serif-alt), 'Instrument Serif', serif;
-  font-style: italic;
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-weight: 700;
   font-size: 2.25rem;
-  color: var(--color-outline-variant);
+  font-feature-settings: 'tnum' 1;
+  color: var(--color-mid-gray);
   line-height: 1;
   flex-shrink: 0;
   transition: color var(--transition-fast);

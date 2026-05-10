@@ -3,7 +3,6 @@ export default function HowItWorks() {
     <section id="how-it-works" className="landing-section landing-section--subtle">
       <div className="landing-section__inner">
         <div className="landing-section__header landing-section__header--center">
-          <span className="landing-label">Simple Process</span>
           <h2>How it works</h2>
           <p className="landing-protocol__intro">
             Three steps to a portable identity.
@@ -13,21 +12,21 @@ export default function HowItWorks() {
           <div className="landing-protocol__step">
             <span className="landing-protocol__num">01</span>
             <div>
-              <h4>Create your Certified ID</h4>
+              <h3>Create your Certified ID</h3>
               <p>Enter your email. We send a one-time code.</p>
             </div>
           </div>
           <div className="landing-protocol__step">
             <span className="landing-protocol__num">02</span>
             <div>
-              <h4>Sign in to partner apps</h4>
+              <h3>Sign in to partner apps</h3>
               <p>Use it anywhere you see &apos;Sign in with Certified&apos;.</p>
             </div>
           </div>
           <div className="landing-protocol__step">
             <span className="landing-protocol__num">03</span>
             <div>
-              <h4>Your profile is already there</h4>
+              <h3>Your profile is already there</h3>
               <p>Your profile and records follow you automatically.</p>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import ReadyCtaButton from "./ready-cta-button";
+import SignInWithCertifiedButton from "@/components/landing/sign-in-with-certified-button";
 
 export default function ReadyCtaSection() {
   return (
@@ -14,10 +14,9 @@ export default function ReadyCtaSection() {
         </svg>
       </div>
       <div className="landing-section__inner landing-cta">
-        <span className="landing-label">Get Started</span>
-        <h2>Ready to get started?</h2>
-        <p>Create your account in under a minute.</p>
-        <ReadyCtaButton />
+        <h2>Create your account.</h2>
+        <p>One email. One code. One minute.</p>
+        <SignInWithCertifiedButton variant="cta" />
       </div>
     </section>
   );
