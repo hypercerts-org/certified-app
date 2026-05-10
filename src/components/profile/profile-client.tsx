@@ -234,7 +234,7 @@ export default function ProfileClient() {
                 )}
               {isOrg && metadata?.urls && metadata.urls.length > 0 && (
                 <div className="personal-info__full-width">
-                  <dt className="personal-info__label">Links</dt>
+                  <dt className="personal-info__label">Additional links</dt>
                   <dd className="personal-info__field">
                     {metadata.urls.map((u, i) => (
                       <span key={i}>
