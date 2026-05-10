@@ -17,6 +17,14 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import AvatarUpload from "@/components/profile/avatar-upload"
 import BannerUpload from "@/components/profile/banner-upload"
 
+const PRESET_ORG_TYPES = [
+  "Nonprofit",
+  "Business",
+  "Community Group",
+  "Government",
+  "Indigenous Group",
+] as const
+
 export default function EditOrgProfilePage() {
   const router = useRouter()
   const params = useParams()
@@ -37,7 +45,14 @@ export default function EditOrgProfilePage() {
 
   // Group metadata fields
   const [foundedDate, setFoundedDate] = useState("")
-  const [organizationType, setOrganizationType] = useState("")
+  // Organization type — fixed presets + "Other" with free-text. The underlying
+  // record is `string[]`; we drive UX as single-select. To avoid silently
+  // collapsing legacy multi-value records, save preserves the loaded array
+  // verbatim until the user actively changes the selection (`typeDirty`).
+  const [typeSelection, setTypeSelection] = useState("")
+  const [typeOtherText, setTypeOtherText] = useState("")
+  const [typeOtherError, setTypeOtherError] = useState("")
+  const [typeDirty, setTypeDirty] = useState(false)
   const [urls, setUrls] = useState<OrgUrlItem[]>([])
   // Parallel array of per-row error messages ("" = no error). Length stays
   // in sync with `urls` via the helpers below; cleared per-save attempt.
@@ -67,8 +82,14 @@ export default function EditOrgProfilePage() {
         if (m?.foundedDate) {
           setFoundedDate(m.foundedDate.split("T")[0])
         }
-        if (m?.organizationType?.length) {
-          setOrganizationType(m.organizationType.join(", "))
+        const first = m?.organizationType?.[0]
+        if (first) {
+          if ((PRESET_ORG_TYPES as readonly string[]).includes(first)) {
+            setTypeSelection(first)
+          } else {
+            setTypeSelection("Other")
+            setTypeOtherText(first)
+          }
         }
         if (m?.urls?.length) {
           setUrls(m.urls.map((u) => ({ url: u.url, label: u.label ?? "" })))
@@ -149,6 +170,14 @@ export default function EditOrgProfilePage() {
     }
     setWebsiteError("")
 
+    // If the user selected "Other" they must provide a value — only the value
+    // they typed is saved, not the literal "Other".
+    if (typeSelection === "Other" && !typeOtherText.trim()) {
+      setTypeOtherError("Please describe the type, or pick another option.")
+      return
+    }
+    setTypeOtherError("")
+
     // Validate + clean the additional links: drop fully-empty rows silently;
     // surface per-row errors for label-only or invalid-URL rows; abort save on
     // any error so the user sees what to fix.
@@ -206,18 +235,19 @@ export default function EditOrgProfilePage() {
         updatedProfile.banner = profile.banner
       }
 
-      // Parse comma-separated organization types: trim, dedupe (case-insensitive,
-      // first-seen casing wins), drop empties. Omit the field entirely when empty
-      // so the PDS record stays minimal.
-      const types: string[] = []
-      const seen = new Set<string>()
-      for (const raw of organizationType.split(",")) {
-        const trimmed = raw.trim()
-        if (!trimmed) continue
-        const key = trimmed.toLowerCase()
-        if (seen.has(key)) continue
-        seen.add(key)
-        types.push(trimmed)
+      // Build organizationType array. Preserve the loaded array verbatim until
+      // the user actively changes the selection — protects multi-value legacy
+      // records from being silently collapsed to one value on save.
+      let nextOrgTypes: string[] | undefined
+      if (!typeDirty && metadata?.organizationType?.length) {
+        nextOrgTypes = metadata.organizationType
+      } else if (typeSelection === "Other") {
+        const t = typeOtherText.trim()
+        nextOrgTypes = t ? [t] : undefined
+      } else if (typeSelection) {
+        nextOrgTypes = [typeSelection]
+      } else {
+        nextOrgTypes = undefined
       }
 
       // Build metadata update. Spread the loaded record first so any unknown
@@ -228,7 +258,7 @@ export default function EditOrgProfilePage() {
       const updatedMetadata: GroupMetadata = {
         ...(metadata ?? {}),
         createdAt: metadata?.createdAt || new Date().toISOString(),
-        organizationType: types.length > 0 ? types : undefined,
+        organizationType: nextOrgTypes,
         foundedDate: foundedDate ? new Date(foundedDate).toISOString() : undefined,
         urls: cleanedUrls.length > 0 ? cleanedUrls : undefined,
       }
@@ -317,14 +347,46 @@ export default function EditOrgProfilePage() {
                     value={foundedDate}
                     onChange={(e) => setFoundedDate(e.target.value)}
                   />
-                  <Input
-                    label="Type"
-                    value={organizationType}
-                    onChange={(e) => setOrganizationType(e.target.value)}
-                    maxLength={256}
-                    placeholder="Foundation, Nonprofit"
-                    helperText="Comma-separated. Shown on the group profile."
-                  />
+                  <div>
+                    <label
+                      htmlFor="org-type-select"
+                      className="app-card__label block mb-1.5"
+                    >
+                      Type
+                    </label>
+                    <select
+                      id="org-type-select"
+                      value={typeSelection}
+                      onChange={(e) => {
+                        setTypeSelection(e.target.value)
+                        setTypeDirty(true)
+                        if (e.target.value !== "Other") setTypeOtherError("")
+                      }}
+                      className="h-11 w-full border border-[rgba(15,37,68,0.15)] rounded bg-white px-4 text-sm text-gray-700 focus:border-accent focus:ring-1 focus:ring-accent/20 focus:outline-none transition-all duration-150"
+                    >
+                      <option value="">Select a type…</option>
+                      {PRESET_ORG_TYPES.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                      <option value="Other">Other</option>
+                    </select>
+                    {typeSelection === "Other" && (
+                      <div className="mt-2">
+                        <Input
+                          value={typeOtherText}
+                          onChange={(e) => {
+                            setTypeOtherText(e.target.value)
+                            setTypeDirty(true)
+                            if (e.target.value.trim()) setTypeOtherError("")
+                          }}
+                          placeholder="Describe the type"
+                          maxLength={64}
+                          error={typeOtherError}
+                          aria-label="Custom organization type"
+                        />
+                      </div>
+                    )}
+                  </div>
                   <div>
                     <label className="app-card__label block mb-1.5">
                       Additional links
