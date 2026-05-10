@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Pencil } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useOrg } from "@/lib/groups/org-context";
 import { getOrgProfile, getOrgMetadata } from "@/lib/groups/api";
@@ -86,6 +86,20 @@ export default function ProfileClient() {
     : canEditGroup
       ? `/groups/${encodeURIComponent(did)}/edit-profile`
       : null;
+
+  // Has any detail field worth rendering? Used to decide whether the details
+  // card renders fields, an "Add" CTA (when the viewer can edit), or nothing.
+  // Display name is intentionally excluded for personal profiles — it's
+  // already shown in the profile header above.
+  const hasDetails = isOrg
+    ? !!(
+        profile?.description ||
+        profile?.website ||
+        metadata?.foundedDate ||
+        (metadata?.organizationType?.length ?? 0) > 0 ||
+        (metadata?.urls?.length ?? 0) > 0
+      )
+    : !!(profile?.description || profile?.website);
 
   const initials = (profile?.displayName || handle || did)
     .slice(0, 2)
@@ -172,88 +186,90 @@ export default function ProfileClient() {
             </dl>
           </div>
 
-          {/* Details card */}
-          <div className="dash-card">
-            <h2 className="dash-card__title">
-              {isOrg ? "Group Details" : "Account Details"}
-            </h2>
-            <dl className="personal-info__grid">
-              {!isOrg && (
-                <div>
-                  <dt className="personal-info__label">Display Name</dt>
-                  <dd className="personal-info__field">
-                    {profile?.displayName || "—"}
-                  </dd>
-                </div>
-              )}
-              <div className="personal-info__full-width">
-                <dt className="personal-info__label">About</dt>
-                <dd className="personal-info__field">
-                  {profile?.description || "—"}
-                </dd>
-              </div>
-              <div className="personal-info__full-width">
-                <dt className="personal-info__label">Website</dt>
-                <dd className="personal-info__field">
-                  {profile?.website ? (
-                    <a
-                      href={profile.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="personal-info__field--link"
-                    >
-                      {profile.website}
-                    </a>
-                  ) : (
-                    "—"
-                  )}
-                </dd>
-              </div>
-              {isOrg && (
-                <div>
-                  <dt className="personal-info__label">Founded</dt>
-                  <dd className="personal-info__field">
-                    {metadata?.foundedDate
-                      ? new Date(metadata.foundedDate).toLocaleDateString(
-                          undefined,
-                          { year: "numeric", month: "long", day: "numeric" }
-                        )
-                      : "—"}
-                  </dd>
-                </div>
-              )}
-              {isOrg &&
-                metadata?.organizationType &&
-                metadata.organizationType.length > 0 && (
-                  <div>
-                    <dt className="personal-info__label">Type</dt>
+          {/* Details card. Renders only fields the user has filled out. When
+              the section is empty and the viewer can edit, the heading is
+              replaced by an "Add" CTA. When empty and the viewer can't edit,
+              the whole card is suppressed. */}
+          {hasDetails ? (
+            <div className="dash-card">
+              <h2 className="dash-card__title">
+                {isOrg ? "Group Details" : "Account Details"}
+              </h2>
+              <dl className="personal-info__grid">
+                {profile?.description && (
+                  <div className="personal-info__full-width">
+                    <dt className="personal-info__label">About</dt>
+                    <dd className="personal-info__field">{profile.description}</dd>
+                  </div>
+                )}
+                {profile?.website && (
+                  <div className="personal-info__full-width">
+                    <dt className="personal-info__label">Website</dt>
                     <dd className="personal-info__field">
-                      {metadata.organizationType.join(", ")}
+                      <a
+                        href={profile.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="personal-info__field--link"
+                      >
+                        {profile.website}
+                      </a>
                     </dd>
                   </div>
                 )}
-              {isOrg && metadata?.urls && metadata.urls.length > 0 && (
-                <div className="personal-info__full-width">
-                  <dt className="personal-info__label">Links</dt>
-                  <dd className="personal-info__field">
-                    {metadata.urls.map((u, i) => (
-                      <span key={i}>
-                        {i > 0 && " · "}
-                        <a
-                          href={u.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="personal-info__field--link"
-                        >
-                          {u.label || u.url}
-                        </a>
-                      </span>
-                    ))}
-                  </dd>
-                </div>
-              )}
-            </dl>
-          </div>
+                {isOrg && metadata?.foundedDate && (
+                  <div>
+                    <dt className="personal-info__label">Founded</dt>
+                    <dd className="personal-info__field">
+                      {new Date(metadata.foundedDate).toLocaleDateString(
+                        undefined,
+                        { year: "numeric", month: "long", day: "numeric" }
+                      )}
+                    </dd>
+                  </div>
+                )}
+                {isOrg &&
+                  metadata?.organizationType &&
+                  metadata.organizationType.length > 0 && (
+                    <div>
+                      <dt className="personal-info__label">Type</dt>
+                      <dd className="personal-info__field">
+                        {metadata.organizationType.join(", ")}
+                      </dd>
+                    </div>
+                  )}
+                {isOrg && metadata?.urls && metadata.urls.length > 0 && (
+                  <div className="personal-info__full-width">
+                    <dt className="personal-info__label">Additional links</dt>
+                    <dd className="personal-info__field">
+                      {metadata.urls.map((u, i) => (
+                        <span key={i}>
+                          {i > 0 && " · "}
+                          <a
+                            href={u.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="personal-info__field--link"
+                          >
+                            {u.label || u.url}
+                          </a>
+                        </span>
+                      ))}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          ) : editHref ? (
+            <div className="dash-card">
+              <Link href={editHref}>
+                <Button variant="ghost" size="sm">
+                  <Plus size={14} />
+                  {isOrg ? "Add group details" : "Add account details"}
+                </Button>
+              </Link>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

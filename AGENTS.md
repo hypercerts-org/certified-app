@@ -4,6 +4,7 @@ This document is the canonical reference for coding agents working in this repos
 
 ## Table of Contents
 
+0. [Design Context](#0-design-context)
 1. [Project Overview](#1-project-overview)
 2. [Tech Stack](#2-tech-stack)
 3. [Quick Reference](#3-quick-reference)
@@ -31,6 +32,14 @@ This document is the canonical reference for coding agents working in this repos
 25. [Conventions: Errors, Loading, A11y](#25-conventions-errors-loading-a11y)
 
 ---
+
+## 0. Design Context
+
+`PRODUCT.md` at the repo root is the strategic design brief: register, primary user, brand personality (confident, principled, plain), anti-references (anchored on "visibly not-a-wallet"), and design principles. Read it before any UI/UX work. The `/impeccable` skill loads it automatically; humans should open it for any design decision that goes beyond a one-line copy or token tweak.
+
+`DESIGN.md` is the visual companion: the "Notary's Ledger" North Star, a two-register layout doctrine (brand on `/welcome` and `/about`, product everywhere else with a centered narrow column up to ~1024px), the civic palette (Ink, Paper, Slate, Canvas, Sunken, Raised, Elevated, Annotation Green), Noto Serif and Instrument Serif italic typography with OpenType `tnum`/`case` directives, a three-step `--shadow-sm`/`md`/`lg` vocabulary on floating elements only, and twelve named rules across colors, typography, and elevation (No-Brand-Hue, Warm-Neutral, One-Voice-of-Color, Semantic-Token, Serif-Authority, One-Italic, 65-75ch, Weight-Ceiling-on-Inter, Uppercase-Plus-Tracking, Flat-By-Default, Floating-Only-Shadow, Hairline). Machine-readable tokens live in the YAML frontmatter; the sidecar at `.impeccable/design.json` carries shadows, motion, breakpoints, tonal ramps, and ready-to-render component snippets.
+
+DESIGN.md describes the **target state**. Two migrations are implied. **(a) Token refactor:** replace concrete `--color-*` tokens with the semantic two-layer system (`--bg-canvas`, `--fg-primary`, `--border-default`, `--btn-primary-bg`, `--shadow-sm`/`md`/`lg`). The current `--color-*` tokens become legacy aliases. **(b) Component canonicalization:** the components in `src/components/ui/` (`<Button>` 4 variants by 3 sizes, `<Badge>`, `<Avatar>`, `<Input>`, `<Textarea>`) are the source of truth; BEM-style classes in `globals.css` (`.signin-modal__submit`, `.hero__btn-primary`, `.feedback-modal__submit`, `.landing-cta__btn`) are legacy and should migrate. `tailwind.config.ts` also holds stale tokens from a prior visual system (`navy: #0F2544`, `accent: #60A1E2`, the `elevation-1`..`elevation-4` shadows) that should be removed in the same pass. The system is light-only today; the semantic layer is structured so a future `[data-theme="dark"]` is a value-flip, not a refactor.
 
 ## 1. Project Overview
 
@@ -674,11 +683,7 @@ certified-app/
     │   │   ├── footer.tsx                 # Global footer (single instance, in root layout)
     │   │   └── navbar.tsx                 # Top nav with account switcher, mobile bottom sheet
     │   ├── dashboard/
-    │   │   ├── connected-apps-list.tsx
     │   │   ├── custom-domain-modal.tsx
-    │   │   ├── identity-overview-card.tsx
-    │   │   ├── recent-activity-card.tsx
-    │   │   ├── sign-in-preview-card.tsx
     │   │   └── username-card.tsx
     │   ├── groups/
     │   │   ├── add-org-modal.tsx
@@ -764,7 +769,7 @@ certified-app/
 - **App passwords** — same status: placeholder card on `/settings`.
 - **ERC-1271 / ERC-6492 verification** — `useIdentityLinks` returns `verified: false` for smart-contract-wallet signatures with `verificationError: "On-chain verification not yet supported"`. The signing path can produce these (the `signatureType` field exists), but the verifier doesn't make on-chain `isValidSignature` calls yet.
 - **TypeScript `as` casts** — widespread on API request/response bodies (e.g. the XRPC proxy and most route handlers cast through `as`). Improving this requires pulling in the official atproto SDK input/output types per method; tracked separately.
-- **Group service is staging-only** — default `GROUP_SERVICE` points at a Railway staging deployment. The groups page shows a "Heads up: Groups are in beta" banner. Don't rely on group data for production-critical flows.
+- **Group service is staging-only** — default `GROUP_SERVICE` points at a Railway staging deployment. Don't rely on group data for production-critical flows.
 - **No avatar / banner CDN** — image URLs are direct PDS `getBlob` calls. Heavy traffic would put load on the PDS.
 - **No rate limiting** in the BFF beyond what Vercel and Upstash provide.
 - **No structured logging** — `console.error("[Auth] …", err)` is the convention. Logs end up in Vercel's serverless logs.
