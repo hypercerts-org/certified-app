@@ -4,6 +4,7 @@ This document is the canonical reference for coding agents working in this repos
 
 ## Table of Contents
 
+0. [Design Context](#0-design-context)
 1. [Project Overview](#1-project-overview)
 2. [Tech Stack](#2-tech-stack)
 3. [Quick Reference](#3-quick-reference)
@@ -31,6 +32,12 @@ This document is the canonical reference for coding agents working in this repos
 25. [Conventions: Errors, Loading, A11y](#25-conventions-errors-loading-a11y)
 
 ---
+
+## 0. Design Context
+
+`PRODUCT.md` at the repo root is the strategic design brief: register, primary user, brand personality (confident, principled, plain), anti-references (anchored on "visibly not-a-wallet"), and design principles. Read it before any UI/UX work. The `/impeccable` skill loads it automatically; humans should open it for any design decision that goes beyond a one-line copy or token tweak.
+
+`DESIGN.md` is the visual companion: the "Notary's Ledger" North Star, the civic palette (Ink Black, Notice-Paper White, Bureau Iron, Annotation Green), Noto Serif and Instrument Serif italic typography, flat-by-default elevation, and named rules (No-Brand-Hue, Warm-Neutral, One-Italic, Flat-By-Default, Hairline). Machine-readable tokens live in the YAML frontmatter; the sidecar at `.impeccable/design.json` carries shadow, motion, breakpoints, tonal ramps, and ready-to-render component snippets. Note that `tailwind.config.ts` still holds stale tokens from a prior visual system (`navy: #0F2544`, `accent: #60A1E2`, the `elevation-1`..`elevation-4` shadows) and is scheduled for cleanup; the canonical source is `--color-*` in `src/app/globals.css`.
 
 ## 1. Project Overview
 

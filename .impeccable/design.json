@@ -1,0 +1,405 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-10T00:00:00.000Z",
+  "title": "Design System: Certified",
+  "extensions": {
+    "colorMeta": {
+      "ink-black": {
+        "role": "primary",
+        "displayName": "Ink Black",
+        "canonical": "#111111",
+        "tonalRamp": [
+          "#000000",
+          "#0a0a0a",
+          "#111111",
+          "#1f1f1f",
+          "#2e2e2e",
+          "#454547",
+          "#4c4546",
+          "#7e7576"
+        ]
+      },
+      "archive-gray": {
+        "role": "neutral",
+        "displayName": "Archive Gray",
+        "canonical": "#4c4546",
+        "tonalRamp": [
+          "#1d1a1b",
+          "#2c2a2b",
+          "#3b393a",
+          "#4c4546",
+          "#5e5757",
+          "#7e7576",
+          "#a39c9d",
+          "#cfc4c5"
+        ]
+      },
+      "bureau-iron": {
+        "role": "neutral",
+        "displayName": "Bureau Iron",
+        "canonical": "#7e7576",
+        "tonalRamp": [
+          "#3b3636",
+          "#534b4c",
+          "#695e5f",
+          "#7e7576",
+          "#988f8f",
+          "#b3aaa9",
+          "#cdc6c5",
+          "#e2dddc"
+        ]
+      },
+      "ledger-rule": {
+        "role": "neutral",
+        "displayName": "Ledger Rule Gray",
+        "canonical": "#cfc4c5",
+        "tonalRamp": [
+          "#7a7273",
+          "#928a8a",
+          "#a8a09f",
+          "#cfc4c5",
+          "#dcd2d2",
+          "#e7dedd",
+          "#efe9e8",
+          "#f7f3f3"
+        ]
+      },
+      "light-divider": {
+        "role": "neutral",
+        "displayName": "Light Divider",
+        "canonical": "#e2e2e2",
+        "tonalRamp": [
+          "#9c9c9c",
+          "#b4b4b4",
+          "#cccccc",
+          "#dadada",
+          "#e2e2e2",
+          "#ebebeb",
+          "#f1f1f1",
+          "#f7f7f7"
+        ]
+      },
+      "public-stone": {
+        "role": "neutral",
+        "displayName": "Public Stone",
+        "canonical": "#eeeeee",
+        "tonalRamp": [
+          "#a8a8a8",
+          "#bcbcbc",
+          "#d0d0d0",
+          "#e0e0e0",
+          "#eeeeee",
+          "#f3f3f3",
+          "#f7f7f7",
+          "#fbfbfb"
+        ]
+      },
+      "vellum": {
+        "role": "neutral",
+        "displayName": "Vellum",
+        "canonical": "#f3f3f3",
+        "tonalRamp": [
+          "#b3b3b3",
+          "#c5c5c5",
+          "#d6d6d6",
+          "#e4e4e4",
+          "#ededed",
+          "#f3f3f3",
+          "#f7f7f7",
+          "#fbfbfb"
+        ]
+      },
+      "notice-paper-white": {
+        "role": "neutral",
+        "displayName": "Notice-Paper White",
+        "canonical": "#f9f9f9",
+        "tonalRamp": [
+          "#bababa",
+          "#cccccc",
+          "#dddddd",
+          "#e9e9e9",
+          "#f1f1f1",
+          "#f6f6f6",
+          "#f9f9f9",
+          "#fcfcfc"
+        ]
+      },
+      "pure-white": {
+        "role": "neutral",
+        "displayName": "Pure White",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#c8c8c8",
+          "#d8d8d8",
+          "#e6e6e6",
+          "#efefef",
+          "#f6f6f6",
+          "#fafafa",
+          "#fdfdfd",
+          "#ffffff"
+        ]
+      },
+      "annotation-green": {
+        "role": "tertiary",
+        "displayName": "Annotation Green",
+        "canonical": "#94bb51",
+        "tonalRamp": [
+          "#3f5621",
+          "#577a2f",
+          "#6f9c3e",
+          "#84b048",
+          "#94bb51",
+          "#abc97a",
+          "#c5d8a1",
+          "#e1ebcf"
+        ]
+      },
+      "success-leaf": {
+        "role": "semantic",
+        "displayName": "Success Leaf",
+        "canonical": "#2ecc71"
+      },
+      "caution-amber": {
+        "role": "semantic",
+        "displayName": "Caution Amber",
+        "canonical": "#f5a623"
+      },
+      "error-vermilion": {
+        "role": "semantic",
+        "displayName": "Error Vermilion",
+        "canonical": "#ba1a1a"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Hero title on /welcome only. Noto Serif at clamp(5rem, 7vw + 1rem, 7rem). One per page."
+      },
+      "display-italic": {
+        "displayName": "Display Italic Accent",
+        "purpose": "Instrument Serif italic accent words inside the hero title. The single typographic flourish in the system."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section headlines on landing surface and authenticated app pages. Noto Serif at clamp(2rem, 3vw + 0.5rem, 3rem)."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default running copy. Inter 400 1rem, line-height 1.6, color archive-gray, max 65-75ch."
+      },
+      "body-sm": {
+        "displayName": "Body Small",
+        "purpose": "Meta copy, helper text, captions inside cards."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Eyebrows above section headlines and inside cards. Inter 500 0.6875rem, ls 0.2em, uppercase, color bureau-iron."
+      },
+      "nav-label": {
+        "displayName": "Nav Label",
+        "purpose": "Authenticated top-nav links. Inter 500 0.75rem, ls 0.15em, uppercase, color bureau-iron with active state in ink-black."
+      }
+    },
+    "shadows": [
+      {
+        "name": "overlay-ambient",
+        "value": "0 8px 32px rgba(0, 0, 0, 0.12)",
+        "purpose": "The single sanctioned shadow. Reserved for modals, dropdowns, and the floating feedback sheet. Surfaces that scroll with the page are flat."
+      }
+    ],
+    "motion": [
+      {
+        "name": "transition-fast",
+        "value": "150ms ease-out",
+        "purpose": "Color, border, and opacity state changes (hover, focus)."
+      },
+      {
+        "name": "transition-base",
+        "value": "250ms ease-out",
+        "purpose": "Default for transform and layout-adjacent transitions that are not on layout properties themselves."
+      },
+      {
+        "name": "transition-slow",
+        "value": "400ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Fade-up reveals on hero load. Exponential ease-out, never bounce."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      },
+      {
+        "name": "2xl",
+        "value": "1536px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Solid ink-black primary action. Hero CTAs use 18px 40px padding; in-app CTAs use 16px 24px. Hover drops opacity to 0.9; active scales to 0.97.",
+      "html": "<button class=\"ds-btn-primary\">Sign in <span class=\"ds-btn-primary__arrow\" aria-hidden=\"true\">&rarr;</span></button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 12px; padding: 18px 40px; font-size: 1.125rem; font-weight: 500; font-family: Inter, system-ui, -apple-system, sans-serif; color: #ffffff; background: #111111; border: none; border-radius: 4px; cursor: pointer; transition: opacity 200ms ease-out, transform 200ms ease-out; text-decoration: none; } .ds-btn-primary:hover { opacity: 0.9; } .ds-btn-primary:active { transform: scale(0.97); } .ds-btn-primary:focus-visible { outline: 2px solid #111111; outline-offset: 2px; } .ds-btn-primary__arrow { font-size: 1.25rem; line-height: 1; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Text-link with hairline underline on hover. Never fills. Used as the alternate sign-in path next to a primary action.",
+      "html": "<button class=\"ds-btn-secondary\">Use a different handle</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; gap: 8px; padding: 18px 40px; font-size: 1.125rem; font-weight: 500; font-family: Inter, system-ui, -apple-system, sans-serif; color: #111111; background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: border-color 150ms ease-out; text-decoration: none; } .ds-btn-secondary:hover { border-bottom-color: #111111; } .ds-btn-secondary:focus-visible { outline: 2px solid #111111; outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Form field used in sign-in modal and feedback modal. The 1.5px border (slightly thicker than page hairlines) signals a write-here surface; focus turns the border annotation-green with a soft ring.",
+      "html": "<label class=\"ds-input-wrap\"><span class=\"ds-input-label\">Handle or email</span><input class=\"ds-input\" type=\"text\" placeholder=\"alice.bsky.social\" /></label>",
+      "css": ".ds-input-wrap { display: flex; flex-direction: column; gap: 8px; font-family: Inter, system-ui, -apple-system, sans-serif; } .ds-input-label { font-size: 0.875rem; font-weight: 500; color: #4c4546; } .ds-input { width: 100%; height: 48px; padding: 0 16px; border: 1.5px solid #e2e2e2; border-radius: 2px; font-size: 1rem; font-family: inherit; color: #111111; background: #ffffff; transition: border-color 150ms ease-out, box-shadow 150ms ease-out; outline: none; } .ds-input::placeholder { color: #7e7576; } .ds-input:focus { border-color: #94bb51; box-shadow: 0 0 0 3px rgba(148, 187, 81, 0.15); } .ds-input:disabled { opacity: 0.6; cursor: not-allowed; }"
+    },
+    {
+      "name": "App Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "The default container in authenticated app pages. Pure white lifted onto the notice-paper page, hairline border, no shadow. Hover only deepens the border tone slightly. Internal padding 24px.",
+      "html": "<article class=\"ds-card\"><div class=\"ds-card__label\">Account</div><h3 class=\"ds-card__title\">Two-factor authentication</h3><p class=\"ds-card__body\">Add an extra layer of protection to your sign-in.</p></article>",
+      "css": ".ds-card { background: #ffffff; border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 2px; padding: 24px; transition: border-color 150ms ease-out; font-family: Inter, system-ui, -apple-system, sans-serif; } .ds-card:hover { border-color: rgba(0, 0, 0, 0.12); } .ds-card__label { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.08em; color: #7e7576; margin-bottom: 8px; text-transform: uppercase; } .ds-card__title { font-family: 'Noto Serif', Georgia, serif; font-size: 1.375rem; font-weight: 700; line-height: 1.3; color: #111111; margin: 0 0 8px 0; } .ds-card__body { font-size: 0.875rem; line-height: 1.5; color: #4c4546; margin: 0; }"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "refersTo": "chip-default",
+      "description": "Small pill used for status (2FA on/off, wallet verified/unverified, group sync changed/removed). Default fill is notice-paper-white; tinted variants use 0.1-opacity semantic color with the matching semantic text color. No shadow, no border.",
+      "html": "<span class=\"ds-chip ds-chip--on\">Enabled</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 2px; font-size: 0.75rem; font-weight: 500; font-family: Inter, system-ui, -apple-system, sans-serif; background: #f9f9f9; color: #7e7576; } .ds-chip--on { background: rgba(46, 204, 113, 0.1); color: #047857; } .ds-chip--off { background: #f9f9f9; color: #7e7576; } .ds-chip--warn { background: #fef9e7; color: #7a6420; } .ds-chip--err { background: rgba(186, 26, 26, 0.08); color: #ba1a1a; }"
+    },
+    {
+      "name": "App Nav Link",
+      "kind": "nav",
+      "refersTo": "nav-link",
+      "description": "Authenticated top-nav link. Inter 500 0.75rem, letter-spacing 0.15em, uppercase, bureau-iron at rest. Hover and active shift to ink-black; active also adds a 1.5px ink-black bottom border.",
+      "html": "<nav class=\"ds-nav\"><a href=\"#\" class=\"ds-nav__link ds-nav__link--active\">Profile</a><a href=\"#\" class=\"ds-nav__link\">Settings</a><a href=\"#\" class=\"ds-nav__link\">Connected apps</a><a href=\"#\" class=\"ds-nav__link\">Groups</a></nav>",
+      "css": ".ds-nav { display: flex; align-items: center; gap: 32px; font-family: Inter, system-ui, -apple-system, sans-serif; } .ds-nav__link { font-size: 0.75rem; font-weight: 500; letter-spacing: 0.15em; text-transform: uppercase; color: #7e7576; text-decoration: none; transition: color 150ms ease-out; padding: 4px 0; border-bottom: 1.5px solid transparent; } .ds-nav__link:hover { color: #111111; } .ds-nav__link--active { color: #111111; border-bottom-color: #111111; }"
+    },
+    {
+      "name": "Modal Overlay",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "Sign-in modal and feedback modal share this shell. The single sanctioned shadow appears here because the surface is genuinely detached from the page. Backdrop dims to 0.7 alpha black.",
+      "html": "<div class=\"ds-modal-backdrop\"><div class=\"ds-modal\" role=\"dialog\" aria-modal=\"true\"><header class=\"ds-modal__header\"><h2 class=\"ds-modal__title\">Sign in</h2></header><div class=\"ds-modal__body\"><p>Enter the handle for any AT Protocol account.</p></div></div></div>",
+      "css": ".ds-modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; padding: 16px; } .ds-modal { width: 100%; max-width: 440px; background: #ffffff; border-radius: 4px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12); padding: 32px; font-family: Inter, system-ui, -apple-system, sans-serif; } .ds-modal__header { margin-bottom: 16px; } .ds-modal__title { font-family: 'Noto Serif', Georgia, serif; font-size: 1.5rem; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; color: #111111; margin: 0; } .ds-modal__body { font-size: 0.9375rem; line-height: 1.6; color: #4c4546; }"
+    },
+    {
+      "name": "Hero Title",
+      "kind": "custom",
+      "description": "The signature typographic moment on /welcome. Noto Serif heavy display with one Instrument Serif italic accent phrase set inline. The italic is the brand's only visual flourish.",
+      "html": "<h1 class=\"ds-hero-title\">Your identity, <span class=\"ds-hero-title__accent\">everywhere</span>.</h1>",
+      "css": ".ds-hero-title { font-family: 'Noto Serif', Georgia, serif; color: #111111; font-size: clamp(5rem, 7vw + 1rem, 7rem); font-weight: 700; line-height: 0.9; letter-spacing: -0.02em; margin: 0 0 32px 0; } .ds-hero-title__accent { font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Notary's Ledger",
+    "overview": "Certified feels like a notary's ledger reimagined as a mobile app: austere, monochrome, and quietly authoritative. The near-absence of color forces attention onto the content: serif headlines anchor each card like a document title, while the surrounding chrome recedes into warm grays. The interface is deliberately under-decorated. No gradients, no brand accent hue, no playful illustrations. The restraint is the brand. The system is two-toned at the surface level: an off-white paper and a near-black ink, separated by a small library of warm-tinted neutrals that carry meta-text, dividers, and structural surfaces. Headlines are set in Noto Serif at heavy weight; signature accents lean on Instrument Serif italic, the closest thing the system has to a flourish. Body and UI labels are Inter, in restrained weights. Edges are nearly square (2px), borders are 1px and hairline, and shadows are absent except on overlay elements that genuinely need to detach from the page. This system explicitly rejects the crypto-wallet aesthetic, the SaaS-cream auth-as-a-service lane, the Bluesky / consumer-social look, and the generic foundation / NGO look. Where competitors perform, Certified records.",
+    "keyCharacteristics": [
+      "Two-tone monochrome: warm-tinted neutrals, ink-black ink, no brand accent hue.",
+      "Serif-led typographic identity: Noto Serif for authority, Instrument Serif italic for the single accent voice, Inter for everything else.",
+      "Near-square edges (2px default; 4px reserved for primary action surfaces).",
+      "Flat by default. One ambient shadow vocabulary, reserved for overlays.",
+      "Borders are hairline (1px) and tonal: they organize, they don't decorate.",
+      "Restraint is the affordance. If a flourish exists only to impress, remove it."
+    ],
+    "rules": [
+      {
+        "name": "The No-Brand-Hue Rule",
+        "body": "Certified has no brand color. Do not introduce one. If a screen needs visual interest, it needs better typography or better information architecture, not a hue.",
+        "section": "colors"
+      },
+      {
+        "name": "The Warm-Neutral Rule",
+        "body": "Every gray is warm. Cool grays (chroma toward blue) are forbidden: they read as web2 SaaS. Pulling a neutral from outside this list requires changing the list, not the screen.",
+        "section": "colors"
+      },
+      {
+        "name": "The One-Voice-of-Color Rule",
+        "body": "Annotation Green is the only non-semantic color in the interface. It appears on focus rings and confirmation icons, nowhere else. If you find yourself wanting a second non-semantic color, the answer is restraint, not addition.",
+        "section": "colors"
+      },
+      {
+        "name": "The Serif-Authority Rule",
+        "body": "Headlines are always serif. Sans-serif headlines do not exist in this system. If a sans-serif headline feels needed, it is a label or a title in disguise: set it accordingly.",
+        "section": "typography"
+      },
+      {
+        "name": "The One-Italic Rule",
+        "body": "Italic appears in exactly one place: as Instrument Serif accent words inside a serif headline. There is no italic body, no italic UI label, no italic emphasis. The italic is the brand's signature; spreading it weakens it.",
+        "section": "typography"
+      },
+      {
+        "name": "The 65-75ch Rule",
+        "body": "Body copy is capped at 65 to 75 characters per line. Edge-to-edge prose is forbidden; long lines are uncomfortable on an instrument that already asks for trust.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Pages, sections, cards, navigation, and buttons are flat. Shadows do not signal hover, focus, or interactivity on these surfaces.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Overlay-Only-Shadow Rule",
+        "body": "A box-shadow value is allowed only on elements that are physically detached from the page (modals, dropdowns, floating sheets). If the element scrolls with the page, it is flat.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Hairline Rule",
+        "body": "Borders are 1px and use the existing border ramp. 2px or thicker accent borders, side stripes, and colored gutters are forbidden: they are the absolute ban from the impeccable design laws.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do organize hierarchy with serif headlines and tonal warm neutrals. Restraint is the affordance.",
+      "Do use ink-black (#111111) for primary text and primary actions. Never #000.",
+      "Do use notice-paper-white (#f9f9f9) for page surfaces and pure-white only for lifted cards and modals.",
+      "Do keep neutrals warm. If you need a new gray, it must sit on the warm side of neutral.",
+      "Do use Instrument Serif italic for one accent phrase per hero, and nowhere else.",
+      "Do cap body copy at 65 to 75 characters per line.",
+      "Do use the 1px hairline border ramp (--border-subtle through --border-strong) for every divider and card edge.",
+      "Do confine shadows to overlay surfaces (modals, dropdowns, feedback sheet).",
+      "Do treat annotation-green (#94bb51) as a focus-and-confirmation accent only.",
+      "Do explain DIDs, handles, and PDSes inline the first time they appear on a screen, in plain Inter body type.",
+      "Do respect prefers-reduced-motion; motion is decoration, never load-bearing."
+    ],
+    "donts": [
+      "Don't introduce a brand accent hue. Certified has no brand color, by design.",
+      "Don't use neon accents on black, gradient meshes, glassmorphism, or Web3 depth tricks. The crypto-wallet aesthetic is the strongest anti-reference.",
+      "Don't use cream backgrounds with warm-orange accents, illustrated heroes, or developer-first framing. The SaaS-cream auth-as-a-service lane (Auth0, Clerk, WorkOS) is forbidden.",
+      "Don't use Bluesky-cousin treatments: rounded cards, friendly blue accents, app-store-y heroes. Certified is identity infrastructure, not a social product.",
+      "Don't use stock photography, navy-and-gold credibility palettes, or vague empowering-communities copy. The generic-foundation / NGO lane is forbidden.",
+      "Don't frame identity as ownership, your keys your X, or any other crypto-self-custody phrasing. Certified is about portability, not custody.",
+      "Don't use #000 or #fff as variable values. Both are reserved as render-only edge cases.",
+      "Don't introduce cool grays. Cool gray is web2 SaaS by reflex.",
+      "Don't use border-left or border-right greater than 1px as a colored accent. The side-stripe pattern is in the absolute-bans list; rewrite the element instead.",
+      "Don't use background-clip text with a gradient. Gradient text is forbidden; use weight or size for emphasis.",
+      "Don't stack a card inside a card. Use tonal layering or hairline borders for hierarchy.",
+      "Don't add a shadow to surfaces that scroll with the page. Shadows belong on overlays only.",
+      "Don't reach for the stale tokens in tailwind.config.ts (navy, accent, the elevation-1 through elevation-4 shadows). They are leftover from a prior visual system; the source of truth is --color-* in globals.css.",
+      "Don't use em dashes in copy. Use commas, colons, semicolons, periods, or parentheses.",
+      "Don't use exclamation marks or emojis in product copy.",
+      "Don't rely on color alone to signal status. Pair color with icon or label every time."
+    ]
+  }
+}
