@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
+import { Plus, Trash2 } from "lucide-react"
 import { getOrgProfile, putOrgProfile, getOrgMetadata, putOrgMetadata, uploadOrgBlob } from "@/lib/groups/api"
 import { resolvePdsUrl } from "@/lib/atproto/did"
 import { getAvatarUrl, getBannerUrl } from "@/lib/atproto/profile"
-import type { OrgProfile, GroupMetadata } from "@/lib/groups/types"
+import type { OrgProfile, GroupMetadata, OrgUrlItem } from "@/lib/groups/types"
 import type { CertifiedProfile, HypercertsSmallImage, HypercertsLargeImage } from "@/lib/atproto/types"
 import { normalizeWebsiteUrl } from "@/lib/utils/url"
 import Input from "@/components/ui/input"
@@ -37,6 +38,10 @@ export default function EditOrgProfilePage() {
   // Group metadata fields
   const [foundedDate, setFoundedDate] = useState("")
   const [organizationType, setOrganizationType] = useState("")
+  const [urls, setUrls] = useState<OrgUrlItem[]>([])
+  // Parallel array of per-row error messages ("" = no error). Length stays
+  // in sync with `urls` via the helpers below; cleared per-save attempt.
+  const [urlErrors, setUrlErrors] = useState<string[]>([])
 
   // Image upload state
   const [avatarBlob, setAvatarBlob] = useState<Record<string, unknown> | null>(null)
@@ -64,6 +69,9 @@ export default function EditOrgProfilePage() {
         }
         if (m?.organizationType?.length) {
           setOrganizationType(m.organizationType.join(", "))
+        }
+        if (m?.urls?.length) {
+          setUrls(m.urls.map((u) => ({ url: u.url, label: u.label ?? "" })))
         }
       }
     } catch {
@@ -119,6 +127,19 @@ export default function EditOrgProfilePage() {
     setWebsiteError(result.ok ? "" : "Please enter a valid URL")
   }
 
+  // Additional links (urls) row helpers.
+  const updateUrlField = (i: number, field: "url" | "label", value: string) => {
+    setUrls((prev) => prev.map((u, idx) => (idx === i ? { ...u, [field]: value } : u)))
+  }
+  const removeUrl = (i: number) => {
+    setUrls((prev) => prev.filter((_, idx) => idx !== i))
+    setUrlErrors((prev) => prev.filter((_, idx) => idx !== i))
+  }
+  const addUrl = () => {
+    setUrls((prev) => [...prev, { url: "", label: "" }])
+    setUrlErrors((prev) => [...prev, ""])
+  }
+
   const handleSave = async () => {
     // Re-validate website (accepts bare hostnames; prepends https:// on save).
     const websiteResult = normalizeWebsiteUrl(website)
@@ -127,6 +148,32 @@ export default function EditOrgProfilePage() {
       return
     }
     setWebsiteError("")
+
+    // Validate + clean the additional links: drop fully-empty rows silently;
+    // surface per-row errors for label-only or invalid-URL rows; abort save on
+    // any error so the user sees what to fix.
+    const cleanedUrls: OrgUrlItem[] = []
+    const nextUrlErrors: string[] = urls.map(() => "")
+    let hasUrlError = false
+    for (let i = 0; i < urls.length; i++) {
+      const trimmedUrl = urls[i].url.trim()
+      const trimmedLabel = (urls[i].label ?? "").trim()
+      if (!trimmedUrl && !trimmedLabel) continue
+      if (!trimmedUrl) {
+        nextUrlErrors[i] = "URL is required"
+        hasUrlError = true
+        continue
+      }
+      const r = normalizeWebsiteUrl(trimmedUrl)
+      if (!r.ok || !r.url) {
+        nextUrlErrors[i] = "Please enter a valid URL"
+        hasUrlError = true
+        continue
+      }
+      cleanedUrls.push(trimmedLabel ? { url: r.url, label: trimmedLabel } : { url: r.url })
+    }
+    setUrlErrors(nextUrlErrors)
+    if (hasUrlError) return
 
     setIsSaving(true)
     setSaveError(null)
@@ -183,6 +230,7 @@ export default function EditOrgProfilePage() {
         createdAt: metadata?.createdAt || new Date().toISOString(),
         organizationType: types.length > 0 ? types : undefined,
         foundedDate: foundedDate ? new Date(foundedDate).toISOString() : undefined,
+        urls: cleanedUrls.length > 0 ? cleanedUrls : undefined,
       }
 
       await Promise.all([
@@ -277,6 +325,48 @@ export default function EditOrgProfilePage() {
                     placeholder="Foundation, Nonprofit"
                     helperText="Comma-separated. Shown on the group profile."
                   />
+                  <div>
+                    <label className="app-card__label block mb-1.5">
+                      Additional links
+                    </label>
+                    {urls.length > 0 && (
+                      <div className="flex flex-col gap-3 mb-2">
+                        {urls.map((u, i) => (
+                          <div key={i} className="flex items-start gap-2">
+                            <div className="flex-1">
+                              <Input
+                                value={u.url}
+                                onChange={(e) => updateUrlField(i, "url", e.target.value)}
+                                placeholder="https://example.org"
+                                maxLength={512}
+                                error={urlErrors[i]}
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <Input
+                                value={u.label ?? ""}
+                                onChange={(e) => updateUrlField(i, "label", e.target.value)}
+                                placeholder="Label (optional)"
+                                maxLength={64}
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeUrl(i)}
+                              aria-label="Remove link"
+                              className="h-11 w-11 flex-shrink-0 flex items-center justify-center text-gray-400 hover:text-error border border-transparent hover:border-error/30 rounded transition-colors"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <Button variant="ghost" size="sm" onClick={addUrl} disabled={isSaving}>
+                      <Plus size={14} />
+                      Add link
+                    </Button>
+                  </div>
                 </div>
 
                 {saveError && <ErrorMessage message={saveError} />}
