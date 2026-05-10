@@ -20,7 +20,7 @@ export default function WhatYouGet() {
             <h3>You stay in control</h3>
             <p>You can leave anytime. You&apos;re not locked in.</p>
           </div>
-          <div className="landing-bento__card">
+          <div className="landing-bento__card landing-bento__card--flipped">
             <p>We email you a one-time code.</p>
             <h3>No passwords.</h3>
           </div>
