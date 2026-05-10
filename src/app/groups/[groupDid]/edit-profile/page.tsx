@@ -17,13 +17,18 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import AvatarUpload from "@/components/profile/avatar-upload"
 import BannerUpload from "@/components/profile/banner-upload"
 
-const PRESET_ORG_TYPES = [
-  "Nonprofit",
-  "Business",
-  "Community Group",
-  "Government",
-  "Indigenous Group",
+const ORG_TYPE_OPTIONS = [
+  { value: "Nonprofit", description: "Registered 501(c)(3), charity, NGO, or equivalent." },
+  { value: "Business", description: "For-profit entity with standard commercial operations." },
+  { value: "Community Group", description: "Collective, cooperative, or other informal group." },
+  { value: "Government", description: "Public agency with regulatory compliance requirements." },
+  { value: "Indigenous Group", description: "Indigenous land council, territory, or community." },
+  { value: "Other", description: "Select only if no other organization type applies." },
 ] as const
+
+const PRESET_ORG_TYPES = ORG_TYPE_OPTIONS
+  .map((o) => o.value)
+  .filter((v) => v !== "Other")
 
 export default function EditOrgProfilePage() {
   const router = useRouter()
@@ -347,29 +352,42 @@ export default function EditOrgProfilePage() {
                     value={foundedDate}
                     onChange={(e) => setFoundedDate(e.target.value)}
                   />
-                  <div>
-                    <label
-                      htmlFor="org-type-select"
-                      className="app-card__label block mb-1.5"
-                    >
-                      Type
-                    </label>
-                    <select
-                      id="org-type-select"
-                      value={typeSelection}
-                      onChange={(e) => {
-                        setTypeSelection(e.target.value)
-                        setTypeDirty(true)
-                        if (e.target.value !== "Other") setTypeOtherError("")
-                      }}
-                      className="h-11 w-full border border-[rgba(15,37,68,0.15)] rounded bg-white px-4 text-sm text-gray-700 focus:border-accent focus:ring-1 focus:ring-accent/20 focus:outline-none transition-all duration-150"
-                    >
-                      <option value="">Select a type…</option>
-                      {PRESET_ORG_TYPES.map((t) => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                      <option value="Other">Other</option>
-                    </select>
+                  <fieldset>
+                    <legend className="app-card__label block mb-1.5">Type</legend>
+                    <div className="flex flex-col gap-1">
+                      {ORG_TYPE_OPTIONS.map((opt) => {
+                        const checked = typeSelection === opt.value
+                        return (
+                          <label
+                            key={opt.value}
+                            className={`flex items-start gap-3 rounded border px-3 py-2.5 cursor-pointer transition-colors ${
+                              checked
+                                ? "border-accent bg-accent/5"
+                                : "border-[rgba(15,37,68,0.15)] hover:border-[rgba(15,37,68,0.3)]"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="org-type"
+                              value={opt.value}
+                              checked={checked}
+                              onChange={() => {
+                                setTypeSelection(opt.value)
+                                setTypeDirty(true)
+                                if (opt.value !== "Other") setTypeOtherError("")
+                              }}
+                              className="mt-0.5 accent-accent"
+                            />
+                            <span className="flex-1">
+                              <span className="block text-sm text-gray-700">{opt.value}</span>
+                              <span className="block text-xs text-gray-400 mt-0.5">
+                                {opt.description}
+                              </span>
+                            </span>
+                          </label>
+                        )
+                      })}
+                    </div>
                     {typeSelection === "Other" && (
                       <div className="mt-2">
                         <Input
@@ -386,7 +404,7 @@ export default function EditOrgProfilePage() {
                         />
                       </div>
                     )}
-                  </div>
+                  </fieldset>
                   <div>
                     <label className="app-card__label block mb-1.5">
                       Additional links
