@@ -159,9 +159,9 @@ export default function EditOrgProfilePage() {
         updatedProfile.banner = profile.banner
       }
 
-      // Parse comma-separated organization types: trim, dedupe (case-insensitive),
-      // drop empties. Omit the field entirely when empty so the PDS record stays
-      // minimal.
+      // Parse comma-separated organization types: trim, dedupe (case-insensitive,
+      // first-seen casing wins), drop empties. Omit the field entirely when empty
+      // so the PDS record stays minimal.
       const types: string[] = []
       const seen = new Set<string>()
       for (const raw of organizationType.split(",")) {
@@ -173,13 +173,16 @@ export default function EditOrgProfilePage() {
         types.push(trimmed)
       }
 
-      // Build metadata update
+      // Build metadata update. Spread the loaded record first so any unknown
+      // forward-compat fields (added by another writer or a future feature)
+      // survive a load-edit-save round-trip; then overwrite the fields this
+      // form actually owns. Setting a field to `undefined` lets JSON.stringify
+      // drop it, so atproto putRecord replaces the record without the field.
       const updatedMetadata: GroupMetadata = {
+        ...(metadata ?? {}),
         createdAt: metadata?.createdAt || new Date().toISOString(),
-        ...(types.length > 0 && { organizationType: types }),
-        ...(metadata?.urls && { urls: metadata.urls }),
-        ...(metadata?.location && { location: metadata.location }),
-        ...(foundedDate && { foundedDate: new Date(foundedDate).toISOString() }),
+        organizationType: types.length > 0 ? types : undefined,
+        foundedDate: foundedDate ? new Date(foundedDate).toISOString() : undefined,
       }
 
       await Promise.all([
