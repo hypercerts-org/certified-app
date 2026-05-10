@@ -102,7 +102,7 @@ The most feature-rich domain. Beta-flagged by the team. `AGENTS.md` §15 is cano
 | Group profile auto-fallback to bsky | Same pattern as personal profiles | Shipped | The group registration flow seeds `app.bsky.actor.profile` for cross-app discoverability. |
 | Membership change detection | `MembershipSyncModal` (`src/components/groups/membership-sync-modal.tsx`) | Shipped | Diffs remote-vs-local membership and prompts the user to acknowledge role changes / removals on next visit. Wired by `OrgProvider`. |
 
-> **Planning seed (groups productionisation):** the group service still defaults to a Railway staging deployment. Surface metadata (founded date, organization type, urls, location) is partially exposed: `foundedDate` and `organizationType` have edit affordances; `urls` and `location` are still read-only on the profile view with no editor.
+> **Planning seed (groups productionisation):** the group service still defaults to a Railway staging deployment. Surface metadata (founded date, organization type, urls, location) is mostly exposed: `foundedDate`, `organizationType`, and `urls` have edit affordances; `location` remains read-only on the profile view with no editor.
 
 ---
 
@@ -304,7 +304,8 @@ EVM ↔ atproto cross-attestation. Source: `AGENTS.md` §16.
 | **No structured logging** | `console.error("[Auth] …")` convention only. |
 | **No rate limiting** in BFF | Only Vercel + Upstash defaults. |
 | **TypeScript `as` casts** in BFF route handlers | XRPC proxy and most route handlers cast through `as`. Pulling in atproto SDK input/output types per method is tracked. |
-| **Group metadata fields without UI** (`urls`, `location`) | Read path renders them on the profile view; edit affordance is missing. |
+| **`location` field has no UI** | Read path renders it on the group profile view; edit affordance is missing. |
+| **No way to clear `organizationType` from the UI** | Once a value is set, the radio-card picker has no "none" / "clear" option, so the only way to unset is server-side record deletion. |
 | **Connected-apps catalogue is static** | An "actually connected apps" view (with revoke) would be a more meaningful surface. |
 | **Profile dashboard route** | Current `/profile/[did]` is a single profile card. There's no aggregate "your activity across atproto" view. |
 | **Group profile shows handle but no edit** | `/groups/[groupDid]/settings` shows the handle as read-only. Backend `PUT /api/groups/[groupDid]/handle` exists. |
