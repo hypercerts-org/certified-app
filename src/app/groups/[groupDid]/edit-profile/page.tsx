@@ -58,10 +58,24 @@ export default function EditOrgProfilePage() {
   const [typeOtherText, setTypeOtherText] = useState("")
   const [typeOtherError, setTypeOtherError] = useState("")
   const [typeDirty, setTypeDirty] = useState(false)
-  const [urls, setUrls] = useState<OrgUrlItem[]>([])
+  // Each row carries:
+  //   - id: stable across re-renders so React keys don't reuse the same DOM
+  //     node (and selection/focus) when a middle row is removed.
+  //   - loadedRef: the original record item this row was hydrated from, or
+  //     undefined for rows the user just added. On save, we spread loadedRef
+  //     under the new url/label so any unknown per-item fields a future writer
+  //     adds (e.g. verified, addedAt) survive a load-edit-save round-trip —
+  //     same forward-compat pattern the metadata-build uses at the top level.
+  type LinkRow = { id: string; url: string; label: string; loadedRef?: OrgUrlItem }
+  const [urls, setUrls] = useState<LinkRow[]>([])
   // Parallel array of per-row error messages ("" = no error). Length stays
   // in sync with `urls` via the helpers below; cleared per-save attempt.
   const [urlErrors, setUrlErrors] = useState<string[]>([])
+  const nextRowIdRef = React.useRef(0)
+  const newRowId = () => {
+    nextRowIdRef.current += 1
+    return `row-${nextRowIdRef.current}`
+  }
 
   // Image upload state
   const [avatarBlob, setAvatarBlob] = useState<Record<string, unknown> | null>(null)
@@ -97,7 +111,14 @@ export default function EditOrgProfilePage() {
           }
         }
         if (m?.urls?.length) {
-          setUrls(m.urls.map((u) => ({ url: u.url, label: u.label ?? "" })))
+          setUrls(
+            m.urls.map((u) => ({
+              id: newRowId(),
+              url: u.url,
+              label: u.label ?? "",
+              loadedRef: u,
+            }))
+          )
         }
       }
     } catch {
@@ -162,7 +183,7 @@ export default function EditOrgProfilePage() {
     setUrlErrors((prev) => prev.filter((_, idx) => idx !== i))
   }
   const addUrl = () => {
-    setUrls((prev) => [...prev, { url: "", label: "" }])
+    setUrls((prev) => [...prev, { id: newRowId(), url: "", label: "" }])
     setUrlErrors((prev) => [...prev, ""])
   }
 
@@ -185,13 +206,17 @@ export default function EditOrgProfilePage() {
 
     // Validate + clean the additional links: drop fully-empty rows silently;
     // surface per-row errors for label-only or invalid-URL rows; abort save on
-    // any error so the user sees what to fix.
+    // any error so the user sees what to fix. Each saved item spreads its
+    // loadedRef first (when present) so unknown per-item fields survive the
+    // round-trip; setting `label: undefined` when cleared lets JSON.stringify
+    // drop it on the wire, matching the metadata-build forward-compat pattern.
     const cleanedUrls: OrgUrlItem[] = []
     const nextUrlErrors: string[] = urls.map(() => "")
     let hasUrlError = false
     for (let i = 0; i < urls.length; i++) {
-      const trimmedUrl = urls[i].url.trim()
-      const trimmedLabel = (urls[i].label ?? "").trim()
+      const row = urls[i]
+      const trimmedUrl = row.url.trim()
+      const trimmedLabel = (row.label ?? "").trim()
       if (!trimmedUrl && !trimmedLabel) continue
       if (!trimmedUrl) {
         nextUrlErrors[i] = "URL is required"
@@ -204,7 +229,11 @@ export default function EditOrgProfilePage() {
         hasUrlError = true
         continue
       }
-      cleanedUrls.push(trimmedLabel ? { url: r.url, label: trimmedLabel } : { url: r.url })
+      cleanedUrls.push({
+        ...(row.loadedRef ?? {}),
+        url: r.url,
+        label: trimmedLabel || undefined,
+      })
     }
     setUrlErrors(nextUrlErrors)
     if (hasUrlError) return
@@ -374,6 +403,11 @@ export default function EditOrgProfilePage() {
                               onChange={() => {
                                 setTypeSelection(opt.value)
                                 setTypeDirty(true)
+                                // Intentionally don't clear `typeOtherText` when switching off
+                                // Other — preserves the user's typed value so toggling back
+                                // restores it. Save logic ignores typeOtherText unless the
+                                // selected radio is Other, so no risk of leaking the stale
+                                // value into the saved record.
                                 if (opt.value !== "Other") setTypeOtherError("")
                               }}
                               className="mt-0.5 accent-accent"
@@ -412,7 +446,7 @@ export default function EditOrgProfilePage() {
                     {urls.length > 0 && (
                       <div className="flex flex-col gap-3 mb-2">
                         {urls.map((u, i) => (
-                          <div key={i} className="flex items-start gap-2">
+                          <div key={u.id} className="flex items-start gap-2">
                             <div className="flex-1">
                               <Input
                                 value={u.url}
@@ -433,8 +467,9 @@ export default function EditOrgProfilePage() {
                             <button
                               type="button"
                               onClick={() => removeUrl(i)}
+                              disabled={isSaving}
                               aria-label="Remove link"
-                              className="h-11 w-11 flex-shrink-0 flex items-center justify-center text-gray-400 hover:text-error border border-transparent hover:border-error/30 rounded transition-colors"
+                              className="h-11 w-11 flex-shrink-0 flex items-center justify-center text-gray-400 hover:text-error border border-transparent hover:border-error/30 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <Trash2 size={16} />
                             </button>
