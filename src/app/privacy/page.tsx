@@ -23,7 +23,7 @@ export default function PrivacyPage() {
           Privacy Policy — Certified
         </h1>
 
-        <p className="text-sm text-gray-500 mb-8">Last updated: May 6, 2026</p>
+        <p className="text-sm text-gray-500 mb-8">Last updated: May 11, 2026</p>
 
         <div className="prose prose-navy max-w-none space-y-8">
           <section>
@@ -317,11 +317,22 @@ export default function PrivacyPage() {
               that track individual users across websites.
             </p>
             <p className="mt-4">
-              We use Vercel Web Analytics to collect anonymous, aggregated usage data such as page
-              views, referrer information, and general device or browser type. Vercel Web Analytics
-              does not use cookies and does not collect personal data or track individual users.
-              This data is processed by Vercel Inc. (US) under Standard Contractual Clauses (SCCs)
-              as the legal mechanism for international data transfers.
+              We use Vercel Web Analytics to collect aggregated usage data such as page views,
+              referrer information, and general device or browser type. Vercel Web Analytics does
+              not use cookies and does not store persistent identifiers in your browser. Instead,
+              it derives an ephemeral session identifier by hashing request metadata (including the
+              IP address and user agent). These hashes are retained for no longer than 24 hours and
+              are not used to track individuals across sessions, websites, or applications.
+            </p>
+            <p className="mt-4">
+              The legal basis for this processing is our legitimate interest under Article 6(1)(f)
+              GDPR in understanding aggregate usage of the service to maintain, secure, and improve
+              it. You have the right to object to this processing on grounds relating to your
+              particular situation (see Section 13).
+            </p>
+            <p className="mt-4">
+              This data is processed by Vercel Inc. (United States) under Standard Contractual
+              Clauses (SCCs) as the legal mechanism for international data transfers.
             </p>
             <p className="mt-4">
               If our use of cookies or analytics changes in the future, we will update this policy
@@ -404,7 +415,23 @@ export default function PrivacyPage() {
               <li>restrict or object to certain types of processing</li>
               <li>request portability of data they have provided</li>
               <li>withdraw consent, where processing is based on consent</li>
+              <li>lodge a complaint with a data protection supervisory authority</li>
             </ul>
+            <p className="mt-4">
+              You may lodge a complaint with the supervisory authority in the EU Member State of
+              your habitual residence, place of work, or the place of the alleged infringement.
+              Where our EU representative is established (Berlin, Germany), the competent authority
+              is the Berliner Beauftragte für Datenschutz und Informationsfreiheit (BlnBDI),{" "}
+              <a
+                href="https://www.datenschutz-berlin.de"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline hover:text-blue-800"
+              >
+                https://www.datenschutz-berlin.de
+              </a>
+              .
+            </p>
             <p className="mt-4">Requests may be submitted to:</p>
             <p className="mt-2">
               <a
