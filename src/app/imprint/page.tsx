@@ -103,24 +103,6 @@ export default function ImprintPage() {
             </p>
           </section>
 
-          <section>
-            <h2 className="font-mono text-xl text-navy mb-4">Online dispute resolution</h2>
-            <p>
-              The European Commission provides a platform for online dispute resolution (ODR):{" "}
-              <a
-                href="https://ec.europa.eu/consumers/odr"
-                className="text-blue-600 underline hover:text-blue-800"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                https://ec.europa.eu/consumers/odr
-              </a>
-            </p>
-            <p className="mt-4">
-              The Hypercerts Foundation is not obligated and not willing to participate in dispute
-              resolution proceedings before a consumer arbitration board.
-            </p>
-          </section>
         </div>
       </div>
     </div>
