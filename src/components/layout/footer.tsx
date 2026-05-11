@@ -14,6 +14,7 @@ export default function Footer() {
           <Link href="/about">About</Link>
           <Link href="/terms">Terms</Link>
           <Link href="/privacy">Privacy</Link>
+          <Link href="/imprint">Imprint</Link>
         </div>
       </div>
     </footer>

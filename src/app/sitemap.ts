@@ -32,5 +32,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.3,
     },
+    {
+      url: "https://certified.app/imprint",
+      lastModified: new Date("2026-05-11"),
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
   ];
 }
