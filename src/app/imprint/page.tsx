@@ -37,7 +37,7 @@ export default function ImprintPage() {
               <br />
               United States
             </p>
-            <p className="mt-4">Legal form: Delaware nonstock corporation (US nonprofit)</p>
+            <p className="mt-4">Legal form: Delaware nonstock corporation</p>
             <p className="mt-4">
               Phone: +1 302 658 7581
               <br />
