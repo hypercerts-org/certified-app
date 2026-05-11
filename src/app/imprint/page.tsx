@@ -20,7 +20,7 @@ export default function ImprintPage() {
     <div className="app-page">
       <div className="app-page__inner max-w-3xl">
         <h1 className="font-mono text-h1 text-navy tracking-tight mb-8">
-          Impressum / Imprint
+          Imprint
         </h1>
 
         <p className="text-sm text-gray-500 mb-8">Last updated: May 11, 2026</p>
