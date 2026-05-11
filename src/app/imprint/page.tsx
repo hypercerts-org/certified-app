@@ -53,7 +53,7 @@ export default function ImprintPage() {
 
           <section>
             <h2 className="font-mono text-xl text-navy mb-4">Authorized representatives</h2>
-            <p>Holke Brammer</p>
+            <p>Holke Brammer (Director)</p>
           </section>
 
           <section>
