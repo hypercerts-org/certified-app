@@ -5,6 +5,11 @@ import {
 } from "@/lib/groups/proxy-agent"
 import { resolvePdsUrl } from "@/lib/atproto/did"
 import { checkCsrf } from "@/lib/auth/csrf"
+import { isValidDid } from "@/lib/utils/did"
+import { extractRouteError, pickAllowedFields, parseJsonBody } from "@/lib/utils/api"
+import { logSafe } from "@/lib/utils/log-safe"
+
+const PROFILE_FIELDS = ["displayName", "description", "pronouns", "website", "avatar", "banner", "createdAt"] as const
 
 /**
  * GET /api/groups/[groupDid]/profile
@@ -17,6 +22,9 @@ export async function GET(
 ) {
   try {
     const { groupDid } = await params
+    if (!isValidDid(groupDid)) {
+      return NextResponse.json({ error: "Invalid group DID" }, { status: 400 })
+    }
 
     // Resolve the group's PDS URL from the DID document
     const pdsUrl = await resolvePdsUrl(groupDid)
@@ -26,7 +34,8 @@ export async function GET(
 
     // Fetch directly from the group's PDS (unauthenticated — reads are public)
     const res = await fetch(
-      `${pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(groupDid)}&collection=${encodeURIComponent("app.certified.actor.profile")}&rkey=self`
+      `${pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(groupDid)}&collection=${encodeURIComponent("app.certified.actor.profile")}&rkey=self`,
+      { signal: AbortSignal.timeout(10_000) }
     )
 
     if (!res.ok) {
@@ -39,12 +48,9 @@ export async function GET(
     const data = await res.json()
     return NextResponse.json(data.value)
   } catch (err: unknown) {
-    console.error("GET org profile error:", err)
-    const error = err as { message?: string }
-    return NextResponse.json(
-      { error: error?.message || "Internal server error" },
-      { status: 500 }
-    )
+    logSafe("[groups/profile] GET error", err)
+    const { status, message } = extractRouteError(err)
+    return NextResponse.json({ error: message }, { status })
   }
 }
 
@@ -62,11 +68,17 @@ export async function PUT(
 
   try {
     const { groupDid } = await params
+    if (!isValidDid(groupDid)) {
+      return NextResponse.json({ error: "Invalid group DID" }, { status: 400 })
+    }
     const auth = await getAuthenticatedAgent()
     if (!auth)
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
 
-    const body = await request.json()
+    const parsed = await parseJsonBody(request, "[groups/profile]")
+    if (!parsed.ok) return parsed.response
+    const body = (parsed.body ?? {}) as Record<string, unknown>
+    const record = pickAllowedFields(body, PROFILE_FIELDS, "app.certified.actor.profile")
     const groupAgent = createGroupAgent(auth.agent, groupDid)
 
     // Use custom NSID for writes — PDS proxies to group service
@@ -77,10 +89,7 @@ export async function PUT(
         repo: groupDid,
         collection: "app.certified.actor.profile",
         rkey: "self",
-        record: {
-          ...body,
-          $type: "app.certified.actor.profile",
-        },
+        record,
       },
       { encoding: "application/json" }
     )
@@ -88,11 +97,7 @@ export async function PUT(
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
     console.error("PUT org profile error:", err)
-    const error = err as { status?: number; message?: string }
-    const status = error?.status || 500
-    return NextResponse.json(
-      { error: error?.message || "Internal server error" },
-      { status }
-    )
+    const { status, message } = extractRouteError(err)
+    return NextResponse.json({ error: message }, { status })
   }
 }

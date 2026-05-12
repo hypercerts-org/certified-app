@@ -1,15 +1,28 @@
 import { BlobRef } from "@atproto/api";
 
 /**
- * Extract the CID $link from a BlobRef, handling both typed and JSON-deserialized forms.
- * When a BlobRef comes from the AT Protocol SDK it has a typed `ref` property,
- * but when deserialized from JSON the `ref` becomes a plain `{ $link: string }` object.
+ * Extract the CID $link from a BlobRef.ref. The atproto SDK types `ref` as
+ * a `CID` instance, but in practice the value can also arrive as a JSON-
+ * deserialised `{ $link: string }` (e.g. when read from a getRecord
+ * response that wasn't passed through the lexicon). Both shapes are
+ * supported; anything else falls back to `String(ref)` which yields the
+ * CID's `toString()`.
  */
-export function getBlobRefLink(ref: BlobRef["ref"]): string {
-  if (typeof ref === "object" && ref !== null && "$link" in (ref as Record<string, unknown>)) {
-    return (ref as unknown as { $link: string }).$link;
+export function getBlobRefLink(ref: unknown): string {
+  if (
+    typeof ref === "object" &&
+    ref !== null &&
+    "$link" in ref &&
+    typeof (ref as { $link: unknown }).$link === "string"
+  ) {
+    return (ref as { $link: string }).$link;
   }
   return String(ref);
+}
+
+/** Helper alias for callers that have a typed BlobRef and want to read its CID. */
+export function getBlobRefLinkFromBlob(ref: BlobRef["ref"]): string {
+  return getBlobRefLink(ref);
 }
 
 /** Matches org.hypercerts.defs#uri */
@@ -47,7 +60,7 @@ export interface BlueskyProfile {
   $type?: "app.bsky.actor.profile";
   displayName?: string;
   description?: string;
-  avatar?: { $type: string; ref: { $link: string }; mimeType: string; size: number } | Record<string, unknown>;
-  banner?: { $type: string; ref: { $link: string }; mimeType: string; size: number } | Record<string, unknown>;
+  avatar?: { $type: string; ref: { $link: string }; mimeType: string; size: number } | { ref?: { $link: string }; [key: string]: unknown };
+  banner?: { $type: string; ref: { $link: string }; mimeType: string; size: number } | { ref?: { $link: string }; [key: string]: unknown };
   createdAt?: string;
 }

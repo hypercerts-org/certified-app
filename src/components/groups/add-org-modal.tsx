@@ -1,10 +1,12 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useCallback } from "react"
 import { X } from "lucide-react"
+import { useFocusTrap } from "@/hooks/use-focus-trap"
 import { putMembership, listOrgMembers } from "@/lib/groups/api"
 import { authFetch } from "@/lib/auth/fetch"
 import { resolveHandle } from "@/lib/atproto/did"
+import { isDid } from "@/lib/utils/did"
 import Input from "@/components/ui/input"
 import Button from "@/components/ui/button"
 import ErrorMessage from "@/components/ui/error-message"
@@ -17,11 +19,8 @@ interface AddOrgModalProps {
   onAdded: () => Promise<void>
 }
 
-function isDid(value: string): boolean {
-  return value.startsWith("did:plc:") || value.startsWith("did:web:")
-}
-
 export default function AddOrgModal({ did, onClose, onAdded }: AddOrgModalProps) {
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(true)
   const [input, setInput] = useState("")
   const [resolvedDid, setResolvedDid] = useState<string | null>(null)
   const [resolvedRole, setResolvedRole] = useState<OrgRole | null>(null)
@@ -113,14 +112,20 @@ export default function AddOrgModal({ did, onClose, onAdded }: AddOrgModalProps)
     }
   }
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "Escape") onClose()
+  }, [onClose])
+
   return (
     <div className="signin-modal__backdrop" role="presentation" onClick={onClose}>
       <div
+        ref={focusTrapRef}
         className="signin-modal"
         role="dialog"
         aria-modal="true"
         aria-label="Add Existing Group"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
         style={{ maxWidth: 480 }}
       >
         <div className="signin-modal__header">

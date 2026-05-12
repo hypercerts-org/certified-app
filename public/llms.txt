@@ -4,11 +4,11 @@
 
 ## Main
 
-- [Home](https://certified.app/welcome): Create your Certified identity and use one account across partner apps
-- [About](https://certified.app/about): About Certified and the Hypercerts Foundation
-- [Terms of Service](https://certified.app/terms): Service terms for Certified and certified.one infrastructure
-- [Privacy Policy](https://certified.app/privacy): Data processing practices, GDPR compliance, cookie policy
-- [DSA Compliance](https://certified.app/dsa): Digital Services Act compliance information
+- [Home](https://certs.social/welcome): Create your Certified identity and use one account across partner apps
+- [About](https://certs.social/about): About Certified and the Hypercerts Foundation
+- [Terms of Service](https://certs.social/terms): Service terms for Certified and certified.one infrastructure
+- [Privacy Policy](https://certs.social/privacy): Data processing practices, GDPR compliance, cookie policy
+- [DSA Compliance](https://certs.social/dsa): Digital Services Act compliance information
 
 ## About
 

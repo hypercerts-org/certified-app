@@ -66,38 +66,6 @@ export async function getBlueskyProfile(
 }
 
 /**
- * Get the URL for a Bluesky profile avatar
- */
-export function getBlueskyAvatarUrl(
-  profile: BlueskyProfile,
-  did: string,
-  pdsUrl: string
-): string | null {
-  if (!profile.avatar) return null;
-  const avatar = profile.avatar as { ref?: { $link: string } };
-  if (avatar.ref?.$link) {
-    return `${pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${did}&cid=${avatar.ref.$link}`;
-  }
-  return null;
-}
-
-/**
- * Get the URL for a Bluesky profile banner
- */
-export function getBlueskyBannerUrl(
-  profile: BlueskyProfile,
-  did: string,
-  pdsUrl: string
-): string | null {
-  if (!profile.banner) return null;
-  const banner = profile.banner as { ref?: { $link: string } };
-  if (banner.ref?.$link) {
-    return `${pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${did}&cid=${banner.ref.$link}`;
-  }
-  return null;
-}
-
-/**
  * Create or update a user's profile record
  * @param did - The DID of the user whose profile to update
  * @param profile - The profile data to save
@@ -125,13 +93,22 @@ export async function putProfile(
 }
 
 /**
+ * The blob descriptor returned by `com.atproto.repo.uploadBlob`. Matches
+ * the lexicon's BlobRef shape ($type/ref/mimeType/size).
+ */
+export interface UploadedBlob {
+  $type: "blob";
+  ref: { $link: string };
+  mimeType: string;
+  size: number;
+}
+
+/**
  * Upload a blob (image file) to the PDS
  * @param file - The file to upload
- * @returns The blob reference as a plain object
+ * @returns The blob reference, typed as UploadedBlob
  */
-export async function uploadBlob(
-  file: File
-): Promise<Record<string, unknown>> {
+export async function uploadBlob(file: File): Promise<UploadedBlob> {
   // Validate file type
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
     throw new Error(
@@ -150,18 +127,15 @@ export async function uploadBlob(
     throw new Error(await extractError(res, res.statusText));
   }
 
-  const data = await res.json();
-  return data.blob as Record<string, unknown>;
+  const data = (await res.json()) as { blob?: UploadedBlob };
+  if (!data.blob || typeof data.blob.ref?.$link !== "string") {
+    throw new Error("uploadBlob response missing blob.ref.$link");
+  }
+  return data.blob;
 }
 
-/**
- * Upload an avatar image (max 5MB)
- * @param file - The avatar image file
- * @returns The blob reference as a plain object
- */
-export async function uploadAvatar(
-  file: File
-): Promise<Record<string, unknown>> {
+/** Upload an avatar image (max 4MB) — returns a typed UploadedBlob. */
+export async function uploadAvatar(file: File): Promise<UploadedBlob> {
   if (file.size > MAX_AVATAR_SIZE) {
     throw new Error(
       `Avatar file size exceeds maximum of ${MAX_AVATAR_SIZE / 1024 / 1024}MB`
@@ -170,14 +144,8 @@ export async function uploadAvatar(
   return uploadBlob(file);
 }
 
-/**
- * Upload a banner image (max 10MB)
- * @param file - The banner image file
- * @returns The blob reference as a plain object
- */
-export async function uploadBanner(
-  file: File
-): Promise<Record<string, unknown>> {
+/** Upload a banner image (max 4MB) — returns a typed UploadedBlob. */
+export async function uploadBanner(file: File): Promise<UploadedBlob> {
   if (file.size > MAX_BANNER_SIZE) {
     throw new Error(
       `Banner file size exceeds maximum of ${MAX_BANNER_SIZE / 1024 / 1024}MB`

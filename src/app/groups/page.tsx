@@ -2,83 +2,49 @@
 
 import React, { useState, useMemo } from "react"
 import Link from "next/link"
-import { Building2, Plus, LogOut, ArrowUpDown } from "lucide-react"
+import { Building2, Plus, LogOut } from "lucide-react"
+import EmptyState from "@/components/ui/empty-state"
 import { useOrg } from "@/lib/groups/org-context"
 import { useAuth } from "@/lib/auth/auth-context"
-import { deleteMembership, removeOrgMember } from "@/lib/groups/api"
+import { usePageTitle } from "@/lib/navbar-context"
+import {
+  putMembership,
+  deleteMembership,
+  removeOrgMember,
+} from "@/lib/groups/api"
+import type { OrgRole } from "@/lib/groups/types"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Button from "@/components/ui/button"
 
-const JOINED_DATE_FORMAT: Intl.DateTimeFormatOptions = {
-  year: "numeric",
-  month: "short",
-  day: "numeric",
-}
-
-function formatJoinedDate(iso?: string): string | null {
-  if (!iso) return null
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return null
-  return date.toLocaleDateString(undefined, JOINED_DATE_FORMAT)
-}
-
-type SortMode = "joined-asc" | "joined-desc" | "name-asc" | "name-desc"
-
-const SORT_OPTIONS: ReadonlyArray<{ value: SortMode; label: string }> = [
-  { value: "joined-asc", label: "Joined (oldest first)" },
-  { value: "joined-desc", label: "Joined (newest first)" },
-  { value: "name-asc", label: "Name (A → Z)" },
-  { value: "name-desc", label: "Name (Z → A)" },
-]
-
-const SORT_VALUES: ReadonlySet<string> = new Set(SORT_OPTIONS.map((o) => o.value))
-
-function isSortMode(v: string): v is SortMode {
-  return SORT_VALUES.has(v)
-}
+const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 }
 
 export default function GroupsPage() {
+  usePageTitle("Groups")
   const { groups, isLoading, refetchOrgs } = useOrg()
   const { did } = useAuth()
   const [leaveOrg, setLeaveOrg] = useState<{ groupDid: string; name: string } | null>(null)
   const [isLeaving, setIsLeaving] = useState(false)
-  const [sortMode, setSortMode] = useState<SortMode>("joined-asc")
+  const [acceptingOrg, setAcceptingOrg] = useState<string | null>(null)
+  const [removingPublic, setRemovingPublic] = useState<string | null>(null)
 
   const sortedOrgs = useMemo(() => {
-    // Decorate-sort-undecorate: parse joinedAt once per group rather than per
-    // comparison, and cache the display label for case/accent-insensitive
-    // name comparisons. Array.prototype.sort is stable as of ES2019, so equal
-    // keys preserve input order without needing an explicit tiebreak.
-    type Decorated = {
-      org: (typeof groups)[number]
-      ts: number | null
-      label: string
-    }
-    const decorated: Decorated[] = groups.map((org) => {
-      const t = org.joinedAt ? new Date(org.joinedAt).getTime() : NaN
-      return {
-        org,
-        ts: Number.isNaN(t) ? null : t,
-        label: org.displayName || org.handle,
-      }
+    return [...groups].sort((a, b) => {
+      // Accepted first
+      if (a.accepted !== b.accepted) return a.accepted ? -1 : 1
+      // Then by role
+      const roleA = ROLE_ORDER[a.role] ?? 3
+      const roleB = ROLE_ORDER[b.role] ?? 3
+      if (roleA !== roleB) return roleA - roleB
+      // Then by name
+      const nameA = (a.displayName || a.handle).toLowerCase()
+      const nameB = (b.displayName || b.handle).toLowerCase()
+      return nameA.localeCompare(nameB)
     })
-    decorated.sort((a, b) => {
-      if (sortMode === "joined-asc" || sortMode === "joined-desc") {
-        // Missing joinedAt always sorts to the end, regardless of direction.
-        if (a.ts === null && b.ts === null) return 0
-        if (a.ts === null) return 1
-        if (b.ts === null) return -1
-        return sortMode === "joined-asc" ? a.ts - b.ts : b.ts - a.ts
-      }
-      const diff = a.label.localeCompare(b.label, undefined, { sensitivity: "base" })
-      return sortMode === "name-asc" ? diff : -diff
-    })
-    return decorated.map((d) => d.org)
-  }, [groups, sortMode])
+  }, [groups])
 
-  const currentSortLabel =
-    SORT_OPTIONS.find((o) => o.value === sortMode)?.label ?? ""
+  const acceptedOrgs = sortedOrgs.filter((o) => o.accepted)
+  const pendingOrgs = sortedOrgs.filter((o) => !o.accepted)
 
   // Owners can never leave — grey out the button. Non-owners can always leave.
   const canLeaveMap = useMemo(() => {
@@ -89,46 +55,71 @@ export default function GroupsPage() {
     return map
   }, [groups])
 
-  const renderOrgItem = (org: (typeof sortedOrgs)[number]) => {
-    const displayLabel = org.displayName || org.handle
-    const joinedLabel = formatJoinedDate(org.joinedAt)
-    const canLeave = canLeaveMap[org.groupDid]
-    return (
-      <div key={org.groupDid} className="org-list__item">
+  const renderOrgItem = (org: (typeof sortedOrgs)[number]) => (
+    <div key={org.groupDid} className="org-list__item">
+      <Link
+        href={`/groups/${encodeURIComponent(org.groupDid)}/settings`}
+        className="org-list__item-main"
+      >
         <div className="org-list__item-avatar">
           <Avatar
             src={org.avatarUrl}
-            alt={displayLabel}
+            alt={org.displayName || org.handle}
             size="sm"
-            fallbackInitials={displayLabel.slice(0, 2)}
+            fallbackInitials={(org.displayName || org.handle).slice(0, 2)}
           />
         </div>
         <div className="org-list__item-info">
-          <p className="org-list__item-name">{displayLabel}</p>
-          <p className="org-list__item-handle">{org.handle}</p>
-          {joinedLabel && (
-            <p className="org-list__item-meta">
-              Joined {joinedLabel}
-            </p>
-          )}
+          <p className="org-list__item-name">
+            {org.displayName || org.handle}
+          </p>
+          <p className="org-list__item-handle">
+            {org.handle}
+          </p>
         </div>
         <span className="org-list__item-role">{org.role}</span>
-        <div className="org-list__item-actions">
+      </Link>
+      <div className="org-list__item-actions">
+        {org.accepted ? (
           <button
-            className="org-list__leave-btn"
-            onClick={() => setLeaveOrg({ groupDid: org.groupDid, name: displayLabel })}
-            disabled={!canLeave}
-            title={
-              canLeave
-                ? "Leave group"
-                : "Owners can't leave — transfer ownership in group settings first"
-            }
+            className="org-list__action-btn"
+            onClick={() => handleRemovePublicMembership(org.groupDid)}
+            disabled={removingPublic === org.groupDid}
           >
-            <LogOut size={14} />
+            Make private
           </button>
-        </div>
+        ) : (
+          <button
+            className="org-list__action-btn org-list__action-btn--primary"
+            onClick={() => handleAcceptMembership(org.groupDid, org.role)}
+            disabled={acceptingOrg === org.groupDid}
+          >
+            Make public
+          </button>
+        )}
+        {canLeaveMap[org.groupDid] && (
+          <button
+            className="org-list__action-btn org-list__action-btn--danger"
+            onClick={() => setLeaveOrg({ groupDid: org.groupDid, name: org.displayName || org.handle })}
+          >
+            Leave
+          </button>
+        )}
       </div>
-    )
+    </div>
+  )
+
+  const handleRemovePublicMembership = async (groupDid: string) => {
+    if (!did) return
+    setRemovingPublic(groupDid)
+    try {
+      await deleteMembership(did, groupDid)
+      await refetchOrgs()
+    } catch (err) {
+      console.error("Failed to remove public membership:", err)
+    } finally {
+      setRemovingPublic(null)
+    }
   }
 
   const handleLeaveOrg = async () => {
@@ -148,78 +139,69 @@ export default function GroupsPage() {
     }
   }
 
+  const handleAcceptMembership = async (groupDid: string, role: OrgRole) => {
+    if (!did) return
+    setAcceptingOrg(groupDid)
+    try {
+      await putMembership(did, groupDid, role)
+      await refetchOrgs()
+    } catch (err) {
+      console.error("Failed to accept membership:", err)
+    } finally {
+      setAcceptingOrg(null)
+    }
+  }
+
   return (
     <div className="dashboard">
-      <div className="dashboard__topbar">
-        <h1 className="dashboard__page-title">Groups</h1>
-        <div className="dashboard__topbar-right">
-          <Link href="/groups/create">
-            <Button variant="primary" size="sm">
-              <Plus size={16} />
-              Create
-            </Button>
-          </Link>
-        </div>
-      </div>
-
       <div className="dashboard__body dashboard__body--single">
         <div className="dashboard__main">
+          {!isLoading && groups.length > 0 && (
+            <div className="dashboard__action-row">
+              <Link href="/groups/create">
+                <Button variant="primary" size="sm">
+                  <Plus size={16} />
+                  New
+                </Button>
+              </Link>
+            </div>
+          )}
           {isLoading ? (
             <div className="org-list__loading">
               <LoadingSpinner size="md" />
             </div>
           ) : groups.length === 0 ? (
-            <div className="org-list__empty">
-              <Building2 size={48} className="org-list__empty-icon" />
-              <h3 className="org-list__empty-title">No groups yet</h3>
-              <p className="org-list__empty-desc">
-                Create a new group or wait for an invite to appear here automatically.
-              </p>
-              <div className="org-list__empty-actions">
-                <Link href="/groups/create">
-                  <Button variant="primary">
-                    <Plus size={16} />
-                    Create Group
-                  </Button>
-                </Link>
-              </div>
-            </div>
+            <EmptyState
+              icon={Building2}
+              title="No groups yet"
+              description="Create a new group or wait for an invite to appear here automatically."
+            >
+              <Link href="/groups/create">
+                <Button variant="primary">
+                  <Plus size={16} />
+                  Create Group
+                </Button>
+              </Link>
+            </EmptyState>
           ) : (
-            <div className="dash-card">
-              <div className="org-list__header">
-                <h2 className="dash-card__title">Your groups</h2>
-                <div className="org-list__header-right">
-                  <span className="org-list__count">{groups.length}</span>
-                  {groups.length > 1 && (
-                    <div className="org-list__sort-icon-btn">
-                      <ArrowUpDown size={14} aria-hidden="true" />
-                      <select
-                        aria-label="Sort groups"
-                        title={`Sort: ${currentSortLabel}`}
-                        value={sortMode}
-                        onChange={(e) => {
-                          const next = e.target.value
-                          if (isSortMode(next)) setSortMode(next)
-                        }}
-                        className="org-list__sort-icon-select"
-                      >
-                        {SORT_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
+            <>
+              {acceptedOrgs.length > 0 && (
+                <div className="dash-card">
+                  <h2 className="dash-card__title">Membership public</h2>
+                  <div className="org-list__items">
+                    {acceptedOrgs.map(renderOrgItem)}
+                  </div>
                 </div>
-              </div>
-              <p className="dash-card__desc">
-                Groups you belong to. Switch your profile in the top right to act as a group.
-              </p>
-              <div className="org-list__items">
-                {sortedOrgs.map(renderOrgItem)}
-              </div>
-            </div>
+              )}
+              {pendingOrgs.length > 0 && (
+                <div className="dash-card">
+                  <h2 className="dash-card__title">Membership private</h2>
+                  <div className="org-list__items">
+                    {pendingOrgs.map(renderOrgItem)}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

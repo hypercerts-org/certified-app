@@ -4,6 +4,8 @@ import {
   createGroupAgent,
 } from "@/lib/groups/proxy-agent"
 import { checkCsrf } from "@/lib/auth/csrf"
+import { isValidDid } from "@/lib/utils/did"
+import { extractRouteError } from "@/lib/utils/api"
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
@@ -21,6 +23,9 @@ export async function POST(
 
   try {
     const { groupDid } = await params
+    if (!isValidDid(groupDid)) {
+      return NextResponse.json({ error: "Invalid group DID" }, { status: 400 })
+    }
     const auth = await getAuthenticatedAgent()
     if (!auth)
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
@@ -30,6 +35,13 @@ export async function POST(
 
     if (!ALLOWED_TYPES.includes(mimeType)) {
       return NextResponse.json({ error: "Unsupported media type" }, { status: 415 })
+    }
+
+    // Reject oversized uploads early via Content-Length before reading
+    // the full body into memory.
+    const contentLengthHeader = request.headers.get("content-length")
+    if (contentLengthHeader && Number(contentLengthHeader) > MAX_SIZE) {
+      return NextResponse.json({ error: "Payload too large (max 5MB)" }, { status: 413 })
     }
 
     const buffer = await request.arrayBuffer()
@@ -49,10 +61,7 @@ export async function POST(
     return NextResponse.json(data)
   } catch (err: unknown) {
     console.error("Upload blob error:", err)
-    const error = err as { status?: number; message?: string }
-    return NextResponse.json(
-      { error: error?.message || "Internal server error" },
-      { status: error?.status || 500 }
-    )
+    const { status, message } = extractRouteError(err)
+    return NextResponse.json({ error: message }, { status })
   }
 }

@@ -5,13 +5,15 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/welcome", "/about", "/terms", "/privacy", "/dsa"],
+        allow: ["/", "/about", "/terms", "/privacy", "/dsa", "/imprint"],
         disallow: [
           "/settings",
           "/settings/*",
+          "/create",
+          "/endorsements",
+          "/notifications",
           "/groups",
           "/groups/*",
-          "/connected-apps",
           "/oauth",
           "/oauth/*",
           "/api",

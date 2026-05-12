@@ -4,25 +4,22 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
+import { usePageTitle } from "@/lib/navbar-context";
 import { putProfile, uploadAvatar, uploadBanner } from "@/lib/atproto/profile";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import ProfileEditForm from "@/components/profile/profile-edit-form";
 import type { CertifiedProfile } from "@/lib/atproto/types";
 
 export default function EditProfilePage() {
+  usePageTitle("Edit profile");
   const router = useRouter();
   const { isAuthenticated, did } = useAuth();
   const { profile, isLoading, refetch, avatarUrl, bannerUrl } = useProfile();
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const handleAvatarUpload = async (file: File): Promise<Record<string, unknown>> => {
-    return await uploadAvatar(file);
-  };
-
-  const handleBannerUpload = async (file: File): Promise<Record<string, unknown>> => {
-    return await uploadBanner(file);
-  };
+  const handleAvatarUpload = (file: File) => uploadAvatar(file);
+  const handleBannerUpload = (file: File) => uploadBanner(file);
 
   const handleSave = async (updatedProfile: CertifiedProfile) => {
     if (!isAuthenticated || !did) {
@@ -34,7 +31,7 @@ export default function EditProfilePage() {
       setSaveError(null);
       await putProfile(did, updatedProfile);
       await refetch();
-      router.push("/");
+      router.push("/profile");
     } catch (error) {
       console.error("Failed to save profile:", error);
       setSaveError(error instanceof Error ? error.message : "Failed to save profile");
@@ -52,12 +49,6 @@ export default function EditProfilePage() {
 
   return (
     <div className="dashboard">
-      {/* Top bar */}
-      <div className="dashboard__topbar">
-        <h1 className="dashboard__page-title">Edit</h1>
-      </div>
-
-      {/* Main content — single column, no right sidebar */}
       <div className="dashboard__body dashboard__body--single">
         <div className="dashboard__main">
           {isLoading ? (

@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   serverExternalPackages: ["@atproto/oauth-client-node"],
   images: {
     remotePatterns: [
@@ -20,11 +21,19 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
+            value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+          },
+          {
+            key: "X-DNS-Prefetch-Control",
+            value: "on",
           },
           {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains; preload",
+          },
+          {
+            key: "Content-Security-Policy",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://vercel.live; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https:; frame-src 'self' https://vercel.live; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
           },
         ],
       },
@@ -42,9 +51,11 @@ const nextConfig: NextConfig = {
         destination: "/settings",
         permanent: true,
       },
+      // Preserved from the prior certified-app: any existing inbound
+      // links to the old /connected-apps page land on the new /apps.
       {
-        source: "/settings/connected-apps",
-        destination: "/connected-apps",
+        source: "/connected-apps",
+        destination: "/apps",
         permanent: true,
       },
     ];

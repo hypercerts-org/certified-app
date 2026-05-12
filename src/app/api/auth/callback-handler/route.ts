@@ -1,8 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server"
-import { Agent } from "@atproto/api"
+import { Agent, type ComAtprotoRepoPutRecord } from "@atproto/api"
 import { getOAuthClient } from "@/lib/auth/oauth-client"
 import { createSession, deleteSession } from "@/lib/auth/session"
+import { logSafe } from "@/lib/utils/log-safe"
 
 /** Collections that should always have a "self" record after sign-in */
 const PROFILE_COLLECTIONS = [
@@ -18,7 +18,9 @@ export async function GET(request: NextRequest) {
     const { session } = await client.callback(params)
 
     // Invalidate any existing session to prevent session fixation
-    await deleteSession().catch((err) => console.error("[Auth] Old session cleanup failed:", err))
+    await deleteSession().catch((err) =>
+      logSafe("[auth] old session cleanup failed", err)
+    )
     await createSession(session.did)
 
     // Best-effort: ensure profile records exist (don't fail sign-in if this errors)
@@ -27,12 +29,12 @@ export async function GET(request: NextRequest) {
       const agent = new Agent(oauthSession)
       await ensureProfileRecords(agent, session.did)
     } catch (err) {
-      console.error("[Auth] Profile seeding failed for", session.did, err)
+      logSafe("[auth] profile seeding failed", err, { did: session.did })
     }
 
     return NextResponse.json({ did: session.did })
   } catch (err) {
-    console.error("[Auth] Callback error:", err)
+    logSafe("[auth] callback error", err)
     return NextResponse.json({ error: "Authentication failed" }, { status: 500 })
   }
 }
@@ -55,7 +57,7 @@ async function ensureProfileRecords(agent: Agent, did: string) {
     } catch {
       // Record missing or error — try to create it
       try {
-        await agent.com.atproto.repo.putRecord({
+        const input: ComAtprotoRepoPutRecord.InputSchema = {
           repo: did,
           collection,
           rkey: "self",
@@ -63,7 +65,8 @@ async function ensureProfileRecords(agent: Agent, did: string) {
             $type: collection,
             createdAt: now,
           },
-        } as any)
+        }
+        await agent.com.atproto.repo.putRecord(input)
       } catch {
         // Silently ignore — best effort
       }

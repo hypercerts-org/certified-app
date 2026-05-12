@@ -2,7 +2,6 @@ import { authFetch } from "@/lib/auth/fetch"
 import { resolveHandle, resolvePdsUrl } from "@/lib/atproto/did"
 import { getAvatarUrl } from "@/lib/atproto/profile"
 import { extractError } from "@/lib/utils/api"
-import type { CertifiedProfile } from "@/lib/atproto/types"
 import type {
   Group,
   OrgProfile,
@@ -107,11 +106,12 @@ export async function deleteMembership(
 
 /**
  * Upload a blob (image) to the group's repo via the group service proxy.
+ * Returns a typed UploadedBlob matching the lexicon BlobRef shape.
  */
 export async function uploadOrgBlob(
   groupDid: string,
   file: File
-): Promise<Record<string, unknown>> {
+): Promise<import("@/lib/atproto/profile").UploadedBlob> {
   const buffer = await file.arrayBuffer()
   const res = await authFetch(
     `/api/groups/${encodeURIComponent(groupDid)}/upload-blob`,
@@ -124,8 +124,11 @@ export async function uploadOrgBlob(
   if (!res.ok) {
     throw new Error(await extractError(res, "Failed to upload image"))
   }
-  const data = await res.json()
-  return data.blob as Record<string, unknown>
+  const data = (await res.json()) as { blob?: import("@/lib/atproto/profile").UploadedBlob }
+  if (!data.blob || typeof data.blob.ref?.$link !== "string") {
+    throw new Error("uploadOrgBlob response missing blob.ref.$link")
+  }
+  return data.blob
 }
 
 /**
@@ -150,6 +153,16 @@ export async function createBskyProfile(
 /**
  * Register a new group via the group service.
  */
+/** Error thrown by registerGroup that preserves the server's error code. */
+export class RegisterGroupError extends Error {
+  readonly code?: string
+  constructor(message: string, code?: string) {
+    super(message)
+    this.code = code
+    this.name = "RegisterGroupError"
+  }
+}
+
 export async function registerGroup(
   handle: string,
   ownerDid: string,
@@ -161,9 +174,18 @@ export async function registerGroup(
     body: JSON.stringify({ handle, ownerDid, email }),
   })
   if (!res.ok) {
-    throw new Error(await extractError(res, "Failed to register group"))
+    let message = "Failed to register group"
+    let code: string | undefined
+    try {
+      const data = await res.json() as { error?: string; code?: string }
+      if (typeof data.error === "string") message = data.error
+      if (typeof data.code === "string") code = data.code
+    } catch {
+      // fall through
+    }
+    throw new RegisterGroupError(message, code)
   }
-  return res.json()
+  return await res.json()
 }
 
 /**
@@ -332,6 +354,8 @@ export async function queryOrgAuditLog(
 ): Promise<AuditEntry[]> {
   const all: AuditEntry[] = []
   let cursor: string | undefined
+  const MAX_PAGES = 50
+  let pages = 0
 
   do {
     const params = new URLSearchParams({ limit: "100" })
@@ -348,7 +372,8 @@ export async function queryOrgAuditLog(
     const data = await res.json()
     all.push(...(data.entries || []))
     cursor = data.cursor
-  } while (cursor)
+    pages++
+  } while (cursor && pages < MAX_PAGES)
 
   return all
 }
@@ -363,6 +388,8 @@ export async function fetchRemoteMemberships(
 ): Promise<RemoteMembership[]> {
   const all: RemoteMembership[] = []
   let cursor: string | undefined
+  const MAX_PAGES = 50
+  let pages = 0
 
   // Paginate through all results
   do {
@@ -380,7 +407,8 @@ export async function fetchRemoteMemberships(
     const data = await res.json()
     all.push(...(data.groups || []))
     cursor = data.cursor
-  } while (cursor)
+    pages++
+  } while (cursor && pages < MAX_PAGES)
 
   return all
 }
@@ -446,7 +474,7 @@ export async function resolveGroups(
         if (resolvedHandle) handle = resolvedHandle
         if (profile && pdsUrl) {
           const url = getAvatarUrl(
-            profile as CertifiedProfile,
+            profile,
             rm.groupDid,
             pdsUrl
           )
@@ -465,7 +493,6 @@ export async function resolveGroups(
         accepted: acceptedSet.has(rm.groupDid),
         avatarUrl,
         rkey: localRecord?.rkey,
-        joinedAt: rm.joinedAt,
       } satisfies Group
     })
   )

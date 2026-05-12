@@ -18,6 +18,7 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [imgFailed, setImgFailed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB — Vercel serverless limit is ~4.5MB
@@ -75,6 +76,12 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
 
   const displayUrl = previewUrl || currentBannerUrl;
 
+  // Reset the error flag when the displayed URL changes so users can
+  // recover after a failed load by uploading a new file.
+  React.useEffect(() => {
+    setImgFailed(false);
+  }, [displayUrl]);
+
   return (
     <div className="flex flex-col gap-2">
       <div
@@ -88,11 +95,14 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Banner image or placeholder */}
-        {displayUrl ? (
+        {/* Banner image or placeholder (falls through to the gradient
+            background when the URL is missing or fails to load, instead
+            of showing the browser's broken-image icon). */}
+        {displayUrl && !imgFailed ? (
           <img
             src={displayUrl}
             alt="Profile banner"
+            onError={() => setImgFailed(true)}
           />
         ) : null}
 
@@ -123,7 +133,7 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
 
       {/* Error message */}
       {error && (
-        <p className="text-caption text-red-600">
+        <p role="alert" className="text-caption text-[var(--color-error)]">
           {error}
         </p>
       )}

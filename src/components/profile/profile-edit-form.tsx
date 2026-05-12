@@ -9,16 +9,16 @@ import ErrorMessage from "@/components/ui/error-message";
 import AvatarUpload from "@/components/profile/avatar-upload";
 import BannerUpload from "@/components/profile/banner-upload";
 import type { CertifiedProfile, HypercertsSmallImage, HypercertsLargeImage } from "@/lib/atproto/types";
+import type { UploadedBlob } from "@/lib/atproto/profile";
 import type { BlobRef } from "@atproto/api";
-import { normalizeWebsiteUrl } from "@/lib/utils/url";
 
 export interface ProfileEditFormProps {
   initialProfile: CertifiedProfile | null;
   onSave: (profile: CertifiedProfile) => Promise<void>;
   isSaving: boolean;
   saveError: string | null;
-  onAvatarUpload: (file: File) => Promise<Record<string, unknown>>;
-  onBannerUpload: (file: File) => Promise<Record<string, unknown>>;
+  onAvatarUpload: (file: File) => Promise<UploadedBlob>;
+  onBannerUpload: (file: File) => Promise<UploadedBlob>;
   currentAvatarUrl: string | null;
   currentBannerUrl: string | null;
   fallbackInitials: string;
@@ -43,8 +43,8 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
   const [website, setWebsite] = useState("");
 
   // Image upload state
-  const [avatarBlob, setAvatarBlob] = useState<Record<string, unknown> | null>(null);
-  const [bannerBlob, setBannerBlob] = useState<Record<string, unknown> | null>(null);
+  const [avatarBlob, setAvatarBlob] = useState<UploadedBlob | null>(null);
+  const [bannerBlob, setBannerBlob] = useState<UploadedBlob | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
 
@@ -96,16 +96,26 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     return true;
   };
 
-  // Validate website. Accepts bare hostnames (e.g. "www.gainforest.earth") and
-  // adds the https:// scheme on save via normalizeWebsiteUrl.
+  // Validate website. Only http: and https: are accepted — a `javascript:`
+  // URL parses fine via `new URL()` and would otherwise be planted as XSS
+  // on any visitor who clicks the link.
   const validateWebsite = (value: string) => {
-    const result = normalizeWebsiteUrl(value);
-    if (!result.ok) {
+    if (value.trim() === "") {
+      setWebsiteError("");
+      return true;
+    }
+    try {
+      const url = new URL(value);
+      if (url.protocol !== "http:" && url.protocol !== "https:") {
+        setWebsiteError("URL must start with http:// or https://");
+        return false;
+      }
+      setWebsiteError("");
+      return true;
+    } catch {
       setWebsiteError("Please enter a valid URL");
       return false;
     }
-    setWebsiteError("");
-    return true;
   };
 
   // Handle avatar upload
@@ -168,11 +178,6 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
       return;
     }
 
-    // Normalize website (prepends https:// when the user entered a bare host).
-    // validateWebsite has already confirmed this resolves successfully.
-    const websiteNormalized = normalizeWebsiteUrl(website);
-    const websiteValue = websiteNormalized.ok ? websiteNormalized.url : "";
-
     // Construct profile
     const profile: CertifiedProfile = {
       // Set createdAt: use existing or new
@@ -180,13 +185,15 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
       // Add text fields (trim and omit empty strings)
       ...(displayName.trim() && { displayName: displayName.trim() }),
       ...(description.trim() && { description: description.trim() }),
-      ...(websiteValue && { website: websiteValue }),
+      ...(website.trim() && { website: website.trim() }),
     };
 
     // Handle avatar: use new blob if uploaded, otherwise preserve existing
     if (avatarBlob) {
       const avatarImage: HypercertsSmallImage = {
         $type: "org.hypercerts.defs#smallImage",
+        // UploadedBlob is structurally compatible with the lexicon's
+        // BlobRef shape — narrow with a single cast at this seam.
         image: avatarBlob as unknown as BlobRef,
       };
       profile.avatar = avatarImage;
@@ -208,46 +215,47 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     await onSave(profile);
   };
 
-  // Handle cancel
+  // Handle cancel — bail back to the user's profile
   const handleCancel = () => {
-    router.push("/");
+    router.push("/profile");
   };
 
   return (
     <div className="edit-profile">
-      {/* Banner + avatar — mirrors profile page layout */}
+      {/* Card 1: Photo & banner */}
       <div className="dash-card">
-        <BannerUpload
-          currentBannerUrl={currentBannerUrl}
-          onUpload={handleBannerUpload}
-          isUploading={isUploadingBanner}
-        />
-        <div className="edit-profile__avatar-row">
-          <AvatarUpload
-            currentAvatarUrl={currentAvatarUrl}
-            fallbackInitials={fallbackInitials}
-            onUpload={handleAvatarUpload}
-            isUploading={isUploadingAvatar}
+        <div className="edit-profile__media">
+          <BannerUpload
+            currentBannerUrl={currentBannerUrl}
+            onUpload={handleBannerUpload}
+            isUploading={isUploadingBanner}
           />
-          <div className="edit-profile__name-field">
-            <Input
-              label="Display name"
-              value={displayName}
-              onChange={handleDisplayNameChange}
-              maxLength={64}
-              placeholder="Your display name"
-              error={displayNameError}
+          <div className="edit-profile__avatar-slot">
+            <AvatarUpload
+              currentAvatarUrl={currentAvatarUrl}
+              fallbackInitials={fallbackInitials}
+              onUpload={handleAvatarUpload}
+              isUploading={isUploadingAvatar}
             />
           </div>
         </div>
       </div>
 
-      {/* Fields */}
+      {/* Card 2: About */}
       <div className="dash-card">
         <div className="edit-profile__fields">
+          <Input
+            label="Display name"
+            value={displayName}
+            onChange={handleDisplayNameChange}
+            maxLength={64}
+            placeholder="Your display name"
+            error={displayNameError}
+          />
+
           <div>
             <Textarea
-              label="About"
+              label="About you"
               value={description}
               onChange={handleDescriptionChange}
               rows={4}
@@ -259,6 +267,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
               {description.length}/256 characters
             </div>
           </div>
+
           <Input
             label="Website"
             type="url"
@@ -270,21 +279,26 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
           />
         </div>
 
-        {saveError && <ErrorMessage message={saveError} />}
+        {saveError && (
+          <div className="edit-profile__error">
+            <ErrorMessage message={saveError} />
+          </div>
+        )}
+      </div>
 
-        <div className="edit-profile__actions">
-          <Button variant="ghost" onClick={handleCancel} disabled={isSaving}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleSave}
-            loading={isSaving}
-            disabled={!hasChanges || !isValid || isSaving}
-          >
-            Save Changes
-          </Button>
-        </div>
+      {/* Sticky action bar */}
+      <div className="edit-profile__actions">
+        <Button variant="ghost" onClick={handleCancel} disabled={isSaving}>
+          Cancel
+        </Button>
+        <Button
+          variant="primary"
+          onClick={handleSave}
+          loading={isSaving}
+          disabled={!hasChanges || !isValid || isSaving}
+        >
+          Save changes
+        </Button>
       </div>
     </div>
   );

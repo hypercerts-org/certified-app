@@ -1,0 +1,281 @@
+/* ========== Profile hero (full-bleed header for /profile/[handle]) ========== */
+
+.profile-hero {
+  width: 100%;
+  position: relative;
+}
+
+.profile-hero__banner {
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+  background: linear-gradient(
+    135deg,
+    var(--bg-sunken) 0%,
+    var(--bg-raised) 100%
+  );
+}
+
+.profile-hero__banner-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-hero__body {
+  padding: 0 16px 16px;
+}
+
+.profile-hero__row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  /* Lift the avatar to half-overlap the banner */
+  margin-top: -48px;
+}
+
+/* Wrap the avatar in a rounded pad that reads as a border on any banner. */
+.profile-hero__avatar-wrap {
+  flex-shrink: 0;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border-radius: 999px;
+  line-height: 0;
+}
+
+.profile-hero__action {
+  flex-shrink: 0;
+  /* Sit on the same baseline as the avatar bottom edge */
+  padding-bottom: 4px;
+}
+
+.profile-hero__eyebrow {
+  /* Small "YOUR PROFILE" cue that arrives before the name, so visiting
+     `/` (which redirects to /profile/[my-handle]) reads as "yours"
+     rather than a generic profile view. */
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin: 12px 0 0;
+}
+
+.profile-hero__name {
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--fg-primary);
+  letter-spacing: -0.01em;
+  margin: 12px 0 2px;
+  line-height: 1.15;
+}
+
+/* When the eyebrow is present, tighten the top margin on the name so
+   the eyebrow + name read as one block. */
+.profile-hero__eyebrow + .profile-hero__name {
+  margin-top: 4px;
+}
+
+.profile-hero__handle {
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  font-weight: 400;
+  margin: 0;
+}
+
+.profile-hero__count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 12px 0 0;
+  font-size: 0.875rem;
+}
+
+.profile-hero__count-value {
+  font-weight: 600;
+  color: var(--fg-primary);
+}
+
+.profile-hero__count-label {
+  color: var(--fg-muted);
+}
+
+.profile-hero__bio {
+  margin: 12px 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--fg-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (min-width: 640px) {
+  .profile-hero__banner {
+    height: 220px;
+  }
+
+  .profile-hero__body {
+    padding: 0 24px 24px;
+  }
+}
+
+/* Desktop: banner is center-column-bleed (not viewport-bleed) and the
+   column is 600px wide. Keep close to 3:1 aspect so the banner still
+   reads as a panoramic header rather than a letterbox card. 200px on
+   600px column = 3:1, matching bsky. */
+@media (min-width: 800px) {
+  .profile-hero__banner {
+    height: 200px;
+  }
+}
+
+@media (min-width: 640px) {
+  .profile-hero__row {
+    margin-top: -56px;
+  }
+
+  .profile-hero__name {
+    font-size: 1.75rem;
+  }
+}
+
+/* ========== Profile tabs ========== */
+
+.profile-tabs {
+  display: flex;
+  gap: 0;
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+  padding: 0 16px;
+  margin-top: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.profile-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.profile-tabs__tab {
+  /* Fixed content width so the row can scroll horizontally as soon as
+     the tabs overflow the viewport instead of cramming them. */
+  flex: 0 0 auto;
+  padding: 14px 20px;
+  background: transparent;
+  border: none;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+  cursor: pointer;
+  position: relative;
+  transition: color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.profile-tabs__tab:hover {
+  color: var(--fg-primary);
+}
+
+.profile-tabs__tab--active {
+  color: var(--fg-primary);
+  font-weight: 600;
+}
+
+.profile-tabs__tab--active::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  background: var(--fg-primary);
+  border-radius: 1px;
+}
+
+.profile-tabs__tab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+  border-radius: 2px;
+}
+
+.profile-panel {
+  padding: 16px;
+}
+
+/* ========== Profile › Groups tab ========== */
+.profile-groups {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-groups__item {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.profile-groups__item:last-child {
+  border-bottom: none;
+}
+
+.profile-groups__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px;
+  color: inherit;
+  text-decoration: none;
+  transition: background var(--transition-fast);
+}
+
+.profile-groups__link:hover {
+  background: var(--overlay-weak);
+}
+
+.profile-groups__meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.profile-groups__name {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-groups__handle {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-groups__role {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.profile-groups__loading {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+

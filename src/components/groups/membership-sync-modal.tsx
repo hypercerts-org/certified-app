@@ -1,8 +1,9 @@
 "use client"
 
-import React from "react"
+import React, { useCallback } from "react"
 import { X } from "lucide-react"
 import Button from "@/components/ui/button"
+import { useFocusTrap } from "@/hooks/use-focus-trap"
 
 export interface MembershipChange {
   groupDid: string
@@ -25,11 +26,22 @@ export default function MembershipSyncModal({
   onAcknowledge,
   onClose,
 }: MembershipSyncModalProps) {
+  const isOpen = true
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen)
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "Escape") onClose()
+  }, [onClose])
+
   return (
     <div className="signin-modal__backdrop" onClick={onClose}>
       <div
+        ref={focusTrapRef}
         className="signin-modal"
+        role="dialog"
+        aria-modal="true"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
         style={{ maxWidth: 500 }}
       >
         <div className="signin-modal__header">

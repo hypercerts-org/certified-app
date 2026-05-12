@@ -30,15 +30,15 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
           className={`w-full border ${
-            error ? "border-error/40" : "border-[rgba(15,37,68,0.15)]"
-          } rounded bg-white px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-accent focus:ring-1 focus:ring-accent/20 focus:outline-none transition-all duration-150 resize-y ${className}`}
+            error ? "border-error/40" : "border-[var(--border-default)]"
+          } rounded bg-[var(--bg-elevated)] px-4 py-3 text-base md:text-sm text-[var(--fg-primary)] placeholder:text-[var(--fg-muted)] focus:border-[var(--focus-ring)] focus:ring-1 focus:ring-[var(--focus-ring)]/20 focus:outline-none transition-all duration-150 resize-y ${className}`}
           {...props}
         />
         {error && (
           <p id={errorId} role="alert" className="mt-1.5 text-xs text-error">{error}</p>
         )}
         {!error && helperText && (
-          <p id={helperId} className="mt-1.5 text-xs text-gray-400">{helperText}</p>
+          <p id={helperId} className="mt-1.5 text-xs text-[var(--fg-muted)]">{helperText}</p>
         )}
       </div>
     );

@@ -12,13 +12,18 @@ import type {
 import { getOAuthClient } from "@/lib/auth/oauth-client"
 import { getSessionDid, deleteSession } from "@/lib/auth/session"
 import { checkCsrf } from "@/lib/auth/csrf"
+import { resolvePdsUrl, invalidateDidDoc } from "@/lib/atproto/did"
 import { LIMIT_MIN, LIMIT_MAX } from "@/lib/utils/constants"
+import { redactSecrets, logSafe } from "@/lib/utils/log-safe"
+import { parseJsonBody } from "@/lib/utils/api"
 
 const ALLOWED_WRITE_COLLECTIONS = [
   "org.impactindexer.link.attestation",
   "app.certified.actor.profile",
   "app.certified.actor.membership",
   "app.certified.actor.organization",
+  "app.certified.temp.graph.endorsement",
+  "org.hypercerts.claim.activity",
 ]
 
 const ALLOWED_BLOB_CONTENT_TYPES = [
@@ -26,59 +31,45 @@ const ALLOWED_BLOB_CONTENT_TYPES = [
   "image/png",
   "image/webp",
   "image/gif",
-  "image/svg+xml",
 ]
 
 const MAX_BLOB_SIZE = 4 * 1024 * 1024 // 4MB — Vercel serverless functions have a ~4.5MB request body limit
 
-/**
- * Strip secrets out of strings before they hit logs. Targets the things we've
- * actually seen leak from atproto SDK error messages — JWTs (DPoP proofs and
- * bearer tokens both match), the `Authorization`/`DPoP`/`Cookie` header lines
- * that show up in serialized Request inspections, and email addresses.
- */
-function redactSecrets(s: string): string {
-  return s
-    .replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "<jwt>")
-    .replace(/(Authorization|DPoP|Cookie|Set-Cookie):\s*\S+/gi, "$1: <redacted>")
-    .replace(/(access_token|refresh_token|id_token)=[A-Za-z0-9._~+/-]+=*/gi, "$1=<redacted>")
-    .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, "<email>")
+function asString(v: unknown): string | undefined {
+  return typeof v === "string" ? v : undefined
 }
+
+/**
+ * Short Cache-Control for foreign-repo public reads. Feeds and profile
+ * pages fan out across many DIDs and re-fetch the same records — even
+ * a 30s shared cache collapses that into one upstream call per server
+ * instance. Use `private` so we don't share between users via a CDN;
+ * the data itself is public AT-Protocol records but we don't have an
+ * audit trail of who's allowed to see what at the proxy layer yet.
+ */
+const FOREIGN_READ_CACHE_HEADERS = {
+  "Cache-Control": "private, max-age=30",
+} as const
 
 /** Extract a usable HTTP status + message from an unknown XRPC error. */
 function xrpcError(err: unknown): { status: number; message: string } {
-  const error = err as {
-    status?: number
-    statusCode?: number
-    message?: string
-    error?: string
+  if (!err || typeof err !== "object") {
+    return { status: 500, message: "Internal server error" }
   }
-  const status = error?.status ?? error?.statusCode ?? 500
-  const message =
-    status >= 500
-      ? "Internal server error"
-      : (error?.message ?? "Internal server error")
+  const e = err as Record<string, unknown>
+  const statusRaw = typeof e.status === "number" ? e.status : e.statusCode
+  const status = typeof statusRaw === "number" ? statusRaw : 500
+  const rawMessage = asString(e.message)
+  const message = status >= 500 || !rawMessage ? "Internal server error" : rawMessage
   // Server-side log so the masked-to-client message can still be diagnosed
   // from Vercel logs. Client never sees the original PDS error body.
-  // We deliberately drop `err.cause` and `err.stack` because the atproto SDK
-  // attaches the upstream Request (with DPoP proofs and Bearer tokens) on
-  // `cause`, and stack traces include the same Request via util.inspect.
   console.error("[xrpc] upstream error", {
-    name: (err as Error)?.name,
+    name: asString(e.name),
     status,
-    error: error?.error,
-    message: typeof error?.message === "string" ? redactSecrets(error.message) : undefined,
+    error: asString(e.error),
+    message: rawMessage ? redactSecrets(rawMessage) : undefined,
   })
   return { status, message }
-}
-
-/** Log an unknown error safely — name + redacted message only, no cause/stack. */
-function logSafe(prefix: string, err: unknown): void {
-  const e = err as { name?: string; message?: string }
-  console.error(prefix, {
-    name: e?.name,
-    message: typeof e?.message === "string" ? redactSecrets(e.message) : undefined,
-  })
 }
 
 /** Clamp and validate a limit query param. */
@@ -89,6 +80,15 @@ function parseLimit(raw: string | undefined): number | undefined {
   return Math.min(Math.max(LIMIT_MIN, n), LIMIT_MAX)
 }
 
+/** GET-accessible XRPCs that are public in AT Protocol — signed-out
+ *  visitors can call these without a session. Write methods remain
+ *  auth-gated below. */
+const PUBLIC_READ_METHODS = new Set<string>([
+  "com.atproto.repo.getRecord",
+  "com.atproto.repo.listRecords",
+  "com.atproto.sync.getBlob",
+])
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ method: string[] }> }
@@ -98,19 +98,30 @@ export async function GET(
     const methodName = method.join(".")
 
     const did = await getSessionDid()
-    if (!did)
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
 
-    const client = await getOAuthClient()
-    let oauthSession
-    try {
-      oauthSession = await client.restore(did)
-    } catch (err) {
-      logSafe("[xrpc] oauth restore failed", err)
-      await deleteSession()
-      return NextResponse.json({ error: "Session expired" }, { status: 401 })
+    // Try to build a bound agent if we have a session — it's nice to
+    // have for methods that target the user's own repo (avoids a
+    // roundtrip through resolvePdsUrl). Not having one is fine for the
+    // public read methods below, which will always federate via plain
+    // fetch against the target PDS.
+    let agent: Agent | null = null
+    if (did) {
+      try {
+        const client = await getOAuthClient()
+        const oauthSession = await client.restore(did)
+        agent = new Agent(oauthSession)
+      } catch (err) {
+        logSafe("[xrpc] oauth restore failed", err, { method: methodName })
+        await deleteSession()
+        // If it's a public read method, we can still proceed unauth;
+        // otherwise fall through to the 401 below.
+        if (!PUBLIC_READ_METHODS.has(methodName)) {
+          return NextResponse.json({ error: "Session expired" }, { status: 401 })
+        }
+      }
+    } else if (!PUBLIC_READ_METHODS.has(methodName)) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
-    const agent = new Agent(oauthSession)
 
     // Query params come as Record<string, string> from URLSearchParams.
     // AT Protocol SDK expects specific typed params — we validate the required
@@ -125,13 +136,118 @@ export async function GET(
         if (!repo || !collection || !rkey) {
           return NextResponse.json({ error: "repo, collection, and rkey are required" }, { status: 400 })
         }
+
+        // Foreign repo → resolve PDS and proxy the public XRPC directly.
+        if (repo !== did) {
+          const targetPds = await resolvePdsUrl(repo)
+          if (!targetPds) {
+            return NextResponse.json({ error: "PDS not found for repo" }, { status: 404 })
+          }
+
+          const params = new URLSearchParams({ repo, collection, rkey })
+          if (cid) params.set("cid", cid)
+
+          try {
+            const upstream = await fetch(
+              `${targetPds}/xrpc/com.atproto.repo.getRecord?${params.toString()}`,
+              { signal: AbortSignal.timeout(10_000) }
+            )
+            if (!upstream.ok) {
+              const status = upstream.status
+              return NextResponse.json(
+                { error: `Upstream PDS returned ${status}` },
+                { status }
+              )
+            }
+            const data = await upstream.json()
+            return NextResponse.json(data, { headers: FOREIGN_READ_CACHE_HEADERS })
+          } catch (err) {
+            logSafe("[xrpc] foreign-pds upstream", err, { method: methodName, pds: targetPds })
+            return NextResponse.json({ error: "Upstream request failed" }, { status: 502 })
+          }
+        }
+
+        // Same-session repo path — reuse the bound agent when we have
+        // one; null agent at this point is unreachable because the
+        // foreign-repo branch above already handled the !did case.
+        if (!agent) {
+          return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+        }
         const result = await agent.com.atproto.repo.getRecord({ repo, collection, rkey, cid })
         return NextResponse.json(result.data)
       }
       case "com.atproto.repo.listRecords": {
-        const { repo, collection, cursor, reverse } = queryParams
+        const { repo, collection, cursor, reverse, rkeyEnd, rkeyStart } = queryParams
         if (!repo || !collection) {
           return NextResponse.json({ error: "repo and collection are required" }, { status: 400 })
+        }
+
+        // If we're asking for someone else's repo, `agent` is bound to
+        // the session user's PDS and a listRecords call there would
+        // return nothing for a foreign repo. Resolve the target DID to
+        // its home PDS and query that directly.
+        //
+        // listRecords is an unauthenticated public XRPC, so a plain fetch
+        // works for any PDS in the network — we don't need to talk to
+        // the target user's auth service.
+        if (repo !== did) {
+          const targetPds = await resolvePdsUrl(repo)
+          if (!targetPds) {
+            // Cache the empty-result shortcut too — otherwise a feed
+            // that hits an unresolvable DID will repeatedly retry the
+            // (cached-as-null) DID lookup and short-circuit here.
+            return NextResponse.json(
+              { records: [] },
+              { headers: FOREIGN_READ_CACHE_HEADERS },
+            )
+          }
+
+          const params = new URLSearchParams({ repo, collection })
+          const limit = parseLimit(queryParams.limit)
+          if (limit !== undefined) params.set("limit", String(limit))
+          if (cursor) params.set("cursor", cursor)
+          if (reverse === "true") params.set("reverse", "true")
+          if (rkeyEnd) params.set("rkeyEnd", rkeyEnd)
+          if (rkeyStart) params.set("rkeyStart", rkeyStart)
+
+          try {
+            const upstream = await fetch(
+              `${targetPds}/xrpc/com.atproto.repo.listRecords?${params.toString()}`,
+              {
+                headers: { "Content-Type": "application/json" },
+                // Abort after 10s so a slow PDS doesn't block our handler.
+                signal: AbortSignal.timeout(10_000),
+              }
+            )
+            if (!upstream.ok) {
+              if (upstream.status === 400 || upstream.status === 404) {
+                return NextResponse.json(
+                  { records: [] },
+                  { headers: FOREIGN_READ_CACHE_HEADERS },
+                )
+              }
+              return NextResponse.json(
+                { error: `Upstream PDS returned ${upstream.status}` },
+                { status: upstream.status }
+              )
+            }
+            const data = await upstream.json()
+            // Short cache for foreign-repo public reads — a typical feed
+            // render fans this out across many DIDs and the user is fine
+            // seeing data that's <30s stale. Their *own* repo skips this
+            // (see else branch) so they always see fresh writes.
+            return NextResponse.json(data, { headers: FOREIGN_READ_CACHE_HEADERS })
+          } catch (err) {
+            logSafe("[xrpc] foreign-pds upstream", err, { method: methodName, pds: targetPds })
+            return NextResponse.json(
+              { error: "Upstream request failed", records: [] },
+              { status: 502 }
+            )
+          }
+        }
+
+        if (!agent) {
+          return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
         }
         const result = await agent.com.atproto.repo.listRecords({
           repo,
@@ -139,10 +255,15 @@ export async function GET(
           limit: parseLimit(queryParams.limit),
           cursor,
           reverse: reverse === "true" ? true : undefined,
+          rkeyEnd,
+          rkeyStart,
         })
         return NextResponse.json(result.data)
       }
       case "com.atproto.server.getSession": {
+        if (!agent) {
+          return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+        }
         const result = await agent.com.atproto.server.getSession()
         return NextResponse.json(result.data)
       }
@@ -151,12 +272,55 @@ export async function GET(
         if (!blobDid || !cid) {
           return NextResponse.json({ error: "did and cid are required" }, { status: 400 })
         }
+
+        // Foreign DID → resolve to its home PDS and stream the blob
+        // directly. Bound agent would target the session user's PDS,
+        // which doesn't have the foreign user's blobs.
+        if (blobDid !== did) {
+          const targetPds = await resolvePdsUrl(blobDid)
+          if (!targetPds) {
+            return NextResponse.json({ error: "PDS not found for did" }, { status: 404 })
+          }
+
+          try {
+            const params = new URLSearchParams({ did: blobDid, cid })
+            const upstream = await fetch(
+              `${targetPds}/xrpc/com.atproto.sync.getBlob?${params.toString()}`,
+              { signal: AbortSignal.timeout(15_000) }
+            )
+            if (!upstream.ok) {
+              return NextResponse.json(
+                { error: `Upstream PDS returned ${upstream.status}` },
+                { status: upstream.status }
+              )
+            }
+            return new NextResponse(upstream.body, {
+              status: 200,
+              headers: {
+                "Content-Type":
+                  upstream.headers.get("content-type") || "application/octet-stream",
+                "Cache-Control": upstream.headers.get("cache-control") || "public, max-age=3600",
+                "X-Content-Type-Options": "nosniff",
+                "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
+              },
+            })
+          } catch (err) {
+            logSafe("[xrpc] foreign-pds upstream", err, { method: methodName, pds: targetPds })
+            return NextResponse.json({ error: "Upstream request failed" }, { status: 502 })
+          }
+        }
+
+        if (!agent) {
+          return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+        }
         const result = await agent.com.atproto.sync.getBlob({ did: blobDid, cid })
         const blob = result.data as Uint8Array
         return new NextResponse(Buffer.from(blob), {
           headers: {
             "Content-Type":
               result.headers["content-type"] || "application/octet-stream",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
           },
         })
       }
@@ -192,7 +356,7 @@ export async function POST(
     try {
       oauthSession = await client.restore(did)
     } catch (err) {
-      logSafe("[xrpc] oauth restore failed", err)
+      logSafe("[xrpc] oauth restore failed", err, { method: methodName })
       await deleteSession()
       return NextResponse.json({ error: "Session expired" }, { status: 401 })
     }
@@ -201,25 +365,26 @@ export async function POST(
     // Parse body once (uploadBlob uses arrayBuffer instead)
     let body: Record<string, unknown> | null = null
     if (methodName !== "com.atproto.repo.uploadBlob") {
-      body = await request.json()
+      const parsed = await parseJsonBody(request, `[xrpc ${methodName}]`)
+      if (!parsed.ok) return parsed.response
+      body = (parsed.body ?? {}) as Record<string, unknown>
     }
 
     // Validate repo on write methods — reject cross-repo writes
     const REPO_METHODS = ["com.atproto.repo.createRecord", "com.atproto.repo.putRecord", "com.atproto.repo.deleteRecord"]
     if (body && REPO_METHODS.includes(methodName)) {
-      if (body.repo && body.repo !== did) {
+      if (!body.repo || body.repo !== did) {
         return NextResponse.json(
-          { error: "Forbidden: cannot write to another user's repo" },
+          { error: "repo is required and must match the authenticated user" },
           { status: 403 }
         )
       }
-      // Collection allowlist
       if (
-        body.collection &&
-        !ALLOWED_WRITE_COLLECTIONS.includes(body.collection as string)
+        typeof body.collection !== "string" ||
+        !ALLOWED_WRITE_COLLECTIONS.includes(body.collection)
       ) {
         return NextResponse.json(
-          { error: "Collection not allowed" },
+          { error: "collection is required and must be an allowed collection" },
           { status: 403 }
         )
       }
@@ -228,19 +393,19 @@ export async function POST(
     switch (methodName) {
       case "com.atproto.repo.createRecord": {
         const result = await agent.com.atproto.repo.createRecord(
-          body as unknown as ComAtprotoRepoCreateRecord.InputSchema
+          body as ComAtprotoRepoCreateRecord.InputSchema
         )
         return NextResponse.json(result.data)
       }
       case "com.atproto.repo.putRecord": {
         const result = await agent.com.atproto.repo.putRecord(
-          body as unknown as ComAtprotoRepoPutRecord.InputSchema
+          body as ComAtprotoRepoPutRecord.InputSchema
         )
         return NextResponse.json(result.data)
       }
       case "com.atproto.repo.deleteRecord": {
         const result = await agent.com.atproto.repo.deleteRecord(
-          body as unknown as ComAtprotoRepoDeleteRecord.InputSchema
+          body as ComAtprotoRepoDeleteRecord.InputSchema
         )
         return NextResponse.json(result.data)
       }
@@ -278,20 +443,24 @@ export async function POST(
       }
       case "com.atproto.identity.updateHandle": {
         await agent.com.atproto.identity.updateHandle(
-          body as unknown as ComAtprotoIdentityUpdateHandle.InputSchema
+          body as ComAtprotoIdentityUpdateHandle.InputSchema
         )
+        // The DID document's `alsoKnownAs` just changed. Drop our
+        // cached copy so resolveHandle(did) returns the new value on
+        // the next call instead of serving up to 5 minutes of stale.
+        invalidateDidDoc(did)
         // Void operation — no data to return
         return NextResponse.json({})
       }
       case "com.atproto.server.requestPasswordReset": {
         await agent.com.atproto.server.requestPasswordReset(
-          body as unknown as ComAtprotoServerRequestPasswordReset.InputSchema
+          body as ComAtprotoServerRequestPasswordReset.InputSchema
         )
         return NextResponse.json({})
       }
       case "com.atproto.server.resetPassword": {
         await agent.com.atproto.server.resetPassword(
-          body as unknown as ComAtprotoServerResetPassword.InputSchema
+          body as ComAtprotoServerResetPassword.InputSchema
         )
         return NextResponse.json({})
       }
@@ -301,7 +470,7 @@ export async function POST(
       }
       case "com.atproto.server.updateEmail": {
         await agent.com.atproto.server.updateEmail(
-          body as unknown as ComAtprotoServerUpdateEmail.InputSchema
+          body as ComAtprotoServerUpdateEmail.InputSchema
         )
         return NextResponse.json({})
       }

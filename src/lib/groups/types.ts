@@ -1,3 +1,5 @@
+import type { CertifiedProfile } from "@/lib/atproto/types"
+
 export interface Group {
   groupDid: string
   handle: string
@@ -6,8 +8,6 @@ export interface Group {
   accepted: boolean
   avatarUrl?: string
   rkey?: string
-  /** ISO timestamp from the group service indicating when the user joined. */
-  joinedAt?: string
 }
 
 export interface RemoteMembership {
@@ -25,16 +25,7 @@ export interface OrgMember {
   addedAt: string
 }
 
-export interface OrgProfile {
-  $type?: "app.certified.actor.profile"
-  displayName?: string
-  description?: string
-  pronouns?: string
-  website?: string
-  avatar?: unknown
-  banner?: unknown
-  createdAt?: string
-}
+export type OrgProfile = CertifiedProfile
 
 export interface GroupMetadata {
   $type?: "app.certified.actor.organization"
@@ -70,7 +61,3 @@ export interface AuditEntry {
   createdAt: string
 }
 
-export interface CreateOrgParams {
-  name: string
-  handle: string
-}
