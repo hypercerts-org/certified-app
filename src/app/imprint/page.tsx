@@ -19,7 +19,7 @@ export default function ImprintPage() {
   return (
     <div className="app-page">
       <div className="app-page__inner max-w-3xl">
-        <h1 className="font-mono text-h1 text-navy tracking-tight mb-8">
+        <h1 className="font-headline text-h1 text-[var(--fg-primary)] tracking-tight mb-8">
           Imprint — Certified
         </h1>
 
@@ -27,7 +27,7 @@ export default function ImprintPage() {
 
         <div className="prose prose-navy max-w-none space-y-8">
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">Service operator</h2>
+            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">Service operator</h2>
             <p>
               <strong>Hypercerts Foundation</strong>
               <br />
@@ -52,12 +52,12 @@ export default function ImprintPage() {
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">Authorized representatives</h2>
+            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">Authorized representatives</h2>
             <p>Holke Brammer (Director)</p>
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">
+            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
               Representative in the European Union
             </h2>
             <p>In accordance with Article 27 GDPR:</p>
@@ -82,7 +82,7 @@ export default function ImprintPage() {
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">
+            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
               Contact for legal notices and Digital Services Act communications
             </h2>
             <p>
