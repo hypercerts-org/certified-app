@@ -3,9 +3,25 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
 /**
+ * `app.bsky.richtext.facet` — byte ranges within `post.record.text`
+ * that carry features (links, mentions, tags). The byte indices are
+ * UTF-8 byte offsets, NOT JS character indices — see the RichText
+ * renderer for the slicing logic.
+ */
+export type BskyFacetFeature =
+  | { $type: "app.bsky.richtext.facet#link"; uri: string }
+  | { $type: "app.bsky.richtext.facet#mention"; did: string }
+  | { $type: "app.bsky.richtext.facet#tag"; tag: string }
+
+export interface BskyFacet {
+  index: { byteStart: number; byteEnd: number }
+  features: BskyFacetFeature[]
+}
+
+/**
  * Minimal shape we care about from `app.bsky.feed.getAuthorFeed`. The
- * full response includes embeds, facets, counts, etc. — we only render
- * text + date + a deep link, so we keep the type small.
+ * full response includes embeds, counts, etc. — we only render text +
+ * facets + date + a deep link, so we keep the type small.
  */
 export interface BskyPost {
   uri: string
@@ -13,6 +29,7 @@ export interface BskyPost {
   record: {
     text: string
     createdAt: string
+    facets?: BskyFacet[]
   }
   author: {
     handle: string
@@ -23,7 +40,12 @@ interface RawFeedItem {
   post?: {
     uri?: unknown
     cid?: unknown
-    record?: { text?: unknown; createdAt?: unknown; $type?: unknown }
+    record?: {
+      text?: unknown
+      createdAt?: unknown
+      $type?: unknown
+      facets?: unknown
+    }
     author?: { handle?: unknown }
   }
 }
@@ -49,16 +71,47 @@ function isPostRecord(record: RawFeedItem["post"]): record is BskyPost & RawFeed
   )
 }
 
+function isFacetFeature(value: unknown): value is BskyFacetFeature {
+  if (!value || typeof value !== "object") return false
+  const f = value as Record<string, unknown>
+  if (f.$type === "app.bsky.richtext.facet#link") return typeof f.uri === "string"
+  if (f.$type === "app.bsky.richtext.facet#mention") return typeof f.did === "string"
+  if (f.$type === "app.bsky.richtext.facet#tag") return typeof f.tag === "string"
+  return false
+}
+
+function normalizeFacets(raw: unknown): BskyFacet[] | undefined {
+  if (!Array.isArray(raw)) return undefined
+  const out: BskyFacet[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue
+    const f = item as Record<string, unknown>
+    const idx = f.index as { byteStart?: unknown; byteEnd?: unknown } | undefined
+    if (!idx) continue
+    const byteStart = typeof idx.byteStart === "number" ? idx.byteStart : NaN
+    const byteEnd = typeof idx.byteEnd === "number" ? idx.byteEnd : NaN
+    if (!Number.isFinite(byteStart) || !Number.isFinite(byteEnd)) continue
+    if (byteStart < 0 || byteEnd <= byteStart) continue
+    const featuresRaw = Array.isArray(f.features) ? f.features : []
+    const features = featuresRaw.filter(isFacetFeature)
+    if (features.length === 0) continue
+    out.push({ index: { byteStart, byteEnd }, features })
+  }
+  return out.length > 0 ? out : undefined
+}
+
 function normalize(raw: RawFeedResponse): { posts: BskyPost[]; cursor: string | null } {
   const posts: BskyPost[] = []
   for (const item of raw.feed ?? []) {
     if (!isPostRecord(item.post)) continue
+    const record = item.post.record as { text: string; createdAt: string; facets?: unknown }
     posts.push({
       uri: item.post.uri as string,
       cid: item.post.cid as string,
       record: {
-        text: (item.post.record as { text: string }).text,
-        createdAt: (item.post.record as { createdAt: string }).createdAt,
+        text: record.text,
+        createdAt: record.createdAt,
+        facets: normalizeFacets(record.facets),
       },
       author: { handle: (item.post.author as { handle: string }).handle },
     })

@@ -1439,21 +1439,9 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.news__link {
-  display: block;
+.news__article {
   padding: 12px 0;
   color: inherit;
-  text-decoration: none;
-  transition: background var(--transition-fast);
-}
-
-.news__link:hover {
-  background: var(--overlay-weak);
-}
-
-.news__link:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: -2px;
 }
 
 .news__text {
@@ -1467,11 +1455,47 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   word-break: break-word;
 }
 
-.news__time {
-  display: block;
+/* Inline facet anchors inside a post body: links, @-mentions, #tags.
+   Underlined accent so they read as clickable amongst the body text;
+   stay readable in both themes by leaning on --fg-secondary rather
+   than a fixed brand blue. */
+.news__rich-link {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-decoration-color: var(--border-medium);
+  text-underline-offset: 2px;
+  transition: text-decoration-color var(--transition-fast);
+}
+
+.news__rich-link:hover {
+  text-decoration-color: var(--fg-primary);
+}
+
+.news__rich-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* The relative-time element is the canonical "view this post on
+   Bluesky" affordance now that the card isn't wholly an anchor. */
+.news__time-link {
+  display: inline-block;
   margin-top: 6px;
   font-size: 0.75rem;
   color: var(--fg-muted);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.news__time-link:hover {
+  color: var(--fg-secondary);
+}
+
+.news__time-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .news__more {

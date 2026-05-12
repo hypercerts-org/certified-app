@@ -3,6 +3,7 @@
 import React from "react"
 import { useBskyPosts, type BskyPost } from "@/hooks/use-bsky-posts"
 import { formatRelativeTime } from "@/lib/atproto/activity"
+import RichText from "./rich-text"
 
 const HANDLE = "certified.app"
 
@@ -57,21 +58,30 @@ function NewsPost({ post }: { post: BskyPost }) {
   // The AT-URI ends in the rkey: at://<did>/app.bsky.feed.post/<rkey>.
   // Bluesky's public web link is /profile/<handle>/post/<rkey>.
   const rkey = post.uri.split("/").pop() ?? ""
-  const href = rkey
+  const permalink = rkey
     ? `https://bsky.app/profile/${encodeURIComponent(post.author.handle)}/post/${encodeURIComponent(rkey)}`
     : `https://bsky.app/profile/${encodeURIComponent(post.author.handle)}`
 
+  // We don't wrap the whole card in an anchor anymore — that would
+  // nest the facet links (URLs/mentions/tags rendered by RichText)
+  // inside an outer <a>, which is invalid HTML and breaks click
+  // routing. Instead the relative time is the explicit "view post"
+  // affordance, Twitter-style.
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="news__link"
-    >
-      <p className="news__text">{post.record.text}</p>
-      <time className="news__time" dateTime={post.record.createdAt}>
-        {formatRelativeTime(post.record.createdAt)}
-      </time>
-    </a>
+    <article className="news__article">
+      <p className="news__text">
+        <RichText text={post.record.text} facets={post.record.facets} />
+      </p>
+      <a
+        href={permalink}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="news__time-link"
+      >
+        <time dateTime={post.record.createdAt}>
+          {formatRelativeTime(post.record.createdAt)}
+        </time>
+      </a>
+    </article>
   )
 }
