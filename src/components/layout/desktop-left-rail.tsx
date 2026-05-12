@@ -14,6 +14,7 @@ import {
   ChevronDown,
   Info,
   LayoutGrid,
+  LogIn,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
@@ -282,7 +283,9 @@ export default function DesktopLeftRail() {
               type="button"
               className="left-rail__primary"
               onClick={openSignIn}
+              aria-label="Sign in"
             >
+              <LogIn size={18} strokeWidth={1.75} aria-hidden />
               <span className="left-rail__primary-label">Sign in</span>
             </button>
           </div>

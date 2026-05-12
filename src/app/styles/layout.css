@@ -1294,35 +1294,47 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   }
 }
 
-/* Logged-out sign-in card */
+/* Logged-out sign-in card. At narrow rail widths (800-1299) the card
+   chrome (padding, border, background) collapses away and the title
+   + body text are hidden, leaving just the 44×44 icon-only button so
+   the bottom slot stays usable on icon-only rail layouts. At >=1300
+   the full card returns. */
 .left-rail__signin-card {
-  display: none;
+  display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
+}
+
+.left-rail__signin-title,
+.left-rail__signin-body {
+  display: none;
+  margin: 0;
 }
 
 @media (min-width: 1300px) {
   .left-rail__signin-card {
-    display: flex;
+    padding: 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
   }
-}
 
-.left-rail__signin-title {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--fg-primary);
-  margin: 0;
-}
+  .left-rail__signin-title,
+  .left-rail__signin-body {
+    display: block;
+  }
 
-.left-rail__signin-body {
-  font-size: 0.75rem;
-  color: var(--fg-muted);
-  margin: 0;
-  line-height: 1.4;
+  .left-rail__signin-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--fg-primary);
+  }
+
+  .left-rail__signin-body {
+    font-size: 0.75rem;
+    color: var(--fg-muted);
+    line-height: 1.4;
+  }
 }
 
 /* ========== Desktop Right Rail ==========
