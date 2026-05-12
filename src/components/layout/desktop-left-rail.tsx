@@ -276,7 +276,7 @@ export default function DesktopLeftRail() {
           <div className="left-rail__signin-card">
             <p className="left-rail__signin-title">Join Certified</p>
             <p className="left-rail__signin-body">
-              Your identity and data — everywhere you go.
+              One identity. Your data. Every app in the network.
             </p>
             <button
               type="button"
