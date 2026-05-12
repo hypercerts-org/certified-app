@@ -1465,12 +1465,6 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
      two-paragraph post still reads as the author intended. */
   white-space: pre-wrap;
   word-break: break-word;
-  /* Clamp to 6 lines so the rail doesn't get dominated by one long
-     post; the deep link to bsky.app is the "read full" affordance. */
-  display: -webkit-box;
-  -webkit-line-clamp: 6;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 .news__time {
