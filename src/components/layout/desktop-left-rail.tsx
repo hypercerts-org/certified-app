@@ -165,6 +165,19 @@ export default function DesktopLeftRail() {
     ? `/profile/${encodeURIComponent(identity.handle)}`
     : "/profile";
 
+  // Brand link points at "where I currently am" — personal profile
+  // for individuals, group profile for an active-org session. The
+  // personal-handle path uses `handle` (from useSession) rather than
+  // `identity.handle`, which is the *group* handle when activeOrg is
+  // set and would otherwise send us to /profile/<group-handle>.
+  const brandHref = !isAuthenticated
+    ? "/"
+    : activeOrg
+      ? resolvePostSwitchPath(activeOrg)
+      : handle
+        ? `/profile/${encodeURIComponent(handle)}`
+        : "/profile";
+
   // Personal-only visibility (Create, Endorsements, Groups) is decided
   // by lib/groups/personal-only.ts — same source of truth used by the
   // mobile sidebar and bottom nav. Don't open-code the org check here.
@@ -198,7 +211,7 @@ export default function DesktopLeftRail() {
       className="left-rail"
       aria-label="Primary"
     >
-      <Link href="/" className="left-rail__brand" aria-label="Certified home">
+      <Link href={brandHref} className="left-rail__brand" aria-label="Certified home">
         {/* Brandmark at icon-only width (86px rail); wordmark at full
             width (≥1300px). One of the two is hidden via CSS. */}
         <span className="left-rail__brand-icon">
