@@ -1481,16 +1481,18 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 }
 
 .news__more {
+  display: block;
+  width: 100%;
   margin-top: 12px;
   padding: 8px 0;
   background: none;
   border: none;
   font: inherit;
   font-size: 0.8125rem;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--fg-muted);
   cursor: pointer;
-  text-align: left;
+  text-align: center;
   transition: color var(--transition-fast);
 }
 
