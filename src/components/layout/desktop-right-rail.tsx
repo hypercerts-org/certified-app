@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import PeopleSearch from "@/components/search/people-search";
+import NewsSection from "@/components/right-rail/news-section";
 import { useFeedback } from "@/lib/feedback-context";
 
 /**
@@ -12,10 +13,8 @@ import { useFeedback } from "@/lib/feedback-context";
  * Layout:
  *   - Sticky search bar at top (hidden on /search where the page already
  *     hosts a search UI).
- *   - "Suggested people to endorse" — empty-state until a real
- *     suggestions endpoint exists (see docs/profile-rendering/plan.md
- *     open question on data source).
- *   - "Suggested groups to join" — empty-state, same reason.
+ *   - "News" — latest Bluesky posts from @certified.app, paged via a
+ *     "More" control that hides itself when the timeline is exhausted.
  *   - Footer: inline single-line link list with · separators. Feedback
  *     opens the existing modal (not a route).
  *
@@ -34,7 +33,7 @@ export default function DesktopRightRail() {
   return (
     <aside
       className="right-rail"
-      aria-label="Suggestions and search"
+      aria-label="News and search"
     >
       {!hideSearch && (
         <div className="right-rail__search">
@@ -42,19 +41,7 @@ export default function DesktopRightRail() {
         </div>
       )}
 
-      <section className="right-rail__section" aria-labelledby="rr-people">
-        <h2 id="rr-people" className="right-rail__heading">
-          Suggested to endorse
-        </h2>
-        <p className="right-rail__empty">No suggestions yet.</p>
-      </section>
-
-      <section className="right-rail__section" aria-labelledby="rr-groups">
-        <h2 id="rr-groups" className="right-rail__heading">
-          Groups to join
-        </h2>
-        <p className="right-rail__empty">No suggestions yet.</p>
-      </section>
+      <NewsSection />
 
       <footer className="right-rail__footer">
         <Link href="/about" className="right-rail__footer-link">About</Link>
