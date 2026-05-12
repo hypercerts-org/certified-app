@@ -2,17 +2,19 @@
 
 import React, { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useOrgCreationLimit } from "@/lib/groups/use-org-limit"
+import { usePageTitle } from "@/lib/navbar-context"
 import { MAX_SELF_CREATED_ORGS } from "@/lib/groups/constants"
-import { registerGroup, putMembership, putOrgProfile, putOrgMetadata, createBskyProfile } from "@/lib/groups/api"
+import { registerGroup, RegisterGroupError, putMembership, putOrgProfile, putOrgMetadata, createBskyProfile } from "@/lib/groups/api"
 import Input from "@/components/ui/input"
 import Button from "@/components/ui/button"
 import ErrorMessage from "@/components/ui/error-message"
+import LoadingSpinner from "@/components/ui/loading-spinner"
 
 export default function CreateGroupPage() {
+  usePageTitle("New Group")
   const router = useRouter()
   const { did } = useAuth()
   const { refetchOrgs } = useOrg()
@@ -44,10 +46,6 @@ export default function CreateGroupPage() {
       setHandleError("Handle is required")
       return false
     }
-    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(value) && value.length > 1) {
-      setHandleError("Handle must be lowercase alphanumeric with hyphens")
-      return false
-    }
     if (value.length < 2) {
       setHandleError("Handle must be at least 2 characters")
       return false
@@ -56,11 +54,16 @@ export default function CreateGroupPage() {
       setHandleError("Handle must be 32 characters or fewer")
       return false
     }
+    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(value)) {
+      setHandleError("Handle must be lowercase alphanumeric with hyphens")
+      return false
+    }
     setHandleError("")
     return true
   }
 
-  const handleCreate = async () => {
+  const handleCreate = async (e?: React.FormEvent) => {
+    e?.preventDefault()
     if (!did) return
 
     const nameValid = validateName(name)
@@ -71,17 +74,14 @@ export default function CreateGroupPage() {
     setError(null)
 
     try {
-      // 1. Register the group with the group service
       const result = await registerGroup(handle, did)
 
-      // 2. Create an empty app.bsky.actor.profile for discoverability
       try {
         await createBskyProfile(result.groupDid)
       } catch {
         console.error("Failed to create Bluesky profile, continuing...")
       }
 
-      // 3. Create the org profile with the display name
       try {
         await putOrgProfile(result.groupDid, {
           displayName: name.trim(),
@@ -91,7 +91,6 @@ export default function CreateGroupPage() {
         console.error("Failed to set org profile, continuing...")
       }
 
-      // 4. Create empty group marker record
       try {
         await putOrgMetadata(result.groupDid, {
           createdAt: new Date().toISOString(),
@@ -100,17 +99,18 @@ export default function CreateGroupPage() {
         console.error("Failed to set org metadata, continuing...")
       }
 
-      // 5. Save membership record in user's own PDS
       await putMembership(did, result.groupDid, "owner")
-
-      // 6. Refresh the groups list and navigate
       await refetchOrgs()
       router.push("/groups")
     } catch (err) {
       console.error("Failed to create group:", err)
-      setError(
-        err instanceof Error ? err.message : "Failed to create group"
-      )
+      if (err instanceof RegisterGroupError && err.code === "HandleNotAvailable") {
+        setHandleError("This handle is already taken. Please choose another.")
+      } else {
+        setError(
+          err instanceof Error ? err.message : "Failed to create group"
+        )
+      }
     } finally {
       setIsCreating(false)
     }
@@ -119,16 +119,11 @@ export default function CreateGroupPage() {
   if (isChecking) {
     return (
       <div className="dashboard">
-        <div className="dashboard__topbar">
-          <h1 className="dashboard__page-title">Create Group</h1>
-          <div className="dashboard__topbar-right">
-            <button
-              className="dashboard__back-btn"
-              onClick={() => router.push("/groups")}
-            >
-              <ArrowLeft size={16} />
-              Back
-            </button>
+        <div className="dashboard__body dashboard__body--single">
+          <div className="dashboard__main">
+            <div className="org-list__loading">
+              <LoadingSpinner size="md" />
+            </div>
           </div>
         </div>
       </div>
@@ -138,18 +133,6 @@ export default function CreateGroupPage() {
   if (limitReached) {
     return (
       <div className="dashboard">
-        <div className="dashboard__topbar">
-          <h1 className="dashboard__page-title">Create Group</h1>
-          <div className="dashboard__topbar-right">
-            <button
-              className="dashboard__back-btn"
-              onClick={() => router.push("/groups")}
-            >
-              <ArrowLeft size={16} />
-              Back
-            </button>
-          </div>
-        </div>
         <div className="dashboard__body dashboard__body--single">
           <div className="dashboard__main">
             <div className="dash-card">
@@ -160,11 +143,6 @@ export default function CreateGroupPage() {
                 If you need additional groups, please contact{" "}
                 <a href="mailto:team@hypercerts.org">team@hypercerts.org</a>.
               </p>
-              <div className="org-create__actions">
-                <Button variant="ghost" onClick={() => router.push("/groups")}>
-                  Back to Groups
-                </Button>
-              </div>
             </div>
           </div>
         </div>
@@ -172,80 +150,61 @@ export default function CreateGroupPage() {
     )
   }
 
+  const isValid = name.trim().length > 0 && handle.trim().length >= 2 && !nameError && !handleError
+
   return (
     <div className="dashboard">
-      <div className="dashboard__topbar">
-        <h1 className="dashboard__page-title">Create Group</h1>
-        <div className="dashboard__topbar-right">
-          <button
-            className="dashboard__back-btn"
-            onClick={() => router.push("/groups")}
-          >
-            <ArrowLeft size={16} />
-            Back
-          </button>
-        </div>
-      </div>
-
       <div className="dashboard__body dashboard__body--single">
         <div className="dashboard__main">
-          <div className="dash-card">
-            <h2 className="dash-card__title">Group details</h2>
-            <p className="dash-card__desc">
-              Choose a name and handle for your group. The handle will be
-              used as the group&apos;s identifier on the network.
-            </p>
-
+          <form className="dash-card" onSubmit={handleCreate}>
             <div className="org-create__fields">
               <Input
                 label="Group name"
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value)
-                  validateName(e.target.value)
+                  if (nameError) validateName(e.target.value)
                 }}
+                onBlur={() => validateName(name)}
                 maxLength={64}
                 placeholder="My Group"
                 error={nameError}
+                autoFocus
               />
 
-              <Input
-                label="Handle"
-                value={handle}
-                onChange={(e) => {
-                  const v = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "")
-                  setHandle(v)
-                  validateHandle(v)
-                }}
-                maxLength={32}
-                placeholder="my-group"
-                error={handleError}
-              />
-              <p className="org-create__handle-hint">
-                Lowercase letters, numbers, and hyphens only. Will be suffixed with the PDS hostname.
-              </p>
+              <div>
+                <Input
+                  label="Handle"
+                  value={handle}
+                  onChange={(e) => {
+                    const v = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "")
+                    setHandle(v)
+                    if (handleError) validateHandle(v)
+                  }}
+                  onBlur={() => validateHandle(handle)}
+                  maxLength={32}
+                  placeholder="my-group"
+                  error={handleError}
+                />
+                <p className="org-create__handle-hint">
+                  Lowercase letters, numbers, and hyphens only. Will be suffixed with the PDS hostname.
+                </p>
+              </div>
             </div>
 
             {error && <ErrorMessage message={error} />}
 
             <div className="org-create__actions">
               <Button
-                variant="ghost"
-                onClick={() => router.push("/groups")}
-                disabled={isCreating}
-              >
-                Cancel
-              </Button>
-              <Button
+                type="submit"
                 variant="primary"
-                onClick={handleCreate}
                 loading={isCreating}
-                disabled={!name.trim() || !handle.trim() || isCreating}
+                disabled={!isValid || isCreating}
               >
-                Create Group
+                Create
               </Button>
             </div>
-          </div>
+          </form>
         </div>
       </div>
     </div>

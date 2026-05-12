@@ -17,15 +17,16 @@ const Badge: React.FC<BadgeProps> = ({
 
   const variantConfig = {
     verified: {
-      styles: "bg-[#E8F5E9] text-[#1B7A3D]",
-      icon: <CheckCircle className="h-4 w-4" />,
+      styles: "bg-[var(--badge-success-bg)] text-[var(--badge-success-fg)]",
+      icon: <CheckCircle className="h-4 w-4" aria-hidden="true" />,
     },
     pending: {
-      styles: "bg-[#FFF3E0] text-[#B37100]",
-      icon: <Clock className="h-4 w-4" />,
+      styles: "bg-[var(--badge-warning-bg)] text-[var(--badge-warning-fg)]",
+      icon: <Clock className="h-4 w-4" aria-hidden="true" />,
     },
     unverified: {
-      styles: "bg-gray-50 text-gray-400 border border-gray-200",
+      styles:
+        "bg-[var(--badge-neutral-bg)] text-[var(--badge-neutral-fg)] border border-[var(--badge-neutral-border)]",
       icon: null,
     },
   };

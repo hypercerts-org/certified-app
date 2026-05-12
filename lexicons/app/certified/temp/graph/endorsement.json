@@ -1,0 +1,27 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.temp.graph.endorsement",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Record declaring an endorsement of a subject account by the author.",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["subject", "createdAt"],
+        "properties": {
+          "subject": {
+            "type": "ref",
+            "ref": "app.certified.defs#did",
+            "description": "DID of the user or group being endorsed."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "Client-declared timestamp when this record was originally created."
+          }
+        }
+      }
+    }
+  }
+}

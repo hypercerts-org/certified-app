@@ -13,7 +13,7 @@ export default function NotFoundPage() {
         <div className="dashboard__main">
           <div className="dash-card">
             <p className="dash-card__desc">The page you&apos;re looking for doesn&apos;t exist.</p>
-            <Link href="/welcome" className="dashboard__back-btn">
+            <Link href="/" className="dashboard__back-btn">
               Go home
             </Link>
           </div>

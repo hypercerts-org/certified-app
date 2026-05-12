@@ -6,6 +6,7 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useMemo,
 } from "react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { resolveGroups } from "./api"
@@ -127,10 +128,10 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     await fetchOrgs()
   }, [fetchOrgs])
 
+  const value = useMemo(() => ({ activeOrg, groups, isLoading, switchOrg, refetchOrgs }), [activeOrg, groups, isLoading, switchOrg, refetchOrgs])
+
   return (
-    <OrgContext.Provider
-      value={{ activeOrg, groups, isLoading, switchOrg, refetchOrgs }}
-    >
+    <OrgContext.Provider value={value}>
       {children}
     </OrgContext.Provider>
   )

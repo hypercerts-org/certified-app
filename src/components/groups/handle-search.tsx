@@ -40,8 +40,15 @@ export default function HandleSearch({
   const [isSearching, setIsSearching] = useState(false)
   // Holds a resolved DID result shown in the dropdown, waiting for user confirmation
   const [resolvedDid, setResolvedDid] = useState<Actor | null>(null)
+  const [focusedIndex, setFocusedIndex] = useState(-1)
+  const [searchError, setSearchError] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null)
+
+  // Reset focused index when results change
+  useEffect(() => {
+    setFocusedIndex(-1)
+  }, [results, resolvedDid])
 
   const search = useCallback(async (q: string) => {
     const trimmed = q.trim()
@@ -87,20 +94,32 @@ export default function HandleSearch({
       return
     }
 
-    // Regular handle search
+    // Regular handle search — /api/search-actors is unauthenticated, use
+    // plain fetch so a transient upstream 4xx doesn't trip the global
+    // authFetch onUnauthorized -> sign-out interceptor.
     setResolvedDid(null)
+    setSearchError(null)
     setIsSearching(true)
     try {
-      const res = await authFetch(
-        `/api/search-actors?q=${encodeURIComponent(trimmed)}&limit=8`
+      const res = await fetch(
+        `/api/search-actors?q=${encodeURIComponent(trimmed)}&limit=8`,
+        { headers: { Accept: "application/json" } }
       )
       if (res.ok) {
-        const data = await res.json()
-        setResults(data.actors || [])
-        setIsOpen(data.actors?.length > 0)
+        const data = (await res.json()) as { actors?: Actor[] }
+        const actors = data.actors ?? []
+        setResults(actors)
+        setIsOpen(actors.length > 0)
+      } else if (res.status >= 500) {
+        // Backend is degraded — surface a hint so the user doesn't think
+        // their handle is wrong.
+        setSearchError("Search backend is having trouble. Try again in a moment.")
+        setIsOpen(true)
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[handle-search] fetch failed:", err)
+      }
     } finally {
       setIsSearching(false)
     }
@@ -125,7 +144,9 @@ export default function HandleSearch({
   useEffect(() => {
     if (!isOpen) return
     const handleClick = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target
+      if (!(target instanceof Node)) return
+      if (containerRef.current && !containerRef.current.contains(target)) {
         setIsOpen(false)
       }
     }
@@ -141,9 +162,26 @@ export default function HandleSearch({
     onSelect(actor.did, actor.handle)
   }
 
+  const allResults = resolvedDid ? [resolvedDid] : results
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === "ArrowDown") {
       e.preventDefault()
+      if (!isOpen || allResults.length === 0) return
+      setFocusedIndex((prev) => (prev + 1) % allResults.length)
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault()
+      if (!isOpen || allResults.length === 0) return
+      setFocusedIndex((prev) => (prev <= 0 ? allResults.length - 1 : prev - 1))
+    } else if (e.key === "Escape") {
+      setIsOpen(false)
+      setFocusedIndex(-1)
+    } else if (e.key === "Enter") {
+      e.preventDefault()
+      if (focusedIndex >= 0 && focusedIndex < allResults.length) {
+        handleSelectActor(allResults[focusedIndex])
+        return
+      }
       // If there's a resolved DID waiting, select it
       if (resolvedDid) {
         handleSelectActor(resolvedDid)
@@ -156,8 +194,6 @@ export default function HandleSearch({
       }
     }
   }
-
-  const allResults = resolvedDid ? [resolvedDid] : results
 
   return (
     <div className="handle-search" ref={containerRef}>
@@ -173,19 +209,32 @@ export default function HandleSearch({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           aria-label={label || "Search for user"}
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-controls="handle-search-listbox"
+          aria-autocomplete="list"
+          aria-activedescendant={focusedIndex >= 0 ? `handle-option-${focusedIndex}` : undefined}
         />
         {isSearching && (
           <span className="handle-search__spinner" />
         )}
       </div>
-      {isOpen && allResults.length > 0 && (
-        <div className="handle-search__dropdown">
-          {allResults.map((actor) => (
+      {isOpen && searchError && (
+        <div className="handle-search__dropdown" role="status">
+          <p className="handle-search__error">{searchError}</p>
+        </div>
+      )}
+      {isOpen && !searchError && allResults.length > 0 && (
+        <div className="handle-search__dropdown" role="listbox" id="handle-search-listbox">
+          {allResults.map((actor, index) => (
             <button
               key={actor.did}
-              className="handle-search__item"
+              className={`handle-search__item${index === focusedIndex ? " handle-search__item--focused" : ""}`}
               onClick={() => handleSelectActor(actor)}
               type="button"
+              role="option"
+              id={`handle-option-${index}`}
+              aria-selected={index === focusedIndex}
             >
               <Avatar
                 size="sm"

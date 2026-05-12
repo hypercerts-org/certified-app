@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getAuthenticatedAgent } from "@/lib/groups/proxy-agent"
 import { GROUP_SERVICE, GROUP_SERVICE_DID } from "@/lib/groups/constants"
+import { extractRouteError } from "@/lib/utils/api"
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,10 +20,8 @@ export async function GET(request: NextRequest) {
     const limitParam = searchParams.get("limit")
     const cursor = searchParams.get("cursor")
 
-    const limit = Math.min(
-      limitParam !== null ? parseInt(limitParam, 10) : 100,
-      100
-    )
+    const rawLimit = limitParam !== null ? parseInt(limitParam, 10) : 100
+    const limit = isNaN(rawLimit) ? 100 : Math.min(Math.max(1, rawLimit), 100)
 
     // Build URL with query params
     const url = new URL(`${GROUP_SERVICE}/xrpc/app.certified.groups.membership.list`)
@@ -39,6 +38,12 @@ export async function GET(request: NextRequest) {
     })
 
     if (!res.ok) {
+      if (res.status >= 500) {
+        return NextResponse.json(
+          { error: "Failed to list memberships" },
+          { status: 502 }
+        )
+      }
       const data = await res.json().catch(() => ({}))
       return NextResponse.json(
         { error: (data as { message?: string }).message || `Request failed: ${res.status}` },
@@ -49,10 +54,7 @@ export async function GET(request: NextRequest) {
     const result = await res.json()
     return NextResponse.json(result)
   } catch (err: unknown) {
-    const error = err as { message?: string }
-    return NextResponse.json(
-      { error: error?.message || "Internal server error" },
-      { status: 500 }
-    )
+    const { status, message } = extractRouteError(err)
+    return NextResponse.json({ error: message }, { status })
   }
 }

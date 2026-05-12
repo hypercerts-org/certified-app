@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import Brandmark from "@/components/ui/brandmark"
 
 export default function OAuthCallbackPage() {
   const [error, setError] = useState<string | null>(null)
@@ -46,10 +47,10 @@ export default function OAuthCallbackPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--color-off-white)]">
-        <div className="text-center">
-          <p className="text-sm text-error mb-4 font-mono">{error}</p>
-          <Link href="/" className="text-sm text-accent font-mono hover:text-deep transition-colors duration-150">
+      <div className="loading-screen">
+        <div className="loading-screen__inner">
+          <p className="loading-screen__error">{error}</p>
+          <Link href="/" className="loading-screen__link">
             Return to home
           </Link>
         </div>
@@ -60,12 +61,7 @@ export default function OAuthCallbackPage() {
   return (
     <div className="loading-screen">
       <div className="loading-screen__inner">
-        <img
-          src="/assets/certified_brandmark_black.svg"
-          alt="Certified"
-          className="loading-screen__logo"
-        />
-        <p className="mt-6 text-sm text-black/30 font-mono">Completing sign in...</p>
+        <Brandmark title="Certified" className="loading-screen__logo" />
       </div>
     </div>
   )

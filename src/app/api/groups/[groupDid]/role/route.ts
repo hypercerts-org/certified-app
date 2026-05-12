@@ -4,6 +4,8 @@ import {
   createGroupAgent,
 } from "@/lib/groups/proxy-agent"
 import { checkCsrf } from "@/lib/auth/csrf"
+import { isValidDid } from "@/lib/utils/did"
+import { extractRouteError, parseJsonBody } from "@/lib/utils/api"
 
 /**
  * PUT /api/groups/[groupDid]/role
@@ -18,14 +20,21 @@ export async function PUT(
 
   try {
     const { groupDid } = await params
+    if (!isValidDid(groupDid)) {
+      return NextResponse.json({ error: "Invalid group DID" }, { status: 400 })
+    }
     const auth = await getAuthenticatedAgent()
     if (!auth)
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
 
-    const body = await request.json()
-    const { memberDid, role } = body as { memberDid: string; role: string }
+    const parsed = await parseJsonBody(request, "[groups/role]")
+    if (!parsed.ok) return parsed.response
+    const { memberDid, role } = (parsed.body ?? {}) as {
+      memberDid?: string
+      role?: string
+    }
 
-    if (!memberDid || !role) {
+    if (!memberDid || !isValidDid(memberDid) || !role) {
       return NextResponse.json(
         { error: "memberDid and role are required" },
         { status: 400 }
@@ -49,10 +58,7 @@ export async function PUT(
 
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
-    const error = err as { status?: number; message?: string }
-    return NextResponse.json(
-      { error: error?.message || "Internal server error" },
-      { status: error?.status || 500 }
-    )
+    const { status, message } = extractRouteError(err)
+    return NextResponse.json({ error: message }, { status })
   }
 }

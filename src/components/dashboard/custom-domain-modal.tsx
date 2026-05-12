@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Globe, Copy, Check, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { authFetch } from "@/lib/auth/fetch";
 import { clearSessionCache } from "@/hooks/use-session";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 
 interface CustomDomainModalProps {
   isOpen: boolean;
@@ -16,6 +18,16 @@ type Step = "enter-domain" | "dns-setup" | "verify";
 export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomainModalProps) {
   const backdropRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear any pending reload timer if the modal unmounts before it fires
+  // (e.g., user closes the success state too fast).
+  useEffect(() => {
+    return () => {
+      if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+    };
+  }, []);
+  const modalRef = useFocusTrap<HTMLDivElement>(isOpen);
 
   const [step, setStep] = useState<Step>("enter-domain");
   const [domain, setDomain] = useState("");
@@ -48,14 +60,7 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
   }, [isOpen, onClose]);
 
   // Prevent body scroll
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => { document.body.style.overflow = ""; };
-  }, [isOpen]);
+  useBodyScrollLock(isOpen);
 
   const cleanDomain = useCallback((input: string) => {
     let d = input.trim().toLowerCase();
@@ -116,7 +121,7 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
       clearSessionCache();
 
       // Reload after a brief moment so the user sees the success state
-      setTimeout(() => {
+      reloadTimerRef.current = setTimeout(() => {
         window.location.reload();
       }, 1500);
     } catch (err) {
@@ -140,7 +145,7 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
       aria-modal="true"
       aria-label="Use your own domain as your username"
     >
-      <div className="domain-modal">
+      <div className="domain-modal" ref={modalRef}>
         {/* Header */}
         <div className="domain-modal__header">
           <Globe size={18} className="domain-modal__header-icon" />
@@ -277,7 +282,7 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
                   onClick={() => { setVerifyError(null); setStep("verify"); }}
                   type="button"
                 >
-                  I've added the DNS record
+                  I&apos;ve added the DNS record
                 </button>
               </div>
             </>
@@ -296,7 +301,7 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
               ) : (
                 <>
                   <p className="domain-modal__desc">
-                    We'll check that <strong>{domain}</strong> has the correct DNS record pointing to your identity.
+                    We&apos;ll check that <strong>{domain}</strong> has the correct DNS record pointing to your identity.
                   </p>
 
                   <div className="domain-modal__verify-summary">

@@ -4,6 +4,10 @@ import {
   createGroupAgent,
 } from "@/lib/groups/proxy-agent"
 import { checkCsrf } from "@/lib/auth/csrf"
+import { isValidDid } from "@/lib/utils/did"
+import { extractRouteError, parseJsonBody } from "@/lib/utils/api"
+import { invalidateDidDoc } from "@/lib/atproto/did"
+import { logSafe } from "@/lib/utils/log-safe"
 
 /**
  * PUT /api/groups/[groupDid]/handle
@@ -18,15 +22,24 @@ export async function PUT(
 
   try {
     const { groupDid } = await params
+    if (!isValidDid(groupDid)) {
+      return NextResponse.json({ error: "Invalid group DID" }, { status: 400 })
+    }
     const auth = await getAuthenticatedAgent()
     if (!auth)
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
 
-    const body = await request.json()
-    const { handle } = body as { handle: string }
+    const parsed = await parseJsonBody(request, "[groups/handle]")
+    if (!parsed.ok) return parsed.response
+    const { handle } = (parsed.body ?? {}) as { handle?: string }
 
     if (!handle?.trim()) {
       return NextResponse.json({ error: "Handle is required" }, { status: 400 })
+    }
+
+    // AT Protocol handles are max 253 chars (DNS hostname limit)
+    if (handle.trim().length > 253) {
+      return NextResponse.json({ error: "Handle too long (max 253 characters)" }, { status: 400 })
     }
 
     const groupAgent = createGroupAgent(auth.agent, groupDid)
@@ -37,13 +50,15 @@ export async function PUT(
       handle: handle.trim(),
     })
 
+    // The group's DID document just changed (alsoKnownAs was rewritten).
+    // Evict our process-local cache so subsequent resolveHandle(groupDid)
+    // calls see the new handle instead of the stale one.
+    invalidateDidDoc(groupDid)
+
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
-    console.error("Update org handle error:", err)
-    const error = err as { status?: number; message?: string }
-    return NextResponse.json(
-      { error: error?.message || "Failed to update handle" },
-      { status: error?.status || 500 }
-    )
+    logSafe("[groups/handle] update failed", err)
+    const { status, message } = extractRouteError(err)
+    return NextResponse.json({ error: message }, { status })
   }
 }

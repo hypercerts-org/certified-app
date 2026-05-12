@@ -123,7 +123,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
 
       {/* Error message */}
       {error && (
-        <p className="text-caption text-red-600 text-center max-w-xs">
+        <p role="alert" className="text-caption text-[var(--color-error)] text-center max-w-xs">
           {error}
         </p>
       )}

@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback } from "react"
 import { useOrg } from "@/lib/groups/org-context"
 import { getOrgProfile, getOrgMetadata } from "@/lib/groups/api"
 import { resolvePdsUrl } from "@/lib/atproto/did"
+import { DEFAULT_PDS_URL } from "@/lib/utils/config"
 import { getAvatarUrl, getBannerUrl } from "@/lib/atproto/profile"
 import type { OrgProfile, GroupMetadata } from "@/lib/groups/types"
-import type { CertifiedProfile } from "@/lib/atproto/types"
 
 export function useOrgProfile(): {
   orgProfile: OrgProfile | null
@@ -64,12 +64,12 @@ export function useOrgProfile(): {
   }, [fetchData])
 
   // Compute avatar/banner URLs using the org's PDS
-  const effectivePdsUrl = pdsUrl || "https://certified.one"
+  const effectivePdsUrl = pdsUrl || DEFAULT_PDS_URL
   const orgAvatarUrl = orgProfile && activeOrg
-    ? getAvatarUrl(orgProfile as CertifiedProfile, activeOrg.groupDid, effectivePdsUrl)
+    ? getAvatarUrl(orgProfile, activeOrg.groupDid, effectivePdsUrl)
     : null
   const orgBannerUrl = orgProfile && activeOrg
-    ? getBannerUrl(orgProfile as CertifiedProfile, activeOrg.groupDid, effectivePdsUrl)
+    ? getBannerUrl(orgProfile, activeOrg.groupDid, effectivePdsUrl)
     : null
 
   return { orgProfile, orgMetadata, orgAvatarUrl, orgBannerUrl, isLoading, refetch: fetchData }

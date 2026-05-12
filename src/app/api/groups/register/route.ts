@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { getAuthenticatedAgent, getServiceAuthToken, createGroupAgent } from "@/lib/groups/proxy-agent"
 import { GROUP_SERVICE, GROUP_SERVICE_DID, MAX_SELF_CREATED_ORGS } from "@/lib/groups/constants"
 import { checkCsrf } from "@/lib/auth/csrf"
-import { extractError } from "@/lib/utils/api"
+import { extractRouteError, parseJsonBody } from "@/lib/utils/api"
+import { logSafe } from "@/lib/utils/log-safe"
 
 export async function POST(request: NextRequest) {
   const csrfError = checkCsrf(request)
@@ -13,16 +14,25 @@ export async function POST(request: NextRequest) {
     if (!auth)
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
 
-    const body = await request.json()
-    const { handle, ownerDid, email } = body as {
-      handle: string
-      ownerDid: string
+    const parsed = await parseJsonBody(request, "[groups/register]")
+    if (!parsed.ok) return parsed.response
+    const { handle, ownerDid, email } = (parsed.body ?? {}) as {
+      handle?: string
+      ownerDid?: string
       email?: string
     }
 
     if (!handle || !ownerDid) {
       return NextResponse.json(
         { error: "handle and ownerDid are required" },
+        { status: 400 }
+      )
+    }
+
+    // AT Protocol handles are max 253 chars (DNS hostname limit)
+    if (handle.length > 253) {
+      return NextResponse.json(
+        { error: "Handle too long (max 253 characters)" },
         { status: 400 }
       )
     }
@@ -63,32 +73,39 @@ export async function POST(request: NextRequest) {
       } while (cursor)
 
       // For each group, check if the user's member entry has addedBy === ownerDid
-      const results = await Promise.all(
-        allGroups.map(async (g) => {
-          try {
-            const groupAgent = createGroupAgent(auth.agent, g.groupDid)
-            const allMembers: { did: string; addedBy: string }[] = []
-            let memberCursor: string | undefined
-            do {
-              const params: Record<string, unknown> = { limit: 100 }
-              if (memberCursor) params.cursor = memberCursor
-              const { data } = await groupAgent.call(
-                "app.certified.group.member.list",
-                params
+      // Process in batches of 5 with early exit once the limit is reached
+      let selfCreatedCount = 0
+      const BATCH_SIZE = 5
+      for (let i = 0; i < allGroups.length; i += BATCH_SIZE) {
+        if (selfCreatedCount >= MAX_SELF_CREATED_ORGS) break
+        const batch = allGroups.slice(i, i + BATCH_SIZE)
+        const results = await Promise.all(
+          batch.map(async (g) => {
+            try {
+              const groupAgent = createGroupAgent(auth.agent, g.groupDid)
+              const allMembers: { did: string; addedBy: string }[] = []
+              let memberCursor: string | undefined
+              do {
+                const params: Record<string, unknown> = { limit: 100 }
+                if (memberCursor) params.cursor = memberCursor
+                const { data } = await groupAgent.call(
+                  "app.certified.group.member.list",
+                  params
+                )
+                const page = data as { members?: { did: string; addedBy: string }[]; cursor?: string }
+                allMembers.push(...(page.members || []))
+                memberCursor = page.cursor
+              } while (memberCursor)
+              return allMembers.some(
+                (m) => m.did === ownerDid && m.addedBy === ownerDid
               )
-              const page = data as { members?: { did: string; addedBy: string }[]; cursor?: string }
-              allMembers.push(...(page.members || []))
-              memberCursor = page.cursor
-            } while (memberCursor)
-            return allMembers.some(
-              (m) => m.did === ownerDid && m.addedBy === ownerDid
-            )
-          } catch {
-            return false
-          }
-        })
-      )
-      const selfCreatedCount = results.filter(Boolean).length
+            } catch {
+              return false
+            }
+          })
+        )
+        selfCreatedCount += results.filter(Boolean).length
+      }
 
       if (selfCreatedCount >= MAX_SELF_CREATED_ORGS) {
         return NextResponse.json(
@@ -131,8 +148,23 @@ export async function POST(request: NextRequest) {
           { status: 502 }
         )
       }
+      // Forward structured XRPC errors so the client can handle specific
+      // codes like HandleNotAvailable as field-level errors.
+      let errorCode: string | undefined
+      let errorMessage = `Registration failed: ${res.status}`
+      try {
+        const data = await res.json() as { error?: string; message?: string }
+        if (typeof data.error === "string") errorCode = data.error
+        if (typeof data.message === "string") errorMessage = data.message
+        else if (errorCode) errorMessage = errorCode
+      } catch (err) {
+        // Upstream returned a 4xx but the body wasn't JSON. Logging this
+        // is useful because it usually points at the group service
+        // returning HTML (e.g. an upstream proxy 502 wrapped as 4xx).
+        logSafe("[groups/register] upstream non-JSON 4xx body", err, { status: res.status })
+      }
       return NextResponse.json(
-        { error: await extractError(res, `Registration failed: ${res.status}`) },
+        { error: errorMessage, code: errorCode },
         { status: res.status }
       )
     }
@@ -140,10 +172,7 @@ export async function POST(request: NextRequest) {
     const result = await res.json()
     return NextResponse.json(result)
   } catch (err: unknown) {
-    const error = err as { message?: string }
-    return NextResponse.json(
-      { error: error?.message || "Internal server error" },
-      { status: 500 }
-    )
+    const { status, message } = extractRouteError(err)
+    return NextResponse.json({ error: message }, { status })
   }
 }

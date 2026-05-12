@@ -2,6 +2,7 @@ import { Agent } from "@atproto/api"
 import type { LexiconDoc } from "@atproto/lexicon"
 import { getOAuthClient } from "@/lib/auth/oauth-client"
 import { getSessionDid, deleteSession } from "@/lib/auth/session"
+import { getServiceAuthToken as mintServiceAuthToken } from "@/lib/atproto/service-auth"
 import { GROUP_SERVICE_DID } from "./constants"
 
 /**
@@ -190,9 +191,5 @@ export async function getServiceAuthToken(
   agent: Agent,
   lxm: string
 ): Promise<string> {
-  const { data } = await agent.com.atproto.server.getServiceAuth({
-    aud: GROUP_SERVICE_DID,
-    lxm,
-  })
-  return data.token
+  return mintServiceAuthToken(agent, GROUP_SERVICE_DID, lxm)
 }

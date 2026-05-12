@@ -5,6 +5,7 @@ import { Pencil, Globe, AtSign } from "lucide-react";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import { authFetch } from "@/lib/auth/fetch";
+import { DEFAULT_PDS_URL } from "@/lib/utils/config";
 import { clearSessionCache } from "@/hooks/use-session";
 import CustomDomainModal from "@/components/dashboard/custom-domain-modal";
 
@@ -27,9 +28,8 @@ function getPdsHostname(pdsUrl?: string, handle?: string | null): string {
     return handle.slice(handle.indexOf(".") + 1);
   }
   // Fallback to env
-  const url = process.env.NEXT_PUBLIC_PDS_URL || "https://certified.one";
   try {
-    return new URL(url).hostname;
+    return new URL(DEFAULT_PDS_URL).hostname;
   } catch {
     return "certified.one";
   }
@@ -46,7 +46,10 @@ function isOurHandle(handle: string | null, pdsUrl?: string): boolean {
   // If handle has a dot, it's a subdomain-style handle (not a custom domain like alice.com)
   // Consider it "ours" if it has 2+ dots (prefix.pds.host.tld)
   if (handle.split(".").length >= 3) return true;
-  return handle.endsWith(".certified.app");
+  // Legacy fallbacks for handles that pre-date a configured pdsUrl. Includes
+  // .certs.social (the old domain) so users migrating accounts retain the
+  // "you can manage this" experience.
+  return handle.endsWith(".certified.app") || handle.endsWith(".certs.social");
 }
 
 export default function UsernameCard({ handle, pdsUrl, did, groupDid }: UsernameCardProps) {
@@ -59,8 +62,8 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
   const [error, setError] = useState<string | null>(null);
   const [isDomainModalOpen, setIsDomainModalOpen] = useState(false);
 
-  // "subdomain" mode: choosing a certified username (username.pdsHostname)
-  const [isChoosingCertified, setIsChoosingCertified] = useState(false);
+  // "subdomain" mode: choosing a certs username (username.pdsHostname)
+  const [isChoosingCertified, setIsChoosingCerts] = useState(false);
   const [subdomainValue, setSubdomainValue] = useState("");
 
   const handleEdit = () => {
@@ -71,19 +74,19 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
     setNewHandle(currentPrefix);
     setError(null);
     setIsEditing(true);
-    setIsChoosingCertified(false);
+    setIsChoosingCerts(false);
   };
 
   const handleStartCertified = () => {
     setSubdomainValue("");
     setError(null);
-    setIsChoosingCertified(true);
+    setIsChoosingCerts(true);
     setIsEditing(false);
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    setIsChoosingCertified(false);
+    setIsChoosingCerts(false);
     setError(null);
   };
 
@@ -186,7 +189,7 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
             )}
           </div>
 
-          {/* Inline edit for certified handle */}
+          {/* Inline edit for certs handle */}
           {isEditing && (
             <div className="username-card__form">
               <label className="username-card__form-label" htmlFor="username-input">{groupDid ? "Handle" : "Username"}</label>
@@ -217,13 +220,13 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
             </div>
           )}
 
-          {/* Subdomain picker for switching back to certified */}
+          {/* Subdomain picker for switching back to certs */}
           {isChoosingCertified && (
             <div className="username-card__form">
-              <label className="username-card__form-label" htmlFor="certified-username-input">Choose a Certified username</label>
+              <label className="username-card__form-label" htmlFor="certs-username-input">Choose a Certified username</label>
               <div className="username-card__subdomain-row">
                 <input
-                  id="certified-username-input"
+                  id="certs-username-input"
                   type="text"
                   className="username-card__subdomain-input"
                   value={subdomainValue}

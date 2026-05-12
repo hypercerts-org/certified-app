@@ -13,15 +13,15 @@ import {
 import type { Group, OrgMember, AuditEntry, OrgRole } from "@/lib/groups/types"
 import { authFetch } from "@/lib/auth/fetch"
 import Button from "@/components/ui/button"
+import ConfirmDialog from "@/components/ui/confirm-dialog"
 import HandleSearch from "@/components/groups/handle-search"
-
+import ErrorMessage from "@/components/ui/error-message"
+import LoadingSpinner from "@/components/ui/loading-spinner"
 
 interface ResolvedMember extends OrgMember {
   handle?: string
   displayName?: string
 }
-import ErrorMessage from "@/components/ui/error-message"
-import LoadingSpinner from "@/components/ui/loading-spinner"
 
 interface OrgSettingsProps {
   groupDid: string
@@ -40,6 +40,9 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   const [membersPage, setMembersPage] = useState(0)
   const MEMBERS_PER_PAGE = 5
 
+  // Remove confirmation
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
+
   // Add member form
   const [pendingMembers, setPendingMembers] = useState<{ did: string; handle: string }[]>([])
   const [newMemberRole, setNewMemberRole] = useState<OrgRole>("member")
@@ -49,6 +52,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   // Audit log
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([])
   const [auditLoading, setAuditLoading] = useState(true)
+  const [auditError, setAuditError] = useState<string | null>(null)
   const [auditPage, setAuditPage] = useState(0)
   const AUDIT_PER_PAGE = 20
 
@@ -101,10 +105,15 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
       if (!isAdmin) return
       try {
         setAuditLoading(true)
+        setAuditError(null)
         const entries = await queryOrgAuditLog(groupDid, {}, signal)
         if (!signal?.aborted) setAuditEntries(entries)
-      } catch {
-        // ignore
+      } catch (err) {
+        // Surface the failure so admins notice when the log can't load,
+        // instead of silently seeing "No activity recorded yet."
+        if (signal?.aborted) return
+        const message = err instanceof Error ? err.message : "Couldn't load activity log"
+        setAuditError(message)
       } finally {
         if (!signal?.aborted) setAuditLoading(false)
       }
@@ -142,14 +151,15 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   }
 
   const handleRemoveMember = async (memberDid: string) => {
-    if (!confirm("Remove this member?")) return
     try {
       await removeOrgMember(groupDid, memberDid)
+      setConfirmRemove(null)
       await Promise.all([fetchMembers(), fetchAudit()])
     } catch (err) {
       setMemberError(
         err instanceof Error ? err.message : "Failed to remove member"
       )
+      setConfirmRemove(null)
     }
   }
 
@@ -166,10 +176,6 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
 
   return (
     <div className="dashboard">
-      <div className="dashboard__topbar">
-        <h1 className="dashboard__page-title">Settings</h1>
-      </div>
-
       <div className="dashboard__body dashboard__body--single">
         <div className="dashboard__main">
           {/* Handle section (read-only — group service doesn't support handle changes after registration) */}
@@ -207,37 +213,36 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                         </p>
                         <p className="org-members__item-did">{member.did}</p>
                       </div>
-
-                      {isOwner ? (
-                        <div className="org-members__item-role-select">
-                          <select
-                            value={member.role}
-                            onChange={(e) =>
-                              handleRoleChange(member.did, e.target.value as OrgRole)
-                            }
-                            className="org-members__role-dropdown"
+                      <div className="org-members__item-actions">
+                        {isOwner && member.role !== "owner" ? (
+                          <div className="org-members__item-role-select">
+                            <select
+                              value={member.role}
+                              onChange={(e) =>
+                                handleRoleChange(member.did, e.target.value as OrgRole)
+                              }
+                              className="org-members__role-dropdown"
+                            >
+                              <option value="member">Member</option>
+                              <option value="admin">Admin</option>
+                            </select>
+                            <ChevronDown size={14} className="org-members__role-icon" />
+                          </div>
+                        ) : (
+                          <span className="org-members__item-role-badge">
+                            {member.role}
+                          </span>
+                        )}
+                        {isAdmin && member.did !== did && member.role !== "owner" && (
+                          <button
+                            className="org-members__remove-btn"
+                            onClick={() => setConfirmRemove(member.did)}
+                            title="Remove member"
                           >
-                            <option value="member">Member</option>
-                            <option value="admin">Admin</option>
-                            <option value="owner">Owner</option>
-                          </select>
-                          <ChevronDown size={14} className="org-members__role-icon" />
-                        </div>
-                      ) : (
-                        <span className="org-members__item-role-badge">
-                          {member.role}
-                        </span>
-                      )}
-
-                      {isAdmin && member.did !== did && (
-                        <button
-                          className="org-members__remove-btn"
-                          onClick={() => handleRemoveMember(member.did)}
-                          title="Remove member"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -269,22 +274,20 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                 {isAdmin && (
                   <div className="org-members__add">
                     <h3 className="org-members__add-title">Add member</h3>
-                    <div className="org-members__add-form">
-                      <HandleSearch
-                        label=""
-                        placeholder="DID or username"
-                        onSelect={(selectedDid, selectedHandle) => {
-                          if (!pendingMembers.some((m) => m.did === selectedDid)) {
-                            setPendingMembers((prev) => [...prev, { did: selectedDid, handle: selectedHandle }])
-                          }
-                        }}
-                      />
-                      {pendingMembers.length > 0 && (
+                    <HandleSearch
+                      label=""
+                      placeholder="Search by handle or DID"
+                      onSelect={(selectedDid, selectedHandle) => {
+                        if (!pendingMembers.some((m) => m.did === selectedDid)) {
+                          setPendingMembers((prev) => [...prev, { did: selectedDid, handle: selectedHandle }])
+                        }
+                      }}
+                    />
+                    {pendingMembers.length > 0 && (
+                      <>
                         <div className="org-members__selected">
-                          <span className="org-members__selected-label">Selected:</span>
-                          {pendingMembers.map((m, i) => (
+                          {pendingMembers.map((m) => (
                             <span key={m.did} className="org-members__selected-tag">
-                              {i > 0 && ", "}
                               @{m.handle}
                               <button
                                 type="button"
@@ -297,30 +300,30 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                             </span>
                           ))}
                         </div>
-                      )}
-                      <div className="org-members__add-role">
-                        <label className="org-members__add-role-label">Role</label>
-                        <select
-                          value={newMemberRole}
-                          onChange={(e) => setNewMemberRole(e.target.value as OrgRole)}
-                          className="org-members__role-dropdown"
-                        >
-                          <option value="member">Member</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                      </div>
-                      {addError && <ErrorMessage message={addError} />}
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={handleAddMembers}
-                        loading={isAdding}
-                        disabled={pendingMembers.length === 0 || isAdding}
-                      >
-                        <UserPlus size={14} />
-                        Add Member
-                      </Button>
-                    </div>
+                        {addError && <ErrorMessage message={addError} />}
+                        <div className="org-members__add-submit">
+                          <span className="org-members__add-submit-label">Add as</span>
+                          <select
+                            value={newMemberRole}
+                            onChange={(e) => setNewMemberRole(e.target.value as OrgRole)}
+                            className="org-members__role-dropdown"
+                          >
+                            <option value="member">Member</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={handleAddMembers}
+                            loading={isAdding}
+                            disabled={isAdding}
+                          >
+                            <UserPlus size={14} />
+                            Add
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </>
@@ -340,6 +343,10 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
               <div className="org-audit__loading">
                 <LoadingSpinner size="sm" />
               </div>
+            ) : auditError ? (
+              <p className="settings__error" role="alert">
+                Couldn&apos;t load the activity log: {auditError}
+              </p>
             ) : auditEntries.length === 0 ? (
               <p className="settings__note">No activity recorded yet.</p>
             ) : (
@@ -351,40 +358,52 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                       <div key={entry.id} className="org-audit__item">
                         <div className="org-audit__item-main">
                           <span className="org-audit__action">{entry.action}</span>
-                          <span
-                            className={`org-audit__result org-audit__result--${entry.result}`}
-                          >
-                            {entry.result}
-                          </span>
-                        </div>
-                        <div className="org-audit__item-meta">
-                          <span className="org-audit__actor">
-                            {entry.actorDid}
-                          </span>
-                          <span className="org-audit__time">
-                            {new Date(entry.createdAt).toLocaleString()}
-                          </span>
-                        </div>
-                        {(entry.collection || entry.rkey || (entry.detail && Object.keys(entry.detail).length > 0)) && (
-                          <div className="org-audit__detail">
-                            {entry.collection && (
-                              <span className="org-audit__detail-item">
-                                collection: {entry.collection}
+                          {(() => {
+                            const safeResult = ["success", "failure", "error"].includes(entry.result) ? entry.result : "unknown"
+                            return (
+                              <span
+                                className={`org-audit__result org-audit__result--${safeResult}`}
+                              >
+                                {entry.result}
                               </span>
+                            )
+                          })()}
+                        </div>
+                        <dl className="org-audit__item-meta">
+                          <div className="org-audit__detail-row">
+                            <dt className="org-audit__detail-label">by</dt>
+                            <dd className="org-audit__detail-value">{entry.actorDid}</dd>
+                          </div>
+                          <div className="org-audit__detail-row">
+                            <dt className="org-audit__detail-label">at</dt>
+                            <dd className="org-audit__detail-value">{new Date(entry.createdAt).toLocaleString()}</dd>
+                          </div>
+                        </dl>
+                        {(entry.collection || entry.rkey || (entry.detail && Object.keys(entry.detail).length > 0)) && (
+                          <dl className="org-audit__detail">
+                            {entry.collection && (
+                              <div className="org-audit__detail-row">
+                                <dt className="org-audit__detail-label">collection</dt>
+                                <dd className="org-audit__detail-value">{entry.collection}</dd>
+                              </div>
                             )}
                             {entry.rkey && (
-                              <span className="org-audit__detail-item">
-                                rkey: {entry.rkey}
-                              </span>
+                              <div className="org-audit__detail-row">
+                                <dt className="org-audit__detail-label">rkey</dt>
+                                <dd className="org-audit__detail-value">{entry.rkey}</dd>
+                              </div>
                             )}
                             {entry.detail && Object.entries(entry.detail)
                               .filter(([key]) => key !== "collection" && key !== "rkey")
                               .map(([key, value]) => (
-                              <span key={key} className="org-audit__detail-item">
-                                {key}: {typeof value === "object" ? JSON.stringify(value) : String(value)}
-                              </span>
+                              <div key={key} className="org-audit__detail-row">
+                                <dt className="org-audit__detail-label">{key}</dt>
+                                <dd className="org-audit__detail-value">
+                                  {typeof value === "object" ? JSON.stringify(value) : String(value)}
+                                </dd>
+                              </div>
                             ))}
-                          </div>
+                          </dl>
                         )}
                       </div>
                     ))}
@@ -417,6 +436,16 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
             </div>
         </div>
       </div>
+
+      {confirmRemove ? (
+        <ConfirmDialog
+          title="Remove member"
+          message="Are you sure you want to remove this member from the group?"
+          confirmLabel="Remove"
+          onCancel={() => setConfirmRemove(null)}
+          onConfirm={() => handleRemoveMember(confirmRemove)}
+        />
+      ) : null}
     </div>
   )
 }

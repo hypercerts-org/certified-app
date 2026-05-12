@@ -1,14 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Noto_Serif, Instrument_Serif } from "next/font/google";
+import { Inter, Noto_Serif } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth/auth-context";
 import { NavbarProvider } from "@/lib/navbar-context";
 import Navbar from "@/components/layout/navbar";
-import Footer from "@/components/layout/footer";
 import { Providers } from "@/lib/providers";
 import AppShell from "@/components/layout/app-shell";
 import { OrgProvider } from "@/lib/groups/org-context";
 import FeedbackModal from "@/components/ui/feedback-modal";
+import { FeedbackProvider } from "@/lib/feedback-context";
+import { NotificationsProvider } from "@/lib/notifications-context";
+import BottomNav from "@/components/layout/bottom-nav";
 import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
@@ -26,14 +28,6 @@ const notoSerif = Noto_Serif({
   display: "swap",
 });
 
-const instrumentSerif = Instrument_Serif({
-  subsets: ["latin"],
-  weight: ["400"],
-  style: ["normal", "italic"],
-  variable: "--font-serif-alt",
-  display: "swap",
-});
-
 export const metadata: Metadata = {
   title: {
     default: "Certified",
@@ -42,12 +36,14 @@ export const metadata: Metadata = {
   description: "Your identity, everywhere.",
   metadataBase: new URL("https://certified.app"),
   openGraph: {
+    title: "Certified",
+    description: "Your identity, everywhere.",
     siteName: "Certified",
     locale: "en_US",
     type: "website",
     images: [
       {
-        url: "/assets/certified-hero-1200x630.png",
+        url: "/assets/certs-hero-1200x630.png",
         width: 1200,
         height: 630,
         alt: "Certified — One account, any app",
@@ -58,7 +54,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: "@hypercerts",
     creator: "@hypercerts",
-    images: ["/assets/certified-hero-1200x630.png"],
+    images: ["/assets/certs-hero-1200x630.png"],
   },
   appleWebApp: {
     capable: true,
@@ -68,7 +64,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f9f9f6",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f9f9f6" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0b0d" },
+  ],
+  viewportFit: "cover",
 };
 
 const groupJsonLd = {
@@ -79,7 +79,7 @@ const groupJsonLd = {
   url: "https://hypercerts.org",
   logo: {
     "@type": "ImageObject",
-    url: "https://certified.app/assets/certified_brandmark_black.png",
+    url: "https://certified.app/brand/brandmark/certified_brandmark_black_512.png",
     width: 512,
     height: 512,
   },
@@ -128,7 +128,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script
           type="application/ld+json"
@@ -139,19 +139,23 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
       </head>
-      <body className={`${inter.variable} ${notoSerif.variable} ${instrumentSerif.variable} min-h-screen flex flex-col`}>
+      <body className={`${inter.variable} ${notoSerif.variable} min-h-screen flex flex-col`}>
         <Providers>
           <AuthProvider>
             <OrgProvider>
+              <NotificationsProvider>
               <NavbarProvider>
+                <FeedbackProvider>
                 <a href="#main-content" className="skip-nav">Skip to main content</a>
                 <Navbar />
                 <main id="main-content" className="flex-1">
                   <AppShell>{children}</AppShell>
                 </main>
-                <Footer />
+                <BottomNav />
                 <FeedbackModal />
+                </FeedbackProvider>
               </NavbarProvider>
+              </NotificationsProvider>
             </OrgProvider>
           </AuthProvider>
         </Providers>
