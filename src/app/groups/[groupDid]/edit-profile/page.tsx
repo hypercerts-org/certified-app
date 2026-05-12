@@ -158,10 +158,14 @@ export default function EditOrgProfilePage() {
         putOrgMetadata(groupDid, updatedMetadata),
       ])
 
-      router.push("/")
+      // Hard reload to the group profile so every cache layer (org
+      // profile fetch, blob URLs on the hero, navbar avatar when
+      // acting as this group) picks up the freshly-saved record.
+      // /groups/<did> server-redirects to /profile/<handle>.
+      window.location.assign(`/groups/${encodeURIComponent(groupDid)}`)
+      return
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save")
-    } finally {
       setIsSaving(false)
     }
   }
@@ -241,7 +245,11 @@ export default function EditOrgProfilePage() {
                 {saveError && <ErrorMessage message={saveError} />}
 
                 <div className="edit-profile__actions">
-                  <Button variant="ghost" onClick={() => router.push("/")} disabled={isSaving}>
+                  <Button
+                    variant="ghost"
+                    onClick={() => router.push(`/groups/${encodeURIComponent(groupDid)}`)}
+                    disabled={isSaving}
+                  >
                     Cancel
                   </Button>
                   <Button variant="primary" onClick={handleSave} loading={isSaving} disabled={isSaving}>

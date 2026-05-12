@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import { usePageTitle } from "@/lib/navbar-context";
@@ -12,9 +11,8 @@ import type { CertifiedProfile } from "@/lib/atproto/types";
 
 export default function EditProfilePage() {
   usePageTitle("Edit profile");
-  const router = useRouter();
   const { isAuthenticated, did } = useAuth();
-  const { profile, isLoading, refetch, avatarUrl, bannerUrl } = useProfile();
+  const { profile, isLoading, avatarUrl, bannerUrl } = useProfile();
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -30,12 +28,17 @@ export default function EditProfilePage() {
       setIsSaving(true);
       setSaveError(null);
       await putProfile(did, updatedProfile);
-      await refetch();
-      router.push("/profile");
+      // Hard reload to /profile so every cache layer (profile context,
+      // navbar avatar, useUserProfile on the destination page, blob
+      // URLs) picks up the freshly-saved record. A client-side push
+      // here used to leave the navbar showing the old avatar for ~30s
+      // until the in-memory profile context refetched on its own.
+      window.location.assign("/profile");
+      // Don't reset isSaving — the page is unmounting on navigate.
+      return;
     } catch (error) {
       console.error("Failed to save profile:", error);
       setSaveError(error instanceof Error ? error.message : "Failed to save profile");
-    } finally {
       setIsSaving(false);
     }
   };
