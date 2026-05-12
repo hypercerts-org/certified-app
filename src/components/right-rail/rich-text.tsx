@@ -3,6 +3,7 @@
 import React from "react"
 import type { BskyFacet, BskyFacetFeature } from "@/hooks/use-bsky-posts"
 import { safeHttpUrl } from "@/lib/utils/safe-url"
+import { isValidDid } from "@/lib/utils/did"
 
 interface RichTextProps {
   text: string
@@ -96,10 +97,16 @@ function renderFeature(
   }
 
   if (feature.$type === "app.bsky.richtext.facet#mention") {
+    // bsky.app routes on the raw DID (`did:plc:xxx`) — the colons are
+    // significant separators, not encodable path chars. Encoding via
+    // encodeURIComponent turns them into %3A and the route 404s.
+    // Validate the DID shape first so we don't ship a malformed facet
+    // value straight into an href.
+    if (!isValidDid(feature.did)) return segment
     return (
       <a
         key={key}
-        href={`https://bsky.app/profile/${encodeURIComponent(feature.did)}`}
+        href={`https://bsky.app/profile/${feature.did}`}
         target="_blank"
         rel="noopener noreferrer"
         onClick={stop}
