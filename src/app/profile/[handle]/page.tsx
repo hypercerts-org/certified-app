@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 import { useProfileNavbar } from "@/lib/navbar-context"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { useUserActivities } from "@/hooks/use-user-activities"
+import { useOrg } from "@/lib/groups/org-context"
 import ProfileHeader from "@/components/profile/profile-header"
 import ProfileEndorsements from "@/components/profile/profile-endorsements"
 import ProfileGroups from "@/components/profile/profile-groups"
@@ -49,6 +50,34 @@ export default function UserProfilePage() {
     error: profileError,
   } = useUserProfile(handleOrDid)
 
+  // If the viewed profile is one of the viewer's groups, surface
+  // admin affordances (Edit Profile + Settings cog) and the
+  // "Acting as this group" eyebrow when this is also the active
+  // org. /groups/[groupDid] used to host these affordances on a
+  // separate page; we consolidated to a single profile surface.
+  const { activeOrg, groups } = useOrg()
+  const memberOrg = did ? groups.find((g) => g.groupDid === did) : undefined
+  const isAdminOfThisGroup =
+    !!memberOrg && (memberOrg.role === "owner" || memberOrg.role === "admin")
+  const isActingAsThisGroup = activeOrg?.groupDid === did
+
+  const editHref = isOwnProfile
+    ? "/settings/edit-profile"
+    : isAdminOfThisGroup && did
+      ? `/groups/${encodeURIComponent(did)}/edit-profile`
+      : undefined
+
+  const settingsHref =
+    isAdminOfThisGroup && did
+      ? `/groups/${encodeURIComponent(did)}/settings`
+      : undefined
+
+  const eyebrow = isActingAsThisGroup
+    ? "Acting as this group"
+    : isOwnProfile
+      ? "Your profile"
+      : undefined
+
   // We fetch activities here only so we can derive the count label shown
   // in the header. The UserFeed inside the Activities tab re-fetches them;
   // both calls use the same cached URL path so browser HTTP caching makes
@@ -89,8 +118,10 @@ export default function UserProfilePage() {
         bannerUrl={bannerUrl}
         handle={resolvedHandle || (rawHandle ?? null)}
         did={did}
-        isOwnProfile={isOwnProfile}
         activityCountLabel={activityCountLabel}
+        editHref={editHref}
+        settingsHref={settingsHref}
+        eyebrow={eyebrow}
       />
 
       <div

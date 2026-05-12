@@ -5,14 +5,17 @@ import type { Group } from "./types"
  * switches actor in the account switcher.
  *
  * Personal → "/" (which redirects to the user's profile)
- * Group    → "/groups/<encoded-did>"
- *
- * The DID is encoded defensively. `did:plc:abc` and `did:web:example.com`
- * round-trip through Next.js dynamic segments unchanged, but a `did:web`
- * with port-style suffixes can contain segments that need escaping, and
- * the rest of the codebase encodes handles/dids consistently.
+ * Group    → "/profile/<encoded-handle>" — the profile route now
+ *            handles both individual and group actors, with admin
+ *            affordances exposed when the viewer has owner/admin role.
+ *            Falls back to "/groups/<encoded-did>" (which itself
+ *            redirects server-side to /profile/<handle>) when we don't
+ *            have a handle on file — strictly belt-and-suspenders for
+ *            an edge case that should never fire because the org list
+ *            always includes a handle.
  */
 export function resolvePostSwitchPath(next: Group | null): string {
   if (!next) return "/"
+  if (next.handle) return `/profile/${encodeURIComponent(next.handle)}`
   return `/groups/${encodeURIComponent(next.groupDid)}`
 }

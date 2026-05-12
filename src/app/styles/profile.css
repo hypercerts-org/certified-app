@@ -51,6 +51,12 @@
   padding-bottom: 4px;
 }
 
+.profile-hero__action-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .profile-hero__eyebrow {
   /* Small "YOUR PROFILE" cue that arrives before the name, so visiting
      `/` (which redirects to /profile/[my-handle]) reads as "yours"
