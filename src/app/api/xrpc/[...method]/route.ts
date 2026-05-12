@@ -51,6 +51,17 @@ const FOREIGN_READ_CACHE_HEADERS = {
   "Cache-Control": "private, max-age=30",
 } as const
 
+/**
+ * No-store for same-session reads of the user's own repo. Edit
+ * flows depend on getting the freshly-written record back on the
+ * very next read — letting the browser apply heuristic caching here
+ * means "I just saved this but it still says my old name" bug
+ * reports.
+ */
+const SAME_SESSION_READ_HEADERS = {
+  "Cache-Control": "private, no-store",
+} as const
+
 /** Extract a usable HTTP status + message from an unknown XRPC error. */
 function xrpcError(err: unknown): { status: number; message: string } {
   if (!err || typeof err !== "object") {
@@ -174,7 +185,7 @@ export async function GET(
           return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
         }
         const result = await agent.com.atproto.repo.getRecord({ repo, collection, rkey, cid })
-        return NextResponse.json(result.data)
+        return NextResponse.json(result.data, { headers: SAME_SESSION_READ_HEADERS })
       }
       case "com.atproto.repo.listRecords": {
         const { repo, collection, cursor, reverse, rkeyEnd, rkeyStart } = queryParams
@@ -258,14 +269,14 @@ export async function GET(
           rkeyEnd,
           rkeyStart,
         })
-        return NextResponse.json(result.data)
+        return NextResponse.json(result.data, { headers: SAME_SESSION_READ_HEADERS })
       }
       case "com.atproto.server.getSession": {
         if (!agent) {
           return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
         }
         const result = await agent.com.atproto.server.getSession()
-        return NextResponse.json(result.data)
+        return NextResponse.json(result.data, { headers: SAME_SESSION_READ_HEADERS })
       }
       case "com.atproto.sync.getBlob": {
         const { did: blobDid, cid } = queryParams

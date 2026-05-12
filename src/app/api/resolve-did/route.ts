@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { resolveHandle, resolveHandleToDid, resolvePdsUrl } from "@/lib/atproto/did"
 import { isValidDid } from "@/lib/utils/did"
 import { extractRouteError } from "@/lib/utils/api"
+import { getSessionDid } from "@/lib/auth/session"
 
 const CERTS_PROFILE_COLLECTION = "app.certified.actor.profile"
 const CERTS_PROFILE_RKEY = "self"
@@ -190,6 +191,18 @@ export async function GET(request: NextRequest) {
     const avatar = certs?.avatarUrl ?? bsky?.avatar ?? undefined
     const banner = certs?.bannerUrl ?? bsky?.banner ?? undefined
 
+    // When the request is for the authenticated user's OWN DID, skip
+    // caching entirely — they expect their freshly-saved edits to be
+    // visible immediately on the next page load. The 60s+SWR window
+    // would otherwise serve stale data for up to ~1 minute. Foreign
+    // profile lookups (the common case — feed bylines, contributor
+    // rows, handle search) keep the cache; that's where it pays off.
+    const sessionDid = await getSessionDid()
+    const cacheControl =
+      sessionDid && sessionDid === did
+        ? "private, no-store"
+        : "public, max-age=60, stale-while-revalidate=300"
+
     return NextResponse.json(
       {
         did,
@@ -199,16 +212,7 @@ export async function GET(request: NextRequest) {
         avatar,
         banner,
       },
-      {
-        headers: {
-          // Profile data changes rarely. Cache 60s fresh + 5min SWR so
-          // back/forward navigation between profiles is instant; edits
-          // become visible within ~1 minute. Used by use-user-profile,
-          // use-profile, use-author-info, use-contributor-info,
-          // org-settings, handle-search.
-          "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
-        },
-      }
+      { headers: { "Cache-Control": cacheControl } }
     )
   } catch (err: unknown) {
     const { status, message } = extractRouteError(err)

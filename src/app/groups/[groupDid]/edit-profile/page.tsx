@@ -158,10 +158,17 @@ export default function EditOrgProfilePage() {
         putOrgMetadata(groupDid, updatedMetadata),
       ])
 
+      // Defensive cache eviction — see the matching note in the
+      // personal edit-profile handler. Targets resolve-did for the
+      // group DID so the profile hero shows the new record after the
+      // server-redirect lands on /profile/<group-handle>.
+      await fetch(`/api/resolve-did?did=${encodeURIComponent(groupDid)}`, {
+        cache: "reload",
+        credentials: "include",
+      }).catch(() => undefined)
       // Hard reload to the group profile so every cache layer (org
-      // profile fetch, blob URLs on the hero, navbar avatar when
-      // acting as this group) picks up the freshly-saved record.
-      // /groups/<did> server-redirects to /profile/<handle>.
+      // profile fetch, blob URLs on the hero) picks up the freshly-
+      // saved record. /groups/<did> server-redirects to /profile/<handle>.
       window.location.assign(`/groups/${encodeURIComponent(groupDid)}`)
       return
     } catch (err) {

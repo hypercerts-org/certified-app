@@ -28,11 +28,19 @@ export default function EditProfilePage() {
       setIsSaving(true);
       setSaveError(null);
       await putProfile(did, updatedProfile);
-      // Hard reload to /profile so every cache layer (profile context,
+      // Defensive: evict any browser-cached resolve-did response for
+      // this DID so the next page load sees the fresh record even if
+      // a stale response is sitting in the disk cache from before we
+      // switched same-DID responses to no-store. `cache: "reload"`
+      // forces the browser to refetch and store the new response.
+      await fetch(`/api/resolve-did?did=${encodeURIComponent(did)}`, {
+        cache: "reload",
+        credentials: "include",
+      }).catch(() => undefined);
+      // Hard reload to /profile so every component (profile context,
       // navbar avatar, useUserProfile on the destination page, blob
-      // URLs) picks up the freshly-saved record. A client-side push
-      // here used to leave the navbar showing the old avatar for ~30s
-      // until the in-memory profile context refetched on its own.
+      // URLs) remounts with fresh data. A client-side push here used
+      // to leave the navbar showing the old avatar for ~30s.
       window.location.assign("/profile");
       // Don't reset isSaving — the page is unmounting on navigate.
       return;
