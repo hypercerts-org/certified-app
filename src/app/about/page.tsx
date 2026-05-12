@@ -81,33 +81,6 @@ export default function AboutPage() {
 
           <section>
             <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
-              Who operates Certified?
-            </h2>
-            <p>
-              Certified is operated by the{" "}
-              <a
-                href="https://hypercerts.org"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 underline hover:text-blue-800"
-              >
-                Hypercerts Foundation
-              </a>
-              , a Delaware nonstock corporation founded in February 2023. The Foundation develops
-              open infrastructure for the hypercerts ecosystem — tools and protocols that help
-              track, fund, and reward positive impact.
-            </p>
-            <p className="mt-4">
-              Certified was created because the hypercerts ecosystem needed a portable identity
-              layer: a way for users to move between applications while keeping their profile,
-              contributions, and reputation intact. Rather than build a proprietary login system,
-              the Foundation chose AT Protocol as the foundation — making Certified interoperable
-              with a growing network of decentralized applications.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
               How is Certified different from &quot;Sign in with Google&quot;?
             </h2>
             <p>
@@ -167,6 +140,33 @@ export default function AboutPage() {
                 DSA Compliance
               </Link>{" "}
               page.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+              Who operates Certified?
+            </h2>
+            <p>
+              Certified is operated by the{" "}
+              <a
+                href="https://hypercerts.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline hover:text-blue-800"
+              >
+                Hypercerts Foundation
+              </a>
+              , a Delaware nonstock corporation founded in February 2023. The Foundation develops
+              open infrastructure for the hypercerts ecosystem — tools and protocols that help
+              track, fund, and reward positive impact.
+            </p>
+            <p className="mt-4">
+              Certified was created because the hypercerts ecosystem needed a portable identity
+              layer: a way for users to move between applications while keeping their profile,
+              contributions, and reputation intact. Rather than build a proprietary login system,
+              the Foundation chose AT Protocol as the foundation — making Certified interoperable
+              with a growing network of decentralized applications.
             </p>
           </section>
 
