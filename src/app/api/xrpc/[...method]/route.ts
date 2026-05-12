@@ -52,14 +52,26 @@ const FOREIGN_READ_CACHE_HEADERS = {
 } as const
 
 /**
- * No-store for same-session reads of the user's own repo. Edit
- * flows depend on getting the freshly-written record back on the
- * very next read — letting the browser apply heuristic caching here
- * means "I just saved this but it still says my old name" bug
- * reports.
+ * No-store for same-session getRecord — the edit form re-reads this
+ * URL when the user opens it again, and any stale window can mean
+ * "I saved but my old name is back in the form". Cost: one network
+ * round-trip every time edit-profile mounts. Acceptable.
  */
-const SAME_SESSION_READ_HEADERS = {
+const SAME_SESSION_NO_STORE_HEADERS = {
   "Cache-Control": "private, no-store",
+} as const
+
+/**
+ * Short cache for same-session listRecords. This is what the
+ * Activities tab on the user's own profile hits, and every "click
+ * Profile in the nav" triggers a re-mount → re-fetch. A 5s window
+ * keeps the page snappy on quick re-navigation without holding
+ * stale data long enough to matter — fresh writes go through the
+ * SAME PDS that this endpoint queries, so the most-recent record is
+ * visible the next time the cache expires.
+ */
+const SAME_SESSION_LIST_HEADERS = {
+  "Cache-Control": "private, max-age=5",
 } as const
 
 /** Extract a usable HTTP status + message from an unknown XRPC error. */
@@ -185,7 +197,7 @@ export async function GET(
           return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
         }
         const result = await agent.com.atproto.repo.getRecord({ repo, collection, rkey, cid })
-        return NextResponse.json(result.data, { headers: SAME_SESSION_READ_HEADERS })
+        return NextResponse.json(result.data, { headers: SAME_SESSION_NO_STORE_HEADERS })
       }
       case "com.atproto.repo.listRecords": {
         const { repo, collection, cursor, reverse, rkeyEnd, rkeyStart } = queryParams
@@ -269,14 +281,14 @@ export async function GET(
           rkeyEnd,
           rkeyStart,
         })
-        return NextResponse.json(result.data, { headers: SAME_SESSION_READ_HEADERS })
+        return NextResponse.json(result.data, { headers: SAME_SESSION_LIST_HEADERS })
       }
       case "com.atproto.server.getSession": {
         if (!agent) {
           return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
         }
         const result = await agent.com.atproto.server.getSession()
-        return NextResponse.json(result.data, { headers: SAME_SESSION_READ_HEADERS })
+        return NextResponse.json(result.data, { headers: SAME_SESSION_NO_STORE_HEADERS })
       }
       case "com.atproto.sync.getBlob": {
         const { did: blobDid, cid } = queryParams

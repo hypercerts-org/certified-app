@@ -191,16 +191,18 @@ export async function GET(request: NextRequest) {
     const avatar = certs?.avatarUrl ?? bsky?.avatar ?? undefined
     const banner = certs?.bannerUrl ?? bsky?.banner ?? undefined
 
-    // When the request is for the authenticated user's OWN DID, skip
-    // caching entirely — they expect their freshly-saved edits to be
-    // visible immediately on the next page load. The 60s+SWR window
-    // would otherwise serve stale data for up to ~1 minute. Foreign
-    // profile lookups (the common case — feed bylines, contributor
-    // rows, handle search) keep the cache; that's where it pays off.
+    // Own DID: short 10s cache so repeat navigations (clicking your
+    // own profile from the nav) feel instant without a network hit,
+    // while edits still propagate within seconds. The edit-profile
+    // save handlers also call this endpoint with `cache: "reload"`
+    // right after putRecord to evict the entry explicitly — that
+    // path is what guarantees the freshly-saved values show on the
+    // very next page load. Foreign lookups (feed bylines, handle
+    // search, etc.) keep the longer cache.
     const sessionDid = await getSessionDid()
     const cacheControl =
       sessionDid && sessionDid === did
-        ? "private, no-store"
+        ? "private, max-age=10"
         : "public, max-age=60, stale-while-revalidate=300"
 
     return NextResponse.json(
