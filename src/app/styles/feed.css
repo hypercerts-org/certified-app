@@ -1716,6 +1716,113 @@
   color: var(--fg-muted);
 }
 
+/* Multi-recipient endorsement modal — list of selected recipients
+   with per-row write status. */
+.endorsement-multi-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.endorsement-multi-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--overlay-weak, rgba(128, 128, 128, 0.08));
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+}
+
+.endorsement-multi-row__meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  line-height: 1.2;
+}
+
+.endorsement-multi-row__name {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.endorsement-multi-row__handle {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.endorsement-multi-row__error {
+  font-size: 0.75rem;
+  color: var(--danger, #d44);
+  margin-top: 2px;
+}
+
+.endorsement-multi-row__status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.endorsement-multi-row__status--writing {
+  border: 2px solid var(--border-default);
+  border-top-color: var(--fg-primary);
+  animation: endorsement-multi-spin 0.8s linear infinite;
+}
+
+.endorsement-multi-row__status--success {
+  background: var(--success, #2a8);
+  color: white;
+}
+
+.endorsement-multi-row__status--error {
+  background: var(--danger, #d44);
+  color: white;
+}
+
+@keyframes endorsement-multi-spin {
+  to { transform: rotate(360deg); }
+}
+
+.endorsement-multi-row__remove {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--fg-muted);
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.endorsement-multi-row__remove:hover {
+  background: var(--overlay-weak, rgba(128, 128, 128, 0.12));
+  color: var(--fg-primary);
+}
+
+.endorsement-multi-summary {
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
 /* Profile page "Endorsements" tab — stacked sections */
 .profile-endorsements {
   display: flex;

@@ -273,7 +273,6 @@ export async function listAwards(
 export async function createEndorsementAward(
   ownDid: string,
   subjectDid: string,
-  note?: string,
 ): Promise<{ uri: string; cid: string }> {
   const badge = await ensureEndorsementDefinition(ownDid)
 
@@ -292,7 +291,6 @@ export async function createEndorsementAward(
       // `subject: {eq: did}` filter that powers "endorsements
       // received" on profile pages.
       subject: { $type: "app.certified.defs#did", did: subjectDid },
-      ...(note?.trim() ? { note: note.trim() } : {}),
       createdAt: new Date().toISOString(),
     } satisfies BadgeAwardValue,
   }
