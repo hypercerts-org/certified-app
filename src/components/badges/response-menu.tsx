@@ -265,7 +265,7 @@ export default function ResponseMenu({
           : "Showing on your profile (default)"
 
   return (
-    <div className="response-menu">
+    <div className="response-menu" aria-busy={isWriting}>
       <button
         ref={triggerRef}
         type="button"

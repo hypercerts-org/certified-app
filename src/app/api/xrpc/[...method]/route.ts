@@ -16,6 +16,10 @@ import { resolvePdsUrl, invalidateDidDoc } from "@/lib/atproto/did"
 import { LIMIT_MIN, LIMIT_MAX } from "@/lib/utils/constants"
 import { redactSecrets, logSafe } from "@/lib/utils/log-safe"
 import { parseJsonBody } from "@/lib/utils/api"
+import {
+  checkAndIncrementWriteRate,
+  RATE_LIMITED_WRITE_COLLECTIONS,
+} from "@/lib/auth/rate-limit"
 
 const ALLOWED_WRITE_COLLECTIONS = [
   "org.impactindexer.link.attestation",
@@ -417,6 +421,44 @@ export async function POST(
           { error: "collection is required and must be an allowed collection" },
           { status: 403 }
         )
+      }
+      // Rate-limit endorsement-issuance lexicons. badge.award and
+      // its legacy temp predecessor are the abuse vector (default-
+      // show + no recipient gate at issue time). Other collections
+      // pass through untouched. Per-DID, fixed-window counters in
+      // Upstash — see lib/auth/rate-limit.ts for the cap rationale.
+      const rateScope = RATE_LIMITED_WRITE_COLLECTIONS[body.collection]
+      if (rateScope && methodName === "com.atproto.repo.createRecord") {
+        try {
+          const rate = await checkAndIncrementWriteRate(did, rateScope)
+          if (!rate.allowed) {
+            const retryAfterSec = Math.max(
+              1,
+              Math.ceil((rate.resetAt - Date.now()) / 1000),
+            )
+            return NextResponse.json(
+              {
+                error: "Too many endorsement writes — try again later.",
+                resetAt: rate.resetAt,
+              },
+              {
+                status: 429,
+                headers: {
+                  "Retry-After": String(retryAfterSec),
+                  "X-RateLimit-Reset": String(Math.floor(rate.resetAt / 1000)),
+                },
+              },
+            )
+          }
+        } catch (err) {
+          // Rate-limit infrastructure failure should NOT block
+          // writes — it's a hardening measure, not a hard gate.
+          // Log and fall through.
+          logSafe("[xrpc] rate-limit check failed", err, {
+            method: methodName,
+            collection: body.collection,
+          })
+        }
       }
     }
 

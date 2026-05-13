@@ -1486,10 +1486,14 @@
   border-color: var(--fg-primary);
 }
 
+/* Hover-on-pressed: keep the pressed look but show a subtle opacity
+   dip so the user has a visual signal that clicking will toggle
+   off. Going to a fully-different colour would suggest "click to
+   confirm" instead of "click to revert." */
 .response-buttons__btn--pressed:hover:not(:disabled) {
-  /* keep pressed look on hover so toggling-off isn't ambiguous */
   background: var(--fg-primary);
   color: var(--bg-elevated);
+  opacity: 0.85;
 }
 
 .response-buttons__btn:focus-visible {
@@ -1513,6 +1517,14 @@
 .response-menu {
   position: relative;
   flex-shrink: 0;
+}
+
+/* Reserve the kebab column when the row LACKS a response-menu (and
+   isn't the revoke variant), so a list mixing rows-with-action and
+   rows-without doesn't visually shift. No-op for lists that are
+   uniformly all-with or all-without. */
+.endorsement-row:not(:has(.response-menu, .endorsement-row__revoke)) .endorsement-row__date {
+  margin-right: 40px;
 }
 
 .response-menu__trigger {

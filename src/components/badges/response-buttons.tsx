@@ -84,6 +84,7 @@ export default function ResponseButtons({
     <div
       role="group"
       aria-label={`Response to endorsement from ${issuerDisplayName}`}
+      aria-busy={isWriting !== null}
       className="response-buttons"
     >
       {isUnknown ? (
