@@ -1590,6 +1590,16 @@
   cursor: not-allowed;
 }
 
+.response-menu__indicator {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fg-muted);
+  padding: 6px 10px 4px;
+  margin: 0;
+}
+
 .response-menu__error {
   font-size: 0.6875rem;
   color: var(--color-error);
@@ -1597,21 +1607,72 @@
   margin: 0;
 }
 
-/* Pending-count chip on the Endorsements nav item */
-.left-rail__pending-chip {
+/* Undo toast (AC#8) — anchored to the kebab column so it doesn't
+   require a global toast surface. aria-live="polite" makes the
+   announcement; 6s timer in the component dismisses it. */
+.response-menu__toast {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  margin-left: auto;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--bg-elevated);
+  gap: 10px;
+  white-space: nowrap;
+  padding: 6px 10px;
   background: var(--fg-primary);
-  border-radius: 9px;
-  line-height: 1;
+  color: var(--bg-elevated);
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+}
+
+.response-menu__toast-undo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: transparent;
+  border: 1px solid var(--bg-elevated);
+  border-radius: 2px;
+  color: var(--bg-elevated);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.response-menu__toast-undo:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
+}
+
+.response-menu__toast-undo:focus-visible {
+  outline: 2px solid var(--bg-elevated);
+  outline-offset: 2px;
+}
+
+.response-menu__toast-undo:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Mobile touch-target bump — WCAG 2.5.5 / Apple HIG 44px minimum.
+   Applied only at narrow widths so desktop UI stays compact. */
+@media (max-width: 799px) {
+  .response-buttons__btn {
+    min-height: 44px;
+    padding: 8px 14px;
+    font-size: 0.8125rem;
+  }
+  .response-menu__trigger {
+    width: 44px;
+    height: 44px;
+  }
+  .response-menu__item {
+    min-height: 44px;
+    padding: 10px 12px;
+  }
 }
 
 /* Preview block inside the New endorsement modal */

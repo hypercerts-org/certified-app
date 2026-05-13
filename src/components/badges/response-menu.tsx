@@ -1,7 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
-import { MoreHorizontal, EyeOff, Eye, RotateCcw } from "lucide-react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react"
+import { MoreHorizontal, EyeOff, Eye, RotateCcw, Undo2 } from "lucide-react"
 import {
   createResponse,
   deleteAllResponsesForAward,
@@ -28,21 +34,33 @@ interface ResponseMenuProps {
  * Quiet kebab-menu control rendered on profile / endorsements
  * audit-surface rows (the row's owner is viewing their own wall).
  *
- * Menu items vary by state:
+ * Owner-only state indicator at the top of the menu, then the
+ * actions:
  *
- *   - default / unknown  → "Hide from profile"
- *   - accepted           → "Hide from profile" + "Reset to default"
- *   - rejected           → "Show on profile" + "Reset to default"
+ *   - default  → "Showing on your profile (default)" +
+ *                "Hide from profile"
+ *   - accepted → "Showing on your profile"           +
+ *                "Hide from profile" + "Reset to default"
+ *   - rejected → "Hidden from your profile"          +
+ *                "Show on profile" + "Reset to default"
+ *   - unknown  → "Unrecognised response state"       +
+ *                "Hide from profile" + "Reset to default"
  *
- * No "Show on profile" when state is already default-show — clicking
- * would be a no-op from the viewer's perspective (the award is
- * already visible). Adding an explicit Accept option here was
- * deliberately removed in the round-1 review (R2 C2): the profile
- * surface is for *cleanup*, not affirmation.
+ * The kebab is only rendered on the profile owner's view (see the
+ * ProfileEndorsements + /endorsements page gating) — non-owner
+ * viewers never see the indicator, matching the plan §"Accept-state
+ * visibility" owner-only contract.
  *
- * The trigger is a 28x28 icon button; the menu floats below-right
- * using a portal so it isn't clipped by the row's overflow. Esc /
- * outside-click close the menu and return focus to the trigger.
+ * Keyboard contract (WAI-ARIA menu pattern):
+ *   - Trigger: Enter/Space opens; first menuitem auto-focuses.
+ *   - In menu: ArrowUp/ArrowDown moves between items; Home/End jump
+ *     to first/last. Esc closes + returns focus to trigger.
+ *     Outside-click closes.
+ *
+ * After Hide on a row, the row removes from its list. Focus moves
+ * to the next sibling's kebab via `findNextFocusTarget`. Plan
+ * AC#7. AC#8 shows a 6-second `aria-live="polite"` undo toast
+ * anchored to the menu column.
  */
 export default function ResponseMenu({
   awardUri,
@@ -56,11 +74,15 @@ export default function ResponseMenu({
   const [isOpen, setIsOpen] = useState(false)
   const [isWriting, setIsWriting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pendingUndo, setPendingUndo] = useState<true | null>(null)
+
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Outside-click + Esc close. Focus returns to the trigger so
-  // keyboard users don't lose context.
+  // -----------------------------------------------------------------
+  // Outside-click + Esc close.
+  // -----------------------------------------------------------------
   useEffect(() => {
     if (!isOpen) return
     const onDocClick = (e: MouseEvent) => {
@@ -73,7 +95,7 @@ export default function ResponseMenu({
       }
       setIsOpen(false)
     }
-    const onKey = (e: KeyboardEvent) => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key === "Escape") {
         setIsOpen(false)
         triggerRef.current?.focus()
@@ -87,11 +109,75 @@ export default function ResponseMenu({
     }
   }, [isOpen])
 
+  // Auto-focus the first menuitem when the menu opens so keyboard
+  // users land *inside* the menu, not still on the trigger.
+  useEffect(() => {
+    if (!isOpen || !menuRef.current) return
+    const first = menuRef.current.querySelector<HTMLElement>(
+      '[role="menuitem"]:not([disabled])',
+    )
+    first?.focus()
+  }, [isOpen])
+
+  // Arrow-key roving inside the menu (WAI-ARIA menu pattern). Tab
+  // still works — it just leaves the menu, which is also expected
+  // for menus.
+  const handleMenuKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    const items = menuRef.current?.querySelectorAll<HTMLElement>(
+      '[role="menuitem"]:not([disabled])',
+    )
+    if (!items || items.length === 0) return
+    const list = Array.from(items)
+    const current = document.activeElement as HTMLElement | null
+    const idx = current ? list.indexOf(current) : -1
+    let next = idx
+    if (e.key === "ArrowDown") next = idx < 0 ? 0 : (idx + 1) % list.length
+    else if (e.key === "ArrowUp")
+      next = idx <= 0 ? list.length - 1 : idx - 1
+    else if (e.key === "Home") next = 0
+    else if (e.key === "End") next = list.length - 1
+    else return
+    e.preventDefault()
+    list[next].focus()
+  }
+
+  /** Find the next focusable kebab trigger in the same list. Used
+   *  on Hide so focus moves to the sibling row rather than falling
+   *  to <body>. (Plan AC#7.) */
+  const findNextFocusTarget = (): HTMLElement | null => {
+    const t = triggerRef.current
+    if (!t) return null
+    const list = t.closest(".endorsements-list")
+    if (!list) return null
+    const all = Array.from(
+      list.querySelectorAll<HTMLElement>(".response-menu__trigger"),
+    )
+    const i = all.indexOf(t)
+    if (i < 0) return null
+    return all[i + 1] ?? all[i - 1] ?? null
+  }
+
+  const finishWrite = useCallback(
+    async (afterFocusTarget?: HTMLElement | null) => {
+      await onAfterWrite?.()
+      if (afterFocusTarget && document.contains(afterFocusTarget)) {
+        afterFocusTarget.focus()
+      } else {
+        triggerRef.current?.focus()
+      }
+    },
+    [onAfterWrite],
+  )
+
   const writeResponse = useCallback(
     async (resp: "accepted" | "rejected") => {
       if (!ownerDid) return
       setIsWriting(true)
       setError(null)
+      // Capture the focus target BEFORE the write because the row
+      // may be removed by the parent's refetch and we want a stable
+      // sibling reference.
+      const focusTarget = resp === "rejected" ? findNextFocusTarget() : null
       try {
         await createResponse(
           ownerDid,
@@ -99,14 +185,15 @@ export default function ResponseMenu({
           resp,
         )
         setIsOpen(false)
-        await onAfterWrite?.()
+        await finishWrite(focusTarget)
+        if (resp === "rejected") armUndoToast()
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to update")
       } finally {
         setIsWriting(false)
       }
     },
-    [ownerDid, awardUri, awardCid, onAfterWrite],
+    [ownerDid, awardUri, awardCid, finishWrite],
   )
 
   const resetToDefault = useCallback(async () => {
@@ -116,15 +203,66 @@ export default function ResponseMenu({
     try {
       await deleteAllResponsesForAward(ownerDid, awardUri, allResponses)
       setIsOpen(false)
-      await onAfterWrite?.()
+      await finishWrite(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to reset")
     } finally {
       setIsWriting(false)
     }
-  }, [ownerDid, awardUri, allResponses, onAfterWrite])
+  }, [ownerDid, awardUri, allResponses, finishWrite])
+
+  // -----------------------------------------------------------------
+  // Undo toast (plan AC#8). 6-second polite live region with an
+  // Undo button that sweeps every response on this award — the
+  // user's latest reject vanishes, plus any vestigial responses,
+  // returning the award to its un-responded "default" state.
+  // -----------------------------------------------------------------
+  function armUndoToast() {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+    setPendingUndo(true)
+    undoTimerRef.current = setTimeout(() => {
+      setPendingUndo(null)
+      undoTimerRef.current = null
+    }, 6_000)
+  }
+
+  const undoHide = useCallback(async () => {
+    if (!ownerDid || !pendingUndo) return
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+    setIsWriting(true)
+    setError(null)
+    try {
+      // We're called after a fresh listResponses refetch (the parent
+      // ran `invalidate(); await refetch();` in onAfterWrite), so
+      // the responses we have via props are post-write — including
+      // the rejection we just wrote. Sweeping ALL responses for
+      // this award returns to default cleanly.
+      await deleteAllResponsesForAward(ownerDid, awardUri, allResponses)
+      setPendingUndo(null)
+      await finishWrite(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to undo")
+    } finally {
+      setIsWriting(false)
+    }
+  }, [ownerDid, awardUri, allResponses, pendingUndo, finishWrite])
+
+  useEffect(() => () => {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+  }, [])
 
   const hasResponse = state === "accepted" || state === "rejected"
+
+  // Owner-only state indicator inside the kebab. The plan promised
+  // this; the implementation review flagged it missing.
+  const indicator =
+    state === "accepted"
+      ? "Showing on your profile"
+      : state === "rejected"
+        ? "Hidden from your profile"
+        : state === "unknown"
+          ? "Unrecognised response state"
+          : "Showing on your profile (default)"
 
   return (
     <div className="response-menu">
@@ -146,7 +284,11 @@ export default function ResponseMenu({
           role="menu"
           aria-label={`Endorsement from ${issuerDisplayName}`}
           className="response-menu__menu"
+          onKeyDown={handleMenuKey}
         >
+          <p className="response-menu__indicator" aria-hidden="true">
+            {indicator}
+          </p>
           {state === "rejected" ? (
             <button
               type="button"
@@ -187,6 +329,20 @@ export default function ResponseMenu({
               {error}
             </p>
           ) : null}
+        </div>
+      ) : null}
+      {pendingUndo ? (
+        <div role="status" aria-live="polite" className="response-menu__toast">
+          <span>Endorsement hidden from your profile.</span>
+          <button
+            type="button"
+            className="response-menu__toast-undo"
+            onClick={undoHide}
+            disabled={isWriting}
+          >
+            <Undo2 size={12} aria-hidden="true" />
+            <span>Undo</span>
+          </button>
         </div>
       ) : null}
     </div>

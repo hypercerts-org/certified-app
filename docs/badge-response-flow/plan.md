@@ -178,8 +178,13 @@ just a UI rule:
   for the viewer's own DID. Only the kebab menu and the nav-badge
   counter consume it.
 
-This prevents devtools-level leakage even on own-profile pages
-viewed by someone who somehow obtained the cookie of another user.
+The response data does transit the wire (the visible-filter needs
+it), but the hook boundary never exposes per-row state to non-owner
+read paths — only the filtered award list. A non-owner viewer who
+inspects devtools sees the response array we used to compute the
+filter, but no inferable "this row was actively accepted" signal
+since the per-row response state is never derived for the non-owner
+return shape.
 
 ## Scope and file ownership
 

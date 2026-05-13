@@ -195,6 +195,25 @@ interface CacheEntry {
 const cache = new Map<string, CacheEntry>()
 
 /**
+ * Read the cached scan result for a DID without triggering a
+ * network fetch. Used by `usePendingAwardsCount` on the nav rail —
+ * we don't want the nav-rail render on every authed page to kick
+ * off a fan-out scan (R2 I-1). Callers get `null` when the cache
+ * is cold; the chip stays hidden until something else populates
+ * the cache (typically when the user actually visits /endorsements
+ * or their own profile).
+ */
+export function peekCachedReceivedEndorsements(
+  profileDid: string | null,
+): ReceivedEndorsement[] | null {
+  if (!profileDid) return null
+  const entry = cache.get(profileDid)
+  if (!entry) return null
+  if (Date.now() - entry.fetchedAt >= STALE_MS) return null
+  return entry.data
+}
+
+/**
  * Fetch every public endorsement award targeting `profileDid` from
  * every known certified user, AND filter out awards whose latest
  * response (on the profile owner's PDS) is `"rejected"`. Scoped to

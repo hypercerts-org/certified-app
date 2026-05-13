@@ -37,6 +37,11 @@ interface NavItem {
   label: string;
   icon: React.ElementType;
   badge?: string | null;
+  /** Word screen readers say after the badge count. Different
+   *  surfaces have different meanings: notifications use "unread",
+   *  Endorsements uses "pending". Defaults to "unread" because
+   *  Notifications is the historical user. */
+  badgeUnit?: string;
   matchPrefix?: boolean;
 }
 
@@ -205,7 +210,7 @@ export default function DesktopLeftRail() {
     { href: profileHref, label: "Profile", icon: User, matchPrefix: true },
     { href: "/search", label: "Explore", icon: Search },
     ...(showEndorsements
-      ? [{ href: "/endorsements", label: "Endorsements", icon: Award, badge: pendingBadge, matchPrefix: true }]
+      ? [{ href: "/endorsements", label: "Endorsements", icon: Award, badge: pendingBadge, badgeUnit: "pending", matchPrefix: true }]
       : []),
     { href: "/notifications", label: "Notifications", icon: Bell, badge: unreadBadge, matchPrefix: true },
     ...(showGroups
@@ -255,7 +260,9 @@ export default function DesktopLeftRail() {
                 className={`left-rail__link ${active ? "left-rail__link--active" : ""}`}
                 aria-current={active ? "page" : undefined}
                 aria-label={
-                  item.badge ? `${item.label}, ${item.badge} unread` : item.label
+                  item.badge
+                    ? `${item.label}, ${item.badge} ${item.badgeUnit ?? "unread"}`
+                    : item.label
                 }
               >
                 <span className="left-rail__icon">
