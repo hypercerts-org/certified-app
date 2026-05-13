@@ -83,6 +83,12 @@ export function useGivenEndorsements(did: string | null): {
           .map(toGiven)
           .filter((e): e is GivenEndorsement => e !== null)
 
+        // Newest first by createdAt — matches the Received view and
+        // shields against PDS ordering quirks (listAwards passes
+        // `reverse: true`, which surfaces records in ascending TID
+        // order on most implementations).
+        mapped.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
+
         setEndorsements(mapped)
       } catch (err) {
         if (signal?.aborted) return
