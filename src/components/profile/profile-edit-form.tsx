@@ -222,8 +222,12 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
 
   return (
     <div className="edit-profile">
-      {/* Card 1: Photo & banner */}
+      {/* Photo and banner */}
       <div className="dash-card">
+        <h2 className="dash-card__title">Photo and banner</h2>
+        <p className="dash-card__desc">
+          Tap the banner or avatar to upload a new image. PNG, JPG, WebP, or GIF.
+        </p>
         <div className="edit-profile__media">
           <BannerUpload
             currentBannerUrl={currentBannerUrl}
@@ -241,8 +245,12 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
         </div>
       </div>
 
-      {/* Card 2: About */}
+      {/* About you */}
       <div className="dash-card">
+        <h2 className="dash-card__title">About you</h2>
+        <p className="dash-card__desc">
+          Your display name, bio, and website appear on your profile.
+        </p>
         <div className="edit-profile__fields">
           <Input
             label="Display name"
@@ -251,22 +259,19 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
             maxLength={64}
             placeholder="Your display name"
             error={displayNameError}
+            helperText={`${displayName.length}/64`}
           />
 
-          <div>
-            <Textarea
-              label="About you"
-              value={description}
-              onChange={handleDescriptionChange}
-              rows={4}
-              maxLength={256}
-              placeholder="Tell us about yourself"
-              error={descriptionError}
-            />
-            <div className="edit-profile__char-count">
-              {description.length}/256 characters
-            </div>
-          </div>
+          <Textarea
+            label="Bio"
+            value={description}
+            onChange={handleDescriptionChange}
+            rows={4}
+            maxLength={256}
+            placeholder="Tell us about yourself"
+            error={descriptionError}
+            helperText={`${description.length}/256`}
+          />
 
           <Input
             label="Website"
@@ -276,6 +281,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
             maxLength={256}
             placeholder="https://example.com"
             error={websiteError}
+            helperText="Optional. Include the https:// prefix."
           />
         </div>
 
@@ -286,7 +292,6 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
         )}
       </div>
 
-      {/* Sticky action bar */}
       <div className="edit-profile__actions">
         <Button variant="ghost" onClick={handleCancel} disabled={isSaving}>
           Cancel

@@ -1472,13 +1472,6 @@ dialog.signin-modal::backdrop {
   margin-top: 20px;
 }
 
-.edit-profile__char-count {
-  font-size: 0.75rem;
-  color: var(--fg-muted);
-  text-align: right;
-  margin-top: 4px;
-}
-
 .edit-profile__error {
   margin-top: 16px;
 }
