@@ -44,6 +44,11 @@ interface StrongRef {
   cid: string
 }
 
+/** A DID wrapped in the `app.certified.defs#did` object form. */
+interface DidObject {
+  did: string
+}
+
 /** Body of an `app.certified.badge.definition` record. */
 export interface BadgeDefinitionValue {
   $type?: typeof BADGE_DEFINITION_COLLECTION
@@ -66,11 +71,15 @@ export interface BadgeAwardValue {
   $type?: typeof BADGE_AWARD_COLLECTION
   badge: StrongRef
   /**
-   * Per lexicon: union of `app.certified.defs#did` (a string) and
-   * `com.atproto.repo.strongRef`. For an endorsement we always award
-   * to a DID, written as a bare DID string per the `#did` ref.
+   * Per lexicon: union of `app.certified.defs#did` (object form
+   * `{did: "did:plc:..."}`) and `com.atproto.repo.strongRef`.
+   *
+   * Production data has every record using one of the two object
+   * shapes — never a bare DID string. We still accept the bare-string
+   * form on read (older records, other clients), but the canonical
+   * defs#did form is the object form.
    */
-  subject: string | StrongRef
+  subject: string | DidObject | StrongRef
   note?: string
   createdAt: string
 }

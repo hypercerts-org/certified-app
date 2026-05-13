@@ -112,11 +112,7 @@ function isEndorsementDefinition(v: BadgeDefinitionValue): boolean {
 }
 
 function toGiven(award: BadgeAwardRecord): GivenEndorsement | null {
-  const subject = award.value.subject
-  const subjectDid =
-    typeof subject === "string"
-      ? subject
-      : extractDidFromStrongRefUri(subject?.uri)
+  const subjectDid = extractSubjectDid(award.value.subject)
   if (!subjectDid) return null
   return {
     uri: award.uri,
@@ -126,6 +122,29 @@ function toGiven(award: BadgeAwardRecord): GivenEndorsement | null {
     createdAt: award.value.createdAt,
     note: award.value.note,
   }
+}
+
+/**
+ * Pull the target DID out of a badge.award `subject`, regardless of
+ * which of the three subject shapes the producer wrote:
+ *
+ *   - bare DID string
+ *   - {did: "did:plc:..."}                  (app.certified.defs#did)
+ *   - {uri: "at://did:plc:.../...", cid}    (com.atproto.repo.strongRef)
+ */
+function extractSubjectDid(
+  subject: BadgeAwardRecord["value"]["subject"],
+): string | null {
+  if (typeof subject === "string") return subject || null
+  if (subject && typeof subject === "object") {
+    if ("did" in subject && typeof subject.did === "string") {
+      return subject.did || null
+    }
+    if ("uri" in subject) {
+      return extractDidFromStrongRefUri(subject.uri)
+    }
+  }
+  return null
 }
 
 /**
