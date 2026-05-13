@@ -5,7 +5,6 @@ import { X, Check, AlertCircle } from "lucide-react"
 import HandleSearch from "@/components/groups/handle-search"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
-import ErrorMessage from "@/components/ui/error-message"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { getInitials } from "@/lib/utils/initials"
 import { createEndorsementAward } from "@/lib/atproto/badges"
@@ -163,13 +162,17 @@ export default function NewEndorsementPanel({
 
       {!hasResults ? (
         <HandleSearch
-          label="Who do you want to endorse?"
+          label=""
           placeholder="Search handle or paste a DID..."
           onSelect={handleAddRecipient}
         />
       ) : null}
 
-      {pickError ? <ErrorMessage message={pickError} /> : null}
+      {pickError ? (
+        <p className="endorsement-panel__pick-hint" role="status">
+          {pickError}
+        </p>
+      ) : null}
 
       {selectedDids.length > 0 ? (
         <ul className="endorsement-multi-list">

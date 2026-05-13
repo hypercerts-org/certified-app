@@ -1327,6 +1327,16 @@
   color: var(--fg-muted);
 }
 
+/* Inline picker hint — soft message shown when a chosen account
+   can't be added (already endorsed, self-pick, duplicate). Lives
+   between the search input and the recipient list. Quiet, single
+   line, no banner. */
+.endorsement-panel__pick-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
 .endorsement-panel__actions {
   display: flex;
   justify-content: flex-end;
