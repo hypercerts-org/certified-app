@@ -135,7 +135,7 @@ export default function ProfileHeader({
             @{handle}
             {isBskyHosted ? (
               <span className="profile-hero__pds-tag" title="This profile lives on Bluesky">
-                on Bluesky
+                Bluesky profile
               </span>
             ) : null}
           </p>
