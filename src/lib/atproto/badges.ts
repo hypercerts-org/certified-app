@@ -316,32 +316,6 @@ export async function deleteEndorsementAward(
 }
 
 /**
- * Convenience predicate: does this award's `subject` resolve to the
- * given DID? Handles both subject shapes (bare DID string and
- * strongRef). For endorsements we always write the bare-string form,
- * but read paths should accept either since other apps may write
- * either.
- */
-export function awardSubjectMatchesDid(
-  award: BadgeAwardValue,
-  did: string,
-): boolean {
-  const subject = award.subject
-  if (typeof subject === "string") return subject === did
-  if (subject && typeof subject === "object" && "uri" in subject) {
-    // strongRef to a record on a DID's repo — DID is the first
-    // segment after `at://`.
-    const uri = subject.uri
-    if (typeof uri !== "string" || !uri.startsWith("at://")) return false
-    const tail = uri.slice("at://".length)
-    const slash = tail.indexOf("/")
-    const repoDid = slash >= 0 ? tail.slice(0, slash) : tail
-    return repoDid === did
-  }
-  return false
-}
-
-/**
  * Extract the issuer DID from an award URI. Used by read paths that
  * fan out across users and need to attribute each award to its
  * author.

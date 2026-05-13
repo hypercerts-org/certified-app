@@ -2,12 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  awardSubjectMatchesDid,
-  listAwards,
   listDefinitions,
   resolveResponseState,
   ENDORSEMENT_BADGE_TYPE,
-  type BadgeAwardRecord,
 } from "@/lib/atproto/badges"
 import { useProfileResponses } from "@/hooks/use-profile-responses"
 
@@ -31,18 +28,24 @@ export interface ReceivedEndorsement {
 }
 
 /**
- * Indexer query — list every DID with an `app.certified.actor.profile`
- * record. We use it as the universe of "issuers we should ask" during
- * the PDS scan below.
+ * Indexer query — pull every badge.award whose `subject` resolves to
+ * the given DID across both lexicon refs of the subject union
+ * (app.certified.defs#did `{did: "..."}` AND
+ * com.atproto.repo.strongRef `{uri: "at://<did>/..."}`). Subject
+ * filter lives in the indexer (see hb-agent/magic-indexer#65 + the
+ * #78 follow-up that added the defs#did object branch).
  *
- * This is the workaround until the indexer adds a `subjectDid` filter
- * on `appCertifiedBadgeAward` (see hb-agent/magic-indexer#65). Once
- * that lands, this whole hook collapses to a single GraphQL query.
+ * This collapses what used to be a PDS fan-out across every certified
+ * user (N round-trips) into one query.
  */
-const PROFILES_QUERY = `
-query ProfileDids($first: Int!, $after: String) {
-  appCertifiedActorProfile(first: $first, after: $after) {
-    edges { node { did } }
+const RECEIVED_AWARDS_QUERY = `
+query ReceivedEndorsements($did: String!, $first: Int!, $after: String) {
+  appCertifiedBadgeAward(
+    where: { subject: { eq: $did } }
+    first: $first
+    after: $after
+  ) {
+    edges { node { uri cid did createdAt note badge } }
     pageInfo { hasNextPage endCursor }
   }
 }
@@ -50,34 +53,70 @@ query ProfileDids($first: Int!, $after: String) {
 
 const INDEXER_PROXY_URL = "/api/indexer"
 
-async function fetchAllProfileDids(signal?: AbortSignal): Promise<string[]> {
+/**
+ * The indexer currently serializes the `badge` strongRef as a
+ * stringified Go map literal (`"map[cid:bafy... uri:at://...]"`)
+ * rather than as structured JSON. Pull the URI out with a regex
+ * so we can match awards to their issuer's endorsement definitions.
+ *
+ * If the indexer fix ships and `badge` becomes structured JSON,
+ * this helper becomes a no-op for that shape but stays for backwards
+ * compatibility.
+ */
+function extractBadgeDefinitionUri(badge: unknown): string | null {
+  if (!badge) return null
+  if (typeof badge === "string") {
+    // Go map literal: "map[cid:... uri:at://.../app.certified.badge.definition/...]"
+    const m = badge.match(/uri:(at:\/\/\S+)/)
+    return m?.[1] ?? null
+  }
+  if (typeof badge === "object" && "uri" in badge) {
+    const uri = (badge as { uri?: unknown }).uri
+    return typeof uri === "string" ? uri : null
+  }
+  return null
+}
+
+interface IndexerAwardNode {
+  uri: string
+  cid: string
+  did: string
+  createdAt: string
+  note?: string
+  badge: unknown
+}
+
+async function fetchReceivedAwardsFromIndexer(
+  profileDid: string,
+  signal?: AbortSignal,
+): Promise<IndexerAwardNode[]> {
   const PAGE_SIZE = 100
-  const SAFETY_CAP = 5_000
-  const out: string[] = []
+  const SAFETY_CAP = 10_000
+  const out: IndexerAwardNode[] = []
   let cursor: string | null = null
   while (out.length < SAFETY_CAP) {
     const res = await fetch(INDEXER_PROXY_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        query: PROFILES_QUERY,
-        variables: { first: PAGE_SIZE, after: cursor },
+        query: RECEIVED_AWARDS_QUERY,
+        variables: { did: profileDid, first: PAGE_SIZE, after: cursor },
       }),
       signal,
     })
     if (!res.ok) throw new Error(`Indexer query failed: ${res.status}`)
     const json = (await res.json()) as {
       data?: {
-        appCertifiedActorProfile?: {
-          edges: { node: { did: string } | null }[]
+        appCertifiedBadgeAward?: {
+          edges: { node: IndexerAwardNode | null }[]
           pageInfo: { hasNextPage: boolean; endCursor: string | null }
         } | null
       } | null
     }
-    const conn = json.data?.appCertifiedActorProfile
+    const conn = json.data?.appCertifiedBadgeAward
     if (!conn) break
     for (const edge of conn.edges) {
-      if (edge.node?.did) out.push(edge.node.did)
+      if (edge.node) out.push(edge.node)
     }
     if (!conn.pageInfo.hasNextPage || !conn.pageInfo.endCursor) break
     cursor = conn.pageInfo.endCursor
@@ -86,27 +125,10 @@ async function fetchAllProfileDids(signal?: AbortSignal): Promise<string[]> {
 }
 
 /**
- * For a single (issuer) DID, list every award and return those that
- * target `subjectDid`. We DELIBERATELY skip the per-issuer definition
- * lookup at this stage — many issuers will have no matching awards
- * and we save round-trips by deferring the badge-type filter until
- * after candidates are narrowed down.
- */
-async function listMatchingAwards(
-  issuerDid: string,
-  subjectDid: string,
-  signal?: AbortSignal,
-): Promise<BadgeAwardRecord[]> {
-  const awards = await listAwards(issuerDid, signal).catch(
-    () => [] as BadgeAwardRecord[],
-  )
-  return awards.filter((a) => awardSubjectMatchesDid(a.value, subjectDid))
-}
-
-/**
- * Resolve which of the issuer's definitions are endorsement
- * definitions. Cached for the duration of the scan so an issuer with
- * many matching awards only triggers one definition fetch.
+ * For each unique issuer that endorsed `profileDid`, ask the issuer's
+ * PDS which of their definitions are endorsement-typed. Cached so an
+ * issuer with multiple awards on this profile only triggers one
+ * definition fetch.
  */
 async function getEndorsementDefUris(
   issuerDid: string,
@@ -126,53 +148,32 @@ async function getEndorsementDefUris(
 }
 
 /**
- * Run the scan: for every known certified user, list their awards,
- * keep those that target `profileDid`, then filter to awards whose
- * badge ref points at an endorsement-typed definition.
- *
- * Concurrency: we fan out awards-listings 20 issuers at a time so we
- * stay polite to certified.one and the xrpc proxy.
+ * Run the scan: one indexer query for awards-targeting-me, then per
+ * unique issuer load their definitions and keep awards whose badge
+ * ref points at an endorsement-typed one.
  */
 async function scanReceivedEndorsements(
   profileDid: string,
   signal?: AbortSignal,
 ): Promise<ReceivedEndorsement[]> {
-  const allDids = await fetchAllProfileDids(signal)
+  const awards = await fetchReceivedAwardsFromIndexer(profileDid, signal)
   if (signal?.aborted) return []
 
-  const CONCURRENCY = 20
-  const matchesByIssuer = new Map<string, BadgeAwardRecord[]>()
-
-  for (let i = 0; i < allDids.length; i += CONCURRENCY) {
-    if (signal?.aborted) return []
-    const slice = allDids.slice(i, i + CONCURRENCY)
-    const results = await Promise.all(
-      slice.map((d) => listMatchingAwards(d, profileDid, signal)),
-    )
-    for (let j = 0; j < slice.length; j++) {
-      const issuer = slice[j]
-      const matches = results[j]
-      if (matches.length > 0) matchesByIssuer.set(issuer, matches)
-    }
-  }
-
-  // For issuers with at least one candidate, fetch their definitions
-  // and keep only awards that reference an endorsement-typed one.
   const defCache = new Map<string, Set<string>>()
   const out: ReceivedEndorsement[] = []
-  for (const [issuer, awards] of matchesByIssuer) {
+  for (const a of awards) {
     if (signal?.aborted) return []
-    const endorsementDefUris = await getEndorsementDefUris(issuer, defCache, signal)
-    for (const a of awards) {
-      if (!endorsementDefUris.has(a.value.badge?.uri ?? "")) continue
-      out.push({
-        uri: a.uri,
-        cid: a.cid,
-        issuerDid: issuer,
-        createdAt: a.value.createdAt,
-        note: a.value.note,
-      })
-    }
+    const defUri = extractBadgeDefinitionUri(a.badge)
+    if (!defUri) continue
+    const endorsementDefUris = await getEndorsementDefUris(a.did, defCache, signal)
+    if (!endorsementDefUris.has(defUri)) continue
+    out.push({
+      uri: a.uri,
+      cid: a.cid,
+      issuerDid: a.did,
+      createdAt: a.createdAt,
+      note: a.note,
+    })
   }
 
   // Newest first.
@@ -214,17 +215,24 @@ export function peekCachedReceivedEndorsements(
 }
 
 /**
- * Fetch every public endorsement award targeting `profileDid` from
- * every known certified user, AND filter out awards whose latest
- * response (on the profile owner's PDS) is `"rejected"`. Scoped to
- * the badge.{definition,award,response} lexicons — the legacy
- * `app.certified.temp.graph.endorsement` collection is NOT
- * consulted (hard cutover per the migration plan).
+ * Fetch every public endorsement award targeting `profileDid`, AND
+ * filter out awards whose latest response (on the profile owner's
+ * PDS) is `"rejected"`. Scoped to the badge.{definition,award,response}
+ * lexicons — the legacy `app.certified.temp.graph.endorsement`
+ * collection is NOT consulted (hard cutover per the migration plan).
  *
- * The response join is a SINGLE listRecords against the
- * `profileDid`'s PDS — never per-issuer. This was the most likely
- * implementation foot-gun flagged in plan review (R1+R3 critical
- * C1); the contract enforces "one extra listRecords, not 386."
+ * Fetch shape:
+ *   1. One indexer GraphQL query for awards-targeting-me (subject
+ *      filter on `appCertifiedBadgeAward`).
+ *   2. Per unique issuer in the result: one PDS `listDefinitions`
+ *      call to verify their badge is endorsement-typed.
+ *   3. One PDS `listResponses` on the profile owner for the
+ *      response-state filter.
+ *
+ * Previously this fanned out `listAwards` across every certified
+ * user (~14 round-trips today, growing linearly). With the indexer's
+ * `subject: DIDFilterInput` (magic-indexer #65 + #78) the awards
+ * fan-out collapses to a single query.
  *
  * Returns the **visible** awards only. Per-award response state is
  * deliberately not returned to non-owner viewers (privacy: R2 C7).
