@@ -51,13 +51,10 @@ export interface BadgeDefinitionValue {
   title: string
   description?: string
   /**
-   * Lexicon currently lists `icon` as required (blob). We intentionally
-   * omit it: the UI renders the issuer's live avatar instead of a
-   * pinned image, so the field would just be redundant storage that
-   * goes stale. A lexicon PR to make `icon` optional is tracked
-   * separately; in the meantime some PDSes may be permissive, others
-   * may reject — handled at write time with a fallback (see
-   * ensureEndorsementDefinition).
+   * Optional per the canonical lexicon at
+   * hypercerts-org/hypercerts-lexicon. We omit it: the UI renders
+   * the issuer's live avatar instead of a pinned image, so the
+   * field would just be redundant storage that goes stale.
    */
   icon?: unknown
   allowedIssuers?: string[]
@@ -166,10 +163,9 @@ export async function ensureEndorsementDefinition(
     )
     if (match) return { uri: match.uri, cid: match.cid }
 
-    // No endorsement definition yet — create one. We omit `icon`
-    // intentionally; the UI uses the live issuer avatar. If the PDS
-    // rejects (some PDSes enforce the lexicon's required-icon),
-    // the caller surfaces the error.
+    // No endorsement definition yet — create one. `icon` is
+    // intentionally omitted (optional in the canonical lexicon; the
+    // UI uses the live issuer avatar).
     const body = {
       repo: ownDid,
       collection: BADGE_DEFINITION_COLLECTION,
