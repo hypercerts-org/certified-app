@@ -15,6 +15,10 @@ interface NewEndorsementPanelProps {
   readonly ownDid: string
   /** DIDs the user has already endorsed (used to block duplicates). */
   readonly existingSubjectDids: ReadonlySet<string>
+  /** Dismiss the panel (parent flips back to the collapsed "+ New"
+   *  button state). Called from the close affordance, and
+   *  automatically on a fully-successful batch. */
+  readonly onClose: () => void
   /** Called after at least one successful create so the parent can
    *  refetch. Continue-on-error semantics: fires even if some writes
    *  in the batch failed, as long as at least one succeeded. */
@@ -43,6 +47,7 @@ type WriteStatus =
 export default function NewEndorsementPanel({
   ownDid,
   existingSubjectDids,
+  onClose,
   onCreated,
 }: NewEndorsementPanelProps) {
   const [selectedDids, setSelectedDids] = useState<string[]>([])
@@ -136,10 +141,12 @@ export default function NewEndorsementPanel({
     }
     setIsSubmitting(false)
 
-    // All-success: clear the panel so the user lands back at the
-    // empty search state, ready to issue another batch.
+    // All-success: collapse the panel back to the "+ New" button so
+    // the user lands on the updated Given list. Mixed results stay
+    // open so the failed rows are visible.
     if (successCount === selectedDids.length) {
       reset()
+      onClose()
     }
   }
 
@@ -154,10 +161,21 @@ export default function NewEndorsementPanel({
   return (
     <section className="endorsement-panel" aria-label="Create endorsements">
       <div className="endorsement-panel__heading">
-        <span className="endorsement-panel__title">Endorse one or more accounts</span>
-        <span className="endorsement-panel__hint">
-          Search by handle or paste a DID. Endorsements can be revoked anytime.
-        </span>
+        <div className="endorsement-panel__heading-text">
+          <span className="endorsement-panel__title">Endorse one or more accounts</span>
+          <span className="endorsement-panel__hint">
+            Search by handle or paste a DID. Endorsements can be revoked anytime.
+          </span>
+        </div>
+        <button
+          type="button"
+          className="endorsement-panel__close"
+          onClick={onClose}
+          aria-label="Cancel"
+          disabled={isSubmitting}
+        >
+          <X size={16} aria-hidden="true" />
+        </button>
       </div>
 
       {!hasResults ? (

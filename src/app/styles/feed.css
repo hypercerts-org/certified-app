@@ -1297,6 +1297,34 @@
   border-bottom-color: var(--fg-primary);
 }
 
+/* "+ New" toolbar button that opens the inline endorsement panel
+   on the Given tab. Matches the prior modal-trigger styling. */
+.endorsements-new-btn {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  border: none;
+  background: transparent;
+  color: var(--fg-primary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.endorsements-new-btn:hover:not(:disabled) {
+  background: var(--overlay-weak);
+}
+
+.endorsements-new-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Inline "new endorsement" panel that sits at the top of the Given
    tab — replaces the prior "+ New" modal flow. */
 .endorsement-panel {
@@ -1312,8 +1340,39 @@
 
 .endorsement-panel__heading {
   display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.endorsement-panel__heading-text {
+  display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+}
+
+.endorsement-panel__close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--fg-muted);
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.endorsement-panel__close:hover:not(:disabled) {
+  background: var(--overlay-weak, rgba(128, 128, 128, 0.12));
+  color: var(--fg-primary);
+}
+
+.endorsement-panel__close:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .endorsement-panel__title {

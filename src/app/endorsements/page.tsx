@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react"
 import Link from "next/link"
+import { Plus } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { usePageTitle } from "@/lib/navbar-context"
 import { useGivenEndorsements } from "@/hooks/use-endorsements"
@@ -196,6 +197,7 @@ export default function EndorsementsPage() {
   const { did } = useAuth()
 
   const [activeTab, setActiveTab] = useState<TabKey>("given")
+  const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [confirmRkey, setConfirmRkey] = useState<string | null>(null)
   const [revokingRkey, setRevokingRkey] = useState<string | null>(null)
   const [revokeError, setRevokeError] = useState<string | null>(null)
@@ -253,6 +255,18 @@ export default function EndorsementsPage() {
               ))}
             </div>
 
+            {activeTab === "given" && !isPanelOpen ? (
+              <button
+                type="button"
+                className="endorsements-new-btn"
+                onClick={() => setIsPanelOpen(true)}
+                disabled={!did}
+                aria-label="New endorsement"
+              >
+                <Plus size={16} />
+                <span>New</span>
+              </button>
+            ) : null}
           </div>
 
           {activeTab === "received" ? (
@@ -261,10 +275,11 @@ export default function EndorsementsPage() {
             </div>
           ) : (
             <div role="tabpanel" id="tabpanel-given" aria-labelledby="tab-given">
-              {did ? (
+              {did && isPanelOpen ? (
                 <NewEndorsementPanel
                   ownDid={did}
                   existingSubjectDids={existingSubjectDids}
+                  onClose={() => setIsPanelOpen(false)}
                   onCreated={refetch}
                 />
               ) : null}
