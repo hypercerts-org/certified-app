@@ -67,7 +67,10 @@ function extractBadgeDefinitionUri(badge: unknown): string | null {
   if (!badge) return null
   if (typeof badge === "string") {
     // Go map literal: "map[cid:... uri:at://.../app.certified.badge.definition/...]"
-    const m = badge.match(/uri:(at:\/\/\S+)/)
+    // Stop at whitespace OR the closing `]` of the map literal — otherwise
+    // the trailing `]` leaks into the captured URI and the equality check
+    // against the real definition URI silently fails.
+    const m = badge.match(/uri:(at:\/\/[^\s\]]+)/)
     return m?.[1] ?? null
   }
   if (typeof badge === "object" && "uri" in badge) {
