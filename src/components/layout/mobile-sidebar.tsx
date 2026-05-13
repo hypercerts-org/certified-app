@@ -11,6 +11,7 @@ import { useSession } from "@/hooks/use-session";
 import { useOrg } from "@/lib/groups/org-context";
 import { isRouteVisibleToActor } from "@/lib/groups/personal-only";
 import { useOrgProfile } from "@/hooks/use-org-profile";
+import { usePendingAwardsCount } from "@/hooks/use-pending-awards-count";
 import { useFeedback } from "@/lib/feedback-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
@@ -33,6 +34,13 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   const { orgAvatarUrl } = useOrgProfile();
   const { openFeedback } = useFeedback();
   const { count: unreadCount, more: unreadMore, ready: notificationsReady } = useNotifications();
+  const pendingAwardsCount = usePendingAwardsCount();
+  const pendingAwardsBadge =
+    pendingAwardsCount == null || pendingAwardsCount <= 0
+      ? null
+      : pendingAwardsCount >= 99
+        ? "99+"
+        : String(pendingAwardsCount);
   const unreadBadge = notificationsReady && unreadCount > 0
     ? unreadMore || unreadCount >= 99 ? "99+" : String(unreadCount)
     : null;
@@ -188,19 +196,30 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
               ? pathname === "/"
               : pathname.startsWith(link.href!);
             const isNotifications = link.href === "/notifications";
+            const isEndorsements = link.href === "/endorsements";
+            const showBadge = isNotifications
+              ? unreadBadge
+              : isEndorsements
+                ? pendingAwardsBadge
+                : null;
+            const ariaLabel = showBadge
+              ? isNotifications
+                ? `${link.label}, ${showBadge} unread`
+                : `${link.label}, ${showBadge} pending`
+              : undefined;
             return (
               <Link
                 key={link.href}
                 href={link.href!}
                 className={`mobile-sidebar__link ${isActive ? "mobile-sidebar__link--active" : ""}`}
                 onClick={onClose}
-                aria-label={isNotifications && unreadBadge ? `${link.label}, ${unreadBadge} unread` : undefined}
+                aria-label={ariaLabel}
               >
                 <link.icon size={20} strokeWidth={isActive ? 2 : 1.5} />
                 {link.label}
-                {isNotifications && unreadBadge && (
-                  <span className="mobile-sidebar__badge" aria-hidden="true">{unreadBadge}</span>
-                )}
+                {showBadge ? (
+                  <span className="mobile-sidebar__badge" aria-hidden="true">{showBadge}</span>
+                ) : null}
               </Link>
             );
           })}

@@ -7,8 +7,10 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { usePageTitle } from "@/lib/navbar-context"
 import { useGivenEndorsements } from "@/hooks/use-endorsements"
 import { useReceivedEndorsements, type ReceivedEndorsement } from "@/hooks/use-received-endorsements"
+import { useOwnResponseStates } from "@/hooks/use-own-response-states"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { deleteEndorsementAward } from "@/lib/atproto/badges"
+import ResponseMenu from "@/components/badges/response-menu"
 import EndorsementRow from "@/components/endorsements/endorsement-row"
 import NewEndorsementModal from "@/components/endorsements/new-endorsement-modal"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
@@ -85,8 +87,22 @@ function GivenEndorsementsList({
   )
 }
 
-/** One row in the "Received" list: the issuer, the note, and the date. */
-function ReceivedRow({ endorsement }: { endorsement: ReceivedEndorsement }) {
+/** One row in the "Received" list: issuer, optional note, date, and
+ *  the kebab menu for accept/reject/reset. The /endorsements page
+ *  is always the viewer's OWN inbox, so the menu always shows. */
+function ReceivedRow({
+  endorsement,
+  ownerDid,
+  state,
+  allResponses,
+  onAfterWrite,
+}: {
+  endorsement: ReceivedEndorsement
+  ownerDid: string | null
+  state: ReturnType<ReturnType<typeof useOwnResponseStates>["resolve"]>["state"]
+  allResponses: ReturnType<typeof useOwnResponseStates>["responses"]
+  onAfterWrite: () => void | Promise<void>
+}) {
   const { info, isLoading } = useAuthorInfo(endorsement.issuerDid)
   const displayName = info?.displayName || info?.handle || endorsement.issuerDid
   const handle = info?.handle && info.handle !== info.did ? info.handle : null
@@ -116,6 +132,15 @@ function ReceivedRow({ endorsement }: { endorsement: ReceivedEndorsement }) {
       >
         {formatShortDate(endorsement.createdAt)}
       </time>
+      <ResponseMenu
+        awardUri={endorsement.uri}
+        awardCid={endorsement.cid}
+        issuerDisplayName={displayName}
+        ownerDid={ownerDid}
+        state={state}
+        allResponses={allResponses}
+        onAfterWrite={onAfterWrite}
+      />
     </li>
   )
 }
@@ -123,6 +148,7 @@ function ReceivedRow({ endorsement }: { endorsement: ReceivedEndorsement }) {
 function ReceivedEndorsementsList() {
   const { did } = useAuth()
   const { endorsements, isLoading, error } = useReceivedEndorsements(did)
+  const ownStates = useOwnResponseStates()
 
   if (isLoading) {
     return (
@@ -140,10 +166,22 @@ function ReceivedEndorsementsList() {
     )
   }
 
+  const handleAfterWrite = async () => {
+    ownStates.invalidate()
+    await ownStates.refetch()
+  }
+
   return (
     <ul className="endorsements-list">
       {endorsements.map((e) => (
-        <ReceivedRow key={e.uri} endorsement={e} />
+        <ReceivedRow
+          key={e.uri}
+          endorsement={e}
+          ownerDid={did}
+          state={ownStates.resolve(e.uri).state}
+          allResponses={ownStates.responses}
+          onAfterWrite={handleAfterWrite}
+        />
       ))}
     </ul>
   )

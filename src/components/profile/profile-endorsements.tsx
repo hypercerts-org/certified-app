@@ -3,8 +3,11 @@
 import Link from "next/link"
 import { useGivenEndorsements, type GivenEndorsement } from "@/hooks/use-endorsements"
 import { useReceivedEndorsements, type ReceivedEndorsement } from "@/hooks/use-received-endorsements"
+import { useOwnResponseStates } from "@/hooks/use-own-response-states"
 import { useAuthorInfo } from "@/hooks/use-author-info"
+import { useAuth } from "@/lib/auth/auth-context"
 import EndorsementRow from "@/components/endorsements/endorsement-row"
+import ResponseMenu from "@/components/badges/response-menu"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { formatShortDate } from "@/lib/utils/format-date"
@@ -30,14 +33,31 @@ interface ProfileEndorsementsProps {
  * target the profile DID. No global trusted-evaluator allowlist.
  */
 export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
+  const { did: viewerDid } = useAuth()
+  const viewerIsOwner = !!viewerDid && viewerDid === did
+
   const given = useGivenEndorsements(did)
   const received = useReceivedEndorsements(did)
+
+  // Owner-only response state. The hook is keyed on the viewer's
+  // own DID via useAuth, so we only get response data for our own
+  // profile — never leak per-row state for someone else's profile.
+  const ownStates = useOwnResponseStates()
 
   return (
     <div className="profile-endorsements">
       <section className="profile-endorsements__section">
         <h3 className="profile-endorsements__heading">Endorsements received</h3>
-        <ReceivedBody {...received} />
+        <ReceivedBody
+          {...received}
+          viewerIsOwner={viewerIsOwner}
+          resolve={ownStates.resolve}
+          allResponses={ownStates.responses}
+          onAfterWrite={async () => {
+            ownStates.invalidate()
+            await ownStates.refetch()
+          }}
+        />
       </section>
 
       <section className="profile-endorsements__section">
@@ -56,9 +76,21 @@ interface ReceivedBodyProps {
   isLoading: boolean
   error: string | null
   endorsements: ReceivedEndorsement[]
+  viewerIsOwner: boolean
+  resolve: ReturnType<typeof useOwnResponseStates>["resolve"]
+  allResponses: ReturnType<typeof useOwnResponseStates>["responses"]
+  onAfterWrite: () => void | Promise<void>
 }
 
-function ReceivedBody({ isLoading, error, endorsements }: ReceivedBodyProps) {
+function ReceivedBody({
+  isLoading,
+  error,
+  endorsements,
+  viewerIsOwner,
+  resolve,
+  allResponses,
+  onAfterWrite,
+}: ReceivedBodyProps) {
   if (isLoading) {
     return (
       <div className="profile-endorsements__loading">
@@ -83,7 +115,14 @@ function ReceivedBody({ isLoading, error, endorsements }: ReceivedBodyProps) {
   return (
     <ul className="endorsements-list">
       {endorsements.map((e) => (
-        <ReceivedRow key={e.uri} endorsement={e} />
+        <ReceivedRow
+          key={e.uri}
+          endorsement={e}
+          viewerIsOwner={viewerIsOwner}
+          resolve={resolve}
+          allResponses={allResponses}
+          onAfterWrite={onAfterWrite}
+        />
       ))}
     </ul>
   )
@@ -132,8 +171,23 @@ function GivenBody({ isLoading, error, endorsements }: GivenBodyProps) {
 }
 
 /** A row in "Endorsements received": shows the issuer (avatar + name
- *  + handle), the note if any, and the date. */
-function ReceivedRow({ endorsement }: { endorsement: ReceivedEndorsement }) {
+ *  + handle), the note if any, and the date. When the viewer owns
+ *  the profile, the row also gets a kebab menu for hide/show/reset
+ *  per the badge.response flow. */
+function ReceivedRow({
+  endorsement,
+  viewerIsOwner,
+  resolve,
+  allResponses,
+  onAfterWrite,
+}: {
+  endorsement: ReceivedEndorsement
+  viewerIsOwner: boolean
+  resolve: ReturnType<typeof useOwnResponseStates>["resolve"]
+  allResponses: ReturnType<typeof useOwnResponseStates>["responses"]
+  onAfterWrite: () => void | Promise<void>
+}) {
+  const { did: viewerDid } = useAuth()
   const { info, isLoading } = useAuthorInfo(endorsement.issuerDid)
   const displayName = info?.displayName || info?.handle || endorsement.issuerDid
   const handle = info?.handle && info.handle !== info.did ? info.handle : null
@@ -168,6 +222,17 @@ function ReceivedRow({ endorsement }: { endorsement: ReceivedEndorsement }) {
       >
         {formatShortDate(endorsement.createdAt)}
       </time>
+      {viewerIsOwner ? (
+        <ResponseMenu
+          awardUri={endorsement.uri}
+          awardCid={endorsement.cid}
+          issuerDisplayName={displayName}
+          ownerDid={viewerDid}
+          state={resolve(endorsement.uri).state}
+          allResponses={allResponses}
+          onAfterWrite={onAfterWrite}
+        />
+      ) : null}
     </li>
   )
 }

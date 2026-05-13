@@ -19,6 +19,10 @@ export interface ReceivedEndorsement {
   /** AT-URI of the award record on the issuer's PDS — used as a
    *  stable key. */
   uri: string
+  /** CID of the award record — needed to build a strongRef when
+   *  the recipient writes a response (accept/reject) against this
+   *  award. */
+  cid: string
   /** DID of the user who issued the endorsement. */
   issuerDid: string
   /** ISO timestamp from the award record. */
@@ -163,6 +167,7 @@ async function scanReceivedEndorsements(
       if (!endorsementDefUris.has(a.value.badge?.uri ?? "")) continue
       out.push({
         uri: a.uri,
+        cid: a.cid,
         issuerDid: issuer,
         createdAt: a.value.createdAt,
         note: a.value.note,

@@ -23,6 +23,7 @@ import { useOrg } from "@/lib/groups/org-context";
 import { resolvePostSwitchPath } from "@/lib/groups/navigation";
 import { isRouteVisibleToActor } from "@/lib/groups/personal-only";
 import { useOrgProfile } from "@/hooks/use-org-profile";
+import { usePendingAwardsCount } from "@/hooks/use-pending-awards-count";
 import { useNotifications } from "@/lib/notifications-context";
 import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
@@ -51,6 +52,15 @@ function formatUnreadBadge(ready: boolean, count: number, more: boolean): string
   return String(count);
 }
 
+/** Format the pending-endorsement count for the Endorsements nav chip.
+ *  `null` while loading (count is null) — keeps the chip hidden during
+ *  the cold scan rather than briefly flashing "0". */
+function formatPendingBadge(count: number | null): string | null {
+  if (count == null || count <= 0) return null;
+  if (count >= 99) return "99+";
+  return String(count);
+}
+
 export default function DesktopLeftRail() {
   const pathname = usePathname();
   const router = useRouter();
@@ -62,6 +72,13 @@ export default function DesktopLeftRail() {
   const { count: unreadCount, more: unreadMore, ready: notificationsReady } = useNotifications();
 
   const unreadBadge = formatUnreadBadge(notificationsReady, unreadCount, unreadMore);
+
+  // Pending-endorsement chip — count of un-responded badge.awards
+  // targeting the viewer's profile. Closes the discovery gap from
+  // default-show: a viewer who never opens Endorsements still sees
+  // the chip on next page load. Hidden on the unauthed rail.
+  const pendingCount = usePendingAwardsCount();
+  const pendingBadge = formatPendingBadge(pendingCount);
 
   // Account-switcher dropdown state. The dropdown is portaled to <body>
   // because the .left-rail's overflow-y: auto would otherwise clip it —
@@ -188,7 +205,7 @@ export default function DesktopLeftRail() {
     { href: profileHref, label: "Profile", icon: User, matchPrefix: true },
     { href: "/search", label: "Explore", icon: Search },
     ...(showEndorsements
-      ? [{ href: "/endorsements", label: "Endorsements", icon: Award, matchPrefix: true }]
+      ? [{ href: "/endorsements", label: "Endorsements", icon: Award, badge: pendingBadge, matchPrefix: true }]
       : []),
     { href: "/notifications", label: "Notifications", icon: Bell, badge: unreadBadge, matchPrefix: true },
     ...(showGroups

@@ -5,9 +5,13 @@ import Link from "next/link"
 import { track } from "@vercel/analytics"
 import type { Notification } from "@/lib/atproto/notifications"
 import { useAuthorInfo } from "@/hooks/use-author-info"
+import { useOwnResponseStates } from "@/hooks/use-own-response-states"
 import { activityDetailHrefFromUri } from "@/lib/atproto/activity-uri"
 import { formatRelativeTime } from "@/lib/atproto/activity"
+import { BADGE_AWARD_COLLECTION } from "@/lib/atproto/badges"
 import Avatar from "@/components/ui/avatar"
+import ResponseButtons from "@/components/badges/response-buttons"
+import { useAuth } from "@/lib/auth/auth-context"
 
 function truncateDid(did: string): string {
   if (did.length <= 24) return did
@@ -41,6 +45,7 @@ interface NotificationRowProps {
 }
 
 export default function NotificationRow({ notification, wasUnreadOnMount }: NotificationRowProps) {
+  const { did: ownerDid } = useAuth()
   const { info } = useAuthorInfo(notification.latestAuthor)
   const hasHandle = Boolean(info?.handle)
   const displayName = info?.handle || truncateDid(notification.latestAuthor)
@@ -48,6 +53,26 @@ export default function NotificationRow({ notification, wasUnreadOnMount }: Noti
   const href = activityDetailHrefFromUri(notification.latestRecordUri)
   const absoluteTime = new Date(notification.sortAt).toLocaleString()
   const relativeTime = formatRelativeTime(notification.sortAt)
+
+  // Show response buttons only when the underlying record is a
+  // badge.award (the new lexicon). The notifications backend still
+  // emits "endorsement" reason for legacy temp.graph.endorsement
+  // records too; those can't be responded to via this control so
+  // we keep the row read-only for them. This is forward-compat:
+  // once the backend detects badge.award firehose events, those
+  // notifications will surface with the controls automatically.
+  const isBadgeAward = notification.latestRecordUri.includes(
+    `/${BADGE_AWARD_COLLECTION}/`,
+  )
+  const { resolve, invalidate, refetch } = useOwnResponseStates()
+  const responseState = isBadgeAward
+    ? resolve(notification.latestRecordUri).state
+    : "default"
+
+  const handleAfterWrite = async () => {
+    invalidate()
+    await refetch()
+  }
 
   const content = (
     <>
@@ -78,7 +103,15 @@ export default function NotificationRow({ notification, wasUnreadOnMount }: Noti
 
   const className = `notification-row${wasUnreadOnMount ? " notification-row--unread" : ""}`
 
-  if (href) {
+  // Wrapping in <Link> would put a <button> inside <a>, which is
+  // illegal HTML. When we have response buttons to show, drop the
+  // outer link and use a div; the link target was just the
+  // record-detail page, which the user can still reach by clicking
+  // the body text once we add an inner <Link>. For now the badge.
+  // award case has no record-detail route anyway (we deep-link to
+  // bsky-style activity pages, which don't exist for awards), so
+  // dropping the link wrapper here is harmless.
+  if (href && !isBadgeAward) {
     return (
       <Link
         href={href}
@@ -89,5 +122,19 @@ export default function NotificationRow({ notification, wasUnreadOnMount }: Noti
       </Link>
     )
   }
-  return <div className={className}>{content}</div>
+  return (
+    <div className={className}>
+      {content}
+      {isBadgeAward ? (
+        <ResponseButtons
+          awardUri={notification.latestRecordUri}
+          awardCid={notification.latestRecordCid}
+          issuerDisplayName={displayName}
+          ownerDid={ownerDid}
+          state={responseState}
+          onAfterWrite={handleAfterWrite}
+        />
+      ) : null}
+    </div>
+  )
 }
