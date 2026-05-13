@@ -16,6 +16,13 @@
   );
 }
 
+/* Half height when the profile has no banner image. The gradient
+   panel reads as an intentional "no banner" affordance rather than
+   eating the same vertical real estate as a real banner. */
+.profile-hero__banner--empty {
+  height: 90px;
+}
+
 .profile-hero__banner-img {
   width: 100%;
   height: 100%;
@@ -91,6 +98,27 @@
   color: var(--fg-muted);
   font-weight: 400;
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Inline tag shown next to the handle when the profile's PDS is
+   Bluesky-hosted, so visitors recognise the data origin. Quiet
+   styling — small pill, muted border. */
+.profile-hero__pds-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--overlay-weak, rgba(128, 128, 128, 0.08));
+  border: 1px solid var(--border-default);
+  color: var(--fg-muted);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.4;
 }
 
 .profile-hero__count {
@@ -124,6 +152,10 @@
     height: 220px;
   }
 
+  .profile-hero__banner--empty {
+    height: 110px;
+  }
+
   .profile-hero__body {
     padding: 0 24px 24px;
   }
@@ -136,6 +168,10 @@
 @media (min-width: 800px) {
   .profile-hero__banner {
     height: 200px;
+  }
+
+  .profile-hero__banner--empty {
+    height: 100px;
   }
 }
 

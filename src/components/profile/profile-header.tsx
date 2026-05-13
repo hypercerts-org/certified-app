@@ -6,6 +6,7 @@ import { Pencil, UserPlus, Settings as SettingsIcon } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import { getInitials } from "@/lib/utils/initials"
+import { useProfilePds } from "@/hooks/use-profile-pds"
 import type { CertifiedProfile } from "@/lib/atproto/types"
 
 interface ProfileHeaderProps {
@@ -65,13 +66,23 @@ export default function ProfileHeader({
 
   const hasAdminActions = !!editHref || !!settingsHref
 
+  const { isBskyHosted } = useProfilePds(did)
+
+  // Half-height when there's no real banner — a half-height gradient
+  // panel reads as "no banner set" intentionally rather than
+  // "loading" or "broken".
+  const showBannerImage = !!bannerUrl && !bannerFailed
+  const bannerClass = showBannerImage
+    ? "profile-hero__banner"
+    : "profile-hero__banner profile-hero__banner--empty"
+
   return (
     <header className="profile-hero">
-      <div className="profile-hero__banner">
-        {bannerUrl && !bannerFailed ? (
+      <div className={bannerClass}>
+        {showBannerImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={bannerUrl}
+            src={bannerUrl!}
             alt=""
             className="profile-hero__banner-img"
             onError={() => setBannerFailed(true)}
@@ -119,7 +130,16 @@ export default function ProfileHeader({
 
         {eyebrow ? <p className="profile-hero__eyebrow">{eyebrow}</p> : null}
         <h1 className="profile-hero__name">{displayName}</h1>
-        {handle ? <p className="profile-hero__handle">@{handle}</p> : null}
+        {handle ? (
+          <p className="profile-hero__handle">
+            @{handle}
+            {isBskyHosted ? (
+              <span className="profile-hero__pds-tag" title="This profile lives on Bluesky">
+                on Bluesky
+              </span>
+            ) : null}
+          </p>
+        ) : null}
 
         <p className="profile-hero__count">
           <span className="profile-hero__count-value">{activityCountLabel}</span>
