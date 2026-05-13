@@ -96,6 +96,9 @@ dialog.signin-modal {
   margin: auto;
   max-height: calc(100vh - 40px);
   overflow-y: auto;
+  /* Never show a horizontal scrollbar — long DIDs / handles in
+     content should ellipsis-truncate, not spill the modal width. */
+  overflow-x: hidden;
 }
 
 dialog.signin-modal::backdrop {
