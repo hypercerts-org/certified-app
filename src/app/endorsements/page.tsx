@@ -6,10 +6,9 @@ import { Plus } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { usePageTitle } from "@/lib/navbar-context"
 import { useGivenEndorsements } from "@/hooks/use-endorsements"
-import { useTrustedEndorsedDids, type EvaluatorAttribution } from "@/hooks/use-trusted-endorsed-dids"
+import { useReceivedEndorsements, type ReceivedEndorsement } from "@/hooks/use-received-endorsements"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import { ALL_EVALUATOR_DIDS, ALL_EVALUATORS_STABLE_KEY } from "@/config/trusted-evaluators"
-import { deleteEndorsement } from "@/lib/atproto/endorsements"
+import { deleteEndorsementAward } from "@/lib/atproto/badges"
 import EndorsementRow from "@/components/endorsements/endorsement-row"
 import NewEndorsementModal from "@/components/endorsements/new-endorsement-modal"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
@@ -74,8 +73,9 @@ function GivenEndorsementsList({
         {endorsements.map((e) => (
           <EndorsementRow
             key={e.uri}
-            subjectDid={e.value.subject.did}
-            createdAt={e.value.createdAt}
+            subjectDid={e.subjectDid}
+            createdAt={e.createdAt}
+            note={e.note}
             onRevoke={() => onRevoke(e.rkey)}
             isRevoking={revokingRkey === e.rkey}
           />
@@ -85,44 +85,16 @@ function GivenEndorsementsList({
   )
 }
 
-/** Single endorser chip shown under each endorsed user in the received list. */
-function EndorserChip({ evaluatorDid, createdAt }: EvaluatorAttribution) {
-  const { info, isLoading } = useAuthorInfo(evaluatorDid)
-  const displayName = info?.displayName || info?.handle || evaluatorDid
-  const initials = getInitials(info?.displayName, evaluatorDid)
-  const href = `/profile/${encodeURIComponent(info?.handle || evaluatorDid)}`
-
-  return (
-    <Link href={href} className="endorser-chip" title={`Endorsed ${formatShortDate(createdAt)}`}>
-      {isLoading && !info ? (
-        <div className="endorsement-row__avatar-skel" style={{ width: 24, height: 24 }} aria-hidden="true" />
-      ) : (
-        <Avatar size="sm" src={info?.avatarUrl || undefined} alt="" fallbackInitials={initials} />
-      )}
-      <span className="endorser-chip__name">{displayName}</span>
-      <time dateTime={createdAt} className="endorser-chip__date">
-        {formatShortDate(createdAt)}
-      </time>
-    </Link>
-  )
-}
-
-/** A single endorsed user with their list of endorsers. */
-function ReceivedEndorsementCard({
-  subjectDid,
-  attributions,
-}: {
-  readonly subjectDid: string
-  readonly attributions: EvaluatorAttribution[]
-}) {
-  const { info, isLoading } = useAuthorInfo(subjectDid)
-  const displayName = info?.displayName || info?.handle || subjectDid
+/** One row in the "Received" list: the issuer, the note, and the date. */
+function ReceivedRow({ endorsement }: { endorsement: ReceivedEndorsement }) {
+  const { info, isLoading } = useAuthorInfo(endorsement.issuerDid)
+  const displayName = info?.displayName || info?.handle || endorsement.issuerDid
   const handle = info?.handle && info.handle !== info.did ? info.handle : null
-  const initials = getInitials(info?.displayName, subjectDid)
-  const href = `/profile/${encodeURIComponent(info?.handle || subjectDid)}`
+  const initials = getInitials(info?.displayName, endorsement.issuerDid)
+  const href = `/profile/${encodeURIComponent(info?.handle || endorsement.issuerDid)}`
 
   return (
-    <li className="received-endorsement-card">
+    <li className="endorsement-row">
       <Link href={href} className="endorsement-row__main">
         {isLoading && !info ? (
           <div className="endorsement-row__avatar-skel" aria-hidden="true" />
@@ -132,28 +104,25 @@ function ReceivedEndorsementCard({
         <div className="endorsement-row__meta">
           <span className="endorsement-row__name">{displayName}</span>
           {handle ? <span className="endorsement-row__handle">@{handle}</span> : null}
+          {endorsement.note ? (
+            <span className="endorsement-row__note">{endorsement.note}</span>
+          ) : null}
         </div>
       </Link>
-      <div className="received-endorsement-card__endorsers">
-        {attributions.map((attr) => (
-          <EndorserChip key={attr.evaluatorDid} {...attr} />
-        ))}
-      </div>
+      <time
+        dateTime={endorsement.createdAt}
+        className="endorsement-row__date"
+        title={new Date(endorsement.createdAt).toLocaleString()}
+      >
+        {formatShortDate(endorsement.createdAt)}
+      </time>
     </li>
   )
 }
 
 function ReceivedEndorsementsList() {
   const { did } = useAuth()
-  const { attribution, isLoading, error } = useTrustedEndorsedDids(ALL_EVALUATOR_DIDS, ALL_EVALUATORS_STABLE_KEY)
-
-  // Show only endorsements the current user received.
-  const entries = useMemo(() => {
-    if (!did) return []
-    const attrs = attribution.get(did)
-    if (!attrs || attrs.length === 0) return []
-    return [{ did, attributions: attrs }]
-  }, [attribution, did])
+  const { endorsements, isLoading, error } = useReceivedEndorsements(did)
 
   if (isLoading) {
     return (
@@ -162,23 +131,19 @@ function ReceivedEndorsementsList() {
       </div>
     )
   }
-
-  if (error) {
-    return <ErrorMessage message={error} />
+  if (error) return <ErrorMessage message={error} />
+  if (endorsements.length === 0) {
+    return (
+      <p className="endorsements-empty">
+        You haven&apos;t received any endorsements yet.
+      </p>
+    )
   }
-
-  if (entries.length === 0) {
-    return <p className="endorsements-empty">You haven&apos;t received any endorsements from trusted evaluators yet.</p>
-  }
-
-  const myAttributions = entries[0]?.attributions ?? []
 
   return (
     <ul className="endorsements-list">
-      {myAttributions.map((attr) => (
-        <li key={attr.evaluatorDid} className="received-endorsement-card">
-          <EndorserChip {...attr} />
-        </li>
+      {endorsements.map((e) => (
+        <ReceivedRow key={e.uri} endorsement={e} />
       ))}
     </ul>
   )
@@ -202,7 +167,7 @@ export default function EndorsementsPage() {
   const { endorsements, isLoading, error, refetch } = useGivenEndorsements(did)
 
   const existingSubjectDids = useMemo(
-    () => new Set(endorsements.map((e) => e.value.subject.did)),
+    () => new Set(endorsements.map((e) => e.subjectDid)),
     [endorsements]
   )
 
@@ -212,7 +177,7 @@ export default function EndorsementsPage() {
     setRevokingRkey(rkey)
     setRevokeError(null)
     try {
-      await deleteEndorsement(did, rkey)
+      await deleteEndorsementAward(did, rkey)
       await refetch()
       setConfirmRkey(null)
     } catch (err) {

@@ -13,6 +13,9 @@ interface EndorsementRowProps {
   readonly subjectDid: string
   /** ISO timestamp of when the endorsement was created. */
   readonly createdAt: string
+  /** Optional issuer-provided note (badge.award.note). Shown under
+   *  the subject's display name when present. */
+  readonly note?: string
   /** If provided, the row renders a revoke button that calls this
    *  callback. Used on the "Given" list for the viewer's own
    *  endorsements. */
@@ -30,6 +33,7 @@ interface EndorsementRowProps {
 export default function EndorsementRow({
   subjectDid,
   createdAt,
+  note,
   onRevoke,
   isRevoking,
 }: EndorsementRowProps) {
@@ -58,6 +62,7 @@ export default function EndorsementRow({
           {handle ? (
             <span className="endorsement-row__handle">@{handle}</span>
           ) : null}
+          {note ? <span className="endorsement-row__note">{note}</span> : null}
         </div>
       </Link>
       <time

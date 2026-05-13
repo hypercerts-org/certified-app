@@ -23,6 +23,13 @@ const ALLOWED_WRITE_COLLECTIONS = [
   "app.certified.actor.membership",
   "app.certified.actor.organization",
   "app.certified.temp.graph.endorsement",
+  // Badge lexicons (issue #65 tracks indexer-side support). `definition`
+  // is written once per user the first time they endorse; `award` is the
+  // endorsement itself; `response` is the recipient accept/reject (used
+  // in a later phase, allowlisted now so we don't ship two PRs).
+  "app.certified.badge.definition",
+  "app.certified.badge.award",
+  "app.certified.badge.response",
   "org.hypercerts.claim.activity",
 ]
 

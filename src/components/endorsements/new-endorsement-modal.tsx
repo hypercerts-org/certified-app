@@ -5,10 +5,11 @@ import { X } from "lucide-react"
 import HandleSearch from "@/components/groups/handle-search"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
+import Textarea from "@/components/ui/textarea"
 import ErrorMessage from "@/components/ui/error-message"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { getInitials } from "@/lib/utils/initials"
-import { createEndorsement } from "@/lib/atproto/endorsements"
+import { createEndorsementAward } from "@/lib/atproto/badges"
 
 interface NewEndorsementModalProps {
   /** The current user's DID — endorsement records are written to
@@ -53,6 +54,7 @@ export default function NewEndorsementModal({
 
   const [selectedDid, setSelectedDid] = useState<string | null>(null)
   const [selectedHandle, setSelectedHandle] = useState<string | null>(null)
+  const [note, setNote] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -78,7 +80,7 @@ export default function NewEndorsementModal({
     setIsSubmitting(true)
     setError(null)
     try {
-      await createEndorsement(ownDid, selectedDid)
+      await createEndorsementAward(ownDid, selectedDid, note)
       await onCreated()
       onClose()
     } catch (err) {
@@ -131,23 +133,34 @@ export default function NewEndorsementModal({
             />
 
             {selectedDid ? (
-              <div className="endorsement-preview">
-                <Avatar
-                  size="md"
-                  src={info?.avatarUrl || undefined}
-                  fallbackInitials={previewInitials}
-                />
-                <div className="endorsement-preview__meta">
-                  <span className="endorsement-preview__name">
-                    {previewName}
-                  </span>
-                  {previewHandle ? (
-                    <span className="endorsement-preview__handle">
-                      {previewHandle}
+              <>
+                <div className="endorsement-preview">
+                  <Avatar
+                    size="md"
+                    src={info?.avatarUrl || undefined}
+                    fallbackInitials={previewInitials}
+                  />
+                  <div className="endorsement-preview__meta">
+                    <span className="endorsement-preview__name">
+                      {previewName}
                     </span>
-                  ) : null}
+                    {previewHandle ? (
+                      <span className="endorsement-preview__handle">
+                        {previewHandle}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
+                <Textarea
+                  label="Note (optional)"
+                  placeholder="Why are you endorsing this account?"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  rows={3}
+                  maxLength={1000}
+                  helperText={`${note.length}/1000`}
+                />
+              </>
             ) : null}
 
             {isSelf ? (
