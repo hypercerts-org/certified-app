@@ -107,7 +107,7 @@ function ReceivedBody({
   }
   if (endorsements.length === 0) {
     return (
-      <p className="profile-endorsements__placeholder profile-endorsements__placeholder--centered">
+      <p className="profile-endorsements__placeholder">
         This user hasn&rsquo;t been endorsed yet.
       </p>
     )

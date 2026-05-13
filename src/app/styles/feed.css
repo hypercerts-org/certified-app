@@ -1743,10 +1743,6 @@
   margin: 0;
 }
 
-.profile-endorsements__placeholder--centered {
-  text-align: center;
-}
-
 .profile-endorsements__loading {
   display: flex;
   justify-content: center;
