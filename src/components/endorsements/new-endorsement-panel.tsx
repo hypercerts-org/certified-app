@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState, useCallback } from "react"
+import { useState } from "react"
 import { X, Check, AlertCircle } from "lucide-react"
 import HandleSearch from "@/components/groups/handle-search"
 import Avatar from "@/components/ui/avatar"
@@ -10,21 +10,20 @@ import { useAuthorInfo } from "@/hooks/use-author-info"
 import { getInitials } from "@/lib/utils/initials"
 import { createEndorsementAward } from "@/lib/atproto/badges"
 
-interface NewEndorsementModalProps {
+interface NewEndorsementPanelProps {
   /** The current user's DID — endorsement records are written to
    *  this repo. */
   readonly ownDid: string
   /** DIDs the user has already endorsed (used to block duplicates). */
   readonly existingSubjectDids: ReadonlySet<string>
-  readonly onClose: () => void
   /** Called after at least one successful create so the parent can
    *  refetch. Continue-on-error semantics: fires even if some writes
    *  in the batch failed, as long as at least one succeeded. */
   readonly onCreated: () => void | Promise<void>
 }
 
-/** Per-recipient write status — drives the inline status chip badge
- *  and any error text under each row. */
+/** Per-recipient write status — drives the inline status badge on
+ *  each row and any error text underneath. */
 type WriteStatus =
   | { kind: "idle" }
   | { kind: "writing" }
@@ -32,40 +31,21 @@ type WriteStatus =
   | { kind: "error"; message: string }
 
 /**
- * Dialog for creating endorsements. Pick one or more targets via the
- * handle/DID search, then click Endorse to write a `badge.award` for
- * each. Continue-on-error: each recipient's write is independent;
- * failures don't abort the batch. After submission the modal stays
- * open showing per-recipient status until the user closes it (or all
- * succeeded, in which case it auto-closes).
+ * Inline form for creating endorsements. Pick one or more targets via
+ * the handle/DID search, then click Endorse to write a `badge.award`
+ * for each. Continue-on-error: each recipient's write is independent;
+ * failures don't abort the batch.
+ *
+ * After a fully-successful batch the panel clears itself back to the
+ * empty search state. After a partial-failure batch it keeps the
+ * failed rows visible so the user can see what went wrong; the
+ * "Clear" button on the panel resets the list manually.
  */
-export default function NewEndorsementModal({
+export default function NewEndorsementPanel({
   ownDid,
   existingSubjectDids,
-  onClose,
   onCreated,
-}: NewEndorsementModalProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
-
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    dialog.showModal()
-    const handleClose = () => onClose()
-    dialog.addEventListener("close", handleClose)
-    return () => dialog.removeEventListener("close", handleClose)
-  }, [onClose])
-
-  const handleBackdropClick = useCallback(
-    (e: React.MouseEvent<HTMLDialogElement>) => {
-      if (e.target === dialogRef.current) onClose()
-    },
-    [onClose],
-  )
-
-  // Recipient list — order preserved by insertion (newest first
-  // visually so the most recently picked chip is closest to the
-  // search input).
+}: NewEndorsementPanelProps) {
   const [selectedDids, setSelectedDids] = useState<string[]>([])
   const [handleByDid, setHandleByDid] = useState<Record<string, string>>({})
   const [statusByDid, setStatusByDid] = useState<Record<string, WriteStatus>>({})
@@ -80,6 +60,13 @@ export default function NewEndorsementModal({
     (s) => s.kind === "success",
   ).length
   const hasResults = writeCompleteCount > 0
+
+  const reset = () => {
+    setSelectedDids([])
+    setHandleByDid({})
+    setStatusByDid({})
+    setPickError(null)
+  }
 
   const handleAddRecipient = (did: string, handle: string) => {
     setPickError(null)
@@ -150,10 +137,10 @@ export default function NewEndorsementModal({
     }
     setIsSubmitting(false)
 
-    // All-success: auto-close so the user lands back on the page.
-    // Mixed results: leave open so the user can see what failed.
+    // All-success: clear the panel so the user lands back at the
+    // empty search state, ready to issue another batch.
     if (successCount === selectedDids.length) {
-      onClose()
+      reset()
     }
   }
 
@@ -166,90 +153,71 @@ export default function NewEndorsementModal({
   const canSubmit = selectedDids.length > 0 && !isSubmitting && !hasResults
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="signin-modal"
-      aria-label="New endorsement"
-      onClick={handleBackdropClick}
-      style={{ maxWidth: 480 }}
-    >
-      <div onClick={(e) => e.stopPropagation()}>
-        <div className="signin-modal__header">
-          <span className="signin-modal__title">New endorsement</span>
-          <button
-            className="signin-modal__close"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="signin-modal__body">
-          <p className="dash-card__desc" style={{ marginBottom: 16 }}>
-            Endorse one or more accounts. Search by handle or paste a DID to
-            add each recipient. Endorsements can be revoked at any time.
-          </p>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {!hasResults ? (
-              <HandleSearch
-                label="Who do you want to endorse?"
-                placeholder="Search handle or paste a DID..."
-                onSelect={handleAddRecipient}
-              />
-            ) : null}
-
-            {pickError ? <ErrorMessage message={pickError} /> : null}
-
-            {selectedDids.length > 0 ? (
-              <ul className="endorsement-multi-list">
-                {selectedDids.map((did) => (
-                  <RecipientRow
-                    key={did}
-                    did={did}
-                    handle={handleByDid[did]}
-                    status={statusByDid[did] ?? { kind: "idle" }}
-                    canRemove={!isSubmitting && !hasResults}
-                    onRemove={() => handleRemoveRecipient(did)}
-                  />
-                ))}
-              </ul>
-            ) : null}
-
-            {hasResults ? (
-              <p className="endorsement-multi-summary">
-                {writeSuccessCount} of {selectedDids.length} endorsement
-                {selectedDids.length === 1 ? "" : "s"} written
-                {writeSuccessCount < selectedDids.length
-                  ? ". Review failed rows below."
-                  : "."}
-              </p>
-            ) : null}
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <Button
-                variant="ghost"
-                onClick={onClose}
-                disabled={isSubmitting}
-              >
-                {hasResults ? "Close" : "Cancel"}
-              </Button>
-              {!hasResults ? (
-                <Button
-                  variant="primary"
-                  onClick={handleSubmit}
-                  loading={isSubmitting}
-                  disabled={!canSubmit}
-                >
-                  {submitLabel}
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        </div>
+    <section className="endorsement-panel" aria-label="Create endorsements">
+      <div className="endorsement-panel__heading">
+        <span className="endorsement-panel__title">Endorse one or more accounts</span>
+        <span className="endorsement-panel__hint">
+          Search by handle or paste a DID. Endorsements can be revoked anytime.
+        </span>
       </div>
-    </dialog>
+
+      {!hasResults ? (
+        <HandleSearch
+          label="Who do you want to endorse?"
+          placeholder="Search handle or paste a DID..."
+          onSelect={handleAddRecipient}
+        />
+      ) : null}
+
+      {pickError ? <ErrorMessage message={pickError} /> : null}
+
+      {selectedDids.length > 0 ? (
+        <ul className="endorsement-multi-list">
+          {selectedDids.map((did) => (
+            <RecipientRow
+              key={did}
+              did={did}
+              handle={handleByDid[did]}
+              status={statusByDid[did] ?? { kind: "idle" }}
+              canRemove={!isSubmitting && !hasResults}
+              onRemove={() => handleRemoveRecipient(did)}
+            />
+          ))}
+        </ul>
+      ) : null}
+
+      {hasResults ? (
+        <p className="endorsement-multi-summary">
+          {writeSuccessCount} of {selectedDids.length} endorsement
+          {selectedDids.length === 1 ? "" : "s"} written
+          {writeSuccessCount < selectedDids.length
+            ? ". Review failed rows above, then clear to try again."
+            : "."}
+        </p>
+      ) : null}
+
+      {selectedDids.length > 0 ? (
+        <div className="endorsement-panel__actions">
+          <Button
+            variant="ghost"
+            onClick={reset}
+            disabled={isSubmitting}
+          >
+            Clear
+          </Button>
+          {!hasResults ? (
+            <Button
+              variant="primary"
+              onClick={handleSubmit}
+              loading={isSubmitting}
+              disabled={!canSubmit}
+            >
+              {submitLabel}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
   )
 }
 

@@ -2,7 +2,6 @@
 
 import { useCallback, useMemo, useState } from "react"
 import Link from "next/link"
-import { Plus } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { usePageTitle } from "@/lib/navbar-context"
 import { useGivenEndorsements } from "@/hooks/use-endorsements"
@@ -12,7 +11,7 @@ import { useAuthorInfo } from "@/hooks/use-author-info"
 import { deleteEndorsementAward } from "@/lib/atproto/badges"
 import ResponseMenu from "@/components/badges/response-menu"
 import EndorsementRow from "@/components/endorsements/endorsement-row"
-import NewEndorsementModal from "@/components/endorsements/new-endorsement-modal"
+import NewEndorsementPanel from "@/components/endorsements/new-endorsement-panel"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -197,7 +196,6 @@ export default function EndorsementsPage() {
   const { did } = useAuth()
 
   const [activeTab, setActiveTab] = useState<TabKey>("given")
-  const [isModalOpen, setIsModalOpen] = useState(false)
   const [confirmRkey, setConfirmRkey] = useState<string | null>(null)
   const [revokingRkey, setRevokingRkey] = useState<string | null>(null)
   const [revokeError, setRevokeError] = useState<string | null>(null)
@@ -255,18 +253,6 @@ export default function EndorsementsPage() {
               ))}
             </div>
 
-            {activeTab === "given" ? (
-              <button
-                type="button"
-                className="endorsements-new-btn"
-                onClick={() => setIsModalOpen(true)}
-                disabled={!did}
-                aria-label="New endorsement"
-              >
-                <Plus size={16} />
-                <span>New</span>
-              </button>
-            ) : null}
           </div>
 
           {activeTab === "received" ? (
@@ -275,6 +261,13 @@ export default function EndorsementsPage() {
             </div>
           ) : (
             <div role="tabpanel" id="tabpanel-given" aria-labelledby="tab-given">
+              {did ? (
+                <NewEndorsementPanel
+                  ownDid={did}
+                  existingSubjectDids={existingSubjectDids}
+                  onCreated={refetch}
+                />
+              ) : null}
               <GivenEndorsementsList
                 endorsements={endorsements}
                 isLoading={isLoading}
@@ -288,14 +281,6 @@ export default function EndorsementsPage() {
         </div>
       </div>
 
-      {isModalOpen && did ? (
-        <NewEndorsementModal
-          ownDid={did}
-          existingSubjectDids={existingSubjectDids}
-          onClose={() => setIsModalOpen(false)}
-          onCreated={refetch}
-        />
-      ) : null}
 
       {confirmRkey ? (
         <ConfirmDialog

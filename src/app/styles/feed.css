@@ -1297,30 +1297,40 @@
   border-bottom-color: var(--fg-primary);
 }
 
-.endorsements-new-btn {
-  align-self: center;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
+/* Inline "new endorsement" panel that sits at the top of the Given
+   tab — replaces the prior "+ New" modal flow. */
+.endorsement-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: var(--overlay-weak, rgba(128, 128, 128, 0.05));
+  border: 1px solid var(--border-default);
   border-radius: var(--radius);
-  border: none;
-  background: transparent;
+}
+
+.endorsement-panel__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.endorsement-panel__title {
+  font-size: 0.9375rem;
+  font-weight: 600;
   color: var(--fg-primary);
+}
+
+.endorsement-panel__hint {
   font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-  flex-shrink: 0;
+  color: var(--fg-muted);
 }
 
-.endorsements-new-btn:hover:not(:disabled) {
-  background: var(--overlay-weak);
-}
-
-.endorsements-new-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.endorsement-panel__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .endorsements-loading {
