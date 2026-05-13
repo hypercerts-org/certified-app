@@ -2,8 +2,7 @@
 
 import React, { useState, useMemo } from "react"
 import Link from "next/link"
-import { Building2, Plus, LogOut } from "lucide-react"
-import EmptyState from "@/components/ui/empty-state"
+import { Plus, LogOut } from "lucide-react"
 import { useOrg } from "@/lib/groups/org-context"
 import { useAuth } from "@/lib/auth/auth-context"
 import { usePageTitle } from "@/lib/navbar-context"
@@ -17,12 +16,20 @@ import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Button from "@/components/ui/button"
 
+type TabKey = "public" | "private"
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: "public", label: "Public" },
+  { key: "private", label: "Private" },
+]
+
 const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 }
 
 export default function GroupsPage() {
   usePageTitle("Groups")
   const { groups, isLoading, refetchOrgs } = useOrg()
   const { did } = useAuth()
+  const [activeTab, setActiveTab] = useState<TabKey>("public")
   const [leaveOrg, setLeaveOrg] = useState<{ groupDid: string; name: string } | null>(null)
   const [isLeaving, setIsLeaving] = useState(false)
   const [acceptingOrg, setAcceptingOrg] = useState<string | null>(null)
@@ -152,57 +159,65 @@ export default function GroupsPage() {
     }
   }
 
+  const visibleOrgs = activeTab === "public" ? acceptedOrgs : pendingOrgs
+
   return (
     <div className="dashboard">
       <div className="dashboard__body dashboard__body--single">
         <div className="dashboard__main">
-          {!isLoading && groups.length > 0 && (
-            <div className="dashboard__action-row">
-              <Link href="/groups/create">
-                <Button variant="primary" size="sm">
-                  <Plus size={16} />
-                  New
-                </Button>
-              </Link>
+          <h1 className="page-section-heading">Membership</h1>
+
+          <div className="page-tabs-bar">
+            <div className="page-tabs" role="tablist" aria-label="Membership">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  role="tab"
+                  id={`tab-${tab.key}`}
+                  aria-selected={activeTab === tab.key}
+                  aria-controls={`tabpanel-${tab.key}`}
+                  className={`page-tabs__tab ${
+                    activeTab === tab.key ? "page-tabs__tab--active" : ""
+                  }`}
+                  onClick={() => setActiveTab(tab.key)}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
-          )}
-          {isLoading ? (
-            <div className="org-list__loading">
-              <LoadingSpinner size="md" />
-            </div>
-          ) : groups.length === 0 ? (
-            <EmptyState
-              icon={Building2}
-              title="No groups yet"
-              description="Create a new group or wait for an invite to appear here automatically."
+
+            <Link
+              href="/groups/create"
+              className="page-tabs-bar__new"
+              aria-label="New group"
             >
-              <Link href="/groups/create">
-                <Button variant="primary">
-                  <Plus size={16} />
-                  Create Group
-                </Button>
-              </Link>
-            </EmptyState>
-          ) : (
-            <>
-              {acceptedOrgs.length > 0 && (
-                <div className="dash-card">
-                  <h2 className="dash-card__title">Membership public</h2>
-                  <div className="org-list__items">
-                    {acceptedOrgs.map(renderOrgItem)}
-                  </div>
-                </div>
-              )}
-              {pendingOrgs.length > 0 && (
-                <div className="dash-card">
-                  <h2 className="dash-card__title">Membership private</h2>
-                  <div className="org-list__items">
-                    {pendingOrgs.map(renderOrgItem)}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+              <Plus size={16} aria-hidden="true" />
+              <span>New group</span>
+            </Link>
+          </div>
+
+          <div
+            role="tabpanel"
+            id={`tabpanel-${activeTab}`}
+            aria-labelledby={`tab-${activeTab}`}
+          >
+            {isLoading ? (
+              <div className="org-list__loading">
+                <LoadingSpinner size="md" />
+              </div>
+            ) : visibleOrgs.length === 0 ? (
+              <p className="org-list__empty">
+                {activeTab === "public"
+                  ? "No public memberships yet. Make a private membership public from this list to share it on your profile."
+                  : "No private memberships. Pending invites and memberships you've removed from public view appear here."}
+              </p>
+            ) : (
+              <div className="org-list__items">
+                {visibleOrgs.map(renderOrgItem)}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

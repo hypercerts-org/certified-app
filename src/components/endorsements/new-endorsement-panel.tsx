@@ -15,6 +15,11 @@ interface NewEndorsementPanelProps {
   readonly ownDid: string
   /** DIDs the user has already endorsed (used to block duplicates). */
   readonly existingSubjectDids: ReadonlySet<string>
+  /** DIDs to pre-select when the panel opens — typically a single DID
+   *  from a deep-link like `/endorsements?endorse=did:plc:...`. Caller
+   *  is responsible for validating these (not self, not duplicate)
+   *  before passing. Consumed once on mount via a lazy-initialiser. */
+  readonly initialDids?: readonly string[]
   /** Dismiss the panel (parent flips back to the collapsed "+ New"
    *  button state). Called from the close affordance, and
    *  automatically on a fully-successful batch. */
@@ -47,10 +52,13 @@ type WriteStatus =
 export default function NewEndorsementPanel({
   ownDid,
   existingSubjectDids,
+  initialDids,
   onClose,
   onCreated,
 }: NewEndorsementPanelProps) {
-  const [selectedDids, setSelectedDids] = useState<string[]>([])
+  const [selectedDids, setSelectedDids] = useState<string[]>(() =>
+    initialDids ? Array.from(initialDids) : [],
+  )
   const [handleByDid, setHandleByDid] = useState<Record<string, string>>({})
   const [statusByDid, setStatusByDid] = useState<Record<string, WriteStatus>>({})
 

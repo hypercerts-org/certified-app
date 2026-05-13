@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, ThumbsUp } from "lucide-react"
 import { useGivenEndorsements, type GivenEndorsement } from "@/hooks/use-endorsements"
 import { useReceivedEndorsements, type ReceivedEndorsement } from "@/hooks/use-received-endorsements"
 import { useOwnResponseStates } from "@/hooks/use-own-response-states"
@@ -52,17 +52,34 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
   const receivedReady = !received.isLoading && !received.error
   const givenReady = !given.isLoading && !given.error
 
+  // Show the Endorse shortcut only on someone else's profile, and only
+  // when the viewer is signed in (the destination flow requires auth
+  // anyway). Pre-fills `?endorse=<did>` so /endorsements pops open the
+  // panel with this profile pre-selected.
+  const showEndorseBtn = !!viewerDid && !viewerIsOwner
+
   return (
     <div className="profile-endorsements">
       <section className="profile-endorsements__section">
-        <h3 className="profile-endorsements__heading">
-          Endorsements received
-          {receivedReady && received.endorsements.length > 0 ? (
-            <span className="profile-endorsements__count">
-              {received.endorsements.length}
-            </span>
+        <div className="profile-endorsements__heading-row">
+          <h3 className="profile-endorsements__heading">
+            Endorsements received
+            {receivedReady && received.endorsements.length > 0 ? (
+              <span className="profile-endorsements__count">
+                {received.endorsements.length}
+              </span>
+            ) : null}
+          </h3>
+          {showEndorseBtn ? (
+            <Link
+              href={`/endorsements?endorse=${encodeURIComponent(did)}`}
+              className="profile-endorsements__endorse-btn"
+            >
+              <ThumbsUp size={14} aria-hidden="true" />
+              <span>Endorse</span>
+            </Link>
           ) : null}
-        </h3>
+        </div>
         <ReceivedBody
           {...received}
           viewerIsOwner={viewerIsOwner}

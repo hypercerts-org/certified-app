@@ -1,7 +1,8 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Plus } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { usePageTitle } from "@/lib/navbar-context"
@@ -198,6 +199,7 @@ export default function EndorsementsPage() {
 
   const [activeTab, setActiveTab] = useState<TabKey>("given")
   const [isPanelOpen, setIsPanelOpen] = useState(false)
+  const [initialDids, setInitialDids] = useState<readonly string[]>([])
   const [confirmRkey, setConfirmRkey] = useState<string | null>(null)
   const [revokingRkey, setRevokingRkey] = useState<string | null>(null)
   const [revokeError, setRevokeError] = useState<string | null>(null)
@@ -208,6 +210,35 @@ export default function EndorsementsPage() {
     () => new Set(endorsements.map((e) => e.subjectDid)),
     [endorsements]
   )
+
+  // Deep-link: `/endorsements?endorse=did:plc:...` from a profile page
+  // opens the panel with that DID pre-selected. Wait until the given-
+  // list has loaded so the duplicate guard is honored, then consume
+  // the param once and clean the URL.
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+  const [consumedDeepLink, setConsumedDeepLink] = useState(false)
+  useEffect(() => {
+    if (consumedDeepLink) return
+    if (isLoading) return
+    const endorseDid = searchParams?.get("endorse")
+    if (!did || !endorseDid) {
+      setConsumedDeepLink(true)
+      return
+    }
+    const isUsable =
+      endorseDid.startsWith("did:") &&
+      endorseDid !== did &&
+      !existingSubjectDids.has(endorseDid)
+    if (isUsable) {
+      setInitialDids([endorseDid])
+      setActiveTab("given")
+      setIsPanelOpen(true)
+    }
+    router.replace(pathname, { scroll: false })
+    setConsumedDeepLink(true)
+  }, [consumedDeepLink, isLoading, did, searchParams, existingSubjectDids, router, pathname])
 
   const handleConfirmRevoke = useCallback(async () => {
     if (!did || !confirmRkey) return
@@ -279,7 +310,11 @@ export default function EndorsementsPage() {
                 <NewEndorsementPanel
                   ownDid={did}
                   existingSubjectDids={existingSubjectDids}
-                  onClose={() => setIsPanelOpen(false)}
+                  initialDids={initialDids}
+                  onClose={() => {
+                    setIsPanelOpen(false)
+                    setInitialDids([])
+                  }}
                   onCreated={refetch}
                 />
               ) : null}
