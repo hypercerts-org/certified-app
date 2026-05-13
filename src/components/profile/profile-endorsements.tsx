@@ -1,6 +1,8 @@
 "use client"
 
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useGivenEndorsements, type GivenEndorsement } from "@/hooks/use-endorsements"
 import { useReceivedEndorsements, type ReceivedEndorsement } from "@/hooks/use-received-endorsements"
 import { useOwnResponseStates } from "@/hooks/use-own-response-states"
@@ -12,6 +14,9 @@ import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { formatShortDate } from "@/lib/utils/format-date"
 import { getInitials } from "@/lib/utils/initials"
+
+/** How many endorsement rows render per page in each section. */
+const PAGE_SIZE = 10
 
 interface ProfileEndorsementsProps {
   /** DID of the profile being viewed. */
@@ -44,10 +49,20 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
   // profile — never leak per-row state for someone else's profile.
   const ownStates = useOwnResponseStates()
 
+  const receivedReady = !received.isLoading && !received.error
+  const givenReady = !given.isLoading && !given.error
+
   return (
     <div className="profile-endorsements">
       <section className="profile-endorsements__section">
-        <h3 className="profile-endorsements__heading">Endorsements received</h3>
+        <h3 className="profile-endorsements__heading">
+          Endorsements received
+          {receivedReady && received.endorsements.length > 0 ? (
+            <span className="profile-endorsements__count">
+              {received.endorsements.length}
+            </span>
+          ) : null}
+        </h3>
         <ReceivedBody
           {...received}
           viewerIsOwner={viewerIsOwner}
@@ -61,7 +76,14 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
       </section>
 
       <section className="profile-endorsements__section">
-        <h3 className="profile-endorsements__heading">Endorsements given</h3>
+        <h3 className="profile-endorsements__heading">
+          Endorsements given
+          {givenReady && given.endorsements.length > 0 ? (
+            <span className="profile-endorsements__count">
+              {given.endorsements.length}
+            </span>
+          ) : null}
+        </h3>
         <GivenBody
           isLoading={given.isLoading}
           error={given.error}
@@ -69,6 +91,83 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
         />
       </section>
     </div>
+  )
+}
+
+/**
+ * Generic pagination state for a list-of-N rendered PAGE_SIZE rows
+ * at a time. Clamps the current page if `total` shrinks (e.g. owner
+ * revokes a row, leaving the previous last page empty). Resets to
+ * page 1 when `resetKey` changes — useful when the underlying list
+ * is replaced (different profile, new fetch).
+ */
+function usePagination(total: number, resetKey: string) {
+  const [page, setPage] = useState(1)
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  useEffect(() => {
+    setPage(1)
+  }, [resetKey])
+
+  // Clamp on every render — total can shrink between renders without
+  // resetKey changing (e.g. response-state filter hides a row).
+  const clampedPage = Math.min(page, totalPages)
+  if (clampedPage !== page) {
+    // Defer to avoid setState-in-render.
+    queueMicrotask(() => setPage(clampedPage))
+  }
+
+  const sliceStart = (clampedPage - 1) * PAGE_SIZE
+  const sliceEnd = sliceStart + PAGE_SIZE
+  return {
+    page: clampedPage,
+    totalPages,
+    sliceStart,
+    sliceEnd,
+    setPage,
+  }
+}
+
+interface PaginationControlsProps {
+  readonly page: number
+  readonly totalPages: number
+  readonly onPageChange: (next: number) => void
+  readonly label: string
+}
+
+function PaginationControls({
+  page,
+  totalPages,
+  onPageChange,
+  label,
+}: PaginationControlsProps) {
+  if (totalPages <= 1) return null
+  return (
+    <nav className="profile-endorsements__pagination" aria-label={label}>
+      <button
+        type="button"
+        className="profile-endorsements__pagination-btn"
+        onClick={() => onPageChange(page - 1)}
+        disabled={page <= 1}
+        aria-label="Previous page"
+      >
+        <ChevronLeft size={14} aria-hidden="true" />
+        <span>Previous</span>
+      </button>
+      <span className="profile-endorsements__pagination-status">
+        Page {page} of {totalPages}
+      </span>
+      <button
+        type="button"
+        className="profile-endorsements__pagination-btn"
+        onClick={() => onPageChange(page + 1)}
+        disabled={page >= totalPages}
+        aria-label="Next page"
+      >
+        <span>Next</span>
+        <ChevronRight size={14} aria-hidden="true" />
+      </button>
+    </nav>
   )
 }
 
@@ -91,6 +190,18 @@ function ReceivedBody({
   allResponses,
   onAfterWrite,
 }: ReceivedBodyProps) {
+  // Reset to page 1 when the first row's URI changes — that signals a
+  // brand-new fetch (different profile or substantial reshuffle).
+  const resetKey = endorsements[0]?.uri ?? "empty"
+  const { page, totalPages, sliceStart, sliceEnd, setPage } = usePagination(
+    endorsements.length,
+    resetKey,
+  )
+  const visible = useMemo(
+    () => endorsements.slice(sliceStart, sliceEnd),
+    [endorsements, sliceStart, sliceEnd],
+  )
+
   if (isLoading) {
     return (
       <div className="profile-endorsements__loading">
@@ -113,18 +224,26 @@ function ReceivedBody({
     )
   }
   return (
-    <ul className="endorsements-list">
-      {endorsements.map((e) => (
-        <ReceivedRow
-          key={e.uri}
-          endorsement={e}
-          viewerIsOwner={viewerIsOwner}
-          resolve={resolve}
-          allResponses={allResponses}
-          onAfterWrite={onAfterWrite}
-        />
-      ))}
-    </ul>
+    <>
+      <ul className="endorsements-list">
+        {visible.map((e) => (
+          <ReceivedRow
+            key={e.uri}
+            endorsement={e}
+            viewerIsOwner={viewerIsOwner}
+            resolve={resolve}
+            allResponses={allResponses}
+            onAfterWrite={onAfterWrite}
+          />
+        ))}
+      </ul>
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        label="Endorsements received pagination"
+      />
+    </>
   )
 }
 
@@ -135,6 +254,16 @@ interface GivenBodyProps {
 }
 
 function GivenBody({ isLoading, error, endorsements }: GivenBodyProps) {
+  const resetKey = endorsements[0]?.uri ?? "empty"
+  const { page, totalPages, sliceStart, sliceEnd, setPage } = usePagination(
+    endorsements.length,
+    resetKey,
+  )
+  const visible = useMemo(
+    () => endorsements.slice(sliceStart, sliceEnd),
+    [endorsements, sliceStart, sliceEnd],
+  )
+
   if (isLoading) {
     return (
       <div className="profile-endorsements__loading">
@@ -157,16 +286,24 @@ function GivenBody({ isLoading, error, endorsements }: GivenBodyProps) {
     )
   }
   return (
-    <ul className="endorsements-list">
-      {endorsements.map((e) => (
-        <EndorsementRow
-          key={e.uri}
-          subjectDid={e.subjectDid}
-          createdAt={e.createdAt}
-          note={e.note}
-        />
-      ))}
-    </ul>
+    <>
+      <ul className="endorsements-list">
+        {visible.map((e) => (
+          <EndorsementRow
+            key={e.uri}
+            subjectDid={e.subjectDid}
+            createdAt={e.createdAt}
+            note={e.note}
+          />
+        ))}
+      </ul>
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        label="Endorsements given pagination"
+      />
+    </>
   )
 }
 

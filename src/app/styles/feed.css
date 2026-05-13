@@ -1842,6 +1842,55 @@
   font-weight: 600;
   color: var(--fg-primary);
   margin: 0 0 4px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+/* Inline count after the heading — same visual register as the
+   activity-claim count on the profile hero (bold number, muted
+   weight balance). */
+.profile-endorsements__count {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+}
+
+.profile-endorsements__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 12px;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+.profile-endorsements__pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  font-size: 0.8125rem;
+}
+
+.profile-endorsements__pagination-btn:hover:not(:disabled) {
+  background: var(--overlay-weak, rgba(128, 128, 128, 0.08));
+  color: var(--fg-primary);
+}
+
+.profile-endorsements__pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.profile-endorsements__pagination-status {
+  font-variant-numeric: tabular-nums;
 }
 
 .profile-endorsements__placeholder {
