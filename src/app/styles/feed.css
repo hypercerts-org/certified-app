@@ -1438,6 +1438,182 @@
   cursor: not-allowed;
 }
 
+/* Optional note shown under the issuer display name on received rows */
+.endorsement-row__note {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ---------------- Response controls (Phase 2: accept/reject) ----------------
+   - response-buttons: loud, inline. Used on /notifications rows.
+   - response-menu:    quiet kebab + dropdown. Used on profile / endorsements
+                       audit-surface rows where the row owner is browsing.
+*/
+
+.response-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.response-buttons__btn {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.response-buttons__btn:hover:not(:disabled) {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.response-buttons__btn--pressed {
+  background: var(--fg-primary);
+  color: var(--bg-elevated);
+  border-color: var(--fg-primary);
+}
+
+.response-buttons__btn--pressed:hover:not(:disabled) {
+  /* keep pressed look on hover so toggling-off isn't ambiguous */
+  background: var(--fg-primary);
+  color: var(--bg-elevated);
+}
+
+.response-buttons__btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.response-buttons__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.response-buttons__error {
+  font-size: 0.6875rem;
+  color: var(--color-error);
+  margin-left: 6px;
+}
+
+/* Quiet kebab — same dimensions as endorsement-row__revoke so the row
+   layout doesn't shift between row variants. */
+.response-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.response-menu__trigger {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius);
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.response-menu__trigger:hover:not(:disabled) {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.response-menu__trigger:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.response-menu__trigger:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.response-menu__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 180px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.response-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  color: var(--fg-primary);
+  text-align: left;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background var(--transition-fast);
+}
+
+.response-menu__item:hover:not(:disabled) {
+  background: var(--overlay-weak);
+}
+
+.response-menu__item:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.response-menu__item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.response-menu__error {
+  font-size: 0.6875rem;
+  color: var(--color-error);
+  padding: 4px 10px;
+  margin: 0;
+}
+
+/* Pending-count chip on the Endorsements nav item */
+.left-rail__pending-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: auto;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--bg-elevated);
+  background: var(--fg-primary);
+  border-radius: 9px;
+  line-height: 1;
+}
+
 /* Preview block inside the New endorsement modal */
 .endorsement-preview {
   display: flex;

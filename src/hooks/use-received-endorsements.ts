@@ -1,13 +1,15 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   awardSubjectMatchesDid,
   listAwards,
   listDefinitions,
+  resolveResponseState,
   ENDORSEMENT_BADGE_TYPE,
   type BadgeAwardRecord,
 } from "@/lib/atproto/badges"
+import { useProfileResponses } from "@/hooks/use-profile-responses"
 
 /**
  * One endorsement received: who endorsed me, when, and the optional
@@ -189,9 +191,22 @@ const cache = new Map<string, CacheEntry>()
 
 /**
  * Fetch every public endorsement award targeting `profileDid` from
- * every known certified user. Scoped to the badge.{definition,award}
- * lexicons — the legacy `app.certified.temp.graph.endorsement`
- * collection is NOT consulted (hard cutover per the migration plan).
+ * every known certified user, AND filter out awards whose latest
+ * response (on the profile owner's PDS) is `"rejected"`. Scoped to
+ * the badge.{definition,award,response} lexicons — the legacy
+ * `app.certified.temp.graph.endorsement` collection is NOT
+ * consulted (hard cutover per the migration plan).
+ *
+ * The response join is a SINGLE listRecords against the
+ * `profileDid`'s PDS — never per-issuer. This was the most likely
+ * implementation foot-gun flagged in plan review (R1+R3 critical
+ * C1); the contract enforces "one extra listRecords, not 386."
+ *
+ * Returns the **visible** awards only. Per-award response state is
+ * deliberately not returned to non-owner viewers (privacy: R2 C7).
+ * Owner-side surfaces compute their own state via
+ * `useOwnResponseStates` (a separate hook) keyed on the same
+ * underlying module cache, so callers don't double-fetch.
  *
  * Returns an empty list while loading, with `isLoading` true.
  */
@@ -200,8 +215,8 @@ export function useReceivedEndorsements(profileDid: string | null): {
   isLoading: boolean
   error: string | null
 } {
-  const [endorsements, setEndorsements] = useState<ReceivedEndorsement[]>([])
-  const [isLoading, setIsLoading] = useState(!!profileDid)
+  const [scanResult, setScanResult] = useState<ReceivedEndorsement[]>([])
+  const [scanLoading, setScanLoading] = useState(!!profileDid)
   const [error, setError] = useState<string | null>(null)
 
   const profileDidRef = useRef(profileDid)
@@ -210,29 +225,29 @@ export function useReceivedEndorsements(profileDid: string | null): {
   const doScan = useCallback(async (did: string, signal?: AbortSignal) => {
     const cached = cache.get(did)
     if (cached && Date.now() - cached.fetchedAt < STALE_MS) {
-      setEndorsements(cached.data)
-      setIsLoading(false)
+      setScanResult(cached.data)
+      setScanLoading(false)
       return
     }
-    setIsLoading(true)
+    setScanLoading(true)
     setError(null)
     try {
       const data = await scanReceivedEndorsements(did, signal)
       if (signal?.aborted) return
       cache.set(did, { data, fetchedAt: Date.now() })
-      setEndorsements(data)
+      setScanResult(data)
     } catch (err) {
       if (signal?.aborted) return
       setError(err instanceof Error ? err.message : "Failed to scan endorsements")
     } finally {
-      if (!signal?.aborted) setIsLoading(false)
+      if (!signal?.aborted) setScanLoading(false)
     }
   }, [])
 
   useEffect(() => {
     if (!profileDid) {
-      setEndorsements([])
-      setIsLoading(false)
+      setScanResult([])
+      setScanLoading(false)
       setError(null)
       return
     }
@@ -255,5 +270,28 @@ export function useReceivedEndorsements(profileDid: string | null): {
     return () => window.removeEventListener("focus", onFocus)
   }, [doScan])
 
-  return { endorsements, isLoading, error }
+  // Response join: fetch the profile-OWNER's responses (their PDS).
+  // The R1 reviewer flagged "viewer's responses" as a federation bug
+  // — when viewing Alice's profile we need Alice's responses, not
+  // ours. The hook contract bakes the fix in by sharing the same
+  // profileDid across both fetches.
+  const { responses, isLoading: respLoading } = useProfileResponses(profileDid)
+
+  // Filter out awards whose latest response is "rejected". Default
+  // and unknown states pass through (default = un-responded;
+  // unknown = a response value we don't recognise, treated as
+  // no-op so we never silently hide on an unrecognised value).
+  const endorsements = useMemo(() => {
+    if (responses.length === 0) return scanResult
+    return scanResult.filter((e) => {
+      const { state } = resolveResponseState(e.uri, responses)
+      return state !== "rejected"
+    })
+  }, [scanResult, responses])
+
+  return {
+    endorsements,
+    isLoading: scanLoading || respLoading,
+    error,
+  }
 }

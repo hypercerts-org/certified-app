@@ -75,13 +75,32 @@ export interface BadgeAwardValue {
   createdAt: string
 }
 
-/** Body of an `app.certified.badge.response` record. (Phase 2.) */
+/**
+ * Body of an `app.certified.badge.response` record.
+ *
+ * `response` is typed as `string` (not the union `"accepted" |
+ * "rejected"`) because the lexicon declares the values as
+ * `knownValues`, which is extensible — another client could write
+ * `"muted"`, `"deferred"`, etc. Read paths normalise via
+ * `resolveResponseState`; never compare the raw string elsewhere.
+ */
 export interface BadgeResponseValue {
   $type?: typeof BADGE_RESPONSE_COLLECTION
   badgeAward: StrongRef
-  response: "accepted" | "rejected"
+  response: string
   weight?: string
   createdAt: string
+}
+
+/** Resolved response state used by every UI surface. */
+export type ResponseState = "accepted" | "rejected" | "default" | "unknown"
+
+/** A response record from listRecords, with the rkey pre-extracted. */
+export interface BadgeResponseRecord {
+  uri: string
+  cid: string
+  rkey: string
+  value: BadgeResponseValue
 }
 
 /** Record-with-uri wrappers, as listRecords returns. */
@@ -332,4 +351,189 @@ export function awardAuthorDid(award: { uri: string }): string | null {
   const tail = award.uri.slice("at://".length)
   const slash = tail.indexOf("/")
   return slash >= 0 ? tail.slice(0, slash) : tail
+}
+
+// ---------------------------------------------------------------------------
+// app.certified.badge.response — recipient accept/reject lever
+// ---------------------------------------------------------------------------
+
+/**
+ * List all `badge.response` records on a user's repo. Used by read
+ * paths to compute which awards they've accepted vs rejected vs
+ * left at default.
+ *
+ * Returns [] for missing-collection (400/404), so the very first
+ * caller for a never-responded user doesn't need to special-case
+ * the absence.
+ */
+export async function listResponses(
+  did: string,
+  signal?: AbortSignal,
+): Promise<BadgeResponseRecord[]> {
+  const params = new URLSearchParams({
+    repo: did,
+    collection: BADGE_RESPONSE_COLLECTION,
+    limit: "100",
+  })
+  const res = await authFetch(
+    `/api/xrpc/com/atproto/repo/listRecords?${params.toString()}`,
+    signal ? { signal } : undefined,
+  )
+  if (!res.ok) {
+    if (res.status === 400 || res.status === 404) return []
+    throw new Error(`Failed to list badge responses: ${res.status}`)
+  }
+  const data = (await res.json()) as ListRecordsResponse<BadgeResponseValue>
+  return (data.records ?? []).map((r) => ({
+    uri: r.uri,
+    cid: r.cid,
+    rkey: extractRkey(r.uri),
+    value: r.value,
+  }))
+}
+
+/**
+ * Write a new response record. Lexicon's `key: "tid"` means each
+ * call creates a fresh record — we don't overwrite or delete prior
+ * responses. `resolveResponseState` reads the latest by createdAt
+ * with rkey lexicographic tie-break, so prior records become
+ * vestigial but harmless.
+ *
+ * Why append-only: zero races between tabs/devices, one round-trip
+ * per click, vestigial records are tiny.
+ */
+export async function createResponse(
+  ownDid: string,
+  badgeAward: StrongRef,
+  response: "accepted" | "rejected",
+  weight?: string,
+): Promise<{ uri: string; cid: string }> {
+  const body = {
+    repo: ownDid,
+    collection: BADGE_RESPONSE_COLLECTION,
+    record: {
+      $type: BADGE_RESPONSE_COLLECTION,
+      badgeAward,
+      response,
+      ...(weight ? { weight } : {}),
+      createdAt: new Date().toISOString(),
+    } satisfies BadgeResponseValue,
+  }
+  const res = await authFetch("/api/xrpc/com/atproto/repo/createRecord", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  const data = (await res.json().catch(() => ({}))) as {
+    uri?: string
+    cid?: string
+    error?: string
+  }
+  if (!res.ok || !data.uri || !data.cid) {
+    throw new Error(
+      data.error || `Failed to create badge response: ${res.status}`,
+    )
+  }
+  return { uri: data.uri, cid: data.cid }
+}
+
+/**
+ * Delete a single response record. Used when the recipient picks
+ * "Reset to default" — clears the most-recent response. Earlier
+ * vestigial responses still exist and would re-activate the prior
+ * state; the caller should pass the rkey of the LATEST response,
+ * and ideally call `deleteAllResponsesForAward` to clean up all
+ * vestigial siblings.
+ */
+export async function deleteResponse(
+  ownDid: string,
+  rkey: string,
+): Promise<void> {
+  const res = await authFetch("/api/xrpc/com/atproto/repo/deleteRecord", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      repo: ownDid,
+      collection: BADGE_RESPONSE_COLLECTION,
+      rkey,
+    }),
+  })
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string }
+    throw new Error(
+      data.error || `Failed to delete badge response: ${res.status}`,
+    )
+  }
+}
+
+/**
+ * Sort responses for an award newest-first, with a deterministic
+ * tie-break for collisions (TIDs are time-ordered at PDS-side, so
+ * rkey lexicographic descending = creation order descending).
+ */
+function sortResponsesNewestFirst(
+  responses: BadgeResponseRecord[],
+): BadgeResponseRecord[] {
+  return [...responses].sort((a, b) => {
+    if (a.value.createdAt !== b.value.createdAt) {
+      return a.value.createdAt > b.value.createdAt ? -1 : 1
+    }
+    return a.rkey > b.rkey ? -1 : 1
+  })
+}
+
+/**
+ * For a given award URI, find the recipient's latest response.
+ *
+ * - No response found → `"default"` (un-responded, shows on
+ *   profile per the default-show model)
+ * - `"accepted"` / `"rejected"` → exactly that
+ * - Any other string (the `knownValues` enum is extensible) →
+ *   `"unknown"`. UIs treat unknown the same as default — never
+ *   silently hide based on a value we don't understand.
+ *
+ * Joins on the response's `badgeAward.uri` only — the CID is
+ * intentionally ignored. If the issuer ever re-creates the award
+ * (or rewrites it, hypothetically), the strongRef CID changes but
+ * the URI doesn't; we don't want a dangling stricter-than-needed
+ * join. Dangling responses (the award was deleted) are harmless —
+ * they point at nothing and the caller will never look up by them.
+ */
+export function resolveResponseState(
+  awardUri: string,
+  responses: BadgeResponseRecord[],
+): { state: ResponseState; latestRkey?: string; rawValue?: string } {
+  const matching = responses.filter(
+    (r) => r.value.badgeAward?.uri === awardUri,
+  )
+  if (matching.length === 0) return { state: "default" }
+  const latest = sortResponsesNewestFirst(matching)[0]
+  const v = latest.value.response
+  if (v === "accepted") return { state: "accepted", latestRkey: latest.rkey, rawValue: v }
+  if (v === "rejected") return { state: "rejected", latestRkey: latest.rkey, rawValue: v }
+  return { state: "unknown", latestRkey: latest.rkey, rawValue: v }
+}
+
+/**
+ * For "Reset to default" — clean up every response record this
+ * recipient ever wrote against the given award URI, so the prior
+ * vestigial responses don't re-activate. Returns the count of
+ * records deleted.
+ *
+ * Deletions are serial because the proxy doesn't support batch.
+ * For typical "Reset" usage there's 1-3 records to clean, so this
+ * is fine.
+ */
+export async function deleteAllResponsesForAward(
+  ownDid: string,
+  awardUri: string,
+  allResponses: BadgeResponseRecord[],
+): Promise<number> {
+  const matching = allResponses.filter(
+    (r) => r.value.badgeAward?.uri === awardUri,
+  )
+  for (const r of matching) {
+    await deleteResponse(ownDid, r.rkey)
+  }
+  return matching.length
 }
