@@ -134,7 +134,10 @@ export default function ProfileHeader({
           <p className="profile-hero__handle">
             @{handle}
             {isBskyHosted ? (
-              <span className="profile-hero__pds-tag" title="This profile lives on Bluesky">
+              <span
+                className="profile-hero__pds-tag"
+                title="This profile information is imported from Bluesky"
+              >
                 Bluesky profile
               </span>
             ) : null}
