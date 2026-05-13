@@ -44,8 +44,12 @@ interface StrongRef {
   cid: string
 }
 
-/** A DID wrapped in the `app.certified.defs#did` object form. */
+/** A DID wrapped in the `app.certified.defs#did` object form. The
+ *  `$type` discriminator is optional on read (some clients write it,
+ *  others omit it) but useful on write to keep the union member
+ *  explicit. */
 interface DidObject {
+  $type?: "app.certified.defs#did"
   did: string
 }
 
@@ -279,7 +283,15 @@ export async function createEndorsementAward(
     record: {
       $type: BADGE_AWARD_COLLECTION,
       badge,
-      subject: subjectDid,
+      // Canonical `app.certified.defs#did` shape: object with a `did`
+      // property. The lexicon defines #did as `{type: "object",
+      // required: ["did"]}` — a bare DID string never matched the
+      // canonical shape, and the magic-indexer's subject_did
+      // generated column (migration 025) only extracts the DID from
+      // the object form, so bare-string writes are invisible to the
+      // `subject: {eq: did}` filter that powers "endorsements
+      // received" on profile pages.
+      subject: { $type: "app.certified.defs#did", did: subjectDid },
       ...(note?.trim() ? { note: note.trim() } : {}),
       createdAt: new Date().toISOString(),
     } satisfies BadgeAwardValue,
