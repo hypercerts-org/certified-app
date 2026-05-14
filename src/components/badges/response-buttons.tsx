@@ -19,6 +19,13 @@ interface ResponseButtonsProps {
   readonly ownerDid: string | null
   /** Current resolved state — drives which button is `aria-pressed`. */
   readonly state: ResponseState
+  /** Visible labels:
+   *   - "show-hide"     (default) for the /notifications surface
+   *   - "accept-reject" for the /endorsements Received list, where
+   *     the user is reviewing endorsements as a thing they can
+   *     accept or reject rather than "show on my profile".
+   *  Both write the same `accepted` / `rejected` response record. */
+  readonly labelStyle?: "show-hide" | "accept-reject"
   /** Called after a successful write so the parent can invalidate
    *  caches and re-render with the new state. */
   readonly onAfterWrite?: () => void | Promise<void>
@@ -46,8 +53,12 @@ export default function ResponseButtons({
   issuerDisplayName,
   ownerDid,
   state,
+  labelStyle = "show-hide",
   onAfterWrite,
 }: ResponseButtonsProps) {
+  const labels = labelStyle === "accept-reject"
+    ? { accept: "Accept", reject: "Reject" }
+    : { accept: "Show", reject: "Hide" }
   const [isWriting, setIsWriting] = useState<"show" | "hide" | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -101,7 +112,7 @@ export default function ResponseButtons({
           isAccepted ? "response-buttons__btn--pressed" : ""
         }`}
       >
-        {isWriting === "show" ? "Saving…" : "Show"}
+        {isWriting === "show" ? "Saving…" : labels.accept}
       </button>
       <button
         type="button"
@@ -112,7 +123,7 @@ export default function ResponseButtons({
           isRejected ? "response-buttons__btn--pressed" : ""
         }`}
       >
-        {isWriting === "hide" ? "Saving…" : "Hide"}
+        {isWriting === "hide" ? "Saving…" : labels.reject}
       </button>
       {error ? (
         <span className="response-buttons__error" role="alert">

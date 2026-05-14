@@ -1429,6 +1429,21 @@
   padding: 32px 0;
 }
 
+/* Short policy note above the Received list — explains what
+   accepting vs rejecting an endorsement does to the visible
+   profile, so the inline Accept / Reject buttons aren't a black
+   box on first encounter. */
+.endorsements-hint {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--fg-secondary);
+  background: var(--overlay-weak, rgba(128, 128, 128, 0.05));
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+}
+
 .endorsements-empty {
   display: flex;
   align-items: center;

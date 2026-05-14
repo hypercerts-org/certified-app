@@ -11,7 +11,7 @@ import { useReceivedEndorsements, type ReceivedEndorsement } from "@/hooks/use-r
 import { useOwnResponseStates } from "@/hooks/use-own-response-states"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { deleteEndorsementAward } from "@/lib/atproto/badges"
-import ResponseMenu from "@/components/badges/response-menu"
+import ResponseButtons from "@/components/badges/response-buttons"
 import EndorsementRow from "@/components/endorsements/endorsement-row"
 import NewEndorsementPanel from "@/components/endorsements/new-endorsement-panel"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
@@ -89,19 +89,17 @@ function GivenEndorsementsList({
 }
 
 /** One row in the "Received" list: issuer, optional note, date, and
- *  the kebab menu for accept/reject/reset. The /endorsements page
- *  is always the viewer's OWN inbox, so the menu always shows. */
+ *  inline Accept / Reject buttons. The /endorsements page is always
+ *  the viewer's OWN inbox, so the response controls always show. */
 function ReceivedRow({
   endorsement,
   ownerDid,
   state,
-  allResponses,
   onAfterWrite,
 }: {
   endorsement: ReceivedEndorsement
   ownerDid: string | null
   state: ReturnType<ReturnType<typeof useOwnResponseStates>["resolve"]>["state"]
-  allResponses: ReturnType<typeof useOwnResponseStates>["responses"]
   onAfterWrite: () => void | Promise<void>
 }) {
   const { info, isLoading } = useAuthorInfo(endorsement.issuerDid)
@@ -133,13 +131,13 @@ function ReceivedRow({
       >
         {formatShortDate(endorsement.createdAt)}
       </time>
-      <ResponseMenu
+      <ResponseButtons
         awardUri={endorsement.uri}
         awardCid={endorsement.cid}
         issuerDisplayName={displayName}
         ownerDid={ownerDid}
         state={state}
-        allResponses={allResponses}
+        labelStyle="accept-reject"
         onAfterWrite={onAfterWrite}
       />
     </li>
@@ -173,18 +171,23 @@ function ReceivedEndorsementsList() {
   }
 
   return (
-    <ul className="endorsements-list">
-      {endorsements.map((e) => (
-        <ReceivedRow
-          key={e.uri}
-          endorsement={e}
-          ownerDid={did}
-          state={ownStates.resolve(e.uri).state}
-          allResponses={ownStates.responses}
-          onAfterWrite={handleAfterWrite}
-        />
-      ))}
-    </ul>
+    <>
+      <p className="endorsements-hint">
+        Endorsements with no response are shown on your profile by default.
+        Rejected endorsements are hidden from your profile.
+      </p>
+      <ul className="endorsements-list">
+        {endorsements.map((e) => (
+          <ReceivedRow
+            key={e.uri}
+            endorsement={e}
+            ownerDid={did}
+            state={ownStates.resolve(e.uri).state}
+            onAfterWrite={handleAfterWrite}
+          />
+        ))}
+      </ul>
+    </>
   )
 }
 
