@@ -196,11 +196,39 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "given", label: "Given" },
 ]
 
+const DEFAULT_TAB: TabKey = "given"
+
 export default function EndorsementsPage() {
   usePageTitle("Endorsements")
   const { did } = useAuth()
 
-  const [activeTab, setActiveTab] = useState<TabKey>("given")
+  // Tab state lives in `?tab=<key>` on the URL so refresh / shared
+  // link lands on the same view. The default tab stays bare to keep
+  // the URL clean.
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const tabFromUrl = useMemo<TabKey>(() => {
+    const v = searchParams?.get("tab")
+    return v && TABS.some((t) => t.key === v) ? (v as TabKey) : DEFAULT_TAB
+  }, [searchParams])
+  const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl)
+  // Mirror URL → state on back/forward navigation.
+  if (tabFromUrl !== activeTab && TABS.some((t) => t.key === tabFromUrl)) {
+    setActiveTab(tabFromUrl)
+  }
+  const changeTab = useCallback(
+    (next: TabKey) => {
+      setActiveTab(next)
+      const params = new URLSearchParams(searchParams?.toString() ?? "")
+      if (next === DEFAULT_TAB) params.delete("tab")
+      else params.set("tab", next)
+      const qs = params.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    },
+    [router, pathname, searchParams],
+  )
+
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [initialDids, setInitialDids] = useState<readonly string[]>([])
   const [confirmRkey, setConfirmRkey] = useState<string | null>(null)
@@ -218,9 +246,6 @@ export default function EndorsementsPage() {
   // opens the panel with that DID pre-selected. Wait until the given-
   // list has loaded so the duplicate guard is honored, then consume
   // the param once and clean the URL.
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const pathname = usePathname()
   const [consumedDeepLink, setConsumedDeepLink] = useState(false)
   useEffect(() => {
     if (consumedDeepLink) return
@@ -236,12 +261,12 @@ export default function EndorsementsPage() {
       !existingSubjectDids.has(endorseDid)
     if (isUsable) {
       setInitialDids([endorseDid])
-      setActiveTab("given")
+      changeTab("given")
       setIsPanelOpen(true)
     }
     router.replace(pathname, { scroll: false })
     setConsumedDeepLink(true)
-  }, [consumedDeepLink, isLoading, did, searchParams, existingSubjectDids, router, pathname])
+  }, [consumedDeepLink, isLoading, did, searchParams, existingSubjectDids, router, pathname, changeTab])
 
   const handleConfirmRevoke = useCallback(async () => {
     if (!did || !confirmRkey) return
@@ -282,7 +307,7 @@ export default function EndorsementsPage() {
                   className={`endorsements-tabs__tab ${
                     activeTab === tab.key ? "endorsements-tabs__tab--active" : ""
                   }`}
-                  onClick={() => setActiveTab(tab.key)}
+                  onClick={() => changeTab(tab.key)}
                 >
                   {tab.label}
                 </button>

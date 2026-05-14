@@ -1,7 +1,8 @@
 "use client"
 
-import React, { useState, useMemo } from "react"
+import React, { useCallback, useState, useMemo } from "react"
 import Link from "next/link"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Plus, LogOut } from "lucide-react"
 import { useOrg } from "@/lib/groups/org-context"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -23,13 +24,40 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "private", label: "Private" },
 ]
 
+const DEFAULT_TAB: TabKey = "public"
+
 const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 }
 
 export default function GroupsPage() {
   usePageTitle("Groups")
   const { groups, isLoading, refetchOrgs } = useOrg()
   const { did } = useAuth()
-  const [activeTab, setActiveTab] = useState<TabKey>("public")
+
+  // Tab state lives in `?tab=<key>` so refresh keeps the user on the
+  // same view. Public is the default and stays bare in the URL.
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const tabFromUrl = useMemo<TabKey>(() => {
+    const v = searchParams?.get("tab")
+    return v && TABS.some((t) => t.key === v) ? (v as TabKey) : DEFAULT_TAB
+  }, [searchParams])
+  const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl)
+  if (tabFromUrl !== activeTab && TABS.some((t) => t.key === tabFromUrl)) {
+    setActiveTab(tabFromUrl)
+  }
+  const changeTab = useCallback(
+    (next: TabKey) => {
+      setActiveTab(next)
+      const params = new URLSearchParams(searchParams?.toString() ?? "")
+      if (next === DEFAULT_TAB) params.delete("tab")
+      else params.set("tab", next)
+      const qs = params.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    },
+    [router, pathname, searchParams],
+  )
+
   const [leaveOrg, setLeaveOrg] = useState<{ groupDid: string; name: string } | null>(null)
   const [isLeaving, setIsLeaving] = useState(false)
   const [acceptingOrg, setAcceptingOrg] = useState<string | null>(null)
@@ -180,7 +208,7 @@ export default function GroupsPage() {
                   className={`page-tabs__tab ${
                     activeTab === tab.key ? "page-tabs__tab--active" : ""
                   }`}
-                  onClick={() => setActiveTab(tab.key)}
+                  onClick={() => changeTab(tab.key)}
                 >
                   {tab.label}
                 </button>
