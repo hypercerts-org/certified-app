@@ -1,16 +1,21 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { ChevronLeft, ChevronRight, ThumbsUp } from "lucide-react"
+import { Check, ChevronLeft, ChevronRight, ThumbsUp } from "lucide-react"
 import { useGivenEndorsements, type GivenEndorsement } from "@/hooks/use-endorsements"
 import { useReceivedEndorsements, type ReceivedEndorsement } from "@/hooks/use-received-endorsements"
 import { useOwnResponseStates } from "@/hooks/use-own-response-states"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useAuth } from "@/lib/auth/auth-context"
+import {
+  createEndorsementAward,
+  deleteEndorsementAward,
+} from "@/lib/atproto/badges"
 import EndorsementRow from "@/components/endorsements/endorsement-row"
 import ResponseMenu from "@/components/badges/response-menu"
 import Avatar from "@/components/ui/avatar"
+import ConfirmDialog from "@/components/ui/confirm-dialog"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { formatShortDate } from "@/lib/utils/format-date"
 import { getInitials } from "@/lib/utils/initials"
@@ -52,12 +57,6 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
   const receivedReady = !received.isLoading && !received.error
   const givenReady = !given.isLoading && !given.error
 
-  // Show the Endorse shortcut only on someone else's profile, and only
-  // when the viewer is signed in (the destination flow requires auth
-  // anyway). Pre-fills `?endorse=<did>` so /endorsements pops open the
-  // panel with this profile pre-selected.
-  const showEndorseBtn = !!viewerDid && !viewerIsOwner
-
   return (
     <div className="profile-endorsements">
       <section className="profile-endorsements__section">
@@ -70,15 +69,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
               </span>
             ) : null}
           </h3>
-          {showEndorseBtn ? (
-            <Link
-              href={`/endorsements?endorse=${encodeURIComponent(did)}`}
-              className="profile-endorsements__endorse-btn"
-            >
-              <ThumbsUp size={14} aria-hidden="true" />
-              <span>Endorse</span>
-            </Link>
-          ) : null}
+          <EndorseShortcut viewerDid={viewerDid} profileDid={did} viewerIsOwner={viewerIsOwner} />
         </div>
         <ReceivedBody
           {...received}
@@ -388,5 +379,112 @@ function ReceivedRow({
         />
       ) : null}
     </li>
+  )
+}
+
+/**
+ * Endorse shortcut on the right of the "Endorsements received"
+ * heading when the viewer is signed in and is not the profile owner.
+ *
+ * - Not yet endorsed → "Endorse" button. Click writes a new
+ *   badge.award against the profile DID immediately (no navigation),
+ *   then refetches the viewer's given list so the button flips to
+ *   "Endorsed".
+ * - Already endorsed → "Endorsed" button (with a checkmark). Click
+ *   opens a ConfirmDialog asking the user to revoke; confirm
+ *   deletes the award and flips the button back to "Endorse".
+ *
+ * Renders nothing when the viewer is signed out or is viewing their
+ * own profile.
+ */
+function EndorseShortcut({
+  viewerDid,
+  profileDid,
+  viewerIsOwner,
+}: {
+  viewerDid: string | null
+  profileDid: string
+  viewerIsOwner: boolean
+}) {
+  // Hooks must run unconditionally — only after we have all the data
+  // do we decide whether to render anything.
+  const ownGiven = useGivenEndorsements(viewerDid)
+  const [isWriting, setIsWriting] = useState(false)
+  const [confirmRevoke, setConfirmRevoke] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const existing = ownGiven.endorsements.find((e) => e.subjectDid === profileDid)
+  const isEndorsed = !!existing
+
+  const handleEndorse = useCallback(async () => {
+    if (!viewerDid || isWriting) return
+    setIsWriting(true)
+    setError(null)
+    try {
+      await createEndorsementAward(viewerDid, profileDid)
+      await ownGiven.refetch()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to endorse")
+    } finally {
+      setIsWriting(false)
+    }
+  }, [viewerDid, profileDid, isWriting, ownGiven])
+
+  const handleConfirmRevoke = useCallback(async () => {
+    if (!viewerDid || !existing || isWriting) return
+    setIsWriting(true)
+    setError(null)
+    try {
+      await deleteEndorsementAward(viewerDid, existing.rkey)
+      await ownGiven.refetch()
+      setConfirmRevoke(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to revoke endorsement")
+    } finally {
+      setIsWriting(false)
+    }
+  }, [viewerDid, existing, isWriting, ownGiven])
+
+  // Gate AFTER hooks so the rules-of-hooks contract holds.
+  if (!viewerDid || viewerIsOwner) return null
+
+  const onClick = isEndorsed ? () => setConfirmRevoke(true) : handleEndorse
+
+  return (
+    <>
+      <button
+        type="button"
+        className={`profile-endorsements__endorse-btn ${
+          isEndorsed ? "profile-endorsements__endorse-btn--active" : ""
+        }`}
+        onClick={onClick}
+        disabled={isWriting || ownGiven.isLoading}
+        aria-label={isEndorsed ? "Revoke endorsement" : "Endorse this profile"}
+      >
+        {isEndorsed ? (
+          <Check size={14} aria-hidden="true" />
+        ) : (
+          <ThumbsUp size={14} aria-hidden="true" />
+        )}
+        <span>{isEndorsed ? "Endorsed" : "Endorse"}</span>
+      </button>
+      {error ? (
+        <span className="profile-endorsements__endorse-error" role="alert">
+          {error}
+        </span>
+      ) : null}
+      {confirmRevoke ? (
+        <ConfirmDialog
+          title="Revoke endorsement?"
+          message="Your endorsement will be removed from this profile. You can endorse them again later."
+          confirmLabel="Revoke"
+          cancelLabel="Keep endorsement"
+          confirmVariant="destructive"
+          isConfirming={isWriting}
+          onConfirm={handleConfirmRevoke}
+          onCancel={() => !isWriting && setConfirmRevoke(false)}
+        />
+      ) : null}
+    </>
   )
 }

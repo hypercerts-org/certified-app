@@ -1974,9 +1974,30 @@
   flex-shrink: 0;
 }
 
-.profile-endorsements__endorse-btn:hover {
+.profile-endorsements__endorse-btn:hover:not(:disabled) {
   background: var(--overlay-weak, rgba(128, 128, 128, 0.08));
   border-color: var(--fg-primary);
+}
+
+.profile-endorsements__endorse-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Active state — the viewer has already endorsed this profile.
+   Filled background so the click affordance (= "revoke") reads
+   distinctly from the empty Endorse state. */
+.profile-endorsements__endorse-btn--active {
+  background: var(--overlay-weak, rgba(128, 128, 128, 0.12));
+  border-color: var(--fg-primary);
+  color: var(--fg-primary);
+}
+
+.profile-endorsements__endorse-error {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--danger, #d44);
+  margin-top: 4px;
 }
 
 /* Inline count after the heading — same visual register as the
