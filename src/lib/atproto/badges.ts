@@ -146,15 +146,23 @@ function extractRkey(uri: string): string {
 export async function listDefinitions(
   did: string,
   signal?: AbortSignal,
+  opts?: { noCache?: boolean },
 ): Promise<BadgeDefinitionRecord[]> {
   const params = new URLSearchParams({
     repo: did,
     collection: BADGE_DEFINITION_COLLECTION,
     limit: "100",
   })
+  // Post-write refetches need to bypass the proxy's 5s same-session
+  // cache (`Cache-Control: private, max-age=5`) — otherwise the
+  // browser hands back the pre-delete response and the UI's button
+  // state is stuck.
+  const init: RequestInit = {}
+  if (signal) init.signal = signal
+  if (opts?.noCache) init.cache = "no-store"
   const res = await authFetch(
     `/api/xrpc/com/atproto/repo/listRecords?${params.toString()}`,
-    signal ? { signal } : undefined,
+    init,
   )
   if (!res.ok) {
     if (res.status === 400 || res.status === 404) return []
@@ -242,6 +250,7 @@ export async function ensureEndorsementDefinition(
 export async function listAwards(
   did: string,
   signal?: AbortSignal,
+  opts?: { noCache?: boolean },
 ): Promise<BadgeAwardRecord[]> {
   const params = new URLSearchParams({
     repo: did,
@@ -249,9 +258,14 @@ export async function listAwards(
     limit: "100",
     reverse: "true",
   })
+  // See listDefinitions: refetches right after a write need to skip
+  // the proxy's 5s same-session listRecords cache.
+  const init: RequestInit = {}
+  if (signal) init.signal = signal
+  if (opts?.noCache) init.cache = "no-store"
   const res = await authFetch(
     `/api/xrpc/com/atproto/repo/listRecords?${params.toString()}`,
-    signal ? { signal } : undefined,
+    init,
   )
   if (!res.ok) {
     if (res.status === 400 || res.status === 404) return []

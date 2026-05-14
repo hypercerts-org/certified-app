@@ -51,7 +51,7 @@ export function useGivenEndorsements(did: string | null): {
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(
-    async (signal?: AbortSignal) => {
+    async (signal?: AbortSignal, force?: boolean) => {
       if (!did) {
         setEndorsements([])
         setIsLoading(false)
@@ -61,9 +61,13 @@ export function useGivenEndorsements(did: string | null): {
       setIsLoading(true)
       setError(null)
       try {
+        // `force` (set by refetch after a write) bypasses the proxy's
+        // 5s same-session listRecords cache so the just-deleted /
+        // just-created record is reflected immediately.
+        const opts = force ? { noCache: true } : undefined
         const [defs, awards] = await Promise.all([
-          listDefinitions(did, signal),
-          listAwards(did, signal),
+          listDefinitions(did, signal, opts),
+          listAwards(did, signal, opts),
         ])
         if (signal?.aborted) return
 
@@ -108,7 +112,7 @@ export function useGivenEndorsements(did: string | null): {
     return () => controller.abort()
   }, [load])
 
-  const refetch = useCallback(() => load(), [load])
+  const refetch = useCallback(() => load(undefined, true), [load])
 
   return { endorsements, isLoading, error, refetch }
 }
