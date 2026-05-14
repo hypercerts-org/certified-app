@@ -1,7 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { useParams } from "next/navigation"
+import { useCallback, useMemo, useState } from "react"
+import { usePathname, useRouter, useParams, useSearchParams } from "next/navigation"
 import { useProfileNavbar } from "@/lib/navbar-context"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { useUserActivities } from "@/hooks/use-user-activities"
@@ -81,7 +81,40 @@ export default function UserProfilePage() {
     ? `${activities.length}+`
     : `${activities.length}`
 
-  const [activeTab, setActiveTab] = useState<TabKey>("activities")
+  // Persist the active tab in the URL (`?tab=endorsements`) so refresh
+  // or share lands on the same view. Falls back to "activities" if the
+  // param is missing or unrecognised.
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const tabFromUrl = useMemo<TabKey>(() => {
+    const v = searchParams?.get("tab")
+    return v && TABS.some((t) => t.key === v) ? (v as TabKey) : "activities"
+  }, [searchParams])
+  const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl)
+
+  // Keep state in sync when the user navigates with Back/Forward (the
+  // URL changes; mirror it into state). Comparing first prevents the
+  // setter from looping on every searchParams reference.
+  if (tabFromUrl !== activeTab && TABS.some((t) => t.key === tabFromUrl)) {
+    setActiveTab(tabFromUrl)
+  }
+
+  const changeTab = useCallback(
+    (next: TabKey) => {
+      setActiveTab(next)
+      const params = new URLSearchParams(searchParams?.toString() ?? "")
+      if (next === "activities") {
+        // Default tab — keep the URL clean instead of carrying ?tab=activities.
+        params.delete("tab")
+      } else {
+        params.set("tab", next)
+      }
+      const qs = params.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    },
+    [router, pathname, searchParams],
+  )
 
   if (isProfileLoading) {
     return (
@@ -135,7 +168,7 @@ export default function UserProfilePage() {
           else return
           e.preventDefault()
           const nextKey = TABS[next].key
-          setActiveTab(nextKey)
+          changeTab(nextKey)
           const el = document.getElementById(`tab-${nextKey}`) as HTMLButtonElement | null
           el?.focus()
         }}
@@ -156,7 +189,7 @@ export default function UserProfilePage() {
             className={`profile-tabs__tab ${
               activeTab === tab.key ? "profile-tabs__tab--active" : ""
             }`}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => changeTab(tab.key)}
           >
             {tab.label}
           </button>

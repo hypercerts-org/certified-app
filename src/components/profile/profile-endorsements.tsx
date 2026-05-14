@@ -57,22 +57,76 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
   const receivedReady = !received.isLoading && !received.error
   const givenReady = !given.isLoading && !given.error
 
+  // Optimistic overlay on the indexer-backed received list so the
+  // viewer sees their own Endorse / Revoke action immediately. The
+  // real list catches up on its own schedule (indexer ingestion +
+  // hook's 5-min stale window); de-dup by URI handles the catch-up
+  // moment without flicker.
+  const [optimisticAdds, setOptimisticAdds] = useState<ReceivedEndorsement[]>([])
+  const [optimisticHides, setOptimisticHides] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  )
+  const displayReceived = useMemo(() => {
+    const real = received.endorsements.filter((e) => !optimisticHides.has(e.uri))
+    const seen = new Set<string>()
+    const merged: ReceivedEndorsement[] = []
+    for (const e of [...optimisticAdds, ...real]) {
+      if (seen.has(e.uri)) continue
+      seen.add(e.uri)
+      merged.push(e)
+    }
+    merged.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
+    return merged
+  }, [received.endorsements, optimisticAdds, optimisticHides])
+
+  const handleEndorsed = useCallback((entry: ReceivedEndorsement) => {
+    // If the user previously revoked this exact entry in this session,
+    // un-hide it; otherwise add as new.
+    setOptimisticHides((prev) => {
+      if (!prev.has(entry.uri)) return prev
+      const next = new Set(prev)
+      next.delete(entry.uri)
+      return next
+    })
+    setOptimisticAdds((prev) =>
+      prev.some((e) => e.uri === entry.uri) ? prev : [entry, ...prev],
+    )
+  }, [])
+
+  const handleRevoked = useCallback((uri: string) => {
+    setOptimisticAdds((prev) => prev.filter((e) => e.uri !== uri))
+    setOptimisticHides((prev) => {
+      if (prev.has(uri)) return prev
+      const next = new Set(prev)
+      next.add(uri)
+      return next
+    })
+  }, [])
+
   return (
     <div className="profile-endorsements">
       <section className="profile-endorsements__section">
         <div className="profile-endorsements__heading-row">
           <h3 className="profile-endorsements__heading">
             Endorsements received
-            {receivedReady && received.endorsements.length > 0 ? (
+            {receivedReady && displayReceived.length > 0 ? (
               <span className="profile-endorsements__count">
-                {received.endorsements.length}
+                {displayReceived.length}
               </span>
             ) : null}
           </h3>
-          <EndorseShortcut viewerDid={viewerDid} profileDid={did} viewerIsOwner={viewerIsOwner} />
+          <EndorseShortcut
+            viewerDid={viewerDid}
+            profileDid={did}
+            viewerIsOwner={viewerIsOwner}
+            onEndorsed={handleEndorsed}
+            onRevoked={handleRevoked}
+          />
         </div>
         <ReceivedBody
-          {...received}
+          endorsements={displayReceived}
+          isLoading={received.isLoading}
+          error={received.error}
           viewerIsOwner={viewerIsOwner}
           resolve={ownStates.resolve}
           allResponses={ownStates.responses}
@@ -401,10 +455,20 @@ function EndorseShortcut({
   viewerDid,
   profileDid,
   viewerIsOwner,
+  onEndorsed,
+  onRevoked,
 }: {
   viewerDid: string | null
   profileDid: string
   viewerIsOwner: boolean
+  /** Fired after a successful endorse so the parent can optimistic-
+   *  insert into the received list (the indexer-backed hook caches
+   *  for 5 min and would otherwise lag). */
+  onEndorsed: (entry: ReceivedEndorsement) => void
+  /** Fired after a successful revoke with the AT-URI of the deleted
+   *  award so the parent can optimistic-hide it from the received
+   *  list. */
+  onRevoked: (uri: string) => void
 }) {
   // Hooks must run unconditionally — only after we have all the data
   // do we decide whether to render anything.
@@ -421,21 +485,33 @@ function EndorseShortcut({
     setIsWriting(true)
     setError(null)
     try {
-      await createEndorsementAward(viewerDid, profileDid)
+      const result = await createEndorsementAward(viewerDid, profileDid)
+      // Optimistic insert into the parent's received list before the
+      // viewer's given-list refetch — refetch is what flips the button
+      // state, but the received list update has to come from us
+      // because that hook lives in a different module and caches.
+      onEndorsed({
+        uri: result.uri,
+        cid: result.cid,
+        issuerDid: viewerDid,
+        createdAt: new Date().toISOString(),
+      })
       await ownGiven.refetch()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to endorse")
     } finally {
       setIsWriting(false)
     }
-  }, [viewerDid, profileDid, isWriting, ownGiven])
+  }, [viewerDid, profileDid, isWriting, ownGiven, onEndorsed])
 
   const handleConfirmRevoke = useCallback(async () => {
     if (!viewerDid || !existing || isWriting) return
     setIsWriting(true)
     setError(null)
     try {
+      const awardUri = existing.uri
       await deleteEndorsementAward(viewerDid, existing.rkey)
+      onRevoked(awardUri)
       await ownGiven.refetch()
       setConfirmRevoke(false)
     } catch (err) {
@@ -443,7 +519,7 @@ function EndorseShortcut({
     } finally {
       setIsWriting(false)
     }
-  }, [viewerDid, existing, isWriting, ownGiven])
+  }, [viewerDid, existing, isWriting, ownGiven, onRevoked])
 
   // Gate AFTER hooks so the rules-of-hooks contract holds.
   if (!viewerDid || viewerIsOwner) return null
