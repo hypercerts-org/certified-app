@@ -1373,6 +1373,85 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   padding-bottom: 8px;
 }
 
+/* Account switcher / sign-in slot at the very top of the right rail
+   (above the search bar). The wrapper class .account-switcher--rail-top
+   is set on both the auth and unauth variants so the rail layout
+   sees a consistent first child. */
+.account-switcher--rail-top {
+  width: 100%;
+}
+
+.right-rail__switcher {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  cursor: pointer;
+  color: var(--fg-secondary);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  text-align: left;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.right-rail__switcher:hover {
+  background: var(--overlay-weak);
+  border-color: var(--border-hover);
+}
+
+.right-rail__switcher-meta {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.right-rail__switcher-name {
+  color: var(--fg-primary);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.right-rail__switcher-handle {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Unauth state — minimal sign-in button (no card chrome, the right
+   rail already has its own surface treatment). */
+.right-rail__signin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-fg);
+  border: none;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.right-rail__signin-btn:hover {
+  opacity: 0.9;
+}
+
 .right-rail__section {
   display: flex;
   flex-direction: column;
