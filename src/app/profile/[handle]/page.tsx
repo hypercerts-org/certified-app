@@ -1,7 +1,7 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
-import { usePathname, useRouter, useParams, useSearchParams } from "next/navigation"
+import { useMemo, useState } from "react"
+import { usePathname, useParams, useSearchParams } from "next/navigation"
 import { useProfileNavbar, usePageTitle } from "@/lib/navbar-context"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { useUserActivities } from "@/hooks/use-user-activities"
@@ -82,7 +82,6 @@ export default function UserProfilePage() {
     ? `${activities.length}+`
     : `${activities.length}`
 
-  const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const tabFromUrl = useMemo<TabKey>(() => {
@@ -94,21 +93,6 @@ export default function UserProfilePage() {
   if (tabFromUrl !== activeTab && TABS.some((t) => t.key === tabFromUrl)) {
     setActiveTab(tabFromUrl)
   }
-
-  const changeTab = useCallback(
-    (next: TabKey) => {
-      setActiveTab(next)
-      const params = new URLSearchParams(searchParams?.toString() ?? "")
-      if (next === "overview") {
-        params.delete("tab")
-      } else {
-        params.set("tab", next)
-      }
-      const qs = params.toString()
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
-    },
-    [router, pathname, searchParams],
-  )
 
   if (isProfileLoading) {
     return (
@@ -133,8 +117,10 @@ export default function UserProfilePage() {
 
   return (
     <div className="profile-page">
-      {/* Mobile-only identity block above the in-page tabs. Hidden on
-          desktop where the Overview tab carries the identity instead. */}
+      {/* Mobile-only identity block. Hidden on desktop where the Overview
+          tab's left sidebar carries the identity. The single source of
+          tab navigation is the desktop top bar's row 2 — there is no
+          in-page tab strip anymore. */}
       <div className="profile-page__mobile-header">
         <ProfileHeader
           profile={profile}
@@ -147,47 +133,6 @@ export default function UserProfilePage() {
           settingsHref={settingsHref}
           eyebrow={eyebrow}
         />
-      </div>
-
-      {/* Mobile in-page tab strip. Hidden on desktop where the top bar's
-          row 2 hosts the same tabs. */}
-      <div
-        className="profile-tabs profile-tabs--in-page"
-        role="tablist"
-        aria-label="Profile sections"
-        onKeyDown={(e) => {
-          const idx = TABS.findIndex((t) => t.key === activeTab)
-          if (idx < 0) return
-          let next = idx
-          if (e.key === "ArrowRight") next = (idx + 1) % TABS.length
-          else if (e.key === "ArrowLeft") next = (idx - 1 + TABS.length) % TABS.length
-          else if (e.key === "Home") next = 0
-          else if (e.key === "End") next = TABS.length - 1
-          else return
-          e.preventDefault()
-          const nextKey = TABS[next].key
-          changeTab(nextKey)
-          const el = document.getElementById(`tab-${nextKey}`) as HTMLButtonElement | null
-          el?.focus()
-        }}
-      >
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            role="tab"
-            id={`tab-${tab.key}`}
-            tabIndex={activeTab === tab.key ? 0 : -1}
-            aria-selected={activeTab === tab.key}
-            aria-controls={activeTab === tab.key ? `tabpanel-${tab.key}` : undefined}
-            className={`profile-tabs__tab ${
-              activeTab === tab.key ? "profile-tabs__tab--active" : ""
-            }`}
-            onClick={() => changeTab(tab.key)}
-          >
-            {tab.label}
-          </button>
-        ))}
       </div>
 
       <div className="profile-panel">

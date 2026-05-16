@@ -1958,15 +1958,13 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 }
 
 /* ========== Profile page CSS scaffolding for the top-bar redesign ==========
-   The page renders the mobile-only header block and in-page tab strip,
-   both of which are hidden at desktop widths: the top bar owns the tab
-   strip (row 2) and the Overview tab owns the identity block. */
+   On desktop the mobile-only ProfileHeader is hidden; the Overview tab's
+   left sidebar carries the identity instead, and the top bar's row 2
+   tabs are the single source of profile tab navigation (the in-page
+   tab strip was removed in the Overview rewrite). */
 
 @media (min-width: 800px) {
   .profile-page__mobile-header {
-    display: none;
-  }
-  .profile-tabs--in-page {
     display: none;
   }
 }
