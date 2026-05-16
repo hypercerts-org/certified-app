@@ -47,8 +47,8 @@ export default function ActivityDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="activity-detail-page">
-        <div className="activity-detail__loading">
+      <div className="cert-detail-page">
+        <div className="cert-detail__loading">
           <LoadingSpinner size="md" />
         </div>
       </div>
@@ -57,12 +57,12 @@ export default function ActivityDetailPage() {
 
   if (error || !activity) {
     return (
-      <div className="activity-detail-page">
-        <div className="activity-detail__error">
-          <p className="activity-detail__error-title">
+      <div className="cert-detail-page">
+        <div className="cert-detail__error">
+          <p className="cert-detail__error-title">
             {error || "Activity not found"}
           </p>
-          <p className="activity-detail__error-desc">
+          <p className="cert-detail__error-desc">
             This activity claim may have been deleted or is on a PDS we
             can&rsquo;t reach.
           </p>
@@ -72,7 +72,7 @@ export default function ActivityDetailPage() {
   }
 
   return (
-    <div className="activity-detail-page">
+    <div className="cert-detail-page">
       <ActivityDetail did={activity.did} value={activity.value} />
     </div>
   )

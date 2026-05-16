@@ -8,17 +8,18 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import { getInitials } from "@/lib/utils/initials"
 import { useUserGroups } from "@/hooks/use-user-groups"
 import { useReceivedEndorsements, type ReceivedEndorsement } from "@/hooks/use-received-endorsements"
-import { useUserActivities } from "@/hooks/use-user-activities"
+import { useUserIndexerActivities } from "@/hooks/use-user-indexer-activities"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { activityDetailHref } from "@/lib/atproto/activity-uri"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import type { ClaimActivity } from "@/lib/atproto/activity-types"
+import type { CertifiedProfile } from "@/lib/atproto/types"
 import { formatShortDate } from "@/lib/utils/format-date"
 
 interface ProfileOverviewProps {
   bannerUrl: string | null
   did: string
-  activityCountLabel: string
+  profile: CertifiedProfile | null
   basePath: string
 }
 
@@ -37,7 +38,7 @@ const ENDORSEMENT_PREVIEW = 3
 export default function ProfileOverview({
   bannerUrl,
   did,
-  activityCountLabel,
+  profile,
   basePath,
 }: ProfileOverviewProps) {
   const [bannerFailed, setBannerFailed] = useState(false)
@@ -46,7 +47,25 @@ export default function ProfileOverview({
 
   const { groups, isLoading: groupsLoading } = useUserGroups(did)
   const { endorsements, isLoading: endorsementsLoading } = useReceivedEndorsements(did)
-  const { activities, isLoading: activitiesLoading } = useUserActivities(did)
+  // Indexer-backed combined feed: split locally to count Created vs
+  // Contributed to. Same pattern as <ProfileCerts>.
+  const {
+    activities,
+    dids: activityDids,
+    isLoading: activitiesLoading,
+    hasMore: activitiesHasMore,
+  } = useUserIndexerActivities(did)
+
+  const { createdCount, contributedCount } = useMemo(() => {
+    let created = 0
+    let contributed = 0
+    for (const r of activities) {
+      const authorDid = activityDids.get(r.uri)
+      if (authorDid === did) created++
+      else if (authorDid) contributed++
+    }
+    return { createdCount: created, contributedCount: contributed }
+  }, [activities, activityDids, did])
 
   const previewActivities = useMemo(
     () => activities.slice(0, ACTIVITY_PREVIEW),
@@ -56,6 +75,13 @@ export default function ProfileOverview({
     () => endorsements.slice(0, ENDORSEMENT_PREVIEW),
     [endorsements],
   )
+
+  // Placeholders for stats whose dedicated hooks aren't built yet:
+  //   - given endorsements (no `useGivenEndorsements` hook)
+  //   - projects count (no `useUserProjects` hook)
+  // Wire these once the supporting hooks land.
+  const givenEndorsementsCount: number | null = null
+  const projectsCount: number | null = null
 
   return (
     <div className="profile-overview">
@@ -75,29 +101,74 @@ export default function ProfileOverview({
         ) : null}
       </div>
 
-      <section className="profile-overview__stats" aria-label="Profile stats">
-        <Link
-          href={`${basePath}?tab=certs`}
-          scroll={false}
-          className="profile-overview__stat"
+      {profile?.description ? (
+        <section
+          className="profile-overview__about"
+          aria-labelledby="profile-overview-about-heading"
         >
-          <span className="profile-overview__stat-value">
-            {activityCountLabel}
-          </span>
-          <span className="profile-overview__stat-label">
-            {activityCountLabel === "1" ? "Cert" : "Certs"}
-          </span>
-        </Link>
+          <h2
+            id="profile-overview-about-heading"
+            className="profile-overview__section-title"
+          >
+            About
+          </h2>
+          <p className="profile-overview__about-body">{profile.description}</p>
+        </section>
+      ) : null}
+
+      <section className="profile-overview__stats" aria-label="Profile stats">
         <Link
           href={`${basePath}?tab=endorsements`}
           scroll={false}
           className="profile-overview__stat"
         >
-          <span className="profile-overview__stat-value">
-            {endorsementsLoading ? "—" : endorsements.length}
+          <span className="profile-overview__stat-label">Endorsements</span>
+          <span className="profile-overview__stat-split">
+            <span className="profile-overview__stat-value">
+              {endorsementsLoading ? "—" : endorsements.length}
+            </span>
+            <span className="profile-overview__stat-sub">received</span>
           </span>
-          <span className="profile-overview__stat-label">
-            {endorsements.length === 1 ? "Endorsement" : "Endorsements"}
+          <span className="profile-overview__stat-split">
+            <span className="profile-overview__stat-value">
+              {givenEndorsementsCount ?? "—"}
+            </span>
+            <span className="profile-overview__stat-sub">given</span>
+          </span>
+        </Link>
+        <Link
+          href={`${basePath}?tab=certs`}
+          scroll={false}
+          className="profile-overview__stat"
+        >
+          <span className="profile-overview__stat-label">Certs</span>
+          <span className="profile-overview__stat-split">
+            <span className="profile-overview__stat-value">
+              {activitiesLoading
+                ? "—"
+                : `${createdCount}${activitiesHasMore ? "+" : ""}`}
+            </span>
+            <span className="profile-overview__stat-sub">created</span>
+          </span>
+          <span className="profile-overview__stat-split">
+            <span className="profile-overview__stat-value">
+              {activitiesLoading
+                ? "—"
+                : `${contributedCount}${activitiesHasMore ? "+" : ""}`}
+            </span>
+            <span className="profile-overview__stat-sub">contributed</span>
+          </span>
+        </Link>
+        <Link
+          href={`${basePath}?tab=projects`}
+          scroll={false}
+          className="profile-overview__stat"
+        >
+          <span className="profile-overview__stat-label">Projects</span>
+          <span className="profile-overview__stat-split profile-overview__stat-split--solo">
+            <span className="profile-overview__stat-value">
+              {projectsCount ?? "—"}
+            </span>
           </span>
         </Link>
         <Link
@@ -105,11 +176,11 @@ export default function ProfileOverview({
           scroll={false}
           className="profile-overview__stat"
         >
-          <span className="profile-overview__stat-value">
-            {groupsLoading ? "—" : groups.length}
-          </span>
-          <span className="profile-overview__stat-label">
-            {groups.length === 1 ? "Group" : "Groups"}
+          <span className="profile-overview__stat-label">Groups</span>
+          <span className="profile-overview__stat-split profile-overview__stat-split--solo">
+            <span className="profile-overview__stat-value">
+              {groupsLoading ? "—" : groups.length}
+            </span>
           </span>
         </Link>
       </section>

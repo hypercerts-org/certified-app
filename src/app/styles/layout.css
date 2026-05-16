@@ -2079,6 +2079,9 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 }
 
 .profile-sidebar__handle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 1.125rem;
   color: var(--fg-muted);
   margin: 0;
@@ -2087,19 +2090,12 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 }
 
 .profile-sidebar__did {
-  display: flex;
-  align-items: baseline;
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
   margin: 4px 0 0;
   font-size: 0.6875rem;
   color: var(--fg-muted);
-}
-
-.profile-sidebar__did-prefix {
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  flex-shrink: 0;
 }
 
 .profile-sidebar__did-value {
@@ -2112,16 +2108,36 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   user-select: all;
 }
 
+.profile-sidebar__copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  margin-left: 2px;
+  color: var(--fg-muted);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.profile-sidebar__copy-btn:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.profile-sidebar__copy-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 .profile-sidebar__pronouns {
   font-size: 0.8125rem;
   color: var(--fg-muted);
-  margin: 0;
-}
-
-.profile-sidebar__bio {
-  font-size: 0.9375rem;
-  line-height: 1.5;
-  color: var(--fg-secondary);
   margin: 0;
 }
 
@@ -2249,6 +2265,15 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   margin: 0;
 }
 
+.profile-sidebar__section-title--link {
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.profile-sidebar__section-title--link:hover {
+  color: var(--fg-primary);
+}
+
 .profile-sidebar__see-all {
   display: inline-flex;
   align-items: center;
@@ -2288,8 +2313,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .profile-sidebar__group-tile {
@@ -2350,14 +2375,14 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 
 .profile-overview__stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
 .profile-overview__stat {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 10px;
   padding: 16px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
@@ -2372,19 +2397,54 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   background: var(--bg-sunken);
 }
 
+.profile-overview__stat-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.profile-overview__stat-split {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.profile-overview__stat-split--solo {
+  justify-content: flex-start;
+}
+
 .profile-overview__stat-value {
   font-family: var(--font-headline), 'Noto Serif', serif;
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: var(--fg-primary);
   letter-spacing: -0.01em;
   line-height: 1.1;
 }
 
-.profile-overview__stat-label {
-  font-size: 0.8125rem;
+.profile-overview__stat-sub {
+  font-size: 0.75rem;
   color: var(--fg-muted);
   letter-spacing: 0.01em;
+}
+
+/* ---------- About section ---------- */
+
+.profile-overview__about {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-overview__about-body {
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--fg-secondary);
+  margin: 0;
+  white-space: pre-wrap;
 }
 
 /* ---------- Section heads + digest lists ---------- */
@@ -2633,7 +2693,11 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 @media (min-width: 800px) {
   .profile-certs .feed {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    /* Fixed 3-track grid: each track is at most 1/3 of the container so
+       a single cert renders at the same width as one of three in a row.
+       `minmax(0, …)` lets the track shrink instead of pushing past 1/3
+       when its content is wide. */
+    grid-template-columns: repeat(3, minmax(0, calc((100% - 48px) / 3)));
     gap: 28px 24px;
   }
 
@@ -2697,11 +2761,9 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   }
 }
 
-@media (min-width: 1100px) {
-  .profile-certs .feed {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
+/* 3-track grid applies from 800px upwards — no breakpoint change needed
+   at 1100px; the same `minmax(0, 1/3)` rule keeps cards capped to 1/3 of
+   the container at every width. */
 
 .profile-overview__empty {
   font-size: 0.875rem;

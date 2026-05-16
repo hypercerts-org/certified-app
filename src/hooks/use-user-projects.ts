@@ -26,10 +26,17 @@ export function useUserProjects(did: string | null) {
         setError(null)
         const data = await fetchCollections(did, undefined, 50, signal)
         if (signal?.aborted) return
-        // Filter to records that explicitly declare themselves as
-        // projects; ignore the rest (lists, other collection types).
+        // Filter to records that declare themselves as projects.
+        // Match is case-insensitive — records in the wild store the
+        // discriminator as "project", "Project", or "PROJECT". The
+        // indexer is gaining a server-side `eqi` operator for this in
+        // PR hb-agent/magic-indexer#81; once that ships callers that
+        // need cross-DID queries can move to the indexer instead of
+        // this per-DID listRecords path.
         const filtered = data.records.filter(
-          (r) => typeof r.value?.type === "string" && r.value.type === "project",
+          (r) =>
+            typeof r.value?.type === "string" &&
+            r.value.type.toLowerCase() === "project",
         )
         setProjects(filtered)
       } catch (err) {

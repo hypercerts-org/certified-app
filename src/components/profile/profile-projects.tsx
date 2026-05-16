@@ -4,25 +4,35 @@ import { FolderGit2 } from "lucide-react"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { useUserProjects } from "@/hooks/use-user-projects"
-import { formatShortDate } from "@/lib/utils/format-date"
+import ProjectCard from "./project-card"
 
 interface ProfileProjectsProps {
   did: string
 }
 
 /**
- * Projects tab content — lists `org.hypercerts.collection` records on
- * the profile's PDS where `record.value.type === "project"`.
+ * Projects tab on a user's profile.
  *
- * Rows are display-only for now; once the collection lexicon has a
- * canonical detail page in this app, the title can wrap in a <Link>.
+ * Lists `org.hypercerts.collection` records on the profile's PDS where
+ * `record.value.type === "project"`, rendered as a card grid mirroring
+ * the visual language of the Certs tab (see `.profile-certs` and the
+ * shared breakpoints in `profile-projects.css`).
+ *
+ * Data source: `com.atproto.repo.listRecords` against the user's PDS,
+ * filtered client-side by `value.type`. The indexer's `eqi`
+ * (case-insensitive eq) operator isn't deployed yet — once it lands
+ * (PR hb-agent/magic-indexer#81) the hook can swap to a `where: { type:
+ * { eqi: "project" } }` query for richer filters across DIDs. Until
+ * then, per-DID listRecords is both simpler and fresher than a strict
+ * `eq: "project"` query (which would miss records casing variants like
+ * "Project" or "PROJECT").
  */
 export default function ProfileProjects({ did }: ProfileProjectsProps) {
   const { projects, isLoading, error } = useUserProjects(did)
 
   if (isLoading && projects.length === 0) {
     return (
-      <div className="profile-projects__loading">
+      <div className="profile-projects-grid__loading">
         <LoadingSpinner size="sm" />
       </div>
     )
@@ -49,35 +59,14 @@ export default function ProfileProjects({ did }: ProfileProjectsProps) {
   }
 
   return (
-    <ul className="profile-projects">
-      {projects.map((p) => {
-        const title =
-          (typeof p.value.title === "string" && p.value.title) ||
-          (typeof p.value.name === "string" && p.value.name) ||
-          "Untitled project"
-        const description =
-          (typeof p.value.shortDescription === "string" && p.value.shortDescription) ||
-          (typeof p.value.description === "string" && p.value.description) ||
-          null
-        return (
-          <li key={p.uri} className="profile-projects__item">
-            <div className="profile-projects__icon">
-              <FolderGit2 size={18} strokeWidth={1.75} aria-hidden />
-            </div>
-            <div className="profile-projects__body">
-              <p className="profile-projects__title">{title}</p>
-              {description ? (
-                <p className="profile-projects__desc">{description}</p>
-              ) : null}
-              {p.value.createdAt ? (
-                <p className="profile-projects__meta">
-                  Created {formatShortDate(p.value.createdAt)}
-                </p>
-              ) : null}
-            </div>
+    <div className="profile-projects-grid">
+      <ul className="profile-projects-grid__list">
+        {projects.map((p) => (
+          <li key={p.uri}>
+            <ProjectCard record={p} />
           </li>
-        )
-      })}
-    </ul>
+        ))}
+      </ul>
+    </div>
   )
 }

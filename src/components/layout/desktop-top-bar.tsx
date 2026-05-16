@@ -24,6 +24,7 @@ const PROFILE_TABS: { key: string; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "certs", label: "Certs" },
   { key: "projects", label: "Projects" },
+  { key: "groups", label: "Groups" },
   { key: "endorsements", label: "Endorsements" },
 ];
 

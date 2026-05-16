@@ -8,6 +8,12 @@
 @import "./styles/profile.css";
 @import "./styles/pages.css";
 @import "./styles/notifications.css";
+@import "./styles/cert-detail.css";
+@import "./styles/profile-endorsements.css";
+@import "./styles/profile-edit.css";
+@import "./styles/profile-projects.css";
+@import "./styles/project-detail.css";
+@import "./styles/profile-groups.css";
 
 @tailwind base;
 @tailwind components;

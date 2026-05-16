@@ -1,0 +1,436 @@
+/* ========== Cert detail page ==========
+
+   Single reading column (600px on desktop, set by .app-shell__content).
+   Visual language matches the `profile-certs` grid: subtle pill hover,
+   no link underline, Inter for meta and a serif headline only for the
+   cert title. GitHub/Notion-ish hierarchy: byline → hero → headline →
+   inline meta strip → sections (contributors / locations / description).
+
+   The contributors grid is the dominant section for most certs; on the
+   reference cert ("openclaw") it's 90+ rows, so we surface it cleanly
+   in a two-column responsive grid with subtle hover pills. */
+
+.cert-detail-page {
+  padding: 24px 0 64px;
+}
+
+.cert-detail {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Loading + error ---------- */
+
+.cert-detail__loading,
+.cert-detail__error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 96px 24px;
+  text-align: center;
+}
+
+.cert-detail__error-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  margin: 0 0 6px;
+}
+
+.cert-detail__error-desc {
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  margin: 0;
+  max-width: 32ch;
+  line-height: 1.5;
+}
+
+/* ---------- Header (author byline) ---------- */
+
+.cert-detail__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* ---------- Hero ---------- */
+
+.cert-detail__hero {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 24px;
+}
+
+.cert-detail__hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cert-detail__hero--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    135deg,
+    var(--bg-sunken) 0%,
+    var(--overlay-weak) 100%
+  );
+}
+
+.cert-detail__hero-placeholder-icon {
+  color: var(--fg-muted);
+  opacity: 0.55;
+}
+
+/* ---------- Headline block ---------- */
+
+.cert-detail__headline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.cert-detail__title {
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--fg-primary);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  margin: 0;
+  word-break: break-word;
+}
+
+.cert-detail__short-desc {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--fg-secondary);
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.cert-detail__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.cert-detail__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  background: var(--overlay-weak);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.cert-detail__pill-icon {
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+
+/* ---------- Inline meta strip ----------
+
+   A compact row of label/value pairs that lives between the headline
+   and the sections. GitHub-style: small uppercase labels above the
+   value, separated by thin dividers. */
+
+.cert-detail__meta {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px 28px;
+  margin: 0 0 8px;
+  padding: 16px 0;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+@media (min-width: 520px) {
+  .cert-detail__meta {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.cert-detail__meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cert-detail__meta-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cert-detail__meta-value {
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.cert-detail__meta-aux {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  margin-left: 4px;
+}
+
+.cert-detail__uri {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  word-break: break-all;
+}
+
+/* ---------- Sections (contributors / locations / description) ---------- */
+
+.cert-detail__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 24px;
+  margin-top: 4px;
+}
+
+.cert-detail__section + .cert-detail__section {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.cert-detail__section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cert-detail__section-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.cert-detail__section-count {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--overlay-weak);
+  font-feature-settings: 'tnum' 1;
+}
+
+/* ---------- Contributors grid ---------- */
+
+.cert-detail__contributors {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+}
+
+@media (min-width: 520px) {
+  .cert-detail__contributors {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2px 12px;
+  }
+}
+
+.cert-detail__contributor {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  min-width: 0;
+}
+
+.cert-detail__contributor-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Subtle pill background on hover — matches profile-certs grid */
+.cert-detail__contributor:has(.cert-detail__contributor-link:hover),
+.cert-detail__contributor:has(.cert-detail__contributor-link:focus-visible) {
+  background: var(--overlay-weak);
+}
+
+.cert-detail__contributor-link--static {
+  cursor: default;
+}
+
+.cert-detail__contributor-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+  flex: 1;
+}
+
+.cert-detail__contributor-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cert-detail__contributor-handle {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cert-detail__contributor-role {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  font-weight: 400;
+}
+
+.cert-detail__contributor-weight {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--fg-secondary);
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--overlay-weak);
+  font-feature-settings: 'tnum' 1;
+  flex-shrink: 0;
+}
+
+/* Skeleton */
+.cert-detail__contributor--skeleton {
+  pointer-events: none;
+}
+
+.cert-detail__contributor-avatar-skel {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--overlay-weak);
+  flex-shrink: 0;
+}
+
+.cert-detail__contributor-name-skel {
+  width: 100px;
+  height: 10px;
+  border-radius: 4px;
+  background: var(--overlay-weak);
+  margin-bottom: 4px;
+}
+
+.cert-detail__contributor-handle-skel {
+  width: 64px;
+  height: 9px;
+  border-radius: 4px;
+  background: var(--overlay-weak);
+}
+
+/* ---------- Long-form description ---------- */
+
+.cert-detail__description {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--fg-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+
+.cert-detail__description-raw {
+  margin: 0;
+  border: 0;
+}
+
+.cert-detail__description-raw summary {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+  cursor: pointer;
+  list-style: none;
+  padding: 4px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.cert-detail__description-raw summary::-webkit-details-marker {
+  display: none;
+}
+
+.cert-detail__description-raw[open] summary {
+  color: var(--fg-primary);
+  margin-bottom: 8px;
+}
+
+.cert-detail__description-raw pre {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--fg-secondary);
+  background: var(--bg-raised);
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 50vh;
+  margin: 0;
+}
+
+/* ---------- Locations ---------- */
+
+.cert-detail__locations {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ---------- Mobile tweaks ---------- */
+
+@media (max-width: 520px) {
+  .cert-detail__title {
+    font-size: 1.5rem;
+  }
+
+  .cert-detail__hero {
+    aspect-ratio: 4 / 3;
+  }
+}

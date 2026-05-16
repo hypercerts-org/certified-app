@@ -1,0 +1,422 @@
+/* ---------- Profile endorsements tab ----------
+   Mirrors the Profile certs tab pattern: sub-tab strip on the left,
+   right-aligned toolbar (search + sort), then a responsive grid of
+   uniform-size cards. Class names are scoped with a `--v2` suffix so
+   the legacy `.profile-endorsements__*` rules in `feed.css` (still
+   used by other surfaces) keep working unchanged. */
+
+.profile-endorsements-v2 {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-endorsements-v2__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.profile-endorsements-v2__subtabs {
+  display: flex;
+  gap: 0;
+}
+
+.profile-endorsements-v2__subtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 4px;
+  margin-right: 20px;
+  background: transparent;
+  border: none;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+  cursor: pointer;
+  position: relative;
+  transition: color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.profile-endorsements-v2__subtab:hover {
+  color: var(--fg-primary);
+}
+
+.profile-endorsements-v2__subtab--active {
+  color: var(--fg-primary);
+  font-weight: 600;
+}
+
+.profile-endorsements-v2__subtab--active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--fg-primary);
+  border-radius: 1px;
+}
+
+.profile-endorsements-v2__subtab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
+.profile-endorsements-v2__subtab-count {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--overlay-weak);
+}
+
+.profile-endorsements-v2__subtab--active .profile-endorsements-v2__subtab-count {
+  color: var(--fg-primary);
+}
+
+.profile-endorsements-v2__controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding-bottom: 8px;
+}
+
+.profile-endorsements-v2__search {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.profile-endorsements-v2__search:focus-within {
+  border-color: var(--fg-primary);
+}
+
+.profile-endorsements-v2__search-icon {
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+
+.profile-endorsements-v2__search-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  width: 200px;
+}
+
+.profile-endorsements-v2__search-input::placeholder {
+  color: var(--fg-muted);
+}
+
+.profile-endorsements-v2__search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.profile-endorsements-v2__sort-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.profile-endorsements-v2__sort-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.profile-endorsements-v2__sort-btn:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.profile-endorsements-v2__sort-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.profile-endorsements-v2__sort-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  z-index: 30;
+}
+
+.profile-endorsements-v2__sort-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.profile-endorsements-v2__sort-item:hover {
+  background: var(--overlay-weak);
+}
+
+.profile-endorsements-v2__sort-item-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  color: var(--fg-primary);
+  flex-shrink: 0;
+}
+
+/* ---------- Grid + cards ----------
+   Uniform-size cards with card-wide hover bg. Mirrors the certs grid
+   media-query breakpoints (single column → 2 → 3). */
+
+.profile-endorsements-v2__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.profile-endorsements-v2__error {
+  color: var(--fg-muted);
+  font-size: 0.875rem;
+  margin: 16px 0;
+}
+
+.profile-endorsements-v2__loading {
+  display: flex;
+  justify-content: center;
+  padding: 32px 0;
+}
+
+/* Card: avatar on the left, name/handle/note in the middle, date in
+   the top-right, response menu (owner-only) tucked to the far right.
+   At single-column widths we render as a horizontal row; at >=800px
+   we switch to a vertical card layout in a grid. */
+
+.profile-endorsements-v2__card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  transition: background var(--transition-fast);
+}
+
+.profile-endorsements-v2__card:hover {
+  background: var(--overlay-weak);
+}
+
+.profile-endorsements-v2__card-link {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+  flex: 1;
+}
+
+.profile-endorsements-v2__card-link:hover .profile-endorsements-v2__card-name {
+  text-decoration: underline;
+}
+
+.profile-endorsements-v2__card-avatar-skel {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--overlay-weak);
+  flex-shrink: 0;
+}
+
+.profile-endorsements-v2__card-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+  flex: 1;
+}
+
+.profile-endorsements-v2__card-name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-endorsements-v2__card-handle {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-endorsements-v2__card-note {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  /* 2-line clamp keeps the card height predictable in the grid. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.profile-endorsements-v2__card-date {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Grid layout — 2 cols at >=800px, 3 cols at >=1100px. Drops the
+   per-card bottom divider since grid gap provides separation, and
+   stacks the meta column above the date row inside each card so the
+   card body keeps a uniform footprint. */
+@media (min-width: 800px) {
+  .profile-endorsements-v2__grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .profile-endorsements-v2__card {
+    flex-direction: column;
+    align-items: stretch;
+    border-bottom: none;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    padding: 14px;
+    min-height: 132px;
+  }
+
+  .profile-endorsements-v2__card:hover {
+    background: var(--overlay-weak);
+  }
+
+  .profile-endorsements-v2__card-link {
+    flex: 1;
+  }
+
+  .profile-endorsements-v2__card-date {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+  }
+
+  .profile-endorsements-v2__card-menu {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .profile-endorsements-v2__grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Empty state inside the grid spans all columns so EmptyState's own
+   centering renders across the full pane. */
+.profile-endorsements-v2__grid > .empty-state {
+  grid-column: 1 / -1;
+  padding: 32px 0;
+}
+
+/* Top-right action button on the heading row (Endorse / Endorsed). */
+.profile-endorsements-v2__endorse-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.profile-endorsements-v2__endorse-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--fg-primary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.profile-endorsements-v2__endorse-btn:hover:not(:disabled) {
+  background: var(--overlay-weak);
+  border-color: var(--fg-primary);
+}
+
+.profile-endorsements-v2__endorse-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.profile-endorsements-v2__endorse-btn--active {
+  background: var(--overlay-weak);
+  border-color: var(--fg-primary);
+  color: var(--fg-primary);
+}
+
+.profile-endorsements-v2__endorse-error {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--danger, #d44);
+  margin-top: 4px;
+}

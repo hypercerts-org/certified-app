@@ -1,9 +1,12 @@
 "use client"
 
 import Link from "next/link"
+import { useState } from "react"
 import {
   ArrowRight,
   Calendar,
+  Check,
+  Copy,
   Link as LinkIcon,
   Pencil,
   Settings as SettingsIcon,
@@ -30,6 +33,11 @@ interface ProfileSidebarProps {
   editHref?: string
   /** Group-settings cog link, if the viewer is a group admin. */
   settingsHref?: string
+  /** True when this profile carries an `app.certified.actor.organization`
+   *  marker — controls whether org-only fields (additionalUrls) render. */
+  isOrg?: boolean
+  /** Extra org-only URLs (only consulted when `isOrg` is true). */
+  additionalUrls?: string[]
 }
 
 const GROUPS_GRID_LIMIT = 12
@@ -68,6 +76,8 @@ export default function ProfileSidebar({
   basePath,
   editHref,
   settingsHref,
+  isOrg = false,
+  additionalUrls,
 }: ProfileSidebarProps) {
   const displayName = profile?.displayName || (handle ? `@${handle}` : "Anonymous")
   const initials = getInitials(profile?.displayName, did)
@@ -92,20 +102,19 @@ export default function ProfileSidebar({
       <div className="profile-sidebar__name-block">
         <h1 className="profile-sidebar__name">{displayName}</h1>
         {handle ? (
-          <p className="profile-sidebar__handle">@{handle}</p>
+          <p className="profile-sidebar__handle">
+            <span>@{handle}</span>
+            <CopyButton value={handle} label="Copy handle" />
+          </p>
         ) : null}
         <p className="profile-sidebar__did" title={did}>
-          <span className="profile-sidebar__did-prefix">DID</span>
           <span className="profile-sidebar__did-value">{did}</span>
+          <CopyButton value={did} label="Copy DID" />
         </p>
       </div>
 
       {profile?.pronouns ? (
         <p className="profile-sidebar__pronouns">{profile.pronouns}</p>
-      ) : null}
-
-      {profile?.description ? (
-        <p className="profile-sidebar__bio">{profile.description}</p>
       ) : null}
 
       <div className="profile-sidebar__actions">
@@ -145,12 +154,6 @@ export default function ProfileSidebar({
       </p>
 
       <ul className="profile-sidebar__details">
-        {joinedText ? (
-          <li>
-            <Calendar size={16} strokeWidth={1.75} aria-hidden />
-            <span>{joinedText}</span>
-          </li>
-        ) : null}
         {profile?.website ? (
           <li>
             <LinkIcon size={16} strokeWidth={1.75} aria-hidden />
@@ -164,6 +167,23 @@ export default function ProfileSidebar({
             </a>
           </li>
         ) : null}
+        {isOrg && additionalUrls
+          ? additionalUrls
+              .filter((u) => typeof u === "string" && u.length > 0)
+              .map((u) => (
+                <li key={u}>
+                  <LinkIcon size={16} strokeWidth={1.75} aria-hidden />
+                  <a
+                    href={buildWebsiteHref(u)}
+                    className="profile-sidebar__detail-link"
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    {websiteDisplay(u)}
+                  </a>
+                </li>
+              ))
+          : null}
         {isBskyHosted && handle ? (
           <li>
             <LinkIcon size={16} strokeWidth={1.75} aria-hidden />
@@ -177,6 +197,12 @@ export default function ProfileSidebar({
             </a>
           </li>
         ) : null}
+        {joinedText ? (
+          <li>
+            <Calendar size={16} strokeWidth={1.75} aria-hidden />
+            <span>{joinedText}</span>
+          </li>
+        ) : null}
       </ul>
 
       <section
@@ -184,12 +210,14 @@ export default function ProfileSidebar({
         aria-labelledby="profile-sidebar-groups-heading"
       >
         <div className="profile-sidebar__section-head">
-          <h2
+          <Link
             id="profile-sidebar-groups-heading"
-            className="profile-sidebar__section-title"
+            href={`${basePath}?tab=groups`}
+            scroll={false}
+            className="profile-sidebar__section-title profile-sidebar__section-title--link"
           >
             Groups
-          </h2>
+          </Link>
           {groups.length > GROUPS_GRID_LIMIT ? (
             <Link
               href={`${basePath}?tab=groups`}
@@ -230,5 +258,38 @@ export default function ProfileSidebar({
         )}
       </section>
     </aside>
+  )
+}
+
+interface CopyButtonProps {
+  value: string
+  label: string
+}
+
+function CopyButton({ value, label }: CopyButtonProps) {
+  const [copied, setCopied] = useState(false)
+  const onClick = async () => {
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      /* clipboard unavailable — silent */
+    }
+  }
+  return (
+    <button
+      type="button"
+      className="profile-sidebar__copy-btn"
+      onClick={onClick}
+      aria-label={copied ? "Copied" : label}
+      title={copied ? "Copied" : label}
+    >
+      {copied ? (
+        <Check size={13} strokeWidth={2} aria-hidden />
+      ) : (
+        <Copy size={13} strokeWidth={1.75} aria-hidden />
+      )}
+    </button>
   )
 }

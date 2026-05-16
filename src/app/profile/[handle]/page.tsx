@@ -12,6 +12,7 @@ import ProfileOverview from "@/components/profile/profile-overview"
 import ProfileEndorsements from "@/components/profile/profile-endorsements"
 import ProfileProjects from "@/components/profile/profile-projects"
 import ProfileCerts from "@/components/profile/profile-certs"
+import ProfileGroups from "@/components/profile/profile-groups"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import { UserX } from "lucide-react"
@@ -20,17 +21,17 @@ type TabKey =
   | "overview"
   | "certs"
   | "projects"
+  | "groups"
   | "endorsements"
 
-// Tab strip post-rename: Activities became "Certs", Groups dropped from
-// the strip (still surfaced in the sidebar), Projects added between
-// Certs and Endorsements. Keep the order in sync with PROFILE_TABS in
-// desktop-top-bar.tsx — that's the single source the user actually
-// clicks on desktop.
+// Tab strip: Overview, Certs, Projects, Groups, Endorsements.
+// Keep the order in sync with PROFILE_TABS in desktop-top-bar.tsx —
+// that's the single source the user actually clicks on desktop.
 const TABS: { key: TabKey; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "certs", label: "Certs" },
   { key: "projects", label: "Projects" },
+  { key: "groups", label: "Groups" },
   { key: "endorsements", label: "Endorsements" },
 ]
 
@@ -151,7 +152,7 @@ export default function UserProfilePage() {
               <ProfileOverview
                 bannerUrl={bannerUrl}
                 did={did}
-                activityCountLabel={activityCountLabel}
+                profile={profile}
                 basePath={pathname || ""}
               />
             </div>
@@ -172,6 +173,15 @@ export default function UserProfilePage() {
               aria-labelledby="tab-projects"
             >
               <ProfileProjects did={did} />
+            </div>
+          )}
+          {activeTab === "groups" && (
+            <div
+              role="tabpanel"
+              id="tabpanel-groups"
+              aria-labelledby="tab-groups"
+            >
+              <ProfileGroups did={did} />
             </div>
           )}
           {activeTab === "endorsements" && (
