@@ -201,21 +201,39 @@ export default function UserProfilePage() {
               did={did}
               activityCountLabel={activityCountLabel}
               basePath={pathname || ""}
+              editHref={editHref}
+              settingsHref={settingsHref}
+              isOwnProfile={isOwnProfile}
             />
           </div>
         )}
         {activeTab === "activities" && (
-          <div role="tabpanel" id="tabpanel-activities" aria-labelledby="tab-activities">
+          <div
+            role="tabpanel"
+            id="tabpanel-activities"
+            aria-labelledby="tab-activities"
+            className="profile-panel--reading"
+          >
             <UserFeed authorDid={did} />
           </div>
         )}
         {activeTab === "groups" && (
-          <div role="tabpanel" id="tabpanel-groups" aria-labelledby="tab-groups">
+          <div
+            role="tabpanel"
+            id="tabpanel-groups"
+            aria-labelledby="tab-groups"
+            className="profile-panel--reading"
+          >
             <ProfileGroups did={did} showRoles={isOwnProfile} />
           </div>
         )}
         {activeTab === "endorsements" && (
-          <div role="tabpanel" id="tabpanel-endorsements" aria-labelledby="tab-endorsements">
+          <div
+            role="tabpanel"
+            id="tabpanel-endorsements"
+            aria-labelledby="tab-endorsements"
+            className="profile-panel--reading"
+          >
             <ProfileEndorsements did={did} />
           </div>
         )}

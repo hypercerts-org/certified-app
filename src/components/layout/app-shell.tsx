@@ -1,25 +1,24 @@
 "use client";
 
 import { useNavbarContext } from "@/lib/navbar-context";
-import DesktopRightRail from "./desktop-right-rail";
 
 /**
- * Two-zone shell (post-redesign).
+ * Single-column shell (post-Overview-redesign).
  *
  * Structure:
- *   .app-shell                         min-height: 100vh; bg canvas
- *     .app-shell__grid                 max-width 1300; margin 0 auto; CSS grid >=800px
- *       .app-shell__center             grid cell (center column)
- *         .app-shell__content          reading-width container (600px on desktop)
- *       .right-rail                    CSS display:none <1100px
+ *   .app-shell                        min-height: 100vh; bg canvas
+ *     .app-shell__grid                max-width 1320; margin 0 auto
+ *       .app-shell__center            grid cell (center column)
+ *         .app-shell__content         reading-width container
  *
  * The desktop top bar is mounted in the root layout (sibling to <main>),
- * NOT inside this grid — it spans the full viewport width and sits above
- * the grid as a sticky chrome bar. The left rail was removed in the
- * positioning redesign; nav lives in the top bar.
+ * NOT inside this grid. The left rail and right rail were both retired
+ * in the Overview redesign — the top bar carries all chrome, and the
+ * profile page widens its own container for the GitHub-style two-column
+ * Overview layout.
  *
- * Fullbleed (profile pages on mobile) operates on .app-shell__content INSIDE
- * the center cell — banner extends to the cell width, not the viewport.
+ * Fullbleed (profile pages) operates on .app-shell__content INSIDE the
+ * center cell — banner extends to the cell width, not the viewport.
  */
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { profileOverlay } = useNavbarContext();
@@ -31,7 +30,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             {children}
           </div>
         </div>
-        <DesktopRightRail />
       </div>
     </div>
   );

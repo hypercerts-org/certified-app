@@ -703,32 +703,18 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   }
 }
 
-/* Desktop cascade (positioning redesign): the left rail was retired.
-   The grid is content-only at >=800; content + right rail at >=1100.
-   Numbers mirror --bp-* tokens in tokens.css. At <800px the grid is
-   `display: block` so children stack as before; the right rail carries
-   `display: none` below its breakpoint.
+/* Desktop cascade (Overview redesign): both rails retired. The grid is
+   a single centered column. Non-profile pages keep a narrow reading
+   column (.app-shell__content max-width below). Profile pages widen
+   their own container via `.app-shell--fullbleed` to ~1280px so the
+   GitHub-style two-column Overview fits.
 
-   The center cell uses a fixed minmax(0, 600px) so the column genuinely
-   caps at 600px instead of stretching. justify-content: center keeps
-   the (content + right rail) unit horizontally centered; outer gutters
-   at wider viewports are passive whitespace per DESIGN.md. */
+   At <800px the grid is `display: block` so children stack as before. */
 @media (min-width: 800px) {
   .app-shell__grid {
     display: grid;
-    grid-template-columns: minmax(0, 600px);
-    column-gap: 32px;
+    grid-template-columns: minmax(0, 1280px);
     justify-content: center;
-  }
-}
-@media (min-width: 1100px) {
-  .app-shell__grid {
-    grid-template-columns: minmax(0, 600px) 280px;
-  }
-}
-@media (min-width: 1300px) {
-  .app-shell__grid {
-    grid-template-columns: minmax(0, 640px) 320px;
   }
 }
 
@@ -771,6 +757,16 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   padding-top: 0;
   padding-left: 0;
   padding-right: 0;
+}
+
+/* Profile pages on desktop expand the content area to a GitHub-style
+   1280px container. Non-Overview tabs inside the profile page constrain
+   themselves to a reading column via .profile-panel--reading. */
+@media (min-width: 800px) {
+  .app-shell--fullbleed .app-shell__content {
+    max-width: 1280px;
+    margin: 0 auto;
+  }
 }
 
 /* ========== Auth Guard Loading ========== */
@@ -1975,37 +1971,299 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   }
 }
 
-/* ========== Profile Overview tab (face-card layout) ========== */
+/* ========== Profile Overview tab (GitHub-style 2-column) ==========
+   Two-column layout: identity sidebar (~296px) on the left, banner +
+   stats + digest sections on the right. Below 800px the columns
+   collapse to a single stack and the sidebar identity block is hidden
+   because the mobile <ProfileHeader> at top of the page already
+   carries the banner + name + bio. */
 
 .profile-overview {
-  display: flex;
-  flex-direction: column;
+  padding: 24px 16px;
 }
 
-.profile-overview__identity {
+.profile-overview__layout {
+  display: grid;
+  gap: 24px;
+}
+
+@media (min-width: 800px) {
+  .profile-overview {
+    padding: 24px;
+  }
+  .profile-overview__layout {
+    grid-template-columns: 296px minmax(0, 1fr);
+    gap: 32px;
+    align-items: start;
+  }
+}
+
+/* ---------- Left pane: identity sidebar ---------- */
+
+.profile-overview__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* On mobile the page's <ProfileHeader> already covers identity. Hide
+   the duplicated avatar/name/bio block in the sidebar; the actionable
+   bits (Edit, Followers, Links, Groups) still render below. */
+.profile-overview__avatar,
+.profile-overview__name-block,
+.profile-overview__pronouns,
+.profile-overview__bio {
   display: none;
 }
 
 @media (min-width: 800px) {
-  .profile-overview__identity {
+  .profile-overview__avatar {
+    /* The inner <Avatar> is sized via Tailwind override (!h-[240px]
+       !w-[240px]); this wrapper just provides the layout slot. */
+    display: inline-flex;
+  }
+  .profile-overview__name-block {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 4px;
+  }
+  .profile-overview__pronouns,
+  .profile-overview__bio {
     display: block;
-    width: 100%;
   }
 }
 
-.profile-overview__banner {
-  width: 100%;
-  height: 200px;
-  overflow: hidden;
-  background: linear-gradient(
-    135deg,
-    var(--bg-sunken) 0%,
-    var(--bg-raised) 100%
-  );
+.profile-overview__name {
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-size: 1.625rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--fg-primary);
+  margin: 0;
+  line-height: 1.2;
 }
 
-.profile-overview__banner--empty {
-  height: 96px;
+.profile-overview__handle {
+  font-size: 1.125rem;
+  color: var(--fg-muted);
+  margin: 0;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.profile-overview__did {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 4px 0 0;
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+}
+
+.profile-overview__did-prefix {
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.profile-overview__did-value {
+  font-family: monospace;
+  font-size: 0.6875rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  user-select: all;
+}
+
+.profile-overview__pronouns {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.profile-overview__bio {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--fg-secondary);
+  margin: 0;
+}
+
+.profile-overview__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.profile-overview__action-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  height: 36px;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.profile-overview__action-primary:hover {
+  background: var(--bg-sunken);
+  border-color: var(--border-hover);
+}
+
+.profile-overview__action-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--fg-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  text-decoration: none;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.profile-overview__action-secondary:hover {
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
+.profile-overview__followers {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+  flex-wrap: wrap;
+}
+
+.profile-overview__followers-count {
+  font-weight: 600;
+  color: var(--fg-primary);
+}
+
+.profile-overview__followers-sep {
+  color: var(--fg-muted);
+}
+
+.profile-overview__details {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-overview__details li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+  min-width: 0;
+}
+
+.profile-overview__details li > svg {
+  flex-shrink: 0;
+  color: var(--fg-muted);
+}
+
+.profile-overview__detail-link {
+  color: var(--fg-secondary);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  transition: color var(--transition-fast);
+}
+
+.profile-overview__detail-link:hover {
+  color: var(--fg-primary);
+  text-decoration: underline;
+}
+
+/* ---------- Groups grid (GitHub orgs style) ---------- */
+
+.profile-overview__groups {
+  margin-top: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.profile-overview__groups-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.profile-overview__group-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius);
+  overflow: hidden;
+  text-decoration: none;
+  transition: opacity var(--transition-fast);
+}
+
+.profile-overview__group-tile:hover {
+  opacity: 0.85;
+}
+
+/* ---------- Right pane: banner + main content ---------- */
+
+.profile-overview__main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.profile-overview__banner {
+  display: none;
+}
+
+@media (min-width: 800px) {
+  .profile-overview__banner {
+    display: block;
+    width: 100%;
+    aspect-ratio: 3 / 1;
+    max-height: 220px;
+    overflow: hidden;
+    border-radius: var(--radius);
+    background: linear-gradient(
+      135deg,
+      var(--bg-sunken) 0%,
+      var(--bg-raised) 100%
+    );
+  }
+  .profile-overview__banner--empty {
+    aspect-ratio: 6 / 1;
+    max-height: 96px;
+  }
 }
 
 .profile-overview__banner-img {
@@ -2015,87 +2273,33 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   display: block;
 }
 
-.profile-overview__identity-body {
-  padding: 0 24px 16px;
-}
-
-.profile-overview__avatar-wrap {
-  display: inline-block;
-  margin-top: -52px;
-  padding: 4px;
-  background: var(--bg-elevated);
-  border-radius: 999px;
-}
-
-.profile-overview__name {
-  font-family: var(--font-headline), 'Noto Serif', serif;
-  font-size: 1.75rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--fg-primary);
-  margin: 12px 0 2px;
-}
-
-.profile-overview__handle {
-  font-size: 0.875rem;
-  color: var(--fg-muted);
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.profile-overview__pds-tag {
-  font-size: 0.6875rem;
-  font-weight: 500;
-  color: var(--fg-muted);
-  background: var(--bg-sunken);
-  border: 1px solid var(--border-subtle);
-  border-radius: 999px;
-  padding: 2px 8px;
-  letter-spacing: 0.02em;
-}
-
-.profile-overview__bio {
-  font-size: 0.9375rem;
-  line-height: 1.5;
-  color: var(--fg-secondary);
-  margin: 12px 0 0;
-}
-
 .profile-overview__stats {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  padding: 16px 0 8px;
-  border-top: 1px solid var(--border-subtle);
-}
-
-@media (min-width: 800px) {
-  .profile-overview__stats {
-    margin: 16px 24px 0;
-    padding: 16px 0 8px;
-  }
 }
 
 .profile-overview__stat {
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 10px 12px;
+  padding: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius);
   text-decoration: none;
   color: inherit;
-  transition: background var(--transition-fast);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
-.profile-overview__stat--linked:hover {
-  background: var(--overlay-weak);
+.profile-overview__stat:hover {
+  border-color: var(--border-hover-soft);
+  background: var(--bg-sunken);
 }
 
 .profile-overview__stat-value {
   font-family: var(--font-headline), 'Noto Serif', serif;
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 700;
   color: var(--fg-primary);
   letter-spacing: -0.01em;
@@ -2103,21 +2307,12 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 }
 
 .profile-overview__stat-label {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--fg-muted);
   letter-spacing: 0.01em;
 }
 
-.profile-overview__section {
-  padding: 16px 0;
-  border-top: 1px solid var(--border-subtle);
-}
-
-@media (min-width: 800px) {
-  .profile-overview__section {
-    margin: 0 24px;
-  }
-}
+/* ---------- Section heads + digest lists ---------- */
 
 .profile-overview__section-head {
   display: flex;
@@ -2161,7 +2356,13 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   padding: 8px 0;
 }
 
-.profile-overview__groups {
+.profile-overview__digest {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-overview__activity-list,
+.profile-overview__endorse-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -2169,35 +2370,72 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   flex-direction: column;
 }
 
-.profile-overview__group-item {
+.profile-overview__activity-item,
+.profile-overview__endorse-item {
   border-top: 1px solid var(--border-subtle);
 }
 
-.profile-overview__group-item:last-child {
+.profile-overview__activity-item:last-child,
+.profile-overview__endorse-item:last-child {
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.profile-overview__group-link {
+.profile-overview__activity-link {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 2px;
   padding: 12px 0;
-  color: inherit;
   text-decoration: none;
-  transition: background var(--transition-fast);
+  color: inherit;
 }
 
-.profile-overview__group-link:hover .profile-overview__group-name {
+.profile-overview__activity-link:hover .profile-overview__activity-title {
   text-decoration: underline;
 }
 
-.profile-overview__group-meta {
+.profile-overview__activity-title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+}
+
+.profile-overview__activity-desc {
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.profile-overview__activity-meta {
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+  margin-top: 4px;
+}
+
+.profile-overview__endorse-link {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.profile-overview__endorse-link:hover .profile-overview__endorse-name {
+  text-decoration: underline;
+}
+
+.profile-overview__endorse-meta {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
-.profile-overview__group-name {
+.profile-overview__endorse-name {
   font-size: 0.9375rem;
   font-weight: 500;
   color: var(--fg-primary);
@@ -2206,19 +2444,19 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   white-space: nowrap;
 }
 
-.profile-overview__group-handle {
-  font-size: 0.75rem;
+.profile-overview__endorse-when {
+  font-size: 0.6875rem;
   color: var(--fg-muted);
 }
 
-.profile-overview__endorse-summary {
-  margin: 0;
-  font-size: 0.875rem;
-  color: var(--fg-secondary);
-}
-
-.profile-overview__endorse-count {
-  font-weight: 600;
-  color: var(--fg-primary);
+.profile-overview__endorse-note {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  font-style: italic;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
 }
 

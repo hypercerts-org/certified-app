@@ -251,6 +251,17 @@
   padding: 16px;
 }
 
+/* Reading-column constraint for the non-Overview tab panels (Activities,
+   Endorsements, Groups) on desktop. The profile page widens to 1280px
+   for the GitHub-style Overview, but list views still want a narrow
+   reading column. */
+@media (min-width: 800px) {
+  .profile-panel--reading {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+}
+
 /* ========== Profile › Groups tab ========== */
 .profile-groups {
   list-style: none;
