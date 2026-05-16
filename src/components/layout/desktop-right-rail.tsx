@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import PeopleSearch from "@/components/search/people-search";
 import NewsSection from "@/components/right-rail/news-section";
-import AccountSwitcher from "@/components/layout/account-switcher";
 import { useFeedback } from "@/lib/feedback-context";
 
 /**
@@ -36,8 +35,6 @@ export default function DesktopRightRail() {
       className="right-rail"
       aria-label="News and search"
     >
-      <AccountSwitcher />
-
       {!hideSearch && (
         <div className="right-rail__search">
           <PeopleSearch placeholder="Search people" />
