@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Inter, Noto_Serif } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth/auth-context";
@@ -149,7 +150,14 @@ export default function RootLayout({
                 <FeedbackProvider>
                 <a href="#main-content" className="skip-nav">Skip to main content</a>
                 <Navbar />
-                <DesktopTopBar />
+                {/* Suspense is required because DesktopTopBar reads
+                    useSearchParams() to highlight the active profile tab.
+                    Without a boundary, statically-rendered pages (e.g.
+                    /dsa, /terms, /privacy) deopt and fail the build with
+                    missing-suspense-with-csr-bailout. */}
+                <Suspense fallback={<div className="desktop-top-bar desktop-top-bar--placeholder" aria-hidden />}>
+                  <DesktopTopBar />
+                </Suspense>
                 <main id="main-content" className="flex-1">
                   <AppShell>{children}</AppShell>
                 </main>

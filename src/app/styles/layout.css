@@ -1733,6 +1733,13 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
     backdrop-filter: blur(12px);
     box-shadow: 0 1px 0 var(--navbar-border);
   }
+
+  /* Placeholder rendered by the Suspense fallback while the real
+     DesktopTopBar resolves on statically-prerendered pages. Reserves the
+     row-1 height so first paint doesn't jump when the real bar mounts. */
+  .desktop-top-bar--placeholder {
+    height: var(--top-bar-row1);
+  }
 }
 
 .desktop-top-bar__row {
