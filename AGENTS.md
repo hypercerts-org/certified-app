@@ -54,7 +54,7 @@ Certified is a passwordless identity platform built on **AT Protocol** (atproto)
   - `app.certified.actor.membership` — user-side record of group memberships.
   - `app.bsky.actor.profile` — fallback profile (for Bluesky discoverability).
   - `org.impactindexer.link.attestation` — EIP-712 wallet attestation linking an EVM address to a DID.
-- **Group service** — a separate atproto service (currently `certified-group-service-production.up.railway.app`) that manages multi-user organizations. The app proxies all group operations through the user's PDS using a custom `certified_group` proxy pattern with custom NSIDs (`app.certified.group.*`).
+- **Group service** — a separate atproto service (currently `atproto-group-gate-staging.up.railway.app`) that manages multi-user organizations. The app proxies all group operations through the user's PDS using a custom `certified_group` proxy pattern with custom NSIDs (`app.certified.group.*`).
 
 ## 2. Tech Stack
 
@@ -105,8 +105,8 @@ Source: `.env.local.example` and `src/lib/utils/config.ts`.
 | `RESEND_API_KEY` | optional | Resend key for `/api/feedback`. |
 | `RESEND_FROM_EMAIL` | optional | Override "from" header. Defaults to `Certified <no-reply@certified.one>`. |
 | `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | optional | Adds WalletConnect connector to the wagmi config when set. |
-| `NEXT_PUBLIC_GROUP_SERVICE_URL` | optional | Group service base URL. Defaults to the production Railway deployment. |
-| `NEXT_PUBLIC_GROUP_SERVICE_DID` | optional | Group service DID (for `getServiceAuth` `aud`). Defaults to `did:web:certified-group-service-production.up.railway.app`. |
+| `NEXT_PUBLIC_GROUP_SERVICE_URL` | optional | Group service base URL. Defaults to the staging Railway deployment. |
+| `NEXT_PUBLIC_GROUP_SERVICE_DID` | optional | Group service DID (for `getServiceAuth` `aud`). Defaults to `did:web:atproto-group-gate-staging.up.railway.app`. |
 
 `PUBLIC_URL` is the most consequential variable — it is checked against the `Origin` header on every CSRF-protected route, baked into the OAuth client metadata, and used to build the `redirect_uris` array. If it does not match the deployed domain, sign-in and every POST will fail.
 
