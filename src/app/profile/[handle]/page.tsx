@@ -2,11 +2,12 @@
 
 import { useCallback, useMemo, useState } from "react"
 import { usePathname, useRouter, useParams, useSearchParams } from "next/navigation"
-import { useProfileNavbar } from "@/lib/navbar-context"
+import { useProfileNavbar, usePageTitle } from "@/lib/navbar-context"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { useUserActivities } from "@/hooks/use-user-activities"
 import { useOrg } from "@/lib/groups/org-context"
 import ProfileHeader from "@/components/profile/profile-header"
+import ProfileOverview from "@/components/profile/profile-overview"
 import ProfileEndorsements from "@/components/profile/profile-endorsements"
 import ProfileGroups from "@/components/profile/profile-groups"
 import UserFeed from "@/components/feed/user-feed"
@@ -15,18 +16,19 @@ import EmptyState from "@/components/ui/empty-state"
 import { UserX } from "lucide-react"
 
 type TabKey =
+  | "overview"
   | "activities"
   | "groups"
   | "endorsements"
 
-// Comments + Evaluations were earlier placeholder tabs with "coming
-// soon" empty states. Hidden until they have real content — leaving
-// dead tabs in the tablist dilutes information scent and adds noise
-// to keyboard nav.
+// "Overview" leads the strip and is the default tab for the positioning
+// redesign: it shows the identity face card (banner/avatar/name/bio +
+// digest of groups & endorsements). The other tabs unchanged.
 const TABS: { key: TabKey; label: string }[] = [
+  { key: "overview", label: "Overview" },
   { key: "activities", label: "Activities" },
-  { key: "groups", label: "Groups" },
   { key: "endorsements", label: "Endorsements" },
+  { key: "groups", label: "Groups" },
 ]
 
 export default function UserProfilePage() {
@@ -50,10 +52,13 @@ export default function UserProfilePage() {
     error: profileError,
   } = useUserProfile(handleOrDid)
 
-  // If the viewed profile is one of the viewer's groups, surface
-  // admin affordances (Edit Profile + Settings cog) on the hero.
-  // /groups/[groupDid] used to host these on a separate page; we
-  // consolidated to a single profile surface.
+  // Surface the person's display name in the desktop top bar's title slot.
+  // On mobile this is suppressed by useProfileNavbar() (profile-overlay
+  // mode wins over titled mode in the mobile navbar), so the two coexist.
+  const titleForTopBar =
+    profile?.displayName || (resolvedHandle ? `@${resolvedHandle}` : "Profile")
+  usePageTitle(titleForTopBar)
+
   const { groups } = useOrg()
   const memberOrg = did ? groups.find((g) => g.groupDid === did) : undefined
   const isAdminOfThisGroup =
@@ -72,30 +77,20 @@ export default function UserProfilePage() {
 
   const eyebrow = isOwnProfile ? "Your profile" : undefined
 
-  // We fetch activities here only so we can derive the count label shown
-  // in the header. The UserFeed inside the Activities tab re-fetches them;
-  // both calls use the same cached URL path so browser HTTP caching makes
-  // this cheap. Optimization (shared cache) can come later.
   const { activities, hasMore } = useUserActivities(did)
   const activityCountLabel = hasMore
     ? `${activities.length}+`
     : `${activities.length}`
 
-  // Persist the active tab in the URL (`?tab=endorsements`) so refresh
-  // or share lands on the same view. Falls back to "activities" if the
-  // param is missing or unrecognised.
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const tabFromUrl = useMemo<TabKey>(() => {
     const v = searchParams?.get("tab")
-    return v && TABS.some((t) => t.key === v) ? (v as TabKey) : "activities"
+    return v && TABS.some((t) => t.key === v) ? (v as TabKey) : "overview"
   }, [searchParams])
   const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl)
 
-  // Keep state in sync when the user navigates with Back/Forward (the
-  // URL changes; mirror it into state). Comparing first prevents the
-  // setter from looping on every searchParams reference.
   if (tabFromUrl !== activeTab && TABS.some((t) => t.key === tabFromUrl)) {
     setActiveTab(tabFromUrl)
   }
@@ -104,8 +99,7 @@ export default function UserProfilePage() {
     (next: TabKey) => {
       setActiveTab(next)
       const params = new URLSearchParams(searchParams?.toString() ?? "")
-      if (next === "activities") {
-        // Default tab — keep the URL clean instead of carrying ?tab=activities.
+      if (next === "overview") {
         params.delete("tab")
       } else {
         params.set("tab", next)
@@ -139,25 +133,29 @@ export default function UserProfilePage() {
 
   return (
     <div className="profile-page">
-      <ProfileHeader
-        profile={profile}
-        avatarUrl={avatarUrl}
-        bannerUrl={bannerUrl}
-        handle={resolvedHandle || (rawHandle ?? null)}
-        did={did}
-        activityCountLabel={activityCountLabel}
-        editHref={editHref}
-        settingsHref={settingsHref}
-        eyebrow={eyebrow}
-      />
+      {/* Mobile-only identity block above the in-page tabs. Hidden on
+          desktop where the Overview tab carries the identity instead. */}
+      <div className="profile-page__mobile-header">
+        <ProfileHeader
+          profile={profile}
+          avatarUrl={avatarUrl}
+          bannerUrl={bannerUrl}
+          handle={resolvedHandle || (rawHandle ?? null)}
+          did={did}
+          activityCountLabel={activityCountLabel}
+          editHref={editHref}
+          settingsHref={settingsHref}
+          eyebrow={eyebrow}
+        />
+      </div>
 
+      {/* Mobile in-page tab strip. Hidden on desktop where the top bar's
+          row 2 hosts the same tabs. */}
       <div
-        className="profile-tabs"
+        className="profile-tabs profile-tabs--in-page"
         role="tablist"
         aria-label="Profile sections"
         onKeyDown={(e) => {
-          // WAI-ARIA Tabs Pattern: Left/Right move between tabs, Home/End
-          // jump to first/last. Wraps at the boundaries.
           const idx = TABS.findIndex((t) => t.key === activeTab)
           if (idx < 0) return
           let next = idx
@@ -181,10 +179,6 @@ export default function UserProfilePage() {
             id={`tab-${tab.key}`}
             tabIndex={activeTab === tab.key ? 0 : -1}
             aria-selected={activeTab === tab.key}
-            // Only the active tab gets aria-controls because only the
-            // active tabpanel is mounted. Dangling refs from inactive
-            // tabs would point at non-existent ids and confuse screen
-            // readers that follow the relationship.
             aria-controls={activeTab === tab.key ? `tabpanel-${tab.key}` : undefined}
             className={`profile-tabs__tab ${
               activeTab === tab.key ? "profile-tabs__tab--active" : ""
@@ -197,6 +191,19 @@ export default function UserProfilePage() {
       </div>
 
       <div className="profile-panel">
+        {activeTab === "overview" && (
+          <div role="tabpanel" id="tabpanel-overview" aria-labelledby="tab-overview">
+            <ProfileOverview
+              profile={profile}
+              avatarUrl={avatarUrl}
+              bannerUrl={bannerUrl}
+              handle={resolvedHandle || (rawHandle ?? null)}
+              did={did}
+              activityCountLabel={activityCountLabel}
+              basePath={pathname || ""}
+            />
+          </div>
+        )}
         {activeTab === "activities" && (
           <div role="tabpanel" id="tabpanel-activities" aria-labelledby="tab-activities">
             <UserFeed authorDid={did} />

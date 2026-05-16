@@ -119,6 +119,18 @@
   /* Navbar */
   --navbar-height: 64px;
 
+  /* Desktop top bar (rendered ≥800px). Row 1 is chrome
+     (brandmark + page title + search + icon buttons + switcher); row 2
+     is the profile tabs strip, conditional on /profile/[handle]. The
+     `--top-bar-total` value is row 1 by default and is bumped to
+     row 1 + row 2 on the .app-shell--fullbleed marker, which the
+     profile page sets via useProfileNavbar(). Right rail uses
+     --top-bar-total for its sticky top so it never slides under
+     the bar. */
+  --top-bar-row1: 64px;
+  --top-bar-row2: 44px;
+  --top-bar-total: var(--top-bar-row1);
+
   /* ===== Breakpoints (informational; CSS @media rules hardcode these
      numbers because vanilla CSS can't `var()` inside @media queries.
      Keep CSS in sync with these tokens AND with src/lib/hooks/use-layout-breakpoints.ts. */

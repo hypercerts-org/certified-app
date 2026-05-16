@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth/auth-context";
 import { NavbarProvider } from "@/lib/navbar-context";
 import Navbar from "@/components/layout/navbar";
+import DesktopTopBar from "@/components/layout/desktop-top-bar";
 import { Providers } from "@/lib/providers";
 import AppShell from "@/components/layout/app-shell";
 import { OrgProvider } from "@/lib/groups/org-context";
@@ -148,6 +149,7 @@ export default function RootLayout({
                 <FeedbackProvider>
                 <a href="#main-content" className="skip-nav">Skip to main content</a>
                 <Navbar />
+                <DesktopTopBar />
                 <main id="main-content" className="flex-1">
                   <AppShell>{children}</AppShell>
                 </main>

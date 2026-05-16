@@ -703,32 +703,32 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   }
 }
 
-/* Desktop cascade: left rail at >=800; left + right at >=1100; full
-   widths at >=1300. Numbers mirror --bp-* tokens in tokens.css.
-   At <800px the grid is `display: block` so children stack as before;
-   the rails carry `display: none` below their breakpoints.
+/* Desktop cascade (positioning redesign): the left rail was retired.
+   The grid is content-only at >=800; content + right rail at >=1100.
+   Numbers mirror --bp-* tokens in tokens.css. At <800px the grid is
+   `display: block` so children stack as before; the right rail carries
+   `display: none` below its breakpoint.
 
-   Cells use fixed widths (NOT 1fr) so the center column genuinely caps
-   at 600px instead of stretching across the leftover viewport space.
-   The grid as a whole is then centered in the wrapper via
-   `justify-content: center`; outer gutters at wider viewports are
-   passive whitespace per DESIGN.md. */
+   The center cell uses a fixed minmax(0, 600px) so the column genuinely
+   caps at 600px instead of stretching. justify-content: center keeps
+   the (content + right rail) unit horizontally centered; outer gutters
+   at wider viewports are passive whitespace per DESIGN.md. */
 @media (min-width: 800px) {
   .app-shell__grid {
     display: grid;
-    grid-template-columns: 86px minmax(0, 600px);
-    column-gap: 0;
+    grid-template-columns: minmax(0, 600px);
+    column-gap: 32px;
     justify-content: center;
   }
 }
 @media (min-width: 1100px) {
   .app-shell__grid {
-    grid-template-columns: 86px minmax(0, 600px) 250px;
+    grid-template-columns: minmax(0, 600px) 280px;
   }
 }
 @media (min-width: 1300px) {
   .app-shell__grid {
-    grid-template-columns: 240px minmax(0, 600px) 300px;
+    grid-template-columns: minmax(0, 640px) 320px;
   }
 }
 
@@ -753,10 +753,19 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 }
 
 /* Full-bleed shell: used by the profile page so its banner starts at
-   viewport top-left and extends edge-to-edge. The transparent navbar
-   floats over it (see .navbar--profile-overlay).
-   On desktop (≥800px) full-bleed scopes to the center cell, NOT the
-   viewport — the rails (PR2) sit outside this element. */
+   viewport top-left and extends edge-to-edge. On mobile the transparent
+   navbar floats over the banner (see .navbar--profile-overlay).
+   On desktop (≥800px) full-bleed scopes to the center cell — the right
+   rail sits outside — and the opaque top bar sits above; the banner
+   inside the Overview tab starts immediately below the bar and scrolls
+   under it.
+
+   This selector also bumps `--top-bar-total` to row 1 + row 2 so the
+   right rail's sticky offset accommodates the profile tabs row. */
+.app-shell--fullbleed {
+  --top-bar-total: calc(var(--top-bar-row1) + var(--top-bar-row2));
+}
+
 .app-shell--fullbleed .app-shell__content {
   max-width: none;
   padding-top: 0;
@@ -1347,8 +1356,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   flex-direction: column;
   gap: 24px;
   position: sticky;
-  top: var(--navbar-height);
-  height: calc(100vh - var(--navbar-height));
+  top: var(--top-bar-total);
+  height: calc(100vh - var(--top-bar-total));
   padding: 16px 16px 24px;
   background: var(--bg-canvas);
   border-left: 1px solid var(--border-subtle);
@@ -1701,5 +1710,508 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* ========== Desktop Top Bar (positioning redesign) ==========
+   Sticky two-row chrome rendered at ≥800px. Row 1 is brandmark + page
+   title (left) and search + Apps + Settings + switcher (right). Row 2
+   is the profile tabs strip, only on /profile/[handle]. Hidden on
+   <800px — the mobile <Navbar /> handles that range. */
+
+.desktop-top-bar {
+  display: none;
+}
+
+@media (min-width: 800px) {
+  .desktop-top-bar {
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--navbar-bg);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 1px 0 var(--navbar-border);
+  }
+}
+
+.desktop-top-bar__row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 1536px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+.desktop-top-bar__row--chrome {
+  height: var(--top-bar-row1);
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.desktop-top-bar__row--tabs {
+  height: var(--top-bar-row2);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.desktop-top-bar__left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.desktop-top-bar__brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  width: 36px;
+  color: var(--fg-primary);
+  text-decoration: none;
+  border-radius: var(--radius);
+  transition: opacity var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.desktop-top-bar__brand:hover {
+  opacity: 0.85;
+}
+
+.desktop-top-bar__title {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  letter-spacing: -0.01em;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.desktop-top-bar__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.desktop-top-bar__search {
+  width: 260px;
+}
+
+@media (min-width: 1100px) {
+  .desktop-top-bar__search {
+    width: 300px;
+  }
+}
+
+/* The PeopleSearch field has a 44px height by default; the top bar's
+   row 1 is 64px so we let the field breathe naturally. No override. */
+
+.desktop-top-bar__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: var(--fg-secondary);
+  background: transparent;
+  border-radius: var(--radius);
+  border: none;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.desktop-top-bar__icon-btn:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.desktop-top-bar__icon-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.desktop-top-bar__switcher-wrap {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+}
+
+.desktop-top-bar__switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 4px;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--fg-secondary);
+  transition: background var(--transition-fast);
+}
+
+.desktop-top-bar__switcher:hover {
+  background: var(--overlay-weak);
+}
+
+.desktop-top-bar__switcher:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.desktop-top-bar__signin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  background: transparent;
+  border: 1px solid var(--border-hover);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.desktop-top-bar__signin-btn:hover {
+  background: var(--fg-primary);
+  color: var(--bg-canvas);
+  border-color: var(--fg-primary);
+}
+
+.desktop-top-bar__signin-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Profile tabs strip (row 2). Underline-active style mirrors the
+   in-page tabs used on mobile (.profile-tabs__tab) — keep them visually
+   identical so switching between viewports doesn't surprise users. */
+.desktop-top-bar__tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  height: 100%;
+}
+
+.desktop-top-bar__tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 18px;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color var(--transition-fast);
+}
+
+.desktop-top-bar__tab:hover {
+  color: var(--fg-primary);
+}
+
+.desktop-top-bar__tab--active {
+  color: var(--fg-primary);
+  font-weight: 600;
+}
+
+.desktop-top-bar__tab--active::after {
+  content: "";
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 0;
+  height: 2px;
+  background: var(--fg-primary);
+  border-radius: 1px;
+}
+
+.desktop-top-bar__tab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+  border-radius: 2px;
+}
+
+/* Top-bar variant of the account switcher menu — sits below the trigger
+   instead of above it. Position is supplied inline. */
+.account-switcher__menu--top-bar {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 8px;
+  z-index: var(--z-popover);
+}
+
+/* ========== Profile page CSS scaffolding for the top-bar redesign ==========
+   The page renders the mobile-only header block and in-page tab strip,
+   both of which are hidden at desktop widths: the top bar owns the tab
+   strip (row 2) and the Overview tab owns the identity block. */
+
+@media (min-width: 800px) {
+  .profile-page__mobile-header {
+    display: none;
+  }
+  .profile-tabs--in-page {
+    display: none;
+  }
+}
+
+/* ========== Profile Overview tab (face-card layout) ========== */
+
+.profile-overview {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-overview__identity {
+  display: none;
+}
+
+@media (min-width: 800px) {
+  .profile-overview__identity {
+    display: block;
+    width: 100%;
+  }
+}
+
+.profile-overview__banner {
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  background: linear-gradient(
+    135deg,
+    var(--bg-sunken) 0%,
+    var(--bg-raised) 100%
+  );
+}
+
+.profile-overview__banner--empty {
+  height: 96px;
+}
+
+.profile-overview__banner-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-overview__identity-body {
+  padding: 0 24px 16px;
+}
+
+.profile-overview__avatar-wrap {
+  display: inline-block;
+  margin-top: -52px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border-radius: 999px;
+}
+
+.profile-overview__name {
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--fg-primary);
+  margin: 12px 0 2px;
+}
+
+.profile-overview__handle {
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-overview__pds-tag {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: 2px 8px;
+  letter-spacing: 0.02em;
+}
+
+.profile-overview__bio {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--fg-secondary);
+  margin: 12px 0 0;
+}
+
+.profile-overview__stats {
+  display: flex;
+  gap: 8px;
+  padding: 16px 0 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+@media (min-width: 800px) {
+  .profile-overview__stats {
+    margin: 16px 24px 0;
+    padding: 16px 0 8px;
+  }
+}
+
+.profile-overview__stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: inherit;
+  transition: background var(--transition-fast);
+}
+
+.profile-overview__stat--linked:hover {
+  background: var(--overlay-weak);
+}
+
+.profile-overview__stat-value {
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--fg-primary);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.profile-overview__stat-label {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  letter-spacing: 0.01em;
+}
+
+.profile-overview__section {
+  padding: 16px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+@media (min-width: 800px) {
+  .profile-overview__section {
+    margin: 0 24px;
+  }
+}
+
+.profile-overview__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.profile-overview__section-title {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.profile-overview__see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.profile-overview__see-all:hover {
+  color: var(--fg-primary);
+}
+
+.profile-overview__loading {
+  padding: 12px 0;
+}
+
+.profile-overview__empty {
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  margin: 0;
+  padding: 8px 0;
+}
+
+.profile-overview__groups {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-overview__group-item {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.profile-overview__group-item:last-child {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.profile-overview__group-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  color: inherit;
+  text-decoration: none;
+  transition: background var(--transition-fast);
+}
+
+.profile-overview__group-link:hover .profile-overview__group-name {
+  text-decoration: underline;
+}
+
+.profile-overview__group-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.profile-overview__group-name {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-overview__group-handle {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.profile-overview__endorse-summary {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+}
+
+.profile-overview__endorse-count {
+  font-weight: 600;
+  color: var(--fg-primary);
 }
 
