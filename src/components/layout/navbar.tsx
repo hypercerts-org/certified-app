@@ -249,7 +249,9 @@ const Navbar: React.FC = () => {
   // Used by any page that calls usePageTitle(...) or usePageTitleBreadcrumb(...).
   if (pageTitle || breadcrumb) {
     const ariaLabel = breadcrumb
-      ? `${breadcrumb.left.text} / ${breadcrumb.right.text}`
+      ? breadcrumb.right
+        ? `${breadcrumb.left.text} / ${breadcrumb.right.text}`
+        : breadcrumb.left.text
       : pageTitle!;
     return (
       <nav className={navClasses} aria-label={ariaLabel}>
@@ -270,10 +272,14 @@ const Navbar: React.FC = () => {
                 <Link href={breadcrumb.left.href} className="navbar__title-part">
                   {breadcrumb.left.text}
                 </Link>
-                <span className="navbar__title-sep" aria-hidden="true"> / </span>
-                <Link href={breadcrumb.right.href} className="navbar__title-part">
-                  {breadcrumb.right.text}
-                </Link>
+                {breadcrumb.right ? (
+                  <>
+                    <span className="navbar__title-sep" aria-hidden="true"> / </span>
+                    <Link href={breadcrumb.right.href} className="navbar__title-part">
+                      {breadcrumb.right.text}
+                    </Link>
+                  </>
+                ) : null}
               </>
             ) : (
               pageTitle

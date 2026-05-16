@@ -21,7 +21,9 @@ export interface PageTitleBreadcrumbPart {
 
 export interface PageTitleBreadcrumb {
   left: PageTitleBreadcrumbPart;
-  right: PageTitleBreadcrumbPart;
+  /** When omitted, the navbar renders only `left` as a single clickable
+   *  title (no separator, no second segment). */
+  right?: PageTitleBreadcrumbPart;
 }
 
 interface NavbarContextValue {
@@ -97,7 +99,7 @@ export function usePageTitle(title: string) {
 export function usePageTitleBreadcrumb(b: PageTitleBreadcrumb | null) {
   const { setBreadcrumb } = useContext(NavbarContext);
   const key = b
-    ? `${b.left.text}|${b.left.href}|${b.right.text}|${b.right.href}`
+    ? `${b.left.text}|${b.left.href}|${b.right?.text ?? ""}|${b.right?.href ?? ""}`
     : null;
   useEffect(() => {
     setBreadcrumb(b);

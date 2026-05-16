@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { usePathname, useParams, useSearchParams } from "next/navigation"
-import { useProfileNavbar, usePageTitle } from "@/lib/navbar-context"
+import { useProfileNavbar, usePageTitle, usePageTitleBreadcrumb } from "@/lib/navbar-context"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { useUserActivities } from "@/hooks/use-user-activities"
 import { useOrg } from "@/lib/groups/org-context"
@@ -59,6 +59,18 @@ export default function UserProfilePage() {
   const titleForTopBar =
     profile?.displayName || (resolvedHandle ? `@${resolvedHandle}` : "Profile")
   usePageTitle(titleForTopBar)
+  // Single-part breadcrumb: `@handle` is the only segment, but it's
+  // clickable. Matches the cert-page pattern (which uses two parts).
+  usePageTitleBreadcrumb(
+    resolvedHandle
+      ? {
+          left: {
+            text: `@${resolvedHandle}`,
+            href: `/profile/${encodeURIComponent(resolvedHandle)}`,
+          },
+        }
+      : null,
+  )
 
   const { groups } = useOrg()
   const memberOrg = did ? groups.find((g) => g.groupDid === did) : undefined
