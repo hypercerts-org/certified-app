@@ -1969,71 +1969,66 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   }
 }
 
-/* ========== Profile Overview tab (GitHub-style 2-column) ==========
-   Two-column layout: identity sidebar (~296px) on the left, banner +
-   stats + digest sections on the right. Below 800px the columns
-   collapse to a single stack and the sidebar identity block is hidden
-   because the mobile <ProfileHeader> at top of the page already
-   carries the banner + name + bio. */
+/* ========== Profile page layout (GitHub-style 2-column) ==========
+   The page renders a left identity sidebar and a right main pane that
+   together carry the active tab content. The sidebar is constant; the
+   right pane swaps between Overview / Certs / Projects / Endorsements.
 
-.profile-overview {
+   On mobile (<800px) the columns collapse to a single stack and the
+   sidebar is hidden — the page's <ProfileHeader> above already carries
+   identity on small viewports. */
+
+.profile-page__layout {
+  display: grid;
+  gap: 24px;
   padding: 24px 16px;
 }
 
-.profile-overview__layout {
-  display: grid;
-  gap: 24px;
-}
-
 @media (min-width: 800px) {
-  .profile-overview {
-    padding: 24px;
-  }
-  .profile-overview__layout {
+  .profile-page__layout {
     grid-template-columns: 296px minmax(0, 1fr);
     gap: 32px;
     align-items: start;
+    padding: 24px;
   }
 }
 
-/* ---------- Left pane: identity sidebar ---------- */
-
-.profile-overview__sidebar {
+.profile-page__main {
   display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+/* ---------- Identity sidebar ---------- */
+
+.profile-sidebar {
+  display: none;
   flex-direction: column;
   gap: 12px;
   min-width: 0;
 }
 
-/* On mobile the page's <ProfileHeader> already covers identity. Hide
-   the duplicated avatar/name/bio block in the sidebar; the actionable
-   bits (Edit, Followers, Links, Groups) still render below. */
-.profile-overview__avatar,
-.profile-overview__name-block,
-.profile-overview__pronouns,
-.profile-overview__bio {
-  display: none;
-}
-
 @media (min-width: 800px) {
-  .profile-overview__avatar {
-    /* The inner <Avatar> is sized via Tailwind override (!h-[240px]
-       !w-[240px]); this wrapper just provides the layout slot. */
-    display: inline-flex;
-  }
-  .profile-overview__name-block {
+  .profile-sidebar {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
-    margin-top: 4px;
-  }
-  .profile-overview__pronouns,
-  .profile-overview__bio {
-    display: block;
   }
 }
 
-.profile-overview__name {
+.profile-sidebar__avatar {
+  /* The inner <Avatar> is sized via Tailwind override (!h-[240px]
+     !w-[240px]); this wrapper just provides the layout slot. */
+  display: inline-flex;
+}
+
+.profile-sidebar__name-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.profile-sidebar__name {
   font-family: var(--font-headline), 'Noto Serif', serif;
   font-size: 1.625rem;
   font-weight: 700;
@@ -2043,7 +2038,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   line-height: 1.2;
 }
 
-.profile-overview__handle {
+.profile-sidebar__handle {
   font-size: 1.125rem;
   color: var(--fg-muted);
   margin: 0;
@@ -2051,7 +2046,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   word-break: break-word;
 }
 
-.profile-overview__did {
+.profile-sidebar__did {
   display: flex;
   align-items: baseline;
   gap: 6px;
@@ -2060,14 +2055,14 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   color: var(--fg-muted);
 }
 
-.profile-overview__did-prefix {
+.profile-sidebar__did-prefix {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   flex-shrink: 0;
 }
 
-.profile-overview__did-value {
+.profile-sidebar__did-value {
   font-family: monospace;
   font-size: 0.6875rem;
   overflow: hidden;
@@ -2077,27 +2072,27 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   user-select: all;
 }
 
-.profile-overview__pronouns {
+.profile-sidebar__pronouns {
   font-size: 0.8125rem;
   color: var(--fg-muted);
   margin: 0;
 }
 
-.profile-overview__bio {
+.profile-sidebar__bio {
   font-size: 0.9375rem;
   line-height: 1.5;
   color: var(--fg-secondary);
   margin: 0;
 }
 
-.profile-overview__actions {
+.profile-sidebar__actions {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-top: 4px;
 }
 
-.profile-overview__action-primary {
+.profile-sidebar__action-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2117,12 +2112,12 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
-.profile-overview__action-primary:hover {
+.profile-sidebar__action-primary:hover {
   background: var(--bg-sunken);
   border-color: var(--border-hover);
 }
 
-.profile-overview__action-secondary {
+.profile-sidebar__action-secondary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2136,12 +2131,12 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 
-.profile-overview__action-secondary:hover {
+.profile-sidebar__action-secondary:hover {
   background: var(--bg-sunken);
   color: var(--fg-primary);
 }
 
-.profile-overview__followers {
+.profile-sidebar__followers {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -2151,16 +2146,16 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   flex-wrap: wrap;
 }
 
-.profile-overview__followers-count {
+.profile-sidebar__followers-count {
   font-weight: 600;
   color: var(--fg-primary);
 }
 
-.profile-overview__followers-sep {
+.profile-sidebar__followers-sep {
   color: var(--fg-muted);
 }
 
-.profile-overview__details {
+.profile-sidebar__details {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -2169,7 +2164,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   gap: 6px;
 }
 
-.profile-overview__details li {
+.profile-sidebar__details li {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2178,12 +2173,12 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   min-width: 0;
 }
 
-.profile-overview__details li > svg {
+.profile-sidebar__details li > svg {
   flex-shrink: 0;
   color: var(--fg-muted);
 }
 
-.profile-overview__detail-link {
+.profile-sidebar__detail-link {
   color: var(--fg-secondary);
   text-decoration: none;
   overflow: hidden;
@@ -2193,20 +2188,62 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   transition: color var(--transition-fast);
 }
 
-.profile-overview__detail-link:hover {
+.profile-sidebar__detail-link:hover {
   color: var(--fg-primary);
   text-decoration: underline;
 }
 
-/* ---------- Groups grid (GitHub orgs style) ---------- */
+.profile-sidebar__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
 
-.profile-overview__groups {
+.profile-sidebar__section-title {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.profile-sidebar__see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.profile-sidebar__see-all:hover {
+  color: var(--fg-primary);
+}
+
+.profile-sidebar__loading {
+  padding: 12px 0;
+}
+
+.profile-sidebar__empty {
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  margin: 0;
+  padding: 8px 0;
+}
+
+/* Groups grid (GitHub orgs style) */
+
+.profile-sidebar__groups {
   margin-top: 12px;
   padding-top: 16px;
   border-top: 1px solid var(--border-subtle);
 }
 
-.profile-overview__groups-grid {
+.profile-sidebar__groups-grid {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -2215,7 +2252,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   gap: 6px;
 }
 
-.profile-overview__group-tile {
+.profile-sidebar__group-tile {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2227,13 +2264,13 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   transition: opacity var(--transition-fast);
 }
 
-.profile-overview__group-tile:hover {
+.profile-sidebar__group-tile:hover {
   opacity: 0.85;
 }
 
-/* ---------- Right pane: banner + main content ---------- */
+/* ---------- Right pane: Overview tab content ---------- */
 
-.profile-overview__main {
+.profile-overview {
   display: flex;
   flex-direction: column;
   gap: 24px;

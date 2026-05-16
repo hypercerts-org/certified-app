@@ -22,9 +22,9 @@ const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
 
 const PROFILE_TABS: { key: string; label: string }[] = [
   { key: "overview", label: "Overview" },
-  { key: "activities", label: "Activities" },
+  { key: "certs", label: "Certs" },
+  { key: "projects", label: "Projects" },
   { key: "endorsements", label: "Endorsements" },
-  { key: "groups", label: "Groups" },
 ];
 
 /**

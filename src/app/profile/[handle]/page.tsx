@@ -7,9 +7,10 @@ import { useUserProfile } from "@/hooks/use-user-profile"
 import { useUserActivities } from "@/hooks/use-user-activities"
 import { useOrg } from "@/lib/groups/org-context"
 import ProfileHeader from "@/components/profile/profile-header"
+import ProfileSidebar from "@/components/profile/profile-sidebar"
 import ProfileOverview from "@/components/profile/profile-overview"
 import ProfileEndorsements from "@/components/profile/profile-endorsements"
-import ProfileGroups from "@/components/profile/profile-groups"
+import ProfileProjects from "@/components/profile/profile-projects"
 import UserFeed from "@/components/feed/user-feed"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
@@ -17,18 +18,20 @@ import { UserX } from "lucide-react"
 
 type TabKey =
   | "overview"
-  | "activities"
-  | "groups"
+  | "certs"
+  | "projects"
   | "endorsements"
 
-// "Overview" leads the strip and is the default tab for the positioning
-// redesign: it shows the identity face card (banner/avatar/name/bio +
-// digest of groups & endorsements). The other tabs unchanged.
+// Tab strip post-rename: Activities became "Certs", Groups dropped from
+// the strip (still surfaced in the sidebar), Projects added between
+// Certs and Endorsements. Keep the order in sync with PROFILE_TABS in
+// desktop-top-bar.tsx — that's the single source the user actually
+// clicks on desktop.
 const TABS: { key: TabKey; label: string }[] = [
   { key: "overview", label: "Overview" },
-  { key: "activities", label: "Activities" },
+  { key: "certs", label: "Certs" },
+  { key: "projects", label: "Projects" },
   { key: "endorsements", label: "Endorsements" },
-  { key: "groups", label: "Groups" },
 ]
 
 export default function UserProfilePage() {
@@ -52,9 +55,6 @@ export default function UserProfilePage() {
     error: profileError,
   } = useUserProfile(handleOrDid)
 
-  // Surface the person's display name in the desktop top bar's title slot.
-  // On mobile this is suppressed by useProfileNavbar() (profile-overlay
-  // mode wins over titled mode in the mobile navbar), so the two coexist.
   const titleForTopBar =
     profile?.displayName || (resolvedHandle ? `@${resolvedHandle}` : "Profile")
   usePageTitle(titleForTopBar)
@@ -117,10 +117,9 @@ export default function UserProfilePage() {
 
   return (
     <div className="profile-page">
-      {/* Mobile-only identity block. Hidden on desktop where the Overview
-          tab's left sidebar carries the identity. The single source of
-          tab navigation is the desktop top bar's row 2 — there is no
-          in-page tab strip anymore. */}
+      {/* Mobile-only identity block. Hidden on desktop where the sidebar
+          carries the identity. The desktop top bar's row 2 is the only
+          tab strip; there is no in-page tab strip. */}
       <div className="profile-page__mobile-header">
         <ProfileHeader
           profile={profile}
@@ -135,53 +134,56 @@ export default function UserProfilePage() {
         />
       </div>
 
-      <div className="profile-panel">
-        {activeTab === "overview" && (
-          <div role="tabpanel" id="tabpanel-overview" aria-labelledby="tab-overview">
-            <ProfileOverview
-              profile={profile}
-              avatarUrl={avatarUrl}
-              bannerUrl={bannerUrl}
-              handle={resolvedHandle || (rawHandle ?? null)}
-              did={did}
-              activityCountLabel={activityCountLabel}
-              basePath={pathname || ""}
-              editHref={editHref}
-              settingsHref={settingsHref}
-              isOwnProfile={isOwnProfile}
-            />
-          </div>
-        )}
-        {activeTab === "activities" && (
-          <div
-            role="tabpanel"
-            id="tabpanel-activities"
-            aria-labelledby="tab-activities"
-            className="profile-panel--reading"
-          >
-            <UserFeed authorDid={did} />
-          </div>
-        )}
-        {activeTab === "groups" && (
-          <div
-            role="tabpanel"
-            id="tabpanel-groups"
-            aria-labelledby="tab-groups"
-            className="profile-panel--reading"
-          >
-            <ProfileGroups did={did} showRoles={isOwnProfile} />
-          </div>
-        )}
-        {activeTab === "endorsements" && (
-          <div
-            role="tabpanel"
-            id="tabpanel-endorsements"
-            aria-labelledby="tab-endorsements"
-            className="profile-panel--reading"
-          >
-            <ProfileEndorsements did={did} />
-          </div>
-        )}
+      <div className="profile-page__layout">
+        <ProfileSidebar
+          profile={profile}
+          avatarUrl={avatarUrl}
+          handle={resolvedHandle || (rawHandle ?? null)}
+          did={did}
+          basePath={pathname || ""}
+          editHref={editHref}
+          settingsHref={settingsHref}
+        />
+
+        <div className="profile-page__main">
+          {activeTab === "overview" && (
+            <div role="tabpanel" id="tabpanel-overview" aria-labelledby="tab-overview">
+              <ProfileOverview
+                bannerUrl={bannerUrl}
+                did={did}
+                activityCountLabel={activityCountLabel}
+                basePath={pathname || ""}
+              />
+            </div>
+          )}
+          {activeTab === "certs" && (
+            <div
+              role="tabpanel"
+              id="tabpanel-certs"
+              aria-labelledby="tab-certs"
+            >
+              <UserFeed authorDid={did} />
+            </div>
+          )}
+          {activeTab === "projects" && (
+            <div
+              role="tabpanel"
+              id="tabpanel-projects"
+              aria-labelledby="tab-projects"
+            >
+              <ProfileProjects did={did} />
+            </div>
+          )}
+          {activeTab === "endorsements" && (
+            <div
+              role="tabpanel"
+              id="tabpanel-endorsements"
+              aria-labelledby="tab-endorsements"
+            >
+              <ProfileEndorsements did={did} />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
