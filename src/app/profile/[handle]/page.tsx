@@ -11,7 +11,7 @@ import ProfileSidebar from "@/components/profile/profile-sidebar"
 import ProfileOverview from "@/components/profile/profile-overview"
 import ProfileEndorsements from "@/components/profile/profile-endorsements"
 import ProfileProjects from "@/components/profile/profile-projects"
-import UserFeed from "@/components/feed/user-feed"
+import ProfileCerts from "@/components/profile/profile-certs"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import { UserX } from "lucide-react"
@@ -162,7 +162,7 @@ export default function UserProfilePage() {
               id="tabpanel-certs"
               aria-labelledby="tab-certs"
             >
-              <UserFeed authorDid={did} />
+              <ProfileCerts did={did} />
             </div>
           )}
           {activeTab === "projects" && (

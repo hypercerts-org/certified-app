@@ -251,6 +251,154 @@ export async function fetchIndexerActivities(
 }
 
 // ---------------------------------------------------------------------------
+// Activities filtered by a single user as author OR contributor
+// ---------------------------------------------------------------------------
+
+/**
+ * Magic Indexer supports filtering activity records by contributor DID
+ * in addition to the existing author DID filter, via the `where` arg on
+ * the activity connection. To list everything a user is associated with
+ * — authored or contributed to — we compose both filters with `_or`.
+ *
+ * Constraints (from the indexer docs):
+ *   - `contributor` accepts DID values only. Handle inputs are rejected
+ *     at the GraphQL layer.
+ *   - Activity records that stored a handle in `contributorIdentity`
+ *     (instead of a DID) silently don't match the contributor filter.
+ *   - The `com.atproto.repo.strongRef` contributor variant isn't matched
+ *     either — only bare-string DID and `{$type, identity: did}`.
+ *   - Records with more than `MaxArrayContributorScan` contributors are
+ *     skipped server-side as a cost cap.
+ *
+ * Returns the same IndexerActivitiesResult shape as fetchIndexerActivities,
+ * including the per-URI `dids` map — callers split authored vs contributed
+ * by comparing each record's DID to the queried user.
+ */
+const ACTIVITIES_FOR_USER_QUERY = `
+query ActivitiesForUser(
+  $did: String!
+  $first: Int!
+  $after: String
+  $labels: [String!]
+  $excludeLabels: [String!]
+  $search: String
+) {
+  orgHypercertsClaimActivity(
+    first: $first
+    after: $after
+    labels: $labels
+    excludeLabels: $excludeLabels
+    search: $search
+    where: {
+      _or: [
+        { did:         { eq: $did } }
+        { contributor: { eq: $did } }
+      ]
+    }
+  ) {
+    totalCount
+    edges {
+      cursor
+      node {
+        uri
+        cid
+        did
+        title
+        shortDescription
+        createdAt
+        startDate
+        endDate
+        labels
+        image {
+          __typename
+          ... on OrgHypercertsDefsUri { uri }
+          ... on OrgHypercertsDefsSmallImage { image { ref mimeType } }
+        }
+        workScope {
+          ... on OrgHypercertsClaimActivityWorkScopeString { scope }
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+`
+
+export interface FetchUserActivitiesOptions
+  extends Omit<FetchIndexerOptions, "authors"> {}
+
+export async function fetchUserIndexerActivities(
+  did: string,
+  options: FetchUserActivitiesOptions = {},
+): Promise<IndexerActivitiesResult> {
+  const { first = 20, after, labels, excludeLabels, search, signal } = options
+
+  if (!did.startsWith("did:")) {
+    // The indexer rejects handle inputs at the GraphQL layer. Catch it
+    // here so it surfaces as a programming error rather than a vague
+    // GraphQL error in the network panel.
+    throw new Error(
+      `fetchUserIndexerActivities: 'did' must be a DID (got "${did}")`,
+    )
+  }
+
+  const variables: Record<string, unknown> = {
+    did,
+    first,
+    after: after ?? null,
+    labels: labels && labels.length > 0 ? labels : null,
+    excludeLabels: excludeLabels && excludeLabels.length > 0 ? excludeLabels : null,
+    search: search || null,
+  }
+
+  const res = await fetch(INDEXER_PROXY_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query: ACTIVITIES_FOR_USER_QUERY, variables }),
+    signal,
+  })
+
+  const json = (await res.json()) as GraphQLResponse
+
+  const emptyResult: IndexerActivitiesResult = {
+    records: [], dids: new Map(), labels: new Map(), hasMore: false, endCursor: null, totalCount: null,
+  }
+
+  if (!json.data?.orgHypercertsClaimActivity) {
+    if (json.errors?.length) {
+      console.warn("[Indexer] GraphQL error, returning empty page:", json.errors[0].message)
+    } else if (!res.ok) {
+      throw new Error(`Indexer request failed: ${res.status}`)
+    }
+    return emptyResult
+  }
+  const connection = json.data.orgHypercertsClaimActivity
+
+  const records: ActivityRecord[] = []
+  const dids = new Map<string, string>()
+  const recordLabels = new Map<string, LabelValue[]>()
+
+  for (const edge of connection.edges) {
+    if (!edge.node) continue
+    records.push(nodeToActivityRecord(edge.node))
+    dids.set(edge.node.uri, edge.node.did)
+    recordLabels.set(edge.node.uri, (edge.node.labels ?? []) as LabelValue[])
+  }
+
+  return {
+    records,
+    dids,
+    labels: recordLabels,
+    hasMore: connection.pageInfo.hasNextPage,
+    endCursor: connection.pageInfo.endCursor,
+    totalCount: connection.totalCount,
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Endorsement records
 // ---------------------------------------------------------------------------
 

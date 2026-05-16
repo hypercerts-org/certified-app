@@ -14,9 +14,21 @@ import { createContext, useContext, useEffect, useState, useMemo, ReactNode } fr
  * otherwise "default". The hooks below only toggle the individual flags so multiple pages
  * can coexist without stepping on each other.
  */
+export interface PageTitleBreadcrumbPart {
+  text: string;
+  href: string;
+}
+
+export interface PageTitleBreadcrumb {
+  left: PageTitleBreadcrumbPart;
+  right: PageTitleBreadcrumbPart;
+}
+
 interface NavbarContextValue {
   pageTitle: string | null;
   setPageTitle: (title: string | null) => void;
+  breadcrumb: PageTitleBreadcrumb | null;
+  setBreadcrumb: (b: PageTitleBreadcrumb | null) => void;
   profileOverlay: boolean;
   setProfileOverlay: (v: boolean) => void;
 }
@@ -24,14 +36,27 @@ interface NavbarContextValue {
 const NavbarContext = createContext<NavbarContextValue>({
   pageTitle: null,
   setPageTitle: () => {},
+  breadcrumb: null,
+  setBreadcrumb: () => {},
   profileOverlay: false,
   setProfileOverlay: () => {},
 });
 
 export function NavbarProvider({ children }: { children: ReactNode }) {
   const [pageTitle, setPageTitle] = useState<string | null>(null);
+  const [breadcrumb, setBreadcrumb] = useState<PageTitleBreadcrumb | null>(null);
   const [profileOverlay, setProfileOverlay] = useState<boolean>(false);
-  const value = useMemo(() => ({ pageTitle, setPageTitle, profileOverlay, setProfileOverlay }), [pageTitle, profileOverlay]);
+  const value = useMemo(
+    () => ({
+      pageTitle,
+      setPageTitle,
+      breadcrumb,
+      setBreadcrumb,
+      profileOverlay,
+      setProfileOverlay,
+    }),
+    [pageTitle, breadcrumb, profileOverlay]
+  );
   return (
     <NavbarContext.Provider value={value}>
       {children}
@@ -61,6 +86,26 @@ export function usePageTitle(title: string) {
     setPageTitle(title);
     return () => setPageTitle(null);
   }, [setPageTitle, title]);
+}
+
+/**
+ * Render the navbar title as a two-part breadcrumb — `[left] / [right]` — with
+ * both parts as separate links (GitHub `owner / repo` pattern). Pass `null`
+ * (e.g. while data is loading) to leave the breadcrumb unset; the caller
+ * usually also calls `usePageTitle(...)` to supply a string fallback.
+ */
+export function usePageTitleBreadcrumb(b: PageTitleBreadcrumb | null) {
+  const { setBreadcrumb } = useContext(NavbarContext);
+  const key = b
+    ? `${b.left.text}|${b.left.href}|${b.right.text}|${b.right.href}`
+    : null;
+  useEffect(() => {
+    setBreadcrumb(b);
+    return () => setBreadcrumb(null);
+    // `key` captures every observable field of `b`; re-running on `b` itself
+    // would fire every render the caller builds a new object literal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setBreadcrumb, key]);
 }
 
 /**

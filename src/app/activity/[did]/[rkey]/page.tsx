@@ -2,12 +2,15 @@
 
 import { useMemo } from "react"
 import { useParams } from "next/navigation"
-import { usePageTitle } from "@/lib/navbar-context"
+import { usePageTitle, usePageTitleBreadcrumb } from "@/lib/navbar-context"
 import { useActivity } from "@/hooks/use-activity"
+import { useAuthorInfo } from "@/hooks/use-author-info"
 import ActivityDetail from "@/components/feed/activity-detail"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 
 export default function ActivityDetailPage() {
+  // Plain-string fallback while author/cert data is still resolving. The
+  // breadcrumb below takes precedence once both pieces are available.
   usePageTitle("Activity")
 
   const params = useParams()
@@ -23,6 +26,24 @@ export default function ActivityDetailPage() {
   }, [params.rkey])
 
   const { activity, isLoading, error } = useActivity(did, rkey)
+  const { info: authorInfo } = useAuthorInfo(did)
+
+  const handle = authorInfo?.handle ?? null
+  const certTitle = activity?.value.title ?? null
+  usePageTitleBreadcrumb(
+    handle && certTitle && did && rkey
+      ? {
+          left: {
+            text: `@${handle}`,
+            href: `/profile/${encodeURIComponent(handle)}`,
+          },
+          right: {
+            text: certTitle,
+            href: `/activity/${encodeURIComponent(did)}/${encodeURIComponent(rkey)}`,
+          },
+        }
+      : null
+  )
 
   if (isLoading) {
     return (

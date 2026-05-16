@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Award } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { getInitials } from "@/lib/utils/initials"
@@ -11,6 +11,8 @@ import { useReceivedEndorsements, type ReceivedEndorsement } from "@/hooks/use-r
 import { useUserActivities } from "@/hooks/use-user-activities"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { activityDetailHref } from "@/lib/atproto/activity-uri"
+import { resolveActivityImageUrl } from "@/lib/atproto/activity"
+import type { ClaimActivity } from "@/lib/atproto/activity-types"
 import { formatShortDate } from "@/lib/utils/format-date"
 
 interface ProfileOverviewProps {
@@ -145,16 +147,19 @@ export default function ProfileOverview({
               return (
                 <li key={a.uri} className="profile-overview__activity-item">
                   <Link href={href} className="profile-overview__activity-link">
-                    <span className="profile-overview__activity-title">
-                      {a.value.title || "Untitled cert"}
-                    </span>
-                    {a.value.shortDescription ? (
-                      <span className="profile-overview__activity-desc">
-                        {a.value.shortDescription}
+                    <ActivityThumb value={a.value} did={did} />
+                    <span className="profile-overview__activity-text">
+                      <span className="profile-overview__activity-title">
+                        {a.value.title || "Untitled cert"}
                       </span>
-                    ) : null}
-                    <span className="profile-overview__activity-meta">
-                      {formatShortDate(a.value.createdAt)}
+                      {a.value.shortDescription ? (
+                        <span className="profile-overview__activity-desc">
+                          {a.value.shortDescription}
+                        </span>
+                      ) : null}
+                      <span className="profile-overview__activity-meta">
+                        {formatShortDate(a.value.createdAt)}
+                      </span>
                     </span>
                   </Link>
                 </li>
@@ -205,6 +210,39 @@ export default function ProfileOverview({
 function uriToRkey(uri: string): string {
   const parts = uri.split("/")
   return parts[parts.length - 1] || ""
+}
+
+interface ActivityThumbProps {
+  value: ClaimActivity
+  did: string
+}
+
+function ActivityThumb({ value, did }: ActivityThumbProps) {
+  const imageUrl = value.image ? resolveActivityImageUrl(value.image, did) : null
+  const [failed, setFailed] = useState(false)
+
+  if (imageUrl && !failed) {
+    return (
+      <span className="profile-overview__activity-thumb" aria-hidden="true">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imageUrl}
+          alt=""
+          loading="lazy"
+          onError={() => setFailed(true)}
+          className="profile-overview__activity-thumb-img"
+        />
+      </span>
+    )
+  }
+  return (
+    <span
+      className="profile-overview__activity-thumb profile-overview__activity-thumb--placeholder"
+      aria-hidden="true"
+    >
+      <Award size={20} strokeWidth={1.25} />
+    </span>
+  )
 }
 
 interface EndorsementPreviewRowProps {

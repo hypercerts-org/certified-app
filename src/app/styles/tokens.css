@@ -127,7 +127,7 @@
      profile page sets via useProfileNavbar(). Right rail uses
      --top-bar-total for its sticky top so it never slides under
      the bar. */
-  --top-bar-row1: 64px;
+  --top-bar-row1: 52px;
   --top-bar-row2: 44px;
   --top-bar-total: var(--top-bar-row1);
 

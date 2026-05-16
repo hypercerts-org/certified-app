@@ -476,6 +476,23 @@
   display: block;
 }
 
+.feed-card__image-wrap--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(
+      135deg,
+      var(--bg-sunken) 0%,
+      var(--overlay-weak) 100%
+    );
+}
+
+.feed-card__image-placeholder-icon {
+  color: var(--fg-muted);
+  opacity: 0.6;
+}
+
 .feed-card__title {
   font-family: var(--font-headline), "Noto Serif", serif;
   font-size: 1.125rem;

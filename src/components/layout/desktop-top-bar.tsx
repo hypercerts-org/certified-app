@@ -49,7 +49,7 @@ export default function DesktopTopBar() {
   const searchParams = useSearchParams();
 
   const { isLoading, isAuthenticated, did, openSignIn, signOut } = useAuth();
-  const { pageTitle } = useNavbarContext();
+  const { pageTitle, breadcrumb } = useNavbarContext();
   const { profile, avatarUrl } = useProfile();
   const { handle } = useSession();
   const { activeOrg, groups, switchOrg } = useOrg();
@@ -166,7 +166,17 @@ export default function DesktopTopBar() {
           <Link href="/" className="desktop-top-bar__brand" aria-label="Certified home">
             <Brandmark size={28} className="desktop-top-bar__brand-mark" />
           </Link>
-          {pageTitle ? (
+          {breadcrumb ? (
+            <h1 className="desktop-top-bar__title" aria-live="polite">
+              <Link href={breadcrumb.left.href} className="desktop-top-bar__title-part">
+                {breadcrumb.left.text}
+              </Link>
+              <span className="desktop-top-bar__title-sep" aria-hidden="true"> / </span>
+              <Link href={breadcrumb.right.href} className="desktop-top-bar__title-part">
+                {breadcrumb.right.text}
+              </Link>
+            </h1>
+          ) : pageTitle ? (
             <h1 className="desktop-top-bar__title" aria-live="polite">{pageTitle}</h1>
           ) : null}
         </div>

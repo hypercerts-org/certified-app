@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { Award } from "lucide-react"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import {
   resolveActivityImageUrl,
@@ -41,7 +42,7 @@ export default function ActivityCard({ record, did, label }: ActivityCardProps) 
   //  - Everything else: wrapped in a Link to the detail page.
   const cardBody = (
     <>
-      {imageUrl && !imageFailed && (
+      {imageUrl && !imageFailed ? (
         <div className="feed-card__image-wrap">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -51,6 +52,13 @@ export default function ActivityCard({ record, did, label }: ActivityCardProps) 
             loading="lazy"
             onError={() => setImageFailed(true)}
           />
+        </div>
+      ) : (
+        <div
+          className="feed-card__image-wrap feed-card__image-wrap--placeholder"
+          aria-hidden="true"
+        >
+          <Award size={40} strokeWidth={1.25} className="feed-card__image-placeholder-icon" />
         </div>
       )}
 

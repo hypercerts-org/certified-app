@@ -260,13 +260,31 @@ html[data-theme="dark"] .signin-mark__img--light {
   justify-self: center;
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 0.9375rem;
-  font-weight: 600;
+  font-weight: 450;
   color: var(--fg-primary);
   letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 60vw;
+}
+
+.navbar__title-part {
+  color: inherit;
+  text-decoration: none;
+  padding: 3px 6px;
+  margin: 0 -2px;
+  border-radius: 6px;
+  transition: background var(--transition-fast);
+}
+
+.navbar__title-part:hover {
+  background: var(--overlay-weak);
+}
+
+.navbar__title-sep {
+  color: var(--fg-muted);
+  font-weight: 400;
 }
 
 .navbar__logo-img {
@@ -1755,7 +1773,6 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 
 .desktop-top-bar__row--tabs {
   height: var(--top-bar-row2);
-  border-top: 1px solid var(--border-subtle);
 }
 
 .desktop-top-bar__left {
@@ -1785,7 +1802,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 .desktop-top-bar__title {
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 450;
   color: var(--fg-primary);
   letter-spacing: -0.01em;
   margin: 0;
@@ -1793,6 +1810,29 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+}
+
+.desktop-top-bar__title-part {
+  color: inherit;
+  text-decoration: none;
+  padding: 4px 8px;
+  margin: 0 -2px;
+  border-radius: 6px;
+  transition: background var(--transition-fast);
+}
+
+.desktop-top-bar__title-part:hover {
+  background: var(--overlay-weak);
+}
+
+.desktop-top-bar__title-part:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.desktop-top-bar__title-sep {
+  color: var(--fg-muted);
+  font-weight: 400;
 }
 
 .desktop-top-bar__right {
@@ -2384,6 +2424,285 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   padding: 12px 0;
 }
 
+/* ---------- Profile certs tab ---------- */
+
+.profile-certs {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-certs__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.profile-certs__subtabs {
+  display: flex;
+  gap: 0;
+}
+
+.profile-certs__subtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 4px;
+  margin-right: 20px;
+  background: transparent;
+  border: none;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+  cursor: pointer;
+  position: relative;
+  transition: color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.profile-certs__subtab:hover {
+  color: var(--fg-primary);
+}
+
+.profile-certs__subtab--active {
+  color: var(--fg-primary);
+  font-weight: 600;
+}
+
+.profile-certs__subtab--active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--fg-primary);
+  border-radius: 1px;
+}
+
+.profile-certs__subtab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
+.profile-certs__subtab-count {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--overlay-weak);
+}
+
+.profile-certs__subtab--active .profile-certs__subtab-count {
+  color: var(--fg-primary);
+}
+
+.profile-certs__controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding-bottom: 8px;
+}
+
+.profile-certs__search {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.profile-certs__search:focus-within {
+  border-color: var(--fg-primary);
+}
+
+.profile-certs__search-icon {
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+
+.profile-certs__search-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  width: 200px;
+}
+
+.profile-certs__search-input::placeholder {
+  color: var(--fg-muted);
+}
+
+/* Strip the WebKit/Blink default 'x' button on type=search so it
+   doesn't fight with the icon styling. */
+.profile-certs__search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.profile-certs__sort-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.profile-certs__sort-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.profile-certs__sort-btn:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.profile-certs__sort-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.profile-certs__sort-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  z-index: 30;
+}
+
+.profile-certs__sort-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.profile-certs__sort-item:hover {
+  background: var(--overlay-weak);
+}
+
+.profile-certs__sort-item-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  color: var(--fg-primary);
+  flex-shrink: 0;
+}
+
+/* On wider viewports, lay cert cards out as a grid. Drop the default
+   per-card bottom divider (the shared .feed style) since grid gap now
+   provides separation. Cards are uniform size: square image + 2-line
+   title + 2-line description + meta row pinned to the bottom. */
+@media (min-width: 800px) {
+  .profile-certs .feed {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 28px 24px;
+  }
+
+  .profile-certs .feed-card {
+    padding: 10px;
+    border-bottom: none;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    transition: background var(--transition-fast);
+  }
+
+  .profile-certs .feed-card:hover {
+    background: var(--overlay-weak);
+  }
+
+  /* Cards in the certs grid get a card-wide hover background — drop
+     the title underline that's used in the stacked feed views. */
+  .profile-certs .feed-card__body:hover .feed-card__title {
+    text-decoration: none;
+  }
+
+  .profile-certs .feed-card__body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  /* Title: 2-line clamp with reserved height so short titles still
+     leave the description and meta row at the same vertical position
+     across cards. */
+  .profile-certs .feed-card__title {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: calc(1.125rem * 1.3 * 2);
+  }
+
+  /* Description: 2-line clamp with reserved height. */
+  .profile-certs .feed-card__desc {
+    -webkit-line-clamp: 2;
+    min-height: calc(0.875rem * 1.6 * 2);
+  }
+
+  /* Meta row pinned to the bottom regardless of title/desc length. */
+  .profile-certs .feed-card__meta {
+    margin-top: auto;
+  }
+
+  .profile-certs .feed__sentinel {
+    grid-column: 1 / -1;
+  }
+
+  /* Empty / error states inside the grid: span every column so the
+     EmptyState's own centering renders across the full pane instead
+     of sitting in the first grid cell. */
+  .profile-certs .feed > .empty-state {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1100px) {
+  .profile-certs .feed {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 .profile-overview__empty {
   font-size: 0.875rem;
   color: var(--fg-muted);
@@ -2417,8 +2736,9 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 
 .profile-overview__activity-link {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
   padding: 12px 0;
   text-decoration: none;
   color: inherit;
@@ -2426,6 +2746,47 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 
 .profile-overview__activity-link:hover .profile-overview__activity-title {
   text-decoration: underline;
+}
+
+.profile-overview__activity-thumb {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.profile-overview__activity-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-overview__activity-thumb--placeholder {
+  background:
+    linear-gradient(
+      135deg,
+      var(--bg-sunken) 0%,
+      var(--overlay-weak) 100%
+    );
+  color: var(--fg-muted);
+}
+
+.profile-overview__activity-thumb--placeholder svg {
+  opacity: 0.6;
+}
+
+.profile-overview__activity-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
 }
 
 .profile-overview__activity-title {
