@@ -105,6 +105,16 @@ export default function UserProfilePage() {
   const isAdminOfThisGroup =
     !!memberOrg && (memberOrg.role === "owner" || memberOrg.role === "admin")
 
+  // Viewer can inline-edit on their own profile, OR when they admin the
+  // group whose profile is being viewed. Group admins editing a group
+  // hit a separate save path (BFF putOrgProfile + group-repo blob
+  // uploads); see handlers below for the wiring.
+  const canEditInline = isOwnProfile || isAdminOfThisGroup
+  // The save/upload `targetDid` for inline edit. `undefined` keeps the
+  // helpers on the personal session-DID path; setting it routes through
+  // the group BFF endpoints instead.
+  const editTargetDid = !isOwnProfile && isAdminOfThisGroup ? did : undefined
+
   // -------------------------------------------------------------------
   // Inline edit state
   // -------------------------------------------------------------------
@@ -168,15 +178,27 @@ export default function UserProfilePage() {
     [],
   )
 
-  const handleAvatarFile = useCallback(async (file: File) => {
-    const blob = await uploadAvatar(file)
-    setPendingAvatarBlob(blob)
-  }, [])
+  const handleAvatarFile = useCallback(
+    async (file: File) => {
+      const blob = await uploadAvatar(
+        file,
+        editTargetDid ? { targetDid: editTargetDid } : undefined,
+      )
+      setPendingAvatarBlob(blob)
+    },
+    [editTargetDid],
+  )
 
-  const handleBannerFile = useCallback(async (file: File) => {
-    const blob = await uploadBanner(file)
-    setPendingBannerBlob(blob)
-  }, [])
+  const handleBannerFile = useCallback(
+    async (file: File) => {
+      const blob = await uploadBanner(
+        file,
+        editTargetDid ? { targetDid: editTargetDid } : undefined,
+      )
+      setPendingBannerBlob(blob)
+    },
+    [editTargetDid],
+  )
 
   const handleSave = useCallback(async () => {
     if (!did || !isAuthenticated) {
@@ -219,7 +241,11 @@ export default function UserProfilePage() {
     try {
       setIsSaving(true)
       setSaveError(null)
-      await putProfile(did, next)
+      await putProfile(
+        did,
+        next,
+        editTargetDid ? { targetDid: editTargetDid } : undefined,
+      )
 
       // Defensive: evict any cached resolve-did response so navigation
       // back through the app sees the new record. Best-effort.
@@ -259,20 +285,16 @@ export default function UserProfilePage() {
     drafts,
     pendingAvatarBlob,
     pendingBannerBlob,
+    editTargetDid,
   ])
 
-  // Mobile <ProfileHeader> still uses the legacy /settings/edit-profile
-  // route as a fallback. Desktop sidebar uses the new onEditClick
-  // callback; pass an explicit editHref only when we still want a link.
+  // Mobile <ProfileHeader> still uses the legacy edit pages as a
+  // fallback (inline edit isn't wired on the compact mobile header
+  // yet). Desktop sidebar handles inline-edit via the onEditClick
+  // callback below — no editHref needed when canEditInline is true.
   const mobileEditHref = isOwnProfile
     ? "/settings/edit-profile"
     : isAdminOfThisGroup && did
-      ? `/groups/${encodeURIComponent(did)}/edit-profile`
-      : undefined
-
-  // Group-admin editing still routes to its dedicated page.
-  const sidebarEditHref =
-    !isOwnProfile && isAdminOfThisGroup && did
       ? `/groups/${encodeURIComponent(did)}/edit-profile`
       : undefined
 
@@ -281,7 +303,11 @@ export default function UserProfilePage() {
       ? `/groups/${encodeURIComponent(did)}/settings`
       : undefined
 
-  const eyebrow = isOwnProfile ? "Your profile" : undefined
+  const eyebrow = isOwnProfile
+    ? "Your profile"
+    : isAdminOfThisGroup
+      ? "Admin of this group"
+      : undefined
 
   const { activities, hasMore } = useUserActivities(did)
   const activityCountLabel = hasMore
@@ -321,7 +347,7 @@ export default function UserProfilePage() {
     )
   }
 
-  const editing = isEditing && isOwnProfile
+  const editing = isEditing && canEditInline
 
   return (
     <div className="profile-page">
@@ -378,13 +404,12 @@ export default function UserProfilePage() {
           handle={resolvedHandle || (rawHandle ?? null)}
           did={did}
           basePath={pathname || ""}
-          editHref={sidebarEditHref}
           settingsHref={settingsHref}
           isOrg={sidebarIsOrg}
           additionalUrls={additionalUrls}
           groupsOverride={isOwnProfile ? groups : undefined}
           groupsLoadingOverride={isOwnProfile ? orgGroupsLoading : undefined}
-          canInlineEdit={isOwnProfile}
+          canInlineEdit={canEditInline}
           isEditing={editing}
           drafts={drafts}
           onEditClick={handleEditClick}
