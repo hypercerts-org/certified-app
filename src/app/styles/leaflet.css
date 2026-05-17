@@ -163,16 +163,35 @@ ol.leaflet-doc__list {
    .leaflet-editor__surface. Mirror the renderer's spacing /
    typography so what the user sees while editing matches the
    read-only view. */
-.leaflet-editor__surface > * + * {
-  margin-top: 10px;
-}
 
 .leaflet-editor__surface p {
   margin: 0;
-  /* Give empty paragraphs visible height so Enter-Enter (blank line)
-     actually shows a blank line. Without this, an empty `<p>` has
-     zero box height and the spacing disappears. */
+  /* Empty paragraphs would otherwise collapse to zero height (the
+     trailing-break placeholder ProseMirror injects has no intrinsic
+     box height once typing begins on a neighbour). Both `min-height`
+     AND a zero-width space pseudo are needed: `min-height` alone
+     stops working as soon as the parent's flex/grid layout decides
+     to shrink the row. The pseudo-content gives the line-box an
+     actual glyph so the line-height kicks in regardless. */
   min-height: 1.6em;
+}
+
+/* ProseMirror injects `<br class="ProseMirror-trailingBreak">` into
+   every block whose final child isn't a text node — including every
+   empty <p>. That trailing break should already anchor the line box,
+   but browsers don't always honour line-height on a <br> alone. Force
+   it to be a real block element so empty paragraphs always reserve a
+   line of height. */
+.leaflet-editor__surface br.ProseMirror-trailingBreak {
+  display: inline-block;
+  height: 1em;
+  width: 0;
+}
+
+/* Generic block-level gap. Headings get their own larger margins
+   below so we don't double them up. */
+.leaflet-editor__surface > * + *:not(h1):not(h2):not(h3) {
+  margin-top: 10px;
 }
 
 .leaflet-editor__surface h1,
@@ -181,13 +200,26 @@ ol.leaflet-doc__list {
   font-family: var(--font-headline), 'Noto Serif', serif;
   font-weight: 600;
   letter-spacing: -0.01em;
-  margin: 0;
   line-height: 1.25;
+  margin: 0;
 }
 
 .leaflet-editor__surface h1 { font-size: 1.5rem; }
 .leaflet-editor__surface h2 { font-size: 1.25rem; }
 .leaflet-editor__surface h3 { font-size: 1.0625rem; }
+
+/* Heading rhythm: more space before a heading than after, so it
+   reads as a section break rather than a free-floating line. The
+   first child has no top margin so the editor doesn't open with a
+   gap at the top. */
+.leaflet-editor__surface > h1 { margin-top: 24px; margin-bottom: 6px; }
+.leaflet-editor__surface > h2 { margin-top: 20px; margin-bottom: 4px; }
+.leaflet-editor__surface > h3 { margin-top: 16px; margin-bottom: 4px; }
+.leaflet-editor__surface > h1:first-child,
+.leaflet-editor__surface > h2:first-child,
+.leaflet-editor__surface > h3:first-child {
+  margin-top: 0;
+}
 
 /* Restore list markers — Tailwind's preflight strips them globally.
    Scope inside the editor surface (and the renderer's class above)
