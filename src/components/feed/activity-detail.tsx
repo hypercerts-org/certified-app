@@ -433,7 +433,11 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
   )
 
   return (
-    <article className="cert-detail cert-detail--wide">
+    <>
+      {/* Editing banner sits ABOVE the cert-detail grid so it spans
+          the full content width. Placing it inside the article made
+          it a grid child of the 2-column layout and squashed it into
+          the left rail. */}
       {editing ? (
         <div
           className="profile-edit-banner"
@@ -467,6 +471,7 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
         </div>
       ) : null}
 
+      <article className="cert-detail cert-detail--wide">
       <aside className="cert-detail__aside" aria-label="Cert details">
         <div
           className={
@@ -638,6 +643,7 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
         ) : null}
       </div>
     </article>
+    </>
   )
 }
 
