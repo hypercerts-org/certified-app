@@ -8,7 +8,9 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import { getInitials } from "@/lib/utils/initials"
 import { useUserGroups } from "@/hooks/use-user-groups"
 import { useReceivedEndorsements, type ReceivedEndorsement } from "@/hooks/use-received-endorsements"
+import { useGivenEndorsements } from "@/hooks/use-endorsements"
 import { useUserIndexerActivities } from "@/hooks/use-user-indexer-activities"
+import { useUserProjects } from "@/hooks/use-user-projects"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { activityDetailHref } from "@/lib/atproto/activity-uri"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
@@ -47,6 +49,8 @@ export default function ProfileOverview({
 
   const { groups, isLoading: groupsLoading } = useUserGroups(did)
   const { endorsements, isLoading: endorsementsLoading } = useReceivedEndorsements(did)
+  const { endorsements: givenEndorsements, isLoading: givenLoading } = useGivenEndorsements(did)
+  const { projects, isLoading: projectsLoading } = useUserProjects(did)
   // Indexer-backed combined feed: split locally to count Created vs
   // Contributed to. Same pattern as <ProfileCerts>.
   const {
@@ -76,12 +80,6 @@ export default function ProfileOverview({
     [endorsements],
   )
 
-  // Placeholders for stats whose dedicated hooks aren't built yet:
-  //   - given endorsements (no `useGivenEndorsements` hook)
-  //   - projects count (no `useUserProjects` hook)
-  // Wire these once the supporting hooks land.
-  const givenEndorsementsCount: number | null = null
-  const projectsCount: number | null = null
 
   return (
     <div className="profile-overview">
@@ -131,7 +129,7 @@ export default function ProfileOverview({
           </span>
           <span className="profile-overview__stat-split">
             <span className="profile-overview__stat-value">
-              {givenEndorsementsCount ?? "—"}
+              {givenLoading ? "—" : givenEndorsements.length}
             </span>
             <span className="profile-overview__stat-sub">given</span>
           </span>
@@ -167,7 +165,7 @@ export default function ProfileOverview({
           <span className="profile-overview__stat-label">Projects</span>
           <span className="profile-overview__stat-split profile-overview__stat-split--solo">
             <span className="profile-overview__stat-value">
-              {projectsCount ?? "—"}
+              {projectsLoading ? "—" : projects.length}
             </span>
           </span>
         </Link>
