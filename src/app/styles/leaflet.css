@@ -46,12 +46,26 @@ h4.leaflet-doc__heading { font-size: 1rem; }
 h5.leaflet-doc__heading,
 h6.leaflet-doc__heading { font-size: 0.9375rem; }
 
+/* Tailwind's preflight resets `list-style: none` and zeroes padding
+   on every `<ul>` / `<ol>` globally. We need to restore the markers
+   explicitly here, scoped to the renderer's list class — otherwise
+   bullet points and numbers disappear on both the read view and
+   inside the editor (which shares the same DOM tree). */
 .leaflet-doc__list {
   margin: 0;
   padding-left: 1.4em;
   font-size: 0.9375rem;
   line-height: 1.55;
   color: var(--fg-secondary);
+  list-style-position: outside;
+}
+
+ul.leaflet-doc__list {
+  list-style: disc outside;
+}
+
+ol.leaflet-doc__list {
+  list-style: decimal outside;
 }
 
 .leaflet-doc__list li + li {
@@ -84,10 +98,6 @@ h6.leaflet-doc__heading { font-size: 0.9375rem; }
   display: inline-flex;
   flex-wrap: wrap;
   gap: 2px;
-  padding: 4px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
   width: fit-content;
 }
 
@@ -130,8 +140,10 @@ h6.leaflet-doc__heading { font-size: 0.9375rem; }
   border: 1.5px solid var(--border-hover);
   border-radius: 8px;
   background: var(--bg-elevated);
-  padding: 12px 14px;
-  min-height: 96px;
+  padding: 14px 16px;
+  /* A roomier default — the textarea felt cramped at 96px. The
+     editor still grows as the user types. */
+  min-height: 220px;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
@@ -147,15 +159,20 @@ h6.leaflet-doc__heading { font-size: 0.9375rem; }
   color: var(--fg-primary);
 }
 
-/* TipTap renders block-level nodes directly inside .leaflet-editor__surface.
-   Mirror the renderer's spacing/typography so what the user sees while
-   editing matches the read-only view. */
+/* TipTap renders block-level nodes directly inside
+   .leaflet-editor__surface. Mirror the renderer's spacing /
+   typography so what the user sees while editing matches the
+   read-only view. */
 .leaflet-editor__surface > * + * {
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .leaflet-editor__surface p {
   margin: 0;
+  /* Give empty paragraphs visible height so Enter-Enter (blank line)
+     actually shows a blank line. Without this, an empty `<p>` has
+     zero box height and the spacing disappears. */
+  min-height: 1.6em;
 }
 
 .leaflet-editor__surface h1,
@@ -168,14 +185,25 @@ h6.leaflet-doc__heading { font-size: 0.9375rem; }
   line-height: 1.25;
 }
 
-.leaflet-editor__surface h1 { font-size: 1.25rem; }
-.leaflet-editor__surface h2 { font-size: 1.125rem; }
-.leaflet-editor__surface h3 { font-size: 1rem; }
+.leaflet-editor__surface h1 { font-size: 1.5rem; }
+.leaflet-editor__surface h2 { font-size: 1.25rem; }
+.leaflet-editor__surface h3 { font-size: 1.0625rem; }
 
+/* Restore list markers — Tailwind's preflight strips them globally.
+   Scope inside the editor surface (and the renderer's class above)
+   so we don't accidentally re-introduce them site-wide. */
 .leaflet-editor__surface ul,
 .leaflet-editor__surface ol {
   margin: 0;
   padding-left: 1.4em;
+}
+
+.leaflet-editor__surface ul {
+  list-style: disc outside;
+}
+
+.leaflet-editor__surface ol {
+  list-style: decimal outside;
 }
 
 .leaflet-editor__surface li + li {
@@ -188,9 +216,10 @@ h6.leaflet-doc__heading { font-size: 0.9375rem; }
   text-underline-offset: 2px;
 }
 
-/* Empty-state placeholder. ProseMirror exposes `.is-editor-empty` on
-   the first child of an empty document; we read the `data-placeholder`
-   we set in editorProps. */
+/* Placeholder rendered by @tiptap/extension-placeholder. The extension
+   adds `is-empty` to every empty block; we only show the placeholder
+   on the very first paragraph so it doesn't pollute multi-line
+   docs. */
 .leaflet-editor__surface p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   color: var(--fg-muted);

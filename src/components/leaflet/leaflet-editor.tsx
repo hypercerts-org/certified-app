@@ -4,9 +4,11 @@ import { useEffect, useRef } from "react"
 import { useEditor, EditorContent, type Editor } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Link from "@tiptap/extension-link"
+import Placeholder from "@tiptap/extension-placeholder"
 import {
   Bold as BoldIcon,
   Italic as ItalicIcon,
+  Heading1,
   Heading2,
   Heading3,
   List as BulletIcon,
@@ -76,10 +78,21 @@ export default function LeafletEditor({
         codeBlock: false,
         blockquote: false,
         horizontalRule: false,
+        // StarterKit ships bulletList/orderedList without explicit HTML
+        // class hooks; the renderer side targets <ul>/<ol> directly so
+        // no extra config needed here.
       }),
       Link.configure({
         openOnClick: false,
         HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" },
+      }),
+      Placeholder.configure({
+        placeholder: placeholder ?? "",
+        // The empty-state placeholder only renders on the very first
+        // node — once the user adds a second paragraph (e.g. blank
+        // line), subsequent empty paragraphs remain blank, which is
+        // what you'd expect from a normal text editor.
+        showOnlyCurrent: false,
       }),
     ],
     content: initial,
@@ -98,7 +111,6 @@ export default function LeafletEditor({
       attributes: {
         class: "leaflet-editor__surface",
         ...(ariaLabel ? { "aria-label": ariaLabel } : {}),
-        ...(placeholder ? { "data-placeholder": placeholder } : {}),
       },
     },
     immediatelyRender: false,
@@ -217,19 +229,27 @@ function Toolbar({ editor, minimal }: ToolbarProps) {
     >
       {!minimal &&
         btn(
-          "h2",
-          "Heading",
-          Heading2,
+          "h1",
+          "Heading 1",
+          Heading1,
           editor.isActive("heading", { level: 1 }),
           () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
         )}
       {!minimal &&
         btn(
-          "h3",
-          "Subheading",
-          Heading3,
+          "h2",
+          "Heading 2",
+          Heading2,
           editor.isActive("heading", { level: 2 }),
           () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
+        )}
+      {!minimal &&
+        btn(
+          "h3",
+          "Heading 3",
+          Heading3,
+          editor.isActive("heading", { level: 3 }),
+          () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
         )}
       {btn(
         "bold",
