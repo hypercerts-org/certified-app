@@ -14,32 +14,32 @@
 
 /* Floating camera badge anchored to the bottom-right of the 240×240
    avatar — always visible in edit mode so the affordance is
-   discoverable without needing to hover. */
+   discoverable without needing to hover. Visual treatment matches the
+   banner's "Change banner" pill (.profile-banner-upload__btn) so both
+   image-upload affordances feel identical. */
 .profile-sidebar__avatar-edit-btn {
   position: absolute;
-  bottom: 8px;
-  right: 8px;
+  bottom: 10px;
+  right: 10px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
-  height: 44px;
-  padding: 0 14px;
-  border: 2px solid var(--bg-canvas);
+  background: rgba(17, 17, 17, 0.78);
+  color: var(--color-white);
+  border: none;
   border-radius: 999px;
-  background: var(--fg-primary);
-  color: var(--bg-canvas);
-  font-family: inherit;
+  padding: 6px 12px;
+  font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-weight: 500;
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+  transition: background var(--transition-fast);
+  z-index: 1;
 }
 
 .profile-sidebar__avatar-edit-btn:hover {
-  opacity: 0.9;
+  background: rgba(17, 17, 17, 0.92);
 }
 
 .profile-sidebar__avatar-edit-btn:focus-visible {
@@ -47,13 +47,24 @@
   outline-offset: 2px;
 }
 
+.profile-sidebar__avatar-edit-btn:disabled {
+  cursor: progress;
+  opacity: 0.9;
+}
+
 .profile-sidebar__avatar-edit-label {
-  font-size: 0.6875rem;
-  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .profile-sidebar__avatar-edit-input {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
 }
 
 /* --- Sidebar website edit ------------------------------------------- */

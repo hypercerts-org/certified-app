@@ -523,9 +523,9 @@ function AvatarEditOverlay({ onFile, isUploading, hasPending }: AvatarEditOverla
           <LoadingSpinner size="sm" />
         ) : (
           <>
-            <Camera size={20} strokeWidth={1.75} aria-hidden />
+            <Camera size={16} strokeWidth={1.75} aria-hidden />
             <span className="profile-sidebar__avatar-edit-label">
-              {hasPending ? "Replace" : "Change"}
+              {hasPending ? "Replace avatar" : "Change avatar"}
             </span>
           </>
         )}
