@@ -18,7 +18,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import SmartLink from "@/components/ui/smart-link"
 import { getInitials } from "@/lib/utils/initials"
 import { useProfilePds } from "@/hooks/use-profile-pds"
-import { useUserGroups } from "@/hooks/use-user-groups"
+import { useUserGroups, type UserGroup } from "@/hooks/use-user-groups"
 import type { CertifiedProfile } from "@/lib/atproto/types"
 
 interface ProfileSidebarProps {
@@ -38,6 +38,12 @@ interface ProfileSidebarProps {
   isOrg?: boolean
   /** Extra org-only URLs (only consulted when `isOrg` is true). */
   additionalUrls?: string[]
+  /** Pre-resolved groups. When provided, the sidebar uses these directly
+   *  (so an own-profile view can pass the same `useOrg().groups` the
+   *  account switcher renders). When omitted, falls back to
+   *  `useUserGroups(did)` (PDS memberships only). */
+  groupsOverride?: UserGroup[]
+  groupsLoadingOverride?: boolean
 }
 
 const GROUPS_GRID_LIMIT = 12
@@ -69,11 +75,17 @@ export default function ProfileSidebar({
   settingsHref,
   isOrg = false,
   additionalUrls,
+  groupsOverride,
+  groupsLoadingOverride,
 }: ProfileSidebarProps) {
   const displayName = profile?.displayName || (handle ? `@${handle}` : "Anonymous")
   const initials = getInitials(profile?.displayName, did)
   const { isBskyHosted } = useProfilePds(did)
-  const { groups, isLoading: groupsLoading } = useUserGroups(did)
+  // Fall back to the PDS-only path when no override is provided
+  // (foreign profiles where the viewer can't fetch CGS memberships).
+  const fallback = useUserGroups(groupsOverride ? null : did)
+  const groups = groupsOverride ?? fallback.groups
+  const groupsLoading = groupsOverride ? !!groupsLoadingOverride : fallback.isLoading
 
   const joinedText = formatJoined(profile?.createdAt)
   const hasEdit = !!editHref
@@ -195,22 +207,24 @@ export default function ProfileSidebar({
         ) : previewGroups.length === 0 ? (
           <p className="profile-sidebar__empty">No groups yet.</p>
         ) : (
-          <ul className="profile-sidebar__groups-grid">
+          <ul className="profile-sidebar__groups-list">
             {previewGroups.map((g) => {
               const name = g.displayName || g.handle
               return (
                 <li key={g.groupDid}>
                   <Link
                     href={`/profile/${encodeURIComponent(g.handle)}`}
-                    className="profile-sidebar__group-tile"
-                    title={`${name} (@${g.handle})`}
-                    aria-label={name}
+                    className="profile-sidebar__group-row"
                   >
                     <Avatar
-                      size="md"
+                      size="sm"
                       src={g.avatarUrl || undefined}
                       fallbackInitials={getInitials(name)}
                     />
+                    <span className="profile-sidebar__group-meta">
+                      <span className="profile-sidebar__group-name">{name}</span>
+                      <span className="profile-sidebar__group-handle">@{g.handle}</span>
+                    </span>
                   </Link>
                 </li>
               )

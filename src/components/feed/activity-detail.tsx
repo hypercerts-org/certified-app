@@ -78,15 +78,14 @@ function formatDate(iso: string): string {
 }
 
 /**
- * Detail view of a single activity claim. Renders a showcase-style layout
- * (Notion/Behance/GitHub README feel): byline, full-width 16:9 hero,
- * full-width headline, then a two-column body — main column carries the
- * long-form description + locations, sidebar carries the small metadata
- * (Created / Time period / Work scope / Rights) and the contributors
- * list. The grid collapses to a single column under ~720px.
+ * Detail view of a single activity claim. Layout mirrors the profile
+ * page: a slim left pane that opens with a 1:1 square cert image and
+ * carries the small metadata + author byline, and a main pane that
+ * opens with the title and carries the description, contributors, and
+ * locations.
  *
  * The `.cert-detail--wide` modifier on the root opts this page's
- * `.app-shell__content` parent into a 960px max-width via a `:has()`
+ * `.app-shell__content` parent into a wider max-width via a `:has()`
  * rule in `cert-detail.css` — scoped, so every other page keeps the
  * 600px reading cap.
  */
@@ -129,146 +128,133 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
 
   return (
     <article className="cert-detail cert-detail--wide">
-      <header className="cert-detail__header">
-        <ActivityAuthor did={did} />
-      </header>
+      <aside className="cert-detail__aside" aria-label="Cert details">
+        {imageUrl && !imageFailed ? (
+          <div className="cert-detail__image">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imageUrl}
+              alt=""
+              className="cert-detail__image-img"
+              onError={() => setImageFailed(true)}
+            />
+          </div>
+        ) : (
+          <div
+            className="cert-detail__image cert-detail__image--placeholder"
+            aria-hidden="true"
+          >
+            <Award size={56} strokeWidth={1.25} className="cert-detail__image-placeholder-icon" />
+          </div>
+        )}
 
-      {imageUrl && !imageFailed ? (
-        <div className="cert-detail__hero">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={imageUrl}
-            alt=""
-            className="cert-detail__hero-img"
-            onError={() => setImageFailed(true)}
-          />
-        </div>
-      ) : (
-        <div
-          className="cert-detail__hero cert-detail__hero--placeholder"
-          aria-hidden="true"
-        >
-          <Award
-            size={56}
-            strokeWidth={1.25}
-            className="cert-detail__hero-placeholder-icon"
-          />
-        </div>
-      )}
-
-      <div className="cert-detail__headline">
-        <h1 className="cert-detail__title">{value.title}</h1>
-
-        {value.shortDescription ? (
-          <p className="cert-detail__short-desc">{value.shortDescription}</p>
-        ) : null}
-      </div>
-
-      <div className="cert-detail__body">
-        <div className="cert-detail__main">
-          {description ? (
-            <section className="cert-detail__section">
-              <h2 className="cert-detail__section-title">Description</h2>
-              <p className="cert-detail__description">{description}</p>
-            </section>
-          ) : hasRawDescription ? (
-            <section className="cert-detail__section">
-              <details className="cert-detail__description-raw">
-                <summary>Full description</summary>
-                <pre>{JSON.stringify(value.description, null, 2)}</pre>
-              </details>
-            </section>
-          ) : null}
-
-          {locations.length > 0 ? (
-            <section className="cert-detail__section">
-              <div className="cert-detail__section-header">
-                <h2 className="cert-detail__section-title">Locations</h2>
-                <span className="cert-detail__section-count">
-                  {locations.length}
-                </span>
-              </div>
-              <ul className="cert-detail__locations">
-                {locations.map((loc, i) => (
-                  <LocationCard key={`${loc.uri}-${i}`} uri={loc.uri} />
-                ))}
-              </ul>
-            </section>
-          ) : null}
+        <div className="cert-detail__byline">
+          <ActivityAuthor did={did} />
         </div>
 
-        <aside className="cert-detail__sidebar">
-          <dl className="cert-detail__meta">
+        <dl className="cert-detail__meta">
+          <div className="cert-detail__meta-row">
+            <dt className="cert-detail__meta-label">
+              <Clock size={11} strokeWidth={2} aria-hidden />
+              Created
+            </dt>
+            <dd className="cert-detail__meta-value">
+              <time dateTime={value.createdAt} title={createdAbsolute}>
+                {createdAbsolute}
+              </time>
+              <span className="cert-detail__meta-aux">({createdRelative})</span>
+            </dd>
+          </div>
+
+          <div className="cert-detail__meta-row">
+            <dt className="cert-detail__meta-label">
+              <Calendar size={11} strokeWidth={2} aria-hidden />
+              Time period
+            </dt>
+            <dd className="cert-detail__meta-value">{timePeriodLabel}</dd>
+          </div>
+
+          {workScopeLabel ? (
             <div className="cert-detail__meta-row">
               <dt className="cert-detail__meta-label">
-                <Clock size={11} strokeWidth={2} aria-hidden />
-                Created
+                <Target size={11} strokeWidth={2} aria-hidden />
+                Work scope
               </dt>
-              <dd className="cert-detail__meta-value">
-                <time dateTime={value.createdAt} title={createdAbsolute}>
-                  {createdAbsolute}
-                </time>
-                <span className="cert-detail__meta-aux">
-                  ({createdRelative})
-                </span>
+              <dd className="cert-detail__meta-value">{workScopeLabel}</dd>
+            </div>
+          ) : null}
+
+          {value.rights ? (
+            <div className="cert-detail__meta-row">
+              <dt className="cert-detail__meta-label">
+                <FileText size={11} strokeWidth={2} aria-hidden />
+                Rights
+              </dt>
+              <dd className="cert-detail__meta-value cert-detail__uri">
+                {value.rights.uri}
               </dd>
             </div>
-
-            <div className="cert-detail__meta-row">
-              <dt className="cert-detail__meta-label">
-                <Calendar size={11} strokeWidth={2} aria-hidden />
-                Time period
-              </dt>
-              <dd className="cert-detail__meta-value">{timePeriodLabel}</dd>
-            </div>
-
-            {workScopeLabel ? (
-              <div className="cert-detail__meta-row">
-                <dt className="cert-detail__meta-label">
-                  <Target size={11} strokeWidth={2} aria-hidden />
-                  Work scope
-                </dt>
-                <dd className="cert-detail__meta-value">{workScopeLabel}</dd>
-              </div>
-            ) : null}
-
-            {value.rights ? (
-              <div className="cert-detail__meta-row">
-                <dt className="cert-detail__meta-label">
-                  <FileText size={11} strokeWidth={2} aria-hidden />
-                  Rights
-                </dt>
-                <dd className="cert-detail__meta-value cert-detail__uri">
-                  {value.rights.uri}
-                </dd>
-              </div>
-            ) : null}
-          </dl>
-
-          {contributorCount > 0 ? (
-            <section className="cert-detail__section cert-detail__section--sidebar">
-              <div className="cert-detail__section-header">
-                <h2 className="cert-detail__section-title">Contributors</h2>
-                <span className="cert-detail__section-count">
-                  {contributorCount}
-                </span>
-              </div>
-              <ul className="cert-detail__contributors">
-                {contributors.map((c, i) => {
-                  const roleText = contributionRoleText(c.contributionDetails)
-                  return (
-                    <ContributorRow
-                      key={contributorKey(c, i)}
-                      contributor={c}
-                      role={roleText}
-                      weight={c.contributionWeight ?? null}
-                    />
-                  )
-                })}
-              </ul>
-            </section>
           ) : null}
-        </aside>
+        </dl>
+      </aside>
+
+      <div className="cert-detail__main">
+        <header className="cert-detail__headline">
+          <h1 className="cert-detail__title">{value.title}</h1>
+          {value.shortDescription ? (
+            <p className="cert-detail__short-desc">{value.shortDescription}</p>
+          ) : null}
+        </header>
+
+        {description ? (
+          <section className="cert-detail__section">
+            <h2 className="cert-detail__section-title">Description</h2>
+            <p className="cert-detail__description">{description}</p>
+          </section>
+        ) : hasRawDescription ? (
+          <section className="cert-detail__section">
+            <details className="cert-detail__description-raw">
+              <summary>Full description</summary>
+              <pre>{JSON.stringify(value.description, null, 2)}</pre>
+            </details>
+          </section>
+        ) : null}
+
+        {contributorCount > 0 ? (
+          <section className="cert-detail__section">
+            <div className="cert-detail__section-header">
+              <h2 className="cert-detail__section-title">Contributors</h2>
+              <span className="cert-detail__section-count">{contributorCount}</span>
+            </div>
+            <ul className="cert-detail__contributors">
+              {contributors.map((c, i) => {
+                const roleText = contributionRoleText(c.contributionDetails)
+                return (
+                  <ContributorRow
+                    key={contributorKey(c, i)}
+                    contributor={c}
+                    role={roleText}
+                    weight={c.contributionWeight ?? null}
+                  />
+                )
+              })}
+            </ul>
+          </section>
+        ) : null}
+
+        {locations.length > 0 ? (
+          <section className="cert-detail__section">
+            <div className="cert-detail__section-header">
+              <h2 className="cert-detail__section-title">Locations</h2>
+              <span className="cert-detail__section-count">{locations.length}</span>
+            </div>
+            <ul className="cert-detail__locations">
+              {locations.map((loc, i) => (
+                <LocationCard key={`${loc.uri}-${i}`} uri={loc.uri} />
+              ))}
+            </ul>
+          </section>
+        ) : null}
       </div>
     </article>
   )

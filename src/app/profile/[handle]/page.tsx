@@ -81,7 +81,7 @@ export default function UserProfilePage() {
     useOrgMarker(did)
   const sidebarIsOrg = isOrgMarkerLoading ? false : isOrg
 
-  const { groups } = useOrg()
+  const { groups, isLoading: orgGroupsLoading } = useOrg()
   const memberOrg = did ? groups.find((g) => g.groupDid === did) : undefined
   const isAdminOfThisGroup =
     !!memberOrg && (memberOrg.role === "owner" || memberOrg.role === "admin")
@@ -167,6 +167,8 @@ export default function UserProfilePage() {
           settingsHref={settingsHref}
           isOrg={sidebarIsOrg}
           additionalUrls={additionalUrls}
+          groupsOverride={isOwnProfile ? groups : undefined}
+          groupsLoadingOverride={isOwnProfile ? orgGroupsLoading : undefined}
         />
 
         <div className="profile-page__main">

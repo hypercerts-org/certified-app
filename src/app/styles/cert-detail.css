@@ -1,31 +1,41 @@
 /* ========== Cert detail page ==========
 
-   Showcase layout (Notion / Behance / GitHub README feel): full-width
-   16:9 hero, full-width headline, then a two-column body — main column
-   carries the long-form description + locations, sidebar carries the
-   metadata block (Created / Time period / Work scope / Rights) and the
-   contributors list. Collapses to a single column under ~720px.
+   Profile-mirroring layout: a slim left pane that opens with a 1:1
+   square cert image (placeholder when missing) and carries the small
+   metadata block (Created / Time period / Work scope / Rights) + the
+   author byline; main pane that opens with the title and carries the
+   description, contributors and locations.
 
    `.cert-detail--wide` is the opt-in marker. The `:has()` rule below
-   widens this page's `.app-shell__content` to 960px while leaving every
-   other page's 600px reading cap intact. */
+   widens this page's `.app-shell__content` so the two columns have
+   room to breathe; every other page keeps its 600px reading cap. */
 
 .cert-detail-page {
   padding: 24px 0 64px;
 }
 
+/* Stacked on mobile (image + byline + meta on top, content below); two
+   columns on desktop matching the profile-page layout (296px sidebar +
+   fluid main, 32px gap). */
 .cert-detail {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  gap: 24px;
+}
+
+@media (min-width: 800px) {
+  .cert-detail {
+    grid-template-columns: 296px minmax(0, 1fr);
+    gap: 32px;
+    align-items: start;
+  }
 }
 
 /* Widen the reading column ONLY for the cert detail page. Scoped via
    `:has()` so we don't touch `.app-shell__content` globally — other
-   pages keep their 600px desktop cap. Mobile already uses 720px which
-   the cert page is happy to inherit. */
+   pages keep their 600px desktop cap. */
 @media (min-width: 800px) {
   .app-shell:has(.cert-detail--wide) .app-shell__content {
-    max-width: 960px;
+    max-width: 1100px;
   }
 }
 
@@ -56,35 +66,32 @@
   line-height: 1.5;
 }
 
-/* ---------- Header (author byline) ---------- */
+/* ---------- Left pane (slim aside) ---------- */
 
-.cert-detail__header {
+.cert-detail__aside {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
 
-/* ---------- Hero ---------- */
-
-.cert-detail__hero {
+.cert-detail__image {
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--bg-sunken);
   border: 1px solid var(--border-subtle);
-  margin-bottom: 24px;
 }
 
-.cert-detail__hero-img {
+.cert-detail__image-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.cert-detail__hero--placeholder {
+.cert-detail__image--placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -95,18 +102,30 @@
   );
 }
 
-.cert-detail__hero-placeholder-icon {
+.cert-detail__image-placeholder-icon {
   color: var(--fg-muted);
   opacity: 0.55;
 }
 
-/* ---------- Headline block ---------- */
+.cert-detail__byline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ---------- Main pane ---------- */
+
+.cert-detail__main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
 
 .cert-detail__headline {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 20px;
 }
 
 .cert-detail__title {
@@ -135,50 +154,10 @@
    sits at a fixed 260px so the main column can fluidly absorb extra
    width on wider viewports. */
 
-.cert-detail__body {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-}
+/* ---------- Metadata block (left pane) ----------
 
-@media (min-width: 720px) {
-  .cert-detail__body {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 260px;
-    gap: 40px;
-    align-items: start;
-  }
-}
-
-.cert-detail__main {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.cert-detail__sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  min-width: 0;
-}
-
-/* On desktop the sidebar can stick alongside the description without
-   running off the viewport — the contributor list inside may be long
-   but we let it grow; users can scroll past it. */
-@media (min-width: 720px) {
-  .cert-detail__sidebar {
-    padding: 16px;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius, 8px);
-  }
-}
-
-/* ---------- Metadata block (sidebar) ----------
-
-   Stacked label/value pairs in the sidebar. Small uppercase labels
-   above each value. */
+   Stacked label/value pairs under the byline. Small uppercase labels
+   above each value, mirroring the profile sidebar's details list. */
 
 .cert-detail__meta {
   display: flex;
@@ -243,15 +222,6 @@
 
 .cert-detail__main > .cert-detail__section + .cert-detail__section {
   border-top: 1px solid var(--border-subtle);
-}
-
-/* Sidebar section sits inside the elevated sidebar card and is already
-   visually separated by the gap + the meta block above — no extra top
-   border, no enlarged padding. */
-.cert-detail__section--sidebar {
-  padding-top: 0;
-  margin-top: 0;
-  border-top: 0;
 }
 
 .cert-detail__section-header {
@@ -460,9 +430,5 @@
 @media (max-width: 520px) {
   .cert-detail__title {
     font-size: 1.5rem;
-  }
-
-  .cert-detail__hero {
-    aspect-ratio: 4 / 3;
   }
 }

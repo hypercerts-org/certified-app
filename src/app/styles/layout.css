@@ -2343,29 +2343,54 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   border-top: 1px solid var(--border-subtle);
 }
 
-.profile-sidebar__groups-grid {
+.profile-sidebar__groups-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.profile-sidebar__group-tile {
-  display: inline-flex;
+.profile-sidebar__group-row {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  border-radius: var(--radius);
-  overflow: hidden;
+  gap: 10px;
+  padding: 6px 8px;
+  margin: 0 -8px;
+  border-radius: 6px;
   text-decoration: none;
-  transition: opacity var(--transition-fast);
+  color: inherit;
+  transition: background var(--transition-fast);
 }
 
-.profile-sidebar__group-tile:hover {
-  opacity: 0.85;
+.profile-sidebar__group-row:hover {
+  background: var(--overlay-weak);
+}
+
+.profile-sidebar__group-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.profile-sidebar__group-name {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-sidebar__group-handle {
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ---------- Right pane: Overview tab content ---------- */

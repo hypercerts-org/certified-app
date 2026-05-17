@@ -112,25 +112,6 @@ export default function ProfileOverview({
 
       <section className="profile-overview__stats" aria-label="Profile stats">
         <Link
-          href={`${basePath}?tab=endorsements`}
-          scroll={false}
-          className="profile-overview__stat"
-        >
-          <span className="profile-overview__stat-label">Endorsements</span>
-          <span className="profile-overview__stat-split">
-            <span className="profile-overview__stat-value">
-              {endorsementsLoading ? "—" : endorsements.length}
-            </span>
-            <span className="profile-overview__stat-sub">received</span>
-          </span>
-          <span className="profile-overview__stat-split">
-            <span className="profile-overview__stat-value">
-              {givenLoading ? "—" : givenEndorsements.length}
-            </span>
-            <span className="profile-overview__stat-sub">given</span>
-          </span>
-        </Link>
-        <Link
           href={`${basePath}?tab=certs`}
           scroll={false}
           className="profile-overview__stat"
@@ -175,6 +156,25 @@ export default function ProfileOverview({
             <span className="profile-overview__stat-value">
               {groupsLoading ? "—" : groups.length}
             </span>
+          </span>
+        </Link>
+        <Link
+          href={`${basePath}?tab=endorsements`}
+          scroll={false}
+          className="profile-overview__stat"
+        >
+          <span className="profile-overview__stat-label">Endorsements</span>
+          <span className="profile-overview__stat-split">
+            <span className="profile-overview__stat-value">
+              {endorsementsLoading ? "—" : endorsements.length}
+            </span>
+            <span className="profile-overview__stat-sub">received</span>
+          </span>
+          <span className="profile-overview__stat-split">
+            <span className="profile-overview__stat-value">
+              {givenLoading ? "—" : givenEndorsements.length}
+            </span>
+            <span className="profile-overview__stat-sub">given</span>
           </span>
         </Link>
       </section>
