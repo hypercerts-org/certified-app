@@ -322,16 +322,19 @@ export default function ProfileSidebar({
             else. We never surface "Joined ..." on an org profile —
             "joined Certified at <some date>" is admin noise the
             org's audience doesn't care about. An org with no founded
-            date just hides this row entirely. */}
-        {isOrg ? (
+            date just hides this row entirely.
+            In edit mode the read-only row is suppressed for orgs
+            since the editable Founded input above already shows the
+            same value (and lets the admin change it). */}
+        {isEditing && hasInline && isOrg ? null : isOrg ? (
           orgFoundedDate ? (
-            <li>
+            <li className="profile-sidebar__details-date">
               <Calendar size={16} strokeWidth={1.75} aria-hidden />
               <span>Founded {orgFoundedDate}</span>
             </li>
           ) : null
         ) : joinedText ? (
-          <li>
+          <li className="profile-sidebar__details-date">
             <Calendar size={16} strokeWidth={1.75} aria-hidden />
             <span>{joinedText}</span>
           </li>

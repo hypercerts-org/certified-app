@@ -2301,11 +2301,12 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   min-width: 0;
 }
 
-/* The "Joined" entry is always last in the list. Push it slightly
-   farther from the social links above so the two read as separate
-   visual blocks. The selector only matters when there's more than one
-   item — a single-item list has no "above" to separate from. */
-.profile-sidebar__details li:not(:only-child):last-child {
+/* The "Joined" / "Founded" row sits below the URL block; push it
+   slightly farther so URLs vs. date read as two separate blocks. We
+   target the date row by class — not `:last-child` — so the visual
+   break never accidentally lands between two adjacent URL rows
+   (which used to happen when the date row was hidden). */
+.profile-sidebar__details-date {
   margin-top: 10px;
 }
 
