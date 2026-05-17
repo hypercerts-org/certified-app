@@ -29,6 +29,7 @@ import ProfileEndorsements from "@/components/profile/profile-endorsements"
 import ProfileProjects from "@/components/profile/profile-projects"
 import ProfileCerts from "@/components/profile/profile-certs"
 import ProfileGroups from "@/components/profile/profile-groups"
+import SettingsPanel from "@/components/settings/settings-panel"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import { UserX } from "lucide-react"
@@ -44,16 +45,19 @@ type TabKey =
   | "projects"
   | "groups"
   | "endorsements"
+  | "settings"
 
-// Tab strip: Overview, Certs, Projects, Groups, Endorsements.
-// Keep the order in sync with PROFILE_TABS in desktop-top-bar.tsx —
-// that's the single source the user actually clicks on desktop.
+// Tab strip: Overview, Certs, Projects, Groups, Endorsements, (Settings —
+// own profile only, rendered conditionally below). Keep the order in
+// sync with PROFILE_TABS in desktop-top-bar.tsx — that's the single
+// source the user actually clicks on desktop.
 const TABS: { key: TabKey; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "certs", label: "Certs" },
   { key: "projects", label: "Projects" },
   { key: "groups", label: "Groups" },
   { key: "endorsements", label: "Endorsements" },
+  { key: "settings", label: "Settings" },
 ]
 
 // `ProfileDrafts` lives in `profile-inline-edit-types` so the sidebar and
@@ -718,6 +722,15 @@ export default function UserProfilePage() {
               aria-labelledby="tab-endorsements"
             >
               <ProfileEndorsements did={did} />
+            </div>
+          )}
+          {activeTab === "settings" && isOwnProfile && (
+            <div
+              role="tabpanel"
+              id="tabpanel-settings"
+              aria-labelledby="tab-settings"
+            >
+              <SettingsPanel />
             </div>
           )}
         </div>

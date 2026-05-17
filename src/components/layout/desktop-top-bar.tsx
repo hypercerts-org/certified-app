@@ -37,7 +37,11 @@ const PROFILE_TABS: ProfileTab[] = [
   { key: "projects", label: "Projects" },
   { key: "groups", label: "Groups" },
   { key: "endorsements", label: "Endorsements" },
-  { key: "settings", label: "Settings", href: "/settings", ownOnly: true },
+  // Settings is now a real `?tab=settings` panel on the profile page —
+  // no special `href` shortcut. The `/settings` route still works as a
+  // standalone deep-link target (and `isOnSettings` below keeps the
+  // top-bar tab strip rendering for it).
+  { key: "settings", label: "Settings", ownOnly: true },
 ];
 
 /**

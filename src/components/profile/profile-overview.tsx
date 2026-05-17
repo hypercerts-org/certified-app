@@ -9,7 +9,6 @@ import BannerUpload from "@/components/profile/banner-upload"
 import Map from "@/components/map/map-dynamic"
 import { ORG_TYPE_PRESETS } from "@/lib/groups/org-types"
 import { getInitials } from "@/lib/utils/initials"
-import { useUserGroups } from "@/hooks/use-user-groups"
 import { useReceivedEndorsements, type ReceivedEndorsement } from "@/hooks/use-received-endorsements"
 import { useGivenEndorsements } from "@/hooks/use-endorsements"
 import { useUserIndexerActivities } from "@/hooks/use-user-indexer-activities"
@@ -98,7 +97,6 @@ export default function ProfileOverview({
     }
   }
 
-  const { groups, isLoading: groupsLoading } = useUserGroups(did)
   const { endorsements, isLoading: endorsementsLoading } = useReceivedEndorsements(did)
   const { endorsements: givenEndorsements, isLoading: givenLoading } = useGivenEndorsements(did)
   const { projects, isLoading: projectsLoading } = useUserProjects(did)
@@ -348,18 +346,6 @@ export default function ProfileOverview({
           <span className="profile-overview__stat-split profile-overview__stat-split--solo">
             <span className="profile-overview__stat-value">
               {projectsLoading ? "—" : projects.length}
-            </span>
-          </span>
-        </Link>
-        <Link
-          href={`${basePath}?tab=groups`}
-          scroll={false}
-          className="profile-overview__stat"
-        >
-          <span className="profile-overview__stat-label">Groups</span>
-          <span className="profile-overview__stat-split profile-overview__stat-split--solo">
-            <span className="profile-overview__stat-value">
-              {groupsLoading ? "—" : groups.length}
             </span>
           </span>
         </Link>

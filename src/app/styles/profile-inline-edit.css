@@ -183,62 +183,119 @@
   opacity: 0.9;
 }
 
-/* --- Overview banner in edit mode ----------------------------------- */
+/* --- Overview banner in edit mode -----------------------------------
+   The wrapper passes its 3:1 / 220px-max box shape through to the
+   inner BannerUpload — which renders its own grey-gradient empty
+   state and a floating "Change banner" button (mirroring the
+   sidebar's avatar-edit overlay, so both affordances feel the same). */
 
-/* Strip the outer wrapper's gradient backdrop in edit mode so the
-   inner BannerUpload (which has its own background) doesn't appear to
-   float on top of a grey box. When a real banner image is uploaded the
-   image covers the box edge-to-edge and there's no grey strip behind. */
 .profile-overview__banner--editing {
   background: transparent !important;
   margin-bottom: 16px;
 }
 
-/* Pin the inner BannerUpload to the outer banner-slot's box so its
-   aspect ratio + corners match the read-only banner exactly. */
 .profile-overview__banner-edit-slot {
   height: 100%;
 }
 
-.profile-overview__banner-edit-slot .profile-card__banner {
+.profile-overview__banner-edit-slot .profile-banner-upload,
+.profile-overview__banner-edit-slot .profile-banner-upload__box {
   width: 100%;
   height: 100%;
-  min-height: 0;
-  margin: 0;
-  border-radius: inherit;
-  overflow: hidden;
 }
 
-.profile-overview__banner-edit-slot .profile-card__banner img {
+.profile-banner-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-banner-upload__box {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 1;
+  max-height: 220px;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: linear-gradient(
+    135deg,
+    var(--bg-sunken) 0%,
+    var(--bg-raised) 100%
+  );
+}
+
+.profile-banner-upload__box--empty {
+  /* Subtle dashed outline so it reads as a drop target even though the
+     primary affordance is the floating button. */
+  outline: 1.5px dashed var(--border-hover);
+  outline-offset: -2px;
+}
+
+.profile-banner-upload__img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-/* Empty-state affordance: when there's no banner image, render a
-   centred "Click to add a banner" label inside the upload area so the
-   user has an obvious target. The label is hidden as soon as an
-   image is present (via :has(img)). Modern browsers only — the
-   regression is "the click area is still there, just without the
-   label", which is acceptable. */
-.profile-overview__banner-edit-slot .profile-card__banner:not(:has(img))::before {
-  content: "Click to add a banner";
+/* Floating "Change banner" button — same visual treatment as the
+   sidebar avatar-edit overlay so both upload affordances feel the
+   same. Always visible (not hover-only) and anchored to the
+   bottom-right of the banner. */
+.profile-banner-upload__btn {
   position: absolute;
-  inset: 0;
-  display: flex;
+  bottom: 10px;
+  right: 10px;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 6px;
+  background: rgba(17, 17, 17, 0.78);
+  color: var(--color-white);
+  border: none;
+  border-radius: 999px;
+  padding: 6px 12px;
   font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 500;
-  letter-spacing: 0.02em;
-  color: var(--fg-muted);
-  pointer-events: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background var(--transition-fast), transform var(--transition-fast);
+  z-index: 1;
 }
 
-.profile-overview__banner-edit-slot .profile-card__banner:not(:has(img)) {
-  border: 1.5px dashed var(--border-hover);
+.profile-banner-upload__btn:hover {
+  background: rgba(17, 17, 17, 0.92);
+}
+
+.profile-banner-upload__btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.profile-banner-upload__btn:disabled {
+  cursor: progress;
+  opacity: 0.9;
+}
+
+.profile-banner-upload__btn-label {
+  white-space: nowrap;
+}
+
+.profile-banner-upload__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.profile-banner-upload__error {
+  font-size: 0.75rem;
+  color: var(--color-error);
+  margin: 0;
 }
 
 /* --- Overview About textarea --------------------------------------- */
@@ -280,6 +337,24 @@
   font-size: 0.8125rem;
   color: var(--fg-muted);
   flex-shrink: 0;
+}
+
+/* Section sub-heading inside the .profile-sidebar__details list — used
+   above the website input and the additional-links editor in edit
+   mode so each block has a clear label. Uppercase + tracking matches
+   the existing section titles ("Groups", etc.). */
+.profile-sidebar__details-header {
+  list-style: none;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin: 8px 0 4px;
+}
+
+.profile-sidebar__details-header:first-child {
+  margin-top: 0;
 }
 
 .profile-sidebar__org-input {

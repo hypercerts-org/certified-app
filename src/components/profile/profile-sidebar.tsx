@@ -241,20 +241,27 @@ export default function ProfileSidebar({
       </p>
 
       <ul className="profile-sidebar__details">
+        {/* Main website field. In edit mode we add an uppercase
+            sub-header so the input has the same labelled shape as the
+            "Additional links" block below. Read mode shows just the
+            SmartLink row (no header). */}
         {isEditing && hasInline ? (
-          <li className="profile-sidebar__website-edit">
-            <LinkIcon size={16} strokeWidth={1.75} aria-hidden />
-            <input
-              type="url"
-              inputMode="url"
-              className="profile-sidebar__website-input"
-              value={drafts?.website ?? ""}
-              maxLength={256}
-              placeholder="https://example.com"
-              aria-label="Website"
-              onChange={(e) => onDraftChange?.("website", e.target.value)}
-            />
-          </li>
+          <>
+            <li className="profile-sidebar__details-header">Main website</li>
+            <li className="profile-sidebar__website-edit">
+              <LinkIcon size={16} strokeWidth={1.75} aria-hidden />
+              <input
+                type="url"
+                inputMode="url"
+                className="profile-sidebar__website-input"
+                value={drafts?.website ?? ""}
+                maxLength={256}
+                placeholder="https://example.com"
+                aria-label="Website"
+                onChange={(e) => onDraftChange?.("website", e.target.value)}
+              />
+            </li>
+          </>
         ) : profile?.website ? (
           <li>
             <SmartLink url={profile.website} />
@@ -265,10 +272,13 @@ export default function ProfileSidebar({
             we render one row per saved URL. Empty arrays render
             nothing (no "URLs" header). */}
         {isEditing && hasInline && isOrg ? (
-          <OrgUrlListEditor
-            rows={drafts?.additionalUrls ?? []}
-            onChange={(rows) => onDraftChange?.("additionalUrls", rows)}
-          />
+          <>
+            <li className="profile-sidebar__details-header">Additional links</li>
+            <OrgUrlListEditor
+              rows={drafts?.additionalUrls ?? []}
+              onChange={(rows) => onDraftChange?.("additionalUrls", rows)}
+            />
+          </>
         ) : isOrg && additionalUrls
           ? additionalUrls
               .filter((u) => typeof u === "string" && u.length > 0)
