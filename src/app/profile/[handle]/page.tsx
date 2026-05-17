@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useParams, useSearchParams } from "next/navigation"
 import { useProfileNavbar, usePageTitle, usePageTitleBreadcrumb } from "@/lib/navbar-context"
 import { useUserProfile } from "@/hooks/use-user-profile"
@@ -292,6 +292,12 @@ export default function UserProfilePage() {
     useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  // Tracks whether the viewer has touched anything in edit mode (typed
+  // into an input, picked a new avatar / banner, edited an URL row,
+  // etc.). Drives the unsaved-changes guard below — without it we'd
+  // warn even when the user opened edit mode and immediately tried to
+  // navigate away.
+  const [hasInteracted, setHasInteracted] = useState(false)
 
   // Effective values used everywhere the UI renders read-only content:
   // preview (in-flight upload) wins, then post-save mirror, then the
@@ -347,6 +353,7 @@ export default function UserProfilePage() {
     setPendingAvatarBlob(null)
     setPendingBannerBlob(null)
     setSaveError(null)
+    setHasInteracted(false)
     setIsEditing(true)
   }, [effectiveProfile, effectiveOrgMarker, effectiveOrgUrls])
 
@@ -362,6 +369,7 @@ export default function UserProfilePage() {
     setPendingAvatarPreviewUrl(null)
     setPendingBannerPreviewUrl(null)
     setSaveError(null)
+    setHasInteracted(false)
     // Note: we keep `localOrgMarker` so any *previous* save still
     // reflects in the read-only render. Only the in-flight draft state
     // is discarded.
@@ -370,6 +378,7 @@ export default function UserProfilePage() {
   const handleDraftChange = useCallback(
     <K extends keyof ProfileDrafts>(key: K, value: ProfileDrafts[K]) => {
       setDrafts((prev) => ({ ...prev, [key]: value }))
+      setHasInteracted(true)
     },
     [],
   )
@@ -385,6 +394,7 @@ export default function UserProfilePage() {
         if (prev) URL.revokeObjectURL(prev)
         return previewUrl
       })
+      setHasInteracted(true)
       const blob = await uploadAvatar(
         file,
         editTargetDid ? { targetDid: editTargetDid } : undefined,
@@ -401,6 +411,7 @@ export default function UserProfilePage() {
         if (prev) URL.revokeObjectURL(prev)
         return previewUrl
       })
+      setHasInteracted(true)
       const blob = await uploadBanner(
         file,
         editTargetDid ? { targetDid: editTargetDid } : undefined,
@@ -561,6 +572,7 @@ export default function UserProfilePage() {
       setPendingBannerPreviewUrl(null)
       setPendingAvatarBlob(null)
       setPendingBannerBlob(null)
+      setHasInteracted(false)
       setIsEditing(false)
     } catch (err) {
       console.error("Failed to save profile:", err)
@@ -584,6 +596,72 @@ export default function UserProfilePage() {
     effectiveOrgMarker,
     refreshOrgMarker,
   ])
+
+  // -------------------------------------------------------------------
+  // Unsaved-changes guard
+  // -------------------------------------------------------------------
+  // Warn before the viewer leaves the page mid-edit. Covers three exit
+  // routes:
+  //   1. Browser refresh / tab close — native `beforeunload` dialog.
+  //   2. In-app navigation (top-bar tab clicks, sidebar group links,
+  //      brand logo, etc.) — caught with a document-level capture
+  //      handler on `<a>` elements that pops a `window.confirm()`.
+  //      Save / Cancel inside the edit banner is intentionally
+  //      exempted so the user can leave through them without a prompt.
+  // We don't guard the React Router push API directly because App
+  // Router doesn't expose a stable navigation-guard API; intercepting
+  // anchor clicks covers every realistic in-app navigation path.
+  const isDirty = isEditing && hasInteracted
+  useEffect(() => {
+    if (!isDirty) return
+
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ""
+    }
+
+    const onClickCapture = (e: MouseEvent) => {
+      if (
+        e.button !== 0 ||
+        e.metaKey ||
+        e.ctrlKey ||
+        e.shiftKey ||
+        e.altKey ||
+        e.defaultPrevented
+      ) {
+        return
+      }
+      const target =
+        e.target instanceof Element
+          ? (e.target.closest("a[href]") as HTMLAnchorElement | null)
+          : null
+      if (!target) return
+      // Anchors inside the edit banner (Save / Cancel) or the inline-
+      // edit affordances (avatar/banner upload, URL list controls)
+      // mustn't trigger the guard — they're part of the edit flow.
+      if (target.closest(".profile-edit-banner")) return
+      if (target.closest(".profile-sidebar__avatar-edit-btn")) return
+      if (target.closest(".profile-banner-upload__btn")) return
+      // External `target="_blank"` links open in a new tab so the
+      // current edit state is preserved — no prompt needed.
+      if (target.target && target.target !== "_self") return
+
+      const proceed = window.confirm(
+        "You have unsaved changes. Leave and discard them?",
+      )
+      if (!proceed) {
+        e.preventDefault()
+        e.stopImmediatePropagation()
+      }
+    }
+
+    window.addEventListener("beforeunload", onBeforeUnload)
+    document.addEventListener("click", onClickCapture, true)
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload)
+      document.removeEventListener("click", onClickCapture, true)
+    }
+  }, [isDirty])
 
   // Mobile <ProfileHeader> still uses the legacy edit pages as a
   // fallback (inline edit isn't wired on the compact mobile header
