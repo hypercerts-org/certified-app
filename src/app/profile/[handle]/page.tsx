@@ -355,20 +355,28 @@ export default function UserProfilePage() {
     ? null
     : (effectiveOrgMarker?.longDescription ?? null)
   // Publish "this profile has a long description" to the navbar
-  // context so the top-bar can render the About tab. Edit mode
-  // forces the tab on for org admins so they can navigate over to
-  // write a fresh description even when the field is currently
-  // empty. Always reset when navigating away (the hook returns
-  // `false` on unmount).
+  // context so the top-bar can render the About tab. Three reasons
+  // to show the tab:
+  //   1. The profile actually carries a long description.
+  //   2. The viewer is currently signed in as this entity (own
+  //      personal profile, or acting-as this group) — they need the
+  //      tab in order to write their first one, even when empty.
+  //   3. Edit mode is open for an org admin — kept for parity with
+  //      the active-edit flow.
+  // Always reset when navigating away (the hook returns `false` on
+  // unmount).
   const aboutEditingForOrg = isEditing && canEditInline && sidebarIsOrg
-  useProfileAboutAvailable(!!displayLongDescription || aboutEditingForOrg)
-  // Gate the Groups tab: visible on the viewer's own profile (so they
-  // can manage their groups even with none yet) AND on any profile
-  // that actually has a public membership. Foreign empty profiles
-  // hide the tab entirely.
+  const isViewerThisEntity = isOwnProfile || isActingAsThisGroup
+  useProfileAboutAvailable(
+    !!displayLongDescription || isViewerThisEntity || aboutEditingForOrg,
+  )
+  // Gate the Groups tab: visible whenever the viewer is currently
+  // signed in as this entity (own profile, or acting-as this group),
+  // OR when the profile carries at least one public membership.
+  // Foreign empty profiles hide the tab entirely.
   const viewedPublicGroups = useUserGroups(did)
   const hasGroupTab =
-    isOwnProfile || (viewedPublicGroups.groups?.length ?? 0) > 0
+    isViewerThisEntity || (viewedPublicGroups.groups?.length ?? 0) > 0
   useProfileGroupsAvailable(hasGroupTab)
   // Memoised so the array reference is stable when no inputs changed —
   // otherwise the `handleEditClick` useCallback below would invalidate
