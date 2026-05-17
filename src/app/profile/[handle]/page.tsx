@@ -695,100 +695,100 @@ export default function UserProfilePage() {
         </div>
       ) : null}
 
-      <div className="profile-page__layout">
-        <ProfileSidebar
-          profile={effectiveProfile}
-          avatarUrl={effectiveAvatarUrl}
-          handle={resolvedHandle || (rawHandle ?? null)}
-          did={did}
-          basePath={pathname || ""}
-          settingsHref={settingsHref}
-          isOrg={sidebarIsOrg}
-          additionalUrls={effectiveAdditionalUrls}
-          orgFoundedDate={displayFoundedDate}
-          groupsOverride={isOwnProfile ? groups : undefined}
-          groupsLoadingOverride={isOwnProfile ? orgGroupsLoading : undefined}
-          canInlineEdit={canEditInline}
-          isEditing={editing}
-          drafts={drafts}
-          onEditClick={handleEditClick}
-          onCancelEdit={handleCancelEdit}
-          onSaveEdit={handleSave}
-          onDraftChange={handleDraftChange}
-          onAvatarFile={handleAvatarFile}
-          hasPendingAvatar={!!pendingAvatarBlob}
-          isSaving={isSaving}
-          saveError={saveError}
-        />
+      {activeTab === "settings" && isOwnProfile ? (
+        // Settings tab swaps the entire profile-page two-pane layout
+        // out for the settings panel's own menu+sections two-pane
+        // layout — same 296px slim rail, but the left pane carries
+        // settings categories (Username / Email / Password /
+        // Appearance) instead of the profile identity sidebar.
+        <SettingsPanel />
+      ) : (
+        <div className="profile-page__layout">
+          <ProfileSidebar
+            profile={effectiveProfile}
+            avatarUrl={effectiveAvatarUrl}
+            handle={resolvedHandle || (rawHandle ?? null)}
+            did={did}
+            basePath={pathname || ""}
+            settingsHref={settingsHref}
+            isOrg={sidebarIsOrg}
+            additionalUrls={effectiveAdditionalUrls}
+            orgFoundedDate={displayFoundedDate}
+            groupsOverride={isOwnProfile ? groups : undefined}
+            groupsLoadingOverride={isOwnProfile ? orgGroupsLoading : undefined}
+            canInlineEdit={canEditInline}
+            isEditing={editing}
+            drafts={drafts}
+            onEditClick={handleEditClick}
+            onCancelEdit={handleCancelEdit}
+            onSaveEdit={handleSave}
+            onDraftChange={handleDraftChange}
+            onAvatarFile={handleAvatarFile}
+            hasPendingAvatar={!!pendingAvatarBlob}
+            isSaving={isSaving}
+            saveError={saveError}
+          />
 
-        <div className="profile-page__main">
-          {activeTab === "overview" && (
-            <div role="tabpanel" id="tabpanel-overview" aria-labelledby="tab-overview">
-              <ProfileOverview
-                bannerUrl={effectiveBannerUrl}
-                did={did}
-                profile={effectiveProfile}
-                basePath={pathname || ""}
-                isEditing={editing}
-                drafts={drafts}
-                onDraftChange={handleDraftChange}
-                onBannerFile={handleBannerFile}
-                hasPendingBanner={!!pendingBannerBlob}
-                isOrg={sidebarIsOrg}
-                orgLongDescription={displayLongDescription}
-                orgTypeTags={displayOrgTypeTags}
-                orgLocationName={displayLocation.name}
-                orgLocationCoords={displayLocation.coords}
-              />
-            </div>
-          )}
-          {activeTab === "certs" && (
-            <div
-              role="tabpanel"
-              id="tabpanel-certs"
-              aria-labelledby="tab-certs"
-            >
-              <ProfileCerts did={did} />
-            </div>
-          )}
-          {activeTab === "projects" && (
-            <div
-              role="tabpanel"
-              id="tabpanel-projects"
-              aria-labelledby="tab-projects"
-            >
-              <ProfileProjects did={did} />
-            </div>
-          )}
-          {activeTab === "groups" && (
-            <div
-              role="tabpanel"
-              id="tabpanel-groups"
-              aria-labelledby="tab-groups"
-            >
-              <ProfileGroups did={did} />
-            </div>
-          )}
-          {activeTab === "endorsements" && (
-            <div
-              role="tabpanel"
-              id="tabpanel-endorsements"
-              aria-labelledby="tab-endorsements"
-            >
-              <ProfileEndorsements did={did} />
-            </div>
-          )}
-          {activeTab === "settings" && isOwnProfile && (
-            <div
-              role="tabpanel"
-              id="tabpanel-settings"
-              aria-labelledby="tab-settings"
-            >
-              <SettingsPanel />
-            </div>
-          )}
+          <div className="profile-page__main">
+            {activeTab === "overview" && (
+              <div role="tabpanel" id="tabpanel-overview" aria-labelledby="tab-overview">
+                <ProfileOverview
+                  bannerUrl={effectiveBannerUrl}
+                  did={did}
+                  profile={effectiveProfile}
+                  basePath={pathname || ""}
+                  isEditing={editing}
+                  drafts={drafts}
+                  onDraftChange={handleDraftChange}
+                  onBannerFile={handleBannerFile}
+                  hasPendingBanner={!!pendingBannerBlob}
+                  isOrg={sidebarIsOrg}
+                  orgLongDescription={displayLongDescription}
+                  orgTypeTags={displayOrgTypeTags}
+                  orgLocationName={displayLocation.name}
+                  orgLocationCoords={displayLocation.coords}
+                />
+              </div>
+            )}
+            {activeTab === "certs" && (
+              <div
+                role="tabpanel"
+                id="tabpanel-certs"
+                aria-labelledby="tab-certs"
+              >
+                <ProfileCerts did={did} />
+              </div>
+            )}
+            {activeTab === "projects" && (
+              <div
+                role="tabpanel"
+                id="tabpanel-projects"
+                aria-labelledby="tab-projects"
+              >
+                <ProfileProjects did={did} />
+              </div>
+            )}
+            {activeTab === "groups" && (
+              <div
+                role="tabpanel"
+                id="tabpanel-groups"
+                aria-labelledby="tab-groups"
+              >
+                <ProfileGroups did={did} />
+              </div>
+            )}
+            {activeTab === "endorsements" && (
+              <div
+                role="tabpanel"
+                id="tabpanel-endorsements"
+                aria-labelledby="tab-endorsements"
+              >
+                <ProfileEndorsements did={did} />
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
