@@ -416,6 +416,12 @@ export default function DesktopTopBar() {
                     key={t.key}
                     href={href}
                     scroll={false}
+                    // Replace (not push) so switching between tabs on
+                    // the same cert doesn't pollute browser history.
+                    // The Back button then skips tab states and goes
+                    // back to wherever the user came from (the certs
+                    // feed, a profile, etc.).
+                    replace
                     role="tab"
                     aria-selected={isActive}
                     className={`desktop-top-bar__tab ${

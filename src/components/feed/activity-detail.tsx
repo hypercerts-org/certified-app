@@ -3,11 +3,10 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { Award, Calendar, Clock, FileText, Pencil, Target } from "lucide-react"
+import { Award, Calendar, FileText, Pencil, Target } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import {
   resolveActivityImageUrl,
-  formatRelativeTime,
   evaluateWorkScope,
 } from "@/lib/atproto/activity"
 import {
@@ -118,7 +117,6 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
   }
 
   const createdAbsolute = formatDate(value.createdAt)
-  const createdRelative = formatRelativeTime(value.createdAt)
 
   const contributors = value.contributors ?? []
   const contributorCount = contributors.length
@@ -194,6 +192,7 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
               <Link
                 href={descriptionHref}
                 scroll={false}
+                replace
                 className="cert-detail__more-link"
               >
                 more
@@ -241,19 +240,8 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
         )}
 
         <dl className="cert-detail__meta">
-          <div className="cert-detail__meta-row">
-            <dt className="cert-detail__meta-label">
-              <Clock size={11} strokeWidth={2} aria-hidden />
-              Created
-            </dt>
-            <dd className="cert-detail__meta-value">
-              <time dateTime={value.createdAt} title={createdAbsolute}>
-                {createdAbsolute}
-              </time>
-              <span className="cert-detail__meta-aux">({createdRelative})</span>
-            </dd>
-          </div>
-
+          {/* "Created" lives in the headline byline now — no need to
+              repeat it in the aside meta list. */}
           <div className="cert-detail__meta-row">
             <dt className="cert-detail__meta-label">
               <Calendar size={11} strokeWidth={2} aria-hidden />
