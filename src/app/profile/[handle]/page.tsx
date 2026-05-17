@@ -1006,7 +1006,7 @@ export default function UserProfilePage() {
         </div>
       ) : null}
 
-      {activeTab === "settings" && isOwnProfile ? (
+      {activeTab === "settings" && isViewerThisEntity ? (
         // Settings tab swaps the entire profile-page two-pane layout
         // out for the settings panel's own menu+sections two-pane
         // layout — same 296px slim rail, but the left pane carries

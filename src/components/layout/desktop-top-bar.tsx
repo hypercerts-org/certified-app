@@ -309,7 +309,15 @@ export default function DesktopTopBar() {
 
           {isAuthenticated ? (
             <Link
-              href="/settings"
+              // Route to the active identity's profile settings tab
+              // so the cog and the in-page tab strip end up at the
+              // same surface. Falls back to /settings for the rare
+              // case where no handle has resolved yet.
+              href={
+                identity.handle
+                  ? `/profile/${encodeURIComponent(identity.handle)}?tab=settings`
+                  : "/settings"
+              }
               className="desktop-top-bar__icon-btn"
               aria-label="Settings"
               title="Settings"
