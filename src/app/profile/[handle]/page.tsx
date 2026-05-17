@@ -49,7 +49,7 @@ import LeafletEditor from "@/components/leaflet/leaflet-editor"
 import type { LinearDocument } from "@/lib/leaflet/types"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
-import { UserX } from "lucide-react"
+import { AlignLeft, UserX } from "lucide-react"
 import {
   newDraftUrlRow,
   type ProfileDrafts,
@@ -1085,6 +1085,17 @@ export default function UserProfilePage() {
                     value={displayLongDescription}
                     did={did}
                     className="profile-page__about-doc"
+                  />
+                ) : isViewerThisEntity ? (
+                  /* Empty About tab, but the viewer is signed in as
+                     this entity — show the prompt to click "Edit
+                     profile". Foreign viewers don't reach this branch
+                     because the tab gate hides the About tab when
+                     there's no content for them. */
+                  <EmptyState
+                    icon={AlignLeft}
+                    title="Nothing here yet"
+                    description="Click Edit profile to add an About section to your profile."
                   />
                 ) : null}
               </div>
