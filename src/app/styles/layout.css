@@ -3207,3 +3207,63 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   max-width: 200px;
 }
 
+/* ============================================================
+   Site footer — minimal, GitHub-style.
+
+   One horizontal row at desktop (small brandmark + copyright on the
+   left, link list on the right); wraps to two stacked rows on
+   narrow viewports. Sits inside `.app-shell__center` so the
+   gutters / max-width come from the existing grid. Top border
+   keeps the line between content and footer subtle.
+   ============================================================ */
+
+.site-footer {
+  border-top: 1px solid var(--border-subtle);
+  padding: 16px 0 24px;
+  margin-top: 48px;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.site-footer__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.site-footer__left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.site-footer__brand {
+  color: var(--fg-muted);
+  opacity: 0.7;
+}
+
+.site-footer__nav {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+.site-footer__link {
+  color: var(--fg-muted);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.site-footer__link:hover {
+  color: var(--fg-primary);
+}
+
+.site-footer__link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+

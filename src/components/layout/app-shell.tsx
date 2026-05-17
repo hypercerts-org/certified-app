@@ -1,6 +1,7 @@
 "use client";
 
 import { useNavbarContext } from "@/lib/navbar-context";
+import SiteFooter from "@/components/layout/site-footer";
 
 /**
  * Single-column shell (post-Overview-redesign).
@@ -29,6 +30,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <div className="app-shell__content">
             {children}
           </div>
+          <SiteFooter />
         </div>
       </div>
     </div>
