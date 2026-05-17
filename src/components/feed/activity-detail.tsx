@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import { Award, Calendar, FileText, Pencil, Target } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useOrg } from "@/lib/groups/org-context"
 import {
   resolveActivityImageUrl,
   evaluateWorkScope,
@@ -146,12 +147,18 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
       ? tabParam
       : "overview"
 
-  // Edit affordance — only the creator (cert.did === session DID) can
-  // act on this. We pull the URL up to the cert's id (no `?tab=...`)
-  // and append `/edit` so future routes get a stable target. When the
-  // viewer isn't the creator, no edit link renders.
+  // Edit affordance — the creator can act on the cert. "Creator"
+  // here means the current viewer is signed in *as* the cert's
+  // author. Two paths:
+  //   - Personal session DID === cert.did (own cert), OR
+  //   - Active org (acting-as-group) DID === cert.did (group cert).
+  // Acting-as-group is the path that used to be missed — group
+  // admins viewing the group's own cert now see the edit button.
   const { did: sessionDid } = useAuth()
-  const isCreator = !!sessionDid && sessionDid === did
+  const { activeOrg } = useOrg()
+  const isCreator =
+    (!!sessionDid && sessionDid === did) ||
+    (!!activeOrg && activeOrg.groupDid === did)
   const certBasePath = pathname ?? ""
   const editHref = isCreator ? `${certBasePath}/edit` : null
   const descriptionHref = pathname
