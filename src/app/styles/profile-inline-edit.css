@@ -416,12 +416,20 @@
   gap: 8px;
 }
 
-.profile-sidebar__org-url-remove {
+.profile-sidebar__org-url-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.profile-sidebar__org-url-remove,
+.profile-sidebar__org-url-move {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 4px;
@@ -433,9 +441,15 @@
   flex: 0 0 auto;
 }
 
-.profile-sidebar__org-url-remove:hover {
+.profile-sidebar__org-url-remove:hover,
+.profile-sidebar__org-url-move:hover:not(:disabled) {
   background: var(--overlay-weak);
   color: var(--fg-primary);
+}
+
+.profile-sidebar__org-url-move:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 /* "+ Add URL" trigger row. Renders as its own list item below the

@@ -7,6 +7,8 @@ import {
   Calendar,
   Camera,
   Check,
+  ChevronDown,
+  ChevronUp,
   Copy,
   Link as LinkIcon,
   Pencil,
@@ -431,31 +433,68 @@ function OrgUrlListEditor({ rows, onChange }: OrgUrlListEditorProps) {
   const add = () => {
     onChange([...rows, newDraftUrlRow()])
   }
+  // Reorder helpers — swap with the neighbour in the requested
+  // direction. Save persists the new array order verbatim, so the
+  // read-side render renders URLs in this same sequence.
+  const move = (index: number, direction: -1 | 1) => {
+    const target = index + direction
+    if (target < 0 || target >= rows.length) return
+    const next = rows.slice()
+    const [moved] = next.splice(index, 1)
+    next.splice(target, 0, moved)
+    onChange(next)
+  }
   return (
     <>
-      {rows.map((row) => (
-        <li key={row.id} className="profile-sidebar__org-url-edit">
-          <LinkIcon size={16} strokeWidth={1.75} aria-hidden />
-          <input
-            type="url"
-            inputMode="url"
-            className="profile-sidebar__org-input"
-            value={row.url}
-            placeholder="https://example.com"
-            aria-label="URL"
-            onChange={(e) => update(row.id, { url: e.target.value })}
-          />
-          <button
-            type="button"
-            className="profile-sidebar__org-url-remove"
-            onClick={() => remove(row.id)}
-            aria-label="Remove URL"
-            title="Remove URL"
-          >
-            <X size={14} strokeWidth={1.75} aria-hidden />
-          </button>
-        </li>
-      ))}
+      {rows.map((row, i) => {
+        const isFirst = i === 0
+        const isLast = i === rows.length - 1
+        return (
+          <li key={row.id} className="profile-sidebar__org-url-edit">
+            <LinkIcon size={16} strokeWidth={1.75} aria-hidden />
+            <input
+              type="url"
+              inputMode="url"
+              className="profile-sidebar__org-input"
+              value={row.url}
+              placeholder="https://example.com"
+              aria-label="URL"
+              onChange={(e) => update(row.id, { url: e.target.value })}
+            />
+            <div className="profile-sidebar__org-url-actions">
+              <button
+                type="button"
+                className="profile-sidebar__org-url-move"
+                onClick={() => move(i, -1)}
+                disabled={isFirst}
+                aria-label="Move URL up"
+                title="Move up"
+              >
+                <ChevronUp size={14} strokeWidth={1.75} aria-hidden />
+              </button>
+              <button
+                type="button"
+                className="profile-sidebar__org-url-move"
+                onClick={() => move(i, 1)}
+                disabled={isLast}
+                aria-label="Move URL down"
+                title="Move down"
+              >
+                <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
+              </button>
+              <button
+                type="button"
+                className="profile-sidebar__org-url-remove"
+                onClick={() => remove(row.id)}
+                aria-label="Remove URL"
+                title="Remove URL"
+              >
+                <X size={14} strokeWidth={1.75} aria-hidden />
+              </button>
+            </div>
+          </li>
+        )
+      })}
       <li className="profile-sidebar__org-url-add-row">
         <button
           type="button"
