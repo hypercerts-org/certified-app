@@ -273,8 +273,9 @@
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
-  padding: 6px 12px;
-  border-radius: 999px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--radius);
   border: 1px solid var(--border-default);
   background: var(--bg-elevated);
   color: var(--fg-primary);
@@ -285,7 +286,7 @@
 }
 
 .cert-detail__edit-btn:hover {
-  background: var(--overlay-weak);
+  background: var(--bg-sunken);
   border-color: var(--border-hover);
 }
 
@@ -337,6 +338,7 @@
   font-feature-settings: 'tnum' 1;
 }
 
+.cert-detail__headline-label,
 .cert-detail__headline-by {
   color: var(--fg-muted);
 }

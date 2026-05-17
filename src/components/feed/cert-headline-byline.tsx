@@ -37,6 +37,7 @@ export default function CertHeadlineByline({
 
   return (
     <div className="cert-detail__headline-byline">
+      <span className="cert-detail__headline-label">Created:</span>
       <time
         dateTime={createdAt}
         className="cert-detail__headline-date"
