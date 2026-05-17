@@ -34,13 +34,18 @@ interface ProfileTab {
    *  flag whenever the viewed profile carries a non-empty
    *  `longDescription`. */
   aboutOnly?: boolean;
+  /** When true, only render the tab when the navbar context flag
+   *  `profileGroupsAvailable` is set — i.e. the viewed profile has
+   *  at least one group membership OR the viewer is on their own
+   *  profile. */
+  groupsOnly?: boolean;
 }
 
 const PROFILE_TABS: ProfileTab[] = [
   { key: "overview", label: "Overview" },
   { key: "certs", label: "Certs" },
   { key: "projects", label: "Projects" },
-  { key: "groups", label: "Groups" },
+  { key: "groups", label: "Groups", groupsOnly: true },
   { key: "endorsements", label: "Endorsements" },
   { key: "about", label: "About", aboutOnly: true },
   // Settings is now a real `?tab=settings` panel on the profile page —
@@ -72,7 +77,12 @@ export default function DesktopTopBar() {
   const searchParams = useSearchParams();
 
   const { isLoading, isAuthenticated, did, openSignIn, signOut } = useAuth();
-  const { pageTitle, breadcrumb, profileAboutAvailable } = useNavbarContext();
+  const {
+    pageTitle,
+    breadcrumb,
+    profileAboutAvailable,
+    profileGroupsAvailable,
+  } = useNavbarContext();
   const { profile, avatarUrl } = useProfile();
   const { handle } = useSession();
   const { activeOrg, groups, switchOrg } = useOrg();
@@ -140,9 +150,10 @@ export default function DesktopTopBar() {
       PROFILE_TABS.filter((t) => {
         if (t.ownOnly && !showOwnOnlyTabs) return false
         if (t.aboutOnly && !profileAboutAvailable) return false
+        if (t.groupsOnly && !profileGroupsAvailable) return false
         return true
       }),
-    [showOwnOnlyTabs, profileAboutAvailable],
+    [showOwnOnlyTabs, profileAboutAvailable, profileGroupsAvailable],
   );
   const activeTab = useMemo(() => {
     if (isOnSettings) return "settings";

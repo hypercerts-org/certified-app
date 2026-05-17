@@ -39,6 +39,11 @@ interface NavbarContextValue {
    *  read by `<DesktopTopBar />` while filtering PROFILE_TABS. */
   profileAboutAvailable: boolean;
   setProfileAboutAvailable: (v: boolean) => void;
+  /** True when the viewed profile carries at least one public group
+   *  membership OR when the viewer is looking at their own profile.
+   *  Drives whether the "Groups" tab renders in the top-bar tab strip. */
+  profileGroupsAvailable: boolean;
+  setProfileGroupsAvailable: (v: boolean) => void;
 }
 
 const NavbarContext = createContext<NavbarContextValue>({
@@ -50,6 +55,8 @@ const NavbarContext = createContext<NavbarContextValue>({
   setProfileOverlay: () => {},
   profileAboutAvailable: false,
   setProfileAboutAvailable: () => {},
+  profileGroupsAvailable: false,
+  setProfileGroupsAvailable: () => {},
 });
 
 export function NavbarProvider({ children }: { children: ReactNode }) {
@@ -57,6 +64,8 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
   const [breadcrumb, setBreadcrumb] = useState<PageTitleBreadcrumb | null>(null);
   const [profileOverlay, setProfileOverlay] = useState<boolean>(false);
   const [profileAboutAvailable, setProfileAboutAvailable] =
+    useState<boolean>(false);
+  const [profileGroupsAvailable, setProfileGroupsAvailable] =
     useState<boolean>(false);
   const value = useMemo(
     () => ({
@@ -68,8 +77,16 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
       setProfileOverlay,
       profileAboutAvailable,
       setProfileAboutAvailable,
+      profileGroupsAvailable,
+      setProfileGroupsAvailable,
     }),
-    [pageTitle, breadcrumb, profileOverlay, profileAboutAvailable]
+    [
+      pageTitle,
+      breadcrumb,
+      profileOverlay,
+      profileAboutAvailable,
+      profileGroupsAvailable,
+    ]
   );
   return (
     <NavbarContext.Provider value={value}>
@@ -155,4 +172,17 @@ export function useProfileAboutAvailable(available: boolean) {
     setProfileAboutAvailable(available);
     return () => setProfileAboutAvailable(false);
   }, [setProfileAboutAvailable, available]);
+}
+
+/**
+ * Publish to the navbar whether the currently viewed profile has any
+ * group memberships (or is the viewer's own profile). Drives whether
+ * the Groups tab renders in the top-bar tab strip.
+ */
+export function useProfileGroupsAvailable(available: boolean) {
+  const { setProfileGroupsAvailable } = useContext(NavbarContext);
+  useEffect(() => {
+    setProfileGroupsAvailable(available);
+    return () => setProfileGroupsAvailable(false);
+  }, [setProfileGroupsAvailable, available]);
 }

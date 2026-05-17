@@ -7,7 +7,9 @@ import {
   usePageTitle,
   usePageTitleBreadcrumb,
   useProfileAboutAvailable,
+  useProfileGroupsAvailable,
 } from "@/lib/navbar-context"
+import { useUserGroups } from "@/hooks/use-user-groups"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { useUserActivities } from "@/hooks/use-user-activities"
 import { useOrgMarker } from "@/hooks/use-org-marker"
@@ -354,6 +356,14 @@ export default function UserProfilePage() {
   // context so the top-bar can render the About tab. Always reset
   // when navigating away (the hook returns `false` on unmount).
   useProfileAboutAvailable(!!displayLongDescription)
+  // Gate the Groups tab: visible on the viewer's own profile (so they
+  // can manage their groups even with none yet) AND on any profile
+  // that actually has a public membership. Foreign empty profiles
+  // hide the tab entirely.
+  const viewedPublicGroups = useUserGroups(did)
+  const hasGroupTab =
+    isOwnProfile || (viewedPublicGroups.groups?.length ?? 0) > 0
+  useProfileGroupsAvailable(hasGroupTab)
   // Memoised so the array reference is stable when no inputs changed —
   // otherwise the `handleEditClick` useCallback below would invalidate
   // on every render (each `??` falls back to a freshly-allocated `[]`).
