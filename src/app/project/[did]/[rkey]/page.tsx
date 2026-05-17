@@ -37,7 +37,7 @@ export default function ProjectDetailPage() {
     handle && projectTitle && did && rkey
       ? {
           left: {
-            text: `@${handle}`,
+            text: handle,
             href: `/profile/${encodeURIComponent(handle)}`,
           },
           right: {

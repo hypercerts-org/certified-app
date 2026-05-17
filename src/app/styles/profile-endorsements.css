@@ -235,15 +235,16 @@
   align-items: stretch;
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  padding: 14px 16px;
+  border-radius: 12px;
+  padding: 16px 18px;
   transition: background var(--transition-fast), border-color var(--transition-fast),
     box-shadow var(--transition-fast);
 }
 
 .profile-endorsements-v2__card:hover {
-  background: var(--overlay-weak);
+  background: var(--bg-elevated);
   border-color: var(--border-hover);
+  box-shadow: var(--shadow-sm);
 }
 
 .profile-endorsements-v2__card-link {
@@ -334,17 +335,19 @@
 
 /* Floating owner-action menu (kebab). Anchored to the top-right corner
    of the card. When this slot is present we reserve right-padding on
-   the card-link so the date never sits underneath the menu. */
+   the card-link so the date sits well clear of the kebab — a tight
+   8px gap visually reads as "overlap" even though it isn't, so we
+   reserve menu-width (28px) + visual buffer (12px). */
 .profile-endorsements-v2__card-menu {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 10px;
+  right: 10px;
   z-index: 1;
 }
 
 .profile-endorsements-v2__card:has(.profile-endorsements-v2__card-menu)
   .profile-endorsements-v2__card-link {
-  padding-right: 28px;
+  padding-right: 40px;
 }
 
 /* Grid columns: 2 cols at >=800px, 3 cols at >=1200px. Avatar + body

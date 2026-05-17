@@ -34,7 +34,7 @@ export default function ActivityDetailPage() {
     handle && certTitle && did && rkey
       ? {
           left: {
-            text: `@${handle}`,
+            text: handle,
             href: `/profile/${encodeURIComponent(handle)}`,
           },
           right: {

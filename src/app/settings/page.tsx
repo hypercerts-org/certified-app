@@ -125,7 +125,7 @@ export default function SettingsPage() {
   usePageTitleBreadcrumb(
     handle
       ? {
-          left: { text: `@${handle}`, href: `/profile/${handle}` },
+          left: { text: handle, href: `/profile/${handle}` },
         }
       : null,
   );

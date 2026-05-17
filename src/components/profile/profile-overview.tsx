@@ -276,7 +276,7 @@ export default function ProfileOverview({
             id="profile-overview-long-desc-heading"
             className="profile-overview__section-title"
           >
-            Long description
+            Description (optional)
           </h2>
           <textarea
             className="profile-overview__about-textarea profile-overview__long-desc-textarea"
@@ -698,8 +698,14 @@ function LocationPickerColumn({
   return (
     <aside
       className="profile-overview__location profile-overview__location--editing"
-      aria-label="Location"
+      aria-labelledby="profile-overview-location-heading"
     >
+      <h2
+        id="profile-overview-location-heading"
+        className="profile-overview__section-title"
+      >
+        Location
+      </h2>
       <input
         type="text"
         className="profile-overview__location-input"

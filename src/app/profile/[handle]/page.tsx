@@ -184,15 +184,16 @@ export default function UserProfilePage() {
   const { isAuthenticated } = useAuth()
 
   const titleForTopBar =
-    profile?.displayName || (resolvedHandle ? `@${resolvedHandle}` : "Profile")
+    profile?.displayName || resolvedHandle || "Profile"
   usePageTitle(titleForTopBar)
-  // Single-part breadcrumb: `@handle` is the only segment, but it's
-  // clickable. Matches the cert-page pattern (which uses two parts).
+  // Single-part breadcrumb: the handle (without the `@` sigil) is the
+  // only segment, but it's clickable. Matches the cert-page pattern
+  // (which uses two parts).
   usePageTitleBreadcrumb(
     resolvedHandle
       ? {
           left: {
-            text: `@${resolvedHandle}`,
+            text: resolvedHandle,
             href: `/profile/${encodeURIComponent(resolvedHandle)}`,
           },
         }

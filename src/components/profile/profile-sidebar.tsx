@@ -121,7 +121,7 @@ export default function ProfileSidebar({
   isSaving = false,
   saveError = null,
 }: ProfileSidebarProps) {
-  const displayName = profile?.displayName || (handle ? `@${handle}` : "Anonymous")
+  const displayName = profile?.displayName || handle || "Anonymous"
   const initials = getInitials(profile?.displayName, did)
   const { isBskyHosted } = useProfilePds(did)
   // Fall back to the PDS-only path when no override is provided
@@ -285,6 +285,7 @@ export default function ProfileSidebar({
         {isEditing && hasInline && isOrg ? (
           <li className="profile-sidebar__org-field-edit">
             <Calendar size={16} strokeWidth={1.75} aria-hidden />
+            <span className="profile-sidebar__org-field-label">Founded</span>
             <input
               type="date"
               className="profile-sidebar__org-input"

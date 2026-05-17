@@ -2654,6 +2654,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   border-radius: 6px;
   padding: 4px 8px;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 

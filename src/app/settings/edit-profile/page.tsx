@@ -88,7 +88,7 @@ export default function EditProfilePage() {
   usePageTitleBreadcrumb(
     handle
       ? {
-          left: { text: `@${handle}`, href: `/profile/${handle}` },
+          left: { text: handle, href: `/profile/${handle}` },
           right: {
             text: "Edit profile",
             href: "/settings/edit-profile",

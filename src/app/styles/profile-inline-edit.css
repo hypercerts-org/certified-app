@@ -276,6 +276,12 @@
   gap: 8px;
 }
 
+.profile-sidebar__org-field-label {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+
 .profile-sidebar__org-input {
   flex: 1;
   min-width: 0;
@@ -443,9 +449,9 @@
 
 .profile-overview__type-chip--active,
 .profile-overview__type-chip--active:hover {
-  background: var(--fg-primary);
-  color: var(--bg-base);
-  border-color: var(--fg-primary);
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-fg);
+  border-color: var(--btn-primary-bg);
 }
 
 .profile-overview__type-chip:focus-visible {
