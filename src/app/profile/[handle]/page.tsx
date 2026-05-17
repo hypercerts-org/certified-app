@@ -185,7 +185,7 @@ export default function UserProfilePage() {
     error: profileError,
   } = useUserProfile(handleOrDid)
 
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, did: sessionDid } = useAuth()
 
   const titleForTopBar =
     profile?.displayName || resolvedHandle || "Profile"
@@ -422,7 +422,7 @@ export default function UserProfilePage() {
   )
 
   const handleSave = useCallback(async () => {
-    if (!did || !isAuthenticated) {
+    if (!did || !isAuthenticated || !sessionDid) {
       setSaveError("Not authenticated")
       return
     }
@@ -462,8 +462,14 @@ export default function UserProfilePage() {
     try {
       setIsSaving(true)
       setSaveError(null)
+      // First arg is the *session* DID (the actor doing the write).
+      // When editing a group profile the viewed `did` is the group's
+      // DID, not the session DID — passing `did` here would make the
+      // XRPC proxy reject the write with "repo is required and must
+      // match the authenticated user". The BFF route handles the
+      // proxied write when the target differs from the session.
       await putProfile(
-        did,
+        sessionDid,
         next,
         editTargetDid ? { targetDid: editTargetDid } : undefined,
       )
@@ -531,7 +537,10 @@ export default function UserProfilePage() {
           urls: urls.length > 0 ? urls : undefined,
         }
 
-        await putOrgMarker(did, editTargetDid ?? did, nextMarker)
+        // Same session-vs-target pattern as the putProfile call above:
+        // first arg is the session DID, second is the repo to write
+        // to (group DID via BFF, or session DID via XRPC).
+        await putOrgMarker(sessionDid, editTargetDid ?? sessionDid, nextMarker)
       }
 
       // Defensive: evict any cached resolve-did response so navigation
@@ -584,6 +593,7 @@ export default function UserProfilePage() {
     }
   }, [
     did,
+    sessionDid,
     isAuthenticated,
     effectiveProfile,
     drafts,
