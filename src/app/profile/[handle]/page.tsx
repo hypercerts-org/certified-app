@@ -218,20 +218,27 @@ export default function UserProfilePage() {
   } = useOrgMarker(did)
   const sidebarIsOrg = isOrgMarkerLoading ? false : isOrg
 
-  const { groups, isLoading: orgGroupsLoading } = useOrg()
+  const { activeOrg, groups, isLoading: orgGroupsLoading } = useOrg()
   const memberOrg = did ? groups.find((g) => g.groupDid === did) : undefined
   const isAdminOfThisGroup =
     !!memberOrg && (memberOrg.role === "owner" || memberOrg.role === "admin")
 
-  // Viewer can inline-edit on their own profile, OR when they admin the
-  // group whose profile is being viewed. Group admins editing a group
-  // hit a separate save path (BFF putOrgProfile + group-repo blob
-  // uploads); see handlers below for the wiring.
-  const canEditInline = isOwnProfile || isAdminOfThisGroup
+  // Inline-edit is gated on the *active session identity* exactly
+  // matching the viewed profile — being an admin of a group is not
+  // enough; the user must be currently acting as that group (or as
+  // themselves on their own profile). This means:
+  //   - Own profile: only when no org is currently active.
+  //   - Group profile: only when activeOrg.groupDid === viewed DID.
+  // Group admins who want to edit a group switch into it from the
+  // account switcher.
+  const isActingAsThisGroup =
+    !!activeOrg && !!did && activeOrg.groupDid === did
+  const canEditInline =
+    (isOwnProfile && !activeOrg) || isActingAsThisGroup
   // The save/upload `targetDid` for inline edit. `undefined` keeps the
   // helpers on the personal session-DID path; setting it routes through
   // the group BFF endpoints instead.
-  const editTargetDid = !isOwnProfile && isAdminOfThisGroup ? did : undefined
+  const editTargetDid = isActingAsThisGroup ? did : undefined
 
   // -------------------------------------------------------------------
   // Inline edit state
@@ -534,13 +541,14 @@ export default function UserProfilePage() {
 
   // Mobile <ProfileHeader> still uses the legacy edit pages as a
   // fallback (inline edit isn't wired on the compact mobile header
-  // yet). Desktop sidebar handles inline-edit via the onEditClick
-  // callback below — no editHref needed when canEditInline is true.
-  const mobileEditHref = isOwnProfile
-    ? "/settings/edit-profile"
-    : isAdminOfThisGroup && did
-      ? `/groups/${encodeURIComponent(did)}/edit-profile`
-      : undefined
+  // yet). Same gate as `canEditInline` above — the signed-in identity
+  // must match the viewed profile exactly.
+  const mobileEditHref =
+    isOwnProfile && !activeOrg
+      ? "/settings/edit-profile"
+      : isActingAsThisGroup && did
+        ? `/groups/${encodeURIComponent(did)}/edit-profile`
+        : undefined
 
   const settingsHref =
     isAdminOfThisGroup && did
