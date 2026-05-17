@@ -14,6 +14,16 @@
   padding: 24px 0 64px;
 }
 
+/* When the edit banner is present, drop the page wrapper's top
+   padding — the banner's own `margin-top` (16px) provides the gap
+   from the top bar. Otherwise the cert page renders the banner
+   24px lower than the profile page does (which has no wrapper
+   padding), and they look mis-aligned even though they share the
+   same component. */
+.cert-detail-page:has(.profile-edit-banner) {
+  padding-top: 0;
+}
+
 /* Stacked on mobile (image + byline + meta on top, content below); two
    columns on desktop matching the profile-page layout (296px sidebar +
    fluid main, 32px gap). */
@@ -607,6 +617,33 @@
   color: var(--fg-primary);
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+/* Centered "X contributors — see all" link at the bottom of the
+   Overview tab's Contributors preview. Lifts the affordance out
+   of the section header (where it competed with the title) and
+   makes it act as a clear "load more" CTA after the list. */
+.cert-detail__section-see-all-footer {
+  display: block;
+  margin: 8px auto 0;
+  text-align: center;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.cert-detail__section-see-all-footer:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.cert-detail__section-see-all-footer:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .cert-detail__section-title {

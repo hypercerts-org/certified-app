@@ -567,16 +567,6 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
                       <span className="cert-detail__section-count">
                         {contributorCount}
                       </span>
-                      {hasMore && contributorsHref ? (
-                        <Link
-                          href={contributorsHref}
-                          scroll={false}
-                          replace
-                          className="cert-detail__section-see-all"
-                        >
-                          See all
-                        </Link>
-                      ) : null}
                     </div>
                     <ul className="cert-detail__contributors">
                       {previewContributors.map((c, i) => {
@@ -591,6 +581,16 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
                         )
                       })}
                     </ul>
+                    {hasMore && contributorsHref ? (
+                      <Link
+                        href={contributorsHref}
+                        scroll={false}
+                        replace
+                        className="cert-detail__section-see-all-footer"
+                      >
+                        {contributorCount} contributors — see all
+                      </Link>
+                    ) : null}
                   </section>
                 )
               })()
