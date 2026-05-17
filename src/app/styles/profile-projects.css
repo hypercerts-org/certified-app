@@ -1,224 +1,215 @@
-/* ========== Profile › Projects tab ==========
-   Grid of project cards sourced from the profile's PDS. Mirrors the
-   visual language of `.profile-certs` (see layout.css §profile-certs)
-   while keeping its own class scope so layout.css stays untouched.
+/* ========== Profile · Projects tab (sectioned) ==========
 
-   Layout: 1 column on phones, 2 columns at >=800px, 3 columns at
-   >=1100px — same breakpoints as the certs grid. Each card has:
-     - square image (16:9 on mobile would be cute but we keep parity
-       with the certs grid so the two tabs align visually)
-     - 2-line title clamp
-     - 2-line shortDescription clamp
-     - meta row pinned to the bottom: relative-time + cert-count chip
-*/
+   Each project is a section with a header (thumb + title + short
+   description + cert count + See all →) and a row of cert cards under
+   it. Matches the visual language of the Certs tab (square thumbs,
+   subtle pill hovers, 3-col grid at desktop). */
 
-.profile-projects-grid {
+.profile-projects {
   display: flex;
   flex-direction: column;
-  /* On phones each card carries its own bottom divider, matching the
-     stacked feed-card pattern. The grid breakpoints below drop the
-     divider and rely on grid gap instead. */
+  gap: 40px;
 }
 
-.profile-projects-grid__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.profile-projects__loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+/* ---------- Section ---------- */
+
+.profile-projects__section {
   display: flex;
   flex-direction: column;
+  gap: 16px;
 }
 
-.profile-projects-grid__sentinel {
-  /* Reserved — the projects feed paginates by a single listRecords
-     call (50 records) today, so no sentinel is needed yet. Keep the
-     class so a future paginated variant slots in cleanly. */
-  height: 1px;
-}
-
-.project-card {
-  padding: 20px 0;
+.profile-projects__section-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.project-card:last-child {
-  border-bottom: none;
+.profile-projects__section-thumb-wrap {
+  flex-shrink: 0;
 }
 
-.project-card__body {
+.profile-projects__section-thumb {
   display: block;
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-subtle);
+}
+
+.profile-projects__section-thumb--placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-muted);
+  background: linear-gradient(
+    135deg,
+    var(--bg-sunken) 0%,
+    var(--overlay-weak) 100%
+  );
+}
+
+.profile-projects__section-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.profile-projects__section-titleline {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.profile-projects__section-title-link {
   color: inherit;
   text-decoration: none;
+  min-width: 0;
 }
 
-.project-card__body:hover .project-card__title {
+.profile-projects__section-title-link:hover .profile-projects__section-title {
   text-decoration: underline;
-  text-decoration-color: var(--fg-muted);
   text-underline-offset: 3px;
 }
 
-.project-card__image-wrap {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  overflow: hidden;
-  border-radius: var(--radius);
-  margin-bottom: 12px;
-  background: var(--bg-sunken);
-}
-
-.project-card__image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.project-card__image-wrap--placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background:
-    linear-gradient(
-      135deg,
-      var(--bg-sunken) 0%,
-      var(--overlay-weak) 100%
-    );
-}
-
-.project-card__image-placeholder-icon {
-  color: var(--fg-muted);
-  opacity: 0.6;
-}
-
-.project-card__title {
-  font-family: var(--font-headline), "Noto Serif", serif;
-  font-size: 1.125rem;
-  font-weight: 700;
+.profile-projects__section-title {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
   color: var(--fg-primary);
-  line-height: 1.3;
-  margin: 0 0 6px;
+  margin: 0;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.project-card__desc {
-  font-family: var(--font-inter), system-ui, sans-serif;
+.profile-projects__section-count {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--overlay-weak);
+  flex-shrink: 0;
+}
+
+.profile-projects__section-desc {
   font-size: 0.875rem;
-  line-height: 1.6;
+  line-height: 1.45;
   color: var(--fg-secondary);
-  margin: 0 0 12px;
+  margin: 0;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.project-card__meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  font-size: 0.75rem;
-  color: var(--fg-muted);
-}
-
-.project-card__meta-sep {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: var(--fg-muted);
-  flex-shrink: 0;
-}
-
-.project-card__time {
-  font-size: 0.75rem;
-  color: var(--fg-muted);
-}
-
-.project-card__count {
+.profile-projects__see-all {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.6875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: var(--fg-secondary);
-  background: var(--bg-sunken);
-  padding: 2px 8px;
-  border-radius: 999px;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
-.project-card__count-icon {
-  color: var(--fg-muted);
+.profile-projects__see-all:hover {
+  color: var(--fg-primary);
 }
 
-/* ---- Grid breakpoints — mirrors `.profile-certs .feed` ---- */
+/* ---------- Section body ---------- */
 
-@media (min-width: 800px) {
-  .profile-projects-grid__list {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 28px 24px;
-  }
-
-  .project-card {
-    padding: 10px;
-    border-bottom: none;
-    border-radius: 4px;
-    display: flex;
-    flex-direction: column;
-    transition: background var(--transition-fast);
-  }
-
-  .project-card:hover {
-    background: var(--overlay-weak);
-  }
-
-  /* Drop the title underline used in the stacked variant; the card
-     gets a hover background instead, same as `.profile-certs`. */
-  .project-card__body:hover .project-card__title {
-    text-decoration: none;
-  }
-
-  .project-card__body {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-  }
-
-  /* 2-line clamp with reserved height so short titles still leave the
-     description and meta row at the same vertical position. */
-  .project-card__title {
-    white-space: normal;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    min-height: calc(1.125rem * 1.3 * 2);
-  }
-
-  .project-card__desc {
-    -webkit-line-clamp: 2;
-    min-height: calc(0.875rem * 1.6 * 2);
-  }
-
-  /* Pin meta row to the bottom of the card. */
-  .project-card__meta {
-    margin-top: auto;
-  }
-
-  .profile-projects-grid__list > .empty-state {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (min-width: 1100px) {
-  .profile-projects-grid__list {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-.profile-projects-grid__loading {
+.profile-projects__section-loading {
+  padding: 24px 0;
   display: flex;
   justify-content: center;
-  padding: 24px 0;
+}
+
+.profile-projects__section-empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  margin: 0;
+  padding: 12px 0;
+}
+
+/* Cert grid inside each section — matches the certs-tab grid shape:
+   3 fixed-width columns at desktop so a single cert renders at 1/3
+   width and never bigger; collapses to 1 below 800px. */
+.profile-projects__section-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 24px 16px;
+}
+
+@media (min-width: 800px) {
+  .profile-projects__section-grid {
+    grid-template-columns: repeat(3, minmax(0, calc((100% - 32px) / 3)));
+    gap: 24px 16px;
+  }
+}
+
+/* Apply the same card normalisation as the Certs tab so cards inside
+   each project's section feel native to the surrounding grid. */
+.profile-projects__section-grid .feed-card {
+  padding: 10px;
+  border-bottom: none;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  transition: background var(--transition-fast);
+}
+
+.profile-projects__section-grid .feed-card:hover {
+  background: var(--overlay-weak);
+}
+
+.profile-projects__section-grid .feed-card__body:hover .feed-card__title {
+  text-decoration: none;
+}
+
+.profile-projects__section-grid .feed-card__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.profile-projects__section-grid .feed-card__title {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: calc(1.125rem * 1.3 * 2);
+}
+
+.profile-projects__section-grid .feed-card__desc {
+  -webkit-line-clamp: 2;
+  min-height: calc(0.875rem * 1.6 * 2);
+}
+
+.profile-projects__section-grid .feed-card__meta {
+  margin-top: auto;
 }
