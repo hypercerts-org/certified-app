@@ -12,6 +12,7 @@ import {
   putProfile,
   uploadAvatar,
   uploadBanner,
+  uploadBlob,
   type UploadedBlob,
 } from "@/lib/atproto/profile"
 import { putOrgMarker } from "@/lib/groups/org-marker"
@@ -468,6 +469,19 @@ export default function UserProfilePage() {
     [editTargetDid],
   )
 
+  /** Image upload for the long-description rich-text editor. Routes
+   *  through the same BFF/XRPC split that avatar + banner uploads
+   *  use — `editTargetDid` is set when editing a group profile. */
+  const handleLongDescImageUpload = useCallback(
+    async (file: File) => {
+      return await uploadBlob(
+        file,
+        editTargetDid ? { targetDid: editTargetDid } : undefined,
+      )
+    },
+    [editTargetDid],
+  )
+
   const handleRemoveBanner = useCallback(() => {
     // Clear any in-flight preview / blob and mark the banner as
     // explicitly removed so the save step omits it from the record.
@@ -911,6 +925,7 @@ export default function UserProfilePage() {
                   orgTypeTags={displayOrgTypeTags}
                   orgLocationName={displayLocation.name}
                   orgLocationCoords={displayLocation.coords}
+                  onLongDescImageUpload={handleLongDescImageUpload}
                 />
               </div>
             )}

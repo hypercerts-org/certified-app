@@ -8,6 +8,8 @@ import type {
 } from "./types"
 import {
   BLOCK_HEADER,
+  BLOCK_IFRAME,
+  BLOCK_IMAGE,
   BLOCK_OL,
   BLOCK_TEXT,
   BLOCK_UL,
@@ -99,6 +101,52 @@ function nodeToBlock(node: TipTapNode): LinearBlock | null {
       $type: BLOCK_OL,
       ...(start !== undefined && start !== 1 ? { startIndex: start } : {}),
       children: items,
+    }
+  }
+
+  if (node.type === "leafletImage") {
+    const a = node.attrs ?? {}
+    const cid = typeof a.blobCid === "string" ? a.blobCid : null
+    const mimeType =
+      typeof a.blobMimeType === "string" ? a.blobMimeType : "image/jpeg"
+    const size = typeof a.blobSize === "number" ? a.blobSize : 0
+    const width = typeof a.width === "number" ? Math.floor(a.width as number) : 0
+    const height = typeof a.height === "number" ? Math.floor(a.height as number) : 0
+    if (!cid || width <= 0 || height <= 0) return null
+    return {
+      $type: BLOCK_IMAGE,
+      image: {
+        $type: "blob",
+        ref: { $link: cid },
+        mimeType,
+        size,
+      },
+      aspectRatio: { width, height },
+      ...(typeof a.alt === "string" && a.alt.trim().length > 0
+        ? { alt: a.alt.trim() }
+        : {}),
+      ...(a.fullBleed === true ? { fullBleed: true } : {}),
+    }
+  }
+
+  if (node.type === "leafletIframe") {
+    const a = node.attrs ?? {}
+    const url = typeof a.url === "string" ? a.url.trim() : ""
+    if (!url) return null
+    const aspectWidth =
+      typeof a.aspectWidth === "number" && a.aspectWidth > 0
+        ? Math.floor(a.aspectWidth as number)
+        : null
+    const aspectHeight =
+      typeof a.aspectHeight === "number" && a.aspectHeight > 0
+        ? Math.floor(a.aspectHeight as number)
+        : null
+    return {
+      $type: BLOCK_IFRAME,
+      url,
+      ...(aspectWidth && aspectHeight
+        ? { aspectRatio: { width: aspectWidth, height: aspectHeight } }
+        : {}),
     }
   }
 

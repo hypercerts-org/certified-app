@@ -15,10 +15,25 @@ export const BLOCK_HEADER = "pub.leaflet.blocks.header" as const
 export const BLOCK_TEXT = "pub.leaflet.blocks.text" as const
 export const BLOCK_UL = "pub.leaflet.blocks.unorderedList" as const
 export const BLOCK_OL = "pub.leaflet.blocks.orderedList" as const
+export const BLOCK_IMAGE = "pub.leaflet.blocks.image" as const
+export const BLOCK_IFRAME = "pub.leaflet.blocks.iframe" as const
 
 export const FEATURE_BOLD = "pub.leaflet.richtext.facet#bold" as const
 export const FEATURE_ITALIC = "pub.leaflet.richtext.facet#italic" as const
 export const FEATURE_LINK = "pub.leaflet.richtext.facet#link" as const
+
+/** Lexicon blob shape — the wire format for `pub.leaflet.blocks.image.image`. */
+export interface BlobRef {
+  $type: "blob"
+  ref: { $link: string }
+  mimeType: string
+  size: number
+}
+
+export interface AspectRatio {
+  width: number
+  height: number
+}
 
 /** A byte-indexed facet range carrying one or more inline features. */
 export interface Facet {
@@ -65,11 +80,33 @@ export interface OrderedListBlock {
   children: ListItem[]
 }
 
+/** `pub.leaflet.blocks.image` — inline image carried as a blob ref
+ *  on the same repo as the parent record. */
+export interface ImageBlock {
+  $type: typeof BLOCK_IMAGE
+  image: BlobRef
+  aspectRatio: AspectRatio
+  alt?: string
+  fullBleed?: boolean
+}
+
+/** `pub.leaflet.blocks.iframe` — embedded URL (YouTube, Vimeo, etc.).
+ *  Lexicon caps `height` to 1600 and lets `aspectRatio` carry the
+ *  intended box ratio for responsive layouts. */
+export interface IframeBlock {
+  $type: typeof BLOCK_IFRAME
+  url: string
+  height?: number
+  aspectRatio?: AspectRatio
+}
+
 export type LinearBlock =
   | HeaderBlock
   | TextBlock
   | UnorderedListBlock
   | OrderedListBlock
+  | ImageBlock
+  | IframeBlock
 
 /** Wrapper for a single entry inside `linearDocument.blocks`. */
 export interface LinearBlockEntry {

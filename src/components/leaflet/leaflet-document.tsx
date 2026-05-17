@@ -2,8 +2,11 @@
 
 import { Fragment, type ReactNode } from "react"
 import { asLinearDocument } from "@/lib/leaflet/guards"
+import { isAllowedEmbedHost } from "@/lib/leaflet/embed-url"
 import {
   BLOCK_HEADER,
+  BLOCK_IFRAME,
+  BLOCK_IMAGE,
   BLOCK_OL,
   BLOCK_TEXT,
   BLOCK_UL,
@@ -11,6 +14,8 @@ import {
   FEATURE_ITALIC,
   FEATURE_LINK,
   type Facet,
+  type IframeBlock,
+  type ImageBlock,
   type LinearBlock,
   type ListItem,
 } from "@/lib/leaflet/types"
@@ -48,12 +53,17 @@ export interface LeafletDocumentProps {
   /** Lowest heading level emitted. Defaults to `2` so blocks don't
    *  collide with the surrounding page's `<h1>`. */
   minHeadingLevel?: 2 | 3 | 4
+  /** DID of the repo that owns this document. Required to resolve
+   *  `pub.leaflet.blocks.image` blob refs to `getBlob` URLs; images
+   *  are silently skipped when this is missing. */
+  did?: string
 }
 
 export default function LeafletDocument({
   value,
   className,
   minHeadingLevel = 2,
+  did,
 }: LeafletDocumentProps) {
   if (typeof value === "string") {
     const trimmed = value.trim()
@@ -70,7 +80,7 @@ export default function LeafletDocument({
 
   const rendered: ReactNode[] = []
   doc.blocks.forEach((entry, i) => {
-    const node = renderBlock(entry?.block, `b-${i}`, minHeadingLevel)
+    const node = renderBlock(entry?.block, `b-${i}`, minHeadingLevel, did)
     if (node) rendered.push(node)
   })
 
@@ -86,6 +96,7 @@ function renderBlock(
   block: unknown,
   key: string,
   minHeading: number,
+  did?: string,
 ): ReactNode {
   if (!block || typeof block !== "object") return null
   const type = (block as Record<string, unknown>).$type
@@ -150,7 +161,93 @@ function renderBlock(
     )
   }
 
+  if (type === BLOCK_IMAGE) {
+    return renderImage(block as ImageBlock, key, did)
+  }
+
+  if (type === BLOCK_IFRAME) {
+    return renderIframe(block as IframeBlock, key)
+  }
+
   return null
+}
+
+function renderImage(
+  block: ImageBlock,
+  key: string,
+  did: string | undefined,
+): ReactNode {
+  const cid = block.image?.ref?.$link
+  if (!cid || !did) return null
+  const src = `/api/xrpc/com/atproto/sync/getBlob?did=${encodeURIComponent(
+    did,
+  )}&cid=${encodeURIComponent(cid)}`
+  const alt = typeof block.alt === "string" ? block.alt : ""
+  const ratio =
+    typeof block.aspectRatio?.width === "number" &&
+    typeof block.aspectRatio?.height === "number" &&
+    block.aspectRatio.width > 0 &&
+    block.aspectRatio.height > 0
+      ? `${block.aspectRatio.width} / ${block.aspectRatio.height}`
+      : undefined
+  const className = block.fullBleed
+    ? "leaflet-doc__image leaflet-doc__image--full-bleed"
+    : "leaflet-doc__image"
+  return (
+    <figure key={key} className={className}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        style={ratio ? { aspectRatio: ratio } : undefined}
+      />
+      {alt ? <figcaption className="leaflet-doc__image-caption">{alt}</figcaption> : null}
+    </figure>
+  )
+}
+
+function renderIframe(block: IframeBlock, key: string): ReactNode {
+  const url = typeof block.url === "string" ? block.url : ""
+  if (!url || !isAllowedEmbedHost(url)) {
+    // Unsupported origin — surface a plain link rather than silently
+    // dropping the block. Keeps the content discoverable without
+    // executing untrusted embeds.
+    if (url) {
+      return (
+        <p key={key} className="leaflet-doc__embed-fallback">
+          <a href={url} target="_blank" rel="noopener noreferrer">
+            {url}
+          </a>
+        </p>
+      )
+    }
+    return null
+  }
+  const ratio =
+    typeof block.aspectRatio?.width === "number" &&
+    typeof block.aspectRatio?.height === "number" &&
+    block.aspectRatio.width > 0 &&
+    block.aspectRatio.height > 0
+      ? `${block.aspectRatio.width} / ${block.aspectRatio.height}`
+      : "16 / 9"
+  const heightStyle =
+    typeof block.height === "number" && Number.isFinite(block.height)
+      ? { height: `${Math.min(1600, Math.max(16, block.height))}px` }
+      : { aspectRatio: ratio }
+  return (
+    <div key={key} className="leaflet-doc__embed" style={heightStyle}>
+      <iframe
+        src={url}
+        title="Embedded video"
+        loading="lazy"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
+        sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
+      />
+    </div>
+  )
 }
 
 function getFacets(block: unknown): Facet[] | undefined {

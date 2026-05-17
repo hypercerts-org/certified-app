@@ -2,6 +2,8 @@ import type {
   Facet,
   FacetFeature,
   HeaderBlock,
+  IframeBlock,
+  ImageBlock,
   LinearBlock,
   LinearDocument,
   ListItem,
@@ -11,6 +13,8 @@ import type {
 } from "./types"
 import {
   BLOCK_HEADER,
+  BLOCK_IFRAME,
+  BLOCK_IMAGE,
   BLOCK_OL,
   BLOCK_TEXT,
   BLOCK_UL,
@@ -106,6 +110,35 @@ function blockToNode(block: LinearBlock | undefined): TipTapNode | null {
           ? { start: Math.floor(ol.startIndex) }
           : undefined,
       content: listItemsToNodes(ol.children),
+    }
+  }
+  if (type === BLOCK_IMAGE) {
+    const img = block as ImageBlock
+    const cid = img.image?.ref?.$link
+    if (!cid) return null
+    return {
+      type: "leafletImage",
+      attrs: {
+        blobCid: cid,
+        blobMimeType: img.image?.mimeType ?? "image/jpeg",
+        blobSize: typeof img.image?.size === "number" ? img.image.size : 0,
+        alt: typeof img.alt === "string" ? img.alt : "",
+        width: img.aspectRatio?.width ?? 0,
+        height: img.aspectRatio?.height ?? 0,
+        fullBleed: img.fullBleed === true,
+      },
+    }
+  }
+  if (type === BLOCK_IFRAME) {
+    const f = block as IframeBlock
+    if (!f.url) return null
+    return {
+      type: "leafletIframe",
+      attrs: {
+        url: f.url,
+        aspectWidth: f.aspectRatio?.width ?? 16,
+        aspectHeight: f.aspectRatio?.height ?? 9,
+      },
     }
   }
   return null

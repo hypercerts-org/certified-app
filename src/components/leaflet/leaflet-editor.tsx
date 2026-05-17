@@ -11,15 +11,24 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  Image as ImageIcon,
   List as BulletIcon,
   ListOrdered,
   Link as LinkIcon,
+  Youtube as YoutubeIcon,
 } from "lucide-react"
 import LinkDialog, { type LinkDialogResult } from "./link-dialog"
+import EmbedDialog, { type EmbedDialogResult } from "./embed-dialog"
+import {
+  LeafletImage,
+  type LeafletImageStorage,
+} from "./nodes/leaflet-image-node"
+import { LeafletIframe } from "./nodes/leaflet-iframe-node"
 import { asLinearDocument } from "@/lib/leaflet/guards"
 import { tiptapToLinearDocument } from "@/lib/leaflet/from-tiptap"
 import { linearDocumentToTipTap } from "@/lib/leaflet/to-tiptap"
 import type { LinearDocument } from "@/lib/leaflet/types"
+import type { UploadedBlob } from "@/lib/atproto/profile"
 
 /**
  * Reusable TipTap-backed editor for `pub.leaflet.pages.linearDocument`
@@ -54,6 +63,16 @@ export interface LeafletEditorProps {
    *  ignores input. */
   readOnly?: boolean
   ariaLabel?: string
+  /** DID of the repo that owns blobs referenced by image nodes. The
+   *  node view uses this to build the `getBlob` URL for the editing
+   *  preview. Image upload is only offered when this AND `onImageUpload`
+   *  are both set. */
+  did?: string
+  /** Async file uploader. Implementations should call
+   *  `uploadBlob(file, ...)` (or its group equivalent) and return the
+   *  resulting blob ref. When omitted, the image toolbar button is
+   *  disabled. */
+  onImageUpload?: (file: File) => Promise<UploadedBlob>
 }
 
 export default function LeafletEditor({
@@ -64,6 +83,8 @@ export default function LeafletEditor({
   minimal = false,
   readOnly = false,
   ariaLabel,
+  did,
+  onImageUpload,
 }: LeafletEditorProps) {
   const onChangeRef = useRef(onChange)
   useEffect(() => {
@@ -95,6 +116,8 @@ export default function LeafletEditor({
         // what you'd expect from a normal text editor.
         showOnlyCurrent: false,
       }),
+      LeafletImage,
+      LeafletIframe,
     ],
     content: initial,
     editable: !readOnly,
@@ -131,12 +154,28 @@ export default function LeafletEditor({
     }
   }, [editor, value])
 
+  // Wire the owning DID into the image node's storage slot so the
+  // node view can build a `getBlob` URL without needing access to
+  // the editor's React context.
+  useEffect(() => {
+    if (!editor) return
+    const storage = (
+      editor.storage as unknown as Record<string, LeafletImageStorage>
+    ).leafletImage
+    if (storage) storage.did = did ?? null
+  }, [editor, did])
+
   const [linkDialog, setLinkDialog] = useState<{
     open: boolean
     initialUrl: string
     initialText: string
     allowTextEdit: boolean
   }>({ open: false, initialUrl: "", initialText: "", allowTextEdit: false })
+
+  const [embedDialogOpen, setEmbedDialogOpen] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const openLinkDialog = () => {
     if (!editor) return
@@ -211,6 +250,77 @@ export default function LeafletEditor({
       .run()
   }
 
+  const canUploadImages = !!did && !!onImageUpload
+
+  const handleImageButtonClick = () => {
+    if (!canUploadImages) return
+    fileInputRef.current?.click()
+  }
+
+  const handleImageFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0]
+    e.target.value = ""
+    if (!file || !editor || !onImageUpload) return
+    // Lexicon caps blob size at 1MB for image blocks.
+    const MAX = 1024 * 1024
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Please pick an image file")
+      return
+    }
+    if (file.size > MAX) {
+      setUploadError("Image must be 1MB or smaller")
+      return
+    }
+    setUploadError(null)
+    setIsUploadingImage(true)
+    try {
+      const dims = await readImageDimensions(file)
+      const blob = await onImageUpload(file)
+      editor
+        .chain()
+        .focus()
+        .insertContent({
+          type: "leafletImage",
+          attrs: {
+            blobCid: blob.ref.$link,
+            blobMimeType: blob.mimeType,
+            blobSize: blob.size,
+            alt: "",
+            width: dims.width,
+            height: dims.height,
+            fullBleed: false,
+          },
+        })
+        .run()
+    } catch (err) {
+      console.error("Image upload failed:", err)
+      setUploadError(
+        err instanceof Error ? err.message : "Upload failed",
+      )
+    } finally {
+      setIsUploadingImage(false)
+    }
+  }
+
+  const handleEmbedConfirm = (result: EmbedDialogResult) => {
+    setEmbedDialogOpen(false)
+    if (!editor) return
+    editor
+      .chain()
+      .focus()
+      .insertContent({
+        type: "leafletIframe",
+        attrs: {
+          url: result.url,
+          aspectWidth: result.aspectRatio.width,
+          aspectHeight: result.aspectRatio.height,
+        },
+      })
+      .run()
+  }
+
   return (
     <div className={joinClass("leaflet-editor", className)}>
       {!readOnly ? (
@@ -218,9 +328,25 @@ export default function LeafletEditor({
           editor={editor}
           minimal={minimal}
           onLinkClick={openLinkDialog}
+          onImageClick={canUploadImages ? handleImageButtonClick : undefined}
+          onEmbedClick={() => setEmbedDialogOpen(true)}
+          isUploadingImage={isUploadingImage}
         />
       ) : null}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        className="leaflet-editor__image-input"
+        onChange={handleImageFileChange}
+        hidden
+      />
       <EditorContent editor={editor} className="leaflet-editor__content" />
+      {uploadError ? (
+        <p role="alert" className="leaflet-editor__error">
+          {uploadError}
+        </p>
+      ) : null}
       {linkDialog.open ? (
         <LinkDialog
           initialUrl={linkDialog.initialUrl}
@@ -233,8 +359,34 @@ export default function LeafletEditor({
           onConfirm={handleLinkConfirm}
         />
       ) : null}
+      {embedDialogOpen ? (
+        <EmbedDialog
+          onCancel={() => setEmbedDialogOpen(false)}
+          onConfirm={handleEmbedConfirm}
+        />
+      ) : null}
     </div>
   )
+}
+
+/** Read natural image dimensions from a File without a network round-trip. */
+function readImageDimensions(file: File): Promise<{
+  width: number
+  height: number
+}> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const img = new window.Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve({ width: img.naturalWidth, height: img.naturalHeight })
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error("Could not read image dimensions"))
+    }
+    img.src = url
+  })
 }
 
 function joinClass(base: string, extra: string | undefined): string {
@@ -270,9 +422,19 @@ interface ToolbarProps {
   editor: Editor | null
   minimal: boolean
   onLinkClick: () => void
+  onImageClick?: () => void
+  onEmbedClick: () => void
+  isUploadingImage: boolean
 }
 
-function Toolbar({ editor, minimal, onLinkClick }: ToolbarProps) {
+function Toolbar({
+  editor,
+  minimal,
+  onLinkClick,
+  onImageClick,
+  onEmbedClick,
+  isUploadingImage,
+}: ToolbarProps) {
   if (!editor) {
     return <div className="leaflet-editor__toolbar" aria-hidden />
   }
@@ -369,6 +531,23 @@ function Toolbar({ editor, minimal, onLinkClick }: ToolbarProps) {
         LinkIcon,
         editor.isActive("link"),
         onLinkClick,
+      )}
+      {onImageClick
+        ? btn(
+            "image",
+            isUploadingImage ? "Uploading image…" : "Insert image",
+            ImageIcon,
+            false,
+            onImageClick,
+            isUploadingImage,
+          )
+        : null}
+      {btn(
+        "embed",
+        "Embed video",
+        YoutubeIcon,
+        false,
+        onEmbedClick,
       )}
     </div>
   )

@@ -12,6 +12,9 @@ export interface LongDescriptionModalProps {
   /** Raw long-description value (string, linearDocument, or strong-ref).
    *  Renders via `<LeafletDocument>` so all three shapes are supported. */
   value: unknown
+  /** Repo DID — forwarded to `<LeafletDocument>` so image blocks can
+   *  resolve their blob refs to `getBlob` URLs. */
+  did?: string
   onClose: () => void
 }
 
@@ -26,6 +29,7 @@ export default function LongDescriptionModal({
   title,
   subtitle,
   value,
+  did,
   onClose,
 }: LongDescriptionModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
@@ -74,7 +78,11 @@ export default function LongDescriptionModal({
           </button>
         </div>
         <div className="signin-modal__body long-description-modal__body">
-          <LeafletDocument value={value} className="long-description-modal__doc" />
+          <LeafletDocument
+            value={value}
+            did={did}
+            className="long-description-modal__doc"
+          />
         </div>
       </div>
     </dialog>

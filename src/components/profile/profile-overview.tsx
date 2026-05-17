@@ -11,6 +11,7 @@ import LeafletDocument from "@/components/leaflet/leaflet-document"
 import LeafletEditor from "@/components/leaflet/leaflet-editor"
 import LongDescriptionModal from "@/components/leaflet/long-description-modal"
 import type { LinearDocument } from "@/lib/leaflet/types"
+import type { UploadedBlob } from "@/lib/atproto/profile"
 import { ORG_TYPE_PRESETS } from "@/lib/groups/org-types"
 import { getInitials } from "@/lib/utils/initials"
 import { useReceivedEndorsements, type ReceivedEndorsement } from "@/hooks/use-received-endorsements"
@@ -58,6 +59,10 @@ interface ProfileOverviewProps {
   /** Map coords from the org marker, when the editor placed a pin. The
    *  overview renders a side-pane map only when this is non-null. */
   orgLocationCoords?: { lat: number; lng: number } | null
+  /** Async file uploader for the rich-text editor (long description).
+   *  Wired to the page-level `uploadBlob` helper so blobs land on the
+   *  right repo (own profile or group). */
+  onLongDescImageUpload?: (file: File) => Promise<UploadedBlob>
 }
 
 const ACTIVITY_PREVIEW = 3
@@ -88,6 +93,7 @@ export default function ProfileOverview({
   orgTypeTags = [],
   orgLocationName = null,
   orgLocationCoords = null,
+  onLongDescImageUpload,
 }: ProfileOverviewProps) {
   const [bannerFailed, setBannerFailed] = useState(false)
   useEffect(() => setBannerFailed(false), [bannerUrl])
@@ -250,6 +256,7 @@ export default function ProfileOverview({
               <LeafletDocument
                 value={orgLongDescription}
                 className="profile-overview__about-body"
+                did={did}
               />
             </section>
           ) : null
@@ -329,6 +336,8 @@ export default function ProfileOverview({
             }
             placeholder="A longer, multi-line description of this organization."
             ariaLabel="Long description"
+            did={did}
+            onImageUpload={onLongDescImageUpload}
           />
         </section>
       ) : null}
@@ -484,6 +493,7 @@ export default function ProfileOverview({
         <LongDescriptionModal
           title={profile?.displayName ? `About ${profile.displayName}` : "About"}
           value={orgLongDescription}
+          did={did}
           onClose={() => setLongDescOpen(false)}
         />
       ) : null}
