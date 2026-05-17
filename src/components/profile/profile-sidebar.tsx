@@ -334,60 +334,66 @@ export default function ProfileSidebar({
         ) : null}
       </ul>
 
-      <section
-        className="profile-sidebar__groups"
-        aria-labelledby="profile-sidebar-groups-heading"
-      >
-        <div className="profile-sidebar__section-head">
-          <Link
-            id="profile-sidebar-groups-heading"
-            href={`${basePath}?tab=groups`}
-            scroll={false}
-            className="profile-sidebar__section-title profile-sidebar__section-title--link"
-          >
-            Groups
-          </Link>
-          {groups.length > GROUPS_GRID_LIMIT ? (
+      {/* Groups section is hidden entirely when the profile has none.
+          We still render it during the loading phase so the layout
+          doesn't pop in once the fetch resolves with a non-empty list.
+          Skipping rendering on `previewGroups.length === 0 &&
+          !groupsLoading` is intentional — no "No groups yet." empty
+          state in the sidebar; the Groups tab covers that surface. */}
+      {groupsLoading || previewGroups.length > 0 ? (
+        <section
+          className="profile-sidebar__groups"
+          aria-labelledby="profile-sidebar-groups-heading"
+        >
+          <div className="profile-sidebar__section-head">
             <Link
+              id="profile-sidebar-groups-heading"
               href={`${basePath}?tab=groups`}
               scroll={false}
-              className="profile-sidebar__see-all"
+              className="profile-sidebar__section-title profile-sidebar__section-title--link"
             >
-              See all <ArrowRight size={14} strokeWidth={1.75} aria-hidden />
+              Groups
             </Link>
-          ) : null}
-        </div>
+            {groups.length > GROUPS_GRID_LIMIT ? (
+              <Link
+                href={`${basePath}?tab=groups`}
+                scroll={false}
+                className="profile-sidebar__see-all"
+              >
+                See all <ArrowRight size={14} strokeWidth={1.75} aria-hidden />
+              </Link>
+            ) : null}
+          </div>
 
-        {groupsLoading ? (
-          <div className="profile-sidebar__loading"><LoadingSpinner size="sm" /></div>
-        ) : previewGroups.length === 0 ? (
-          <p className="profile-sidebar__empty">No groups yet.</p>
-        ) : (
-          <ul className="profile-sidebar__groups-list">
-            {previewGroups.map((g) => {
-              const name = g.displayName || g.handle
-              return (
-                <li key={g.groupDid}>
-                  <Link
-                    href={`/profile/${encodeURIComponent(g.handle)}`}
-                    className="profile-sidebar__group-row"
-                  >
-                    <Avatar
-                      size="sm"
-                      src={g.avatarUrl || undefined}
-                      fallbackInitials={getInitials(name)}
-                    />
-                    <span className="profile-sidebar__group-meta">
-                      <span className="profile-sidebar__group-name">{name}</span>
-                      <span className="profile-sidebar__group-handle">@{g.handle}</span>
-                    </span>
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </section>
+          {groupsLoading ? (
+            <div className="profile-sidebar__loading"><LoadingSpinner size="sm" /></div>
+          ) : (
+            <ul className="profile-sidebar__groups-list">
+              {previewGroups.map((g) => {
+                const name = g.displayName || g.handle
+                return (
+                  <li key={g.groupDid}>
+                    <Link
+                      href={`/profile/${encodeURIComponent(g.handle)}`}
+                      className="profile-sidebar__group-row"
+                    >
+                      <Avatar
+                        size="sm"
+                        src={g.avatarUrl || undefined}
+                        fallbackInitials={getInitials(name)}
+                      />
+                      <span className="profile-sidebar__group-meta">
+                        <span className="profile-sidebar__group-name">{name}</span>
+                        <span className="profile-sidebar__group-handle">@{g.handle}</span>
+                      </span>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </section>
+      ) : null}
     </aside>
   )
 }
