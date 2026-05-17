@@ -117,14 +117,15 @@ export default function SettingsPage() {
   const { handle, email } = useSession();
   const { activeOrg } = useOrg();
 
-  // Navbar breadcrumb: `@handle` › `Settings`. Until handle resolves we
-  // pass `null` so the navbar isn't briefly empty.
+  // The "Settings" tab in the top-bar row 2 is the active page label,
+  // so the breadcrumb only carries the user's `@handle` (no redundant
+  // "Settings" segment). `usePageTitle` still seeds an aria/document
+  // title so screen readers and the browser tab stay correct.
   usePageTitle("Settings");
   usePageTitleBreadcrumb(
     handle
       ? {
           left: { text: `@${handle}`, href: `/profile/${handle}` },
-          right: { text: "Settings", href: "/settings" },
         }
       : null,
   );
@@ -235,6 +236,14 @@ export default function SettingsPage() {
       const el = sectionRefs.current.get(key);
       if (el) {
         el.scrollIntoView({ block: "start", behavior: "smooth" });
+        // Briefly highlight the jumped-to section so the eye lands on
+        // the right place. The class auto-removes after the keyframe
+        // animation finishes (1.4s in `settings-page.css`).
+        el.classList.remove("sx-section--flash");
+        // Force a reflow so re-adding the class restarts the animation.
+        void el.offsetWidth;
+        el.classList.add("sx-section--flash");
+        window.setTimeout(() => el.classList.remove("sx-section--flash"), 1500);
       }
       if (typeof window !== "undefined") {
         const next = `#${key}`;

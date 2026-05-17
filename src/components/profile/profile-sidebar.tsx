@@ -4,14 +4,18 @@ import Link from "next/link"
 import { useRef, useState } from "react"
 import {
   ArrowRight,
+  Building2,
   Calendar,
   Camera,
   Check,
   Copy,
   Link as LinkIcon,
+  MapPin,
   Pencil,
+  Plus,
   UserPlus,
   Users,
+  X,
 } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
@@ -21,7 +25,11 @@ import { getInitials } from "@/lib/utils/initials"
 import { useProfilePds } from "@/hooks/use-profile-pds"
 import { useUserGroups, type UserGroup } from "@/hooks/use-user-groups"
 import type { CertifiedProfile } from "@/lib/atproto/types"
-import type { ProfileDrafts } from "@/components/profile/profile-inline-edit-types"
+import {
+  newDraftUrlRow,
+  type DraftUrlRow,
+  type ProfileDrafts,
+} from "@/components/profile/profile-inline-edit-types"
 
 interface ProfileSidebarProps {
   profile: CertifiedProfile | null
@@ -40,6 +48,11 @@ interface ProfileSidebarProps {
   isOrg?: boolean
   /** Extra org-only URLs (only consulted when `isOrg` is true). */
   additionalUrls?: string[]
+  /** Pre-formatted org-only fields. Each is `null` when the field is
+   *  empty so the sidebar can skip the row entirely. */
+  orgLocation?: string | null
+  orgFoundedDate?: string | null
+  orgType?: string | null
   /** Pre-resolved groups. When provided, the sidebar uses these directly
    *  (so an own-profile view can pass the same `useOrg().groups` the
    *  account switcher renders). When omitted, falls back to
@@ -96,6 +109,9 @@ export default function ProfileSidebar({
   settingsHref,
   isOrg = false,
   additionalUrls,
+  orgLocation = null,
+  orgFoundedDate = null,
+  orgType = null,
   groupsOverride,
   groupsLoadingOverride,
   canInlineEdit = false,
@@ -249,7 +265,16 @@ export default function ProfileSidebar({
             <SmartLink url={profile.website} />
           </li>
         ) : null}
-        {isOrg && additionalUrls
+        {/* Additional URL list. In edit mode (org admin) we render the
+            inline editor with delete + add affordances; in read-only
+            we render one row per saved URL. Empty arrays render
+            nothing (no "URLs" header). */}
+        {isEditing && hasInline && isOrg ? (
+          <OrgUrlListEditor
+            rows={drafts?.additionalUrls ?? []}
+            onChange={(rows) => onDraftChange?.("additionalUrls", rows)}
+          />
+        ) : isOrg && additionalUrls
           ? additionalUrls
               .filter((u) => typeof u === "string" && u.length > 0)
               .map((u) => (
@@ -258,6 +283,70 @@ export default function ProfileSidebar({
                 </li>
               ))
           : null}
+        {/* Org-only details: location, organization type, founded date.
+            Edit mode replaces each row with an input; read-only renders
+            ONLY rows with a value (no "Not specified" placeholders). */}
+        {isEditing && hasInline && isOrg ? (
+          <>
+            <li className="profile-sidebar__org-field-edit">
+              <MapPin size={16} strokeWidth={1.75} aria-hidden />
+              <input
+                type="text"
+                className="profile-sidebar__org-input"
+                value={drafts?.location ?? ""}
+                maxLength={128}
+                placeholder="Location"
+                aria-label="Location"
+                onChange={(e) => onDraftChange?.("location", e.target.value)}
+              />
+            </li>
+            <li className="profile-sidebar__org-field-edit">
+              <Building2 size={16} strokeWidth={1.75} aria-hidden />
+              <input
+                type="text"
+                className="profile-sidebar__org-input"
+                value={drafts?.organizationType ?? ""}
+                maxLength={64}
+                placeholder="Organization type"
+                aria-label="Organization type"
+                onChange={(e) =>
+                  onDraftChange?.("organizationType", e.target.value)
+                }
+              />
+            </li>
+            <li className="profile-sidebar__org-field-edit">
+              <Calendar size={16} strokeWidth={1.75} aria-hidden />
+              <input
+                type="date"
+                className="profile-sidebar__org-input"
+                value={drafts?.foundedDate ?? ""}
+                aria-label="Founded date"
+                onChange={(e) => onDraftChange?.("foundedDate", e.target.value)}
+              />
+            </li>
+          </>
+        ) : isOrg ? (
+          <>
+            {orgLocation ? (
+              <li>
+                <MapPin size={16} strokeWidth={1.75} aria-hidden />
+                <span>{orgLocation}</span>
+              </li>
+            ) : null}
+            {orgType ? (
+              <li>
+                <Building2 size={16} strokeWidth={1.75} aria-hidden />
+                <span>{orgType}</span>
+              </li>
+            ) : null}
+            {orgFoundedDate ? (
+              <li>
+                <Calendar size={16} strokeWidth={1.75} aria-hidden />
+                <span>Founded {orgFoundedDate}</span>
+              </li>
+            ) : null}
+          </>
+        ) : null}
         {isBskyHosted && handle ? (
           <li>
             <LinkIcon size={16} strokeWidth={1.75} aria-hidden />
@@ -334,6 +423,71 @@ export default function ProfileSidebar({
         )}
       </section>
     </aside>
+  )
+}
+
+interface OrgUrlListEditorProps {
+  rows: DraftUrlRow[]
+  onChange: (rows: DraftUrlRow[]) => void
+}
+
+/**
+ * Inline editor for the org-only `additionalUrls` list. Each row is a
+ * `<li>` so it slots into the existing `.profile-sidebar__details` list
+ * without changing the surrounding layout. The trailing "+ Add URL"
+ * button appends an empty row; the per-row remove button deletes it.
+ *
+ * Validation is intentionally light here — full URL checks happen on
+ * save in the parent (matching the profile-edit-form behaviour). We
+ * just make sure the inputs are typed correctly and that the "+ Add"
+ * always renders so the list is reachable from an empty state.
+ */
+function OrgUrlListEditor({ rows, onChange }: OrgUrlListEditorProps) {
+  const update = (id: string, patch: Partial<DraftUrlRow>) => {
+    onChange(rows.map((r) => (r.id === id ? { ...r, ...patch } : r)))
+  }
+  const remove = (id: string) => {
+    onChange(rows.filter((r) => r.id !== id))
+  }
+  const add = () => {
+    onChange([...rows, newDraftUrlRow()])
+  }
+  return (
+    <>
+      {rows.map((row) => (
+        <li key={row.id} className="profile-sidebar__org-url-edit">
+          <LinkIcon size={16} strokeWidth={1.75} aria-hidden />
+          <input
+            type="url"
+            inputMode="url"
+            className="profile-sidebar__org-input"
+            value={row.url}
+            placeholder="https://example.com"
+            aria-label="URL"
+            onChange={(e) => update(row.id, { url: e.target.value })}
+          />
+          <button
+            type="button"
+            className="profile-sidebar__org-url-remove"
+            onClick={() => remove(row.id)}
+            aria-label="Remove URL"
+            title="Remove URL"
+          >
+            <X size={14} strokeWidth={1.75} aria-hidden />
+          </button>
+        </li>
+      ))}
+      <li className="profile-sidebar__org-url-add-row">
+        <button
+          type="button"
+          className="profile-sidebar__org-url-add"
+          onClick={add}
+        >
+          <Plus size={14} strokeWidth={2} aria-hidden />
+          Add URL
+        </button>
+      </li>
+    </>
   )
 }
 

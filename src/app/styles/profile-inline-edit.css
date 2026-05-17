@@ -67,43 +67,37 @@
   gap: 8px;
 }
 
-.profile-sidebar__website-input {
-  flex: 1;
-  min-width: 0;
+/* Shared visual treatment for all inline-edit inputs (display name,
+   about, website). A clearly-visible border + light bg signals that
+   the field is editable — same affordance for every text input. */
+.profile-sidebar__website-input,
+.profile-sidebar__name-input {
+  width: 100%;
   font: inherit;
-  font-size: 0.875rem;
   color: var(--fg-primary);
   background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
+  border: 1.5px solid var(--border-hover);
   border-radius: var(--radius);
   padding: 6px 10px;
 }
 
-.profile-sidebar__website-input:focus {
-  outline: none;
-  border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+.profile-sidebar__website-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.875rem;
 }
 
-/* --- Sidebar display-name input ------------------------------------- */
-
 .profile-sidebar__name-input {
-  width: 100%;
-  font: inherit;
   font-size: inherit;
   font-weight: inherit;
   line-height: inherit;
-  color: var(--color-text-primary);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 6px 10px;
 }
 
+.profile-sidebar__website-input:focus,
 .profile-sidebar__name-input:focus {
   outline: none;
-  border-color: var(--color-accent, var(--color-text-primary));
-  box-shadow: 0 0 0 2px var(--color-accent-soft, rgba(0, 0, 0, 0.1));
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
 }
 
 /* --- Page-level edit banner -----------------------------------------
@@ -222,24 +216,52 @@
   display: block;
 }
 
+/* Empty-state affordance: when there's no banner image, render a
+   centred "Click to add a banner" label inside the upload area so the
+   user has an obvious target. The label is hidden as soon as an
+   image is present (via :has(img)). Modern browsers only — the
+   regression is "the click area is still there, just without the
+   label", which is acceptable. */
+.profile-overview__banner-edit-slot .profile-card__banner:not(:has(img))::before {
+  content: "Click to add a banner";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--fg-muted);
+  pointer-events: none;
+}
+
+.profile-overview__banner-edit-slot .profile-card__banner:not(:has(img)) {
+  border: 1.5px dashed var(--border-hover);
+}
+
 /* --- Overview About textarea --------------------------------------- */
 
 .profile-overview__about-textarea {
   width: 100%;
   min-height: 96px;
   font: inherit;
-  color: var(--color-text-primary);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  color: var(--fg-primary);
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border-hover);
+  border-radius: var(--radius);
   padding: 10px 12px;
-  resize: vertical;
+  resize: none;
+  /* The textarea auto-grows via JS on input; overflow stays visible
+     for short content and shouldn't show a scrollbar. */
+  overflow: hidden;
 }
 
 .profile-overview__about-textarea:focus {
   outline: none;
-  border-color: var(--color-accent, var(--color-text-primary));
-  box-shadow: 0 0 0 2px var(--color-accent-soft, rgba(0, 0, 0, 0.1));
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
 }
 
 /* --- Overview Website input ---------------------------------------- */

@@ -8,7 +8,14 @@ import { checkCsrf } from "@/lib/auth/csrf"
 import { isValidDid } from "@/lib/utils/did"
 import { extractRouteError, pickAllowedFields, parseJsonBody } from "@/lib/utils/api"
 
-const METADATA_FIELDS = ["organizationType", "urls", "location", "foundedDate", "createdAt"] as const
+const METADATA_FIELDS = [
+  "organizationType",
+  "urls",
+  "location",
+  "foundedDate",
+  "longDescription",
+  "createdAt",
+] as const
 
 /**
  * GET /api/groups/[groupDid]/metadata

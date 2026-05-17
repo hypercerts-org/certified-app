@@ -3,13 +3,22 @@
 import { useEffect, useState } from "react"
 import { authFetch } from "@/lib/auth/fetch"
 import { createBoundedCache } from "@/lib/utils/bounded-cache"
-import type { OrgUrlItem } from "@/lib/groups/types"
+import type { GroupMetadata, OrgUrlItem } from "@/lib/groups/types"
 
 const ORG_MARKER_COLLECTION = "app.certified.actor.organization"
 
 interface OrgMarkerResult {
   isOrg: boolean
+  /** URL strings only — legacy callers depend on this `string[]` shape. */
   additionalUrls: string[]
+  /** URL items with labels preserved. Editors need to round-trip the
+   *  `label` field; the sidebar's read-only render still uses just the
+   *  URL via `additionalUrls`. */
+  urls: OrgUrlItem[]
+  /** Full marker record (minus `urls`, which is exposed above as a
+   *  typed array). The editor reads this to seed drafts; `null` means
+   *  the record didn't exist or wasn't an org. */
+  marker: GroupMetadata | null
 }
 
 // Module-level cache so re-visiting the same profile doesn't refetch the
@@ -23,15 +32,18 @@ const inFlight = new Map<string, Promise<OrgMarkerResult>>()
  * but loosened to `unknown` so we can validate at runtime — the proxy
  * returns raw record JSON and we can't trust the shape.
  */
-function extractUrls(value: unknown): string[] {
+function extractUrls(value: unknown): OrgUrlItem[] {
   if (!value || typeof value !== "object") return []
   const record = value as { urls?: unknown }
   if (!Array.isArray(record.urls)) return []
-  const out: string[] = []
+  const out: OrgUrlItem[] = []
   for (const item of record.urls as unknown[]) {
     if (item && typeof item === "object" && "url" in item) {
       const url = (item as OrgUrlItem).url
-      if (typeof url === "string" && url.length > 0) out.push(url)
+      if (typeof url === "string" && url.length > 0) {
+        const label = (item as OrgUrlItem).label
+        out.push(typeof label === "string" && label.length > 0 ? { url, label } : { url })
+      }
     }
   }
   return out
@@ -71,7 +83,12 @@ async function fetchOrgMarker(did: string): Promise<OrgMarkerResult> {
           }
         }
         if (isRecordNotFound) {
-          const result = { isOrg: false, additionalUrls: [] }
+          const result: OrgMarkerResult = {
+            isOrg: false,
+            additionalUrls: [],
+            urls: [],
+            marker: null,
+          }
           cache.set(did, result)
           return result
         }
@@ -79,17 +96,23 @@ async function fetchOrgMarker(did: string): Promise<OrgMarkerResult> {
       if (!res.ok) {
         // Treat other failures as "unknown" — don't cache, allow retry on
         // a later mount.
-        return { isOrg: false, additionalUrls: [] }
+        return { isOrg: false, additionalUrls: [], urls: [], marker: null }
       }
       const data = (await res.json()) as { value?: unknown }
+      const urls = extractUrls(data.value)
+      const marker = (data.value && typeof data.value === "object"
+        ? (data.value as GroupMetadata)
+        : null)
       const result: OrgMarkerResult = {
         isOrg: true,
-        additionalUrls: extractUrls(data.value),
+        additionalUrls: urls.map((u) => u.url),
+        urls,
+        marker,
       }
       cache.set(did, result)
       return result
     } catch {
-      return { isOrg: false, additionalUrls: [] }
+      return { isOrg: false, additionalUrls: [], urls: [], marker: null }
     } finally {
       inFlight.delete(did)
     }
@@ -112,23 +135,38 @@ async function fetchOrgMarker(did: string): Promise<OrgMarkerResult> {
 export function useOrgMarker(did: string | null): {
   isOrg: boolean
   additionalUrls: string[]
+  urls: OrgUrlItem[]
+  marker: GroupMetadata | null
   isLoading: boolean
+  /** Force a refetch (bypassing the module cache). Used by editors
+   *  after a write so subsequent renders pick up the new record. */
+  refresh: () => void
 } {
+  const initial = (): OrgMarkerResult => ({
+    isOrg: false,
+    additionalUrls: [],
+    urls: [],
+    marker: null,
+  })
   const [result, setResult] = useState<OrgMarkerResult>(() =>
-    did ? cache.get(did) ?? { isOrg: false, additionalUrls: [] } : { isOrg: false, additionalUrls: [] }
+    did ? cache.get(did) ?? initial() : initial()
   )
   const [isLoading, setIsLoading] = useState<boolean>(() =>
     did ? !cache.has(did) : false
   )
+  const [refreshTick, setRefreshTick] = useState(0)
 
   useEffect(() => {
     if (!did) {
-      setResult({ isOrg: false, additionalUrls: [] })
+      setResult(initial())
       setIsLoading(false)
       return
     }
+    // When the refresh tick changes, evict the cache so fetchOrgMarker
+    // hits the network instead of returning the stale entry.
+    if (refreshTick > 0) cache.delete(did)
     const cached = cache.get(did)
-    if (cached) {
+    if (cached && refreshTick === 0) {
       setResult(cached)
       setIsLoading(false)
       return
@@ -146,7 +184,11 @@ export function useOrgMarker(did: string | null): {
     return () => {
       cancelled = true
     }
-  }, [did])
+  }, [did, refreshTick])
 
-  return { ...result, isLoading }
+  return {
+    ...result,
+    isLoading,
+    refresh: () => setRefreshTick((t) => t + 1),
+  }
 }

@@ -6,17 +6,20 @@ import { Award, Calendar, Clock, FileText, Target } from "lucide-react"
 import {
   resolveActivityImageUrl,
   formatRelativeTime,
-  workScopeToLabel,
+  evaluateWorkScope,
 } from "@/lib/atproto/activity"
 import {
   useContributorInfo,
   isAtprotoIdentity,
 } from "@/hooks/use-contributor-info"
 import { useContributorInformation } from "@/hooks/use-contributor-information"
+import { useRights } from "@/hooks/use-rights"
 import { getInitials } from "@/lib/utils/initials"
 import Avatar from "@/components/ui/avatar"
-import ActivityAuthor from "./activity-author"
-import LocationCard from "./location-card"
+import CertHeadlineByline from "./cert-headline-byline"
+import CertProjects from "./cert-projects"
+import LeafletDocument, { isRenderableDescription } from "./leaflet-document"
+import CertLocationsMap from "./cert-locations-map"
 import type {
   ActivityContributor as ActivityContributorType,
   ClaimActivity,
@@ -55,16 +58,6 @@ function contributionRoleText(details: unknown): string | null {
   return typeof obj.role === "string" ? obj.role : null
 }
 
-/**
- * Decide whether `description` is a renderable plain string. The lexicon
- * supports a structured (facet-like) form too — fall through to the raw
- * details block for anything that isn't a simple string.
- */
-function plainDescription(value: unknown): string | null {
-  if (typeof value === "string" && value.trim().length > 0) return value
-  return null
-}
-
 function formatDate(iso: string): string {
   try {
     return new Date(iso).toLocaleDateString("en-US", {
@@ -78,11 +71,14 @@ function formatDate(iso: string): string {
 }
 
 /**
- * Detail view of a single activity claim. Layout mirrors the profile
- * page: a slim left pane that opens with a 1:1 square cert image and
- * carries the small metadata + author byline, and a main pane that
- * opens with the title and carries the description, contributors, and
- * locations.
+ * Detail view of a single activity claim.
+ *
+ * Layout:
+ *   - Left aside: square cert image, optional "Project" section, then
+ *     a small Created / Time period / Work scope / Rights meta list.
+ *   - Main pane: title, then a date+author byline, then the full
+ *     `shortDescription`, an optional disclosure to reveal the rich
+ *     `description`, contributors, and a single map for all locations.
  *
  * The `.cert-detail--wide` modifier on the root opts this page's
  * `.app-shell__content` parent into a wider max-width via a `:has()`
@@ -97,7 +93,7 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
     setImageFailed(false)
   }, [imageUrl])
 
-  const workScopeLabel = workScopeToLabel(value.workScope)
+  const workScopeLabel = evaluateWorkScope(value.workScope)
 
   // Time period rendering:
   //   - both set    → "Jan 1, 2026 – Mar 15, 2026"
@@ -122,9 +118,20 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
 
   const contributors = value.contributors ?? []
   const contributorCount = contributors.length
-  const description = plainDescription(value.description)
-  const hasRawDescription = value.description != null && description === null
   const locations = value.locations ?? []
+  const showFullDescription = isRenderableDescription(value.description)
+
+  // ClaimActivity doesn't carry its own rkey. The page route at
+  // /activity/[did]/[rkey] does, and we want to pass it to the
+  // Projects section. Rather than threading another prop from the
+  // page (the page file is carved out beyond the breadcrumb wiring),
+  // we read the last pathname segment client-side — same value the
+  // page already decoded via `useParams`.
+  const rkey = useRouteRkey()
+
+  const { name: rightsName, isLoading: rightsLoading } = useRights(
+    value.rights?.uri ?? null,
+  )
 
   return (
     <article className="cert-detail cert-detail--wide">
@@ -148,9 +155,7 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
           </div>
         )}
 
-        <div className="cert-detail__byline">
-          <ActivityAuthor did={did} />
-        </div>
+        {rkey ? <CertProjects did={did} rkey={rkey} /> : null}
 
         <dl className="cert-detail__meta">
           <div className="cert-detail__meta-row">
@@ -190,8 +195,14 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
                 <FileText size={11} strokeWidth={2} aria-hidden />
                 Rights
               </dt>
-              <dd className="cert-detail__meta-value cert-detail__uri">
-                {value.rights.uri}
+              <dd className="cert-detail__meta-value">
+                {rightsName ? (
+                  rightsName
+                ) : rightsLoading ? (
+                  <span className="cert-detail__meta-aux">Loading…</span>
+                ) : (
+                  <span className="cert-detail__uri">{value.rights.uri}</span>
+                )}
               </dd>
             </div>
           ) : null}
@@ -201,24 +212,24 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
       <div className="cert-detail__main">
         <header className="cert-detail__headline">
           <h1 className="cert-detail__title">{value.title}</h1>
+          <CertHeadlineByline
+            did={did}
+            createdAt={value.createdAt}
+            formattedDate={createdAbsolute}
+          />
           {value.shortDescription ? (
             <p className="cert-detail__short-desc">{value.shortDescription}</p>
           ) : null}
-        </header>
 
-        {description ? (
-          <section className="cert-detail__section">
-            <h2 className="cert-detail__section-title">Description</h2>
-            <p className="cert-detail__description">{description}</p>
-          </section>
-        ) : hasRawDescription ? (
-          <section className="cert-detail__section">
-            <details className="cert-detail__description-raw">
-              <summary>Full description</summary>
-              <pre>{JSON.stringify(value.description, null, 2)}</pre>
+          {showFullDescription ? (
+            <details className="cert-detail__full-disclosure">
+              <summary>Show full description</summary>
+              <div className="cert-detail__full-body">
+                <LeafletDocument value={value.description} />
+              </div>
             </details>
-          </section>
-        ) : null}
+          ) : null}
+        </header>
 
         {contributorCount > 0 ? (
           <section className="cert-detail__section">
@@ -248,16 +259,38 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
               <h2 className="cert-detail__section-title">Locations</h2>
               <span className="cert-detail__section-count">{locations.length}</span>
             </div>
-            <ul className="cert-detail__locations">
-              {locations.map((loc, i) => (
-                <LocationCard key={`${loc.uri}-${i}`} uri={loc.uri} />
-              ))}
-            </ul>
+            <CertLocationsMap locations={locations} />
           </section>
         ) : null}
       </div>
     </article>
   )
+}
+
+/**
+ * Read the trailing rkey segment off the current URL. The cert detail
+ * page sits at `/activity/[did]/[rkey]`, so we slice the last
+ * pathname segment — decoded so it matches what the page already
+ * normalised through `decodeURIComponent`. Returns null until the
+ * window object is available (SSR pass).
+ */
+function useRouteRkey(): string | null {
+  const [rkey, setRkey] = useState<string | null>(null)
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const segments = window.location.pathname.split("/").filter(Boolean)
+    const last = segments[segments.length - 1]
+    if (!last) {
+      setRkey(null)
+      return
+    }
+    try {
+      setRkey(decodeURIComponent(last))
+    } catch {
+      setRkey(last)
+    }
+  }, [])
+  return rkey
 }
 
 /* ---------- Contributor row ----------
@@ -402,3 +435,4 @@ function ContributorRow({ contributor, role, weight }: ContributorRowProps) {
     </li>
   )
 }
+

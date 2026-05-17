@@ -14,12 +14,14 @@ import {
   uploadBanner,
   type UploadedBlob,
 } from "@/lib/atproto/profile"
+import { putOrgMarker } from "@/lib/groups/org-marker"
 import type {
   CertifiedProfile,
   HypercertsSmallImage,
   HypercertsLargeImage,
 } from "@/lib/atproto/types"
 import type { BlobRef } from "@atproto/api"
+import type { GroupMetadata, OrgUrlItem } from "@/lib/groups/types"
 import ProfileHeader from "@/components/profile/profile-header"
 import ProfileSidebar from "@/components/profile/profile-sidebar"
 import ProfileOverview from "@/components/profile/profile-overview"
@@ -30,7 +32,11 @@ import ProfileGroups from "@/components/profile/profile-groups"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import { UserX } from "lucide-react"
-import type { ProfileDrafts } from "@/components/profile/profile-inline-edit-types"
+import {
+  newDraftUrlRow,
+  type DraftUrlRow,
+  type ProfileDrafts,
+} from "@/components/profile/profile-inline-edit-types"
 
 type TabKey =
   | "overview"
@@ -52,6 +58,78 @@ const TABS: { key: TabKey; label: string }[] = [
 
 // `ProfileDrafts` lives in `profile-inline-edit-types` so the sidebar and
 // overview can import it without creating a cycle with this page module.
+
+// --- Read helpers for org-marker fields with looser legacy shapes -----
+
+/**
+ * Coerce the record's `organizationType` (which may be a legacy `string[]`
+ * or the new plain string) into a single human-readable string. Returns
+ * `null` when the value is missing or empty so callers can skip the row.
+ */
+function readableOrgType(v: unknown): string | null {
+  if (typeof v === "string" && v.trim().length > 0) return v.trim()
+  if (Array.isArray(v)) {
+    const first = v.find((x) => typeof x === "string" && x.trim().length > 0)
+    return typeof first === "string" ? first.trim() : null
+  }
+  return null
+}
+
+/**
+ * Coerce the record's `location` (which may be the legacy `{uri, cid}`
+ * ref or the new plain string) into a human-readable string. Returns
+ * `null` when the value is missing.
+ */
+function readableLocation(v: unknown): string | null {
+  if (typeof v === "string" && v.trim().length > 0) return v.trim()
+  // Legacy ref shape — surface the URI as best-effort fallback.
+  if (v && typeof v === "object" && "uri" in v) {
+    const uri = (v as { uri?: unknown }).uri
+    if (typeof uri === "string" && uri.length > 0) return uri
+  }
+  return null
+}
+
+/**
+ * Format `foundedDate` for display. Accepts the full ISO datetime the
+ * record stores, a plain `yyyy-mm-dd` string, or just a 4-digit year.
+ * Returns `null` for missing / unparseable values.
+ */
+function readableFoundedDate(v: unknown): string | null {
+  if (typeof v !== "string" || v.trim().length === 0) return null
+  const s = v.trim()
+  // Year-only form: render as-is.
+  if (/^\d{4}$/.test(s)) return s
+  const d = new Date(s)
+  if (Number.isNaN(d.getTime())) return s
+  // Render as "Mon yyyy" for ISO datetimes / yyyy-mm-dd values to
+  // avoid showing a noisy day-precision date when we only need year/month.
+  return d.toLocaleDateString("en-US", { month: "short", year: "numeric" })
+}
+
+/** Build the form a `<input type="date">` expects from a stored value. */
+function toDateInputValue(v: unknown): string {
+  if (typeof v !== "string") return ""
+  const s = v.trim()
+  if (s === "") return ""
+  // Year-only: pad to Jan 1 so the date input has something to display.
+  if (/^\d{4}$/.test(s)) return `${s}-01-01`
+  // yyyy-mm-dd or ISO datetime — strip to the date portion.
+  return s.slice(0, 10)
+}
+
+/** Normalise a `<input type="date">` value (yyyy-mm-dd) to an ISO
+ *  datetime at UTC midnight so the record stores a stable value. Empty
+ *  input yields `undefined` (the field is cleared). */
+function fromDateInputValue(s: string): string | undefined {
+  const v = s.trim()
+  if (v === "") return undefined
+  // The input element guarantees the yyyy-mm-dd shape on supporting
+  // browsers; fall back to a Date() round-trip otherwise.
+  const d = new Date(v)
+  if (Number.isNaN(d.getTime())) return undefined
+  return d.toISOString()
+}
 
 export default function UserProfilePage() {
   useProfileNavbar()
@@ -96,8 +174,14 @@ export default function UserProfilePage() {
   // org-mode (extra URL list). While loading we pass isOrg=false to keep
   // the sidebar in non-org mode; the hook caches per-DID so subsequent
   // visits hydrate synchronously.
-  const { isOrg, additionalUrls, isLoading: isOrgMarkerLoading } =
-    useOrgMarker(did)
+  const {
+    isOrg,
+    additionalUrls,
+    urls: orgUrls,
+    marker: orgMarker,
+    isLoading: isOrgMarkerLoading,
+    refresh: refreshOrgMarker,
+  } = useOrgMarker(did)
   const sidebarIsOrg = isOrgMarkerLoading ? false : isOrg
 
   const { groups, isLoading: orgGroupsLoading } = useOrg()
@@ -127,6 +211,11 @@ export default function UserProfilePage() {
     displayName: "",
     description: "",
     website: "",
+    location: "",
+    foundedDate: "",
+    organizationType: "",
+    longDescription: "",
+    additionalUrls: [],
   })
   // Local mirrors so the sidebar/overview show fresh values immediately
   // after save (without round-tripping through useUserProfile, which
@@ -134,6 +223,11 @@ export default function UserProfilePage() {
   // changing, so on a hard nav back to the page the canonical value
   // wins again.)
   const [localProfile, setLocalProfile] = useState<CertifiedProfile | null>(
+    null,
+  )
+  // Local mirror of the org marker so post-save renders show the new
+  // values immediately. Cleared on cancel / next edit-click.
+  const [localOrgMarker, setLocalOrgMarker] = useState<GroupMetadata | null>(
     null,
   )
   const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null>(null)
@@ -150,6 +244,19 @@ export default function UserProfilePage() {
   const effectiveProfile = localProfile ?? profile
   const effectiveAvatarUrl = localAvatarUrl ?? avatarUrl
   const effectiveBannerUrl = localBannerUrl ?? bannerUrl
+  const effectiveOrgMarker = localOrgMarker ?? orgMarker
+  // Read-only displayable forms of the org-only marker fields. Each
+  // returns `null` when the field is absent so the sidebar / overview
+  // can skip rendering the row entirely (no "Not specified" placeholders).
+  const displayOrgType = readableOrgType(effectiveOrgMarker?.organizationType)
+  const displayLocation = readableLocation(effectiveOrgMarker?.location)
+  const displayFoundedDate = readableFoundedDate(effectiveOrgMarker?.foundedDate)
+  const displayLongDescription = effectiveOrgMarker?.longDescription?.trim() || null
+  const effectiveOrgUrls: OrgUrlItem[] =
+    localOrgMarker?.urls ?? orgUrls ?? []
+  const effectiveAdditionalUrls = localOrgMarker
+    ? effectiveOrgUrls.map((u) => u.url)
+    : additionalUrls
 
   const handleEditClick = useCallback(() => {
     if (!effectiveProfile) return
@@ -157,18 +264,33 @@ export default function UserProfilePage() {
       displayName: effectiveProfile.displayName ?? "",
       description: effectiveProfile.description ?? "",
       website: effectiveProfile.website ?? "",
+      // Org-only seeds. When the marker is missing these are empty
+      // strings / an empty array, which the editor renders as blank
+      // inputs. The save handler skips writing the marker entirely
+      // when `isOrg` is false (see handleSave below).
+      location: readableLocation(effectiveOrgMarker?.location) ?? "",
+      foundedDate: toDateInputValue(effectiveOrgMarker?.foundedDate),
+      organizationType: readableOrgType(effectiveOrgMarker?.organizationType) ?? "",
+      longDescription: effectiveOrgMarker?.longDescription ?? "",
+      additionalUrls:
+        effectiveOrgUrls.length > 0
+          ? effectiveOrgUrls.map((u) => newDraftUrlRow({ url: u.url, label: u.label }))
+          : [],
     })
     setPendingAvatarBlob(null)
     setPendingBannerBlob(null)
     setSaveError(null)
     setIsEditing(true)
-  }, [effectiveProfile])
+  }, [effectiveProfile, effectiveOrgMarker, effectiveOrgUrls])
 
   const handleCancelEdit = useCallback(() => {
     setIsEditing(false)
     setPendingAvatarBlob(null)
     setPendingBannerBlob(null)
     setSaveError(null)
+    // Note: we keep `localOrgMarker` so any *previous* save still
+    // reflects in the read-only render. Only the in-flight draft state
+    // is discarded.
   }, [])
 
   const handleDraftChange = useCallback(
@@ -247,6 +369,42 @@ export default function UserProfilePage() {
         editTargetDid ? { targetDid: editTargetDid } : undefined,
       )
 
+      // Second write: org marker. Only attempted when we know this is an
+      // org (marker already exists). We don't create a marker from
+      // scratch here — that flow lives behind group registration / the
+      // settings page. When `isOrg` is false, leave the marker alone.
+      let nextMarker: GroupMetadata | null = null
+      if (sidebarIsOrg) {
+        const base = effectiveOrgMarker ?? { createdAt: new Date().toISOString() }
+        // Build the urls array from the editable rows. Empty rows
+        // (no url) are dropped silently; labels are kept when present.
+        const urls = drafts.additionalUrls
+          .map<OrgUrlItem | null>((row) => {
+            const url = row.url.trim()
+            if (url === "") return null
+            const label = row.label.trim()
+            return label ? { url, label } : { url }
+          })
+          .filter((u): u is OrgUrlItem => u !== null)
+
+        // Build the new marker. We use a fresh object so old, no-longer-
+        // edited fields (e.g. fields the editor doesn't surface) are
+        // preserved verbatim from the base.
+        nextMarker = {
+          ...base,
+          // Empty strings collapse to `undefined` so the BFF allowlist
+          // (which only copies defined fields) clears them when written.
+          // The XRPC path also drops `undefined` via JSON.stringify.
+          organizationType: drafts.organizationType.trim() || undefined,
+          location: drafts.location.trim() || undefined,
+          foundedDate: fromDateInputValue(drafts.foundedDate),
+          longDescription: drafts.longDescription.trim() || undefined,
+          urls: urls.length > 0 ? urls : undefined,
+        }
+
+        await putOrgMarker(did, editTargetDid ?? did, nextMarker)
+      }
+
       // Defensive: evict any cached resolve-did response so navigation
       // back through the app sees the new record. Best-effort.
       fetch(`/api/resolve-did?did=${encodeURIComponent(did)}`, {
@@ -257,6 +415,12 @@ export default function UserProfilePage() {
       // Mirror the saved profile locally so the read-only render
       // immediately reflects the change without a hard reload.
       setLocalProfile(next)
+      // Mirror the marker locally + invalidate the module-level cache so
+      // subsequent navigations re-fetch instead of showing stale data.
+      if (nextMarker) {
+        setLocalOrgMarker(nextMarker)
+        refreshOrgMarker()
+      }
       // Build CDN-style URLs for newly uploaded blobs. We don't know the
       // PDS host on the client without re-resolving, so fall back to the
       // existing URL on no-upload and clear-then-let-resolve-did rehydrate
@@ -286,6 +450,9 @@ export default function UserProfilePage() {
     pendingAvatarBlob,
     pendingBannerBlob,
     editTargetDid,
+    sidebarIsOrg,
+    effectiveOrgMarker,
+    refreshOrgMarker,
   ])
 
   // Mobile <ProfileHeader> still uses the legacy edit pages as a
@@ -406,7 +573,10 @@ export default function UserProfilePage() {
           basePath={pathname || ""}
           settingsHref={settingsHref}
           isOrg={sidebarIsOrg}
-          additionalUrls={additionalUrls}
+          additionalUrls={effectiveAdditionalUrls}
+          orgLocation={displayLocation}
+          orgFoundedDate={displayFoundedDate}
+          orgType={displayOrgType}
           groupsOverride={isOwnProfile ? groups : undefined}
           groupsLoadingOverride={isOwnProfile ? orgGroupsLoading : undefined}
           canInlineEdit={canEditInline}
@@ -435,6 +605,8 @@ export default function UserProfilePage() {
                 onDraftChange={handleDraftChange}
                 onBannerFile={handleBannerFile}
                 hasPendingBanner={!!pendingBannerBlob}
+                isOrg={sidebarIsOrg}
+                orgLongDescription={displayLongDescription}
               />
             </div>
           )}

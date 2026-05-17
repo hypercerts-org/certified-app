@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { ArrowRight, Award } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -36,6 +36,13 @@ interface ProfileOverviewProps {
   ) => void
   onBannerFile?: (file: File) => Promise<void>
   hasPendingBanner?: boolean
+  /** True when this profile carries the org marker. Gates the org-only
+   *  long-description block (read + edit). */
+  isOrg?: boolean
+  /** Pre-trimmed long-form description from the org marker. `null` when
+   *  empty — the section is skipped entirely so we don't render a stale
+   *  "Not specified" placeholder. */
+  orgLongDescription?: string | null
 }
 
 const ACTIVITY_PREVIEW = 3
@@ -60,6 +67,8 @@ export default function ProfileOverview({
   onDraftChange,
   onBannerFile,
   hasPendingBanner = false,
+  isOrg = false,
+  orgLongDescription = null,
 }: ProfileOverviewProps) {
   const [bannerFailed, setBannerFailed] = useState(false)
   useEffect(() => setBannerFailed(false), [bannerUrl])
@@ -150,13 +159,13 @@ export default function ProfileOverview({
           >
             About
           </h2>
-          <textarea
+          <AutoGrowTextarea
             className="profile-overview__about-textarea"
             value={drafts?.description ?? ""}
             maxLength={256}
             placeholder="A short description of you and your work."
             aria-label="About"
-            onChange={(e) => onDraftChange?.("description", e.target.value)}
+            onChange={(value) => onDraftChange?.("description", value)}
           />
         </section>
       ) : profile?.description ? (
@@ -171,6 +180,59 @@ export default function ProfileOverview({
             About
           </h2>
           <p className="profile-overview__about-body">{profile.description}</p>
+        </section>
+      ) : null}
+
+      {/* Org-only long description. Rendered as a separate section below
+          the short "About" so the reader can scan the bio quickly and
+          opt into the longer text. In edit mode the section always
+          renders (so admins can fill it in from empty); in read-only it
+          only renders when there's a value. */}
+      {isEditing && isOrg ? (
+        <section
+          className="profile-overview__about profile-overview__about--editing"
+          aria-labelledby="profile-overview-long-desc-heading"
+        >
+          <h2
+            id="profile-overview-long-desc-heading"
+            className="profile-overview__section-title"
+          >
+            Long description
+          </h2>
+          <textarea
+            className="profile-overview__about-textarea profile-overview__long-desc-textarea"
+            value={drafts?.longDescription ?? ""}
+            placeholder="A longer, multi-line description of this organization."
+            aria-label="Long description"
+            onChange={(e) => onDraftChange?.("longDescription", e.target.value)}
+          />
+        </section>
+      ) : isOrg && orgLongDescription ? (
+        <section
+          className="profile-overview__about"
+          aria-labelledby="profile-overview-long-desc-heading"
+        >
+          {/* Header only when the short bio also rendered above, so the
+              two sections are visually distinguishable; otherwise just
+              render under the existing "About" heading. */}
+          {profile?.description ? (
+            <h2
+              id="profile-overview-long-desc-heading"
+              className="profile-overview__section-title"
+            >
+              More about
+            </h2>
+          ) : (
+            <h2
+              id="profile-overview-long-desc-heading"
+              className="profile-overview__section-title"
+            >
+              About
+            </h2>
+          )}
+          <p className="profile-overview__about-body profile-overview__long-desc-body">
+            {orgLongDescription}
+          </p>
         </section>
       ) : null}
 
@@ -403,5 +465,56 @@ function EndorsementPreviewRow({ endorsement }: EndorsementPreviewRowProps) {
         ) : null}
       </Link>
     </li>
+  )
+}
+
+interface AutoGrowTextareaProps {
+  value: string
+  onChange: (value: string) => void
+  className?: string
+  placeholder?: string
+  maxLength?: number
+  ["aria-label"]?: string
+}
+
+/**
+ * Textarea that grows its height to fit content as the user types.
+ * Avoids the situation where a long About entry only shows the first
+ * couple of lines because the textarea has a fixed visible height.
+ */
+function AutoGrowTextarea({
+  value,
+  onChange,
+  className,
+  placeholder,
+  maxLength,
+  "aria-label": ariaLabel,
+}: AutoGrowTextareaProps) {
+  const ref = useRef<HTMLTextAreaElement | null>(null)
+
+  const resize = (el: HTMLTextAreaElement) => {
+    // Reset to a small height first so shrinking on delete works,
+    // then grow to the content's natural scrollHeight.
+    el.style.height = "auto"
+    el.style.height = `${el.scrollHeight}px`
+  }
+
+  useEffect(() => {
+    if (ref.current) resize(ref.current)
+  }, [value])
+
+  return (
+    <textarea
+      ref={ref}
+      className={className}
+      value={value}
+      maxLength={maxLength}
+      placeholder={placeholder}
+      aria-label={ariaLabel}
+      onChange={(e) => {
+        onChange(e.target.value)
+        resize(e.currentTarget)
+      }}
+    />
   )
 }

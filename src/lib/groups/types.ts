@@ -29,10 +29,20 @@ export type OrgProfile = CertifiedProfile
 
 export interface GroupMetadata {
   $type?: "app.certified.actor.organization"
-  organizationType?: string[]
+  /** Allow either the legacy `string[]` shape or a single `string` —
+   *  the inline-edit flow writes a single string but older records may
+   *  still carry the array form. */
+  organizationType?: string | string[]
   urls?: OrgUrlItem[]
-  location?: { uri: string; cid: string }
+  /** Free-form location string. The original lexicon shape was a
+   *  `{ uri, cid }` ref to a separate location record; the inline-edit
+   *  flow writes a plain string. Both shapes round-trip cleanly through
+   *  the reader. */
+  location?: string | { uri: string; cid: string }
   foundedDate?: string
+  /** Long-form description (multi-line). Separate from the short
+   *  `description` field on the profile record. */
+  longDescription?: string
   createdAt: string
 }
 
