@@ -147,18 +147,22 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
       ? tabParam
       : "overview"
 
-  // Edit affordance — the creator can act on the cert. "Creator"
-  // here means the current viewer is signed in *as* the cert's
-  // author. Two paths:
+  // Edit affordance — the viewer can act on the cert when they're
+  // signed in as the cert's creator. Two paths:
   //   - Personal session DID === cert.did (own cert), OR
-  //   - Active org (acting-as-group) DID === cert.did (group cert).
-  // Acting-as-group is the path that used to be missed — group
-  // admins viewing the group's own cert now see the edit button.
+  //   - Acting-as-group on the group's own cert, AND the role is
+  //     owner or admin. Members of a group can switch into it via
+  //     the account switcher but the BFF rejects writes from them,
+  //     so we hide the affordance rather than land them on a
+  //     write-rejected edit page.
   const { did: sessionDid } = useAuth()
   const { activeOrg } = useOrg()
+  const canEditAsActiveOrg =
+    !!activeOrg &&
+    activeOrg.groupDid === did &&
+    (activeOrg.role === "owner" || activeOrg.role === "admin")
   const isCreator =
-    (!!sessionDid && sessionDid === did) ||
-    (!!activeOrg && activeOrg.groupDid === did)
+    (!!sessionDid && sessionDid === did) || canEditAsActiveOrg
   const certBasePath = pathname ?? ""
   const editHref = isCreator ? `${certBasePath}/edit` : null
   const descriptionHref = pathname
