@@ -36,35 +36,43 @@ export function normaliseEmbedUrl(input: string): NormalisedEmbed | null {
   const host = url.hostname.replace(/^www\./, "").toLowerCase()
 
   // ---- YouTube ----
-  if (host === "youtube.com" || host === "m.youtube.com") {
-    // Standard watch URL — extract `?v=ID`.
+  // We canonicalise to `youtube-nocookie.com`, YouTube's
+  // privacy-enhanced embed domain. It avoids third-party tracking
+  // cookies that browsers (and ad-blockers) often gate on — which
+  // would otherwise produce "This content is blocked. Contact the
+  // site owner to fix the issue." in the embedded player. The
+  // serving host accepts the same path shapes as youtube.com/embed.
+  const ytHosts = new Set([
+    "youtube.com",
+    "m.youtube.com",
+    "youtube-nocookie.com",
+  ])
+  if (ytHosts.has(host)) {
     if (url.pathname === "/watch") {
       const id = url.searchParams.get("v")
       if (id && YOUTUBE_ID.test(id)) {
         return {
-          embedUrl: `https://www.youtube.com/embed/${id}`,
+          embedUrl: `https://www.youtube-nocookie.com/embed/${id}`,
           aspectRatio: { width: 16, height: 9 },
           provider: "youtube",
         }
       }
     }
-    // Already an embed URL — accept as-is.
     if (url.pathname.startsWith("/embed/")) {
       const id = url.pathname.split("/")[2]
       if (id && YOUTUBE_ID.test(id)) {
         return {
-          embedUrl: `https://www.youtube.com/embed/${id}`,
+          embedUrl: `https://www.youtube-nocookie.com/embed/${id}`,
           aspectRatio: { width: 16, height: 9 },
           provider: "youtube",
         }
       }
     }
-    // Shorts: `/shorts/ID` → embed/ID.
     if (url.pathname.startsWith("/shorts/")) {
       const id = url.pathname.split("/")[2]
       if (id && YOUTUBE_ID.test(id)) {
         return {
-          embedUrl: `https://www.youtube.com/embed/${id}`,
+          embedUrl: `https://www.youtube-nocookie.com/embed/${id}`,
           aspectRatio: { width: 9, height: 16 },
           provider: "youtube",
         }
@@ -76,7 +84,7 @@ export function normaliseEmbedUrl(input: string): NormalisedEmbed | null {
     const id = url.pathname.slice(1).split("/")[0]
     if (id && YOUTUBE_ID.test(id)) {
       return {
-        embedUrl: `https://www.youtube.com/embed/${id}`,
+        embedUrl: `https://www.youtube-nocookie.com/embed/${id}`,
         aspectRatio: { width: 16, height: 9 },
         provider: "youtube",
       }
@@ -111,15 +119,17 @@ export function normaliseEmbedUrl(input: string): NormalisedEmbed | null {
 /** True when the embed URL points at a known-safe provider. The
  *  renderer falls back to a "this embed isn't supported" message
  *  rather than rendering an iframe to an arbitrary origin. */
+const ALLOWED_EMBED_HOSTS = new Set([
+  "youtube.com",
+  "youtube-nocookie.com",
+  "player.vimeo.com",
+])
+
 export function isAllowedEmbedHost(url: string): boolean {
   try {
     const parsed = new URL(url)
     const host = parsed.hostname.replace(/^www\./, "").toLowerCase()
-    return (
-      host === "youtube.com" ||
-      host === "youtube-nocookie.com" ||
-      host === "player.vimeo.com"
-    )
+    return ALLOWED_EMBED_HOSTS.has(host)
   } catch {
     return false
   }
