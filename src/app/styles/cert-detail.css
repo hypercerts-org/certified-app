@@ -584,8 +584,29 @@
 .cert-detail__section-header {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
   gap: 12px;
+}
+
+/* Title + count cluster on the left; "See all" pushes to the
+   right via auto-margin so the layout stays clean when the count
+   pill is hidden. */
+.cert-detail__section-header > .cert-detail__section-title {
+  margin-right: 0;
+}
+
+.cert-detail__section-see-all {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.cert-detail__section-see-all:hover {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .cert-detail__section-title {

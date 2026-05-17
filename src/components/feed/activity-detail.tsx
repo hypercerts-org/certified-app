@@ -551,27 +551,57 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
         {activeTab === "overview" ? (
           <>
             {contributorCount > 0 ? (
-              <section className="cert-detail__section">
-                <div className="cert-detail__section-header">
-                  <h2 className="cert-detail__section-title">Contributors</h2>
-                  <span className="cert-detail__section-count">
-                    {contributorCount}
-                  </span>
-                </div>
-                <ul className="cert-detail__contributors">
-                  {contributors.map((c, i) => {
-                    const roleText = contributionRoleText(c.contributionDetails)
-                    return (
-                      <ContributorRow
-                        key={contributorKey(c, i)}
-                        contributor={c}
-                        role={roleText}
-                        weight={c.contributionWeight ?? null}
-                      />
-                    )
-                  })}
-                </ul>
-              </section>
+              (() => {
+                // Overview preview — cap at 5 rows. When the cert has
+                // more, the section header gains a "See all" link
+                // into the dedicated Contributors tab so readers can
+                // jump to the full list without scrolling the
+                // overview.
+                const OVERVIEW_CONTRIB_PREVIEW = 5
+                const previewContributors = contributors.slice(
+                  0,
+                  OVERVIEW_CONTRIB_PREVIEW,
+                )
+                const hasMore = contributorCount > OVERVIEW_CONTRIB_PREVIEW
+                const contributorsHref = pathname
+                  ? `${pathname}?tab=contributors`
+                  : null
+                return (
+                  <section className="cert-detail__section">
+                    <div className="cert-detail__section-header">
+                      <h2 className="cert-detail__section-title">
+                        Contributors
+                      </h2>
+                      <span className="cert-detail__section-count">
+                        {contributorCount}
+                      </span>
+                      {hasMore && contributorsHref ? (
+                        <Link
+                          href={contributorsHref}
+                          scroll={false}
+                          replace
+                          className="cert-detail__section-see-all"
+                        >
+                          See all
+                        </Link>
+                      ) : null}
+                    </div>
+                    <ul className="cert-detail__contributors">
+                      {previewContributors.map((c, i) => {
+                        const roleText = contributionRoleText(c.contributionDetails)
+                        return (
+                          <ContributorRow
+                            key={contributorKey(c, i)}
+                            contributor={c}
+                            role={roleText}
+                            weight={c.contributionWeight ?? null}
+                          />
+                        )
+                      })}
+                    </ul>
+                  </section>
+                )
+              })()
             ) : null}
 
             {rkey ? <CertProjects did={did} rkey={rkey} /> : null}
