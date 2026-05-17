@@ -151,10 +151,11 @@ export function evaluateWorkScope(value: unknown): string | null {
 
 /** Match `scope.hasAny([...])` and return the inner array as a label. */
 function tryEvalCelHasAny(expression: string): string | null {
-  // Single regex match — `s` flag allows multi-line CEL expressions
-  // (rare but possible). We grab the bracketed argument list and then
-  // split it into individual quoted strings.
-  const m = expression.match(/scope\s*\.\s*hasAny\s*\(\s*\[(.*?)\]\s*\)/s)
+  // We grab the bracketed argument list and then split it into
+  // individual quoted strings. Using `[\s\S]` instead of `.` with the
+  // `s` flag keeps us compatible with tsconfig targets older than
+  // ES2018 (lib.es2018.regexp.d.ts gates the flag).
+  const m = expression.match(/scope\s*\.\s*hasAny\s*\(\s*\[([\s\S]*?)\]\s*\)/)
   if (!m) return null
 
   const items: string[] = []

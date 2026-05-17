@@ -107,10 +107,115 @@
   opacity: 0.55;
 }
 
-.cert-detail__byline {
+/* (Older byline used to sit in the aside — it moved into the main pane
+   under the title; see `.cert-detail__headline-byline` below.) */
+
+/* ---------- Project section (left pane) ----------
+
+   Renders only when this cert is in at least one project collection.
+   A thin stack of rows: thumbnail + name + optional short description.
+   Each row is its own link target. */
+
+.cert-detail__projects {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cert-detail__section-title--aside {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.cert-detail__projects-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cert-detail__project {
+  display: flex;
+  min-width: 0;
+}
+
+.cert-detail__project-link {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.cert-detail__project-link:hover,
+.cert-detail__project-link:focus-visible {
+  background: var(--overlay-weak);
+}
+
+.cert-detail__project-link--static {
+  cursor: default;
+}
+
+.cert-detail__project-link--static:hover {
+  background: transparent;
+}
+
+.cert-detail__project-thumb-wrap {
+  flex-shrink: 0;
+}
+
+.cert-detail__project-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  overflow: hidden;
+  object-fit: cover;
+  display: block;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-subtle);
+}
+
+.cert-detail__project-thumb--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-muted);
+}
+
+.cert-detail__project-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+  flex: 1;
+}
+
+.cert-detail__project-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cert-detail__project-desc {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ---------- Main pane ---------- */
@@ -146,6 +251,109 @@
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* ---------- Headline byline ----------
+
+   Sits directly under the title:
+
+     <date>  by  <avatar>  <display name>
+                            @<handle>
+
+   The avatar + name+handle stack is one focusable link. The "by"
+   separator is a static span, and the date is on the far left. Wraps
+   gracefully on narrow screens. */
+
+.cert-detail__headline-byline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+}
+
+.cert-detail__headline-date {
+  color: var(--fg-secondary);
+  font-feature-settings: 'tnum' 1;
+}
+
+.cert-detail__headline-by {
+  color: var(--fg-muted);
+}
+
+.cert-detail__headline-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border-radius: 6px;
+}
+
+.cert-detail__headline-author:hover,
+.cert-detail__headline-author:focus-visible {
+  background: var(--overlay-weak);
+}
+
+/* The shared Avatar component renders at 32 px in "sm" size. The cert
+   detail byline wants a ~24 px footprint; we scale it down via a CSS
+   transform on the immediate child without forcing a new Avatar size
+   prop. */
+.cert-detail__headline-author > div:first-child {
+  width: 24px;
+  height: 24px;
+}
+
+.cert-detail__headline-author-meta {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.15;
+  min-width: 0;
+}
+
+.cert-detail__headline-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  white-space: nowrap;
+}
+
+.cert-detail__headline-handle {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+/* Skeletons */
+.cert-detail__headline-author--skeleton {
+  cursor: default;
+}
+
+.cert-detail__headline-avatar-skel {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--overlay-weak);
+}
+
+.cert-detail__headline-name-skel {
+  width: 90px;
+  height: 10px;
+  border-radius: 4px;
+  background: var(--overlay-weak);
+  margin-bottom: 4px;
+  display: block;
+}
+
+.cert-detail__headline-handle-skel {
+  width: 60px;
+  height: 9px;
+  border-radius: 4px;
+  background: var(--overlay-weak);
+  display: block;
 }
 
 /* ---------- Two-column body ----------
@@ -374,55 +582,177 @@
   margin: 0;
 }
 
-.cert-detail__description-raw {
+/* "Show full description" disclosure — sits under shortDescription and
+   reveals the rich `value.description` content. <details>-based so it
+   works without JS. */
+
+.cert-detail__full-disclosure {
   margin: 0;
+  padding: 0;
   border: 0;
 }
 
-.cert-detail__description-raw summary {
-  font-size: 0.75rem;
-  font-weight: 600;
+.cert-detail__full-disclosure summary {
+  font-size: 0.8125rem;
+  font-weight: 500;
   color: var(--fg-muted);
   cursor: pointer;
   list-style: none;
-  padding: 4px 0;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  padding: 6px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.cert-detail__description-raw summary::-webkit-details-marker {
+.cert-detail__full-disclosure summary::-webkit-details-marker {
   display: none;
 }
 
-.cert-detail__description-raw[open] summary {
-  color: var(--fg-primary);
-  margin-bottom: 8px;
+.cert-detail__full-disclosure summary::before {
+  content: "▸";
+  font-size: 0.625rem;
+  color: var(--fg-muted);
+  transition: transform 0.15s ease;
+  display: inline-block;
 }
 
-.cert-detail__description-raw pre {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.75rem;
-  line-height: 1.5;
+.cert-detail__full-disclosure[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.cert-detail__full-disclosure summary:hover,
+.cert-detail__full-disclosure[open] summary {
+  color: var(--fg-primary);
+}
+
+.cert-detail__full-body {
+  padding-top: 8px;
+}
+
+/* Leaflet (the document format, not the map library) renderer output.
+   Mirrors typical long-form prose: paragraphs flow, headings break,
+   lists indent. */
+
+.cert-detail__leaflet {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 0.9375rem;
+  line-height: 1.65;
   color: var(--fg-secondary);
-  background: var(--bg-raised);
-  padding: 12px;
-  border-radius: 6px;
-  overflow-x: auto;
-  white-space: pre-wrap;
   word-break: break-word;
-  max-height: 50vh;
+}
+
+.cert-detail__leaflet-heading {
+  font-family: var(--font-headline), "Noto Serif", serif;
+  color: var(--fg-primary);
+  font-weight: 600;
+  margin: 8px 0 0;
+  line-height: 1.25;
+}
+
+.cert-detail__leaflet-heading:first-child {
+  margin-top: 0;
+}
+
+h2.cert-detail__leaflet-heading { font-size: 1.25rem; }
+h3.cert-detail__leaflet-heading { font-size: 1.125rem; }
+h4.cert-detail__leaflet-heading,
+h5.cert-detail__leaflet-heading,
+h6.cert-detail__leaflet-heading { font-size: 1rem; }
+
+.cert-detail__leaflet-para {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.cert-detail__leaflet-list {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cert-detail__leaflet-list .cert-detail__leaflet-list {
+  margin-top: 4px;
+}
+
+/* ---------- Locations map ---------- */
+
+.cert-detail__map-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cert-detail__map {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-sunken);
+}
+
+.cert-detail__map--skeleton {
+  height: 320px;
+  background: linear-gradient(
+    135deg,
+    var(--bg-sunken) 0%,
+    var(--overlay-weak) 100%
+  );
+}
+
+.cert-detail__map--empty {
+  height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+}
+
+.cert-detail__map--empty p {
   margin: 0;
 }
 
-/* ---------- Locations ---------- */
-
-.cert-detail__locations {
+.cert-detail__map-other {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
+  gap: 4px;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+}
+
+.cert-detail__map-other-item {
+  display: flex;
+  align-items: center;
   gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--overlay-weak);
+  min-width: 0;
+}
+
+.cert-detail__map-other-name {
+  font-weight: 500;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cert-detail__map-other-detail {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ---------- Mobile tweaks ---------- */

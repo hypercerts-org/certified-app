@@ -107,14 +107,23 @@
 }
 
 .profile-projects__section-desc {
-  font-size: 0.875rem;
-  line-height: 1.45;
+  font-size: 0.9375rem;
+  line-height: 1.5;
   color: var(--fg-secondary);
   margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+}
+
+.profile-projects__section-when {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  margin: 4px 0 0;
+}
+
+.profile-projects__section-when svg {
+  flex-shrink: 0;
 }
 
 .profile-projects__see-all {
@@ -152,64 +161,90 @@
   padding: 12px 0;
 }
 
-/* Cert grid inside each section — matches the certs-tab grid shape:
-   3 fixed-width columns at desktop so a single cert renders at 1/3
-   width and never bigger; collapses to 1 below 800px. */
-.profile-projects__section-grid {
+/* Compact cert list inside each section. The project is the headline
+   here — these rows are intentionally small (single line, optional
+   second-line description) so the section header gets visual weight. */
+.profile-projects__cert-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  grid-template-columns: repeat(1, 1fr);
-  gap: 24px 16px;
-}
-
-@media (min-width: 800px) {
-  .profile-projects__section-grid {
-    grid-template-columns: repeat(3, minmax(0, calc((100% - 32px) / 3)));
-    gap: 24px 16px;
-  }
-}
-
-/* Apply the same card normalisation as the Certs tab so cards inside
-   each project's section feel native to the surrounding grid. */
-.profile-projects__section-grid .feed-card {
-  padding: 10px;
-  border-bottom: none;
-  border-radius: 4px;
   display: flex;
   flex-direction: column;
-  transition: background var(--transition-fast);
+  gap: 2px;
 }
 
-.profile-projects__section-grid .feed-card:hover {
+.profile-projects__cert-row {
+  display: block;
+}
+
+.profile-projects__cert-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px;
+  border-radius: 6px;
+  color: inherit;
+  text-decoration: none;
+  transition: background var(--transition-fast);
+  min-width: 0;
+}
+
+.profile-projects__cert-link:hover {
   background: var(--overlay-weak);
 }
 
-.profile-projects__section-grid .feed-card__body:hover .feed-card__title {
-  text-decoration: none;
+.profile-projects__cert-thumb {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-subtle);
 }
 
-.profile-projects__section-grid .feed-card__body {
+.profile-projects__cert-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-projects__cert-thumb--placeholder {
+  color: var(--fg-muted);
+  background: linear-gradient(
+    135deg,
+    var(--bg-sunken) 0%,
+    var(--overlay-weak) 100%
+  );
+}
+
+.profile-projects__cert-meta {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  min-width: 0;
+  gap: 2px;
+  flex: 1 1 auto;
 }
 
-.profile-projects__section-grid .feed-card__title {
-  white-space: normal;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+.profile-projects__cert-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  line-height: 1.3;
+  white-space: nowrap;
   overflow: hidden;
-  min-height: calc(1.125rem * 1.3 * 2);
+  text-overflow: ellipsis;
 }
 
-.profile-projects__section-grid .feed-card__desc {
-  -webkit-line-clamp: 2;
-  min-height: calc(0.875rem * 1.6 * 2);
-}
-
-.profile-projects__section-grid .feed-card__meta {
-  margin-top: auto;
+.profile-projects__cert-desc {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

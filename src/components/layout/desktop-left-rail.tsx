@@ -369,6 +369,10 @@ export default function DesktopLeftRail() {
                   setSwitcherOpen(false);
                   signOut();
                 }}
+                onSwitchAccount={() => {
+                  setSwitcherOpen(false);
+                  openSignIn();
+                }}
               />
             </div>,
             document.body

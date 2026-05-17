@@ -264,6 +264,124 @@
   box-shadow: 0 0 0 2px var(--overlay-weak);
 }
 
+/* --- Sidebar org-only field edits ----------------------------------- */
+
+/* Generic input shell used by the org-only edit rows (location, type,
+   founded date, additional URLs). Mirrors `.profile-sidebar__website-
+   input` but lives on a more generic class so multiple field types can
+   share it without dragging website-specific styles. */
+.profile-sidebar__org-field-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-sidebar__org-input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+}
+
+.profile-sidebar__org-input:focus {
+  outline: none;
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+/* --- Sidebar additional-URL list editor ----------------------------- */
+
+/* One row per additional URL. The icon stays on the left to match the
+   read-only SmartLink layout; the trailing remove button sits flush to
+   the right. Each row is a <li> in the existing details list so the
+   surrounding spacing is inherited. */
+.profile-sidebar__org-url-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-sidebar__org-url-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+  flex: 0 0 auto;
+}
+
+.profile-sidebar__org-url-remove:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+/* "+ Add URL" trigger row. Renders as its own list item below the
+   editable URL rows so the affordance is reachable even when the list
+   starts empty. */
+.profile-sidebar__org-url-add-row {
+  list-style: none;
+  /* Override any inherited bullet-row padding from the details list. */
+  padding-left: 0;
+}
+
+.profile-sidebar__org-url-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-secondary, var(--fg-primary));
+  background: transparent;
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.profile-sidebar__org-url-add:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+  border-color: var(--fg-primary);
+}
+
+.profile-sidebar__org-url-add:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* --- Overview long-description textarea ----------------------------- */
+
+/* Slightly taller than the short-about textarea so the multi-line
+   intent is obvious. Inherits the rest of its visual style from
+   `.profile-overview__about-textarea` above. */
+.profile-overview__long-desc-textarea {
+  min-height: 180px;
+}
+
+.profile-overview__long-desc-body {
+  /* Preserve in-text newlines so the multi-line content reads as the
+     author wrote it. We don't sanitise HTML — the field is plain text. */
+  white-space: pre-wrap;
+}
+
 /* --- Overview Website input ---------------------------------------- */
 
 .profile-overview__website-input {

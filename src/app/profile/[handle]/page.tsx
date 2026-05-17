@@ -34,7 +34,6 @@ import EmptyState from "@/components/ui/empty-state"
 import { UserX } from "lucide-react"
 import {
   newDraftUrlRow,
-  type DraftUrlRow,
   type ProfileDrafts,
 } from "@/components/profile/profile-inline-edit-types"
 
@@ -252,8 +251,13 @@ export default function UserProfilePage() {
   const displayLocation = readableLocation(effectiveOrgMarker?.location)
   const displayFoundedDate = readableFoundedDate(effectiveOrgMarker?.foundedDate)
   const displayLongDescription = effectiveOrgMarker?.longDescription?.trim() || null
-  const effectiveOrgUrls: OrgUrlItem[] =
-    localOrgMarker?.urls ?? orgUrls ?? []
+  // Memoised so the array reference is stable when no inputs changed —
+  // otherwise the `handleEditClick` useCallback below would invalidate
+  // on every render (each `??` falls back to a freshly-allocated `[]`).
+  const effectiveOrgUrls: OrgUrlItem[] = useMemo(
+    () => localOrgMarker?.urls ?? orgUrls ?? [],
+    [localOrgMarker, orgUrls],
+  )
   const effectiveAdditionalUrls = localOrgMarker
     ? effectiveOrgUrls.map((u) => u.url)
     : additionalUrls
@@ -375,7 +379,8 @@ export default function UserProfilePage() {
       // settings page. When `isOrg` is false, leave the marker alone.
       let nextMarker: GroupMetadata | null = null
       if (sidebarIsOrg) {
-        const base = effectiveOrgMarker ?? { createdAt: new Date().toISOString() }
+        const markerBase =
+          effectiveOrgMarker ?? { createdAt: new Date().toISOString() }
         // Build the urls array from the editable rows. Empty rows
         // (no url) are dropped silently; labels are kept when present.
         const urls = drafts.additionalUrls
@@ -391,7 +396,7 @@ export default function UserProfilePage() {
         // edited fields (e.g. fields the editor doesn't surface) are
         // preserved verbatim from the base.
         nextMarker = {
-          ...base,
+          ...markerBase,
           // Empty strings collapse to `undefined` so the BFF allowlist
           // (which only copies defined fields) clears them when written.
           // The XRPC path also drops `undefined` via JSON.stringify.

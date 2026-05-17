@@ -2,25 +2,24 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ArrowRight, Award, FolderGit2 } from "lucide-react"
+import { ArrowRight, Award, Calendar, FolderGit2 } from "lucide-react"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import ActivityCard from "@/components/feed/activity-card"
 import { useUserProjects } from "@/hooks/use-user-projects"
-import { useProjectItems } from "@/hooks/use-project-items"
+import { useProjectItems, type ProjectItemResolution } from "@/hooks/use-project-items"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
-import { parseAtUri } from "@/lib/atproto/activity-uri"
+import { activityDetailHref, parseAtUri } from "@/lib/atproto/activity-uri"
+import { formatShortDate } from "@/lib/utils/format-date"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 
 interface ProfileProjectsProps {
   did: string
 }
 
-/** Max cert cards we render inline per project before deferring to the
- *  project detail page via the "See all →" link. Three matches the
- *  certs-grid breakpoint so a section's cert row fills exactly one row
- *  at desktop width. */
-const CERTS_PER_PROJECT_PREVIEW = 3
+/** Cert rows shown inline per project before deferring to the project
+ *  detail page via the "See all →" link. Five is a comfortable limit
+ *  for a compact list — the project itself is the focus on this tab. */
+const CERTS_PER_PROJECT_PREVIEW = 5
 
 /**
  * Projects tab — sectioned layout.
@@ -92,6 +91,8 @@ function ProjectSection({ project }: ProjectSectionProps) {
   const title =
     asString(value.title) || asString(value.name) || "Untitled project"
   const shortDesc = asString(value.shortDescription)
+  const createdAt = asString(value.createdAt)
+  const createdLabel = createdAt ? formatShortDate(createdAt) : null
 
   // Hydrate the items array via `getRecord` per strong-ref. The hook
   // skips non-activity collections so the cards rendered below are
@@ -160,6 +161,12 @@ function ProjectSection({ project }: ProjectSectionProps) {
         {shortDesc ? (
           <p className="profile-projects__section-desc">{shortDesc}</p>
         ) : null}
+        {createdLabel ? (
+          <p className="profile-projects__section-when">
+            <Calendar size={12} strokeWidth={1.75} aria-hidden />
+            <span>Published {createdLabel}</span>
+          </p>
+        ) : null}
       </div>
 
       {detailHref && hiddenCount > 0 ? (
@@ -184,17 +191,66 @@ function ProjectSection({ project }: ProjectSectionProps) {
           project yet.
         </p>
       ) : (
-        <ul className="profile-projects__section-grid">
+        <ul className="profile-projects__cert-list">
           {previews.map((r) =>
             r.record && r.did ? (
-              <li key={r.uri}>
-                <ActivityCard record={r.record} did={r.did} />
-              </li>
+              <CertRow key={r.uri} resolution={r} />
             ) : null,
           )}
         </ul>
       )}
     </section>
+  )
+}
+
+interface CertRowProps {
+  resolution: ProjectItemResolution
+}
+
+function CertRow({ resolution }: CertRowProps) {
+  const { record, did } = resolution
+  if (!record || !did) return null
+  const parsed = parseAtUri(record.uri)
+  const rkey = parsed?.rkey ?? ""
+  const href = activityDetailHref(did, rkey)
+  const title = asString(record.value.title) || "Untitled cert"
+  const shortDesc = asString(record.value.shortDescription)
+  const imageUrl = record.value.image
+    ? resolveActivityImageUrl(record.value.image, did)
+    : null
+  return (
+    <li className="profile-projects__cert-row">
+      <Link
+        href={href}
+        className="profile-projects__cert-link"
+        title={title}
+      >
+        <CertThumb url={imageUrl} />
+        <span className="profile-projects__cert-meta">
+          <span className="profile-projects__cert-title">{title}</span>
+          {shortDesc ? (
+            <span className="profile-projects__cert-desc">{shortDesc}</span>
+          ) : null}
+        </span>
+      </Link>
+    </li>
+  )
+}
+
+function CertThumb({ url }: { url: string | null }) {
+  const [failed, setFailed] = useState(false)
+  if (url && !failed) {
+    return (
+      <span className="profile-projects__cert-thumb">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={url} alt="" loading="lazy" onError={() => setFailed(true)} />
+      </span>
+    )
+  }
+  return (
+    <span className="profile-projects__cert-thumb profile-projects__cert-thumb--placeholder">
+      <Award size={16} strokeWidth={1.5} aria-hidden />
+    </span>
   )
 }
 

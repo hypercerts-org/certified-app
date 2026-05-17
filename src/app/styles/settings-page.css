@@ -187,21 +187,22 @@
   transition: background var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-/* Briefly highlight a section when the user clicks the matching menu
-   item — gives the eye a transient cue at the destination without
-   persistent chrome. */
-.sx-section--flash {
-  animation: sx-section-flash 1.4s ease-out;
+/* Briefly highlight the destination when the user clicks a left-rail
+   menu item — only the section's heading flashes a soft background
+   (no border) so the cue is subtle but unambiguous. */
+.sx-section--flash > .sx-panel__header,
+.sx-section--flash .sx-section__title,
+.sx-section--flash h2:first-child {
+  animation: sx-section-flash-heading 1.4s ease-out;
+  border-radius: 6px;
 }
 
-@keyframes sx-section-flash {
+@keyframes sx-section-flash-heading {
   0% {
     background: var(--overlay-weak);
-    box-shadow: inset 0 0 0 1px var(--border-hover-soft);
   }
   100% {
     background: transparent;
-    box-shadow: inset 0 0 0 1px transparent;
   }
 }
 
