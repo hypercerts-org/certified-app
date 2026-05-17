@@ -39,6 +39,8 @@ import ProfileCerts from "@/components/profile/profile-certs"
 import ProfileGroups from "@/components/profile/profile-groups"
 import SettingsPanel from "@/components/settings/settings-panel"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
+import LeafletEditor from "@/components/leaflet/leaflet-editor"
+import type { LinearDocument } from "@/lib/leaflet/types"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import { UserX } from "lucide-react"
@@ -353,9 +355,13 @@ export default function UserProfilePage() {
     ? null
     : (effectiveOrgMarker?.longDescription ?? null)
   // Publish "this profile has a long description" to the navbar
-  // context so the top-bar can render the About tab. Always reset
-  // when navigating away (the hook returns `false` on unmount).
-  useProfileAboutAvailable(!!displayLongDescription)
+  // context so the top-bar can render the About tab. Edit mode
+  // forces the tab on for org admins so they can navigate over to
+  // write a fresh description even when the field is currently
+  // empty. Always reset when navigating away (the hook returns
+  // `false` on unmount).
+  const aboutEditingForOrg = isEditing && canEditInline && sidebarIsOrg
+  useProfileAboutAvailable(!!displayLongDescription || aboutEditingForOrg)
   // Gate the Groups tab: visible on the viewer's own profile (so they
   // can manage their groups even with none yet) AND on any profile
   // that actually has a public membership. Foreign empty profiles
@@ -948,22 +954,34 @@ export default function UserProfilePage() {
                   orgTypeTags={displayOrgTypeTags}
                   orgLocationName={displayLocation.name}
                   orgLocationCoords={displayLocation.coords}
-                  onLongDescImageUpload={handleLongDescImageUpload}
                 />
               </div>
             )}
-            {activeTab === "about" && displayLongDescription ? (
+            {activeTab === "about" ? (
               <div
                 role="tabpanel"
                 id="tabpanel-about"
                 aria-labelledby="tab-about"
                 className="profile-page__about"
               >
-                <LeafletDocument
-                  value={displayLongDescription}
-                  did={did}
-                  className="profile-page__about-doc"
-                />
+                {editing && sidebarIsOrg ? (
+                  <LeafletEditor
+                    value={drafts.longDescription ?? null}
+                    onChange={(next: LinearDocument) =>
+                      handleDraftChange("longDescription", next)
+                    }
+                    placeholder="A longer, multi-line description of this organization."
+                    ariaLabel="Long description"
+                    did={did}
+                    onImageUpload={handleLongDescImageUpload}
+                  />
+                ) : displayLongDescription ? (
+                  <LeafletDocument
+                    value={displayLongDescription}
+                    did={did}
+                    className="profile-page__about-doc"
+                  />
+                ) : null}
               </div>
             ) : null}
             {activeTab === "certs" && (

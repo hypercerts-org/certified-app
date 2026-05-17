@@ -8,9 +8,6 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import BannerUpload from "@/components/profile/banner-upload"
 import Map from "@/components/map/map-dynamic"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
-import LeafletEditor from "@/components/leaflet/leaflet-editor"
-import type { LinearDocument } from "@/lib/leaflet/types"
-import type { UploadedBlob } from "@/lib/atproto/profile"
 import { ORG_TYPE_PRESETS } from "@/lib/groups/org-types"
 import { getInitials } from "@/lib/utils/initials"
 import { useReceivedEndorsements, type ReceivedEndorsement } from "@/hooks/use-received-endorsements"
@@ -58,10 +55,6 @@ interface ProfileOverviewProps {
   /** Map coords from the org marker, when the editor placed a pin. The
    *  overview renders a side-pane map only when this is non-null. */
   orgLocationCoords?: { lat: number; lng: number } | null
-  /** Async file uploader for the rich-text editor (long description).
-   *  Wired to the page-level `uploadBlob` helper so blobs land on the
-   *  right repo (own profile or group). */
-  onLongDescImageUpload?: (file: File) => Promise<UploadedBlob>
 }
 
 const ACTIVITY_PREVIEW = 3
@@ -92,7 +85,6 @@ export default function ProfileOverview({
   orgTypeTags = [],
   orgLocationName = null,
   orgLocationCoords = null,
-  onLongDescImageUpload,
 }: ProfileOverviewProps) {
   const [bannerFailed, setBannerFailed] = useState(false)
   useEffect(() => setBannerFailed(false), [bannerUrl])
@@ -311,34 +303,10 @@ export default function ProfileOverview({
         </section>
       ) : null}
 
-      {/* Long-description editor. Read-only viewers see this as a
-          "more" link appended to the About paragraph above (or the
-          long description gets promoted into the About slot when no
-          short description exists) — there's no inline expanded
-          read render here. */}
-      {isEditing && isOrg ? (
-        <section
-          className="profile-overview__about profile-overview__about--editing"
-          aria-labelledby="profile-overview-long-desc-heading"
-        >
-          <h2
-            id="profile-overview-long-desc-heading"
-            className="profile-overview__section-title"
-          >
-            Description (optional)
-          </h2>
-          <LeafletEditor
-            value={drafts?.longDescription ?? null}
-            onChange={(next: LinearDocument) =>
-              onDraftChange?.("longDescription", next)
-            }
-            placeholder="A longer, multi-line description of this organization."
-            ariaLabel="Long description"
-            did={did}
-            onImageUpload={onLongDescImageUpload}
-          />
-        </section>
-      ) : null}
+      {/* The long-description editor moved to the dedicated About
+          tab. Edit-mode viewers should switch to that tab to write /
+          edit the long description; the Overview only carries the
+          short About paragraph + "more" navigation now. */}
 
       <section className="profile-overview__stats" aria-label="Profile stats">
         <Link
