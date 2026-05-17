@@ -64,18 +64,26 @@ export async function GET(request: NextRequest) {
   const q = url.searchParams.get("q")
   const lat = url.searchParams.get("lat")
   const lon = url.searchParams.get("lon")
+  const limitRaw = url.searchParams.get("limit")
 
   try {
     if (q !== null) {
-      // Forward geocode.
+      // Forward geocode. `limit` controls how many hits we return —
+      // the autocomplete dropdown asks for 5-8; the legacy
+      // single-hit caller leaves it unset.
       const trimmed = q.trim()
       if (trimmed.length === 0 || trimmed.length > 200) {
         return NextResponse.json({ error: "invalid q" }, { status: 400 })
       }
+      const parsedLimit = limitRaw ? parseInt(limitRaw, 10) : 1
+      const limit = Number.isFinite(parsedLimit)
+        ? Math.min(10, Math.max(1, parsedLimit))
+        : 1
+
       const upstream = new URL(`${NOMINATIM_BASE}/search`)
       upstream.searchParams.set("q", trimmed)
       upstream.searchParams.set("format", "json")
-      upstream.searchParams.set("limit", "1")
+      upstream.searchParams.set("limit", String(limit))
       upstream.searchParams.set("addressdetails", "0")
       const res = await fetch(upstream.toString(), {
         headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
@@ -88,22 +96,26 @@ export async function GET(request: NextRequest) {
         )
       }
       const body = (await res.json()) as NominatimForwardHit[]
-      const hit = body[0]
-      if (!hit) {
+      const results: GeocodeForwardResult[] = []
+      for (const hit of body) {
+        const latNum = parseFloat(hit.lat)
+        const lngNum = parseFloat(hit.lon)
+        if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) continue
+        results.push({
+          lat: latNum,
+          lng: lngNum,
+          displayName: hit.display_name,
+        })
+      }
+      // Preserve the legacy single-hit response shape for callers
+      // that don't pass `limit`. Multi-hit callers get `results[]`.
+      if (limit === 1) {
         return NextResponse.json(
-          { result: null },
+          { result: results[0] ?? null },
           { headers: CACHE_HEADERS },
         )
       }
-      const result: GeocodeForwardResult = {
-        lat: parseFloat(hit.lat),
-        lng: parseFloat(hit.lon),
-        displayName: hit.display_name,
-      }
-      if (!Number.isFinite(result.lat) || !Number.isFinite(result.lng)) {
-        return NextResponse.json({ result: null }, { headers: CACHE_HEADERS })
-      }
-      return NextResponse.json({ result }, { headers: CACHE_HEADERS })
+      return NextResponse.json({ results }, { headers: CACHE_HEADERS })
     }
 
     if (lat !== null && lon !== null) {

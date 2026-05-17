@@ -2675,6 +2675,62 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   text-decoration: underline;
 }
 
+/* Autocomplete combobox: input + absolutely-positioned suggestions
+   panel beneath. The wrapper is `position: relative` so the panel
+   anchors to the input rather than to the page. */
+.profile-overview__location-combobox {
+  position: relative;
+}
+
+.profile-overview__location-suggestions {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 4px;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.profile-overview__location-suggestion {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.profile-overview__location-suggestion:hover,
+.profile-overview__location-suggestion--active {
+  background: var(--overlay-weak);
+}
+
+.profile-overview__location-suggestion-primary {
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-overview__location-suggestion-secondary {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ---------- Section heads + digest lists ---------- */
 
 .profile-overview__section-head {

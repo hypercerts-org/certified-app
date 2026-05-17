@@ -41,6 +41,34 @@ export async function forwardGeocode(
   }
 }
 
+/**
+ * Forward-geocode but return up to `limit` matching hits. Used by
+ * the location-picker autocomplete dropdown — the legacy
+ * `forwardGeocode` (single-hit, no `limit` param) stays available
+ * for any callsite that just wants the top match.
+ */
+export async function suggestForwardGeocode(
+  query: string,
+  limit: number,
+  signal?: AbortSignal,
+): Promise<ForwardGeocodeResult[]> {
+  const trimmed = query.trim()
+  if (trimmed.length === 0) return []
+  try {
+    const res = await fetch(
+      `/api/geocode?q=${encodeURIComponent(trimmed)}&limit=${encodeURIComponent(
+        String(limit),
+      )}`,
+      { signal, headers: { Accept: "application/json" } },
+    )
+    if (!res.ok) return []
+    const body = (await res.json()) as { results?: ForwardGeocodeResult[] }
+    return Array.isArray(body.results) ? body.results : []
+  } catch {
+    return []
+  }
+}
+
 export async function reverseGeocode(
   lat: number,
   lng: number,

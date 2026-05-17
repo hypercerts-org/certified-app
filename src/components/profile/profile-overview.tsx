@@ -8,7 +8,11 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import BannerUpload from "@/components/profile/banner-upload"
 import Map from "@/components/map/map-dynamic"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
-import { forwardGeocode, reverseGeocode } from "@/lib/locations/geocode"
+import {
+  reverseGeocode,
+  suggestForwardGeocode,
+  type ForwardGeocodeResult,
+} from "@/lib/locations/geocode"
 import { ORG_TYPE_PRESETS } from "@/lib/groups/org-types"
 import { getInitials } from "@/lib/utils/initials"
 import { useReceivedEndorsements, type ReceivedEndorsement } from "@/hooks/use-received-endorsements"
@@ -679,56 +683,92 @@ function LocationPickerColumn({
     : { lat: 20, lng: 0 }
   const zoom = hasPin ? 6 : 1
 
-  // ----- Two-way geocoding bind -----
-  // Forward (text → coords): debounce the user's typing, then call
-  // /api/geocode?q=... and update the coords if we got a match.
-  // Reverse (coords → text): on every map click, call
-  // /api/geocode?lat=&lon=... and overwrite the name with the
-  // resolved display name.
-  //
-  // We tag each origin to avoid feedback loops:
-  //   - When the user types, `lastTypedNameRef` records that the
-  //     name change came from the user; the forward call updates
-  //     coords but does NOT touch the name.
-  //   - When the user clicks the map, the reverse call updates the
-  //     name; we record that the name change came from the map so
-  //     the forward effect ignores it.
+  // ----- Two-way geocoding bind with autocomplete -----
+  // Forward (text → coords): debounce typing, fetch up to 6
+  // suggestions from Nominatim, and show them in a dropdown
+  // beneath the input. Picking a suggestion sets the name + coords
+  // together; just typing without picking only changes the name.
+  // Reverse (coords → text): map clicks reverse-geocode and
+  // overwrite the name; we mark the change as map-originated so the
+  // suggestions effect ignores it.
   const lastSourceRef = useRef<"user" | "map" | null>(null)
   const [busy, setBusy] = useState<"idle" | "forward" | "reverse">("idle")
+  const [suggestions, setSuggestions] = useState<ForwardGeocodeResult[]>([])
+  const [highlightIndex, setHighlightIndex] = useState(-1)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const blurTimerRef = useRef<number | null>(null)
 
-  // Debounced forward geocode on name change.
+  // Debounced suggestion fetch on name change. Only fires when the
+  // user typed (skips map-originated reverse-geocode results).
   useEffect(() => {
     if (lastSourceRef.current === "map") {
-      // Map-originated name change — skip forward geocode, just
-      // reset the source marker.
       lastSourceRef.current = null
+      setSuggestions([])
       return
     }
     const trimmed = name.trim()
-    if (trimmed.length < 2) return
+    if (trimmed.length < 2) {
+      setSuggestions([])
+      return
+    }
     const ctrl = new AbortController()
     setBusy("forward")
     const t = window.setTimeout(async () => {
-      const hit = await forwardGeocode(trimmed, ctrl.signal)
+      const hits = await suggestForwardGeocode(trimmed, 6, ctrl.signal)
       setBusy("idle")
-      if (!hit) return
-      onDraftChange?.("locationLat", hit.lat)
-      onDraftChange?.("locationLng", hit.lng)
-    }, 600)
+      setSuggestions(hits)
+      setHighlightIndex(hits.length > 0 ? 0 : -1)
+    }, 350)
     return () => {
       window.clearTimeout(t)
       ctrl.abort()
       setBusy("idle")
     }
-  }, [name, onDraftChange])
+  }, [name])
+
+  const pickSuggestion = (hit: ForwardGeocodeResult) => {
+    lastSourceRef.current = "map" // the next name change came from us
+    onDraftChange?.("locationName", hit.displayName)
+    onDraftChange?.("locationLat", hit.lat)
+    onDraftChange?.("locationLng", hit.lng)
+    setDropdownOpen(false)
+    setSuggestions([])
+    setHighlightIndex(-1)
+  }
+
+  const onInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!dropdownOpen || suggestions.length === 0) {
+      if (e.key === "ArrowDown" && suggestions.length > 0) {
+        setDropdownOpen(true)
+        setHighlightIndex(0)
+        e.preventDefault()
+      }
+      return
+    }
+    if (e.key === "ArrowDown") {
+      setHighlightIndex((i) => Math.min(suggestions.length - 1, i + 1))
+      e.preventDefault()
+    } else if (e.key === "ArrowUp") {
+      setHighlightIndex((i) => Math.max(0, i - 1))
+      e.preventDefault()
+    } else if (e.key === "Enter") {
+      const pick = suggestions[highlightIndex] ?? suggestions[0]
+      if (pick) {
+        e.preventDefault()
+        pickSuggestion(pick)
+      }
+    } else if (e.key === "Escape") {
+      setDropdownOpen(false)
+      e.preventDefault()
+    }
+  }
 
   const handleMapClick = async (latlng: { lat: number; lng: number }) => {
     onDraftChange?.("locationLat", latlng.lat)
     onDraftChange?.("locationLng", latlng.lng)
-    // Tag the upcoming name change as map-originated so the forward
-    // effect above doesn't re-fire on it.
     lastSourceRef.current = "map"
     setBusy("reverse")
+    setDropdownOpen(false)
     const hit = await reverseGeocode(latlng.lat, latlng.lng)
     setBusy("idle")
     if (hit?.displayName) {
@@ -747,18 +787,89 @@ function LocationPickerColumn({
       >
         Location
       </h2>
-      <input
-        type="text"
-        className="profile-overview__location-input"
-        value={name}
-        maxLength={128}
-        placeholder="Location name (e.g. Berlin, Germany)"
-        aria-label="Location name"
-        onChange={(e) => {
-          lastSourceRef.current = "user"
-          onDraftChange?.("locationName", e.target.value)
-        }}
-      />
+      <div className="profile-overview__location-combobox">
+        <input
+          type="text"
+          className="profile-overview__location-input"
+          value={name}
+          maxLength={128}
+          placeholder="Type a city or address…"
+          aria-label="Location name"
+          role="combobox"
+          aria-expanded={dropdownOpen && suggestions.length > 0}
+          aria-autocomplete="list"
+          aria-controls="profile-overview-location-suggestions"
+          aria-activedescendant={
+            highlightIndex >= 0
+              ? `profile-overview-location-suggestion-${highlightIndex}`
+              : undefined
+          }
+          onChange={(e) => {
+            lastSourceRef.current = "user"
+            setDropdownOpen(true)
+            onDraftChange?.("locationName", e.target.value)
+          }}
+          onFocus={() => {
+            if (blurTimerRef.current) {
+              window.clearTimeout(blurTimerRef.current)
+              blurTimerRef.current = null
+            }
+            if (suggestions.length > 0) setDropdownOpen(true)
+          }}
+          onBlur={() => {
+            // Defer close so a mousedown on a suggestion can still
+            // register before the dropdown unmounts.
+            blurTimerRef.current = window.setTimeout(() => {
+              setDropdownOpen(false)
+            }, 150)
+          }}
+          onKeyDown={onInputKeyDown}
+          autoComplete="off"
+        />
+        {dropdownOpen && suggestions.length > 0 ? (
+          <ul
+            id="profile-overview-location-suggestions"
+            role="listbox"
+            className="profile-overview__location-suggestions"
+          >
+            {suggestions.map((hit, i) => {
+              const isActive = i === highlightIndex
+              const [primary, ...rest] = hit.displayName.split(", ")
+              const secondary = rest.join(", ")
+              return (
+                <li
+                  key={`${hit.lat}-${hit.lng}-${i}`}
+                  id={`profile-overview-location-suggestion-${i}`}
+                  role="option"
+                  aria-selected={isActive}
+                  className={
+                    isActive
+                      ? "profile-overview__location-suggestion profile-overview__location-suggestion--active"
+                      : "profile-overview__location-suggestion"
+                  }
+                  onMouseEnter={() => setHighlightIndex(i)}
+                  // mousedown (not click) fires before the input's
+                  // blur; otherwise the dropdown would already be
+                  // closed by the time the click event arrived.
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    pickSuggestion(hit)
+                  }}
+                >
+                  <span className="profile-overview__location-suggestion-primary">
+                    {primary}
+                  </span>
+                  {secondary ? (
+                    <span className="profile-overview__location-suggestion-secondary">
+                      {secondary}
+                    </span>
+                  ) : null}
+                </li>
+              )
+            })}
+          </ul>
+        ) : null}
+      </div>
       <div className="profile-overview__location-map">
         <Map
           pins={pins}
@@ -771,12 +882,12 @@ function LocationPickerColumn({
       <div className="profile-overview__location-picker-row">
         <p className="profile-overview__location-hint">
           {busy === "forward"
-            ? "Looking up location…"
+            ? "Searching…"
             : busy === "reverse"
               ? "Resolving address…"
               : hasPin
-                ? "Click the map to move the pin, or edit the name."
-                : "Type a place name or click the map to place a pin."}
+                ? "Click the map to move the pin, or pick a different result above."
+                : "Pick a suggestion or click the map to place a pin."}
         </p>
         {hasPin ? (
           <button
