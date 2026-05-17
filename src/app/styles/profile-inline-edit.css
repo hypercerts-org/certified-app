@@ -249,14 +249,21 @@
   display: block;
 }
 
-/* Floating "Change banner" button — same visual treatment as the
-   sidebar avatar-edit overlay so both upload affordances feel the
-   same. Always visible (not hover-only) and anchored to the
-   bottom-right of the banner. */
-.profile-banner-upload__btn {
+/* Row of floating action pills anchored to the bottom-right of the
+   banner: "Change banner" + (when an image is present) a quiet
+   "Remove" button. Both share the same visual language as the
+   sidebar avatar-edit overlay so the affordances feel consistent. */
+.profile-banner-upload__btn-row {
   position: absolute;
   bottom: 10px;
   right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 1;
+}
+
+.profile-banner-upload__btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -271,11 +278,22 @@
   cursor: pointer;
   box-shadow: var(--shadow-sm);
   transition: background var(--transition-fast), transform var(--transition-fast);
-  z-index: 1;
 }
 
 .profile-banner-upload__btn:hover {
   background: rgba(17, 17, 17, 0.92);
+}
+
+/* Quiet variant for the Remove action — same shape, lower-contrast
+   surface so the primary "Change banner" button stays the focal
+   action. */
+.profile-banner-upload__btn--ghost {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--fg-primary);
+}
+
+.profile-banner-upload__btn--ghost:hover {
+  background: var(--color-white);
 }
 
 .profile-banner-upload__btn:focus-visible {

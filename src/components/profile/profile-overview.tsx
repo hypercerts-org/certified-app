@@ -36,6 +36,7 @@ interface ProfileOverviewProps {
     value: ProfileDrafts[K],
   ) => void
   onBannerFile?: (file: File) => Promise<void>
+  onBannerRemove?: () => void
   hasPendingBanner?: boolean
   /** True when this profile carries the org marker. Gates the org-only
    *  long-description block (read + edit). */
@@ -76,6 +77,7 @@ export default function ProfileOverview({
   drafts,
   onDraftChange,
   onBannerFile,
+  onBannerRemove,
   hasPendingBanner = false,
   isOrg = false,
   orgLongDescription = null,
@@ -137,6 +139,7 @@ export default function ProfileOverview({
           <BannerUpload
             currentBannerUrl={bannerUrl}
             onUpload={handleBannerUpload}
+            onRemove={onBannerRemove}
             isUploading={bannerUploading}
           />
           {hasPendingBanner ? (

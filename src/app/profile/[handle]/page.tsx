@@ -290,6 +290,15 @@ export default function UserProfilePage() {
     useState<string | null>(null)
   const [pendingBannerPreviewUrl, setPendingBannerPreviewUrl] =
     useState<string | null>(null)
+  // Explicit "remove banner" intent within the current edit session.
+  // When true, save persists `next.banner = undefined` instead of
+  // copying the previous value off the base record. Reset on
+  // edit-click / cancel / save.
+  const [pendingBannerRemoved, setPendingBannerRemoved] = useState(false)
+  // Post-save mirror for the same intent: distinguishes "no banner
+  // was ever set" (fall back to hook `bannerUrl`) from "we just saved
+  // a removal" (force null until the next refetch).
+  const [bannerCleared, setBannerCleared] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   // Tracks whether the viewer has touched anything in edit mode (typed
@@ -305,8 +314,15 @@ export default function UserProfilePage() {
   const effectiveProfile = localProfile ?? profile
   const effectiveAvatarUrl =
     pendingAvatarPreviewUrl ?? localAvatarUrl ?? avatarUrl
+  // Banner resolution honours the explicit-remove intent — both in
+  // flight (pendingBannerRemoved) and post-save (bannerCleared) — by
+  // collapsing to `null` so the banner box renders empty.
   const effectiveBannerUrl =
-    pendingBannerPreviewUrl ?? localBannerUrl ?? bannerUrl
+    pendingBannerPreviewUrl !== null
+      ? pendingBannerPreviewUrl
+      : pendingBannerRemoved || bannerCleared
+        ? null
+        : (localBannerUrl ?? bannerUrl)
   const effectiveOrgMarker = localOrgMarker ?? orgMarker
   // Read-only displayable forms of the org-only marker fields. Each
   // returns `null` when the field is absent so the sidebar / overview
@@ -352,6 +368,7 @@ export default function UserProfilePage() {
     })
     setPendingAvatarBlob(null)
     setPendingBannerBlob(null)
+    setPendingBannerRemoved(false)
     setSaveError(null)
     setHasInteracted(false)
     setIsEditing(true)
@@ -368,6 +385,7 @@ export default function UserProfilePage() {
     if (pendingBannerPreviewUrl) URL.revokeObjectURL(pendingBannerPreviewUrl)
     setPendingAvatarPreviewUrl(null)
     setPendingBannerPreviewUrl(null)
+    setPendingBannerRemoved(false)
     setSaveError(null)
     setHasInteracted(false)
     // Note: we keep `localOrgMarker` so any *previous* save still
@@ -411,6 +429,8 @@ export default function UserProfilePage() {
         if (prev) URL.revokeObjectURL(prev)
         return previewUrl
       })
+      // Picking a new banner cancels any pending removal intent.
+      setPendingBannerRemoved(false)
       setHasInteracted(true)
       const blob = await uploadBanner(
         file,
@@ -420,6 +440,18 @@ export default function UserProfilePage() {
     },
     [editTargetDid],
   )
+
+  const handleRemoveBanner = useCallback(() => {
+    // Clear any in-flight preview / blob and mark the banner as
+    // explicitly removed so the save step omits it from the record.
+    setPendingBannerPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+    setPendingBannerBlob(null)
+    setPendingBannerRemoved(true)
+    setHasInteracted(true)
+  }, [])
 
   const handleSave = useCallback(async () => {
     if (!did || !isAuthenticated || !sessionDid) {
@@ -455,6 +487,10 @@ export default function UserProfilePage() {
         image: pendingBannerBlob as unknown as BlobRef,
       }
       next.banner = bannerImage
+    } else if (pendingBannerRemoved) {
+      // Explicit removal — don't carry over `base.banner`. Leaving
+      // `next.banner` undefined means JSON.stringify drops it and the
+      // PDS overwrites the record without a banner.
     } else if (base?.banner) {
       next.banner = base.banner
     }
@@ -573,14 +609,23 @@ export default function UserProfilePage() {
       }
       if (pendingBannerPreviewUrl) {
         setLocalBannerUrl(pendingBannerPreviewUrl)
+        setBannerCleared(false)
+      } else if (pendingBannerRemoved) {
+        // Persist the cleared state past edit-mode exit so the
+        // read-only render shows no banner until the next hook
+        // refetch (which will agree).
+        setLocalBannerUrl(null)
+        setBannerCleared(true)
       } else if (pendingBannerBlob) {
         setLocalBannerUrl(null)
+        setBannerCleared(false)
       }
 
       setPendingAvatarPreviewUrl(null)
       setPendingBannerPreviewUrl(null)
       setPendingAvatarBlob(null)
       setPendingBannerBlob(null)
+      setPendingBannerRemoved(false)
       setHasInteracted(false)
       setIsEditing(false)
     } catch (err) {
@@ -601,6 +646,7 @@ export default function UserProfilePage() {
     pendingBannerBlob,
     pendingAvatarPreviewUrl,
     pendingBannerPreviewUrl,
+    pendingBannerRemoved,
     editTargetDid,
     sidebarIsOrg,
     effectiveOrgMarker,
@@ -829,6 +875,7 @@ export default function UserProfilePage() {
                   drafts={drafts}
                   onDraftChange={handleDraftChange}
                   onBannerFile={handleBannerFile}
+                  onBannerRemove={handleRemoveBanner}
                   hasPendingBanner={!!pendingBannerBlob}
                   isOrg={sidebarIsOrg}
                   orgLongDescription={displayLongDescription}

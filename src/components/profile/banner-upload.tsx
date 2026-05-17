@@ -1,13 +1,17 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { Camera } from "lucide-react";
+import { Camera, Trash2 } from "lucide-react";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 
 export interface BannerUploadProps {
   currentBannerUrl: string | null;
   onUpload: (file: File) => Promise<void>;
   isUploading: boolean;
+  /** When provided AND a banner image is currently set, a "Remove"
+   *  pill renders next to the "Change banner" button. Clicking it
+   *  clears the banner from the draft so save persists no banner. */
+  onRemove?: () => void;
 }
 
 const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB — Vercel serverless limit is ~4.5MB
@@ -26,6 +30,7 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
   currentBannerUrl,
   onUpload,
   isUploading,
+  onRemove,
 }) => {
   // The parent page owns the object-URL preview (see profile page's
   // pendingBannerPreviewUrl). We just render whatever URL it passes in
@@ -93,25 +98,39 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
           />
         ) : null}
 
-        <button
-          type="button"
-          className="profile-banner-upload__btn"
-          onClick={handleClick}
-          aria-label={isUploading ? "Uploading banner" : "Change banner"}
-          title={isUploading ? "Uploading…" : "Change banner"}
-          disabled={isUploading}
-        >
-          {isUploading ? (
-            <LoadingSpinner size="sm" />
-          ) : (
-            <>
-              <Camera size={16} strokeWidth={1.75} aria-hidden />
-              <span className="profile-banner-upload__btn-label">
-                {hasPending ? "Replace banner" : "Change banner"}
-              </span>
-            </>
-          )}
-        </button>
+        <div className="profile-banner-upload__btn-row">
+          <button
+            type="button"
+            className="profile-banner-upload__btn"
+            onClick={handleClick}
+            aria-label={isUploading ? "Uploading banner" : "Change banner"}
+            title={isUploading ? "Uploading…" : "Change banner"}
+            disabled={isUploading}
+          >
+            {isUploading ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <>
+                <Camera size={16} strokeWidth={1.75} aria-hidden />
+                <span className="profile-banner-upload__btn-label">
+                  {hasPending ? "Replace banner" : "Change banner"}
+                </span>
+              </>
+            )}
+          </button>
+          {hasImage && onRemove && !isUploading ? (
+            <button
+              type="button"
+              className="profile-banner-upload__btn profile-banner-upload__btn--ghost"
+              onClick={onRemove}
+              aria-label="Remove banner"
+              title="Remove banner"
+            >
+              <Trash2 size={14} strokeWidth={1.75} aria-hidden />
+              <span className="profile-banner-upload__btn-label">Remove</span>
+            </button>
+          ) : null}
+        </div>
 
         <input
           ref={fileInputRef}
