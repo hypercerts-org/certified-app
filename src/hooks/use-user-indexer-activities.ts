@@ -6,58 +6,90 @@ import type { ActivityRecord } from "@/lib/atproto/activity-types"
 
 const PAGE_SIZE = 30
 
+interface BucketState {
+  records: ActivityRecord[]
+  dids: Map<string, string>
+  cursor: string | null
+  hasMore: boolean
+}
+
+const emptyBucket: BucketState = {
+  records: [],
+  dids: new Map(),
+  cursor: null,
+  hasMore: false,
+}
+
 /**
- * Paginated stream of activity records where `did` appears as either
- * the author or a contributor, sourced from the Magic Indexer's
- * `where: { _or: [...] }` filter. Callers split the combined stream
- * client-side by comparing `dids.get(uri) === did`.
+ * Two-bucket activity stream for a profile (`did`):
  *
- * Why one combined query instead of two (authored + contributed)?
- * The indexer composes the OR server-side, so cursor pagination stays
- * coherent across both buckets. Splitting locally is O(n) and the per-
- * URI author DID is already on every page payload.
+ *   - `created`     — records where `did` is the author.
+ *   - `contributed` — records where `did` appears in the contributors.
  *
- * Newly-created records may take a moment to appear here (indexer
- * ingestion lag) — direct PDS listRecords would be fresher but can't
- * answer the "where am I a contributor?" question.
+ * The hook fires two GraphQL queries in parallel (one per bucket)
+ * rather than a single `_or` query. That means a cert where the
+ * user is BOTH author and contributor appears in both lists, which
+ * is what the certs-tab UI expects.
+ *
+ * Pagination: `loadMore` advances whichever bucket still has more
+ * results. Either bucket can run out independently.
+ *
+ * Indexer constraint: `contributor` only matches bare-string DIDs
+ * or `{$type, identity: did}`-shaped values. Strong-ref contributor
+ * identities (typical for group memberships) are silently missed —
+ * server-side dereferencing is the proper fix.
  */
 export function useUserIndexerActivities(did: string | null) {
-  const [activities, setActivities] = useState<ActivityRecord[]>([])
-  const [dids, setDids] = useState<Map<string, string>>(new Map())
+  const [created, setCreated] = useState<BucketState>(emptyBucket)
+  const [contributed, setContributed] = useState<BucketState>(emptyBucket)
   const [isLoading, setIsLoading] = useState(!!did)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [hasMore, setHasMore] = useState(false)
-  const endCursorRef = useRef<string | null>(null)
   const isLoadingMoreRef = useRef(false)
 
   const loadInitial = useCallback(
     async (signal?: AbortSignal) => {
       if (!did) {
-        setActivities([])
-        setDids(new Map())
+        setCreated(emptyBucket)
+        setContributed(emptyBucket)
         setIsLoading(false)
         setError(null)
-        setHasMore(false)
-        endCursorRef.current = null
         return
       }
       try {
         setIsLoading(true)
         setError(null)
-        const data = await fetchUserIndexerActivities(did, {
-          first: PAGE_SIZE,
-          signal,
-        })
+        const [authored, contrib] = await Promise.all([
+          fetchUserIndexerActivities(did, {
+            first: PAGE_SIZE,
+            mode: "authored",
+            signal,
+          }),
+          fetchUserIndexerActivities(did, {
+            first: PAGE_SIZE,
+            mode: "contributed",
+            signal,
+          }),
+        ])
         if (signal?.aborted) return
-        setActivities(data.records)
-        setDids(data.dids)
-        endCursorRef.current = data.endCursor
-        setHasMore(data.hasMore)
+        setCreated({
+          records: authored.records,
+          dids: authored.dids,
+          cursor: authored.endCursor,
+          hasMore: authored.hasMore,
+        })
+        setContributed({
+          records: contrib.records,
+          dids: contrib.dids,
+          cursor: contrib.endCursor,
+          hasMore: contrib.hasMore,
+        })
       } catch (err) {
         if (signal?.aborted) return
         console.error("Failed to fetch user activities (indexer):", err)
-        setError(err instanceof Error ? err.message : "Failed to fetch activities")
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch activities",
+        )
       } finally {
         if (!signal?.aborted) setIsLoading(false)
       }
@@ -73,30 +105,98 @@ export function useUserIndexerActivities(did: string | null) {
 
   const loadMore = useCallback(async () => {
     if (!did) return
-    if (!endCursorRef.current || isLoadingMoreRef.current) return
+    if (isLoadingMoreRef.current) return
+    if (!created.hasMore && !contributed.hasMore) return
     isLoadingMoreRef.current = true
     setIsLoadingMore(true)
     try {
-      const data = await fetchUserIndexerActivities(did, {
-        first: PAGE_SIZE,
-        after: endCursorRef.current,
-      })
-      setActivities((prev) => [...prev, ...data.records])
-      setDids((prev) => {
-        const next = new Map(prev)
-        data.dids.forEach((d, uri) => next.set(uri, d))
-        return next
-      })
-      endCursorRef.current = data.endCursor
-      setHasMore(data.hasMore)
+      const fetches: Promise<void>[] = []
+      if (created.hasMore && created.cursor) {
+        fetches.push(
+          fetchUserIndexerActivities(did, {
+            first: PAGE_SIZE,
+            mode: "authored",
+            after: created.cursor,
+          }).then((data) => {
+            setCreated((prev) => mergeBucket(prev, data))
+          }),
+        )
+      }
+      if (contributed.hasMore && contributed.cursor) {
+        fetches.push(
+          fetchUserIndexerActivities(did, {
+            first: PAGE_SIZE,
+            mode: "contributed",
+            after: contributed.cursor,
+          }).then((data) => {
+            setContributed((prev) => mergeBucket(prev, data))
+          }),
+        )
+      }
+      await Promise.all(fetches)
     } catch (err) {
       console.error("Failed to load more user activities (indexer):", err)
-      setHasMore(false)
     } finally {
       isLoadingMoreRef.current = false
       setIsLoadingMore(false)
     }
-  }, [did])
+  }, [did, created.cursor, created.hasMore, contributed.cursor, contributed.hasMore])
 
-  return { activities, dids, isLoading, isLoadingMore, error, hasMore, loadMore }
+  const hasMore = created.hasMore || contributed.hasMore
+
+  return {
+    /** Records where the profile DID is the author. */
+    created: created.records,
+    /** Records where the profile DID is in the contributors. May
+     *  overlap with `created` when the user is both. */
+    contributed: contributed.records,
+    /** Combined per-URI author-DID map for compatibility with
+     *  consumers that previously walked a unified list. */
+    dids: useMergedDidsMap(created.dids, contributed.dids),
+    isLoading,
+    isLoadingMore,
+    error,
+    hasMore,
+    loadMore,
+  }
+}
+
+function mergeBucket(
+  prev: BucketState,
+  data: Awaited<ReturnType<typeof fetchUserIndexerActivities>>,
+): BucketState {
+  const nextDids = new Map(prev.dids)
+  data.dids.forEach((d, uri) => nextDids.set(uri, d))
+  return {
+    records: [...prev.records, ...data.records],
+    dids: nextDids,
+    cursor: data.endCursor,
+    hasMore: data.hasMore,
+  }
+}
+
+function useMergedDidsMap(
+  a: Map<string, string>,
+  b: Map<string, string>,
+): Map<string, string> {
+  // Both maps key URIs to author DIDs; union them without
+  // re-computing on every render unless the inputs actually change.
+  // useState gives us a stable reference between renders; we only
+  // refresh when either side's reference flips.
+  const [merged, setMerged] = useState<Map<string, string>>(() => mergeMaps(a, b))
+  const lastRef = useRef<{ a: typeof a; b: typeof b } | null>({ a, b })
+  if (lastRef.current?.a !== a || lastRef.current?.b !== b) {
+    lastRef.current = { a, b }
+    setMerged(mergeMaps(a, b))
+  }
+  return merged
+}
+
+function mergeMaps(
+  a: Map<string, string>,
+  b: Map<string, string>,
+): Map<string, string> {
+  const out = new Map(a)
+  b.forEach((v, k) => out.set(k, v))
+  return out
 }

@@ -22,7 +22,7 @@ import { useUserProjects } from "@/hooks/use-user-projects"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { activityDetailHref } from "@/lib/atproto/activity-uri"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
-import type { ClaimActivity } from "@/lib/atproto/activity-types"
+import type { ActivityRecord, ClaimActivity } from "@/lib/atproto/activity-types"
 import type { CertifiedProfile } from "@/lib/atproto/types"
 import { formatShortDate } from "@/lib/utils/format-date"
 import type { ProfileDrafts } from "@/components/profile/profile-inline-edit-types"
@@ -112,29 +112,39 @@ export default function ProfileOverview({
   const { endorsements, isLoading: endorsementsLoading } = useReceivedEndorsements(did)
   const { endorsements: givenEndorsements, isLoading: givenLoading } = useGivenEndorsements(did)
   const { projects, isLoading: projectsLoading } = useUserProjects(did)
-  // Indexer-backed combined feed: split locally to count Created vs
-  // Contributed to. Same pattern as <ProfileCerts>.
+  // Indexer-backed activity stream. The hook now returns two
+  // separate buckets (created / contributed) — a cert where the
+  // user is BOTH author and contributor appears in both lists,
+  // which makes the overview stats reflect actual activity rather
+  // than mutually-exclusive author-vs-contributor membership.
   const {
-    activities,
-    dids: activityDids,
+    created: createdActivities,
+    contributed: contributedActivities,
     isLoading: activitiesLoading,
     hasMore: activitiesHasMore,
   } = useUserIndexerActivities(did)
 
-  const { createdCount, contributedCount } = useMemo(() => {
-    let created = 0
-    let contributed = 0
-    for (const r of activities) {
-      const authorDid = activityDids.get(r.uri)
-      if (authorDid === did) created++
-      else if (authorDid) contributed++
-    }
-    return { createdCount: created, contributedCount: contributed }
-  }, [activities, activityDids, did])
+  const createdCount = createdActivities.length
+  const contributedCount = contributedActivities.length
 
   const previewActivities = useMemo(
-    () => activities.slice(0, ACTIVITY_PREVIEW),
-    [activities],
+    // Recent-certs digest below the stats: deduplicate across the
+    // two buckets (a cert appearing in both should render once) and
+    // surface the top ACTIVITY_PREVIEW by createdAt.
+    () => {
+      const seen = new Set<string>()
+      const merged: ActivityRecord[] = []
+      for (const r of [...createdActivities, ...contributedActivities]) {
+        if (seen.has(r.uri)) continue
+        seen.add(r.uri)
+        merged.push(r)
+      }
+      merged.sort((a, b) =>
+        (a.value.createdAt ?? "") < (b.value.createdAt ?? "") ? 1 : -1,
+      )
+      return merged.slice(0, ACTIVITY_PREVIEW)
+    },
+    [createdActivities, contributedActivities],
   )
   const previewEndorsements = useMemo(
     () => endorsements.slice(0, ENDORSEMENT_PREVIEW),
@@ -387,7 +397,8 @@ export default function ProfileOverview({
           >
             Recent certs
           </h2>
-          {activities.length > ACTIVITY_PREVIEW ? (
+          {createdActivities.length + contributedActivities.length >
+          ACTIVITY_PREVIEW ? (
             <Link
               href={`${basePath}?tab=certs`}
               scroll={false}

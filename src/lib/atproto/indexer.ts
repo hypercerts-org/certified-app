@@ -274,28 +274,11 @@ export async function fetchIndexerActivities(
  * including the per-URI `dids` map — callers split authored vs contributed
  * by comparing each record's DID to the queried user.
  */
-const ACTIVITIES_FOR_USER_QUERY = `
-query ActivitiesForUser(
-  $did: String!
-  $first: Int!
-  $after: String
-  $labels: [String!]
-  $excludeLabels: [String!]
-  $search: String
-) {
-  orgHypercertsClaimActivity(
-    first: $first
-    after: $after
-    labels: $labels
-    excludeLabels: $excludeLabels
-    search: $search
-    where: {
-      _or: [
-        { did:         { eq: $did } }
-        { contributor: { eq: $did } }
-      ]
-    }
-  ) {
+/** Two separate queries — one for each side of the
+ *  `_or { did | contributor }` split. The hook below calls both in
+ *  parallel so a record where the user is BOTH author and
+ *  contributor lands in both result lists. */
+const ACTIVITY_NODE_SELECTION = `
     totalCount
     edges {
       cursor
@@ -323,18 +306,75 @@ query ActivitiesForUser(
       hasNextPage
       endCursor
     }
+`
+
+const ACTIVITIES_AUTHORED_QUERY = `
+query AuthoredActivities(
+  $did: String!
+  $first: Int!
+  $after: String
+  $labels: [String!]
+  $excludeLabels: [String!]
+  $search: String
+) {
+  orgHypercertsClaimActivity(
+    first: $first
+    after: $after
+    labels: $labels
+    excludeLabels: $excludeLabels
+    search: $search
+    where: { did: { eq: $did } }
+  ) {
+${ACTIVITY_NODE_SELECTION}
+  }
+}
+`
+
+const ACTIVITIES_CONTRIBUTED_QUERY = `
+query ContributedActivities(
+  $did: String!
+  $first: Int!
+  $after: String
+  $labels: [String!]
+  $excludeLabels: [String!]
+  $search: String
+) {
+  orgHypercertsClaimActivity(
+    first: $first
+    after: $after
+    labels: $labels
+    excludeLabels: $excludeLabels
+    search: $search
+    where: { contributor: { eq: $did } }
+  ) {
+${ACTIVITY_NODE_SELECTION}
   }
 }
 `
 
 export interface FetchUserActivitiesOptions
-  extends Omit<FetchIndexerOptions, "authors"> {}
+  extends Omit<FetchIndexerOptions, "authors"> {
+  /** Which side of the user's activity to fetch — defaults to
+   *  "authored". Use "contributed" to get the contributor-filter
+   *  results separately. The hook below runs both in parallel so a
+   *  cert where the user is BOTH author and contributor appears in
+   *  both lists. */
+  mode?: "authored" | "contributed"
+}
 
 export async function fetchUserIndexerActivities(
   did: string,
   options: FetchUserActivitiesOptions = {},
 ): Promise<IndexerActivitiesResult> {
-  const { first = 20, after, labels, excludeLabels, search, signal } = options
+  const {
+    first = 20,
+    after,
+    labels,
+    excludeLabels,
+    search,
+    signal,
+    mode = "authored",
+  } = options
 
   if (!did.startsWith("did:")) {
     // The indexer rejects handle inputs at the GraphQL layer. Catch it
@@ -354,10 +394,15 @@ export async function fetchUserIndexerActivities(
     search: search || null,
   }
 
+  const query =
+    mode === "contributed"
+      ? ACTIVITIES_CONTRIBUTED_QUERY
+      : ACTIVITIES_AUTHORED_QUERY
+
   const res = await fetch(INDEXER_PROXY_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query: ACTIVITIES_FOR_USER_QUERY, variables }),
+    body: JSON.stringify({ query, variables }),
     signal,
   })
 

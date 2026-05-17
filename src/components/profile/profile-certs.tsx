@@ -45,7 +45,8 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
  */
 export default function ProfileCerts({ did }: ProfileCertsProps) {
   const {
-    activities,
+    created,
+    contributed,
     dids,
     isLoading,
     isLoadingMore,
@@ -82,20 +83,10 @@ export default function ProfileCerts({ did }: ProfileCertsProps) {
     }
   }, [sortOpen])
 
-  const { created, contributed } = useMemo(() => {
-    const created: ActivityRecord[] = []
-    const contributed: ActivityRecord[] = []
-    if (!did) return { created, contributed }
-    for (const record of activities) {
-      const authorDid = dids.get(record.uri)
-      if (authorDid === did) {
-        created.push(record)
-      } else if (authorDid) {
-        contributed.push(record)
-      }
-    }
-    return { created, contributed }
-  }, [activities, dids, did])
+  // `created` and `contributed` come directly from the hook now —
+  // the previous `_or` + client-side split is replaced by two
+  // parallel queries (one per bucket) so a cert where the user is
+  // BOTH author and contributor appears in both lists.
 
   const visibleSource = tab === "created" ? created : contributed
   const visible = useMemo(
