@@ -318,14 +318,18 @@ export default function ProfileSidebar({
             </a>
           </li>
         ) : null}
-        {/* Founded date takes priority over "Joined" — orgs surface their
-            real founding year here so the joined-on-Certified noise
-            doesn't crowd it. Falls back to Joined for non-orgs. */}
-        {orgFoundedDate ? (
-          <li>
-            <Calendar size={16} strokeWidth={1.75} aria-hidden />
-            <span>Founded {orgFoundedDate}</span>
-          </li>
+        {/* Founded date for organizations; Joined date for everyone
+            else. We never surface "Joined ..." on an org profile —
+            "joined Certified at <some date>" is admin noise the
+            org's audience doesn't care about. An org with no founded
+            date just hides this row entirely. */}
+        {isOrg ? (
+          orgFoundedDate ? (
+            <li>
+              <Calendar size={16} strokeWidth={1.75} aria-hidden />
+              <span>Founded {orgFoundedDate}</span>
+            </li>
+          ) : null
         ) : joinedText ? (
           <li>
             <Calendar size={16} strokeWidth={1.75} aria-hidden />
