@@ -340,6 +340,10 @@ export default function DesktopTopBar() {
                   setSwitcherOpen(false);
                   signOut();
                 }}
+                onSwitchAccount={() => {
+                  setSwitcherOpen(false);
+                  openSignIn();
+                }}
               />
             </div>,
             document.body

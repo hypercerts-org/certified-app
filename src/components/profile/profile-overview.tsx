@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react"
 import { ArrowRight, Award } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import BannerUpload from "@/components/profile/banner-upload"
 import { getInitials } from "@/lib/utils/initials"
 import { useUserGroups } from "@/hooks/use-user-groups"
 import { useReceivedEndorsements, type ReceivedEndorsement } from "@/hooks/use-received-endorsements"
@@ -17,12 +18,24 @@ import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import type { ClaimActivity } from "@/lib/atproto/activity-types"
 import type { CertifiedProfile } from "@/lib/atproto/types"
 import { formatShortDate } from "@/lib/utils/format-date"
+import type { ProfileDrafts } from "@/components/profile/profile-inline-edit-types"
 
 interface ProfileOverviewProps {
   bannerUrl: string | null
   did: string
   profile: CertifiedProfile | null
   basePath: string
+  /** True when the page is in inline-edit mode. Only sent by the page
+   *  when the viewer can edit their own profile — the overview itself
+   *  doesn't gate on viewer identity. */
+  isEditing?: boolean
+  drafts?: ProfileDrafts
+  onDraftChange?: <K extends keyof ProfileDrafts>(
+    key: K,
+    value: ProfileDrafts[K],
+  ) => void
+  onBannerFile?: (file: File) => Promise<void>
+  hasPendingBanner?: boolean
 }
 
 const ACTIVITY_PREVIEW = 3
@@ -42,10 +55,25 @@ export default function ProfileOverview({
   did,
   profile,
   basePath,
+  isEditing = false,
+  drafts,
+  onDraftChange,
+  onBannerFile,
+  hasPendingBanner = false,
 }: ProfileOverviewProps) {
   const [bannerFailed, setBannerFailed] = useState(false)
   useEffect(() => setBannerFailed(false), [bannerUrl])
   const showBanner = !!bannerUrl && !bannerFailed
+  const [bannerUploading, setBannerUploading] = useState(false)
+  const handleBannerUpload = async (file: File) => {
+    if (!onBannerFile) return
+    setBannerUploading(true)
+    try {
+      await onBannerFile(file)
+    } finally {
+      setBannerUploading(false)
+    }
+  }
 
   const { groups, isLoading: groupsLoading } = useUserGroups(did)
   const { endorsements, isLoading: endorsementsLoading } = useReceivedEndorsements(did)
@@ -83,7 +111,23 @@ export default function ProfileOverview({
 
   return (
     <div className="profile-overview">
-      {showBanner ? (
+      {isEditing ? (
+        <div className="profile-overview__banner profile-overview__banner--editing profile-overview__banner-edit-slot">
+          <BannerUpload
+            currentBannerUrl={bannerUrl}
+            onUpload={handleBannerUpload}
+            isUploading={bannerUploading}
+          />
+          {hasPendingBanner ? (
+            <p
+              className="profile-overview__website-label"
+              style={{ marginTop: 6 }}
+            >
+              New banner staged — will save on Save.
+            </p>
+          ) : null}
+        </div>
+      ) : showBanner ? (
         <div className="profile-overview__banner">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -95,7 +139,45 @@ export default function ProfileOverview({
         </div>
       ) : null}
 
-      {profile?.description ? (
+      {isEditing ? (
+        <section
+          className="profile-overview__about"
+          aria-labelledby="profile-overview-about-heading"
+        >
+          <h2
+            id="profile-overview-about-heading"
+            className="profile-overview__section-title"
+          >
+            About
+          </h2>
+          <textarea
+            className="profile-overview__about-textarea"
+            value={drafts?.description ?? ""}
+            maxLength={256}
+            placeholder="A short description of you and your work."
+            aria-label="About"
+            onChange={(e) => onDraftChange?.("description", e.target.value)}
+          />
+          <label
+            htmlFor="profile-overview-website-input"
+            className="profile-overview__website-label"
+            style={{ display: "block", marginTop: 12 }}
+          >
+            Website
+          </label>
+          <input
+            id="profile-overview-website-input"
+            type="url"
+            inputMode="url"
+            className="profile-overview__website-input"
+            value={drafts?.website ?? ""}
+            maxLength={256}
+            placeholder="https://example.com"
+            aria-label="Website"
+            onChange={(e) => onDraftChange?.("website", e.target.value)}
+          />
+        </section>
+      ) : profile?.description ? (
         <section
           className="profile-overview__about"
           aria-labelledby="profile-overview-about-heading"

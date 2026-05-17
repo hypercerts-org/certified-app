@@ -349,6 +349,10 @@ const Navbar: React.FC = () => {
                         router.push(resolvePostSwitchPath(next));
                       }}
                       onSignOut={signOut}
+                      onSwitchAccount={() => {
+                        setSwitcherOpen(false);
+                        openSignIn();
+                      }}
                     />
                   </div>
                 )}
@@ -381,6 +385,10 @@ const Navbar: React.FC = () => {
                         router.push(resolvePostSwitchPath(next));
                       }}
                       onSignOut={signOut}
+                      onSwitchAccount={() => {
+                        setSwitcherOpen(false);
+                        openSignIn();
+                      }}
                     />
                   </div>
                 </div>

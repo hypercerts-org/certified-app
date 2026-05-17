@@ -1,16 +1,12 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
+import React, { useEffect, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import {
   AtSign,
-  ChevronLeft,
-  ChevronRight,
   KeyRound,
   Mail,
   Palette,
-  UserPen,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useSession } from "@/hooks/use-session";
@@ -22,11 +18,9 @@ import {
 import OrgSettings from "@/components/groups/org-settings";
 import ThemeToggle from "@/components/ui/theme-toggle";
 
-// The existing inline-control components are still rendered on this
-// landing page since they don't yet have dedicated sub-routes (see the
-// TODOs below). Dynamic-import them so we don't bloat the landing
-// bundle when a future PR promotes them to their own /settings/*
-// pages.
+// The category panels are still legacy components hoisted into this
+// page. Dynamic-import them so the landing bundle stays slim — only the
+// active category's panel pays its load cost.
 const UsernameCard = dynamic(
   () => import("@/components/dashboard/username-card"),
 );
@@ -38,36 +32,88 @@ const PasswordSection = dynamic(
 );
 
 /**
- * Settings landing page.
+ * Categories rendered in the slim left pane. The hash drives selection
+ * (`/settings#username`) so each category has a stable deep-link URL.
+ * Order here is the order shown in the menu; the first entry is the
+ * default when no hash is present.
  *
- * Renders inside `.app-shell__content` (the 600px reading column shared
- * with `/settings/edit-profile`). Visually a list of category rows in
- * the GitHub Settings landing pattern: icon + label + short description
- * + chevron-link to a sub-route.
+ * `key` doubles as the URL hash. `Icon` is a lucide-react component
+ * rendered inside the menu item's leading slot.
  *
- * TODO(settings-subroutes): only `Edit profile` is wired to a real
- * sub-route today. Username, Email, Password, and Appearance still live
- * inline on this page using their legacy components. Each is a candidate
- * for promotion to its own page:
- *   - /settings/username   ← `<UsernameCard />`
- *   - /settings/email      ← `<EmailSection />`
- *   - /settings/password   ← `<PasswordSection />`
- *   - /settings/appearance ← `<ThemeToggle />`
- * Once those pages exist, swap the inline `.sx-row--inline` rows below
- * for `.sx-row--link` rows pointing at them.
+ * Note: "Edit profile" was deliberately dropped from the categories
+ * list — profile editing has moved to an inline-edit flow on the
+ * profile page itself. The `/settings/edit-profile` route is kept as
+ * a fallback by the layout in `edit-profile/page.tsx` but is no longer
+ * surfaced from this menu.
+ */
+type CategoryKey = "username" | "email" | "password" | "appearance";
+
+type CategoryDef = {
+  key: CategoryKey;
+  label: string;
+  description: string;
+  Icon: typeof AtSign;
+};
+
+const CATEGORIES: CategoryDef[] = [
+  {
+    key: "username",
+    label: "Username",
+    description: "The @handle people use to find you on Certified.",
+    Icon: AtSign,
+  },
+  {
+    key: "email",
+    label: "Email",
+    description: "Used to sign in and recover your account.",
+    Icon: Mail,
+  },
+  {
+    key: "password",
+    label: "Password",
+    description: "Reset the password used to sign in to this account.",
+    Icon: KeyRound,
+  },
+  {
+    key: "appearance",
+    label: "Appearance",
+    description: "Light or dark theme — or match your system preference.",
+    Icon: Palette,
+  },
+];
+
+const DEFAULT_CATEGORY: CategoryKey = CATEGORIES[0].key;
+
+function readHashCategory(): CategoryKey {
+  if (typeof window === "undefined") return DEFAULT_CATEGORY;
+  const raw = window.location.hash.replace(/^#/, "").toLowerCase();
+  const match = CATEGORIES.find((c) => c.key === raw);
+  return match ? match.key : DEFAULT_CATEGORY;
+}
+
+/**
+ * Settings page.
  *
- * Note: when an org is active in the org switcher we short-circuit to
- * `OrgSettings`, preserving the previous page's behaviour. The org's
- * own settings page lives under `/groups/[groupDid]/settings`.
+ * Two-pane layout (mirrors the profile page):
+ *   - Left pane (296px on ≥800px): vertical menu of categories. The
+ *     active item gets a subtle pill background.
+ *   - Right pane (fluid): renders the selected category's UI.
+ *
+ * Selection is hash-driven (`#username`, `#email`, `#password`,
+ * `#appearance`). On mobile (<800px) the menu stacks on top of the
+ * panel — same responsive pattern as the profile page.
+ *
+ * Org short-circuit: when an org is active in the org switcher the
+ * page renders `<OrgSettings>` exactly as before; this redesign only
+ * affects the personal-settings codepath.
  */
 export default function SettingsPage() {
   const { did, pdsUrl } = useAuth();
   const { handle, email } = useSession();
   const { activeOrg } = useOrg();
 
-  // Drive the navbar breadcrumb the same way edit-profile does. While
-  // the handle hasn't loaded we fall through to the plain string title
-  // so the navbar isn't briefly empty.
+  // Navbar breadcrumb: `@handle` › `Settings`. Until handle resolves we
+  // pass `null` so the navbar isn't briefly empty.
   usePageTitle("Settings");
   usePageTitleBreadcrumb(
     handle
@@ -78,147 +124,121 @@ export default function SettingsPage() {
       : null,
   );
 
-  // Acting-as-group short-circuit: render the org's settings UI in
-  // place of the personal settings list. Mirrors the previous page.
+  // Hash-based selection. We read the initial hash on mount (SSR-safe
+  // default first), then subscribe to `hashchange` so deep-linking and
+  // the user's back/forward buttons both stay in sync.
+  const [active, setActive] = useState<CategoryKey>(DEFAULT_CATEGORY);
+
+  useEffect(() => {
+    setActive(readHashCategory());
+    const onHashChange = () => setActive(readHashCategory());
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+
+  // Menu-item click. We update the hash via history.replaceState so the
+  // back button doesn't accumulate one entry per click — same UX as
+  // tab strips. We then drive React state manually since replaceState
+  // doesn't fire `hashchange`.
+  const selectCategory = useCallback((key: CategoryKey) => {
+    if (typeof window !== "undefined") {
+      const next = `#${key}`;
+      if (window.location.hash !== next) {
+        window.history.replaceState(null, "", next);
+      }
+    }
+    setActive(key);
+  }, []);
+
+  // Acting-as-group short-circuit. Render the org's settings UI in
+  // place of the personal settings layout. Unchanged from previous page.
   if (activeOrg) {
     return <OrgSettings groupDid={activeOrg.groupDid} org={activeOrg} />;
   }
 
-  const profileHref = handle ? `/profile/${handle}` : "/profile";
+  const activeDef =
+    CATEGORIES.find((c) => c.key === active) ?? CATEGORIES[0];
 
   return (
-    <div className="sx">
-      {/* Back-to-@handle. Mirrors the edit-profile page's affordance so
-          both settings pages exit the same way. */}
-      <div className="sx__back">
-        <Link href={profileHref} className="sx__back-link">
-          <ChevronLeft size={14} strokeWidth={2} aria-hidden />
-          <span>
-            Back to{" "}
-            <span className="sx__back-handle">@{handle ?? "profile"}</span>
-          </span>
-        </Link>
-      </div>
+    <div className="sx sx--wide">
+      <h1 className="sx__heading sr-only">Settings</h1>
 
-      <h1 className="sx__heading">Settings</h1>
-      <p className="sx__lead">
-        Manage your profile, account, and how Certified looks.
-      </p>
+      <div className="sx__layout">
+        {/* Left pane — slim menu. role=tablist so screen readers treat
+            the items as a tab strip; each item is role=tab. */}
+        <aside className="sx__menu" role="tablist" aria-label="Settings categories">
+          <ul className="sx-menu">
+            {CATEGORIES.map((cat) => {
+              const isActive = cat.key === activeDef.key;
+              const Icon = cat.Icon;
+              return (
+                <li key={cat.key}>
+                  <a
+                    href={`#${cat.key}`}
+                    role="tab"
+                    id={`sx-tab-${cat.key}`}
+                    aria-selected={isActive}
+                    aria-controls={`sx-panel-${cat.key}`}
+                    className={`sx-menu__item${isActive ? " sx-menu__item--active" : ""}`}
+                    onClick={(e) => {
+                      // Preserve middle-click / cmd-click semantics; only
+                      // intercept the plain left-click case.
+                      if (
+                        e.button === 0 &&
+                        !e.metaKey &&
+                        !e.ctrlKey &&
+                        !e.shiftKey &&
+                        !e.altKey
+                      ) {
+                        e.preventDefault();
+                        selectCategory(cat.key);
+                      }
+                    }}
+                  >
+                    <span className="sx-menu__icon" aria-hidden>
+                      <Icon size={16} strokeWidth={1.75} />
+                    </span>
+                    <span className="sx-menu__label">{cat.label}</span>
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </aside>
 
-      {/* Ungrouped — single item: Profile. Per the brief, groups only
-          warrant a header when they hold 2+ items. */}
-      <section className="sx__section">
-        <ul className="sx__list">
-          <li>
-            <Link href="/settings/edit-profile" className="sx-row sx-row--link">
-              <span className="sx-row__icon" aria-hidden>
-                <UserPen size={16} strokeWidth={1.75} />
-              </span>
-              <span className="sx-row__body">
-                <span className="sx-row__title">Edit profile</span>
-                <span className="sx-row__desc">
-                  Display name, bio, avatar, banner, and website.
-                </span>
-              </span>
-              <ChevronRight
-                size={16}
-                strokeWidth={1.75}
-                className="sx-row__chevron"
-                aria-hidden
+        {/* Right pane — the selected category's panel. We render only
+            the active panel rather than all panels hidden by CSS so
+            heavy editors (email/password) don't run their effects when
+            the user isn't looking at them. */}
+        <section
+          className="sx__panel"
+          role="tabpanel"
+          id={`sx-panel-${activeDef.key}`}
+          aria-labelledby={`sx-tab-${activeDef.key}`}
+        >
+          <header className="sx-panel__header">
+            <h2 className="sx-panel__title">{activeDef.label}</h2>
+            <p className="sx-panel__desc">{activeDef.description}</p>
+          </header>
+
+          <div className="sx-panel__body">
+            {activeDef.key === "username" && (
+              <UsernameCard
+                handle={handle}
+                pdsUrl={pdsUrl || undefined}
+                did={did || undefined}
               />
-            </Link>
-          </li>
-        </ul>
-      </section>
-
-      {/* Account group — 3 inline items. These will become linked rows
-          once /settings/username, /settings/email, /settings/password
-          exist. Today the legacy inline editors render in place. */}
-      <section className="sx__section">
-        <h2 className="sx__section-title">Account</h2>
-        <ul className="sx__list">
-          {/* TODO(settings-subroutes): promote to /settings/username */}
-          <li>
-            <div className="sx-row sx-row--inline">
-              <span className="sx-row__icon" aria-hidden>
-                <AtSign size={16} strokeWidth={1.75} />
-              </span>
-              <div className="sx-row__body">
-                <span className="sx-row__title">Username</span>
-                <span className="sx-row__desc">
-                  The @handle people use to find you on Certified.
-                </span>
-                <div className="sx-row__control">
-                  <UsernameCard
-                    handle={handle}
-                    pdsUrl={pdsUrl || undefined}
-                    did={did || undefined}
-                  />
-                </div>
-              </div>
-            </div>
-          </li>
-
-          {/* TODO(settings-subroutes): promote to /settings/email */}
-          <li>
-            <div className="sx-row sx-row--inline">
-              <span className="sx-row__icon" aria-hidden>
-                <Mail size={16} strokeWidth={1.75} />
-              </span>
-              <div className="sx-row__body">
-                <span className="sx-row__title">Email address</span>
-                <span className="sx-row__desc">
-                  Used to sign in and recover your account.
-                </span>
-                <div className="sx-row__control">
-                  <EmailSection email={email || ""} />
-                </div>
-              </div>
-            </div>
-          </li>
-
-          {/* TODO(settings-subroutes): promote to /settings/password */}
-          <li>
-            <div className="sx-row sx-row--inline">
-              <span className="sx-row__icon" aria-hidden>
-                <KeyRound size={16} strokeWidth={1.75} />
-              </span>
-              <div className="sx-row__body">
-                <span className="sx-row__title">Password</span>
-                <span className="sx-row__desc">
-                  Reset the password used to sign in to this account.
-                </span>
-                <div className="sx-row__control">
-                  <PasswordSection email={email || ""} />
-                </div>
-              </div>
-            </div>
-          </li>
-        </ul>
-      </section>
-
-      {/* Ungrouped — single item: Appearance. */}
-      <section className="sx__section">
-        {/* TODO(settings-subroutes): promote to /settings/appearance */}
-        <ul className="sx__list">
-          <li>
-            <div className="sx-row sx-row--inline">
-              <span className="sx-row__icon" aria-hidden>
-                <Palette size={16} strokeWidth={1.75} />
-              </span>
-              <div className="sx-row__body">
-                <span className="sx-row__title">Appearance</span>
-                <span className="sx-row__desc">
-                  Light or dark theme — or match your system preference.
-                </span>
-                <div className="sx-row__control">
-                  <ThemeToggle />
-                </div>
-              </div>
-            </div>
-          </li>
-        </ul>
-      </section>
+            )}
+            {activeDef.key === "email" && (
+              <EmailSection email={email || ""} />
+            )}
+            {activeDef.key === "password" && (
+              <PasswordSection email={email || ""} />
+            )}
+            {activeDef.key === "appearance" && <ThemeToggle />}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

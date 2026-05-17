@@ -16,10 +16,12 @@ import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import SmartLink from "@/components/ui/smart-link"
+import AvatarUpload from "@/components/profile/avatar-upload"
 import { getInitials } from "@/lib/utils/initials"
 import { useProfilePds } from "@/hooks/use-profile-pds"
 import { useUserGroups, type UserGroup } from "@/hooks/use-user-groups"
 import type { CertifiedProfile } from "@/lib/atproto/types"
+import type { ProfileDrafts } from "@/components/profile/profile-inline-edit-types"
 
 interface ProfileSidebarProps {
   profile: CertifiedProfile | null
@@ -44,6 +46,25 @@ interface ProfileSidebarProps {
    *  `useUserGroups(did)` (PDS memberships only). */
   groupsOverride?: UserGroup[]
   groupsLoadingOverride?: boolean
+
+  /** True when the viewer can enter inline edit mode on this profile
+   *  (own profile only). Independent of `editHref`, which is used for
+   *  the group-admin-edit-elsewhere flow. */
+  canInlineEdit?: boolean
+  /** True when the page is currently in edit mode. */
+  isEditing?: boolean
+  drafts?: ProfileDrafts
+  onEditClick?: () => void
+  onCancelEdit?: () => void
+  onSaveEdit?: () => void
+  onDraftChange?: <K extends keyof ProfileDrafts>(
+    key: K,
+    value: ProfileDrafts[K],
+  ) => void
+  onAvatarFile?: (file: File) => Promise<void>
+  hasPendingAvatar?: boolean
+  isSaving?: boolean
+  saveError?: string | null
 }
 
 const GROUPS_GRID_LIMIT = 12
@@ -77,6 +98,17 @@ export default function ProfileSidebar({
   additionalUrls,
   groupsOverride,
   groupsLoadingOverride,
+  canInlineEdit = false,
+  isEditing = false,
+  drafts,
+  onEditClick,
+  onCancelEdit,
+  onSaveEdit,
+  onDraftChange,
+  onAvatarFile,
+  hasPendingAvatar = false,
+  isSaving = false,
+  saveError = null,
 }: ProfileSidebarProps) {
   const displayName = profile?.displayName || (handle ? `@${handle}` : "Anonymous")
   const initials = getInitials(profile?.displayName, did)
@@ -88,22 +120,67 @@ export default function ProfileSidebar({
   const groupsLoading = groupsOverride ? !!groupsLoadingOverride : fallback.isLoading
 
   const joinedText = formatJoined(profile?.createdAt)
-  const hasEdit = !!editHref
+  // Inline edit takes precedence: when the viewer can inline-edit we
+  // show the "Edit profile" trigger (or Save/Cancel in edit mode) and
+  // ignore the legacy editHref. The href fallback still handles the
+  // group-admin-editing-someone-else case.
+  const hasInline = canInlineEdit
+  const hasEditLink = !hasInline && !!editHref
   const previewGroups = groups.slice(0, GROUPS_GRID_LIMIT)
+
+  // Local avatar uploading flag — toggled around the parent's upload
+  // call so the AvatarUpload overlay can show its spinner.
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const handleAvatarUpload = async (file: File) => {
+    if (!onAvatarFile) return
+    setAvatarUploading(true)
+    try {
+      await onAvatarFile(file)
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
 
   return (
     <aside className="profile-sidebar" aria-label="Profile identity">
-      <div className="profile-sidebar__avatar">
-        <Avatar
-          size="xl"
-          src={avatarUrl || undefined}
-          fallbackInitials={initials}
-          className="!h-[240px] !w-[240px] !text-5xl"
-        />
+      <div
+        className={
+          isEditing && hasInline
+            ? "profile-sidebar__avatar profile-sidebar__avatar--editing"
+            : "profile-sidebar__avatar"
+        }
+      >
+        {isEditing && hasInline ? (
+          <AvatarUpload
+            currentAvatarUrl={avatarUrl}
+            fallbackInitials={initials}
+            onUpload={handleAvatarUpload}
+            isUploading={avatarUploading}
+          />
+        ) : (
+          <Avatar
+            size="xl"
+            src={avatarUrl || undefined}
+            fallbackInitials={initials}
+            className="!h-[240px] !w-[240px] !text-5xl"
+          />
+        )}
       </div>
 
       <div className="profile-sidebar__name-block">
-        <h1 className="profile-sidebar__name">{displayName}</h1>
+        {isEditing && hasInline ? (
+          <input
+            type="text"
+            className="profile-sidebar__name-input"
+            value={drafts?.displayName ?? ""}
+            maxLength={64}
+            placeholder="Display name"
+            aria-label="Display name"
+            onChange={(e) => onDraftChange?.("displayName", e.target.value)}
+          />
+        ) : (
+          <h1 className="profile-sidebar__name">{displayName}</h1>
+        )}
         {handle ? (
           <p className="profile-sidebar__handle">@{handle}</p>
         ) : null}
@@ -118,7 +195,35 @@ export default function ProfileSidebar({
       ) : null}
 
       <div className="profile-sidebar__actions">
-        {hasEdit ? (
+        {isEditing && hasInline ? (
+          <div className="profile-sidebar__edit-actions">
+            <button
+              type="button"
+              className="profile-sidebar__edit-btn"
+              onClick={onCancelEdit}
+              disabled={isSaving}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="profile-sidebar__edit-btn profile-sidebar__edit-btn--primary"
+              onClick={onSaveEdit}
+              disabled={isSaving}
+            >
+              {isSaving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        ) : hasInline ? (
+          <button
+            type="button"
+            className="profile-sidebar__action-primary"
+            onClick={onEditClick}
+          >
+            <Pencil size={14} strokeWidth={1.75} aria-hidden />
+            Edit profile
+          </button>
+        ) : hasEditLink ? (
           <Link href={editHref!} className="profile-sidebar__action-primary">
             <Pencil size={14} strokeWidth={1.75} aria-hidden />
             Edit profile
@@ -130,6 +235,16 @@ export default function ProfileSidebar({
           </Button>
         )}
       </div>
+      {isEditing && hasInline && saveError ? (
+        <p className="profile-sidebar__edit-error" role="alert">
+          {saveError}
+        </p>
+      ) : null}
+      {isEditing && hasInline && hasPendingAvatar ? (
+        <p className="profile-sidebar__edit-error" style={{ color: "var(--color-text-secondary)" }}>
+          New avatar staged — will save on Save.
+        </p>
+      ) : null}
 
       <p className="profile-sidebar__followers" aria-label="Followers and following">
         <Users size={16} strokeWidth={1.75} aria-hidden />

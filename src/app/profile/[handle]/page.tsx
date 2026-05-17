@@ -1,12 +1,25 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { usePathname, useParams, useSearchParams } from "next/navigation"
 import { useProfileNavbar, usePageTitle, usePageTitleBreadcrumb } from "@/lib/navbar-context"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { useUserActivities } from "@/hooks/use-user-activities"
 import { useOrgMarker } from "@/hooks/use-org-marker"
 import { useOrg } from "@/lib/groups/org-context"
+import { useAuth } from "@/lib/auth/auth-context"
+import {
+  putProfile,
+  uploadAvatar,
+  uploadBanner,
+  type UploadedBlob,
+} from "@/lib/atproto/profile"
+import type {
+  CertifiedProfile,
+  HypercertsSmallImage,
+  HypercertsLargeImage,
+} from "@/lib/atproto/types"
+import type { BlobRef } from "@atproto/api"
 import ProfileHeader from "@/components/profile/profile-header"
 import ProfileSidebar from "@/components/profile/profile-sidebar"
 import ProfileOverview from "@/components/profile/profile-overview"
@@ -17,6 +30,7 @@ import ProfileGroups from "@/components/profile/profile-groups"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import { UserX } from "lucide-react"
+import type { ProfileDrafts } from "@/components/profile/profile-inline-edit-types"
 
 type TabKey =
   | "overview"
@@ -35,6 +49,9 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "groups", label: "Groups" },
   { key: "endorsements", label: "Endorsements" },
 ]
+
+// `ProfileDrafts` lives in `profile-inline-edit-types` so the sidebar and
+// overview can import it without creating a cycle with this page module.
 
 export default function UserProfilePage() {
   useProfileNavbar()
@@ -56,6 +73,8 @@ export default function UserProfilePage() {
     isLoading: isProfileLoading,
     error: profileError,
   } = useUserProfile(handleOrDid)
+
+  const { isAuthenticated } = useAuth()
 
   const titleForTopBar =
     profile?.displayName || (resolvedHandle ? `@${resolvedHandle}` : "Profile")
@@ -86,9 +105,174 @@ export default function UserProfilePage() {
   const isAdminOfThisGroup =
     !!memberOrg && (memberOrg.role === "owner" || memberOrg.role === "admin")
 
-  const editHref = isOwnProfile
+  // -------------------------------------------------------------------
+  // Inline edit state
+  // -------------------------------------------------------------------
+  // We keep edit state local to the page so the sidebar and overview
+  // can both swap into input mode in lockstep. Drafts are seeded from
+  // `profile` when the user enters edit mode; on save we PUT the
+  // profile record, update local profile/URL state, and exit edit mode.
+  const [isEditing, setIsEditing] = useState(false)
+  const [drafts, setDrafts] = useState<ProfileDrafts>({
+    displayName: "",
+    description: "",
+    website: "",
+  })
+  // Local mirrors so the sidebar/overview show fresh values immediately
+  // after save (without round-tripping through useUserProfile, which
+  // doesn't expose a mutate(). The hook re-fetches on its own props
+  // changing, so on a hard nav back to the page the canonical value
+  // wins again.)
+  const [localProfile, setLocalProfile] = useState<CertifiedProfile | null>(
+    null,
+  )
+  const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null>(null)
+  const [localBannerUrl, setLocalBannerUrl] = useState<string | null>(null)
+  const [pendingAvatarBlob, setPendingAvatarBlob] =
+    useState<UploadedBlob | null>(null)
+  const [pendingBannerBlob, setPendingBannerBlob] =
+    useState<UploadedBlob | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  // Effective values used everywhere the UI renders read-only content:
+  // post-save overrides win, then the hook-supplied snapshot.
+  const effectiveProfile = localProfile ?? profile
+  const effectiveAvatarUrl = localAvatarUrl ?? avatarUrl
+  const effectiveBannerUrl = localBannerUrl ?? bannerUrl
+
+  const handleEditClick = useCallback(() => {
+    if (!effectiveProfile) return
+    setDrafts({
+      displayName: effectiveProfile.displayName ?? "",
+      description: effectiveProfile.description ?? "",
+      website: effectiveProfile.website ?? "",
+    })
+    setPendingAvatarBlob(null)
+    setPendingBannerBlob(null)
+    setSaveError(null)
+    setIsEditing(true)
+  }, [effectiveProfile])
+
+  const handleCancelEdit = useCallback(() => {
+    setIsEditing(false)
+    setPendingAvatarBlob(null)
+    setPendingBannerBlob(null)
+    setSaveError(null)
+  }, [])
+
+  const handleDraftChange = useCallback(
+    <K extends keyof ProfileDrafts>(key: K, value: ProfileDrafts[K]) => {
+      setDrafts((prev) => ({ ...prev, [key]: value }))
+    },
+    [],
+  )
+
+  const handleAvatarFile = useCallback(async (file: File) => {
+    const blob = await uploadAvatar(file)
+    setPendingAvatarBlob(blob)
+  }, [])
+
+  const handleBannerFile = useCallback(async (file: File) => {
+    const blob = await uploadBanner(file)
+    setPendingBannerBlob(blob)
+  }, [])
+
+  const handleSave = useCallback(async () => {
+    if (!did || !isAuthenticated) {
+      setSaveError("Not authenticated")
+      return
+    }
+    const base = effectiveProfile ?? null
+    const next: CertifiedProfile = {
+      createdAt: base?.createdAt || new Date().toISOString(),
+      ...(drafts.displayName.trim() && {
+        displayName: drafts.displayName.trim(),
+      }),
+      ...(base?.pronouns && { pronouns: base.pronouns }),
+      ...(drafts.description.trim() && {
+        description: drafts.description.trim(),
+      }),
+      ...(drafts.website.trim() && { website: drafts.website.trim() }),
+    }
+
+    if (pendingAvatarBlob) {
+      const avatarImage: HypercertsSmallImage = {
+        $type: "org.hypercerts.defs#smallImage",
+        image: pendingAvatarBlob as unknown as BlobRef,
+      }
+      next.avatar = avatarImage
+    } else if (base?.avatar) {
+      next.avatar = base.avatar
+    }
+
+    if (pendingBannerBlob) {
+      const bannerImage: HypercertsLargeImage = {
+        $type: "org.hypercerts.defs#largeImage",
+        image: pendingBannerBlob as unknown as BlobRef,
+      }
+      next.banner = bannerImage
+    } else if (base?.banner) {
+      next.banner = base.banner
+    }
+
+    try {
+      setIsSaving(true)
+      setSaveError(null)
+      await putProfile(did, next)
+
+      // Defensive: evict any cached resolve-did response so navigation
+      // back through the app sees the new record. Best-effort.
+      fetch(`/api/resolve-did?did=${encodeURIComponent(did)}`, {
+        cache: "reload",
+        credentials: "include",
+      }).catch(() => undefined)
+
+      // Mirror the saved profile locally so the read-only render
+      // immediately reflects the change without a hard reload.
+      setLocalProfile(next)
+      // Build CDN-style URLs for newly uploaded blobs. We don't know the
+      // PDS host on the client without re-resolving, so fall back to the
+      // existing URL on no-upload and clear-then-let-resolve-did rehydrate
+      // when the blob changed. This is a known limitation — the new image
+      // will appear after the next /api/resolve-did roundtrip.
+      // TODO(profile-cdn-url): expose pdsUrl from useUserProfile so we
+      // can synthesise the getBlob URL inline (avoids the brief flash).
+      if (pendingAvatarBlob) setLocalAvatarUrl(null)
+      if (pendingBannerBlob) setLocalBannerUrl(null)
+
+      setPendingAvatarBlob(null)
+      setPendingBannerBlob(null)
+      setIsEditing(false)
+    } catch (err) {
+      console.error("Failed to save profile:", err)
+      setSaveError(
+        err instanceof Error ? err.message : "Failed to save profile",
+      )
+    } finally {
+      setIsSaving(false)
+    }
+  }, [
+    did,
+    isAuthenticated,
+    effectiveProfile,
+    drafts,
+    pendingAvatarBlob,
+    pendingBannerBlob,
+  ])
+
+  // Mobile <ProfileHeader> still uses the legacy /settings/edit-profile
+  // route as a fallback. Desktop sidebar uses the new onEditClick
+  // callback; pass an explicit editHref only when we still want a link.
+  const mobileEditHref = isOwnProfile
     ? "/settings/edit-profile"
     : isAdminOfThisGroup && did
+      ? `/groups/${encodeURIComponent(did)}/edit-profile`
+      : undefined
+
+  // Group-admin editing still routes to its dedicated page.
+  const sidebarEditHref =
+    !isOwnProfile && isAdminOfThisGroup && did
       ? `/groups/${encodeURIComponent(did)}/edit-profile`
       : undefined
 
@@ -137,6 +321,8 @@ export default function UserProfilePage() {
     )
   }
 
+  const editing = isEditing && isOwnProfile
+
   return (
     <div className="profile-page">
       {/* Mobile-only identity block. Hidden on desktop where the sidebar
@@ -144,13 +330,13 @@ export default function UserProfilePage() {
           tab strip; there is no in-page tab strip. */}
       <div className="profile-page__mobile-header">
         <ProfileHeader
-          profile={profile}
-          avatarUrl={avatarUrl}
-          bannerUrl={bannerUrl}
+          profile={effectiveProfile}
+          avatarUrl={effectiveAvatarUrl}
+          bannerUrl={effectiveBannerUrl}
           handle={resolvedHandle || (rawHandle ?? null)}
           did={did}
           activityCountLabel={activityCountLabel}
-          editHref={editHref}
+          editHref={mobileEditHref}
           settingsHref={settingsHref}
           eyebrow={eyebrow}
         />
@@ -158,27 +344,43 @@ export default function UserProfilePage() {
 
       <div className="profile-page__layout">
         <ProfileSidebar
-          profile={profile}
-          avatarUrl={avatarUrl}
+          profile={effectiveProfile}
+          avatarUrl={effectiveAvatarUrl}
           handle={resolvedHandle || (rawHandle ?? null)}
           did={did}
           basePath={pathname || ""}
-          editHref={editHref}
+          editHref={sidebarEditHref}
           settingsHref={settingsHref}
           isOrg={sidebarIsOrg}
           additionalUrls={additionalUrls}
           groupsOverride={isOwnProfile ? groups : undefined}
           groupsLoadingOverride={isOwnProfile ? orgGroupsLoading : undefined}
+          canInlineEdit={isOwnProfile}
+          isEditing={editing}
+          drafts={drafts}
+          onEditClick={handleEditClick}
+          onCancelEdit={handleCancelEdit}
+          onSaveEdit={handleSave}
+          onDraftChange={handleDraftChange}
+          onAvatarFile={handleAvatarFile}
+          hasPendingAvatar={!!pendingAvatarBlob}
+          isSaving={isSaving}
+          saveError={saveError}
         />
 
         <div className="profile-page__main">
           {activeTab === "overview" && (
             <div role="tabpanel" id="tabpanel-overview" aria-labelledby="tab-overview">
               <ProfileOverview
-                bannerUrl={bannerUrl}
+                bannerUrl={effectiveBannerUrl}
                 did={did}
-                profile={profile}
+                profile={effectiveProfile}
                 basePath={pathname || ""}
+                isEditing={editing}
+                drafts={drafts}
+                onDraftChange={handleDraftChange}
+                onBannerFile={handleBannerFile}
+                hasPendingBanner={!!pendingBannerBlob}
               />
             </div>
           )}
