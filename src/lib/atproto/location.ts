@@ -138,7 +138,13 @@ import { extractError } from "@/lib/utils/api"
 
 const LOCATION_COLLECTION = "app.certified.location"
 const LP_VERSION = "v0.1.0"
-const SRS = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+// URN form of EPSG:4326 — WGS 84 with latitude-longitude axis order.
+// Matches the `"lat,lng"` coordinate string we serialise below (and
+// the existing in-app `parseLocationCoords` reader's convention).
+// The URN form is more widely recognised than the URL form and
+// satisfies the lexicon's `format: "uri"` constraint without
+// pretending to be a fetchable address.
+const SRS = "urn:ogc:def:crs:EPSG::4326"
 const LOCATION_TYPE_COORDINATE_DECIMAL = "coordinate-decimal"
 
 export interface StrongRef {

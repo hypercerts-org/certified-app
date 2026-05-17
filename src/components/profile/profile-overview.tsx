@@ -272,41 +272,47 @@ export default function ProfileOverview({
           ) : null
         ) : null
 
-        // Nothing to render at all (no About, no right column) — skip
-        // the wrapper entirely so we don't leave a blank grid row.
-        if (!aboutSection && !mapColumn) return null
+        // Org-type tags (read) / picker (edit) live in the same
+        // column as About so they sit beneath the description rather
+        // than as a full-width row below the map. Rendered inside the
+        // left column of the about-block.
+        const typesSection =
+          isEditing && isOrg ? (
+            <OrgTypePickerSection
+              selected={drafts?.organizationTypes ?? []}
+              other={drafts?.organizationTypeOther ?? ""}
+              onDraftChange={onDraftChange}
+            />
+          ) : isOrg && orgTypeTags.length > 0 ? (
+            <section
+              className="profile-overview__types"
+              aria-label="Organization type"
+            >
+              <ul className="profile-overview__type-tags">
+                {orgTypeTags.map((tag) => (
+                  <li key={tag} className="profile-overview__type-tag">
+                    {tag}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null
+
+        // Nothing to render at all (no About, no types, no right
+        // column) — skip the wrapper entirely so we don't leave a
+        // blank grid row.
+        if (!aboutSection && !typesSection && !mapColumn) return null
 
         return (
           <div className={aboutCls}>
-            <div className="profile-overview__about-main">{aboutSection}</div>
+            <div className="profile-overview__about-main">
+              {aboutSection}
+              {typesSection}
+            </div>
             {mapColumn}
           </div>
         )
       })()}
-
-      {/* Org-only organization-type chips. Renders below the About section
-          (in read mode) or as a multi-select editor (edit mode). Hidden
-          for non-orgs and for empty arrays in read mode. */}
-      {isEditing && isOrg ? (
-        <OrgTypePickerSection
-          selected={drafts?.organizationTypes ?? []}
-          other={drafts?.organizationTypeOther ?? ""}
-          onDraftChange={onDraftChange}
-        />
-      ) : isOrg && orgTypeTags.length > 0 ? (
-        <section
-          className="profile-overview__types"
-          aria-label="Organization type"
-        >
-          <ul className="profile-overview__type-tags">
-            {orgTypeTags.map((tag) => (
-              <li key={tag} className="profile-overview__type-tag">
-                {tag}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
 
       {/* The long-description editor moved to the dedicated About
           tab. Edit-mode viewers should switch to that tab to write /

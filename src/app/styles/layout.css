@@ -2560,6 +2560,9 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 
 .profile-overview__about-main {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 @media (min-width: 900px) {
