@@ -20,12 +20,24 @@ import PeopleSearch from "@/components/search/people-search";
 
 const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
 
-const PROFILE_TABS: { key: string; label: string }[] = [
+interface ProfileTab {
+  key: string;
+  label: string;
+  /** When set, the tab is a top-bar navigation shortcut to this URL
+   *  rather than a `?tab=<key>` panel switch on the current page. */
+  href?: string;
+  /** When true, only render this tab when the viewer is looking at
+   *  their own profile (own-DID === profile-DID). */
+  ownOnly?: boolean;
+}
+
+const PROFILE_TABS: ProfileTab[] = [
   { key: "overview", label: "Overview" },
   { key: "certs", label: "Certs" },
   { key: "projects", label: "Projects" },
   { key: "groups", label: "Groups" },
   { key: "endorsements", label: "Endorsements" },
+  { key: "settings", label: "Settings", href: "/settings", ownOnly: true },
 ];
 
 /**
@@ -83,11 +95,31 @@ export default function DesktopTopBar() {
       };
 
   const isOnProfile = pathname?.startsWith("/profile/") ?? false;
+  // Compare the URL handle slug to the signed-in user's handle to decide
+  // whether to show own-only tabs (e.g. Settings). Activeorg switches the
+  // "you" identity to the org, so we compare against `identity.handle`.
+  const profileHandleFromUrl = useMemo(() => {
+    if (!isOnProfile || !pathname) return null;
+    const slug = pathname.split("/")[2];
+    if (!slug) return null;
+    try {
+      return decodeURIComponent(slug);
+    } catch {
+      return slug;
+    }
+  }, [isOnProfile, pathname]);
+  const isOnOwnProfile =
+    !!identity.handle && !!profileHandleFromUrl &&
+    profileHandleFromUrl.toLowerCase() === identity.handle.toLowerCase();
+  const visibleProfileTabs = useMemo(
+    () => PROFILE_TABS.filter((t) => (t.ownOnly ? isOnOwnProfile : true)),
+    [isOnOwnProfile],
+  );
   const activeTab = useMemo(() => {
     const v = searchParams?.get("tab");
-    if (v && PROFILE_TABS.some((t) => t.key === v)) return v;
+    if (v && visibleProfileTabs.some((t) => t.key === v)) return v;
     return "overview";
-  }, [searchParams]);
+  }, [searchParams, visibleProfileTabs]);
 
   // Switcher dropdown — portaled to <body> so it escapes the bar's
   // overflow/transform context. Anchor recomputed on resize/scroll.
@@ -151,11 +183,12 @@ export default function DesktopTopBar() {
 
   if (isLoading) return null;
 
-  const tabHref = (key: string) => {
+  const tabHref = (tab: ProfileTab) => {
+    if (tab.href) return tab.href;
     if (!pathname) return "#";
     const params = new URLSearchParams(searchParams?.toString() ?? "");
-    if (key === "overview") params.delete("tab");
-    else params.set("tab", key);
+    if (tab.key === "overview") params.delete("tab");
+    else params.set("tab", tab.key);
     const qs = params.toString();
     return qs ? `${pathname}?${qs}` : pathname;
   };
@@ -226,6 +259,14 @@ export default function DesktopTopBar() {
                   src={identity.avatarUrl}
                   fallbackInitials={identity.initials}
                 />
+                <span className="desktop-top-bar__switcher-meta">
+                  {identity.name ? (
+                    <span className="desktop-top-bar__switcher-name">{identity.name}</span>
+                  ) : null}
+                  {identity.handle ? (
+                    <span className="desktop-top-bar__switcher-handle">@{identity.handle}</span>
+                  ) : null}
+                </span>
                 <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
               </button>
             </div>
@@ -249,12 +290,12 @@ export default function DesktopTopBar() {
             role="tablist"
             aria-label="Profile sections"
           >
-            {PROFILE_TABS.map((tab) => {
+            {visibleProfileTabs.map((tab) => {
               const isActive = activeTab === tab.key;
               return (
                 <Link
                   key={tab.key}
-                  href={tabHref(tab.key)}
+                  href={tabHref(tab)}
                   role="tab"
                   aria-selected={isActive}
                   aria-current={isActive ? "page" : undefined}

@@ -1889,14 +1889,15 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 .desktop-top-bar__switcher {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px 4px 4px;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
   background: transparent;
   border: none;
   border-radius: 999px;
   cursor: pointer;
   color: var(--fg-secondary);
   transition: background var(--transition-fast);
+  max-width: 260px;
 }
 
 .desktop-top-bar__switcher:hover {
@@ -1906,6 +1907,40 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 .desktop-top-bar__switcher:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
+}
+
+.desktop-top-bar__switcher-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  min-width: 0;
+  text-align: left;
+}
+
+.desktop-top-bar__switcher-name {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.desktop-top-bar__switcher-handle {
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Hide the textual meta on narrower viewports so the trigger stays
+   compact next to the search and icon-buttons. */
+@media (max-width: 1099.98px) {
+  .desktop-top-bar__switcher-meta {
+    display: none;
+  }
 }
 
 .desktop-top-bar__signin-btn {

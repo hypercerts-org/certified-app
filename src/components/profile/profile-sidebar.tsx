@@ -15,6 +15,7 @@ import {
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import SmartLink from "@/components/ui/smart-link"
 import { getInitials } from "@/lib/utils/initials"
 import { useProfilePds } from "@/hooks/use-profile-pds"
 import { useUserGroups } from "@/hooks/use-user-groups"
@@ -46,15 +47,6 @@ function formatJoined(iso?: string): string | null {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return null
   return `Joined ${date.toLocaleDateString("en-US", { month: "short", year: "numeric" })}`
-}
-
-function buildWebsiteHref(website: string): string {
-  if (/^https?:\/\//i.test(website)) return website
-  return `https://${website}`
-}
-
-function websiteDisplay(website: string): string {
-  return website.replace(/^https?:\/\//i, "").replace(/\/$/, "")
 }
 
 /**
@@ -141,15 +133,7 @@ export default function ProfileSidebar({
       <ul className="profile-sidebar__details">
         {profile?.website ? (
           <li>
-            <LinkIcon size={16} strokeWidth={1.75} aria-hidden />
-            <a
-              href={buildWebsiteHref(profile.website)}
-              className="profile-sidebar__detail-link"
-              rel="me noopener noreferrer"
-              target="_blank"
-            >
-              {websiteDisplay(profile.website)}
-            </a>
+            <SmartLink url={profile.website} />
           </li>
         ) : null}
         {isOrg && additionalUrls
@@ -157,15 +141,7 @@ export default function ProfileSidebar({
               .filter((u) => typeof u === "string" && u.length > 0)
               .map((u) => (
                 <li key={u}>
-                  <LinkIcon size={16} strokeWidth={1.75} aria-hidden />
-                  <a
-                    href={buildWebsiteHref(u)}
-                    className="profile-sidebar__detail-link"
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    {websiteDisplay(u)}
-                  </a>
+                  <SmartLink url={u} />
                 </li>
               ))
           : null}

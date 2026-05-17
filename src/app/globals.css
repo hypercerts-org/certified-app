@@ -14,6 +14,8 @@
 @import "./styles/profile-projects.css";
 @import "./styles/project-detail.css";
 @import "./styles/profile-groups.css";
+@import "./styles/smart-link.css";
+@import "./styles/settings-page.css";
 
 @tailwind base;
 @tailwind components;

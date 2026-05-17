@@ -1,0 +1,270 @@
+/* ========================================================================
+   Settings landing — sits inside .app-shell__content's 600px reading
+   column. Visual sibling of profile-edit.css: a back-to-@handle link,
+   then a vertical list of category rows (icon + label + description +
+   chevron) grouped by section.
+
+   We deliberately don't reuse `.pe` so the two pages can evolve
+   independently — the edit-profile page is a *form* page, while this
+   one is a *list* page. Shared visual language (back link, section
+   headers, hairline dividers) is reimplemented locally with `.sx`
+   class names so a future tweak to one page doesn't bleed into the
+   other.
+
+   Items come in two flavours:
+     - `.sx-row--link` — anchor-styled row with a chevron, hover pill.
+       Used for items that route to a sub-page.
+     - `.sx-row--inline` — same row chrome, but the right-hand slot
+       contains an inline control (theme toggle / inline editor)
+       instead of a chevron. Used for settings that live on this page
+       today; each is a candidate for promotion to its own sub-route.
+   ======================================================================== */
+
+.sx {
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 32px;
+}
+
+/* ------------------------------------------------------------------------
+   Back-to-@handle link. Mirrors `.pe__back` from profile-edit.css so
+   both pages read as the same family without sharing class names.
+   ------------------------------------------------------------------------ */
+.sx__back {
+  margin: 4px 0 16px;
+}
+
+.sx__back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 450;
+  color: var(--fg-muted);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.sx__back-link:hover {
+  color: var(--fg-primary);
+}
+
+.sx__back-link > svg {
+  flex-shrink: 0;
+  margin-left: -2px;
+}
+
+.sx__back-handle {
+  color: var(--fg-secondary, var(--fg-primary));
+  font-weight: 500;
+}
+
+.sx__back-link:hover .sx__back-handle {
+  color: var(--fg-primary);
+}
+
+/* ------------------------------------------------------------------------
+   Page heading. Small — the navbar already carries the title via the
+   breadcrumb. This is just an in-content anchor so the user's eye lands
+   somewhere obvious before scanning the list.
+   ------------------------------------------------------------------------ */
+.sx__heading {
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--fg-primary);
+  margin: 0 0 4px;
+  line-height: 1.2;
+}
+
+.sx__lead {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--fg-muted);
+  margin: 0 0 16px;
+}
+
+/* ------------------------------------------------------------------------
+   Section block. Each named group of items renders a small headline
+   above the list. Ungrouped items render without a section header.
+   The hairline divider above each section (except the first) gives the
+   page rhythm without using cards.
+   ------------------------------------------------------------------------ */
+.sx__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.sx__section:first-of-type {
+  border-top: none;
+  padding-top: 8px;
+}
+
+.sx__section-title {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin: 0 0 4px;
+}
+
+.sx__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------------
+   Category row.
+   The same flexbox layout drives both linked rows (chevron on the right)
+   and inline-control rows (toggle/editor on the right). On hover the
+   row gains a subtle overlay-weak pill, matching the cert grid's hover
+   affordance the task brief calls out.
+   ------------------------------------------------------------------------ */
+.sx-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 10px;
+  border-radius: 6px;
+  /* Background transition only — color changes inside the row are owned
+     by the title/desc rules so links don't fight the pill. */
+  transition: background var(--transition-fast);
+}
+
+.sx-row--link {
+  /* The whole row is an <a>. Reset link styles inside. */
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.sx-row--link:hover,
+.sx-row--link:focus-visible {
+  background: var(--overlay-weak);
+  outline: none;
+}
+
+.sx-row--link:focus-visible {
+  box-shadow: 0 0 0 2px var(--focus-ring, var(--fg-primary));
+}
+
+.sx-row__icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--overlay-weak);
+  color: var(--fg-secondary, var(--fg-primary));
+}
+
+.sx-row--link:hover .sx-row__icon {
+  color: var(--fg-primary);
+}
+
+.sx-row__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sx-row__title {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  line-height: 1.3;
+}
+
+.sx-row__desc {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.sx-row__chevron {
+  flex-shrink: 0;
+  align-self: center;
+  color: var(--fg-muted);
+  transition: transform var(--transition-fast), color var(--transition-fast);
+}
+
+.sx-row--link:hover .sx-row__chevron {
+  color: var(--fg-primary);
+  transform: translateX(2px);
+}
+
+/* ------------------------------------------------------------------------
+   Inline-control rows.
+   Used for settings whose controls live on this page (no sub-route yet).
+   The control sits beneath the title/desc inside the row body — keeping
+   the row's two-column shape (icon + body) consistent with linked rows,
+   but reading as an editable block rather than a navigation target. The
+   row itself has no hover pill since it isn't clickable as a whole.
+   ------------------------------------------------------------------------ */
+.sx-row--inline {
+  align-items: flex-start;
+}
+
+.sx-row--inline .sx-row__body {
+  gap: 10px;
+}
+
+.sx-row__control {
+  /* Children (theme-toggle / inline editors) render at their natural
+     width. The wrapper just provides vertical separation from the title. */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* The legacy dash-card containers used by username/email/password
+   sections carry their own background + padding that fight the list
+   look. Strip the chrome when they appear inside this control slot so
+   the inline editor reads as part of the row rather than a nested card. */
+.sx-row__control .dash-card {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  box-shadow: none;
+}
+
+.sx-row__control .dash-card__title,
+.sx-row__control .email-section__header h2 {
+  /* The row title above already carries the section name; hide the
+     duplicate heading the legacy components render internally. */
+  display: none;
+}
+
+/* ------------------------------------------------------------------------
+   Mobile tweaks. Match profile-edit.css's 600px breakpoint.
+   ------------------------------------------------------------------------ */
+@media (max-width: 600px) {
+  .sx-row {
+    padding: 10px 8px;
+  }
+
+  .sx-row__icon {
+    width: 28px;
+    height: 28px;
+  }
+}

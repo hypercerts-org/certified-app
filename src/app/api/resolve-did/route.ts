@@ -25,6 +25,9 @@ function extractBlobLink(ref: BlobLike["ref"]): string | null {
 type CertsProfileValue = {
   displayName?: string
   description?: string
+  pronouns?: string
+  website?: string
+  createdAt?: string
   avatar?: { $type?: string; uri?: string; image?: BlobLike } | undefined
   banner?: { $type?: string; uri?: string; image?: BlobLike } | undefined
 }
@@ -69,6 +72,8 @@ function resolveCertsField(
 async function getCertsProfile(did: string): Promise<{
   displayName?: string
   description?: string
+  pronouns?: string
+  website?: string
   avatarUrl: string | null
   bannerUrl: string | null
   createdAt?: string
@@ -93,6 +98,8 @@ async function getCertsProfile(did: string): Promise<{
     return {
       displayName: value.displayName,
       description: value.description,
+      pronouns: value.pronouns,
+      website: value.website,
       avatarUrl: resolveCertsField(value.avatar, did),
       bannerUrl: resolveCertsField(value.banner, did),
       createdAt: value.createdAt,
@@ -190,6 +197,8 @@ export async function GET(request: NextRequest) {
 
     const displayName = certs?.displayName || bsky?.displayName || undefined
     const description = certs?.description || bsky?.description || undefined
+    const pronouns = certs?.pronouns
+    const website = certs?.website
     const avatar = certs?.avatarUrl ?? bsky?.avatar ?? undefined
     const banner = certs?.bannerUrl ?? bsky?.banner ?? undefined
     const createdAt = certs?.createdAt
@@ -214,6 +223,8 @@ export async function GET(request: NextRequest) {
         handle: handle || did,
         displayName,
         description,
+        pronouns,
+        website,
         avatar,
         banner,
         createdAt,

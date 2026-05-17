@@ -81,6 +81,8 @@ export function useUserProfile(handleOrDid: string | null): {
           handle: string
           displayName?: string
           description?: string
+          pronouns?: string
+          website?: string
           avatar?: string
           banner?: string
           createdAt?: string
@@ -92,6 +94,8 @@ export function useUserProfile(handleOrDid: string | null): {
         setProfile({
           displayName: data.displayName,
           description: data.description,
+          pronouns: data.pronouns,
+          website: data.website,
           createdAt: data.createdAt,
         })
         setAvatarUrl(data.avatar ?? null)
