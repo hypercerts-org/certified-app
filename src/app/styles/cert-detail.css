@@ -107,6 +107,94 @@
   opacity: 0.55;
 }
 
+/* Inline-edit chrome ---------------------------------------------- */
+
+.cert-detail__image {
+  position: relative;
+}
+
+.cert-detail__image--editing {
+  outline: 1.5px dashed var(--border-hover);
+  outline-offset: -2px;
+}
+
+/* Floating Camera pill for cert image upload. Mirrors the
+   `.profile-sidebar__avatar-edit-btn` / `.profile-banner-upload__btn`
+   visual treatment used by other upload affordances. */
+.cert-detail__image-edit-btn {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(17, 17, 17, 0.78);
+  color: var(--color-white);
+  border: none;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background var(--transition-fast);
+  z-index: 1;
+}
+
+.cert-detail__image-edit-btn:hover {
+  background: rgba(17, 17, 17, 0.92);
+}
+
+.cert-detail__image-edit-btn:disabled {
+  cursor: progress;
+  opacity: 0.9;
+}
+
+/* Title and short-description inputs replace the static h1 / p
+   while editing. Border treatment matches the profile-page inline
+   edit inputs so the two surfaces feel like one editor family. */
+.cert-detail__title-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--fg-primary);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  border: 1.5px solid var(--border-hover);
+  border-radius: 6px;
+  padding: 4px 10px;
+  background: var(--bg-elevated);
+}
+
+.cert-detail__title-input:focus {
+  outline: none;
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+.cert-detail__short-desc-input {
+  width: 100%;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--fg-secondary);
+  border: 1.5px solid var(--border-hover);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  resize: vertical;
+  min-height: 72px;
+}
+
+.cert-detail__short-desc-input:focus {
+  outline: none;
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
 /* (Older byline used to sit in the aside — it moved into the main pane
    under the title; see `.cert-detail__headline-byline` below.) */
 

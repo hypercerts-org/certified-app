@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { Award, Calendar, FileText, Pencil, Target } from "lucide-react"
+import { Award, Calendar, Camera, FileText, Pencil, Target } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import {
@@ -18,16 +18,28 @@ import { useContributorInformation } from "@/hooks/use-contributor-information"
 import { useRights } from "@/hooks/use-rights"
 import { getInitials } from "@/lib/utils/initials"
 import Avatar from "@/components/ui/avatar"
+import LoadingSpinner from "@/components/ui/loading-spinner"
 import CertHeadlineByline from "./cert-headline-byline"
 import CertProjects from "./cert-projects"
 import LeafletDocument, {
   isRenderableDescription,
 } from "@/components/leaflet/leaflet-document"
+import LeafletEditor from "@/components/leaflet/leaflet-editor"
 import CertLocationsMap from "./cert-locations-map"
+import {
+  uploadBlob,
+  type UploadedBlob,
+} from "@/lib/atproto/profile"
+import { putCertRecord } from "@/lib/atproto/cert"
+import { asLinearDocument } from "@/lib/leaflet/guards"
+import { isEmptyLongDescription } from "@/lib/leaflet/guards"
+import type { LinearDocument } from "@/lib/leaflet/types"
 import type {
   ActivityContributor as ActivityContributorType,
   ClaimActivity,
 } from "@/lib/atproto/activity-types"
+import type { HypercertsSmallImage } from "@/lib/atproto/types"
+import type { BlobRef } from "@atproto/api"
 
 interface ActivityDetailProps {
   did: string
@@ -90,12 +102,14 @@ function formatDate(iso: string): string {
  * 600px reading cap.
  */
 export default function ActivityDetail({ did, value }: ActivityDetailProps) {
-  const imageUrl = value.image ? resolveActivityImageUrl(value.image, did) : null
+  const baseImageUrl = value.image
+    ? resolveActivityImageUrl(value.image, did)
+    : null
 
   const [imageFailed, setImageFailed] = useState(false)
   useEffect(() => {
     setImageFailed(false)
-  }, [imageUrl])
+  }, [baseImageUrl])
 
   const workScopeLabel = evaluateWorkScope(value.workScope)
 
@@ -155,7 +169,7 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
   //     the account switcher but the BFF rejects writes from them,
   //     so we hide the affordance rather than land them on a
   //     write-rejected edit page.
-  const { did: sessionDid } = useAuth()
+  const { did: sessionDid, isAuthenticated } = useAuth()
   const { activeOrg } = useOrg()
   const canEditAsActiveOrg =
     !!activeOrg &&
@@ -163,11 +177,174 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
     (activeOrg.role === "owner" || activeOrg.role === "admin")
   const isCreator =
     (!!sessionDid && sessionDid === did) || canEditAsActiveOrg
-  const certBasePath = pathname ?? ""
-  const editHref = isCreator ? `${certBasePath}/edit` : null
+  // When the creator is acting as the group, writes route through
+  // the BFF (target ≠ session); otherwise straight XRPC.
+  const editTargetDid = canEditAsActiveOrg ? did : undefined
   const descriptionHref = pathname
     ? `${pathname}?tab=description`
     : null
+
+  // -------------------------------------------------------------------
+  // Inline edit state — same pattern as the profile page. Drafts are
+  // seeded from `value` when the user enters edit mode; on save we
+  // PUT the record and update local mirrors so the read-only view
+  // immediately reflects the change.
+  // -------------------------------------------------------------------
+  const [isEditing, setIsEditing] = useState(false)
+  const [drafts, setDrafts] = useState({
+    title: "",
+    shortDescription: "",
+    description: null as LinearDocument | null,
+  })
+  const [localValue, setLocalValue] = useState<ClaimActivity | null>(null)
+  const [pendingImageBlob, setPendingImageBlob] =
+    useState<UploadedBlob | null>(null)
+  const [pendingImagePreviewUrl, setPendingImagePreviewUrl] =
+    useState<string | null>(null)
+  const [localImageUrl, setLocalImageUrl] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  // Read values used everywhere a tab renders the cert: prefer the
+  // local mirror (set after save) over the server-supplied `value`.
+  const effectiveValue = localValue ?? value
+  const editing = isEditing && isCreator
+
+  const handleEditClick = useCallback(() => {
+    setDrafts({
+      title: effectiveValue.title ?? "",
+      shortDescription: effectiveValue.shortDescription ?? "",
+      description:
+        asLinearDocument(effectiveValue.description) ??
+        (typeof effectiveValue.description === "string" &&
+        effectiveValue.description.trim().length > 0
+          ? {
+              $type: "pub.leaflet.pages.linearDocument" as const,
+              blocks: [
+                {
+                  block: {
+                    $type: "pub.leaflet.blocks.text" as const,
+                    plaintext: effectiveValue.description,
+                  },
+                },
+              ],
+            }
+          : null),
+    })
+    setPendingImageBlob(null)
+    setPendingImagePreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+    setSaveError(null)
+    setIsEditing(true)
+  }, [effectiveValue])
+
+  const handleCancelEdit = useCallback(() => {
+    setIsEditing(false)
+    setPendingImageBlob(null)
+    setPendingImagePreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+    setSaveError(null)
+  }, [])
+
+  const handleImageFile = useCallback(
+    async (file: File) => {
+      const previewUrl = URL.createObjectURL(file)
+      setPendingImagePreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev)
+        return previewUrl
+      })
+      const blob = await uploadBlob(
+        file,
+        editTargetDid ? { targetDid: editTargetDid } : undefined,
+      )
+      setPendingImageBlob(blob)
+    },
+    [editTargetDid],
+  )
+
+  const handleSave = useCallback(async () => {
+    if (!rkey || !sessionDid || !isAuthenticated) {
+      setSaveError("Not authenticated")
+      return
+    }
+    setIsSaving(true)
+    setSaveError(null)
+    try {
+      // Start from the server-supplied record so unedited fields
+      // (dates, contributors, work scope, rights, locations, etc.)
+      // round-trip verbatim — only the surfaces the editor exposes
+      // are mutated.
+      // `title` and `shortDescription` are required by the lexicon —
+      // keep the trimmed value (or fall back to the existing one if
+      // the user blanked the input by accident). Strip empty
+      // description so the PDS doesn't store an empty doc.
+      const trimmedTitle =
+        drafts.title.trim() || effectiveValue.title || ""
+      const trimmedShort =
+        drafts.shortDescription.trim() ||
+        effectiveValue.shortDescription ||
+        ""
+      const next: ClaimActivity = {
+        ...effectiveValue,
+        title: trimmedTitle,
+        shortDescription: trimmedShort,
+      }
+      if (isEmptyLongDescription(drafts.description)) {
+        delete (next as { description?: unknown }).description
+      } else if (drafts.description) {
+        next.description = drafts.description
+      }
+      if (pendingImageBlob) {
+        const imageValue: HypercertsSmallImage = {
+          $type: "org.hypercerts.defs#smallImage",
+          image: pendingImageBlob as unknown as BlobRef,
+        }
+        next.image = imageValue
+      }
+
+      await putCertRecord(sessionDid, editTargetDid ?? sessionDid, rkey, next)
+      setLocalValue(next)
+      if (pendingImagePreviewUrl) {
+        setLocalImageUrl(pendingImagePreviewUrl)
+      }
+      setPendingImagePreviewUrl(null)
+      setPendingImageBlob(null)
+      setIsEditing(false)
+    } catch (err) {
+      console.error("Failed to save cert:", err)
+      setSaveError(err instanceof Error ? err.message : "Failed to save cert")
+    } finally {
+      setIsSaving(false)
+    }
+  }, [
+    rkey,
+    sessionDid,
+    isAuthenticated,
+    drafts,
+    effectiveValue,
+    pendingImageBlob,
+    pendingImagePreviewUrl,
+    editTargetDid,
+  ])
+
+  // Resolution order for the displayed cert image:
+  //   1. In-flight preview (object URL created the instant the user
+  //      picked a new image — atproto PDSes don't serve a blob via
+  //      getBlob until the record references it, so we bridge with
+  //      the local file).
+  //   2. Post-save local mirror.
+  //   3. Re-resolve from the local mirror's record if it exists.
+  //   4. Original server value.
+  const effectiveImageUrl =
+    pendingImagePreviewUrl ??
+    localImageUrl ??
+    (localValue?.image
+      ? resolveActivityImageUrl(localValue.image, did)
+      : baseImageUrl)
 
   // Shared headline for every tab — title + date+author byline. The
   // shortDescription stays inside the Overview header (it's the
@@ -176,27 +353,54 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
   const headline = (
     <header className="cert-detail__headline">
       <div className="cert-detail__title-row">
-        <h1 className="cert-detail__title">{value.title}</h1>
-        {editHref ? (
-          <Link
-            href={editHref}
+        {editing ? (
+          <input
+            type="text"
+            className="cert-detail__title-input"
+            value={drafts.title}
+            maxLength={256}
+            placeholder="Cert title"
+            aria-label="Cert title"
+            onChange={(e) =>
+              setDrafts((d) => ({ ...d, title: e.target.value }))
+            }
+          />
+        ) : (
+          <h1 className="cert-detail__title">{effectiveValue.title}</h1>
+        )}
+        {!editing && isCreator ? (
+          <button
+            type="button"
             className="cert-detail__edit-btn"
             aria-label="Edit cert"
             title="Edit cert"
+            onClick={handleEditClick}
           >
             <Pencil size={14} strokeWidth={1.75} aria-hidden />
             Edit
-          </Link>
+          </button>
         ) : null}
       </div>
       <CertHeadlineByline
         did={did}
-        createdAt={value.createdAt}
+        createdAt={effectiveValue.createdAt}
         formattedDate={createdAbsolute}
       />
-      {activeTab === "overview" && value.shortDescription ? (
+      {editing && activeTab === "overview" ? (
+        <textarea
+          className="cert-detail__short-desc-input"
+          value={drafts.shortDescription}
+          maxLength={512}
+          placeholder="A short description (one or two lines)…"
+          aria-label="Short description"
+          onChange={(e) =>
+            setDrafts((d) => ({ ...d, shortDescription: e.target.value }))
+          }
+          rows={3}
+        />
+      ) : activeTab === "overview" && effectiveValue.shortDescription ? (
         <p className="cert-detail__short-desc">
-          {value.shortDescription}
+          {effectiveValue.shortDescription}
           {showFullDescription && descriptionHref ? (
             <>
               {" "}
@@ -230,25 +434,70 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
 
   return (
     <article className="cert-detail cert-detail--wide">
+      {editing ? (
+        <div
+          className="profile-edit-banner"
+          role="region"
+          aria-label="Edit cert"
+        >
+          <span className="profile-edit-banner__label">Editing cert</span>
+          {saveError ? (
+            <span className="profile-edit-banner__error" role="alert">
+              {saveError}
+            </span>
+          ) : null}
+          <div className="profile-edit-banner__actions">
+            <button
+              type="button"
+              className="profile-edit-banner__btn"
+              onClick={handleCancelEdit}
+              disabled={isSaving}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="profile-edit-banner__btn profile-edit-banner__btn--primary"
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              {isSaving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <aside className="cert-detail__aside" aria-label="Cert details">
-        {imageUrl && !imageFailed ? (
-          <div className="cert-detail__image">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+        <div
+          className={
+            editing
+              ? "cert-detail__image cert-detail__image--editing"
+              : "cert-detail__image"
+          }
+        >
+          {effectiveImageUrl && !imageFailed ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
             <img
-              src={imageUrl}
+              src={effectiveImageUrl}
               alt=""
               className="cert-detail__image-img"
               onError={() => setImageFailed(true)}
             />
-          </div>
-        ) : (
-          <div
-            className="cert-detail__image cert-detail__image--placeholder"
-            aria-hidden="true"
-          >
-            <Award size={56} strokeWidth={1.25} className="cert-detail__image-placeholder-icon" />
-          </div>
-        )}
+          ) : (
+            <Award
+              size={56}
+              strokeWidth={1.25}
+              className="cert-detail__image-placeholder-icon"
+              aria-hidden
+            />
+          )}
+          {editing ? (
+            <CertImageEditOverlay
+              onFile={handleImageFile}
+              hasPending={!!pendingImageBlob}
+            />
+          ) : null}
+        </div>
 
         <dl className="cert-detail__meta">
           {/* "Created" lives in the headline byline now — no need to
@@ -336,11 +585,27 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
           </>
         ) : activeTab === "description" ? (
           <section className="cert-detail__section">
-            {showFullDescription ? (
-              <LeafletDocument value={value.description} did={did} />
+            {editing ? (
+              <LeafletEditor
+                value={drafts.description}
+                onChange={(next) =>
+                  setDrafts((d) => ({ ...d, description: next }))
+                }
+                placeholder="Full description of this cert."
+                ariaLabel="Cert description"
+                did={did}
+                onImageUpload={(file) =>
+                  uploadBlob(
+                    file,
+                    editTargetDid ? { targetDid: editTargetDid } : undefined,
+                  )
+                }
+              />
+            ) : showFullDescription ? (
+              <LeafletDocument value={effectiveValue.description} did={did} />
             ) : (
               <p className="cert-detail__short-desc">
-                {value.shortDescription || "No description yet."}
+                {effectiveValue.shortDescription || "No description yet."}
               </p>
             )}
           </section>
@@ -400,6 +665,67 @@ function useRouteRkey(): string | null {
     }
   }, [])
   return rkey
+}
+
+/* ---------- Image edit overlay ----------
+ *
+ * Floating Camera pill anchored to the bottom-right of the cert
+ * image. Same visual treatment as the avatar / banner upload
+ * pills on the profile page (semi-transparent dark surface,
+ * Camera icon + label). Triggers a hidden file input on click.
+ */
+interface CertImageEditOverlayProps {
+  onFile: (file: File) => Promise<void>
+  hasPending: boolean
+}
+
+function CertImageEditOverlay({
+  onFile,
+  hasPending,
+}: CertImageEditOverlayProps) {
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+
+  const handleClick = () => inputRef.current?.click()
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (inputRef.current) inputRef.current.value = ""
+    if (!file) return
+    setIsUploading(true)
+    try {
+      await onFile(file)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+  return (
+    <>
+      <button
+        type="button"
+        className="cert-detail__image-edit-btn"
+        onClick={handleClick}
+        aria-label={isUploading ? "Uploading image" : "Change image"}
+        title="Change image"
+        disabled={isUploading}
+      >
+        {isUploading ? (
+          <LoadingSpinner size="sm" />
+        ) : (
+          <>
+            <Camera size={14} strokeWidth={1.75} aria-hidden />
+            <span>{hasPending ? "Replace image" : "Change image"}</span>
+          </>
+        )}
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleChange}
+        style={{ position: "absolute", width: 1, height: 1, opacity: 0 }}
+      />
+    </>
+  )
 }
 
 /* ---------- Contributor row ----------
