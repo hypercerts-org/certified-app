@@ -38,6 +38,7 @@ import {
   type ProfileDrafts,
 } from "@/components/profile/profile-inline-edit-types"
 import { ORG_TYPE_PRESETS } from "@/lib/groups/org-types"
+import { asLinearDocument, isEmptyLongDescription } from "@/lib/leaflet/guards"
 
 type TabKey =
   | "overview"
@@ -258,7 +259,7 @@ export default function UserProfilePage() {
     foundedDate: "",
     organizationTypes: [],
     organizationTypeOther: "",
-    longDescription: "",
+    longDescription: null,
     additionalUrls: [],
   })
   // Local mirrors so the sidebar/overview show fresh values immediately
@@ -330,7 +331,15 @@ export default function UserProfilePage() {
   const displayOrgTypeTags = readableOrgTypeTags(effectiveOrgMarker?.organizationType)
   const displayLocation = parseLocation(effectiveOrgMarker?.location)
   const displayFoundedDate = readableFoundedDate(effectiveOrgMarker?.foundedDate)
-  const displayLongDescription = effectiveOrgMarker?.longDescription?.trim() || null
+  // `longDescription` can be a string, an inline leaflet linearDocument,
+  // or a strong-ref to a separate record. The renderer (LeafletDocument)
+  // handles all three; we pass the raw value through. Empty values
+  // collapse to `null` so the overview can skip the section entirely.
+  const displayLongDescription = isEmptyLongDescription(
+    effectiveOrgMarker?.longDescription,
+  )
+    ? null
+    : (effectiveOrgMarker?.longDescription ?? null)
   // Memoised so the array reference is stable when no inputs changed —
   // otherwise the `handleEditClick` useCallback below would invalidate
   // on every render (each `??` falls back to a freshly-allocated `[]`).
@@ -360,7 +369,25 @@ export default function UserProfilePage() {
       foundedDate: toDateInputValue(effectiveOrgMarker?.foundedDate),
       organizationTypes: parsedTypes.presets,
       organizationTypeOther: parsedTypes.other,
-      longDescription: effectiveOrgMarker?.longDescription ?? "",
+      // Seed the editor with the stored linearDocument when present;
+      // legacy plain-string values are hydrated as a single paragraph
+      // by `<LeafletEditor>`'s own coercion path so we pass them
+      // through unchanged here.
+      longDescription:
+        asLinearDocument(effectiveOrgMarker?.longDescription) ??
+        (typeof effectiveOrgMarker?.longDescription === "string"
+          ? {
+              $type: "pub.leaflet.pages.linearDocument",
+              blocks: [
+                {
+                  block: {
+                    $type: "pub.leaflet.blocks.text",
+                    plaintext: effectiveOrgMarker.longDescription,
+                  },
+                },
+              ],
+            }
+          : null),
       additionalUrls:
         effectiveOrgUrls.length > 0
           ? effectiveOrgUrls.map((u) => newDraftUrlRow({ url: u.url, label: u.label }))
@@ -569,7 +596,9 @@ export default function UserProfilePage() {
           organizationType: orgTypeArray.length > 0 ? orgTypeArray : undefined,
           location: locationValue,
           foundedDate: fromDateInputValue(drafts.foundedDate),
-          longDescription: drafts.longDescription.trim() || undefined,
+          longDescription: isEmptyLongDescription(drafts.longDescription)
+            ? undefined
+            : drafts.longDescription ?? undefined,
           urls: urls.length > 0 ? urls : undefined,
         }
 

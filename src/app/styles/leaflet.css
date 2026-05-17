@@ -1,0 +1,200 @@
+/* ============================================================
+   Leaflet document — neutral renderer + TipTap editor styles.
+
+   `leaflet-doc__*` styles the read-only walk of a
+   `pub.leaflet.pages.linearDocument` value. `leaflet-editor__*`
+   styles the TipTap editor wrapper, toolbar, and surface.
+
+   Both class namespaces are surface-agnostic by design — the cert
+   detail page, the org profile, and any future caller layer their
+   own positioning / max-width via the wrapper.
+   ============================================================ */
+
+/* ---------- Renderer ---------- */
+
+.leaflet-doc {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--fg-primary);
+}
+
+.leaflet-doc__para {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--fg-secondary);
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.leaflet-doc__heading {
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--fg-primary);
+  margin: 8px 0 0;
+}
+
+.leaflet-doc__heading:first-child {
+  margin-top: 0;
+}
+
+h2.leaflet-doc__heading { font-size: 1.25rem; }
+h3.leaflet-doc__heading { font-size: 1.125rem; }
+h4.leaflet-doc__heading { font-size: 1rem; }
+h5.leaflet-doc__heading,
+h6.leaflet-doc__heading { font-size: 0.9375rem; }
+
+.leaflet-doc__list {
+  margin: 0;
+  padding-left: 1.4em;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--fg-secondary);
+}
+
+.leaflet-doc__list li + li {
+  margin-top: 4px;
+}
+
+.leaflet-doc__list .leaflet-doc__list {
+  margin-top: 4px;
+}
+
+.leaflet-doc__link {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.leaflet-doc__link:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* ---------- Editor ---------- */
+
+.leaflet-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.leaflet-editor__toolbar {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  width: fit-content;
+}
+
+.leaflet-editor__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--fg-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.leaflet-editor__btn:hover:not(:disabled) {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.leaflet-editor__btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.leaflet-editor__btn--active,
+.leaflet-editor__btn--active:hover {
+  background: var(--fg-primary);
+  color: var(--btn-primary-fg, var(--color-white));
+}
+
+.leaflet-editor__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.leaflet-editor__content {
+  border: 1.5px solid var(--border-hover);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  padding: 12px 14px;
+  min-height: 96px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.leaflet-editor__content:focus-within {
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+.leaflet-editor__surface {
+  outline: none;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--fg-primary);
+}
+
+/* TipTap renders block-level nodes directly inside .leaflet-editor__surface.
+   Mirror the renderer's spacing/typography so what the user sees while
+   editing matches the read-only view. */
+.leaflet-editor__surface > * + * {
+  margin-top: 8px;
+}
+
+.leaflet-editor__surface p {
+  margin: 0;
+}
+
+.leaflet-editor__surface h1,
+.leaflet-editor__surface h2,
+.leaflet-editor__surface h3 {
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.leaflet-editor__surface h1 { font-size: 1.25rem; }
+.leaflet-editor__surface h2 { font-size: 1.125rem; }
+.leaflet-editor__surface h3 { font-size: 1rem; }
+
+.leaflet-editor__surface ul,
+.leaflet-editor__surface ol {
+  margin: 0;
+  padding-left: 1.4em;
+}
+
+.leaflet-editor__surface li + li {
+  margin-top: 4px;
+}
+
+.leaflet-editor__surface a {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Empty-state placeholder. ProseMirror exposes `.is-editor-empty` on
+   the first child of an empty document; we read the `data-placeholder`
+   we set in editorProps. */
+.leaflet-editor__surface p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--fg-muted);
+  pointer-events: none;
+  float: left;
+  height: 0;
+}

@@ -18,7 +18,9 @@ import { getInitials } from "@/lib/utils/initials"
 import Avatar from "@/components/ui/avatar"
 import CertHeadlineByline from "./cert-headline-byline"
 import CertProjects from "./cert-projects"
-import LeafletDocument, { isRenderableDescription } from "./leaflet-document"
+import LeafletDocument, {
+  isRenderableDescription,
+} from "@/components/leaflet/leaflet-document"
 import CertLocationsMap from "./cert-locations-map"
 import type {
   ActivityContributor as ActivityContributorType,

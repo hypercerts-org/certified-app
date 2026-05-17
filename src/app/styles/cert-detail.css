@@ -629,53 +629,16 @@
   padding-top: 8px;
 }
 
-/* Leaflet (the document format, not the map library) renderer output.
-   Mirrors typical long-form prose: paragraphs flow, headings break,
-   lists indent. */
-
-.cert-detail__leaflet {
-  display: flex;
-  flex-direction: column;
+/* Cert-detail-specific spacing tweaks layered on top of the neutral
+   `.leaflet-doc` base styles (see styles/leaflet.css). The renderer
+   emits `leaflet-doc__*` class names everywhere; this surface just
+   adjusts gap + spacing to match the rest of the cert detail page. */
+.cert-detail .leaflet-doc {
   gap: 14px;
   font-size: 0.9375rem;
   line-height: 1.65;
   color: var(--fg-secondary);
   word-break: break-word;
-}
-
-.cert-detail__leaflet-heading {
-  font-family: var(--font-headline), "Noto Serif", serif;
-  color: var(--fg-primary);
-  font-weight: 600;
-  margin: 8px 0 0;
-  line-height: 1.25;
-}
-
-.cert-detail__leaflet-heading:first-child {
-  margin-top: 0;
-}
-
-h2.cert-detail__leaflet-heading { font-size: 1.25rem; }
-h3.cert-detail__leaflet-heading { font-size: 1.125rem; }
-h4.cert-detail__leaflet-heading,
-h5.cert-detail__leaflet-heading,
-h6.cert-detail__leaflet-heading { font-size: 1rem; }
-
-.cert-detail__leaflet-para {
-  margin: 0;
-  white-space: pre-wrap;
-}
-
-.cert-detail__leaflet-list {
-  margin: 0;
-  padding-left: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.cert-detail__leaflet-list .cert-detail__leaflet-list {
-  margin-top: 4px;
 }
 
 /* ---------- Locations map ---------- */

@@ -1,4 +1,5 @@
 import type { OrgUrlItem } from "@/lib/groups/types"
+import type { LinearDocument } from "@/lib/leaflet/types"
 
 /**
  * Shared type for the inline-edit drafts the profile page owns and the
@@ -35,9 +36,11 @@ export interface ProfileDrafts {
   organizationTypes: string[]
   /** Free-text value associated with the "Other" chip. */
   organizationTypeOther: string
-  /** Long-form, multi-line description. Separate from the short
-   *  `description` field above which mirrors the profile bio. */
-  longDescription: string
+  /** Long-form, multi-line description as a leaflet linearDocument.
+   *  `null` represents "empty" (the editor renders an empty doc). The
+   *  save handler converts to `undefined` when persisting an empty
+   *  value so the field clears on the record. */
+  longDescription: LinearDocument | null
   /** Editable URL list with stable per-row ids so React keys are
    *  stable across renders. New rows start with empty `url`/`label`. */
   additionalUrls: DraftUrlRow[]

@@ -1,4 +1,5 @@
 import type { CertifiedProfile } from "@/lib/atproto/types"
+import type { LongDescriptionValue } from "@/lib/leaflet/types"
 
 export interface Group {
   groupDid: string
@@ -46,9 +47,15 @@ export interface GroupMetadata {
     | { uri: string; cid: string }
     | { name?: string; lat: number; lng: number }
   foundedDate?: string
-  /** Long-form description (multi-line). Separate from the short
-   *  `description` field on the profile record. */
-  longDescription?: string
+  /** Long-form description. The lexicon (app.certified.actor.organization)
+   *  defines this as a union of three refs:
+   *    - org.hypercerts.defs#descriptionString — plain text / markdown
+   *    - pub.leaflet.pages.linearDocument — inline rich text
+   *    - com.atproto.repo.strongRef — separate document record
+   *  The renderer (`<LeafletDocument>`) handles all three; the
+   *  in-app editor (`<LeafletEditor>`) writes the linearDocument
+   *  shape, but the field stays read-compatible with legacy strings. */
+  longDescription?: LongDescriptionValue
   createdAt: string
 }
 

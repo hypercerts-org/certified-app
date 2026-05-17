@@ -7,6 +7,9 @@ import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import BannerUpload from "@/components/profile/banner-upload"
 import Map from "@/components/map/map-dynamic"
+import LeafletDocument from "@/components/leaflet/leaflet-document"
+import LeafletEditor from "@/components/leaflet/leaflet-editor"
+import type { LinearDocument } from "@/lib/leaflet/types"
 import { ORG_TYPE_PRESETS } from "@/lib/groups/org-types"
 import { getInitials } from "@/lib/utils/initials"
 import { useReceivedEndorsements, type ReceivedEndorsement } from "@/hooks/use-received-endorsements"
@@ -41,10 +44,10 @@ interface ProfileOverviewProps {
   /** True when this profile carries the org marker. Gates the org-only
    *  long-description block (read + edit). */
   isOrg?: boolean
-  /** Pre-trimmed long-form description from the org marker. `null` when
-   *  empty — the section is skipped entirely so we don't render a stale
-   *  "Not specified" placeholder. */
-  orgLongDescription?: string | null
+  /** Long-form description value from the org marker. May be a string,
+   *  an inline leaflet `linearDocument`, or a strong-ref — the renderer
+   *  handles all three. `null` when empty so the section is skipped. */
+  orgLongDescription?: unknown
   /** All org-type tags from the marker (presets + free-text "Other"),
    *  in canonical display order. Empty array hides the tag row. */
   orgTypeTags?: string[]
@@ -279,12 +282,13 @@ export default function ProfileOverview({
           >
             Description (optional)
           </h2>
-          <textarea
-            className="profile-overview__about-textarea profile-overview__long-desc-textarea"
-            value={drafts?.longDescription ?? ""}
+          <LeafletEditor
+            value={drafts?.longDescription ?? null}
+            onChange={(next: LinearDocument) =>
+              onDraftChange?.("longDescription", next)
+            }
             placeholder="A longer, multi-line description of this organization."
-            aria-label="Long description"
-            onChange={(e) => onDraftChange?.("longDescription", e.target.value)}
+            ariaLabel="Long description"
           />
         </section>
       ) : isOrg && orgLongDescription ? (
@@ -295,24 +299,13 @@ export default function ProfileOverview({
           {/* Header only when the short bio also rendered above, so the
               two sections are visually distinguishable; otherwise just
               render under the existing "About" heading. */}
-          {profile?.description ? (
-            <h2
-              id="profile-overview-long-desc-heading"
-              className="profile-overview__section-title"
-            >
-              More about
-            </h2>
-          ) : (
-            <h2
-              id="profile-overview-long-desc-heading"
-              className="profile-overview__section-title"
-            >
-              About
-            </h2>
-          )}
-          <p className="profile-overview__about-body profile-overview__long-desc-body">
-            {orgLongDescription}
-          </p>
+          <h2
+            id="profile-overview-long-desc-heading"
+            className="profile-overview__section-title"
+          >
+            {profile?.description ? "More about" : "About"}
+          </h2>
+          <LeafletDocument value={orgLongDescription} />
         </section>
       ) : null}
 
