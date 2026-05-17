@@ -9,7 +9,6 @@ import {
   Copy,
   Link as LinkIcon,
   Pencil,
-  Settings as SettingsIcon,
   UserPlus,
   Users,
 } from "lucide-react"
@@ -102,10 +101,7 @@ export default function ProfileSidebar({
       <div className="profile-sidebar__name-block">
         <h1 className="profile-sidebar__name">{displayName}</h1>
         {handle ? (
-          <p className="profile-sidebar__handle">
-            <span>@{handle}</span>
-            <CopyButton value={handle} label="Copy handle" />
-          </p>
+          <p className="profile-sidebar__handle">@{handle}</p>
         ) : null}
         <p className="profile-sidebar__did" title={did}>
           <span className="profile-sidebar__did-value">{did}</span>
@@ -119,21 +115,10 @@ export default function ProfileSidebar({
 
       <div className="profile-sidebar__actions">
         {hasEdit ? (
-          <>
-            <Link href={editHref!} className="profile-sidebar__action-primary">
-              <Pencil size={14} strokeWidth={1.75} aria-hidden />
-              Edit profile
-            </Link>
-            {settingsHref ? (
-              <Link
-                href={settingsHref}
-                aria-label="Group settings"
-                className="profile-sidebar__action-secondary"
-              >
-                <SettingsIcon size={14} strokeWidth={1.75} aria-hidden />
-              </Link>
-            ) : null}
-          </>
+          <Link href={editHref!} className="profile-sidebar__action-primary">
+            <Pencil size={14} strokeWidth={1.75} aria-hidden />
+            Edit profile
+          </Link>
         ) : (
           <Button variant="primary" size="sm">
             <UserPlus size={14} strokeWidth={1.75} aria-hidden />

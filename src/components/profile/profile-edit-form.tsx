@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useId } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, X } from "lucide-react";
+import { Plus, X, ChevronLeft } from "lucide-react";
 import ErrorMessage from "@/components/ui/error-message";
 import AvatarUpload from "@/components/profile/avatar-upload";
 import BannerUpload from "@/components/profile/banner-upload";
@@ -24,6 +25,10 @@ export interface ProfileEditFormProps {
   initialProfile: CertifiedProfile | null;
   isOrg: boolean;
   initialOrgUrls: OrgUrlItem[];
+  /** Handle of the account being edited — used for the in-form back link
+   *  and the Cancel button's destination. The navbar breadcrumb is the
+   *  parent page's responsibility; this prop only drives in-page nav. */
+  handle: string | null;
   onSave: (payload: {
     profile: CertifiedProfile;
     orgUrls: OrgUrlItem[] | null;
@@ -56,6 +61,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
   initialProfile,
   isOrg,
   initialOrgUrls,
+  handle,
   onSave,
   isSaving,
   saveError,
@@ -67,10 +73,12 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
 }) => {
   const router = useRouter();
   const displayNameId = useId();
+  const pronounsId = useId();
   const descriptionId = useId();
   const websiteId = useId();
 
   const [displayName, setDisplayName] = useState("");
+  const [pronouns, setPronouns] = useState("");
   const [description, setDescription] = useState("");
   const [website, setWebsite] = useState("");
   const [urlRows, setUrlRows] = useState<UrlRowState[]>([]);
@@ -81,6 +89,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
 
   const [displayNameError, setDisplayNameError] = useState("");
+  const [pronounsError, setPronounsError] = useState("");
   const [descriptionError, setDescriptionError] = useState("");
   const [websiteError, setWebsiteError] = useState("");
 
@@ -88,6 +97,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
   useEffect(() => {
     if (initialProfile) {
       setDisplayName(initialProfile.displayName || "");
+      setPronouns(initialProfile.pronouns || "");
       setDescription(initialProfile.description || "");
       setWebsite(initialProfile.website || "");
     }
@@ -107,6 +117,17 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
       return false;
     }
     setDisplayNameError("");
+    return true;
+  };
+
+  const validatePronouns = (value: string) => {
+    // Lexicon allows up to 20 graphemes / 200 bytes. We approximate with a
+    // character-count limit — the server is the source of truth.
+    if (value.length > 20) {
+      setPronounsError("Pronouns must be 20 characters or fewer");
+      return false;
+    }
+    setPronounsError("");
     return true;
   };
 
@@ -204,9 +225,11 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
 
   const hasChanges = (() => {
     const baseDisplay = initialProfile?.displayName || "";
+    const basePronouns = initialProfile?.pronouns || "";
     const baseDesc = initialProfile?.description || "";
     const baseWeb = initialProfile?.website || "";
     if (displayName !== baseDisplay) return true;
+    if (pronouns !== basePronouns) return true;
     if (description !== baseDesc) return true;
     if (website !== baseWeb) return true;
     if (avatarBlob || bannerBlob) return true;
@@ -224,24 +247,33 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
 
   const isValid =
     !displayNameError &&
+    !pronounsError &&
     !descriptionError &&
     !websiteError &&
     urlRows.every((r) => !r.error);
 
   const handleSave = async () => {
     const displayNameValid = validateDisplayName(displayName);
+    const pronounsValid = validatePronouns(pronouns);
     const descriptionValid = validateDescription(description);
     const websiteValid = validateWebsite(website);
     const { ok: urlsValid, rows: validatedRows } = validateOrgUrls(urlRows);
     setUrlRows(validatedRows);
 
-    if (!displayNameValid || !descriptionValid || !websiteValid || !urlsValid) {
+    if (
+      !displayNameValid ||
+      !pronounsValid ||
+      !descriptionValid ||
+      !websiteValid ||
+      !urlsValid
+    ) {
       return;
     }
 
     const profile: CertifiedProfile = {
       createdAt: initialProfile?.createdAt || new Date().toISOString(),
       ...(displayName.trim() && { displayName: displayName.trim() }),
+      ...(pronouns.trim() && { pronouns: pronouns.trim() }),
       ...(description.trim() && { description: description.trim() }),
       ...(website.trim() && { website: website.trim() }),
     };
@@ -282,13 +314,32 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     await onSave({ profile, orgUrls });
   };
 
+  // Cancel and back-link destinations. When we know the user's handle we
+  // route back to their public profile by handle (canonical URL); otherwise
+  // fall back to `/profile` which redirects to the current user's profile.
+  const profileHref = handle ? `/profile/${handle}` : "/profile";
+
   const handleCancel = () => {
-    router.push("/profile");
+    router.push(profileHref);
   };
 
   return (
     <div className="pe">
-      {/* Banner + avatar preview. Acts as the page hero. */}
+      {/* Subtle textual back affordance above the hero. Mirrors GitHub's
+          "Back to <owner>" pattern — repeats the navbar breadcrumb in a
+          way that's visible in the content area itself. */}
+      <div className="pe__back">
+        <Link href={profileHref} className="pe__back-link">
+          <ChevronLeft size={14} strokeWidth={2} aria-hidden />
+          <span>
+            Back to{" "}
+            <span className="pe__back-handle">@{handle ?? "profile"}</span>
+          </span>
+        </Link>
+      </div>
+
+      {/* Banner + avatar preview. Acts as a compact hero that visually
+          ties this page to the profile the user came from. */}
       <div className="pe__media">
         <BannerUpload
           currentBannerUrl={currentBannerUrl}
@@ -307,43 +358,85 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
 
       <div className="pe__section">
         <div className="pe__section-head">
-          <span className="pe__eyebrow">Identity</span>
+          <h2 className="pe__section-title">Identity</h2>
+          <p className="pe__hint">How others see you across Certified.</p>
+        </div>
+
+        <div className="pe__fields">
+          <div className="pe__row pe__row--split">
+            <div className="pe__field">
+              <label className="pe__label" htmlFor={displayNameId}>
+                <span>Display name</span>
+                <span className="pe__label-count">{displayName.length}/64</span>
+              </label>
+              <input
+                id={displayNameId}
+                type="text"
+                className={`pe__input${
+                  displayNameError ? " pe__input--invalid" : ""
+                }`}
+                value={displayName}
+                maxLength={64}
+                placeholder={isOrg ? "Organization name" : "Your name"}
+                onChange={(e) => {
+                  setDisplayName(e.target.value);
+                  validateDisplayName(e.target.value);
+                }}
+                aria-invalid={displayNameError ? true : undefined}
+              />
+              {displayNameError ? (
+                <p className="pe__field-error" role="alert">
+                  {displayNameError}
+                </p>
+              ) : null}
+            </div>
+
+            {!isOrg ? (
+              <div className="pe__field">
+                <label className="pe__label" htmlFor={pronounsId}>
+                  <span>Pronouns</span>
+                  <span className="pe__label-count">{pronouns.length}/20</span>
+                </label>
+                <input
+                  id={pronounsId}
+                  type="text"
+                  className={`pe__input${
+                    pronounsError ? " pe__input--invalid" : ""
+                  }`}
+                  value={pronouns}
+                  maxLength={20}
+                  placeholder="they/them"
+                  onChange={(e) => {
+                    setPronouns(e.target.value);
+                    validatePronouns(e.target.value);
+                  }}
+                  aria-invalid={pronounsError ? true : undefined}
+                />
+                {pronounsError ? (
+                  <p className="pe__field-error" role="alert">
+                    {pronounsError}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="pe__section">
+        <div className="pe__section-head">
+          <h2 className="pe__section-title">Bio</h2>
           <p className="pe__hint">
-            How others see you across Certified.
+            {isOrg
+              ? "A short description of this organization."
+              : "A short description of you and your work."}
           </p>
         </div>
 
         <div className="pe__fields">
           <div className="pe__field">
-            <label className="pe__label" htmlFor={displayNameId}>
-              <span>Display name</span>
-              <span className="pe__label-count">{displayName.length}/64</span>
-            </label>
-            <input
-              id={displayNameId}
-              type="text"
-              className={`pe__input${
-                displayNameError ? " pe__input--invalid" : ""
-              }`}
-              value={displayName}
-              maxLength={64}
-              placeholder="Your name"
-              onChange={(e) => {
-                setDisplayName(e.target.value);
-                validateDisplayName(e.target.value);
-              }}
-              aria-invalid={displayNameError ? true : undefined}
-            />
-            {displayNameError ? (
-              <p className="pe__field-error" role="alert">
-                {displayNameError}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="pe__field">
             <label className="pe__label" htmlFor={descriptionId}>
-              <span>Bio</span>
+              <span>About</span>
               <span className="pe__label-count">{description.length}/256</span>
             </label>
             <textarea
@@ -354,7 +447,11 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
               rows={4}
               maxLength={256}
               value={description}
-              placeholder={isOrg ? "What is this organization about?" : "A short description of you and your work."}
+              placeholder={
+                isOrg
+                  ? "What is this organization about?"
+                  : "A short description of you and your work."
+              }
               onChange={(e) => {
                 setDescription(e.target.value);
                 validateDescription(e.target.value);
@@ -372,10 +469,10 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
 
       <div className="pe__section">
         <div className="pe__section-head">
-          <span className="pe__eyebrow">Links</span>
+          <h2 className="pe__section-title">Links</h2>
           <p className="pe__hint">
             {isOrg
-              ? "Your primary website and any additional URLs. The primary website appears next to your name; the rest show as a list on your profile."
+              ? "Your primary website appears next to your name. Additional URLs show as a list on your profile."
               : "Your primary website. Shown next to your name on your profile."}
           </p>
         </div>
@@ -389,9 +486,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
               id={websiteId}
               type="url"
               inputMode="url"
-              className={`pe__input${
-                websiteError ? " pe__input--invalid" : ""
-              }`}
+              className={`pe__input${websiteError ? " pe__input--invalid" : ""}`}
               value={website}
               maxLength={256}
               placeholder="https://example.com"
@@ -409,8 +504,19 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
               <p className="pe__field-help">Include https://.</p>
             )}
           </div>
+        </div>
+      </div>
 
-          {isOrg ? (
+      {isOrg ? (
+        <div className="pe__section">
+          <div className="pe__section-head">
+            <h2 className="pe__section-title">Organization</h2>
+            <p className="pe__hint">
+              Extra links displayed on this organization&apos;s profile.
+            </p>
+          </div>
+
+          <div className="pe__fields">
             <div className="pe__field">
               <label className="pe__label">
                 <span>Additional URLs</span>
@@ -421,7 +527,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
               ) : (
                 <div className="pe__url-list">
                   {urlRows.map((row) => (
-                    <div key={row.id}>
+                    <div key={row.id} className="pe__url-item">
                       <div className="pe__url-row">
                         <input
                           type="url"
@@ -441,7 +547,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                           className="pe__input"
                           value={row.label}
                           maxLength={48}
-                          placeholder="Label (optional)"
+                          placeholder="Label"
                           aria-label="Link label"
                           onChange={(e) =>
                             updateUrlRow(row.id, { label: e.target.value })
@@ -475,17 +581,20 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                 Add URL
               </button>
             </div>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="pe__section pe__section--actions">
-        {saveError ? (
-          <div className="pe__error">
-            <ErrorMessage message={saveError} />
           </div>
-        ) : null}
-        <div className="pe__actions">
+        </div>
+      ) : null}
+
+      {saveError ? (
+        <div className="pe__error">
+          <ErrorMessage message={saveError} />
+        </div>
+      ) : null}
+
+      {/* Sticky footer. Stays pinned to the bottom of the viewport while
+          the user scrolls long forms so Save is always one click away. */}
+      <div className="pe__footer">
+        <div className="pe__footer-inner">
           <button
             type="button"
             className="pe__action-btn pe__action-btn--ghost"

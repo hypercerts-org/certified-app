@@ -1,14 +1,14 @@
 /* ========== Cert detail page ==========
 
-   Single reading column (600px on desktop, set by .app-shell__content).
-   Visual language matches the `profile-certs` grid: subtle pill hover,
-   no link underline, Inter for meta and a serif headline only for the
-   cert title. GitHub/Notion-ish hierarchy: byline → hero → headline →
-   inline meta strip → sections (contributors / locations / description).
+   Showcase layout (Notion / Behance / GitHub README feel): full-width
+   16:9 hero, full-width headline, then a two-column body — main column
+   carries the long-form description + locations, sidebar carries the
+   metadata block (Created / Time period / Work scope / Rights) and the
+   contributors list. Collapses to a single column under ~720px.
 
-   The contributors grid is the dominant section for most certs; on the
-   reference cert ("openclaw") it's 90+ rows, so we surface it cleanly
-   in a two-column responsive grid with subtle hover pills. */
+   `.cert-detail--wide` is the opt-in marker. The `:has()` rule below
+   widens this page's `.app-shell__content` to 960px while leaving every
+   other page's 600px reading cap intact. */
 
 .cert-detail-page {
   padding: 24px 0 64px;
@@ -17,6 +17,16 @@
 .cert-detail {
   display: flex;
   flex-direction: column;
+}
+
+/* Widen the reading column ONLY for the cert detail page. Scoped via
+   `:has()` so we don't touch `.app-shell__content` globally — other
+   pages keep their 600px desktop cap. Mobile already uses 720px which
+   the cert page is happy to inherit. */
+@media (min-width: 800px) {
+  .app-shell:has(.cert-detail--wide) .app-shell__content {
+    max-width: 960px;
+  }
 }
 
 /* ---------- Loading + error ---------- */
@@ -119,51 +129,63 @@
   word-break: break-word;
 }
 
-.cert-detail__pills {
+/* ---------- Two-column body ----------
+
+   Single stacked column under 720px, two columns above. The sidebar
+   sits at a fixed 260px so the main column can fluidly absorb extra
+   width on wider viewports. */
+
+.cert-detail__body {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 4px;
+  flex-direction: column;
+  gap: 32px;
 }
 
-.cert-detail__pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--fg-secondary);
-  background: var(--overlay-weak);
-  border-radius: 999px;
-  white-space: nowrap;
+@media (min-width: 720px) {
+  .cert-detail__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 260px;
+    gap: 40px;
+    align-items: start;
+  }
 }
 
-.cert-detail__pill-icon {
-  color: var(--fg-muted);
-  flex-shrink: 0;
+.cert-detail__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-/* ---------- Inline meta strip ----------
+.cert-detail__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
 
-   A compact row of label/value pairs that lives between the headline
-   and the sections. GitHub-style: small uppercase labels above the
-   value, separated by thin dividers. */
+/* On desktop the sidebar can stick alongside the description without
+   running off the viewport — the contributor list inside may be long
+   but we let it grow; users can scroll past it. */
+@media (min-width: 720px) {
+  .cert-detail__sidebar {
+    padding: 16px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius, 8px);
+  }
+}
+
+/* ---------- Metadata block (sidebar) ----------
+
+   Stacked label/value pairs in the sidebar. Small uppercase labels
+   above each value. */
 
 .cert-detail__meta {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px 28px;
-  margin: 0 0 8px;
-  padding: 16px 0;
-  border-top: 1px solid var(--border-subtle);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-@media (min-width: 520px) {
-  .cert-detail__meta {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
 }
 
 .cert-detail__meta-row {
@@ -214,8 +236,22 @@
   margin-top: 4px;
 }
 
-.cert-detail__section + .cert-detail__section {
+.cert-detail__main > .cert-detail__section:first-child {
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.cert-detail__main > .cert-detail__section + .cert-detail__section {
   border-top: 1px solid var(--border-subtle);
+}
+
+/* Sidebar section sits inside the elevated sidebar card and is already
+   visually separated by the gap + the meta block above — no extra top
+   border, no enlarged padding. */
+.cert-detail__section--sidebar {
+  padding-top: 0;
+  margin-top: 0;
+  border-top: 0;
 }
 
 .cert-detail__section-header {
@@ -244,22 +280,18 @@
   font-feature-settings: 'tnum' 1;
 }
 
-/* ---------- Contributors grid ---------- */
+/* ---------- Contributors list ----------
+
+   Single-column stack — lives inside the sidebar so it never gets the
+   wide-viewport 2-col upgrade the old layout used. */
 
 .cert-detail__contributors {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 2px;
-}
-
-@media (min-width: 520px) {
-  .cert-detail__contributors {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 2px 12px;
-  }
 }
 
 .cert-detail__contributor {

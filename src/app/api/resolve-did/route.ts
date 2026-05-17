@@ -71,6 +71,7 @@ async function getCertsProfile(did: string): Promise<{
   description?: string
   avatarUrl: string | null
   bannerUrl: string | null
+  createdAt?: string
 } | null> {
   try {
     const targetPds = await resolvePdsUrl(did)
@@ -94,6 +95,7 @@ async function getCertsProfile(did: string): Promise<{
       description: value.description,
       avatarUrl: resolveCertsField(value.avatar, did),
       bannerUrl: resolveCertsField(value.banner, did),
+      createdAt: value.createdAt,
     }
   } catch {
     return null
@@ -190,6 +192,7 @@ export async function GET(request: NextRequest) {
     const description = certs?.description || bsky?.description || undefined
     const avatar = certs?.avatarUrl ?? bsky?.avatar ?? undefined
     const banner = certs?.bannerUrl ?? bsky?.banner ?? undefined
+    const createdAt = certs?.createdAt
 
     // Own DID: short 10s cache so repeat navigations (clicking your
     // own profile from the nav) feel instant without a network hit,
@@ -213,6 +216,7 @@ export async function GET(request: NextRequest) {
         description,
         avatar,
         banner,
+        createdAt,
       },
       { headers: { "Cache-Control": cacheControl } }
     )

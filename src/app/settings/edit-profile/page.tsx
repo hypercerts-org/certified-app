@@ -82,6 +82,8 @@ export default function EditProfilePage() {
 
   // Drive the navbar breadcrumb. When we know the handle, render
   // `@handle / Edit profile`; otherwise fall through to a plain title.
+  // The right segment's href is the current page itself so the breadcrumb
+  // text is a clickable no-op (matches the GitHub `owner / repo` pattern).
   usePageTitle("Edit profile");
   usePageTitleBreadcrumb(
     handle
@@ -176,31 +178,31 @@ export default function EditProfilePage() {
 
   const initialOrgUrls = orgMarker?.urls ?? [];
 
-  return (
-    <div className="dashboard">
-      <div className="dashboard__body dashboard__body--single">
-        <div className="dashboard__main">
-          {isLoading || !orgLoaded ? (
-            <div className="pe__loading">
-              <LoadingSpinner size="md" />
-            </div>
-          ) : (
-            <ProfileEditForm
-              initialProfile={profile}
-              isOrg={isOrg}
-              initialOrgUrls={initialOrgUrls}
-              onSave={handleSave}
-              isSaving={isSaving}
-              saveError={saveError}
-              onAvatarUpload={(file) => uploadAvatar(file)}
-              onBannerUpload={(file) => uploadBanner(file)}
-              currentAvatarUrl={avatarUrl}
-              currentBannerUrl={bannerUrl}
-              fallbackInitials={fallbackInitials}
-            />
-          )}
-        </div>
+  // Render directly into `.app-shell__content` (the 600px reading
+  // column). The form supplies all its own structure — no surrounding
+  // dashboard chrome is needed.
+  if (isLoading || !orgLoaded) {
+    return (
+      <div className="pe__loading">
+        <LoadingSpinner size="md" />
       </div>
-    </div>
+    );
+  }
+
+  return (
+    <ProfileEditForm
+      initialProfile={profile}
+      isOrg={isOrg}
+      initialOrgUrls={initialOrgUrls}
+      handle={handle}
+      onSave={handleSave}
+      isSaving={isSaving}
+      saveError={saveError}
+      onAvatarUpload={(file) => uploadAvatar(file)}
+      onBannerUpload={(file) => uploadBanner(file)}
+      currentAvatarUrl={avatarUrl}
+      currentBannerUrl={bannerUrl}
+      fallbackInitials={fallbackInitials}
+    />
   );
 }

@@ -5,6 +5,7 @@ import { usePathname, useParams, useSearchParams } from "next/navigation"
 import { useProfileNavbar, usePageTitle, usePageTitleBreadcrumb } from "@/lib/navbar-context"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { useUserActivities } from "@/hooks/use-user-activities"
+import { useOrgMarker } from "@/hooks/use-org-marker"
 import { useOrg } from "@/lib/groups/org-context"
 import ProfileHeader from "@/components/profile/profile-header"
 import ProfileSidebar from "@/components/profile/profile-sidebar"
@@ -71,6 +72,14 @@ export default function UserProfilePage() {
         }
       : null,
   )
+
+  // Detect the org marker on the viewed DID so the sidebar can switch into
+  // org-mode (extra URL list). While loading we pass isOrg=false to keep
+  // the sidebar in non-org mode; the hook caches per-DID so subsequent
+  // visits hydrate synchronously.
+  const { isOrg, additionalUrls, isLoading: isOrgMarkerLoading } =
+    useOrgMarker(did)
+  const sidebarIsOrg = isOrgMarkerLoading ? false : isOrg
 
   const { groups } = useOrg()
   const memberOrg = did ? groups.find((g) => g.groupDid === did) : undefined
@@ -156,6 +165,8 @@ export default function UserProfilePage() {
           basePath={pathname || ""}
           editHref={editHref}
           settingsHref={settingsHref}
+          isOrg={sidebarIsOrg}
+          additionalUrls={additionalUrls}
         />
 
         <div className="profile-page__main">

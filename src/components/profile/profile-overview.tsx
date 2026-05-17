@@ -83,21 +83,17 @@ export default function ProfileOverview({
 
   return (
     <div className="profile-overview">
-      <div
-        className={`profile-overview__banner ${
-          showBanner ? "" : "profile-overview__banner--empty"
-        }`}
-      >
-        {showBanner ? (
-          // eslint-disable-next-line @next/next/no-img-element
+      {showBanner ? (
+        <div className="profile-overview__banner">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={bannerUrl!}
             alt=""
             className="profile-overview__banner-img"
             onError={() => setBannerFailed(true)}
           />
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       {profile?.description ? (
         <section

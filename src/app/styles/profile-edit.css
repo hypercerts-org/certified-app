@@ -1,25 +1,24 @@
 /* ========================================================================
-   Edit profile — redesigned to match the post-positioning aesthetic.
+   Edit profile — focused settings page inside .app-shell__content's
+   600px reading column (32px side-padding leaves ~536px usable on desktop).
 
-   Layout:
-     - Single, narrow column of vertically-stacked sections.
-     - Each section is a label-block: a tiny uppercase eyebrow with an
-       optional one-line description, then the field group beneath it.
-     - No card chrome. Sections are separated by a hairline divider
-       (mirrors the new profile tabs).
-     - Banner + avatar render full-bleed at the top, like the profile
-       page hero, so the user previews exactly what they're editing.
-     - Sticky action bar at the bottom right of the form.
+   Goals:
+     - Visually belongs to the profile the user came from: hero banner +
+       overlapping avatar repeats the profile-page shape in miniature.
+     - Obvious exit: a textual "back to @handle" affordance above the
+       hero echoes the navbar breadcrumb.
+     - Sections with proper H2 titles + supporting hint text. Field rows
+       can split into two columns within the column for short pairs.
+     - Sticky footer keeps Save reachable on long forms.
+     - All elements respect the 600px column — no horizontal scroll.
    ======================================================================== */
 
 .pe {
-  --pe-max-width: 640px;
   display: flex;
   flex-direction: column;
-  gap: 0;
-  max-width: var(--pe-max-width);
-  margin: 0 auto;
-  padding: 24px 0 80px;
+  /* Reserve room at the bottom for the sticky footer so the last
+     section never hides under it. */
+  padding: 0 0 96px;
 }
 
 .pe__loading {
@@ -29,20 +28,92 @@
   min-height: 50vh;
 }
 
+/* ------------------------------------------------------------------------
+   Back-to-profile affordance.
+   Sits above the hero, subtle but obviously clickable.
+   ------------------------------------------------------------------------ */
+.pe__back {
+  margin: 4px 0 16px;
+}
+
+.pe__back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 450;
+  color: var(--fg-muted);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.pe__back-link:hover {
+  color: var(--fg-primary);
+}
+
+.pe__back-link > svg {
+  flex-shrink: 0;
+  margin-left: -2px;
+}
+
+.pe__back-handle {
+  color: var(--fg-secondary, var(--fg-primary));
+  font-weight: 500;
+}
+
+.pe__back-link:hover .pe__back-handle {
+  color: var(--fg-primary);
+}
+
+/* ------------------------------------------------------------------------
+   Media hero: banner full-bleed inside the column, avatar overlaps.
+   The avatar slot reserves the empty space below the banner so the
+   first section doesn't visually collide with it.
+   ------------------------------------------------------------------------ */
+.pe__media {
+  position: relative;
+  /* Leave room for the avatar that overlaps the bottom edge. */
+  margin-bottom: 56px;
+}
+
+/* Tighten BannerUpload's profile-card__banner reuse so the hero is
+   compact (the edit page isn't trying to show off the banner — it's
+   showing you can edit it). */
+.pe .profile-card__banner {
+  height: 140px;
+  margin: 0;
+  border-radius: 8px;
+}
+
+.pe__avatar-slot {
+  position: absolute;
+  left: 16px;
+  bottom: -36px;
+  padding: 4px;
+  background: var(--bg-default);
+  border-radius: 999px;
+  line-height: 0;
+  box-shadow: 0 0 0 1px var(--border-subtle);
+}
+
+/* ------------------------------------------------------------------------
+   Section container.
+   No card chrome; a hairline divider between sections keeps the page
+   feeling like a focused settings list rather than a grid of widgets.
+   ------------------------------------------------------------------------ */
 .pe__section {
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding: 28px 0;
-  border-bottom: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border-subtle);
 }
 
-.pe__section:first-child {
-  padding-top: 12px;
-}
-
-.pe__section:last-of-type {
-  border-bottom: none;
+.pe__section:first-of-type {
+  border-top: none;
+  padding-top: 0;
 }
 
 .pe__section-head {
@@ -51,13 +122,14 @@
   gap: 4px;
 }
 
-.pe__eyebrow {
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--fg-muted);
+.pe__section-title {
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--fg-primary);
+  margin: 0;
+  line-height: 1.2;
 }
 
 .pe__hint {
@@ -67,49 +139,44 @@
   margin: 0;
 }
 
-/* Media: banner + overlapping avatar mirroring the profile hero. */
-.pe__media {
-  position: relative;
-  margin-bottom: 44px;
-}
-
-.pe__avatar-slot {
-  position: absolute;
-  left: 0;
-  bottom: -32px;
-  padding: 4px;
-  background: var(--bg-default);
-  border-radius: 999px;
-  line-height: 0;
-}
-
-.pe__media-hint {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 12px);
-  font-size: 0.75rem;
-  color: var(--fg-muted);
-  text-align: right;
-  max-width: 280px;
-}
-
-/* Field stack inside a section. */
+/* ------------------------------------------------------------------------
+   Field rows.
+   The default layout is a vertical stack. `pe__row--split` switches to
+   a two-column grid on desktop to put short related fields side-by-side
+   (Identity: displayName + pronouns).
+   ------------------------------------------------------------------------ */
 .pe__fields {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
+.pe__row {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 600px) {
+  .pe__row--split {
+    display: grid;
+    grid-template-columns: 1fr 160px;
+    gap: 16px;
+    align-items: start;
+  }
+}
+
 .pe__field {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
 }
 
 .pe__label {
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 0.8125rem;
-  font-weight: 450;
+  font-weight: 500;
   color: var(--fg-primary);
   display: flex;
   align-items: baseline;
@@ -128,6 +195,11 @@
 .pe__input,
 .pe__textarea {
   width: 100%;
+  /* Belt-and-braces against any inherited box-sizing surprises — without
+     this, an extra-wide URL placeholder can push the row sideways and
+     cause horizontal scroll inside the 600px column. */
+  box-sizing: border-box;
+  min-width: 0;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   border-radius: 6px;
@@ -136,7 +208,9 @@
   font-size: 0.875rem;
   font-weight: 450;
   color: var(--fg-primary);
-  transition: border-color var(--transition-fast), background var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast);
 }
 
 .pe__input::placeholder,
@@ -158,7 +232,7 @@
 
 .pe__textarea {
   resize: vertical;
-  min-height: 88px;
+  min-height: 96px;
   line-height: 1.55;
 }
 
@@ -179,17 +253,27 @@
   margin: 0;
 }
 
-/* URL list — used for the org `urls[]`. Each row is an input pair
-   (URL + optional label) with a small remove button. */
+/* ------------------------------------------------------------------------
+   Org URL list.
+   On desktop we use a 3-col grid: URL (flex), label (130px), remove (auto).
+   The grid sums to fit inside the ~536px column (URL collapses via 1fr).
+   On mobile we collapse to a stack with the remove button beside the URL.
+   ------------------------------------------------------------------------ */
 .pe__url-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
+.pe__url-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .pe__url-row {
   display: grid;
-  grid-template-columns: 1fr 180px auto;
+  grid-template-columns: minmax(0, 1fr) 130px auto;
   gap: 8px;
   align-items: start;
 }
@@ -205,7 +289,9 @@
   border-radius: 4px;
   color: var(--fg-muted);
   cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .pe__url-remove:hover {
@@ -225,7 +311,7 @@
   border-radius: 4px;
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 0.8125rem;
-  font-weight: 450;
+  font-weight: 500;
   color: var(--fg-secondary, var(--fg-primary));
   cursor: pointer;
   transition: background var(--transition-fast);
@@ -243,18 +329,44 @@
   margin: 0;
 }
 
-/* Save row — flush right, with a subtle separator above. */
-.pe__actions {
+/* ------------------------------------------------------------------------
+   Inline save error.
+   Renders above the sticky footer so the user sees it without scrolling.
+   ------------------------------------------------------------------------ */
+.pe__error {
+  margin: 16px 0 0;
+}
+
+/* ------------------------------------------------------------------------
+   Sticky footer.
+   Pinned to the bottom of the viewport above the mobile bottom nav. On
+   desktop it sits above the bottom of the .app-shell__content padding.
+   Translates the column padding (32px each side) into the footer so the
+   inner buttons line up with the form fields above.
+   ------------------------------------------------------------------------ */
+.pe__footer {
+  position: sticky;
+  bottom: 0;
+  /* Negative side margins so the footer reaches the column's full width
+     even though the form content sits inside the 32px column padding.
+     The inner row re-applies the side padding so the buttons line up
+     with the fields above. */
+  margin: 24px -32px 0;
+  padding: 12px 32px calc(env(safe-area-inset-bottom, 0px) + 12px);
+  background: var(--bg-default);
+  border-top: 1px solid var(--border-subtle);
+  /* A subtle blur so content scrolling under the footer doesn't read as
+     hard-cut. Falls back to the solid bg when backdrop-filter is unsupported. */
+  backdrop-filter: saturate(180%) blur(8px);
+  -webkit-backdrop-filter: saturate(180%) blur(8px);
+  z-index: 5;
+}
+
+.pe__footer-inner {
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 8px;
-  padding: 24px 0 0;
-  margin-top: 4px;
-}
-
-.pe__error {
-  margin-bottom: 12px;
 }
 
 .pe__action-btn {
@@ -268,18 +380,21 @@
   font-size: 0.8125rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast),
-    color var(--transition-fast), opacity var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    opacity var(--transition-fast);
   gap: 8px;
 }
 
 .pe__action-btn--ghost {
   background: transparent;
-  border: 1px solid transparent;
-  color: var(--fg-muted);
+  border: 1px solid var(--border-default);
+  color: var(--fg-secondary, var(--fg-primary));
 }
 
-.pe__action-btn--ghost:hover {
+.pe__action-btn--ghost:hover:not(:disabled) {
   background: var(--overlay-weak);
   color: var(--fg-primary);
 }
@@ -299,13 +414,27 @@
   cursor: not-allowed;
 }
 
+/* ------------------------------------------------------------------------
+   Mobile tweaks.
+   The 600px breakpoint matches the desktop column threshold, so we
+   collapse the split row and URL grid below it.
+   ------------------------------------------------------------------------ */
 @media (max-width: 600px) {
   .pe {
-    padding: 16px 0 64px;
+    padding: 0 0 96px;
+  }
+
+  .pe .profile-card__banner {
+    height: 112px;
+  }
+
+  .pe__avatar-slot {
+    left: 12px;
+    bottom: -32px;
   }
 
   .pe__url-row {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       "url remove"
       "label label";
@@ -324,12 +453,12 @@
     grid-area: remove;
   }
 
-  .pe__actions {
+  .pe__footer-inner {
     flex-direction: column-reverse;
     gap: 8px;
   }
 
-  .pe__actions > * {
+  .pe__footer-inner > * {
     width: 100%;
   }
 }
