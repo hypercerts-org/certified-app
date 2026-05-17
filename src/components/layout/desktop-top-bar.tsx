@@ -241,11 +241,28 @@ export default function DesktopTopBar() {
     return qs ? `${pathname}?${qs}` : pathname;
   };
 
+  // Brandmark navigates to the active identity's profile overview
+  // when the user is signed in (falls through to the home page for
+  // signed-out visitors). When acting as a group, `identity.handle`
+  // is the group's handle, so the brandmark takes the user to the
+  // group's profile rather than their personal one — matches the
+  // mental model of "go home for this account".
+  const brandHref = identity.handle
+    ? `/profile/${encodeURIComponent(identity.handle)}`
+    : "/"
+  const brandAriaLabel = identity.handle
+    ? `Go to ${identity.name || identity.handle}'s profile`
+    : "Certified home"
+
   return (
     <header className="desktop-top-bar" aria-label="App chrome">
       <div className="desktop-top-bar__row desktop-top-bar__row--chrome">
         <div className="desktop-top-bar__left">
-          <Link href="/" className="desktop-top-bar__brand" aria-label="Certified home">
+          <Link
+            href={brandHref}
+            className="desktop-top-bar__brand"
+            aria-label={brandAriaLabel}
+          >
             <Brandmark size={28} className="desktop-top-bar__brand-mark" />
           </Link>
           {breadcrumb ? (
