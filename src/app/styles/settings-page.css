@@ -4,12 +4,18 @@
    Structure:
      .sx                      page wrapper
        .sx__layout            CSS grid: 296px slim menu + fluid panel
-         .sx__menu            <aside> hosting the vertical menu
+         .sx__menu            <aside> hosting the scroll-spy nav (sticky
+                              on desktop so it stays visible as the
+                              right pane scrolls past)
            .sx-menu             <ul>
-             .sx-menu__item     <a> per category (pill on hover/active)
-         .sx__panel           <section> hosting the selected panel
-           .sx-panel__header  title + description
-           .sx-panel__body    legacy inline editor lives here
+             .sx-menu__item     <a> per section (pill on hover/active)
+         .sx__panel           wrapper for ALL stacked sections
+           .sx-section          one per category — `id` matches the
+                                anchor in the left rail; carries
+                                `scroll-margin-top` so anchor jumps
+                                clear the sticky top bar
+             .sx-panel__header  title + description
+             .sx-panel__body    legacy inline editor lives here
 
    The page widens its own `.app-shell__content` via the `:has()` rule
    below so the two columns have room to breathe — every other page
@@ -65,14 +71,27 @@
 }
 
 /* ------------------------------------------------------------------------
-   Left pane — slim menu.
-   On desktop the menu is sticky-ish in feel (no actual sticky, since
-   the content is short and scrolling the page should scroll both panes
-   together). The inner <ul> uses 2px row spacing to read as a tight,
-   single-column tab strip.
+   Left pane — scroll-spy nav.
+   The main pane now scrolls through every section at once, so on
+   desktop we make the menu `position: sticky` to keep the rail visible
+   as the user reads down. The top offset matches the sticky top bar
+   plus a little breathing room (same value used for
+   `scroll-margin-top` below, so anchor jumps and the resting menu
+   visually line up).
    ------------------------------------------------------------------------ */
 .sx__menu {
   min-width: 0;
+}
+
+@media (min-width: 800px) {
+  .sx__menu {
+    position: sticky;
+    top: calc(var(--top-bar-row1) + 16px);
+    align-self: start;
+    /* Cap to viewport in case we ever add more sections than fit. */
+    max-height: calc(100vh - var(--top-bar-row1) - 32px);
+    overflow-y: auto;
+  }
 }
 
 .sx-menu {
@@ -141,13 +160,28 @@
 }
 
 /* ------------------------------------------------------------------------
-   Right pane — the selected category's panel.
+   Right pane — wrapper for ALL stacked sections.
+   The wrapper itself is a flex column; the `gap` defines breathing
+   room between sections. Each `.sx-section` carries
+   `scroll-margin-top` equal to the sticky top-bar height plus a little
+   buffer so anchor jumps from the left rail don't land underneath the
+   bar.
    ------------------------------------------------------------------------ */
 .sx__panel {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  gap: 48px;
+}
+
+.sx-section {
+  display: flex;
+  flex-direction: column;
   gap: 20px;
+  /* Sticky top-bar offset + buffer. Kept in sync with `.sx__menu`'s
+     own `top:` value so the resting menu and the freshly-jumped
+     section sit on the same horizontal eye-line. */
+  scroll-margin-top: calc(var(--top-bar-row1) + 24px);
 }
 
 .sx-panel__header {

@@ -342,6 +342,35 @@ export default function UserProfilePage() {
         />
       </div>
 
+      {editing ? (
+        <div className="profile-edit-banner" role="region" aria-label="Edit profile">
+          <span className="profile-edit-banner__label">Editing profile</span>
+          {saveError ? (
+            <span className="profile-edit-banner__error" role="alert">
+              {saveError}
+            </span>
+          ) : null}
+          <div className="profile-edit-banner__actions">
+            <button
+              type="button"
+              className="profile-edit-banner__btn"
+              onClick={handleCancelEdit}
+              disabled={isSaving}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="profile-edit-banner__btn profile-edit-banner__btn--primary"
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              {isSaving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="profile-page__layout">
         <ProfileSidebar
           profile={effectiveProfile}

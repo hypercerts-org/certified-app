@@ -54,56 +54,87 @@
   box-shadow: 0 0 0 2px var(--color-accent-soft, rgba(0, 0, 0, 0.1));
 }
 
-/* --- Sidebar Save / Cancel action row ------------------------------- */
+/* --- Page-level edit banner -----------------------------------------
 
-.profile-sidebar__edit-actions {
+   Rendered ABOVE the two-column profile layout when the user is in
+   inline-edit mode. Spans the full width of the page (sidebar + main
+   column) so the Save / Cancel actions are unmistakable and never
+   scroll out of reach. Sits above the avatar AND the banner image. */
+
+.profile-edit-banner {
   display: flex;
-  gap: 8px;
-  width: 100%;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 24px 0;
+  padding: 10px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  position: sticky;
+  top: calc(var(--top-bar-row1) + var(--top-bar-row2) + 8px);
+  z-index: 5;
 }
 
-.profile-sidebar__edit-btn {
-  flex: 1;
+.profile-edit-banner__label {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  letter-spacing: 0.01em;
+}
+
+.profile-edit-banner__error {
+  font-size: 0.8125rem;
+  color: var(--color-error, #d33);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-edit-banner__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.profile-edit-banner__btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 6px 12px;
-  font-size: 13px;
+  height: 32px;
+  padding: 0 14px;
+  font-family: inherit;
+  font-size: 0.8125rem;
   font-weight: 500;
-  line-height: 1.2;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-primary);
+  line-height: 1;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
   cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
-.profile-sidebar__edit-btn:hover:not(:disabled) {
-  background: var(--color-surface-hover, var(--color-surface));
+.profile-edit-banner__btn:hover:not(:disabled) {
+  background: var(--overlay-weak);
 }
 
-.profile-sidebar__edit-btn:disabled {
+.profile-edit-banner__btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.profile-sidebar__edit-btn--primary {
-  background: var(--color-text-primary);
-  color: var(--color-surface);
-  border-color: var(--color-text-primary);
+.profile-edit-banner__btn--primary {
+  background: var(--fg-primary);
+  color: var(--bg-canvas);
+  border-color: var(--fg-primary);
 }
 
-.profile-sidebar__edit-btn--primary:hover:not(:disabled) {
+.profile-edit-banner__btn--primary:hover:not(:disabled) {
   opacity: 0.9;
-  background: var(--color-text-primary);
-}
-
-.profile-sidebar__edit-error {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--color-error, #d33);
 }
 
 /* --- Overview banner empty placeholder ------------------------------ */

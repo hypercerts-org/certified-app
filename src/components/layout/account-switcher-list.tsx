@@ -3,7 +3,7 @@
 import React from "react";
 import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
-import { LogOut, UserPlus } from "lucide-react";
+import { ArrowLeftRight, LogOut } from "lucide-react";
 import type { Group } from "@/lib/groups/types";
 
 interface AccountSwitcherListProps {
@@ -72,19 +72,7 @@ export default function AccountSwitcherList({
           aria-label="Switch to a different account"
           title="Switch account"
         >
-          <UserPlus size={16} />
-        </button>
-        <button
-          role="menuitem"
-          className="account-switcher__signout"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSignOut();
-          }}
-          aria-label="Sign out"
-          title="Sign out"
-        >
-          <LogOut size={16} />
+          <ArrowLeftRight size={16} />
         </button>
       </div>
 
@@ -118,6 +106,19 @@ export default function AccountSwitcherList({
           ))}
         </>
       )}
+
+      <div className="account-switcher__divider" />
+      <button
+        role="menuitem"
+        className="account-switcher__signout-row"
+        onClick={(e) => {
+          e.stopPropagation();
+          onSignOut();
+        }}
+      >
+        <LogOut size={16} aria-hidden />
+        <span>Sign out</span>
+      </button>
     </>
   );
 }

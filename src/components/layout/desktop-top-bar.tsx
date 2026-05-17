@@ -95,6 +95,12 @@ export default function DesktopTopBar() {
       };
 
   const isOnProfile = pathname?.startsWith("/profile/") ?? false;
+  // The tab strip also renders on /settings since "Settings" is an
+  // own-profile tab — visiting /settings means the user is in their
+  // own-profile context.
+  const isOnSettings =
+    pathname === "/settings" || (pathname?.startsWith("/settings/") ?? false);
+  const showTabsRow = isOnProfile || isOnSettings;
   // Compare the URL handle slug to the signed-in user's handle to decide
   // whether to show own-only tabs (e.g. Settings). Activeorg switches the
   // "you" identity to the org, so we compare against `identity.handle`.
@@ -111,15 +117,19 @@ export default function DesktopTopBar() {
   const isOnOwnProfile =
     !!identity.handle && !!profileHandleFromUrl &&
     profileHandleFromUrl.toLowerCase() === identity.handle.toLowerCase();
+  // /settings is always an own-profile context, so own-only tabs render
+  // even though the pathname isn't /profile/<handle>.
+  const showOwnOnlyTabs = isOnOwnProfile || isOnSettings;
   const visibleProfileTabs = useMemo(
-    () => PROFILE_TABS.filter((t) => (t.ownOnly ? isOnOwnProfile : true)),
-    [isOnOwnProfile],
+    () => PROFILE_TABS.filter((t) => (t.ownOnly ? showOwnOnlyTabs : true)),
+    [showOwnOnlyTabs],
   );
   const activeTab = useMemo(() => {
+    if (isOnSettings) return "settings";
     const v = searchParams?.get("tab");
     if (v && visibleProfileTabs.some((t) => t.key === v)) return v;
     return "overview";
-  }, [searchParams, visibleProfileTabs]);
+  }, [searchParams, visibleProfileTabs, isOnSettings]);
 
   // Switcher dropdown — portaled to <body> so it escapes the bar's
   // overflow/transform context. Anchor recomputed on resize/scroll.
@@ -185,6 +195,13 @@ export default function DesktopTopBar() {
 
   const tabHref = (tab: ProfileTab) => {
     if (tab.href) return tab.href;
+    // From /settings, the other tabs need to point at the signed-in
+    // user's own profile (you're in own-profile context but the URL
+    // isn't /profile/<handle>).
+    if (isOnSettings && identity.handle) {
+      const base = `/profile/${encodeURIComponent(identity.handle)}`;
+      return tab.key === "overview" ? base : `${base}?tab=${tab.key}`;
+    }
     if (!pathname) return "#";
     const params = new URLSearchParams(searchParams?.toString() ?? "");
     if (tab.key === "overview") params.delete("tab");
@@ -283,7 +300,7 @@ export default function DesktopTopBar() {
         </div>
       </div>
 
-      {isOnProfile ? (
+      {showTabsRow ? (
         <div className="desktop-top-bar__row desktop-top-bar__row--tabs">
           <nav
             className="desktop-top-bar__tabs"

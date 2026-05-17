@@ -194,56 +194,31 @@ export default function ProfileSidebar({
         <p className="profile-sidebar__pronouns">{profile.pronouns}</p>
       ) : null}
 
-      <div className="profile-sidebar__actions">
-        {isEditing && hasInline ? (
-          <div className="profile-sidebar__edit-actions">
+      {/* Action row: hidden in edit mode — the page-level banner above
+          the avatar/banner image owns Save / Cancel now. */}
+      {!isEditing ? (
+        <div className="profile-sidebar__actions">
+          {hasInline ? (
             <button
               type="button"
-              className="profile-sidebar__edit-btn"
-              onClick={onCancelEdit}
-              disabled={isSaving}
+              className="profile-sidebar__action-primary"
+              onClick={onEditClick}
             >
-              Cancel
+              <Pencil size={14} strokeWidth={1.75} aria-hidden />
+              Edit profile
             </button>
-            <button
-              type="button"
-              className="profile-sidebar__edit-btn profile-sidebar__edit-btn--primary"
-              onClick={onSaveEdit}
-              disabled={isSaving}
-            >
-              {isSaving ? "Saving…" : "Save"}
-            </button>
-          </div>
-        ) : hasInline ? (
-          <button
-            type="button"
-            className="profile-sidebar__action-primary"
-            onClick={onEditClick}
-          >
-            <Pencil size={14} strokeWidth={1.75} aria-hidden />
-            Edit profile
-          </button>
-        ) : hasEditLink ? (
-          <Link href={editHref!} className="profile-sidebar__action-primary">
-            <Pencil size={14} strokeWidth={1.75} aria-hidden />
-            Edit profile
-          </Link>
-        ) : (
-          <Button variant="primary" size="sm">
-            <UserPlus size={14} strokeWidth={1.75} aria-hidden />
-            Follow
-          </Button>
-        )}
-      </div>
-      {isEditing && hasInline && saveError ? (
-        <p className="profile-sidebar__edit-error" role="alert">
-          {saveError}
-        </p>
-      ) : null}
-      {isEditing && hasInline && hasPendingAvatar ? (
-        <p className="profile-sidebar__edit-error" style={{ color: "var(--color-text-secondary)" }}>
-          New avatar staged — will save on Save.
-        </p>
+          ) : hasEditLink ? (
+            <Link href={editHref!} className="profile-sidebar__action-primary">
+              <Pencil size={14} strokeWidth={1.75} aria-hidden />
+              Edit profile
+            </Link>
+          ) : (
+            <Button variant="primary" size="sm">
+              <UserPlus size={14} strokeWidth={1.75} aria-hidden />
+              Follow
+            </Button>
+          )}
+        </div>
       ) : null}
 
       <p className="profile-sidebar__followers" aria-label="Followers and following">
