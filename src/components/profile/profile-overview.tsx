@@ -9,6 +9,7 @@ import BannerUpload from "@/components/profile/banner-upload"
 import Map from "@/components/map/map-dynamic"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
 import LeafletEditor from "@/components/leaflet/leaflet-editor"
+import LongDescriptionModal from "@/components/leaflet/long-description-modal"
 import type { LinearDocument } from "@/lib/leaflet/types"
 import { ORG_TYPE_PRESETS } from "@/lib/groups/org-types"
 import { getInitials } from "@/lib/utils/initials"
@@ -91,6 +92,11 @@ export default function ProfileOverview({
   const [bannerFailed, setBannerFailed] = useState(false)
   useEffect(() => setBannerFailed(false), [bannerUrl])
   const showBanner = !!bannerUrl && !bannerFailed
+  // Modal toggle for the long-form org description. The "more" link
+  // after the About paragraph opens this; backdrop / Esc / close
+  // button all flip it back off.
+  const [longDescOpen, setLongDescOpen] = useState(false)
+  const orgLongHasContent = isOrg && !!orgLongDescription
   const [bannerUploading, setBannerUploading] = useState(false)
   const handleBannerUpload = async (file: File) => {
     if (!onBannerFile) return
@@ -210,7 +216,41 @@ export default function ProfileOverview({
               >
                 About
               </h2>
-              <p className="profile-overview__about-body">{profile.description}</p>
+              <p className="profile-overview__about-body">
+                {profile.description}
+                {orgLongHasContent ? (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      className="profile-overview__more-link"
+                      onClick={() => setLongDescOpen(true)}
+                    >
+                      more
+                    </button>
+                  </>
+                ) : null}
+              </p>
+            </section>
+          ) : orgLongHasContent ? (
+            /* No short description but a long one exists — promote the
+               long description to the About slot. We still expose the
+               full render via the modal so the reader gets the same
+               typographic treatment when expanded. */
+            <section
+              className="profile-overview__about"
+              aria-labelledby="profile-overview-about-heading"
+            >
+              <h2
+                id="profile-overview-about-heading"
+                className="profile-overview__section-title"
+              >
+                About
+              </h2>
+              <LeafletDocument
+                value={orgLongDescription}
+                className="profile-overview__about-body"
+              />
             </section>
           ) : null
 
@@ -266,11 +306,11 @@ export default function ProfileOverview({
         </section>
       ) : null}
 
-      {/* Org-only long description. Rendered as a separate section below
-          the short "About" so the reader can scan the bio quickly and
-          opt into the longer text. In edit mode the section always
-          renders (so admins can fill it in from empty); in read-only it
-          only renders when there's a value. */}
+      {/* Long-description editor. Read-only viewers see this as a
+          "more" link appended to the About paragraph above (or the
+          long description gets promoted into the About slot when no
+          short description exists) — there's no inline expanded
+          read render here. */}
       {isEditing && isOrg ? (
         <section
           className="profile-overview__about profile-overview__about--editing"
@@ -290,22 +330,6 @@ export default function ProfileOverview({
             placeholder="A longer, multi-line description of this organization."
             ariaLabel="Long description"
           />
-        </section>
-      ) : isOrg && orgLongDescription ? (
-        <section
-          className="profile-overview__about"
-          aria-labelledby="profile-overview-long-desc-heading"
-        >
-          {/* Header only when the short bio also rendered above, so the
-              two sections are visually distinguishable; otherwise just
-              render under the existing "About" heading. */}
-          <h2
-            id="profile-overview-long-desc-heading"
-            className="profile-overview__section-title"
-          >
-            {profile?.description ? "More about" : "About"}
-          </h2>
-          <LeafletDocument value={orgLongDescription} />
         </section>
       ) : null}
 
@@ -455,6 +479,14 @@ export default function ProfileOverview({
           </ul>
         )}
       </section>
+
+      {longDescOpen && orgLongHasContent ? (
+        <LongDescriptionModal
+          title={profile?.displayName ? `About ${profile.displayName}` : "About"}
+          value={orgLongDescription}
+          onClose={() => setLongDescOpen(false)}
+        />
+      ) : null}
     </div>
   )
 }

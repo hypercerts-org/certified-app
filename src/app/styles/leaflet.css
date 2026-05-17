@@ -315,3 +315,67 @@ ol.leaflet-doc__list {
   gap: 8px;
   margin-left: auto;
 }
+
+/* ---------- "more" link + long-description modal ---------- */
+
+.profile-overview__more-link {
+  display: inline;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  /* Sit inline with the trailing word of the About paragraph so it
+     reads as natural prose continuation. */
+}
+
+.profile-overview__more-link:hover {
+  text-decoration-thickness: 2px;
+}
+
+.profile-overview__more-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Wider modal than the signin/confirm/link dialogs because long-form
+   prose needs measure (~65ch). Body padding bumped to give the
+   document room to breathe. */
+.long-description-modal {
+  max-width: min(720px, calc(100vw - 32px));
+}
+
+.long-description-modal__title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.long-description-modal__subtitle {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.long-description-modal__body {
+  padding: 20px 24px 24px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.long-description-modal__doc {
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.long-description-modal__doc .leaflet-doc__heading {
+  margin-top: 18px;
+}
+
+.long-description-modal__doc .leaflet-doc__heading:first-child {
+  margin-top: 0;
+}
