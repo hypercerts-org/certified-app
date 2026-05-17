@@ -27,25 +27,15 @@ export default function SiteFooter() {
           <Link href="/about" className="site-footer__link">
             About
           </Link>
-          <Link href="/apps" className="site-footer__link">
-            Apps
+          <Link href="/terms" className="site-footer__link">
+            Terms
           </Link>
-          <a
-            href="https://hypercerts.org"
-            className="site-footer__link"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            hypercerts.org
-          </a>
-          <a
-            href="https://github.com/hypercerts-org/certified-app"
-            className="site-footer__link"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            GitHub
-          </a>
+          <Link href="/privacy" className="site-footer__link">
+            Privacy
+          </Link>
+          <Link href="/imprint" className="site-footer__link">
+            Imprint
+          </Link>
         </nav>
       </div>
     </footer>

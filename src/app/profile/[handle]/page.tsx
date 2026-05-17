@@ -48,6 +48,7 @@ import LeafletDocument from "@/components/leaflet/leaflet-document"
 import LeafletEditor from "@/components/leaflet/leaflet-editor"
 import type { LinearDocument } from "@/lib/leaflet/types"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import EditBanner from "@/components/ui/edit-banner"
 import EmptyState from "@/components/ui/empty-state"
 import { AlignLeft, UserX } from "lucide-react"
 import {
@@ -978,32 +979,13 @@ export default function UserProfilePage() {
       </div>
 
       {editing ? (
-        <div className="profile-edit-banner" role="region" aria-label="Edit profile">
-          <span className="profile-edit-banner__label">Editing profile</span>
-          {saveError ? (
-            <span className="profile-edit-banner__error" role="alert">
-              {saveError}
-            </span>
-          ) : null}
-          <div className="profile-edit-banner__actions">
-            <button
-              type="button"
-              className="profile-edit-banner__btn"
-              onClick={handleCancelEdit}
-              disabled={isSaving}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="profile-edit-banner__btn profile-edit-banner__btn--primary"
-              onClick={handleSave}
-              disabled={isSaving}
-            >
-              {isSaving ? "Saving…" : "Save"}
-            </button>
-          </div>
-        </div>
+        <EditBanner
+          label="Editing profile"
+          error={saveError}
+          isSaving={isSaving}
+          onCancel={handleCancelEdit}
+          onSave={handleSave}
+        />
       ) : null}
 
       {activeTab === "settings" && isViewerThisEntity ? (

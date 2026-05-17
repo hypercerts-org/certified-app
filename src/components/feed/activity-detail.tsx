@@ -19,6 +19,7 @@ import { useRights } from "@/hooks/use-rights"
 import { getInitials } from "@/lib/utils/initials"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import EditBanner from "@/components/ui/edit-banner"
 import CertHeadlineByline from "./cert-headline-byline"
 import CertProjects from "./cert-projects"
 import LeafletDocument, {
@@ -346,10 +347,14 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
       ? resolveActivityImageUrl(localValue.image, did)
       : baseImageUrl)
 
-  // Shared headline for every tab — title + date+author byline. The
-  // shortDescription stays inside the Overview header (it's the
-  // teaser that gives readers a reason to click into Description),
-  // but Description and Contributors hide it to avoid duplication.
+  // Headline (shared across all tabs) — title row + byline only.
+  // The shortDescription used to be nested here, but that meant the
+  // Overview tab's first body element appeared 12px below the byline
+  // (the headline's internal gap) while the Description and
+  // Contributors tabs' first content sat 24px below (the main
+  // pane's `gap`). Pulling shortDescription OUT of the headline so
+  // it becomes a sibling section in `cert-detail__main` makes all
+  // three tabs start their content at the same vertical position.
   const headline = (
     <header className="cert-detail__headline">
       <div className="cert-detail__title-row">
@@ -386,7 +391,16 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
         createdAt={effectiveValue.createdAt}
         formattedDate={createdAbsolute}
       />
-      {editing && activeTab === "overview" ? (
+    </header>
+  )
+
+  // Overview-only shortDescription section. Lives BELOW the headline
+  // (with `cert-detail__main`'s 24px gap) so its top edge aligns
+  // with the first content row on the Description / Contributors
+  // tabs.
+  const shortDescSection =
+    activeTab !== "overview" ? null : editing ? (
+      <section className="cert-detail__section">
         <textarea
           className="cert-detail__short-desc-input"
           value={drafts.shortDescription}
@@ -398,7 +412,9 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
           }
           rows={3}
         />
-      ) : activeTab === "overview" && effectiveValue.shortDescription ? (
+      </section>
+    ) : effectiveValue.shortDescription ? (
+      <section className="cert-detail__section">
         <p className="cert-detail__short-desc">
           {effectiveValue.shortDescription}
           {showFullDescription && descriptionHref ? (
@@ -415,10 +431,9 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
             </>
           ) : null}
         </p>
-      ) : activeTab === "overview" && showFullDescription && descriptionHref ? (
-        /* No shortDescription but there's a rich description — surface
-           the "more" link as a standalone affordance so readers can
-           still jump to the Description tab. */
+      </section>
+    ) : showFullDescription && descriptionHref ? (
+      <section className="cert-detail__section">
         <p className="cert-detail__short-desc">
           <Link
             href={descriptionHref}
@@ -428,9 +443,8 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
             Read description
           </Link>
         </p>
-      ) : null}
-    </header>
-  )
+      </section>
+    ) : null
 
   return (
     <>
@@ -439,36 +453,13 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
           it a grid child of the 2-column layout and squashed it into
           the left rail. */}
       {editing ? (
-        <div
-          className="profile-edit-banner"
-          role="region"
-          aria-label="Edit cert"
-        >
-          <span className="profile-edit-banner__label">Editing cert</span>
-          {saveError ? (
-            <span className="profile-edit-banner__error" role="alert">
-              {saveError}
-            </span>
-          ) : null}
-          <div className="profile-edit-banner__actions">
-            <button
-              type="button"
-              className="profile-edit-banner__btn"
-              onClick={handleCancelEdit}
-              disabled={isSaving}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="profile-edit-banner__btn profile-edit-banner__btn--primary"
-              onClick={handleSave}
-              disabled={isSaving}
-            >
-              {isSaving ? "Saving…" : "Save"}
-            </button>
-          </div>
-        </div>
+        <EditBanner
+          label="Editing cert"
+          error={saveError}
+          isSaving={isSaving}
+          onCancel={handleCancelEdit}
+          onSave={handleSave}
+        />
       ) : null}
 
       <article className="cert-detail cert-detail--wide">
@@ -547,6 +538,7 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
 
       <div className="cert-detail__main">
         {headline}
+        {shortDescSection}
 
         {activeTab === "overview" ? (
           <>

@@ -86,13 +86,15 @@
 @media (min-width: 800px) {
   .sx__menu {
     position: sticky;
-    /* Clear both top bar rows (row 1 chrome + row 2 tab strip) so the
-       menu sits flush below the bar and doesn't slide off as the main
-       pane scrolls. */
+    /* Clear both top bar rows (row 1 chrome + row 2 tab strip) so
+       the menu sits flush below the bar. We drop the max-height +
+       overflow-y combination on purpose: the category list is
+       always short (≤ 5 items), so an inner scroll just introduces
+       sub-pixel jitter as the viewport changes height while the
+       main pane scrolls. A plain sticky with a fixed offset stays
+       pixel-stable. */
     top: calc(var(--top-bar-row1) + var(--top-bar-row2) + 16px);
     align-self: start;
-    max-height: calc(100vh - var(--top-bar-row1) - var(--top-bar-row2) - 32px);
-    overflow-y: auto;
   }
 }
 
