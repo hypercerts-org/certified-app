@@ -23,6 +23,12 @@ import {
   type UploadedBlob,
 } from "@/lib/atproto/profile"
 import { putOrgMarker } from "@/lib/groups/org-marker"
+import {
+  putLocationRecord,
+  readLocationStrongRef,
+  rkeyFromStrongRefUri,
+  type StrongRef,
+} from "@/lib/atproto/location"
 import type {
   CertifiedProfile,
   HypercertsSmallImage,
@@ -113,11 +119,21 @@ function readableOrgTypeTags(v: unknown): string[] {
 export interface ParsedLocation {
   name: string | null
   coords: { lat: number; lng: number } | null
+  /** When the marker stores a strongRef to a separate
+   *  `app.certified.location` record, this is the URI. The save
+   *  handler reuses it to overwrite the existing record instead of
+   *  spawning a new one. */
+  refUri?: string
 }
 
 /**
- * Coerce the record's `location` (any of the three accepted shapes — see
- * `GroupMetadata.location`) into the editor / display shape.
+ * Coerce the marker's raw `location` field into the editor / display
+ * shape. Accepts every historical form:
+ *   - `{ uri, cid }` strongRef → resolved out-of-band by
+ *     `useLocationStrongRef` (this synchronous parser just records
+ *     the URI so the save handler can update in place).
+ *   - `{ lat, lng, name? }` inline coord object (legacy local writes).
+ *   - plain `string` (legacy free-text only, no coords).
  */
 function parseLocation(v: unknown): ParsedLocation {
   if (typeof v === "string" && v.trim().length > 0) {
@@ -125,6 +141,16 @@ function parseLocation(v: unknown): ParsedLocation {
   }
   if (v && typeof v === "object") {
     const obj = v as Record<string, unknown>
+    // strongRef shape — uri + cid. The reader hook resolves the
+    // referenced record async; here we just capture the URI for the
+    // save path so it can putRecord in-place.
+    if (
+      typeof obj.uri === "string" &&
+      obj.uri.length > 0 &&
+      typeof obj.cid === "string"
+    ) {
+      return { name: null, coords: null, refUri: obj.uri }
+    }
     if (typeof obj.lat === "number" && typeof obj.lng === "number") {
       const name = typeof obj.name === "string" && obj.name.trim().length > 0
         ? obj.name.trim()
@@ -343,7 +369,48 @@ export default function UserProfilePage() {
   // returns `null` when the field is absent so the sidebar / overview
   // can skip rendering the row entirely (no "Not specified" placeholders).
   const displayOrgTypeTags = readableOrgTypeTags(effectiveOrgMarker?.organizationType)
-  const displayLocation = parseLocation(effectiveOrgMarker?.location)
+  const inlineLocation = parseLocation(effectiveOrgMarker?.location)
+
+  // Resolve `app.certified.location` strongRefs out-of-band. The
+  // parsed shape above captures the URI synchronously; this effect
+  // fetches the referenced record and stashes `{name, coords}` in
+  // state. Re-runs whenever the URI changes (e.g. after save).
+  const [resolvedLocationRef, setResolvedLocationRef] = useState<{
+    uri: string
+    name: string | null
+    coords: { lat: number; lng: number } | null
+  } | null>(null)
+  useEffect(() => {
+    const uri = inlineLocation.refUri
+    if (!uri) {
+      setResolvedLocationRef(null)
+      return
+    }
+    let cancelled = false
+    readLocationStrongRef({ uri, cid: "" }).then((res) => {
+      if (cancelled) return
+      if (!res) {
+        setResolvedLocationRef({ uri, name: null, coords: null })
+        return
+      }
+      setResolvedLocationRef({ uri, name: res.name, coords: res.coords })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [inlineLocation.refUri])
+
+  // Effective location for both display and the editor seed: the
+  // resolved strongRef wins when present; otherwise fall back to the
+  // inline-coords path (legacy + during the brief moment between
+  // marker load and ref resolve).
+  const displayLocation: ParsedLocation = inlineLocation.refUri
+    ? {
+        name: resolvedLocationRef?.name ?? null,
+        coords: resolvedLocationRef?.coords ?? null,
+        refUri: inlineLocation.refUri,
+      }
+    : inlineLocation
   const displayFoundedDate = readableFoundedDate(effectiveOrgMarker?.foundedDate)
   // `longDescription` can be a string, an inline leaflet linearDocument,
   // or a strong-ref to a separate record. The renderer (LeafletDocument)
@@ -392,6 +459,19 @@ export default function UserProfilePage() {
   const handleEditClick = useCallback(() => {
     if (!effectiveProfile) return
     const parsedLoc = parseLocation(effectiveOrgMarker?.location)
+    // When the marker stores a strongRef to a separate location
+    // record, prefer the resolved `{name, coords}` over the
+    // synchronous inline parse (which returns nulls for the
+    // strongRef branch). Falls back to inline values when the
+    // strongRef hasn't been resolved yet.
+    const seedName =
+      parsedLoc.refUri && resolvedLocationRef?.name
+        ? resolvedLocationRef.name
+        : parsedLoc.name
+    const seedCoords =
+      parsedLoc.refUri && resolvedLocationRef?.coords
+        ? resolvedLocationRef.coords
+        : parsedLoc.coords
     const parsedTypes = parseOrgTypes(effectiveOrgMarker?.organizationType)
     setDrafts({
       displayName: effectiveProfile.displayName ?? "",
@@ -401,9 +481,9 @@ export default function UserProfilePage() {
       // strings / an empty array, which the editor renders as blank
       // inputs. The save handler skips writing the marker entirely
       // when `isOrg` is false (see handleSave below).
-      locationName: parsedLoc.name ?? "",
-      locationLat: parsedLoc.coords?.lat ?? null,
-      locationLng: parsedLoc.coords?.lng ?? null,
+      locationName: seedName ?? "",
+      locationLat: seedCoords?.lat ?? null,
+      locationLng: seedCoords?.lng ?? null,
       foundedDate: toDateInputValue(effectiveOrgMarker?.foundedDate),
       organizationTypes: parsedTypes.presets,
       organizationTypeOther: parsedTypes.other,
@@ -437,7 +517,7 @@ export default function UserProfilePage() {
     setSaveError(null)
     setHasInteracted(false)
     setIsEditing(true)
-  }, [effectiveProfile, effectiveOrgMarker, effectiveOrgUrls])
+  }, [effectiveProfile, effectiveOrgMarker, effectiveOrgUrls, resolvedLocationRef])
 
   const handleCancelEdit = useCallback(() => {
     setIsEditing(false)
@@ -618,18 +698,34 @@ export default function UserProfilePage() {
           new Set<string>([...drafts.organizationTypes, ...otherTokens]),
         )
 
-        // Pick the right serialised shape for `location`: object form
-        // when a map pin is set (coords drive the right-column map),
-        // plain string when only a free-text name was entered, and
-        // `undefined` (= clear) when both are empty.
+        // Location serialisation follows the lexicon: write a
+        // separate `app.certified.location` record on the same repo
+        // and reference it from the marker via a
+        // `com.atproto.repo.strongRef`.
+        //
+        // Three cases:
+        //   - Have coords (with or without a name): putLocationRecord
+        //     (using the previous strongRef's rkey when available so
+        //     we overwrite rather than orphan).
+        //   - No coords, only a name: free-text-only legacy fallback
+        //     — stored inline on the marker as a string.
+        //   - Neither: clear the field.
         let locationValue: GroupMetadata["location"] | undefined
         const trimmedName = drafts.locationName.trim()
-        if (drafts.locationLat !== null && drafts.locationLng !== null) {
-          locationValue = {
-            lat: drafts.locationLat,
-            lng: drafts.locationLng,
-            ...(trimmedName ? { name: trimmedName } : {}),
-          }
+        const hasCoords =
+          drafts.locationLat !== null && drafts.locationLng !== null
+        if (hasCoords) {
+          const existingRkey = inlineLocation.refUri
+            ? rkeyFromStrongRefUri(inlineLocation.refUri) ?? undefined
+            : undefined
+          const ref: StrongRef = await putLocationRecord(
+            sessionDid,
+            editTargetDid ?? sessionDid,
+            { lat: drafts.locationLat as number, lng: drafts.locationLng as number },
+            trimmedName || null,
+            { rkey: existingRkey },
+          )
+          locationValue = ref
         } else if (trimmedName) {
           locationValue = trimmedName
         } else {
@@ -731,6 +827,7 @@ export default function UserProfilePage() {
     sidebarIsOrg,
     effectiveOrgMarker,
     refreshOrgMarker,
+    inlineLocation.refUri,
   ])
 
   // -------------------------------------------------------------------

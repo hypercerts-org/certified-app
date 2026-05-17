@@ -8,6 +8,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import BannerUpload from "@/components/profile/banner-upload"
 import Map from "@/components/map/map-dynamic"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
+import { forwardGeocode, reverseGeocode } from "@/lib/locations/geocode"
 import { ORG_TYPE_PRESETS } from "@/lib/groups/org-types"
 import { getInitials } from "@/lib/utils/initials"
 import { useReceivedEndorsements, type ReceivedEndorsement } from "@/hooks/use-received-endorsements"
@@ -677,6 +678,64 @@ function LocationPickerColumn({
     ? { lat: lat as number, lng: lng as number }
     : { lat: 20, lng: 0 }
   const zoom = hasPin ? 6 : 1
+
+  // ----- Two-way geocoding bind -----
+  // Forward (text → coords): debounce the user's typing, then call
+  // /api/geocode?q=... and update the coords if we got a match.
+  // Reverse (coords → text): on every map click, call
+  // /api/geocode?lat=&lon=... and overwrite the name with the
+  // resolved display name.
+  //
+  // We tag each origin to avoid feedback loops:
+  //   - When the user types, `lastTypedNameRef` records that the
+  //     name change came from the user; the forward call updates
+  //     coords but does NOT touch the name.
+  //   - When the user clicks the map, the reverse call updates the
+  //     name; we record that the name change came from the map so
+  //     the forward effect ignores it.
+  const lastSourceRef = useRef<"user" | "map" | null>(null)
+  const [busy, setBusy] = useState<"idle" | "forward" | "reverse">("idle")
+
+  // Debounced forward geocode on name change.
+  useEffect(() => {
+    if (lastSourceRef.current === "map") {
+      // Map-originated name change — skip forward geocode, just
+      // reset the source marker.
+      lastSourceRef.current = null
+      return
+    }
+    const trimmed = name.trim()
+    if (trimmed.length < 2) return
+    const ctrl = new AbortController()
+    setBusy("forward")
+    const t = window.setTimeout(async () => {
+      const hit = await forwardGeocode(trimmed, ctrl.signal)
+      setBusy("idle")
+      if (!hit) return
+      onDraftChange?.("locationLat", hit.lat)
+      onDraftChange?.("locationLng", hit.lng)
+    }, 600)
+    return () => {
+      window.clearTimeout(t)
+      ctrl.abort()
+      setBusy("idle")
+    }
+  }, [name, onDraftChange])
+
+  const handleMapClick = async (latlng: { lat: number; lng: number }) => {
+    onDraftChange?.("locationLat", latlng.lat)
+    onDraftChange?.("locationLng", latlng.lng)
+    // Tag the upcoming name change as map-originated so the forward
+    // effect above doesn't re-fire on it.
+    lastSourceRef.current = "map"
+    setBusy("reverse")
+    const hit = await reverseGeocode(latlng.lat, latlng.lng)
+    setBusy("idle")
+    if (hit?.displayName) {
+      onDraftChange?.("locationName", hit.displayName)
+    }
+  }
+
   return (
     <aside
       className="profile-overview__location profile-overview__location--editing"
@@ -695,7 +754,10 @@ function LocationPickerColumn({
         maxLength={128}
         placeholder="Location name (e.g. Berlin, Germany)"
         aria-label="Location name"
-        onChange={(e) => onDraftChange?.("locationName", e.target.value)}
+        onChange={(e) => {
+          lastSourceRef.current = "user"
+          onDraftChange?.("locationName", e.target.value)
+        }}
       />
       <div className="profile-overview__location-map">
         <Map
@@ -703,23 +765,25 @@ function LocationPickerColumn({
           center={center}
           zoom={zoom}
           height={220}
-          onMapClick={(latlng) => {
-            onDraftChange?.("locationLat", latlng.lat)
-            onDraftChange?.("locationLng", latlng.lng)
-          }}
+          onMapClick={handleMapClick}
         />
       </div>
       <div className="profile-overview__location-picker-row">
         <p className="profile-overview__location-hint">
-          {hasPin
-            ? "Click anywhere on the map to move the pin."
-            : "Click on the map to place a pin."}
+          {busy === "forward"
+            ? "Looking up location…"
+            : busy === "reverse"
+              ? "Resolving address…"
+              : hasPin
+                ? "Click the map to move the pin, or edit the name."
+                : "Type a place name or click the map to place a pin."}
         </p>
         {hasPin ? (
           <button
             type="button"
             className="profile-overview__location-clear"
             onClick={() => {
+              lastSourceRef.current = "user"
               onDraftChange?.("locationLat", null)
               onDraftChange?.("locationLng", null)
             }}
@@ -729,6 +793,16 @@ function LocationPickerColumn({
           </button>
         ) : null}
       </div>
+      <p className="profile-overview__location-attribution">
+        © <a
+          href="https://www.openstreetmap.org/copyright"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          OpenStreetMap
+        </a>{" "}
+        contributors
+      </p>
     </aside>
   )
 }

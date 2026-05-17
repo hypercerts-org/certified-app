@@ -2664,6 +2664,17 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   color: var(--fg-primary);
 }
 
+.profile-overview__location-attribution {
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.profile-overview__location-attribution a {
+  color: inherit;
+  text-decoration: underline;
+}
+
 /* ---------- Section heads + digest lists ---------- */
 
 .profile-overview__section-head {

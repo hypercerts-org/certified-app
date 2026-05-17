@@ -119,6 +119,188 @@ export function osmUrl({ lat, lng }: LatLng, zoom = 14): string {
   return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=${zoom}/${lat}/${lng}`
 }
 
+// ====================================================================
+// Write helpers for `app.certified.location` records.
+//
+// The org marker (`app.certified.actor.organization`) references a
+// location via `com.atproto.repo.strongRef`. The writer below builds
+// the record body, writes it on the right repo (own or group via the
+// BFF), and returns the strongRef for the caller to embed.
+//
+// We match the existing in-app coordinate-decimal convention of
+// "lat,lng" (the reader above accepts the same shape). The reader
+// also tolerates a CRS84 "lng,lat" record for forward-compat with
+// records written by other clients.
+// ====================================================================
+
+import { authFetch } from "@/lib/auth/fetch"
+import { extractError } from "@/lib/utils/api"
+
+const LOCATION_COLLECTION = "app.certified.location"
+const LP_VERSION = "v0.1.0"
+const SRS = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+const LOCATION_TYPE_COORDINATE_DECIMAL = "coordinate-decimal"
+
+export interface StrongRef {
+  uri: string
+  cid: string
+}
+
+export interface ParsedLocationStrongRef {
+  uri: string
+  cid: string
+  name: string | null
+  coords: LatLng
+}
+
+export interface PutLocationOptions {
+  /** Existing rkey from a previous strongRef — pass to overwrite the
+   *  record in-place instead of creating a new TID. Without this, every
+   *  save leaves an orphan record on the repo. */
+  rkey?: string
+  /** Preserve the original `createdAt` on updates. */
+  createdAt?: string
+}
+
+function buildLocationRecord(
+  name: string | null,
+  coords: LatLng,
+  createdAt?: string,
+): LocationRecord & { $type: typeof LOCATION_COLLECTION } {
+  const trimmedName = name?.trim() ?? ""
+  return {
+    $type: LOCATION_COLLECTION,
+    lpVersion: LP_VERSION,
+    srs: SRS,
+    locationType: LOCATION_TYPE_COORDINATE_DECIMAL,
+    // Matches the existing in-app reader convention (lat,lng). The
+    // reader also accepts CRS84 "lng,lat" order if a foreign writer
+    // uses that.
+    location: {
+      $type: "app.certified.location#string",
+      string: `${coords.lat},${coords.lng}`,
+    },
+    ...(trimmedName ? { name: trimmedName } : {}),
+    createdAt: createdAt ?? new Date().toISOString(),
+  }
+}
+
+/**
+ * Write the location record. When the target differs from the
+ * session DID, routes through the group BFF (which must accept the
+ * `app.certified.location` collection in its allowlist). Otherwise
+ * goes through the XRPC proxy. Returns the strongRef the caller can
+ * embed in the org marker.
+ */
+export async function putLocationRecord(
+  ownDid: string,
+  targetDid: string,
+  coords: LatLng,
+  name: string | null,
+  options: PutLocationOptions = {},
+): Promise<StrongRef> {
+  const record = buildLocationRecord(name, coords, options.createdAt)
+
+  // Group-target write — BFF route handles auth + repo routing.
+  if (targetDid !== ownDid) {
+    const res = await authFetch(
+      `/api/groups/${encodeURIComponent(targetDid)}/location`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rkey: options.rkey, record }),
+      },
+    )
+    if (!res.ok) {
+      throw new Error(await extractError(res, "Failed to save location"))
+    }
+    return (await res.json()) as StrongRef
+  }
+
+  // Own-repo write via the XRPC proxy. Use putRecord with a stable
+  // rkey when one's provided; createRecord otherwise.
+  const url = options.rkey
+    ? "/api/xrpc/com/atproto/repo/putRecord"
+    : "/api/xrpc/com/atproto/repo/createRecord"
+  const body = options.rkey
+    ? {
+        repo: ownDid,
+        collection: LOCATION_COLLECTION,
+        rkey: options.rkey,
+        record,
+      }
+    : { repo: ownDid, collection: LOCATION_COLLECTION, record }
+  const res = await authFetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    throw new Error(await extractError(res, "Failed to save location"))
+  }
+  return (await res.json()) as StrongRef
+}
+
+/**
+ * Resolve a strongRef pointing at an `app.certified.location` record.
+ * Returns `null` for missing records, malformed coordinate strings,
+ * or strongRefs that don't point at this collection.
+ */
+export async function readLocationStrongRef(
+  ref: StrongRef,
+  signal?: AbortSignal,
+): Promise<ParsedLocationStrongRef | null> {
+  const parsed = parseAtUri(ref.uri)
+  if (!parsed || parsed.collection !== LOCATION_COLLECTION) return null
+  const params = new URLSearchParams({
+    repo: parsed.did,
+    collection: parsed.collection,
+    rkey: parsed.rkey,
+  })
+  try {
+    const res = await authFetch(
+      `/api/xrpc/com/atproto/repo/getRecord?${params.toString()}`,
+      { signal },
+    )
+    if (!res.ok) return null
+    const body = (await res.json()) as {
+      uri: string
+      cid: string
+      value: LocationRecord
+    }
+    const coords = parseLocationCoords(body.value?.locationType, body.value?.location)
+    if (!coords) return null
+    return {
+      uri: body.uri,
+      cid: body.cid,
+      name: body.value?.name?.trim() || null,
+      coords,
+    }
+  } catch {
+    return null
+  }
+}
+
+/** Extract just the rkey from a strongRef uri (used by the editor to
+ *  putRecord into the same slot rather than spawning a new record on
+ *  every save). */
+export function rkeyFromStrongRefUri(uri: string): string | null {
+  return parseAtUri(uri)?.rkey ?? null
+}
+
+interface ParsedAtUri {
+  did: string
+  collection: string
+  rkey: string
+}
+
+function parseAtUri(uri: string): ParsedAtUri | null {
+  if (typeof uri !== "string" || !uri.startsWith("at://")) return null
+  const parts = uri.slice("at://".length).split("/")
+  if (parts.length < 3) return null
+  return { did: parts[0], collection: parts[1], rkey: parts[2] }
+}
+
 /** Plain-text fallback label for location types we don't parse into lat/lng. */
 export function locationFallbackText(
   locationType: string | undefined,
