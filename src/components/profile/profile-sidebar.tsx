@@ -1,10 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import {
   ArrowRight,
   Calendar,
+  Camera,
   Check,
   Copy,
   Link as LinkIcon,
@@ -16,7 +17,6 @@ import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import SmartLink from "@/components/ui/smart-link"
-import AvatarUpload from "@/components/profile/avatar-upload"
 import { getInitials } from "@/lib/utils/initials"
 import { useProfilePds } from "@/hooks/use-profile-pds"
 import { useUserGroups, type UserGroup } from "@/hooks/use-user-groups"
@@ -150,21 +150,19 @@ export default function ProfileSidebar({
             : "profile-sidebar__avatar"
         }
       >
+        <Avatar
+          size="xl"
+          src={avatarUrl || undefined}
+          fallbackInitials={initials}
+          className="!h-[240px] !w-[240px] !text-5xl"
+        />
         {isEditing && hasInline ? (
-          <AvatarUpload
-            currentAvatarUrl={avatarUrl}
-            fallbackInitials={initials}
-            onUpload={handleAvatarUpload}
+          <AvatarEditOverlay
+            onFile={handleAvatarUpload}
             isUploading={avatarUploading}
+            hasPending={hasPendingAvatar}
           />
-        ) : (
-          <Avatar
-            size="xl"
-            src={avatarUrl || undefined}
-            fallbackInitials={initials}
-            className="!h-[240px] !w-[240px] !text-5xl"
-          />
-        )}
+        ) : null}
       </div>
 
       <div className="profile-sidebar__name-block">
@@ -194,32 +192,31 @@ export default function ProfileSidebar({
         <p className="profile-sidebar__pronouns">{profile.pronouns}</p>
       ) : null}
 
-      {/* Action row: hidden in edit mode — the page-level banner above
-          the avatar/banner image owns Save / Cancel now. */}
-      {!isEditing ? (
-        <div className="profile-sidebar__actions">
-          {hasInline ? (
-            <button
-              type="button"
-              className="profile-sidebar__action-primary"
-              onClick={onEditClick}
-            >
-              <Pencil size={14} strokeWidth={1.75} aria-hidden />
-              Edit profile
-            </button>
-          ) : hasEditLink ? (
-            <Link href={editHref!} className="profile-sidebar__action-primary">
-              <Pencil size={14} strokeWidth={1.75} aria-hidden />
-              Edit profile
-            </Link>
-          ) : (
-            <Button variant="primary" size="sm">
-              <UserPlus size={14} strokeWidth={1.75} aria-hidden />
-              Follow
-            </Button>
-          )}
-        </div>
-      ) : null}
+      {/* Action row: always rendered so the layout doesn't jump between
+          read-only and edit modes. In edit mode the slot is intentionally
+          empty (Save/Cancel live in the page-level banner above). */}
+      <div className="profile-sidebar__actions">
+        {isEditing ? null : hasInline ? (
+          <button
+            type="button"
+            className="profile-sidebar__action-primary"
+            onClick={onEditClick}
+          >
+            <Pencil size={14} strokeWidth={1.75} aria-hidden />
+            Edit profile
+          </button>
+        ) : hasEditLink ? (
+          <Link href={editHref!} className="profile-sidebar__action-primary">
+            <Pencil size={14} strokeWidth={1.75} aria-hidden />
+            Edit profile
+          </Link>
+        ) : (
+          <Button variant="primary" size="sm">
+            <UserPlus size={14} strokeWidth={1.75} aria-hidden />
+            Follow
+          </Button>
+        )}
+      </div>
 
       <p className="profile-sidebar__followers" aria-label="Followers and following">
         <Users size={16} strokeWidth={1.75} aria-hidden />
@@ -233,7 +230,21 @@ export default function ProfileSidebar({
       </p>
 
       <ul className="profile-sidebar__details">
-        {profile?.website ? (
+        {isEditing && hasInline ? (
+          <li className="profile-sidebar__website-edit">
+            <LinkIcon size={16} strokeWidth={1.75} aria-hidden />
+            <input
+              type="url"
+              inputMode="url"
+              className="profile-sidebar__website-input"
+              value={drafts?.website ?? ""}
+              maxLength={256}
+              placeholder="https://example.com"
+              aria-label="Website"
+              onChange={(e) => onDraftChange?.("website", e.target.value)}
+            />
+          </li>
+        ) : profile?.website ? (
           <li>
             <SmartLink url={profile.website} />
           </li>
@@ -356,5 +367,56 @@ function CopyButton({ value, label }: CopyButtonProps) {
         <Copy size={13} strokeWidth={1.75} aria-hidden />
       )}
     </button>
+  )
+}
+
+interface AvatarEditOverlayProps {
+  onFile: (file: File) => Promise<void>
+  isUploading: boolean
+  hasPending: boolean
+}
+
+/**
+ * Click-to-upload overlay rendered on top of the existing 240×240
+ * <Avatar>. Keeps the avatar at the same position and size as
+ * read-only mode — only adds an affordance on top.
+ */
+function AvatarEditOverlay({ onFile, isUploading, hasPending }: AvatarEditOverlayProps) {
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const onClick = () => inputRef.current?.click()
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) onFile(file)
+    // Reset so the same file can be picked again.
+    if (inputRef.current) inputRef.current.value = ""
+  }
+  return (
+    <>
+      <button
+        type="button"
+        className="profile-sidebar__avatar-edit-btn"
+        onClick={onClick}
+        aria-label={isUploading ? "Uploading avatar" : "Change avatar"}
+        title="Change avatar"
+      >
+        {isUploading ? (
+          <LoadingSpinner size="sm" />
+        ) : (
+          <>
+            <Camera size={20} strokeWidth={1.75} aria-hidden />
+            <span className="profile-sidebar__avatar-edit-label">
+              {hasPending ? "Replace" : "Change"}
+            </span>
+          </>
+        )}
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="profile-sidebar__avatar-edit-input"
+        onChange={handleChange}
+      />
+    </>
   )
 }

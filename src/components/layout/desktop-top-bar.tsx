@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, LayoutGrid, Settings, LogIn } from "lucide-react";
+import { ArrowLeft, ChevronDown, LayoutGrid, Settings, LogIn } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useNavbarContext } from "@/lib/navbar-context";
 import { useProfile } from "@/hooks/use-profile";
@@ -100,6 +100,11 @@ export default function DesktopTopBar() {
   // own-profile context.
   const isOnSettings =
     pathname === "/settings" || (pathname?.startsWith("/settings/") ?? false);
+  // Cert / project detail pages get a thin row-2 with just a back
+  // affordance so the navigation rhythm stays consistent across the app.
+  const isOnCertDetail = pathname?.startsWith("/activity/") ?? false;
+  const isOnProjectDetail = pathname?.startsWith("/project/") ?? false;
+  const showBackRow = isOnCertDetail || isOnProjectDetail;
   const showTabsRow = isOnProfile || isOnSettings;
   // Compare the URL handle slug to the signed-in user's handle to decide
   // whether to show own-only tabs (e.g. Settings). Activeorg switches the
@@ -326,6 +331,18 @@ export default function DesktopTopBar() {
               );
             })}
           </nav>
+        </div>
+      ) : showBackRow ? (
+        <div className="desktop-top-bar__row desktop-top-bar__row--tabs">
+          <button
+            type="button"
+            className="desktop-top-bar__back"
+            onClick={() => router.back()}
+            aria-label="Go back"
+          >
+            <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
+            Back
+          </button>
         </div>
       ) : null}
 

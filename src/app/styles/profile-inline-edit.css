@@ -5,32 +5,84 @@
 
 /* --- Sidebar avatar slot in edit mode ------------------------------- */
 
-/* The avatar slot is sized by .profile-sidebar__avatar in layout.css.
-   In edit mode we replace the <Avatar> with <AvatarUpload>, which by
-   default renders an h-16 / w-16 round avatar. We override that locally
-   to match the 240px circular avatar the read-only view shows so the
-   layout doesn't jump when entering/exiting edit mode. */
+/* The avatar stays at its read-only size (240×240) so the layout
+   doesn't shift when entering edit mode. The <AvatarEditOverlay> sits
+   absolutely on top with a circular click affordance. */
 .profile-sidebar__avatar--editing {
-  display: flex;
-  justify-content: center;
+  position: relative;
 }
 
-.profile-sidebar__avatar--editing > div {
-  /* AvatarUpload renders a flex column wrapper — let it center. */
+/* Floating camera badge anchored to the bottom-right of the 240×240
+   avatar — always visible in edit mode so the affordance is
+   discoverable without needing to hover. */
+.profile-sidebar__avatar-edit-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 14px;
+  border: 2px solid var(--bg-canvas);
+  border-radius: 999px;
+  background: var(--fg-primary);
+  color: var(--bg-canvas);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
 }
 
-.profile-sidebar__avatar--editing > div > div[role="button"] {
-  /* The clickable wrapper around the avatar. */
-  width: 240px;
-  height: 240px;
+.profile-sidebar__avatar-edit-btn:hover {
+  opacity: 0.9;
 }
 
-.profile-sidebar__avatar--editing > div > div[role="button"] > div {
-  /* The h-16 / w-16 sizing wrapper that AvatarUpload puts around the
-     <Avatar>. Force the larger sidebar size so it matches read-only. */
-  width: 240px !important;
-  height: 240px !important;
+.profile-sidebar__avatar-edit-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.profile-sidebar__avatar-edit-label {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+}
+
+.profile-sidebar__avatar-edit-input {
+  display: none;
+}
+
+/* --- Sidebar website edit ------------------------------------------- */
+
+/* The website input sits exactly where the read-only SmartLink renders
+   (inside `.profile-sidebar__details > li`). The icon stays on the
+   left; the input fills the remaining space. */
+.profile-sidebar__website-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-sidebar__website-input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+}
+
+.profile-sidebar__website-input:focus {
+  outline: none;
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
 }
 
 /* --- Sidebar display-name input ------------------------------------- */
@@ -137,35 +189,29 @@
   opacity: 0.9;
 }
 
-/* --- Overview banner empty placeholder ------------------------------ */
+/* --- Overview banner in edit mode ----------------------------------- */
 
-/* When the user is editing and there's no banner set, render a visible
-   drop-zone strip so the upload slot is obvious. Mirrors the height of
-   the standard banner so the layout doesn't shift. */
+/* Strip the outer wrapper's gradient backdrop in edit mode so the
+   inner BannerUpload (which has its own background) doesn't appear to
+   float on top of a grey box. When a real banner image is uploaded the
+   image covers the box edge-to-edge and there's no grey strip behind. */
 .profile-overview__banner--editing {
+  background: transparent !important;
   margin-bottom: 16px;
 }
 
-.profile-overview__banner-placeholder {
-  width: 100%;
-  min-height: 160px;
-  border-radius: 12px;
-  border: 1px dashed var(--color-border);
-  background: var(--color-surface);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-secondary);
-  font-size: 13px;
+/* Pin the inner BannerUpload to the outer banner-slot's box so its
+   aspect ratio + corners match the read-only banner exactly. */
+.profile-overview__banner-edit-slot {
+  height: 100%;
 }
 
-/* The BannerUpload component uses `.profile-card__banner` for sizing.
-   When it sits in our edit slot we want it to use the overview's banner
-   dimensions instead so it lines up with the static banner image. */
 .profile-overview__banner-edit-slot .profile-card__banner {
   width: 100%;
-  min-height: 160px;
-  border-radius: 12px;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  border-radius: inherit;
   overflow: hidden;
 }
 

@@ -1984,6 +1984,33 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   height: 100%;
 }
 
+/* Back affordance rendered in the row-2 slot on cert / project detail
+   pages. Left-aligned, sits at the same height as the tab strip. */
+.desktop-top-bar__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0 4px;
+  background: transparent;
+  border: none;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.desktop-top-bar__back:hover {
+  color: var(--fg-primary);
+}
+
+.desktop-top-bar__back:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 .desktop-top-bar__tab {
   position: relative;
   display: inline-flex;
@@ -2184,6 +2211,10 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   align-items: center;
   gap: 8px;
   margin-top: 4px;
+  /* Reserve the action row's height even when empty — keeps the layout
+     anchored while the user is in edit mode (the "Edit profile" button
+     is hidden but its slot remains as whitespace). */
+  min-height: 36px;
 }
 
 .profile-sidebar__action-primary {
@@ -2234,7 +2265,10 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 0;
+  /* Pull a bit of extra space above the followers row so it reads as a
+     visually-separate block from the action row, and below it to push
+     the links/joined list further down. */
+  margin: 8px 0 12px;
   font-size: 0.875rem;
   color: var(--fg-secondary);
   flex-wrap: wrap;
@@ -2265,6 +2299,14 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   font-size: 0.875rem;
   color: var(--fg-secondary);
   min-width: 0;
+}
+
+/* The "Joined" entry is always last in the list. Push it slightly
+   farther from the social links above so the two read as separate
+   visual blocks. The selector only matters when there's more than one
+   item — a single-item list has no "above" to separate from. */
+.profile-sidebar__details li:not(:only-child):last-child {
+  margin-top: 10px;
 }
 
 .profile-sidebar__details li > svg {

@@ -141,7 +141,7 @@ export default function ProfileOverview({
 
       {isEditing ? (
         <section
-          className="profile-overview__about"
+          className="profile-overview__about profile-overview__about--editing"
           aria-labelledby="profile-overview-about-heading"
         >
           <h2
@@ -157,24 +157,6 @@ export default function ProfileOverview({
             placeholder="A short description of you and your work."
             aria-label="About"
             onChange={(e) => onDraftChange?.("description", e.target.value)}
-          />
-          <label
-            htmlFor="profile-overview-website-input"
-            className="profile-overview__website-label"
-            style={{ display: "block", marginTop: 12 }}
-          >
-            Website
-          </label>
-          <input
-            id="profile-overview-website-input"
-            type="url"
-            inputMode="url"
-            className="profile-overview__website-input"
-            value={drafts?.website ?? ""}
-            maxLength={256}
-            placeholder="https://example.com"
-            aria-label="Website"
-            onChange={(e) => onDraftChange?.("website", e.target.value)}
           />
         </section>
       ) : profile?.description ? (
