@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { Award, Calendar, Clock, FileText, Target } from "lucide-react"
 import {
   resolveActivityImageUrl,
@@ -135,6 +136,42 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
     value.rights?.uri ?? null,
   )
 
+  // Tab strip on the top bar (back-row) drives which slice of the
+  // record renders in the right pane. Keep the left aside identical
+  // across all tabs.
+  const searchParams = useSearchParams()
+  const tabParam = searchParams?.get("tab") ?? "overview"
+  const activeTab: "overview" | "description" | "contributors" =
+    tabParam === "description" || tabParam === "contributors"
+      ? tabParam
+      : "overview"
+
+  // Shared headline for every tab — title + date+author byline. The
+  // shortDescription stays inside the Overview header (it's the
+  // teaser that gives readers a reason to click into Description),
+  // but Description and Contributors hide it to avoid duplication.
+  const headline = (
+    <header className="cert-detail__headline">
+      <h1 className="cert-detail__title">{value.title}</h1>
+      <CertHeadlineByline
+        did={did}
+        createdAt={value.createdAt}
+        formattedDate={createdAbsolute}
+      />
+      {activeTab === "overview" && value.shortDescription ? (
+        <p className="cert-detail__short-desc">{value.shortDescription}</p>
+      ) : null}
+      {activeTab === "overview" && showFullDescription ? (
+        <details className="cert-detail__full-disclosure">
+          <summary>Show full description</summary>
+          <div className="cert-detail__full-body">
+            <LeafletDocument value={value.description} did={did} />
+          </div>
+        </details>
+      ) : null}
+    </header>
+  )
+
   return (
     <article className="cert-detail cert-detail--wide">
       <aside className="cert-detail__aside" aria-label="Cert details">
@@ -212,56 +249,81 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
       </aside>
 
       <div className="cert-detail__main">
-        <header className="cert-detail__headline">
-          <h1 className="cert-detail__title">{value.title}</h1>
-          <CertHeadlineByline
-            did={did}
-            createdAt={value.createdAt}
-            formattedDate={createdAbsolute}
-          />
-          {value.shortDescription ? (
-            <p className="cert-detail__short-desc">{value.shortDescription}</p>
-          ) : null}
+        {headline}
 
-          {showFullDescription ? (
-            <details className="cert-detail__full-disclosure">
-              <summary>Show full description</summary>
-              <div className="cert-detail__full-body">
-                <LeafletDocument value={value.description} />
-              </div>
-            </details>
-          ) : null}
-        </header>
+        {activeTab === "overview" ? (
+          <>
+            {contributorCount > 0 ? (
+              <section className="cert-detail__section">
+                <div className="cert-detail__section-header">
+                  <h2 className="cert-detail__section-title">Contributors</h2>
+                  <span className="cert-detail__section-count">
+                    {contributorCount}
+                  </span>
+                </div>
+                <ul className="cert-detail__contributors">
+                  {contributors.map((c, i) => {
+                    const roleText = contributionRoleText(c.contributionDetails)
+                    return (
+                      <ContributorRow
+                        key={contributorKey(c, i)}
+                        contributor={c}
+                        role={roleText}
+                        weight={c.contributionWeight ?? null}
+                      />
+                    )
+                  })}
+                </ul>
+              </section>
+            ) : null}
 
-        {contributorCount > 0 ? (
+            {locations.length > 0 ? (
+              <section className="cert-detail__section">
+                <div className="cert-detail__section-header">
+                  <h2 className="cert-detail__section-title">Locations</h2>
+                  <span className="cert-detail__section-count">
+                    {locations.length}
+                  </span>
+                </div>
+                <CertLocationsMap locations={locations} />
+              </section>
+            ) : null}
+          </>
+        ) : activeTab === "description" ? (
+          <section className="cert-detail__section">
+            {showFullDescription ? (
+              <LeafletDocument value={value.description} did={did} />
+            ) : (
+              <p className="cert-detail__short-desc">
+                {value.shortDescription || "No description yet."}
+              </p>
+            )}
+          </section>
+        ) : activeTab === "contributors" ? (
           <section className="cert-detail__section">
             <div className="cert-detail__section-header">
               <h2 className="cert-detail__section-title">Contributors</h2>
-              <span className="cert-detail__section-count">{contributorCount}</span>
+              <span className="cert-detail__section-count">
+                {contributorCount}
+              </span>
             </div>
-            <ul className="cert-detail__contributors">
-              {contributors.map((c, i) => {
-                const roleText = contributionRoleText(c.contributionDetails)
-                return (
-                  <ContributorRow
-                    key={contributorKey(c, i)}
-                    contributor={c}
-                    role={roleText}
-                    weight={c.contributionWeight ?? null}
-                  />
-                )
-              })}
-            </ul>
-          </section>
-        ) : null}
-
-        {locations.length > 0 ? (
-          <section className="cert-detail__section">
-            <div className="cert-detail__section-header">
-              <h2 className="cert-detail__section-title">Locations</h2>
-              <span className="cert-detail__section-count">{locations.length}</span>
-            </div>
-            <CertLocationsMap locations={locations} />
+            {contributorCount > 0 ? (
+              <ul className="cert-detail__contributors">
+                {contributors.map((c, i) => {
+                  const roleText = contributionRoleText(c.contributionDetails)
+                  return (
+                    <ContributorRow
+                      key={contributorKey(c, i)}
+                      contributor={c}
+                      role={roleText}
+                      weight={c.contributionWeight ?? null}
+                    />
+                  )
+                })}
+              </ul>
+            ) : (
+              <p className="cert-detail__short-desc">No contributors listed.</p>
+            )}
           </section>
         ) : null}
       </div>

@@ -55,6 +55,15 @@ const PROFILE_TABS: ProfileTab[] = [
   { key: "settings", label: "Settings", ownOnly: true },
 ];
 
+/** Tabs for the cert-detail back-row strip. Mirrors the routing
+ *  contract that `<ActivityDetail>` reads via `?tab=`. Keep keys in
+ *  sync with the switch in that component. */
+const CERT_DETAIL_TABS: { key: string; label: string }[] = [
+  { key: "overview", label: "Overview" },
+  { key: "description", label: "Description" },
+  { key: "contributors", label: "Contributors" },
+];
+
 /**
  * Desktop chrome (≥800px).
  *
@@ -386,6 +395,39 @@ export default function DesktopTopBar() {
             <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
             Back
           </button>
+          {isOnCertDetail && pathname ? (
+            <nav
+              className="desktop-top-bar__tabs"
+              role="tablist"
+              aria-label="Cert sections"
+            >
+              {CERT_DETAIL_TABS.map((t) => {
+                const params = new URLSearchParams(
+                  searchParams?.toString() ?? "",
+                )
+                if (t.key === "overview") params.delete("tab")
+                else params.set("tab", t.key)
+                const qs = params.toString()
+                const href = qs ? `${pathname}?${qs}` : pathname
+                const currentTab = searchParams?.get("tab") ?? "overview"
+                const isActive = currentTab === t.key
+                return (
+                  <Link
+                    key={t.key}
+                    href={href}
+                    scroll={false}
+                    role="tab"
+                    aria-selected={isActive}
+                    className={`desktop-top-bar__tab ${
+                      isActive ? "desktop-top-bar__tab--active" : ""
+                    }`}
+                  >
+                    {t.label}
+                  </Link>
+                )
+              })}
+            </nav>
+          ) : null}
         </div>
       ) : null}
 
