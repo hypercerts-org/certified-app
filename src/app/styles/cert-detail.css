@@ -253,6 +253,65 @@
   word-break: break-word;
 }
 
+/* Title row — keeps the cert title on the left and floats the
+   creator-only Edit button to the far right. Wrap on small screens
+   so the button drops below the title rather than colliding. */
+.cert-detail__title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cert-detail__title-row .cert-detail__title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cert-detail__edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.cert-detail__edit-btn:hover {
+  background: var(--overlay-weak);
+  border-color: var(--border-hover);
+}
+
+.cert-detail__edit-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Inline "more" link — quiet style; sits at the end of the short
+   description as natural prose continuation, no button chrome. */
+.cert-detail__more-link {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cert-detail__more-link:hover {
+  text-decoration-thickness: 2px;
+}
+
+.cert-detail__more-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 /* ---------- Headline byline ----------
 
    Sits directly under the title:

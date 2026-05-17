@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
-import { Award, Calendar, Clock, FileText, Target } from "lucide-react"
+import { usePathname, useSearchParams } from "next/navigation"
+import { Award, Calendar, Clock, FileText, Pencil, Target } from "lucide-react"
+import { useAuth } from "@/lib/auth/auth-context"
 import {
   resolveActivityImageUrl,
   formatRelativeTime,
@@ -139,6 +140,7 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
   // Tab strip on the top bar (back-row) drives which slice of the
   // record renders in the right pane. Keep the left aside identical
   // across all tabs.
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const tabParam = searchParams?.get("tab") ?? "overview"
   const activeTab: "overview" | "description" | "contributors" =
@@ -146,28 +148,72 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
       ? tabParam
       : "overview"
 
+  // Edit affordance — only the creator (cert.did === session DID) can
+  // act on this. We pull the URL up to the cert's id (no `?tab=...`)
+  // and append `/edit` so future routes get a stable target. When the
+  // viewer isn't the creator, no edit link renders.
+  const { did: sessionDid } = useAuth()
+  const isCreator = !!sessionDid && sessionDid === did
+  const certBasePath = pathname ?? ""
+  const editHref = isCreator ? `${certBasePath}/edit` : null
+  const descriptionHref = pathname
+    ? `${pathname}?tab=description`
+    : null
+
   // Shared headline for every tab — title + date+author byline. The
   // shortDescription stays inside the Overview header (it's the
   // teaser that gives readers a reason to click into Description),
   // but Description and Contributors hide it to avoid duplication.
   const headline = (
     <header className="cert-detail__headline">
-      <h1 className="cert-detail__title">{value.title}</h1>
+      <div className="cert-detail__title-row">
+        <h1 className="cert-detail__title">{value.title}</h1>
+        {editHref ? (
+          <Link
+            href={editHref}
+            className="cert-detail__edit-btn"
+            aria-label="Edit cert"
+            title="Edit cert"
+          >
+            <Pencil size={14} strokeWidth={1.75} aria-hidden />
+            Edit
+          </Link>
+        ) : null}
+      </div>
       <CertHeadlineByline
         did={did}
         createdAt={value.createdAt}
         formattedDate={createdAbsolute}
       />
       {activeTab === "overview" && value.shortDescription ? (
-        <p className="cert-detail__short-desc">{value.shortDescription}</p>
-      ) : null}
-      {activeTab === "overview" && showFullDescription ? (
-        <details className="cert-detail__full-disclosure">
-          <summary>Show full description</summary>
-          <div className="cert-detail__full-body">
-            <LeafletDocument value={value.description} did={did} />
-          </div>
-        </details>
+        <p className="cert-detail__short-desc">
+          {value.shortDescription}
+          {showFullDescription && descriptionHref ? (
+            <>
+              {" "}
+              <Link
+                href={descriptionHref}
+                scroll={false}
+                className="cert-detail__more-link"
+              >
+                more
+              </Link>
+            </>
+          ) : null}
+        </p>
+      ) : activeTab === "overview" && showFullDescription && descriptionHref ? (
+        /* No shortDescription but there's a rich description — surface
+           the "more" link as a standalone affordance so readers can
+           still jump to the Description tab. */
+        <p className="cert-detail__short-desc">
+          <Link
+            href={descriptionHref}
+            scroll={false}
+            className="cert-detail__more-link"
+          >
+            Read description
+          </Link>
+        </p>
       ) : null}
     </header>
   )
@@ -193,8 +239,6 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
             <Award size={56} strokeWidth={1.25} className="cert-detail__image-placeholder-icon" />
           </div>
         )}
-
-        {rkey ? <CertProjects did={did} rkey={rkey} /> : null}
 
         <dl className="cert-detail__meta">
           <div className="cert-detail__meta-row">
@@ -276,6 +320,8 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
                 </ul>
               </section>
             ) : null}
+
+            {rkey ? <CertProjects did={did} rkey={rkey} /> : null}
 
             {locations.length > 0 ? (
               <section className="cert-detail__section">

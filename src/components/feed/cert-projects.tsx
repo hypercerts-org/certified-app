@@ -14,32 +14,31 @@ interface CertProjectsProps {
 }
 
 /**
- * "Project" section for the cert detail left pane.
+ * "Projects" section on the cert detail Overview tab — sits between
+ * Contributors and Locations in the main pane.
  *
  * Renders a small row per project (thumbnail + name + short
  * description) when the cert is referenced by at least one
  * `org.hypercerts.collection` record with `type === "project"`.
- * The component returns null when there are no projects so the
- * containing aside can skip the heading entirely.
+ * Returns null when there are no projects so the page skips the
+ * section header entirely.
  */
 export default function CertProjects({ did, rkey }: CertProjectsProps) {
   const { projects, isLoading } = useCertProjects(did, rkey)
 
-  if (isLoading && projects.length === 0) {
-    // We don't want a loading flash on the sidebar — the section
-    // is collapsed when empty, so just return null while we wait.
-    // If the cert actually belongs to a project, the row pops in
-    // on the next render.
-    return null
-  }
-
+  if (isLoading && projects.length === 0) return null
   if (projects.length === 0) return null
 
   return (
-    <section className="cert-detail__projects" aria-label="Project">
-      <h2 className="cert-detail__section-title cert-detail__section-title--aside">
-        Project
-      </h2>
+    <section className="cert-detail__section" aria-label="Projects">
+      <div className="cert-detail__section-header">
+        <h2 className="cert-detail__section-title">
+          {projects.length === 1 ? "Project" : "Projects"}
+        </h2>
+        {projects.length > 1 ? (
+          <span className="cert-detail__section-count">{projects.length}</span>
+        ) : null}
+      </div>
       <ul className="cert-detail__projects-list">
         {projects.map((p) => (
           <ProjectRow key={p.uri} project={p} />
