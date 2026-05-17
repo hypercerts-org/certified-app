@@ -278,6 +278,16 @@ export default function LeafletEditor({
     try {
       const dims = await readImageDimensions(file)
       const blob = await onImageUpload(file)
+      // Cache a local object URL keyed by the just-returned blob CID
+      // so the NodeView can preview the file immediately. atproto PDSes
+      // don't serve unreferenced blobs via getBlob, so without this
+      // bridge the freshly-uploaded image would 404 in-editor until the
+      // user saves the org marker record.
+      const objectUrl = URL.createObjectURL(file)
+      const storage = (
+        editor.storage as unknown as Record<string, LeafletImageStorage>
+      ).leafletImage
+      if (storage) storage.pendingBlobs.set(blob.ref.$link, objectUrl)
       editor
         .chain()
         .focus()

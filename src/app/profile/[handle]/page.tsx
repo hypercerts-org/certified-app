@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useParams, useSearchParams } from "next/navigation"
-import { useProfileNavbar, usePageTitle, usePageTitleBreadcrumb } from "@/lib/navbar-context"
+import {
+  useProfileNavbar,
+  usePageTitle,
+  usePageTitleBreadcrumb,
+  useProfileAboutAvailable,
+} from "@/lib/navbar-context"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { useUserActivities } from "@/hooks/use-user-activities"
 import { useOrgMarker } from "@/hooks/use-org-marker"
@@ -31,6 +36,7 @@ import ProfileProjects from "@/components/profile/profile-projects"
 import ProfileCerts from "@/components/profile/profile-certs"
 import ProfileGroups from "@/components/profile/profile-groups"
 import SettingsPanel from "@/components/settings/settings-panel"
+import LeafletDocument from "@/components/leaflet/leaflet-document"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import { UserX } from "lucide-react"
@@ -43,18 +49,21 @@ import { asLinearDocument, isEmptyLongDescription } from "@/lib/leaflet/guards"
 
 type TabKey =
   | "overview"
+  | "about"
   | "certs"
   | "projects"
   | "groups"
   | "endorsements"
   | "settings"
 
-// Tab strip: Overview, Certs, Projects, Groups, Endorsements, (Settings —
-// own profile only, rendered conditionally below). Keep the order in
-// sync with PROFILE_TABS in desktop-top-bar.tsx — that's the single
-// source the user actually clicks on desktop.
+// Tab strip order — keep in sync with PROFILE_TABS in
+// desktop-top-bar.tsx, which is the single source the user clicks on
+// desktop. About sits right after Overview and only renders when the
+// viewed profile carries a non-empty `longDescription`; Settings is
+// own-profile only.
 const TABS: { key: TabKey; label: string }[] = [
   { key: "overview", label: "Overview" },
+  { key: "about", label: "About" },
   { key: "certs", label: "Certs" },
   { key: "projects", label: "Projects" },
   { key: "groups", label: "Groups" },
@@ -341,6 +350,10 @@ export default function UserProfilePage() {
   )
     ? null
     : (effectiveOrgMarker?.longDescription ?? null)
+  // Publish "this profile has a long description" to the navbar
+  // context so the top-bar can render the About tab. Always reset
+  // when navigating away (the hook returns `false` on unmount).
+  useProfileAboutAvailable(!!displayLongDescription)
   // Memoised so the array reference is stable when no inputs changed —
   // otherwise the `handleEditClick` useCallback below would invalidate
   // on every render (each `??` falls back to a freshly-allocated `[]`).
@@ -929,6 +942,20 @@ export default function UserProfilePage() {
                 />
               </div>
             )}
+            {activeTab === "about" && displayLongDescription ? (
+              <div
+                role="tabpanel"
+                id="tabpanel-about"
+                aria-labelledby="tab-about"
+                className="profile-page__about"
+              >
+                <LeafletDocument
+                  value={displayLongDescription}
+                  did={did}
+                  className="profile-page__about-doc"
+                />
+              </div>
+            ) : null}
             {activeTab === "certs" && (
               <div
                 role="tabpanel"

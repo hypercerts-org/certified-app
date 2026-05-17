@@ -33,6 +33,12 @@ interface NavbarContextValue {
   setBreadcrumb: (b: PageTitleBreadcrumb | null) => void;
   profileOverlay: boolean;
   setProfileOverlay: (v: boolean) => void;
+  /** True when the viewed profile has a non-empty `longDescription`.
+   *  Drives whether the "About" tab is rendered in the top-bar tab
+   *  strip. Set by the profile page from its org-marker state and
+   *  read by `<DesktopTopBar />` while filtering PROFILE_TABS. */
+  profileAboutAvailable: boolean;
+  setProfileAboutAvailable: (v: boolean) => void;
 }
 
 const NavbarContext = createContext<NavbarContextValue>({
@@ -42,12 +48,16 @@ const NavbarContext = createContext<NavbarContextValue>({
   setBreadcrumb: () => {},
   profileOverlay: false,
   setProfileOverlay: () => {},
+  profileAboutAvailable: false,
+  setProfileAboutAvailable: () => {},
 });
 
 export function NavbarProvider({ children }: { children: ReactNode }) {
   const [pageTitle, setPageTitle] = useState<string | null>(null);
   const [breadcrumb, setBreadcrumb] = useState<PageTitleBreadcrumb | null>(null);
   const [profileOverlay, setProfileOverlay] = useState<boolean>(false);
+  const [profileAboutAvailable, setProfileAboutAvailable] =
+    useState<boolean>(false);
   const value = useMemo(
     () => ({
       pageTitle,
@@ -56,8 +66,10 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
       setBreadcrumb,
       profileOverlay,
       setProfileOverlay,
+      profileAboutAvailable,
+      setProfileAboutAvailable,
     }),
-    [pageTitle, breadcrumb, profileOverlay]
+    [pageTitle, breadcrumb, profileOverlay, profileAboutAvailable]
   );
   return (
     <NavbarContext.Provider value={value}>
@@ -129,4 +141,18 @@ export function useProfileNavbar() {
     setProfileOverlay(true);
     return () => setProfileOverlay(false);
   }, [setProfileOverlay]);
+}
+
+/**
+ * Publish to the navbar whether the currently viewed profile has a
+ * non-empty `longDescription` (rich-text "About" content). The top
+ * bar renders the About tab only when this is `true`. Reset to false
+ * on unmount so the flag doesn't bleed into the next page.
+ */
+export function useProfileAboutAvailable(available: boolean) {
+  const { setProfileAboutAvailable } = useContext(NavbarContext);
+  useEffect(() => {
+    setProfileAboutAvailable(available);
+    return () => setProfileAboutAvailable(false);
+  }, [setProfileAboutAvailable, available]);
 }

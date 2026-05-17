@@ -9,7 +9,6 @@ import BannerUpload from "@/components/profile/banner-upload"
 import Map from "@/components/map/map-dynamic"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
 import LeafletEditor from "@/components/leaflet/leaflet-editor"
-import LongDescriptionModal from "@/components/leaflet/long-description-modal"
 import type { LinearDocument } from "@/lib/leaflet/types"
 import type { UploadedBlob } from "@/lib/atproto/profile"
 import { ORG_TYPE_PRESETS } from "@/lib/groups/org-types"
@@ -98,10 +97,9 @@ export default function ProfileOverview({
   const [bannerFailed, setBannerFailed] = useState(false)
   useEffect(() => setBannerFailed(false), [bannerUrl])
   const showBanner = !!bannerUrl && !bannerFailed
-  // Modal toggle for the long-form org description. The "more" link
-  // after the About paragraph opens this; backdrop / Esc / close
-  // button all flip it back off.
-  const [longDescOpen, setLongDescOpen] = useState(false)
+  // True when the viewed profile carries a non-empty long
+  // description — drives the "more" link after the About paragraph
+  // (clicks navigate to the About tab; see top-bar PROFILE_TABS).
   const orgLongHasContent = isOrg && !!orgLongDescription
   const [bannerUploading, setBannerUploading] = useState(false)
   const handleBannerUpload = async (file: File) => {
@@ -227,13 +225,13 @@ export default function ProfileOverview({
                 {orgLongHasContent ? (
                   <>
                     {" "}
-                    <button
-                      type="button"
+                    <Link
+                      href={`${basePath}?tab=about`}
+                      scroll={false}
                       className="profile-overview__more-link"
-                      onClick={() => setLongDescOpen(true)}
                     >
                       more
-                    </button>
+                    </Link>
                   </>
                 ) : null}
               </p>
@@ -489,14 +487,6 @@ export default function ProfileOverview({
         )}
       </section>
 
-      {longDescOpen && orgLongHasContent ? (
-        <LongDescriptionModal
-          title={profile?.displayName ? `About ${profile.displayName}` : "About"}
-          value={orgLongDescription}
-          did={did}
-          onClose={() => setLongDescOpen(false)}
-        />
-      ) : null}
     </div>
   )
 }

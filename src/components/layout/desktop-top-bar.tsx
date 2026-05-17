@@ -29,10 +29,16 @@ interface ProfileTab {
   /** When true, only render this tab when the viewer is looking at
    *  their own profile (own-DID === profile-DID). */
   ownOnly?: boolean;
+  /** When true, only render the tab when the navbar context flag
+   *  `profileAboutAvailable` is set. The profile page publishes that
+   *  flag whenever the viewed profile carries a non-empty
+   *  `longDescription`. */
+  aboutOnly?: boolean;
 }
 
 const PROFILE_TABS: ProfileTab[] = [
   { key: "overview", label: "Overview" },
+  { key: "about", label: "About", aboutOnly: true },
   { key: "certs", label: "Certs" },
   { key: "projects", label: "Projects" },
   { key: "groups", label: "Groups" },
@@ -66,7 +72,7 @@ export default function DesktopTopBar() {
   const searchParams = useSearchParams();
 
   const { isLoading, isAuthenticated, did, openSignIn, signOut } = useAuth();
-  const { pageTitle, breadcrumb } = useNavbarContext();
+  const { pageTitle, breadcrumb, profileAboutAvailable } = useNavbarContext();
   const { profile, avatarUrl } = useProfile();
   const { handle } = useSession();
   const { activeOrg, groups, switchOrg } = useOrg();
@@ -130,8 +136,13 @@ export default function DesktopTopBar() {
   // even though the pathname isn't /profile/<handle>.
   const showOwnOnlyTabs = isOnOwnProfile || isOnSettings;
   const visibleProfileTabs = useMemo(
-    () => PROFILE_TABS.filter((t) => (t.ownOnly ? showOwnOnlyTabs : true)),
-    [showOwnOnlyTabs],
+    () =>
+      PROFILE_TABS.filter((t) => {
+        if (t.ownOnly && !showOwnOnlyTabs) return false
+        if (t.aboutOnly && !profileAboutAvailable) return false
+        return true
+      }),
+    [showOwnOnlyTabs, profileAboutAvailable],
   );
   const activeTab = useMemo(() => {
     if (isOnSettings) return "settings";

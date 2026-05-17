@@ -439,6 +439,24 @@ ol.leaflet-doc__list {
   border-radius: 2px;
 }
 
+/* About tab content — wraps the LeafletDocument render in the
+   profile's main pane. Roomier typography than the inline rendering
+   on the overview since the user came here explicitly to read. */
+.profile-page__about {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.profile-page__about-doc {
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.profile-page__about-doc .leaflet-doc__heading:first-child {
+  margin-top: 0;
+}
+
 /* Wider modal than the signin/confirm/link dialogs because long-form
    prose needs measure (~65ch). The dialog itself owns the scroll
    (signin-modal already declares overflow-y: auto + a max-height —

@@ -22,6 +22,15 @@ export interface LeafletImageStorage {
    *  Set by the editor at construction time; read by the node view
    *  when building the getBlob URL. */
   did: string | null
+  /** Map of blob CID → local object URL for blobs uploaded in the
+   *  current editor session. atproto PDSes don't serve a blob via
+   *  `com.atproto.sync.getBlob` until a record references it, so a
+   *  just-uploaded image would 404 in the editor preview before the
+   *  user clicks Save. Using the local File's object URL as the src
+   *  bridges that gap — once the editor unmounts / the page is
+   *  reloaded, the cache is gone and the NodeView falls back to the
+   *  now-resolvable getBlob URL. */
+  pendingBlobs: Map<string, string>
 }
 
 export const LeafletImage = Node.create<unknown, LeafletImageStorage>({
@@ -32,7 +41,14 @@ export const LeafletImage = Node.create<unknown, LeafletImageStorage>({
   selectable: true,
 
   addStorage() {
-    return { did: null }
+    return { did: null, pendingBlobs: new Map() }
+  },
+
+  onDestroy() {
+    // Free the object URLs we created during the session.
+    const map = this.storage.pendingBlobs as Map<string, string>
+    for (const url of map.values()) URL.revokeObjectURL(url)
+    map.clear()
   },
 
   addAttributes() {
@@ -68,9 +84,12 @@ function LeafletImageNodeView({ node, editor, selected }: NodeViewProps) {
     height: number
     fullBleed: boolean
   }
-  const did = (
+  const storage = (
     editor.storage as unknown as Record<string, LeafletImageStorage>
-  ).leafletImage?.did
+  ).leafletImage
+  const did = storage?.did
+  const pendingLocalUrl =
+    blobCid && storage?.pendingBlobs?.get(blobCid)
 
   if (!blobCid || !did) {
     return (
@@ -83,9 +102,14 @@ function LeafletImageNodeView({ node, editor, selected }: NodeViewProps) {
     )
   }
 
-  const src = `/api/xrpc/com/atproto/sync/getBlob?did=${encodeURIComponent(
-    did,
-  )}&cid=${encodeURIComponent(blobCid)}`
+  // Prefer the local object URL for freshly-uploaded blobs (see
+  // `LeafletImageStorage.pendingBlobs` comment for why getBlob would
+  // otherwise 404 until the parent record is saved).
+  const src =
+    pendingLocalUrl ??
+    `/api/xrpc/com/atproto/sync/getBlob?did=${encodeURIComponent(
+      did,
+    )}&cid=${encodeURIComponent(blobCid)}`
   const aspect =
     width > 0 && height > 0 ? `${width} / ${height}` : undefined
   const className =
