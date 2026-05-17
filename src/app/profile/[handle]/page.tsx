@@ -280,14 +280,27 @@ export default function UserProfilePage() {
     useState<UploadedBlob | null>(null)
   const [pendingBannerBlob, setPendingBannerBlob] =
     useState<UploadedBlob | null>(null)
+  // Local object-URL previews. Created the moment the user picks a
+  // file (before the network upload completes) so the edit view shows
+  // the new image immediately. On Save these get promoted to
+  // `localAvatarUrl` / `localBannerUrl` so the read-only render also
+  // shows the new image without waiting for the resolve-did refetch.
+  // On Cancel they're revoked and discarded.
+  const [pendingAvatarPreviewUrl, setPendingAvatarPreviewUrl] =
+    useState<string | null>(null)
+  const [pendingBannerPreviewUrl, setPendingBannerPreviewUrl] =
+    useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
   // Effective values used everywhere the UI renders read-only content:
-  // post-save overrides win, then the hook-supplied snapshot.
+  // preview (in-flight upload) wins, then post-save mirror, then the
+  // hook-supplied snapshot.
   const effectiveProfile = localProfile ?? profile
-  const effectiveAvatarUrl = localAvatarUrl ?? avatarUrl
-  const effectiveBannerUrl = localBannerUrl ?? bannerUrl
+  const effectiveAvatarUrl =
+    pendingAvatarPreviewUrl ?? localAvatarUrl ?? avatarUrl
+  const effectiveBannerUrl =
+    pendingBannerPreviewUrl ?? localBannerUrl ?? bannerUrl
   const effectiveOrgMarker = localOrgMarker ?? orgMarker
   // Read-only displayable forms of the org-only marker fields. Each
   // returns `null` when the field is absent so the sidebar / overview
@@ -341,11 +354,18 @@ export default function UserProfilePage() {
     setIsEditing(false)
     setPendingAvatarBlob(null)
     setPendingBannerBlob(null)
+    // Revoke in-flight object URLs to avoid leaking the bytes after
+    // the user cancels (browsers GC them on unload, but earlier is
+    // cheaper and matches the BannerUpload's old cleanup behaviour).
+    if (pendingAvatarPreviewUrl) URL.revokeObjectURL(pendingAvatarPreviewUrl)
+    if (pendingBannerPreviewUrl) URL.revokeObjectURL(pendingBannerPreviewUrl)
+    setPendingAvatarPreviewUrl(null)
+    setPendingBannerPreviewUrl(null)
     setSaveError(null)
     // Note: we keep `localOrgMarker` so any *previous* save still
     // reflects in the read-only render. Only the in-flight draft state
     // is discarded.
-  }, [])
+  }, [pendingAvatarPreviewUrl, pendingBannerPreviewUrl])
 
   const handleDraftChange = useCallback(
     <K extends keyof ProfileDrafts>(key: K, value: ProfileDrafts[K]) => {
@@ -356,6 +376,15 @@ export default function UserProfilePage() {
 
   const handleAvatarFile = useCallback(
     async (file: File) => {
+      // Build the object URL synchronously so the avatar shows the new
+      // image the instant the user picks a file — the network upload
+      // runs in the background. Revoke any prior in-flight preview to
+      // avoid leaking memory across rapid re-selections.
+      const previewUrl = URL.createObjectURL(file)
+      setPendingAvatarPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev)
+        return previewUrl
+      })
       const blob = await uploadAvatar(
         file,
         editTargetDid ? { targetDid: editTargetDid } : undefined,
@@ -367,6 +396,11 @@ export default function UserProfilePage() {
 
   const handleBannerFile = useCallback(
     async (file: File) => {
+      const previewUrl = URL.createObjectURL(file)
+      setPendingBannerPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev)
+        return previewUrl
+      })
       const blob = await uploadBanner(
         file,
         editTargetDid ? { targetDid: editTargetDid } : undefined,
@@ -505,16 +539,26 @@ export default function UserProfilePage() {
         setLocalOrgMarker(nextMarker)
         refreshOrgMarker()
       }
-      // Build CDN-style URLs for newly uploaded blobs. We don't know the
-      // PDS host on the client without re-resolving, so fall back to the
-      // existing URL on no-upload and clear-then-let-resolve-did rehydrate
-      // when the blob changed. This is a known limitation — the new image
-      // will appear after the next /api/resolve-did roundtrip.
-      // TODO(profile-cdn-url): expose pdsUrl from useUserProfile so we
-      // can synthesise the getBlob URL inline (avoids the brief flash).
-      if (pendingAvatarBlob) setLocalAvatarUrl(null)
-      if (pendingBannerBlob) setLocalBannerUrl(null)
+      // Promote the in-flight object URLs to the read-only render
+      // mirror so the new image stays visible after exiting edit mode.
+      // Without this, the read-only branch falls back to the stale
+      // `avatarUrl` / `bannerUrl` from useUserProfile (which doesn't
+      // refetch on save) and the user only sees the new image after a
+      // hard reload. We keep the same URL — the browser revokes it on
+      // unload when the page navigates away.
+      if (pendingAvatarPreviewUrl) {
+        setLocalAvatarUrl(pendingAvatarPreviewUrl)
+      } else if (pendingAvatarBlob) {
+        setLocalAvatarUrl(null)
+      }
+      if (pendingBannerPreviewUrl) {
+        setLocalBannerUrl(pendingBannerPreviewUrl)
+      } else if (pendingBannerBlob) {
+        setLocalBannerUrl(null)
+      }
 
+      setPendingAvatarPreviewUrl(null)
+      setPendingBannerPreviewUrl(null)
       setPendingAvatarBlob(null)
       setPendingBannerBlob(null)
       setIsEditing(false)
@@ -533,6 +577,8 @@ export default function UserProfilePage() {
     drafts,
     pendingAvatarBlob,
     pendingBannerBlob,
+    pendingAvatarPreviewUrl,
+    pendingBannerPreviewUrl,
     editTargetDid,
     sidebarIsOrg,
     effectiveOrgMarker,

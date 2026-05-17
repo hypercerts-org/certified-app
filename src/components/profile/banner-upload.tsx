@@ -27,9 +27,14 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
   onUpload,
   isUploading,
 }) => {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // The parent page owns the object-URL preview (see profile page's
+  // pendingBannerPreviewUrl). We just render whatever URL it passes in
+  // via `currentBannerUrl` — which already reflects the picked file
+  // synchronously — and report whether that image came from a fresh
+  // pick (via `hasPending`) so the button label can swap to "Replace".
   const [error, setError] = useState<string | null>(null);
   const [imgFailed, setImgFailed] = useState(false);
+  const [hasPending, setHasPending] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleClick = () => {
@@ -52,32 +57,19 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
       return;
     }
 
-    const objectUrl = URL.createObjectURL(file);
-    setPreviewUrl(objectUrl);
-
     try {
       await onUpload(file);
+      setHasPending(true);
     } catch (err) {
       console.error("Upload failed:", err);
       setError(err instanceof Error ? err.message : "Upload failed");
-      URL.revokeObjectURL(objectUrl);
-      setPreviewUrl(null);
     }
 
     e.target.value = "";
   };
 
-  React.useEffect(() => {
-    return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
-    };
-  }, [previewUrl]);
-
-  const displayUrl = previewUrl || currentBannerUrl;
+  const displayUrl = currentBannerUrl;
   const hasImage = !!displayUrl && !imgFailed;
-  const hasPending = !!previewUrl;
 
   React.useEffect(() => {
     setImgFailed(false);
