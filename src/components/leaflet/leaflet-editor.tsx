@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useEditor, EditorContent, type Editor } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Link from "@tiptap/extension-link"
@@ -15,6 +15,7 @@ import {
   ListOrdered,
   Link as LinkIcon,
 } from "lucide-react"
+import LinkDialog, { type LinkDialogResult } from "./link-dialog"
 import { asLinearDocument } from "@/lib/leaflet/guards"
 import { tiptapToLinearDocument } from "@/lib/leaflet/from-tiptap"
 import { linearDocumentToTipTap } from "@/lib/leaflet/to-tiptap"
@@ -130,10 +131,108 @@ export default function LeafletEditor({
     }
   }, [editor, value])
 
+  const [linkDialog, setLinkDialog] = useState<{
+    open: boolean
+    initialUrl: string
+    initialText: string
+    allowTextEdit: boolean
+  }>({ open: false, initialUrl: "", initialText: "", allowTextEdit: false })
+
+  const openLinkDialog = () => {
+    if (!editor) return
+    const { from, to, empty } = editor.state.selection
+    const currentUrl =
+      (editor.getAttributes("link").href as string | undefined) ?? ""
+    setLinkDialog({
+      open: true,
+      initialUrl: currentUrl,
+      initialText: "",
+      // No selection → let the user type the label that will be
+      // inserted alongside the link. Selection present → keep the
+      // selection as the label and only show the URL field.
+      allowTextEdit: empty && !editor.isActive("link"),
+    })
+    // Stash the selection range so we can restore it on confirm —
+    // opening the dialog moves focus out of the editor.
+    selectionRef.current = { from, to, empty }
+  }
+
+  const selectionRef = useRef<{
+    from: number
+    to: number
+    empty: boolean
+  } | null>(null)
+
+  const handleLinkConfirm = (result: LinkDialogResult) => {
+    if (!editor) {
+      setLinkDialog((prev) => ({ ...prev, open: false }))
+      return
+    }
+    const stash = selectionRef.current
+    selectionRef.current = null
+    setLinkDialog((prev) => ({ ...prev, open: false }))
+
+    if (stash) {
+      editor.commands.setTextSelection({ from: stash.from, to: stash.to })
+    }
+    editor.commands.focus()
+
+    const url = result.url.trim()
+    if (url === "") {
+      // Empty URL = remove the link (only meaningful when editing).
+      editor.chain().focus().unsetLink().run()
+      return
+    }
+
+    if (stash && !stash.empty) {
+      // Selection: just wrap it in a link mark.
+      editor
+        .chain()
+        .focus()
+        .extendMarkRange("link")
+        .setLink({ href: url })
+        .run()
+      return
+    }
+
+    // No selection: insert the label (or the URL itself if blank) as
+    // a fresh text node carrying the link mark.
+    const label = result.text.trim() || url
+    editor
+      .chain()
+      .focus()
+      .insertContent([
+        {
+          type: "text",
+          text: label,
+          marks: [{ type: "link", attrs: { href: url } }],
+        },
+      ])
+      .run()
+  }
+
   return (
     <div className={joinClass("leaflet-editor", className)}>
-      {!readOnly ? <Toolbar editor={editor} minimal={minimal} /> : null}
+      {!readOnly ? (
+        <Toolbar
+          editor={editor}
+          minimal={minimal}
+          onLinkClick={openLinkDialog}
+        />
+      ) : null}
       <EditorContent editor={editor} className="leaflet-editor__content" />
+      {linkDialog.open ? (
+        <LinkDialog
+          initialUrl={linkDialog.initialUrl}
+          initialText={linkDialog.initialText}
+          allowTextEdit={linkDialog.allowTextEdit}
+          onCancel={() => {
+            selectionRef.current = null
+            setLinkDialog((prev) => ({ ...prev, open: false }))
+          }}
+          onConfirm={handleLinkConfirm}
+        />
+      ) : null}
     </div>
   )
 }
@@ -170,9 +269,10 @@ function toInitialDoc(value: LinearDocument | string | null | undefined) {
 interface ToolbarProps {
   editor: Editor | null
   minimal: boolean
+  onLinkClick: () => void
 }
 
-function Toolbar({ editor, minimal }: ToolbarProps) {
+function Toolbar({ editor, minimal, onLinkClick }: ToolbarProps) {
   if (!editor) {
     return <div className="leaflet-editor__toolbar" aria-hidden />
   }
@@ -204,22 +304,6 @@ function Toolbar({ editor, minimal }: ToolbarProps) {
       <Icon size={15} strokeWidth={1.75} aria-hidden />
     </button>
   )
-
-  const handleLink = () => {
-    const current = editor.getAttributes("link").href as string | undefined
-    const next = window.prompt("Link URL", current ?? "https://")
-    if (next === null) return
-    if (next.trim().length === 0) {
-      editor.chain().focus().unsetLink().run()
-      return
-    }
-    editor
-      .chain()
-      .focus()
-      .extendMarkRange("link")
-      .setLink({ href: next.trim() })
-      .run()
-  }
 
   return (
     <div
@@ -284,7 +368,7 @@ function Toolbar({ editor, minimal }: ToolbarProps) {
         editor.isActive("link") ? "Edit link" : "Add link",
         LinkIcon,
         editor.isActive("link"),
-        handleLink,
+        onLinkClick,
       )}
     </div>
   )
