@@ -651,7 +651,11 @@ function LocationReadColumn({ name, coords }: LocationReadColumnProps) {
           center={coords}
           zoom={6}
           height={220}
-          interactive={false}
+          interactive
+          // Disable wheel-zoom so scrolling the page doesn't get
+          // hijacked when the cursor passes over the map. +/- and
+          // pinch / double-click zoom are still available.
+          scrollWheelZoom={false}
         />
       </div>
       {name ? (

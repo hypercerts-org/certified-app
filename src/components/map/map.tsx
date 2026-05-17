@@ -49,6 +49,11 @@ export interface MapProps {
   className?: string
   /** Pan / zoom / drag enabled. Defaults to true. */
   interactive?: boolean
+  /** Override scroll-wheel zoom independently of `interactive`. The
+   *  default mirrors `interactive`. Pass `false` to keep the +/- /
+   *  pinch / double-click zoom controls active while letting page
+   *  scroll pass through (good for embedded display surfaces). */
+  scrollWheelZoom?: boolean
   /** If provided, the map listens for clicks and surfaces the latlng. */
   onMapClick?: (latlng: { lat: number; lng: number }) => void
 }
@@ -69,8 +74,11 @@ export default function Map({
   height = 220,
   className = "",
   interactive = true,
+  scrollWheelZoom,
   onMapClick,
 }: MapProps) {
+  const allowScrollWheelZoom =
+    scrollWheelZoom !== undefined ? scrollWheelZoom : interactive
   // Derive the camera center from pins if none supplied.
   const resolvedCenter = useMemo<[number, number]>(() => {
     if (center) return [center.lat, center.lng]
@@ -91,7 +99,7 @@ export default function Map({
       <MapContainer
         center={resolvedCenter}
         zoom={zoom}
-        scrollWheelZoom={interactive}
+        scrollWheelZoom={allowScrollWheelZoom}
         dragging={interactive}
         doubleClickZoom={interactive}
         touchZoom={interactive}
