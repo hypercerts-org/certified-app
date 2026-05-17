@@ -63,11 +63,11 @@ type TabKey =
 // own-profile only.
 const TABS: { key: TabKey; label: string }[] = [
   { key: "overview", label: "Overview" },
-  { key: "about", label: "About" },
   { key: "certs", label: "Certs" },
   { key: "projects", label: "Projects" },
   { key: "groups", label: "Groups" },
   { key: "endorsements", label: "Endorsements" },
+  { key: "about", label: "About" },
   { key: "settings", label: "Settings" },
 ]
 

@@ -38,11 +38,11 @@ interface ProfileTab {
 
 const PROFILE_TABS: ProfileTab[] = [
   { key: "overview", label: "Overview" },
-  { key: "about", label: "About", aboutOnly: true },
   { key: "certs", label: "Certs" },
   { key: "projects", label: "Projects" },
   { key: "groups", label: "Groups" },
   { key: "endorsements", label: "Endorsements" },
+  { key: "about", label: "About", aboutOnly: true },
   // Settings is now a real `?tab=settings` panel on the profile page —
   // no special `href` shortcut. The `/settings` route still works as a
   // standalone deep-link target (and `isOnSettings` below keeps the
