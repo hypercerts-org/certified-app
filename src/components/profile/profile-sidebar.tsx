@@ -4,13 +4,11 @@ import Link from "next/link"
 import { useRef, useState } from "react"
 import {
   ArrowRight,
-  Building2,
   Calendar,
   Camera,
   Check,
   Copy,
   Link as LinkIcon,
-  MapPin,
   Pencil,
   Plus,
   UserPlus,
@@ -48,11 +46,10 @@ interface ProfileSidebarProps {
   isOrg?: boolean
   /** Extra org-only URLs (only consulted when `isOrg` is true). */
   additionalUrls?: string[]
-  /** Pre-formatted org-only fields. Each is `null` when the field is
-   *  empty so the sidebar can skip the row entirely. */
-  orgLocation?: string | null
+  /** Pre-formatted founded-date string. `null` when the field is empty
+   *  so the sidebar can skip the row entirely. When present this row
+   *  replaces the generic "Joined ..." line below. */
   orgFoundedDate?: string | null
-  orgType?: string | null
   /** Pre-resolved groups. When provided, the sidebar uses these directly
    *  (so an own-profile view can pass the same `useOrg().groups` the
    *  account switcher renders). When omitted, falls back to
@@ -109,9 +106,7 @@ export default function ProfileSidebar({
   settingsHref,
   isOrg = false,
   additionalUrls,
-  orgLocation = null,
   orgFoundedDate = null,
-  orgType = null,
   groupsOverride,
   groupsLoadingOverride,
   canInlineEdit = false,
@@ -283,69 +278,21 @@ export default function ProfileSidebar({
                 </li>
               ))
           : null}
-        {/* Org-only details: location, organization type, founded date.
-            Edit mode replaces each row with an input; read-only renders
-            ONLY rows with a value (no "Not specified" placeholders). */}
+        {/* Org-only founded date editor. Location and org type now live
+            in the overview pane (alongside the map and the about
+            section). In read mode the founded-date row replaces the
+            generic "Joined ..." row below when present. */}
         {isEditing && hasInline && isOrg ? (
-          <>
-            <li className="profile-sidebar__org-field-edit">
-              <MapPin size={16} strokeWidth={1.75} aria-hidden />
-              <input
-                type="text"
-                className="profile-sidebar__org-input"
-                value={drafts?.location ?? ""}
-                maxLength={128}
-                placeholder="Location"
-                aria-label="Location"
-                onChange={(e) => onDraftChange?.("location", e.target.value)}
-              />
-            </li>
-            <li className="profile-sidebar__org-field-edit">
-              <Building2 size={16} strokeWidth={1.75} aria-hidden />
-              <input
-                type="text"
-                className="profile-sidebar__org-input"
-                value={drafts?.organizationType ?? ""}
-                maxLength={64}
-                placeholder="Organization type"
-                aria-label="Organization type"
-                onChange={(e) =>
-                  onDraftChange?.("organizationType", e.target.value)
-                }
-              />
-            </li>
-            <li className="profile-sidebar__org-field-edit">
-              <Calendar size={16} strokeWidth={1.75} aria-hidden />
-              <input
-                type="date"
-                className="profile-sidebar__org-input"
-                value={drafts?.foundedDate ?? ""}
-                aria-label="Founded date"
-                onChange={(e) => onDraftChange?.("foundedDate", e.target.value)}
-              />
-            </li>
-          </>
-        ) : isOrg ? (
-          <>
-            {orgLocation ? (
-              <li>
-                <MapPin size={16} strokeWidth={1.75} aria-hidden />
-                <span>{orgLocation}</span>
-              </li>
-            ) : null}
-            {orgType ? (
-              <li>
-                <Building2 size={16} strokeWidth={1.75} aria-hidden />
-                <span>{orgType}</span>
-              </li>
-            ) : null}
-            {orgFoundedDate ? (
-              <li>
-                <Calendar size={16} strokeWidth={1.75} aria-hidden />
-                <span>Founded {orgFoundedDate}</span>
-              </li>
-            ) : null}
-          </>
+          <li className="profile-sidebar__org-field-edit">
+            <Calendar size={16} strokeWidth={1.75} aria-hidden />
+            <input
+              type="date"
+              className="profile-sidebar__org-input"
+              value={drafts?.foundedDate ?? ""}
+              aria-label="Founded date"
+              onChange={(e) => onDraftChange?.("foundedDate", e.target.value)}
+            />
+          </li>
         ) : null}
         {isBskyHosted && handle ? (
           <li>
@@ -360,7 +307,15 @@ export default function ProfileSidebar({
             </a>
           </li>
         ) : null}
-        {joinedText ? (
+        {/* Founded date takes priority over "Joined" — orgs surface their
+            real founding year here so the joined-on-Certified noise
+            doesn't crowd it. Falls back to Joined for non-orgs. */}
+        {orgFoundedDate ? (
+          <li>
+            <Calendar size={16} strokeWidth={1.75} aria-hidden />
+            <span>Founded {orgFoundedDate}</span>
+          </li>
+        ) : joinedText ? (
           <li>
             <Calendar size={16} strokeWidth={1.75} aria-hidden />
             <span>{joinedText}</span>

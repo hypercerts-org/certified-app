@@ -409,3 +409,90 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+
+/* --- Org-type chip picker (edit mode) ------------------------------- */
+
+.profile-overview__type-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.profile-overview__type-chip {
+  display: inline-flex;
+  align-items: center;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border-hover);
+  border-radius: 999px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.profile-overview__type-chip:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.profile-overview__type-chip--active,
+.profile-overview__type-chip--active:hover {
+  background: var(--fg-primary);
+  color: var(--bg-base);
+  border-color: var(--fg-primary);
+}
+
+.profile-overview__type-chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+.profile-overview__type-other-input {
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border-hover);
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-top: 4px;
+  max-width: 360px;
+}
+
+.profile-overview__type-other-input:focus {
+  outline: none;
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+/* --- Location picker (edit mode) ------------------------------------ */
+
+.profile-overview__location-input {
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border-hover);
+  border-radius: 6px;
+  padding: 6px 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.profile-overview__location-input:focus {
+  outline: none;
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+.profile-overview__location--editing .profile-overview__location-map {
+  /* Pinpointing only works when the map is dragging-capable; mark the
+     map area visually as an interactive picker. */
+  border-color: var(--border-hover);
+}

@@ -17,15 +17,24 @@ export interface ProfileDrafts {
   website: string
   // Org-only fields. All strings here are stored verbatim — the save
   // handler is responsible for trimming and dropping empty values.
-  /** Free-form location string. */
-  location: string
+
+  // Location is decomposed into a free-text name plus optional
+  // coordinates. The picker UI lets the user set either or both; the
+  // save handler picks the right serialised shape (object when coords
+  // are present, plain string otherwise).
+  locationName: string
+  locationLat: number | null
+  locationLng: number | null
+
   /** ISO date string (yyyy-mm-dd) or year-only (yyyy). The handler
    *  normalises to a full ISO datetime before writing. */
   foundedDate: string
-  /** Org type label (e.g. "non-profit", "company"). Stored on the
-   *  record as a single string; the reader still accepts the legacy
-   *  string[] shape for backward compatibility. */
-  organizationType: string
+  /** Selected preset org types. Free-form text typed alongside the
+   *  "Other" chip lives in `organizationTypeOther`; the save handler
+   *  concatenates them into the persisted `string[]`. */
+  organizationTypes: string[]
+  /** Free-text value associated with the "Other" chip. */
+  organizationTypeOther: string
   /** Long-form, multi-line description. Separate from the short
    *  `description` field above which mirrors the profile bio. */
   longDescription: string

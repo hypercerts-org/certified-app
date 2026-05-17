@@ -2552,6 +2552,116 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   white-space: pre-wrap;
 }
 
+/* About + side map. Falls back to a single column when no map is set
+   or the viewport is too narrow for the right column to read well. */
+.profile-overview__about-block {
+  display: block;
+}
+
+.profile-overview__about-main {
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .profile-overview__about-block--with-map {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 24px;
+    align-items: start;
+  }
+}
+
+/* Organization type tags (read mode) */
+.profile-overview__types {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profile-overview__type-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.profile-overview__type-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--overlay-weak);
+  border: 1px solid var(--border-subtle);
+  line-height: 1.4;
+}
+
+/* Location column (read + edit). The wrapper handles spacing between
+   the map, the label, and the picker controls. */
+.profile-overview__location {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.profile-overview__location-map {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.profile-overview__location-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  margin: 0;
+}
+
+.profile-overview__location-name svg {
+  flex-shrink: 0;
+  color: var(--fg-muted);
+}
+
+.profile-overview__location-picker-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.profile-overview__location-hint {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.profile-overview__location-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.profile-overview__location-clear:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
 /* ---------- Section heads + digest lists ---------- */
 
 .profile-overview__section-head {

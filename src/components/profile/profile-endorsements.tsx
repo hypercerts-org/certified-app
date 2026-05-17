@@ -431,19 +431,17 @@ function ReceivedCard({
       note={endorsement.note}
       menu={
         viewerIsOwner ? (
-          <div className="profile-endorsements-v2__card-menu">
-            <ResponseMenu
-              awardUri={endorsement.uri}
-              awardCid={endorsement.cid}
-              issuerDisplayName={
-                info?.displayName || info?.handle || endorsement.issuerDid
-              }
-              ownerDid={viewerDid}
-              state={resolve(endorsement.uri).state}
-              allResponses={allResponses}
-              onAfterWrite={onAfterWrite}
-            />
-          </div>
+          <ResponseMenu
+            awardUri={endorsement.uri}
+            awardCid={endorsement.cid}
+            issuerDisplayName={
+              info?.displayName || info?.handle || endorsement.issuerDid
+            }
+            ownerDid={viewerDid}
+            state={resolve(endorsement.uri).state}
+            allResponses={allResponses}
+            onAfterWrite={onAfterWrite}
+          />
         ) : null
       }
     />
@@ -567,24 +565,34 @@ function PersonCard({
             fallbackInitials={initials}
           />
         )}
-        <div className="profile-endorsements-v2__card-meta">
-          <span className="profile-endorsements-v2__card-name">{displayName}</span>
-          {handle ? (
-            <span className="profile-endorsements-v2__card-handle">@{handle}</span>
-          ) : null}
+        <div className="profile-endorsements-v2__card-body">
+          <header className="profile-endorsements-v2__card-id-row">
+            <div className="profile-endorsements-v2__card-names">
+              <span className="profile-endorsements-v2__card-name">
+                {displayName}
+              </span>
+              {handle ? (
+                <span className="profile-endorsements-v2__card-handle">
+                  @{handle}
+                </span>
+              ) : null}
+            </div>
+            <time
+              dateTime={createdAt}
+              className="profile-endorsements-v2__card-date"
+              title={new Date(createdAt).toLocaleString()}
+            >
+              {formatShortDate(createdAt)}
+            </time>
+          </header>
           {note ? (
-            <span className="profile-endorsements-v2__card-note">{note}</span>
+            <p className="profile-endorsements-v2__card-note">{note}</p>
           ) : null}
         </div>
       </Link>
-      <time
-        dateTime={createdAt}
-        className="profile-endorsements-v2__card-date"
-        title={new Date(createdAt).toLocaleString()}
-      >
-        {formatShortDate(createdAt)}
-      </time>
-      {menu}
+      {menu ? (
+        <div className="profile-endorsements-v2__card-menu">{menu}</div>
+      ) : null}
     </li>
   )
 }

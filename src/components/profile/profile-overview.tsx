@@ -2,10 +2,12 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ArrowRight, Award } from "lucide-react"
+import { ArrowRight, Award, MapPin, X } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import BannerUpload from "@/components/profile/banner-upload"
+import Map from "@/components/map/map-dynamic"
+import { ORG_TYPE_PRESETS } from "@/lib/groups/org-types"
 import { getInitials } from "@/lib/utils/initials"
 import { useUserGroups } from "@/hooks/use-user-groups"
 import { useReceivedEndorsements, type ReceivedEndorsement } from "@/hooks/use-received-endorsements"
@@ -43,6 +45,15 @@ interface ProfileOverviewProps {
    *  empty — the section is skipped entirely so we don't render a stale
    *  "Not specified" placeholder. */
   orgLongDescription?: string | null
+  /** All org-type tags from the marker (presets + free-text "Other"),
+   *  in canonical display order. Empty array hides the tag row. */
+  orgTypeTags?: string[]
+  /** Free-text location label. Renders below the map (or alone, in the
+   *  sidebar style, when no coords are set). `null` when empty. */
+  orgLocationName?: string | null
+  /** Map coords from the org marker, when the editor placed a pin. The
+   *  overview renders a side-pane map only when this is non-null. */
+  orgLocationCoords?: { lat: number; lng: number } | null
 }
 
 const ACTIVITY_PREVIEW = 3
@@ -69,6 +80,9 @@ export default function ProfileOverview({
   hasPendingBanner = false,
   isOrg = false,
   orgLongDescription = null,
+  orgTypeTags = [],
+  orgLocationName = null,
+  orgLocationCoords = null,
 }: ProfileOverviewProps) {
   const [bannerFailed, setBannerFailed] = useState(false)
   useEffect(() => setBannerFailed(false), [bannerUrl])
@@ -148,38 +162,103 @@ export default function ProfileOverview({
         </div>
       ) : null}
 
-      {isEditing ? (
+      {/* About + side map.
+          Read mode: the right column renders ONLY when the org marker
+          carries coords. In edit mode (orgs only) we always render the
+          right column so admins can place a pin without having to first
+          fill anything in the left column. */}
+      {(() => {
+        const showRightColumn =
+          (isEditing && isOrg) || (!isEditing && !!orgLocationCoords)
+        const aboutCls = showRightColumn
+          ? "profile-overview__about-block profile-overview__about-block--with-map"
+          : "profile-overview__about-block"
+
+        const aboutSection =
+          isEditing ? (
+            <section
+              className="profile-overview__about profile-overview__about--editing"
+              aria-labelledby="profile-overview-about-heading"
+            >
+              <h2
+                id="profile-overview-about-heading"
+                className="profile-overview__section-title"
+              >
+                About
+              </h2>
+              <AutoGrowTextarea
+                className="profile-overview__about-textarea"
+                value={drafts?.description ?? ""}
+                maxLength={256}
+                placeholder="A short description of you and your work."
+                aria-label="About"
+                onChange={(value) => onDraftChange?.("description", value)}
+              />
+            </section>
+          ) : profile?.description ? (
+            <section
+              className="profile-overview__about"
+              aria-labelledby="profile-overview-about-heading"
+            >
+              <h2
+                id="profile-overview-about-heading"
+                className="profile-overview__section-title"
+              >
+                About
+              </h2>
+              <p className="profile-overview__about-body">{profile.description}</p>
+            </section>
+          ) : null
+
+        const mapColumn = showRightColumn ? (
+          isEditing ? (
+            <LocationPickerColumn
+              name={drafts?.locationName ?? ""}
+              lat={drafts?.locationLat ?? null}
+              lng={drafts?.locationLng ?? null}
+              onDraftChange={onDraftChange}
+            />
+          ) : orgLocationCoords ? (
+            <LocationReadColumn
+              name={orgLocationName}
+              coords={orgLocationCoords}
+            />
+          ) : null
+        ) : null
+
+        // Nothing to render at all (no About, no right column) — skip
+        // the wrapper entirely so we don't leave a blank grid row.
+        if (!aboutSection && !mapColumn) return null
+
+        return (
+          <div className={aboutCls}>
+            <div className="profile-overview__about-main">{aboutSection}</div>
+            {mapColumn}
+          </div>
+        )
+      })()}
+
+      {/* Org-only organization-type chips. Renders below the About section
+          (in read mode) or as a multi-select editor (edit mode). Hidden
+          for non-orgs and for empty arrays in read mode. */}
+      {isEditing && isOrg ? (
+        <OrgTypePickerSection
+          selected={drafts?.organizationTypes ?? []}
+          other={drafts?.organizationTypeOther ?? ""}
+          onDraftChange={onDraftChange}
+        />
+      ) : isOrg && orgTypeTags.length > 0 ? (
         <section
-          className="profile-overview__about profile-overview__about--editing"
-          aria-labelledby="profile-overview-about-heading"
+          className="profile-overview__types"
+          aria-label="Organization type"
         >
-          <h2
-            id="profile-overview-about-heading"
-            className="profile-overview__section-title"
-          >
-            About
-          </h2>
-          <AutoGrowTextarea
-            className="profile-overview__about-textarea"
-            value={drafts?.description ?? ""}
-            maxLength={256}
-            placeholder="A short description of you and your work."
-            aria-label="About"
-            onChange={(value) => onDraftChange?.("description", value)}
-          />
-        </section>
-      ) : profile?.description ? (
-        <section
-          className="profile-overview__about"
-          aria-labelledby="profile-overview-about-heading"
-        >
-          <h2
-            id="profile-overview-about-heading"
-            className="profile-overview__section-title"
-          >
-            About
-          </h2>
-          <p className="profile-overview__about-body">{profile.description}</p>
+          <ul className="profile-overview__type-tags">
+            {orgTypeTags.map((tag) => (
+              <li key={tag} className="profile-overview__type-tag">
+                {tag}
+              </li>
+            ))}
+          </ul>
         </section>
       ) : null}
 
@@ -465,6 +544,204 @@ function EndorsementPreviewRow({ endorsement }: EndorsementPreviewRowProps) {
         ) : null}
       </Link>
     </li>
+  )
+}
+
+// ---------- Org type picker (edit mode) -----------------------------
+
+interface OrgTypePickerSectionProps {
+  selected: string[]
+  other: string
+  onDraftChange?: <K extends keyof ProfileDrafts>(
+    key: K,
+    value: ProfileDrafts[K],
+  ) => void
+}
+
+/**
+ * Inline editor for `organizationType`. Renders the canonical presets
+ * as toggleable chips and an "Other" chip that, when active, reveals a
+ * free-text input. Save-side merges the active presets with the trimmed
+ * "Other" value into the persisted `string[]`.
+ */
+function OrgTypePickerSection({
+  selected,
+  other,
+  onDraftChange,
+}: OrgTypePickerSectionProps) {
+  const otherActive = other.length > 0
+  const toggle = (preset: string) => {
+    const next = selected.includes(preset)
+      ? selected.filter((p) => p !== preset)
+      : [...selected, preset]
+    onDraftChange?.("organizationTypes", next)
+  }
+  const toggleOther = () => {
+    // Clearing "Other" zeroes the text input; activating it gives the
+    // user a focusable empty input (filled below the chip strip).
+    onDraftChange?.("organizationTypeOther", otherActive ? "" : " ")
+  }
+  return (
+    <section
+      className="profile-overview__types profile-overview__types--editing"
+      aria-labelledby="profile-overview-type-heading"
+    >
+      <h2
+        id="profile-overview-type-heading"
+        className="profile-overview__section-title"
+      >
+        Organization type
+      </h2>
+      <ul className="profile-overview__type-chip-list" role="group">
+        {ORG_TYPE_PRESETS.map((preset) => {
+          const active = selected.includes(preset)
+          return (
+            <li key={preset}>
+              <button
+                type="button"
+                className={
+                  "profile-overview__type-chip" +
+                  (active ? " profile-overview__type-chip--active" : "")
+                }
+                aria-pressed={active}
+                onClick={() => toggle(preset)}
+              >
+                {preset}
+              </button>
+            </li>
+          )
+        })}
+        <li>
+          <button
+            type="button"
+            className={
+              "profile-overview__type-chip" +
+              (otherActive ? " profile-overview__type-chip--active" : "")
+            }
+            aria-pressed={otherActive}
+            onClick={toggleOther}
+          >
+            Other
+          </button>
+        </li>
+      </ul>
+      {otherActive ? (
+        <input
+          type="text"
+          className="profile-overview__type-other-input"
+          value={other.trimStart()}
+          maxLength={128}
+          placeholder="Custom organization type"
+          aria-label="Custom organization type"
+          onChange={(e) =>
+            onDraftChange?.("organizationTypeOther", e.target.value)
+          }
+        />
+      ) : null}
+    </section>
+  )
+}
+
+// ---------- Location read column ------------------------------------
+
+interface LocationReadColumnProps {
+  name: string | null
+  coords: { lat: number; lng: number }
+}
+
+function LocationReadColumn({ name, coords }: LocationReadColumnProps) {
+  return (
+    <aside className="profile-overview__location" aria-label="Location">
+      <div className="profile-overview__location-map">
+        <Map
+          pins={[{ lat: coords.lat, lng: coords.lng, label: name ?? undefined }]}
+          center={coords}
+          zoom={6}
+          height={220}
+          interactive={false}
+        />
+      </div>
+      {name ? (
+        <p className="profile-overview__location-name">
+          <MapPin size={14} strokeWidth={1.75} aria-hidden />
+          <span>{name}</span>
+        </p>
+      ) : null}
+    </aside>
+  )
+}
+
+// ---------- Location picker (edit mode) -----------------------------
+
+interface LocationPickerColumnProps {
+  name: string
+  lat: number | null
+  lng: number | null
+  onDraftChange?: <K extends keyof ProfileDrafts>(
+    key: K,
+    value: ProfileDrafts[K],
+  ) => void
+}
+
+function LocationPickerColumn({
+  name,
+  lat,
+  lng,
+  onDraftChange,
+}: LocationPickerColumnProps) {
+  const hasPin = lat !== null && lng !== null
+  const pins = hasPin ? [{ lat: lat as number, lng: lng as number }] : []
+  const center = hasPin
+    ? { lat: lat as number, lng: lng as number }
+    : { lat: 20, lng: 0 }
+  const zoom = hasPin ? 6 : 1
+  return (
+    <aside
+      className="profile-overview__location profile-overview__location--editing"
+      aria-label="Location"
+    >
+      <input
+        type="text"
+        className="profile-overview__location-input"
+        value={name}
+        maxLength={128}
+        placeholder="Location name (e.g. Berlin, Germany)"
+        aria-label="Location name"
+        onChange={(e) => onDraftChange?.("locationName", e.target.value)}
+      />
+      <div className="profile-overview__location-map">
+        <Map
+          pins={pins}
+          center={center}
+          zoom={zoom}
+          height={220}
+          onMapClick={(latlng) => {
+            onDraftChange?.("locationLat", latlng.lat)
+            onDraftChange?.("locationLng", latlng.lng)
+          }}
+        />
+      </div>
+      <div className="profile-overview__location-picker-row">
+        <p className="profile-overview__location-hint">
+          {hasPin
+            ? "Click anywhere on the map to move the pin."
+            : "Click on the map to place a pin."}
+        </p>
+        {hasPin ? (
+          <button
+            type="button"
+            className="profile-overview__location-clear"
+            onClick={() => {
+              onDraftChange?.("locationLat", null)
+              onDraftChange?.("locationLng", null)
+            }}
+          >
+            <X size={13} strokeWidth={1.75} aria-hidden />
+            Clear pin
+          </button>
+        ) : null}
+      </div>
+    </aside>
   )
 }
 

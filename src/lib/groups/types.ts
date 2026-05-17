@@ -34,11 +34,17 @@ export interface GroupMetadata {
    *  still carry the array form. */
   organizationType?: string | string[]
   urls?: OrgUrlItem[]
-  /** Free-form location string. The original lexicon shape was a
-   *  `{ uri, cid }` ref to a separate location record; the inline-edit
-   *  flow writes a plain string. Both shapes round-trip cleanly through
-   *  the reader. */
-  location?: string | { uri: string; cid: string }
+  /** Location for the org. Three accepted shapes (all round-trip cleanly
+   *  through the reader):
+   *   - `string`             — free-text name only (no map pin)
+   *   - `{ uri, cid }`       — legacy strong-ref to a separate record
+   *   - `{ name?, lat, lng }` — coordinates picked on the map; renders
+   *                            as a pin in the overview's right column
+   */
+  location?:
+    | string
+    | { uri: string; cid: string }
+    | { name?: string; lat: number; lng: number }
   foundedDate?: string
   /** Long-form description (multi-line). Separate from the short
    *  `description` field on the profile record. */

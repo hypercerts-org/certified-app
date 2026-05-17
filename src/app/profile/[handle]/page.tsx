@@ -36,6 +36,7 @@ import {
   newDraftUrlRow,
   type ProfileDrafts,
 } from "@/components/profile/profile-inline-edit-types"
+import { ORG_TYPE_PRESETS } from "@/lib/groups/org-types"
 
 type TabKey =
   | "overview"
@@ -61,32 +62,61 @@ const TABS: { key: TabKey; label: string }[] = [
 // --- Read helpers for org-marker fields with looser legacy shapes -----
 
 /**
- * Coerce the record's `organizationType` (which may be a legacy `string[]`
- * or the new plain string) into a single human-readable string. Returns
- * `null` when the value is missing or empty so callers can skip the row.
+ * Coerce the record's `organizationType` into the editor's two-bucket
+ * shape: `presets` is the intersection with `ORG_TYPE_PRESETS`,
+ * `other` collects everything else (typically one free-text value
+ * typed into the "Other" chip).
  */
-function readableOrgType(v: unknown): string | null {
-  if (typeof v === "string" && v.trim().length > 0) return v.trim()
-  if (Array.isArray(v)) {
-    const first = v.find((x) => typeof x === "string" && x.trim().length > 0)
-    return typeof first === "string" ? first.trim() : null
+function parseOrgTypes(v: unknown): { presets: string[]; other: string } {
+  const items: string[] = []
+  if (typeof v === "string" && v.trim().length > 0) items.push(v.trim())
+  else if (Array.isArray(v)) {
+    for (const x of v) {
+      if (typeof x === "string" && x.trim().length > 0) items.push(x.trim())
+    }
   }
-  return null
+  const presetSet = new Set<string>(ORG_TYPE_PRESETS as readonly string[])
+  const presets = items.filter((x) => presetSet.has(x))
+  const otherItems = items.filter((x) => !presetSet.has(x))
+  return { presets, other: otherItems.join(", ") }
+}
+
+/** All org-type tags to show in read mode, in canonical preset order
+ *  followed by any free-text "other" entries. */
+function readableOrgTypeTags(v: unknown): string[] {
+  const { presets, other } = parseOrgTypes(v)
+  const otherTags = other ? other.split(",").map((s) => s.trim()).filter(Boolean) : []
+  // Re-order presets to match the canonical preset order.
+  const orderedPresets = ORG_TYPE_PRESETS.filter((p) => presets.includes(p))
+  return [...orderedPresets, ...otherTags]
+}
+
+export interface ParsedLocation {
+  name: string | null
+  coords: { lat: number; lng: number } | null
 }
 
 /**
- * Coerce the record's `location` (which may be the legacy `{uri, cid}`
- * ref or the new plain string) into a human-readable string. Returns
- * `null` when the value is missing.
+ * Coerce the record's `location` (any of the three accepted shapes — see
+ * `GroupMetadata.location`) into the editor / display shape.
  */
-function readableLocation(v: unknown): string | null {
-  if (typeof v === "string" && v.trim().length > 0) return v.trim()
-  // Legacy ref shape — surface the URI as best-effort fallback.
-  if (v && typeof v === "object" && "uri" in v) {
-    const uri = (v as { uri?: unknown }).uri
-    if (typeof uri === "string" && uri.length > 0) return uri
+function parseLocation(v: unknown): ParsedLocation {
+  if (typeof v === "string" && v.trim().length > 0) {
+    return { name: v.trim(), coords: null }
   }
-  return null
+  if (v && typeof v === "object") {
+    const obj = v as Record<string, unknown>
+    if (typeof obj.lat === "number" && typeof obj.lng === "number") {
+      const name = typeof obj.name === "string" && obj.name.trim().length > 0
+        ? obj.name.trim()
+        : null
+      return { name, coords: { lat: obj.lat, lng: obj.lng } }
+    }
+    if (typeof obj.uri === "string" && obj.uri.length > 0) {
+      return { name: obj.uri, coords: null }
+    }
+  }
+  return { name: null, coords: null }
 }
 
 /**
@@ -210,9 +240,12 @@ export default function UserProfilePage() {
     displayName: "",
     description: "",
     website: "",
-    location: "",
+    locationName: "",
+    locationLat: null,
+    locationLng: null,
     foundedDate: "",
-    organizationType: "",
+    organizationTypes: [],
+    organizationTypeOther: "",
     longDescription: "",
     additionalUrls: [],
   })
@@ -247,8 +280,8 @@ export default function UserProfilePage() {
   // Read-only displayable forms of the org-only marker fields. Each
   // returns `null` when the field is absent so the sidebar / overview
   // can skip rendering the row entirely (no "Not specified" placeholders).
-  const displayOrgType = readableOrgType(effectiveOrgMarker?.organizationType)
-  const displayLocation = readableLocation(effectiveOrgMarker?.location)
+  const displayOrgTypeTags = readableOrgTypeTags(effectiveOrgMarker?.organizationType)
+  const displayLocation = parseLocation(effectiveOrgMarker?.location)
   const displayFoundedDate = readableFoundedDate(effectiveOrgMarker?.foundedDate)
   const displayLongDescription = effectiveOrgMarker?.longDescription?.trim() || null
   // Memoised so the array reference is stable when no inputs changed —
@@ -264,6 +297,8 @@ export default function UserProfilePage() {
 
   const handleEditClick = useCallback(() => {
     if (!effectiveProfile) return
+    const parsedLoc = parseLocation(effectiveOrgMarker?.location)
+    const parsedTypes = parseOrgTypes(effectiveOrgMarker?.organizationType)
     setDrafts({
       displayName: effectiveProfile.displayName ?? "",
       description: effectiveProfile.description ?? "",
@@ -272,9 +307,12 @@ export default function UserProfilePage() {
       // strings / an empty array, which the editor renders as blank
       // inputs. The save handler skips writing the marker entirely
       // when `isOrg` is false (see handleSave below).
-      location: readableLocation(effectiveOrgMarker?.location) ?? "",
+      locationName: parsedLoc.name ?? "",
+      locationLat: parsedLoc.coords?.lat ?? null,
+      locationLng: parsedLoc.coords?.lng ?? null,
       foundedDate: toDateInputValue(effectiveOrgMarker?.foundedDate),
-      organizationType: readableOrgType(effectiveOrgMarker?.organizationType) ?? "",
+      organizationTypes: parsedTypes.presets,
+      organizationTypeOther: parsedTypes.other,
       longDescription: effectiveOrgMarker?.longDescription ?? "",
       additionalUrls:
         effectiveOrgUrls.length > 0
@@ -392,16 +430,45 @@ export default function UserProfilePage() {
           })
           .filter((u): u is OrgUrlItem => u !== null)
 
+        // Combine preset chips with the free-text "Other" entry into a
+        // single array. The editor enforces uniqueness within each
+        // bucket but not across, so we dedupe defensively here.
+        const otherTokens = drafts.organizationTypeOther
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0)
+        const orgTypeArray = Array.from(
+          new Set<string>([...drafts.organizationTypes, ...otherTokens]),
+        )
+
+        // Pick the right serialised shape for `location`: object form
+        // when a map pin is set (coords drive the right-column map),
+        // plain string when only a free-text name was entered, and
+        // `undefined` (= clear) when both are empty.
+        let locationValue: GroupMetadata["location"] | undefined
+        const trimmedName = drafts.locationName.trim()
+        if (drafts.locationLat !== null && drafts.locationLng !== null) {
+          locationValue = {
+            lat: drafts.locationLat,
+            lng: drafts.locationLng,
+            ...(trimmedName ? { name: trimmedName } : {}),
+          }
+        } else if (trimmedName) {
+          locationValue = trimmedName
+        } else {
+          locationValue = undefined
+        }
+
         // Build the new marker. We use a fresh object so old, no-longer-
         // edited fields (e.g. fields the editor doesn't surface) are
         // preserved verbatim from the base.
         nextMarker = {
           ...markerBase,
-          // Empty strings collapse to `undefined` so the BFF allowlist
-          // (which only copies defined fields) clears them when written.
-          // The XRPC path also drops `undefined` via JSON.stringify.
-          organizationType: drafts.organizationType.trim() || undefined,
-          location: drafts.location.trim() || undefined,
+          // Empty arrays/strings collapse to `undefined` so the BFF
+          // allowlist (which only copies defined fields) clears them when
+          // written. The XRPC path also drops `undefined` via JSON.stringify.
+          organizationType: orgTypeArray.length > 0 ? orgTypeArray : undefined,
+          location: locationValue,
           foundedDate: fromDateInputValue(drafts.foundedDate),
           longDescription: drafts.longDescription.trim() || undefined,
           urls: urls.length > 0 ? urls : undefined,
@@ -579,9 +646,7 @@ export default function UserProfilePage() {
           settingsHref={settingsHref}
           isOrg={sidebarIsOrg}
           additionalUrls={effectiveAdditionalUrls}
-          orgLocation={displayLocation}
           orgFoundedDate={displayFoundedDate}
-          orgType={displayOrgType}
           groupsOverride={isOwnProfile ? groups : undefined}
           groupsLoadingOverride={isOwnProfile ? orgGroupsLoading : undefined}
           canInlineEdit={canEditInline}
@@ -612,6 +677,9 @@ export default function UserProfilePage() {
                 hasPendingBanner={!!pendingBannerBlob}
                 isOrg={sidebarIsOrg}
                 orgLongDescription={displayLongDescription}
+                orgTypeTags={displayOrgTypeTags}
+                orgLocationName={displayLocation.name}
+                orgLocationCoords={displayLocation.coords}
               />
             </div>
           )}
