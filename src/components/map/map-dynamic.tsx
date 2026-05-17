@@ -17,4 +17,4 @@ const Map = dynamic<MapProps>(() => import("./map"), {
 })
 
 export default Map
-export type { MapProps, MapPin } from "./map"
+export type { MapProps, MapPin, MapPolygon } from "./map"

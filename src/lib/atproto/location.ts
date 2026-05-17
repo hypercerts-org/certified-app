@@ -83,6 +83,122 @@ export function parseLocationCoords(
   }
 }
 
+// ----- Polygon support -----
+// Some location records store an actual region (the lexicon allows
+// `geojson-polygon` as a `locationType`). Pins don't represent those
+// well, so we expose both shapes and let the renderer decide. Callers
+// that only want a single point keep using `parseLocationCoords`.
+
+export interface PointShape {
+  kind: "point"
+  point: LatLng
+}
+
+export interface PolygonShape {
+  kind: "polygon"
+  /** Outer ring first, then any inner-hole rings — same convention
+   *  as GeoJSON. Each ring is a list of `LatLng` pairs (we transpose
+   *  from GeoJSON's `[lng, lat]` to our `{lat, lng}` shape). */
+  rings: LatLng[][]
+}
+
+export type LocationShape = PointShape | PolygonShape
+
+/**
+ * Polymorphic location parser — handles every shape the existing
+ * `parseLocationCoords` did, PLUS GeoJSON polygons / multipolygons.
+ * Returns null for unrecognised / malformed inputs.
+ */
+export function parseLocationShape(
+  locationType: string | undefined,
+  location: unknown,
+): LocationShape | null {
+  const str = extractLocationString(location)
+  if (!str) return null
+  const type = (locationType || "").toLowerCase()
+
+  try {
+    if (type === "coordinate-decimal") {
+      const parts = str.split(/\s*,\s*/).map(parseFloat)
+      if (parts.length < 2 || parts.some(Number.isNaN)) return null
+      const p = validCoord({ lat: parts[0], lng: parts[1] })
+      return p ? { kind: "point", point: p } : null
+    }
+
+    if (type === "geojson-point" || type === "geojson" || type === "geojson-polygon") {
+      const parsed = JSON.parse(str) as unknown
+      const p = geoJsonToLatLng(parsed)
+      if (p) return { kind: "point", point: p }
+      const rings = geoJsonToPolygonRings(parsed)
+      if (rings) return { kind: "polygon", rings }
+      return null
+    }
+
+    if (type === "wkt") {
+      const m = str.match(/POINT\s*\(\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*\)/i)
+      if (!m) return null
+      const p = validCoord({ lat: parseFloat(m[2]), lng: parseFloat(m[1]) })
+      return p ? { kind: "point", point: p } : null
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
+/** Pull a polygon's rings out of a GeoJSON value. Tolerates the
+ *  Polygon and MultiPolygon types as well as the Feature /
+ *  FeatureCollection envelopes that sometimes wrap them. */
+function geoJsonToPolygonRings(node: unknown): LatLng[][] | null {
+  if (!node || typeof node !== "object") return null
+  const obj = node as Record<string, unknown>
+  const t = obj.type
+
+  if (t === "Feature" && obj.geometry) return geoJsonToPolygonRings(obj.geometry)
+  if (
+    t === "FeatureCollection" &&
+    Array.isArray(obj.features) &&
+    obj.features[0]
+  ) {
+    return geoJsonToPolygonRings(obj.features[0])
+  }
+
+  if (t === "Polygon" && Array.isArray(obj.coordinates)) {
+    return ringsFromCoords(obj.coordinates as unknown[])
+  }
+
+  // MultiPolygon — render only the first polygon. Sufficient for the
+  // overwhelming majority of records (single named region) and
+  // avoids juggling disconnected shapes in the renderer.
+  if (
+    t === "MultiPolygon" &&
+    Array.isArray(obj.coordinates) &&
+    Array.isArray(obj.coordinates[0])
+  ) {
+    return ringsFromCoords(obj.coordinates[0] as unknown[])
+  }
+
+  return null
+}
+
+function ringsFromCoords(rawRings: unknown[]): LatLng[][] | null {
+  const rings: LatLng[][] = []
+  for (const ring of rawRings) {
+    if (!Array.isArray(ring)) return null
+    const points: LatLng[] = []
+    for (const pt of ring) {
+      if (!Array.isArray(pt) || pt.length < 2) return null
+      const [lng, lat] = pt as unknown[]
+      if (typeof lat !== "number" || typeof lng !== "number") return null
+      const v = validCoord({ lat, lng })
+      if (!v) return null
+      points.push(v)
+    }
+    if (points.length >= 3) rings.push(points)
+  }
+  return rings.length > 0 ? rings : null
+}
+
 /** Recursively walk a GeoJSON structure looking for a Point's coordinates. */
 function geoJsonToLatLng(node: unknown): LatLng | null {
   if (!node || typeof node !== "object") return null

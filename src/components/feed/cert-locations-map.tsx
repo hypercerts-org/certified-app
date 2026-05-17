@@ -2,11 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { MapPin } from "lucide-react"
-import Map, { type MapPin as MapPinT } from "@/components/map/map-dynamic"
+import Map, {
+  type MapPin as MapPinT,
+  type MapPolygon as MapPolygonT,
+} from "@/components/map/map-dynamic"
 import { authFetch } from "@/lib/auth/fetch"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import {
-  parseLocationCoords,
+  parseLocationShape,
   locationFallbackText,
   type LocationRecord,
 } from "@/lib/atproto/location"
@@ -20,6 +23,7 @@ interface ResolvedLocation {
   uri: string
   record: LocationRecord | null
   pin: MapPinT | null
+  polygon: MapPolygonT | null
   /** Plain-text fallback for non-coordinate locations (address / H3 etc.). */
   fallback: string | null
 }
@@ -55,10 +59,15 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
 
     Promise.all(
       locations.map(async (loc): Promise<ResolvedLocation> => {
-        const parsed = parseAtUri(loc.uri)
-        if (!parsed) {
-          return { uri: loc.uri, record: null, pin: null, fallback: null }
+        const empty: ResolvedLocation = {
+          uri: loc.uri,
+          record: null,
+          pin: null,
+          polygon: null,
+          fallback: null,
         }
+        const parsed = parseAtUri(loc.uri)
+        if (!parsed) return empty
         const params = new URLSearchParams({
           repo: parsed.did,
           collection: parsed.collection,
@@ -69,29 +78,27 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
             `/api/xrpc/com/atproto/repo/getRecord?${params.toString()}`,
             { signal },
           )
-          if (!res.ok) {
-            return { uri: loc.uri, record: null, pin: null, fallback: null }
-          }
+          if (!res.ok) return empty
           const data = (await res.json()) as { value?: LocationRecord }
           const record = data.value ?? null
-          if (!record) {
-            return { uri: loc.uri, record: null, pin: null, fallback: null }
-          }
-          const coords = parseLocationCoords(
-            record.locationType,
-            record.location,
-          )
-          const fallback = coords
-            ? null
-            : locationFallbackText(record.locationType, record.location)
+          if (!record) return empty
+          const shape = parseLocationShape(record.locationType, record.location)
           const name =
-            record.name?.trim() || (coords ? "Location" : "Unnamed location")
-          const pin: MapPinT | null = coords
-            ? { lat: coords.lat, lng: coords.lng, label: name }
-            : null
-          return { uri: loc.uri, record, pin, fallback }
+            record.name?.trim() || (shape ? "Location" : "Unnamed location")
+          let pin: MapPinT | null = null
+          let polygon: MapPolygonT | null = null
+          if (shape?.kind === "point") {
+            pin = { lat: shape.point.lat, lng: shape.point.lng, label: name }
+          } else if (shape?.kind === "polygon") {
+            polygon = { rings: shape.rings, label: name }
+          }
+          const fallback =
+            shape === null
+              ? locationFallbackText(record.locationType, record.location)
+              : null
+          return { uri: loc.uri, record, pin, polygon, fallback }
         } catch {
-          return { uri: loc.uri, record: null, pin: null, fallback: null }
+          return empty
         }
       }),
     )
@@ -111,8 +118,15 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
     () => resolved.flatMap((r) => (r.pin ? [r.pin] : [])),
     [resolved],
   )
+  const polygons = useMemo(
+    () => resolved.flatMap((r) => (r.polygon ? [r.polygon] : [])),
+    [resolved],
+  )
 
-  const unmappable = resolved.filter((r) => !r.pin && r.record)
+  const unmappable = resolved.filter(
+    (r) => !r.pin && !r.polygon && r.record,
+  )
+  const hasShapes = pins.length > 0 || polygons.length > 0
 
   if (locations.length === 0) return null
 
@@ -127,9 +141,14 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
 
   return (
     <div className="cert-detail__map-wrap">
-      {pins.length > 0 ? (
+      {hasShapes ? (
         <div className="cert-detail__map">
-          <Map pins={pins} zoom={pins.length === 1 ? 12 : 4} height={320} />
+          <Map
+            pins={pins}
+            polygons={polygons}
+            zoom={pins.length + polygons.length === 1 ? 8 : 4}
+            height={320}
+          />
         </div>
       ) : (
         <div className="cert-detail__map cert-detail__map--empty">
