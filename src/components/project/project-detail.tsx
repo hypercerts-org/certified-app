@@ -1,17 +1,22 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { FolderGit2 } from "lucide-react"
+import Link from "next/link"
+import { Award, FolderGit2 } from "lucide-react"
 import ActivityAuthor from "@/components/feed/activity-author"
-import ActivityCard from "@/components/feed/activity-card"
 import ActivityContributor from "@/components/feed/activity-contributor"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { useProjectItems } from "@/hooks/use-project-items"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
+import {
+  activityDetailHref,
+  parseActivityUri,
+} from "@/lib/atproto/activity-uri"
 import { formatShortDate } from "@/lib/utils/format-date"
 import type { CollectionValue } from "@/lib/atproto/collection"
 import type {
   ActivityContributor as ActivityContributorType,
+  ActivityRecord,
 } from "@/lib/atproto/activity-types"
 
 interface ProjectDetailProps {
@@ -72,12 +77,90 @@ function contributionRoleText(details: unknown): string | null {
 }
 
 /**
+ * Compact single-row representation of a cert that belongs to this
+ * project. Deliberately not `<ActivityCard>` — we want a denser, more
+ * secondary visual treatment so the project hero/description above
+ * stays dominant. Pattern is close to a GitHub repo file row or a
+ * Behance "more from this project" thumbnail.
+ */
+function ProjectCertRow({
+  record,
+  did,
+}: {
+  record: ActivityRecord
+  did: string
+}) {
+  const { value } = record
+  const imageUrl = value.image
+    ? resolveActivityImageUrl(value.image, did)
+    : null
+  const [imageFailed, setImageFailed] = useState(false)
+
+  const parsed = parseActivityUri(record.uri)
+  const href = parsed ? activityDetailHref(parsed.did, parsed.rkey) : null
+
+  const inner = (
+    <>
+      {imageUrl && !imageFailed ? (
+        <span className="project-cert-row__thumb">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            className="project-cert-row__thumb-img"
+            src={imageUrl}
+            alt=""
+            loading="lazy"
+            onError={() => setImageFailed(true)}
+          />
+        </span>
+      ) : (
+        <span
+          className="project-cert-row__thumb project-cert-row__thumb--placeholder"
+          aria-hidden="true"
+        >
+          <Award size={20} strokeWidth={1.5} />
+        </span>
+      )}
+
+      <span className="project-cert-row__text">
+        <span className="project-cert-row__title">{value.title}</span>
+        {value.shortDescription ? (
+          <span className="project-cert-row__desc">
+            {value.shortDescription}
+          </span>
+        ) : null}
+      </span>
+    </>
+  )
+
+  return (
+    <li className="project-cert-row-item">
+      {href ? (
+        <Link href={href} className="project-cert-row">
+          {inner}
+        </Link>
+      ) : (
+        <span className="project-cert-row project-cert-row--static">
+          {inner}
+        </span>
+      )}
+    </li>
+  )
+}
+
+/**
  * Detail view for a single `org.hypercerts.collection` project record.
  *
- * Layout: hero image + headline + items grid on the left, sidebar with
- * dates / contributors metadata on the right. Items render as the
- * regular `ActivityCard` so the visual treatment matches the Certs
- * tab and the cert detail page.
+ * Layout reads top-down like a GitHub repo README or a Behance project
+ * page: a wide hero banner, then the project's own title and
+ * description take the full reading column. Contributors and dates
+ * live in a small meta strip beneath the description. The certs that
+ * belong to this project render last, as a compact list — small
+ * thumbnail + title + short description per row — so they read as
+ * secondary content rather than competing with the project itself.
+ *
+ * The root carries `project-detail--wide`; `project-detail.css` uses a
+ * `:has()` rule to widen `.app-shell__content` only on this page
+ * (mirroring the cert detail page's opt-in widening).
  */
 export default function ProjectDetail({ did, value }: ProjectDetailProps) {
   const title =
@@ -113,6 +196,9 @@ export default function ProjectDetail({ did, value }: ProjectDetailProps) {
   const endDate = asString(
     (value as Record<string, unknown>).endDate as unknown,
   )
+  const location = asString(
+    (value as Record<string, unknown>).location as unknown,
+  )
 
   const contributors = Array.isArray(
     (value as Record<string, unknown>).contributors,
@@ -132,9 +218,16 @@ export default function ProjectDetail({ did, value }: ProjectDetailProps) {
     timePeriodLabel = `Until ${formatShortDate(endDate)}`
   }
 
+  const certCount = resolutions.length
+  const hasAnyMeta =
+    !!createdAt ||
+    !!timePeriodLabel ||
+    !!location ||
+    contributors.length > 0
+
   return (
-    <article className="project-detail">
-      <header className="project-detail__header">
+    <article className="project-detail project-detail--wide">
+      <header className="project-detail__byline">
         <ActivityAuthor did={did} />
       </header>
 
@@ -154,76 +247,35 @@ export default function ProjectDetail({ did, value }: ProjectDetailProps) {
           aria-hidden="true"
         >
           <FolderGit2
-            size={56}
+            size={72}
             strokeWidth={1.25}
             className="project-detail__hero-placeholder-icon"
           />
         </div>
       )}
 
-      <h1 className="project-detail__title">{title}</h1>
+      <div className="project-detail__head">
+        <h1 className="project-detail__title">{title}</h1>
+        {shortDesc ? (
+          <p className="project-detail__lead">{shortDesc}</p>
+        ) : null}
+      </div>
 
-      {shortDesc ? (
-        <p className="project-detail__short-desc">{shortDesc}</p>
+      {description ? (
+        <div className="project-detail__prose">
+          {description.split(/\n{2,}/).map((para, i) => (
+            <p key={i}>{para}</p>
+          ))}
+        </div>
+      ) : hasRawDescription ? (
+        <details className="project-detail__raw-desc">
+          <summary>Full description</summary>
+          <pre>{JSON.stringify(value.description, null, 2)}</pre>
+        </details>
       ) : null}
 
-      <div className="project-detail__layout">
-        <div className="project-detail__main">
-          {description ? (
-            <section className="project-detail__section">
-              <div className="project-detail__section-header">
-                <h2 className="project-detail__section-title">About</h2>
-              </div>
-              <p className="project-detail__description">{description}</p>
-            </section>
-          ) : hasRawDescription ? (
-            <section className="project-detail__section">
-              <details>
-                <summary>Full description</summary>
-                <pre>{JSON.stringify(value.description, null, 2)}</pre>
-              </details>
-            </section>
-          ) : null}
-
-          <section className="project-detail__section">
-            <div className="project-detail__section-header">
-              <h2 className="project-detail__section-title">Certs</h2>
-              <span className="project-detail__section-count">
-                {resolutions.length}
-              </span>
-            </div>
-
-            {resolutions.length === 0 ? (
-              <p className="project-detail__items-empty">
-                {itemsLoading
-                  ? "Loading certs…"
-                  : "This project doesn't reference any certs yet."}
-              </p>
-            ) : (
-              <ul className="project-detail__items">
-                {resolutions.map((r) => {
-                  if (!r.record || !r.did) {
-                    return (
-                      <li key={r.uri} className="project-detail__items-loading">
-                        <LoadingSpinner size="sm" />
-                      </li>
-                    )
-                  }
-                  return (
-                    <li key={r.uri}>
-                      <ActivityCard record={r.record} did={r.did} />
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </section>
-        </div>
-
-        <aside
-          className="project-detail__sidebar"
-          aria-label="Project details"
-        >
+      {hasAnyMeta ? (
+        <aside className="project-detail__meta" aria-label="Project details">
           {createdAt ? (
             <div className="project-detail__meta-row">
               <span className="project-detail__meta-label">Created</span>
@@ -242,11 +294,16 @@ export default function ProjectDetail({ did, value }: ProjectDetailProps) {
             </div>
           ) : null}
 
-          {contributors.length > 0 ? (
+          {location ? (
             <div className="project-detail__meta-row">
-              <span className="project-detail__meta-label">
-                Contributors
-              </span>
+              <span className="project-detail__meta-label">Location</span>
+              <span className="project-detail__meta-value">{location}</span>
+            </div>
+          ) : null}
+
+          {contributors.length > 0 ? (
+            <div className="project-detail__meta-row project-detail__meta-row--wide">
+              <span className="project-detail__meta-label">Contributors</span>
               <ul className="project-detail__contributors">
                 {contributors.map((c, i) => (
                   <ActivityContributor
@@ -260,7 +317,44 @@ export default function ProjectDetail({ did, value }: ProjectDetailProps) {
             </div>
           ) : null}
         </aside>
-      </div>
+      ) : null}
+
+      <section className="project-detail__certs">
+        <div className="project-detail__certs-header">
+          <h2 className="project-detail__certs-title">Certs in this project</h2>
+          <span className="project-detail__certs-count">{certCount}</span>
+        </div>
+
+        {certCount === 0 ? (
+          <p className="project-detail__certs-empty">
+            {itemsLoading
+              ? "Loading certs…"
+              : "This project doesn't reference any certs yet."}
+          </p>
+        ) : (
+          <ul className="project-cert-list">
+            {resolutions.map((r) => {
+              if (!r.record || !r.did) {
+                return (
+                  <li
+                    key={r.uri}
+                    className="project-cert-row-item project-cert-row-item--loading"
+                  >
+                    <LoadingSpinner size="sm" />
+                  </li>
+                )
+              }
+              return (
+                <ProjectCertRow
+                  key={r.uri}
+                  record={r.record}
+                  did={r.did}
+                />
+              )
+            })}
+          </ul>
+        )}
+      </section>
     </article>
   )
 }
