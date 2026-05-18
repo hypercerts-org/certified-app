@@ -1,0 +1,513 @@
+/* ============================================================
+   Leaflet document — neutral renderer + TipTap editor styles.
+
+   `leaflet-doc__*` styles the read-only walk of a
+   `pub.leaflet.pages.linearDocument` value. `leaflet-editor__*`
+   styles the TipTap editor wrapper, toolbar, and surface.
+
+   Both class namespaces are surface-agnostic by design — the cert
+   detail page, the org profile, and any future caller layer their
+   own positioning / max-width via the wrapper.
+   ============================================================ */
+
+/* ---------- Renderer ---------- */
+
+.leaflet-doc {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--fg-primary);
+}
+
+.leaflet-doc__para {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--fg-secondary);
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.leaflet-doc__heading {
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--fg-primary);
+  margin: 8px 0 0;
+}
+
+.leaflet-doc__heading:first-child {
+  margin-top: 0;
+}
+
+h2.leaflet-doc__heading { font-size: 1.25rem; }
+h3.leaflet-doc__heading { font-size: 1.125rem; }
+h4.leaflet-doc__heading { font-size: 1rem; }
+h5.leaflet-doc__heading,
+h6.leaflet-doc__heading { font-size: 0.9375rem; }
+
+/* Tailwind's preflight resets `list-style: none` and zeroes padding
+   on every `<ul>` / `<ol>` globally. We need to restore the markers
+   explicitly here, scoped to the renderer's list class — otherwise
+   bullet points and numbers disappear on both the read view and
+   inside the editor (which shares the same DOM tree). */
+.leaflet-doc__list {
+  margin: 0;
+  padding-left: 1.4em;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--fg-secondary);
+  list-style-position: outside;
+}
+
+ul.leaflet-doc__list {
+  list-style: disc outside;
+}
+
+ol.leaflet-doc__list {
+  list-style: decimal outside;
+}
+
+.leaflet-doc__list li + li {
+  margin-top: 4px;
+}
+
+.leaflet-doc__list .leaflet-doc__list {
+  margin-top: 4px;
+}
+
+.leaflet-doc__link {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.leaflet-doc__link:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* Image block ----------------------------------------------------- */
+.leaflet-doc__image {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.leaflet-doc__image img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 520px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: var(--bg-sunken);
+}
+
+.leaflet-doc__image--full-bleed img {
+  max-height: none;
+  border-radius: 0;
+}
+
+.leaflet-doc__image-caption {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  text-align: center;
+}
+
+.leaflet-doc__image--placeholder {
+  border: 1.5px dashed var(--border-hover);
+  border-radius: 8px;
+  padding: 24px;
+  color: var(--fg-muted);
+  text-align: center;
+}
+
+.leaflet-doc__image--selected img {
+  outline: 2px solid var(--focus-ring, var(--fg-primary));
+  outline-offset: 2px;
+}
+
+/* Iframe / embed block -------------------------------------------- */
+.leaflet-doc__embed {
+  position: relative;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+}
+
+.leaflet-doc__embed iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.leaflet-doc__embed--selected {
+  outline: 2px solid var(--focus-ring, var(--fg-primary));
+  outline-offset: 2px;
+}
+
+.leaflet-doc__embed--unsupported {
+  background: var(--bg-sunken);
+  color: var(--fg-muted);
+  padding: 24px;
+  text-align: center;
+  word-break: break-all;
+}
+
+.leaflet-doc__embed-fallback {
+  margin: 0;
+  font-size: 0.875rem;
+  word-break: break-all;
+}
+
+/* ---------- Editor ---------- */
+
+.leaflet-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.leaflet-editor__toolbar {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  width: fit-content;
+}
+
+.leaflet-editor__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--fg-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.leaflet-editor__btn:hover:not(:disabled) {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.leaflet-editor__btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.leaflet-editor__btn--active,
+.leaflet-editor__btn--active:hover {
+  background: var(--fg-primary);
+  color: var(--btn-primary-fg, var(--color-white));
+}
+
+.leaflet-editor__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.leaflet-editor__content {
+  border: 1.5px solid var(--border-hover);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  padding: 14px 16px;
+  /* A roomier default — the textarea felt cramped at 96px. The
+     editor still grows as the user types. */
+  min-height: 220px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.leaflet-editor__content:focus-within {
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+.leaflet-editor__surface {
+  outline: none;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--fg-primary);
+}
+
+/* TipTap renders block-level nodes directly inside
+   .leaflet-editor__surface. Mirror the renderer's spacing /
+   typography so what the user sees while editing matches the
+   read-only view. */
+
+.leaflet-editor__surface p {
+  margin: 0;
+  /* Empty paragraphs would otherwise collapse to zero height (the
+     trailing-break placeholder ProseMirror injects has no intrinsic
+     box height once typing begins on a neighbour). Both `min-height`
+     AND a zero-width space pseudo are needed: `min-height` alone
+     stops working as soon as the parent's flex/grid layout decides
+     to shrink the row. The pseudo-content gives the line-box an
+     actual glyph so the line-height kicks in regardless. */
+  min-height: 1.6em;
+}
+
+/* ProseMirror injects `<br class="ProseMirror-trailingBreak">` into
+   every block whose final child isn't a text node — including every
+   empty <p>. That trailing break should already anchor the line box,
+   but browsers don't always honour line-height on a <br> alone. Force
+   it to be a real block element so empty paragraphs always reserve a
+   line of height. */
+.leaflet-editor__surface br.ProseMirror-trailingBreak {
+  display: inline-block;
+  height: 1em;
+  width: 0;
+}
+
+/* Generic block-level gap. Headings get their own larger margins
+   below so we don't double them up. */
+.leaflet-editor__surface > * + *:not(h1):not(h2):not(h3) {
+  margin-top: 10px;
+}
+
+.leaflet-editor__surface h1,
+.leaflet-editor__surface h2,
+.leaflet-editor__surface h3 {
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.leaflet-editor__surface h1 { font-size: 1.5rem; }
+.leaflet-editor__surface h2 { font-size: 1.25rem; }
+.leaflet-editor__surface h3 { font-size: 1.0625rem; }
+
+/* Heading rhythm: more space before a heading than after, so it
+   reads as a section break rather than a free-floating line. The
+   first child has no top margin so the editor doesn't open with a
+   gap at the top. */
+.leaflet-editor__surface > h1 { margin-top: 24px; margin-bottom: 6px; }
+.leaflet-editor__surface > h2 { margin-top: 20px; margin-bottom: 4px; }
+.leaflet-editor__surface > h3 { margin-top: 16px; margin-bottom: 4px; }
+.leaflet-editor__surface > h1:first-child,
+.leaflet-editor__surface > h2:first-child,
+.leaflet-editor__surface > h3:first-child {
+  margin-top: 0;
+}
+
+/* Restore list markers — Tailwind's preflight strips them globally.
+   Scope inside the editor surface (and the renderer's class above)
+   so we don't accidentally re-introduce them site-wide. */
+.leaflet-editor__surface ul,
+.leaflet-editor__surface ol {
+  margin: 0;
+  padding-left: 1.4em;
+}
+
+.leaflet-editor__surface ul {
+  list-style: disc outside;
+}
+
+.leaflet-editor__surface ol {
+  list-style: decimal outside;
+}
+
+.leaflet-editor__surface li + li {
+  margin-top: 4px;
+}
+
+.leaflet-editor__surface a {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* TipTap renders our custom block nodes (image + iframe) at the
+   same level as paragraphs / headings. Use the renderer's existing
+   `.leaflet-doc__image` / `.leaflet-doc__embed` classes via the node
+   views; just make sure they get the same vertical rhythm as other
+   blocks inside the editor surface. */
+.leaflet-editor__surface .leaflet-doc__image,
+.leaflet-editor__surface .leaflet-doc__embed {
+  margin: 0;
+}
+
+.leaflet-editor__image-input {
+  display: none;
+}
+
+.leaflet-editor__error {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: var(--color-error);
+}
+
+/* Placeholder rendered by @tiptap/extension-placeholder. The extension
+   adds `is-empty` to every empty block; we only show the placeholder
+   on the very first paragraph so it doesn't pollute multi-line
+   docs. */
+.leaflet-editor__surface p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--fg-muted);
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+/* ---------- Link dialog ---------- */
+
+.link-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.link-dialog__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+}
+
+.link-dialog__input {
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--fg-primary);
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border-hover);
+  border-radius: 8px;
+  padding: 8px 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.link-dialog__input:focus {
+  outline: none;
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+.link-dialog__hint {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  line-height: 1.4;
+}
+
+.link-dialog__error {
+  font-size: 0.8125rem;
+  color: var(--color-error);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.link-dialog__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.link-dialog__actions-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* ---------- "more" link + long-description modal ---------- */
+
+.profile-overview__more-link {
+  display: inline;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  /* Sit inline with the trailing word of the About paragraph so it
+     reads as natural prose continuation. */
+}
+
+.profile-overview__more-link:hover {
+  text-decoration-thickness: 2px;
+}
+
+.profile-overview__more-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* About tab content — wraps the LeafletDocument render in the
+   profile's main pane. Roomier typography than the inline rendering
+   on the overview since the user came here explicitly to read. */
+.profile-page__about {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.profile-page__about-doc {
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.profile-page__about-doc .leaflet-doc__heading:first-child {
+  margin-top: 0;
+}
+
+/* Wider modal than the signin/confirm/link dialogs because long-form
+   prose needs measure (~65ch). The dialog itself owns the scroll
+   (signin-modal already declares overflow-y: auto + a max-height —
+   adding a second scroll container on the body broke the
+   bottom-right rounded corner when the scrollbar appeared). */
+.long-description-modal {
+  /* 100% (against the dialog's containing block, the viewport when
+     showModal()'d) rather than 100vw — 100vw includes the scrollbar
+     width and would push the dialog past the viewport edge whenever
+     a vertical scrollbar is present (AGENTS.md §11 rule 1). */
+  max-width: min(720px, calc(100% - 32px));
+  /* Match the corner radius the other cards/dialogs in the design
+     system use. 20px on a 720px-wide surface read as too chunky;
+     this brings it in line with the card / dash-card family. */
+  border-radius: 14px;
+}
+
+.long-description-modal__title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.long-description-modal__subtitle {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.long-description-modal__body {
+  /* No inner scroll — the dialog scrolls as a whole, so its rounded
+     corners aren't intersected by an inner scrollbar's square edge. */
+  padding-top: 8px;
+}
+
+.long-description-modal__doc {
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.long-description-modal__doc .leaflet-doc__heading {
+  margin-top: 18px;
+}
+
+.long-description-modal__doc .leaflet-doc__heading:first-child {
+  margin-top: 0;
+}

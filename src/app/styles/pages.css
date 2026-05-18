@@ -771,6 +771,36 @@
   background: rgba(186, 26, 26, 0.06);
 }
 
+/* Bottom Sign-out row: full-width menu item that lives in its own
+   section at the bottom of the dropdown, separated by an
+   `account-switcher__divider` rule above it. */
+.account-switcher__signout-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: var(--fg-secondary);
+  font-family: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: color 0.15s, background 0.15s;
+}
+
+.account-switcher__signout-row:hover {
+  color: var(--color-error);
+  background: rgba(186, 26, 26, 0.06);
+}
+
+.account-switcher__signout-row:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
 /* Bottom sheet (mobile profile switcher) */
 .bottom-sheet__backdrop {
   display: none;

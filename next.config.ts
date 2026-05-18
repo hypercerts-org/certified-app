@@ -33,7 +33,15 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://vercel.live; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https:; frame-src 'self' https://vercel.live; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+            // `frame-src` allowlists the iframe sources we explicitly
+            // support: Vercel's preview comments overlay, the leaflet
+            // linearDocument embed providers (YouTube + Vimeo). Without
+            // these origins listed here, the rendered iframes show
+            // YouTube's "This content is blocked. Contact the site
+            // owner to fix the issue." in-frame message — which is
+            // YouTube itself reacting to being framed from a page
+            // whose CSP forbids it.
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://vercel.live; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https:; frame-src 'self' https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
           },
         ],
       },

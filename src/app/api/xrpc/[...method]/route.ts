@@ -26,6 +26,7 @@ const ALLOWED_WRITE_COLLECTIONS = [
   "app.certified.actor.profile",
   "app.certified.actor.membership",
   "app.certified.actor.organization",
+  "app.certified.location",
   "app.certified.temp.graph.endorsement",
   // Badge lexicons (issue #65 tracks indexer-side support). `definition`
   // is written once per user the first time they endorse; `award` is the
@@ -34,6 +35,10 @@ const ALLOWED_WRITE_COLLECTIONS = [
   "app.certified.badge.definition",
   "app.certified.badge.award",
   "app.certified.badge.response",
+  // Certified social graph — follow records live on the viewer's PDS;
+  // the followers view is served by the magic-indexer via the
+  // `appCertifiedGraphFollow` connection.
+  "app.certified.graph.follow",
   "org.hypercerts.claim.activity",
 ]
 

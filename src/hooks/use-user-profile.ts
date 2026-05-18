@@ -81,8 +81,11 @@ export function useUserProfile(handleOrDid: string | null): {
           handle: string
           displayName?: string
           description?: string
+          pronouns?: string
+          website?: string
           avatar?: string
           banner?: string
+          createdAt?: string
         }
         if (signal.aborted) return
 
@@ -91,7 +94,9 @@ export function useUserProfile(handleOrDid: string | null): {
         setProfile({
           displayName: data.displayName,
           description: data.description,
-          createdAt: new Date(0).toISOString(),
+          pronouns: data.pronouns,
+          website: data.website,
+          createdAt: data.createdAt,
         })
         setAvatarUrl(data.avatar ?? null)
         setBannerUrl(data.banner ?? null)

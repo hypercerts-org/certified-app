@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { listMemberships } from "@/lib/groups/api"
 import { authFetch } from "@/lib/auth/fetch"
 
@@ -8,6 +8,7 @@ export interface UserGroup {
   groupDid: string
   handle: string
   displayName?: string
+  description?: string
   avatarUrl?: string
   role?: string
   joinedAt?: string
@@ -17,6 +18,7 @@ interface ResolvedDid {
   did: string
   handle: string
   displayName?: string
+  description?: string
   avatar?: string
 }
 
@@ -35,10 +37,13 @@ export function useUserGroups(did: string | null): {
   groups: UserGroup[]
   isLoading: boolean
   error: string | null
+  refresh: () => void
 } {
   const [groups, setGroups] = useState<UserGroup[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [nonce, setNonce] = useState(0)
+  const refresh = useCallback(() => setNonce((n) => n + 1), [])
 
   useEffect(() => {
     if (!did) {
@@ -77,6 +82,7 @@ export function useUserGroups(did: string | null): {
                 groupDid: m.groupDid,
                 handle: data.handle || m.groupDid,
                 displayName: data.displayName,
+                description: data.description,
                 avatarUrl: data.avatar,
                 role: m.role,
                 joinedAt: m.joinedAt,
@@ -111,7 +117,7 @@ export function useUserGroups(did: string | null): {
 
     run()
     return () => controller.abort()
-  }, [did])
+  }, [did, nonce])
 
-  return { groups, isLoading, error }
+  return { groups, isLoading, error, refresh }
 }

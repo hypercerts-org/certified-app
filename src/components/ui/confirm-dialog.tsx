@@ -53,7 +53,7 @@ export default function ConfirmDialog({
   return (
     <dialog
       ref={dialogRef}
-      className="signin-modal"
+      className="signin-modal app-modal"
       role="alertdialog"
       aria-label={title}
       onClick={handleBackdropClick}

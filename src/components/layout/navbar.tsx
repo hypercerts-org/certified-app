@@ -26,7 +26,7 @@ const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
 
 const Navbar: React.FC = () => {
   const { isLoading, isAuthenticated, did, openSignIn, signOut } = useAuth();
-  const { pageTitle, profileOverlay } = useNavbarContext();
+  const { pageTitle, breadcrumb, profileOverlay } = useNavbarContext();
   const { profile, avatarUrl } = useProfile();
   const { handle } = useSession();
   const pathname = usePathname();
@@ -246,10 +246,15 @@ const Navbar: React.FC = () => {
   }
 
   // Titled page layout: back button on the left, title in the center, empty right.
-  // Used by any page that calls usePageTitle(...).
-  if (pageTitle) {
+  // Used by any page that calls usePageTitle(...) or usePageTitleBreadcrumb(...).
+  if (pageTitle || breadcrumb) {
+    const ariaLabel = breadcrumb
+      ? breadcrumb.right
+        ? `${breadcrumb.left.text} / ${breadcrumb.right.text}`
+        : breadcrumb.left.text
+      : pageTitle!;
     return (
-      <nav className={navClasses} aria-label={pageTitle}>
+      <nav className={navClasses} aria-label={ariaLabel}>
         <div className="navbar__inner">
           <div className="navbar__left">
             <button
@@ -262,7 +267,23 @@ const Navbar: React.FC = () => {
             </button>
           </div>
           <div className="navbar__title" role="heading" aria-level={1}>
-            {pageTitle}
+            {breadcrumb ? (
+              <>
+                <Link href={breadcrumb.left.href} className="navbar__title-part">
+                  {breadcrumb.left.text}
+                </Link>
+                {breadcrumb.right ? (
+                  <>
+                    <span className="navbar__title-sep" aria-hidden="true"> / </span>
+                    <Link href={breadcrumb.right.href} className="navbar__title-part">
+                      {breadcrumb.right.text}
+                    </Link>
+                  </>
+                ) : null}
+              </>
+            ) : (
+              pageTitle
+            )}
           </div>
           <div className="navbar__right" />
         </div>
@@ -328,6 +349,10 @@ const Navbar: React.FC = () => {
                         router.push(resolvePostSwitchPath(next));
                       }}
                       onSignOut={signOut}
+                      onSwitchAccount={() => {
+                        setSwitcherOpen(false);
+                        openSignIn();
+                      }}
                     />
                   </div>
                 )}
@@ -360,6 +385,10 @@ const Navbar: React.FC = () => {
                         router.push(resolvePostSwitchPath(next));
                       }}
                       onSignOut={signOut}
+                      onSwitchAccount={() => {
+                        setSwitcherOpen(false);
+                        openSignIn();
+                      }}
                     />
                   </div>
                 </div>

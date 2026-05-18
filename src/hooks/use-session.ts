@@ -33,6 +33,18 @@ function fetchSession(): Promise<SessionData> {
   return cachedPromise;
 }
 
+/**
+ * Synchronous read of the cached session handle, if any. Used by the
+ * sign-in flow to stash the old identity's handle before opening the
+ * OAuth modal so the post-signin redirect can rewrite `/profile/<old>`
+ * URLs to the new identity. Returns `null` until `useSession` (or
+ * something else that has hit `/api/xrpc/com/atproto/server/getSession`)
+ * has populated the cache.
+ */
+export function peekSessionHandle(): string | null {
+  return cachedResult?.handle ?? null
+}
+
 export function useSession(): {
   handle: string | null;
   email: string | null;
@@ -57,6 +69,14 @@ export function useSession(): {
     if (!isAuthenticated) {
       cachedPromise = null;
       cachedResult = null;
+      // Without these, long-lived components that mounted while
+      // signed in keep returning the previous user's handle/email
+      // after sign-out — the initial-state expressions at the top
+      // of the hook only gate on `isAuthenticated` for FRESH mounts,
+      // not existing ones.
+      setHandle(null);
+      setEmail(null);
+      setError(null);
       setIsLoading(false);
       return;
     }

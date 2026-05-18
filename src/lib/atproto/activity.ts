@@ -113,6 +113,63 @@ export function workScopeToLabel(value: unknown): string | null {
 }
 
 /**
+ * Best-effort evaluator for the `workScope` CEL expression.
+ *
+ * The lexicon allows three shapes:
+ *   - plain string                                  → return as-is
+ *   - `#workScopeString` { scope: "…" }             → return scope
+ *   - `#workScopeCel`    { expression: "…" }        → evaluate below
+ *
+ * For CEL we only understand a single common idiom today:
+ *
+ *   scope.hasAny(["technology", "policy", …])
+ *
+ * Returned as a comma-separated label `technology, policy`.
+ *
+ * Anything more complex (logical operators, nested calls, `hasAll`,
+ * arithmetic) falls back to the raw expression so the UI still shows
+ * the user something. We deliberately avoid pulling in a full CEL
+ * parser — the bundle cost outweighs the value when only one shape
+ * is in production use. When more shapes appear, extend the regex
+ * matchers below rather than reaching for a parser library.
+ */
+export function evaluateWorkScope(value: unknown): string | null {
+  if (value == null) return null
+  if (typeof value === "string") return tryEvalCelHasAny(value) ?? value
+  if (typeof value !== "object") return null
+
+  const obj = value as Record<string, unknown>
+  if (typeof obj.scope === "string") return obj.scope
+
+  if (typeof obj.expression === "string") {
+    const evaluated = tryEvalCelHasAny(obj.expression)
+    return evaluated ?? obj.expression
+  }
+
+  return null
+}
+
+/** Match `scope.hasAny([...])` and return the inner array as a label. */
+function tryEvalCelHasAny(expression: string): string | null {
+  // We grab the bracketed argument list and then split it into
+  // individual quoted strings. Using `[\s\S]` instead of `.` with the
+  // `s` flag keeps us compatible with tsconfig targets older than
+  // ES2018 (lib.es2018.regexp.d.ts gates the flag).
+  const m = expression.match(/scope\s*\.\s*hasAny\s*\(\s*\[([\s\S]*?)\]\s*\)/)
+  if (!m) return null
+
+  const items: string[] = []
+  // Match single- or double-quoted strings, supporting escapes.
+  const itemRe = /(["'])((?:\\.|(?!\1).)*)\1/g
+  let match: RegExpExecArray | null
+  while ((match = itemRe.exec(m[1])) !== null) {
+    items.push(match[2].replace(/\\(["'\\])/g, "$1"))
+  }
+  if (items.length === 0) return null
+  return items.join(", ")
+}
+
+/**
  * Format an ISO date string as a relative time ("2m ago", "5h ago", "3d ago")
  * or an absolute date ("Jan 15, 2026") for dates older than 7 days.
  */

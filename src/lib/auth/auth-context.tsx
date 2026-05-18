@@ -14,7 +14,11 @@ import { sanitizeEmail, sanitizeHandle } from "@/lib/utils/sanitize";
 import SignInModal from "@/components/ui/sign-in-modal";
 import ProviderRedirectOverlay from "@/components/ui/provider-redirect-overlay";
 import { setOnUnauthorized } from "./fetch";
-import { clearSessionCache } from "@/hooks/use-session";
+import { clearSessionCache, peekSessionHandle } from "@/hooks/use-session";
+import {
+  recordPreSigninLocation,
+  resolvePostSigninPath,
+} from "./post-signin";
 
 /**
  * Validate and navigate to a URL returned by the auth API.
@@ -93,6 +97,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         await refreshSession();
+        // Route the user back to where they were before sign-in. The
+        // `/profile/<old-handle>` segment (if present in the saved
+        // path) gets rewritten to the new identity's DID so the URL
+        // resolves to the new viewer rather than rendering blank
+        // panels (e.g. the settings tab, gated on isViewerThisEntity).
+        const newSub = typeof event.data?.sub === "string" ? event.data.sub : null;
+        const target = resolvePostSigninPath(newSub);
+        if (target && target !== "/") {
+          window.location.assign(target);
+        }
       } catch (err) {
         console.error("Session refresh error:", err);
         setError(
@@ -158,6 +172,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [handleLoginResponse]);
 
   const openSignIn = useCallback(() => {
+    // Stash the current pathname + handle so the post-signin handler
+    // (iframe message OR `/oauth/callback` redirect) can put the user
+    // back where they were instead of dropping them at `/`. Reading
+    // the handle synchronously via the use-session cache avoids
+    // having to thread it through every call site.
+    recordPreSigninLocation(peekSessionHandle());
     setError(null);
     setIsModalOpen(true);
   }, []);

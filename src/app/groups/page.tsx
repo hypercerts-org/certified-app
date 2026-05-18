@@ -251,7 +251,7 @@ export default function GroupsPage() {
 
       {leaveOrg && (
         <div className="signin-modal__backdrop" role="presentation" onClick={() => setLeaveOrg(null)}>
-          <div className="signin-modal" role="dialog" aria-modal="true" aria-label="Leave Group" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+          <div className="signin-modal app-modal" role="dialog" aria-modal="true" aria-label="Leave Group" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
             <div className="signin-modal__header">
               <span className="signin-modal__title">Leave Group</span>
               <button className="signin-modal__close" onClick={() => setLeaveOrg(null)} aria-label="Close">

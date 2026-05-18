@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import {
   listAwards,
   listDefinitions,
+  ENDORSEMENT_BADGE_TITLE,
   ENDORSEMENT_BADGE_TYPE,
   type BadgeAwardRecord,
   type BadgeDefinitionValue,
@@ -22,6 +23,10 @@ export interface GivenEndorsement {
   subjectDid: string
   createdAt: string
   note?: string
+  /** Title of the list this endorsement was awarded under, when it
+   *  belongs to a user-created list rather than the default
+   *  "Endorsement" definition. `undefined` for default endorsements. */
+  listTitle?: string
 }
 
 /**
@@ -71,20 +76,25 @@ export function useGivenEndorsements(did: string | null): {
         ])
         if (signal?.aborted) return
 
-        // Build the set of endorsement-definition URIs owned by this
-        // user. Then filter their awards to only those referencing
-        // one of those definitions. We expect a single endorsement
-        // definition per user, but tolerate more (e.g. if they ever
-        // recreate one).
-        const endorsementDefUris = new Set(
-          defs
-            .filter((d) => isEndorsementDefinition(d.value))
-            .map((d) => d.uri),
-        )
+        // Build a URI → title map of endorsement-typed definitions
+        // owned by this user. The default endorsement def keeps the
+        // reserved title "Endorsement"; anything else with this
+        // badgeType is a user-created list. Attaching the title to
+        // each award lets the UI surface the list name when
+        // rendering Given cards on the endorsements tab.
+        const endorsementDefs = new Map<string, string>()
+        for (const d of defs) {
+          if (isEndorsementDefinition(d.value)) {
+            endorsementDefs.set(d.uri, d.value.title)
+          }
+        }
 
         const mapped = awards
-          .filter((a) => endorsementDefUris.has(a.value.badge?.uri ?? ""))
-          .map(toGiven)
+          .filter((a) => endorsementDefs.has(a.value.badge?.uri ?? ""))
+          .map((award) => {
+            const defTitle = endorsementDefs.get(award.value.badge?.uri ?? "")
+            return toGiven(award, defTitle)
+          })
           .filter((e): e is GivenEndorsement => e !== null)
 
         // Newest first by createdAt — matches the Received view and
@@ -121,9 +131,16 @@ function isEndorsementDefinition(v: BadgeDefinitionValue): boolean {
   return v?.badgeType === ENDORSEMENT_BADGE_TYPE
 }
 
-function toGiven(award: BadgeAwardRecord): GivenEndorsement | null {
+function toGiven(
+  award: BadgeAwardRecord,
+  defTitle: string | undefined,
+): GivenEndorsement | null {
   const subjectDid = extractSubjectDid(award.value.subject)
   if (!subjectDid) return null
+  // Only attach `listTitle` for awards under a user-created list —
+  // the default "Endorsement" def is the implicit fallback, so its
+  // title would be noise on the card.
+  const isList = !!defTitle && defTitle !== ENDORSEMENT_BADGE_TITLE
   return {
     uri: award.uri,
     cid: award.cid,
@@ -131,6 +148,7 @@ function toGiven(award: BadgeAwardRecord): GivenEndorsement | null {
     subjectDid,
     createdAt: award.value.createdAt,
     note: award.value.note,
+    listTitle: isList ? defTitle : undefined,
   }
 }
 

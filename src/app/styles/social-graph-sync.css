@@ -1,0 +1,455 @@
+/* ========== Settings · Sync social graph ==========
+
+   Compares the viewer's Certified follows against their Bluesky
+   follows. Three stat tiles ("Followed on both" / "Only on
+   Certified" / "Only on Bluesky") above a Sync button. The button
+   opens a modal with a two-step flow (choose import-all vs. pick;
+   then a paginated checkboxed selector when the user picks). */
+
+.social-graph-sync {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ---- Stat tiles ---- */
+
+.social-graph-sync__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 600px) {
+  .social-graph-sync__stats {
+    /* Single column on narrow viewports so the labels don't get
+       chopped on small phones. */
+    grid-template-columns: 1fr;
+  }
+}
+
+.social-graph-sync__tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px 14px;
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+}
+
+/* "Only on Bluesky" gets a slightly stronger border when non-zero
+   so the tile signals that there's work for the user to do. */
+.social-graph-sync__tile--highlight {
+  border-color: var(--border-hover);
+  background: var(--overlay-weak);
+}
+
+.social-graph-sync__tile-value {
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.social-graph-sync__tile-label {
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  line-height: 1.3;
+}
+
+/* ---- Status text + actions row ---- */
+
+.social-graph-sync__summary,
+.social-graph-sync__error {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.social-graph-sync__summary {
+  color: var(--fg-muted);
+}
+
+.social-graph-sync__error {
+  color: var(--color-error);
+}
+
+.social-graph-sync__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.social-graph-sync__hint {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  line-height: 1.4;
+}
+
+/* =================== Sync modal — choose + select =================== */
+
+.social-graph-sync__modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.social-graph-sync__modal-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.social-graph-sync__modal-back:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.social-graph-sync__modal-back:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.social-graph-sync__modal-lede {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--fg-primary);
+}
+
+.social-graph-sync__modal-lede strong {
+  font-weight: 600;
+}
+
+.social-graph-sync__modal-choices {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+@media (min-width: 520px) {
+  .social-graph-sync__modal-choices {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.social-graph-sync__modal-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px 14px;
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.social-graph-sync__modal-choice:hover:not(:disabled) {
+  border-color: var(--border-hover);
+  background: var(--overlay-weak);
+}
+
+.social-graph-sync__modal-choice:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.social-graph-sync__modal-choice:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.social-graph-sync__modal-choice-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+}
+
+.social-graph-sync__modal-choice-desc {
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  line-height: 1.4;
+}
+
+.social-graph-sync__modal-error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-error);
+}
+
+.social-graph-sync__modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.social-graph-sync__modal-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+}
+
+/* ---- Search + meta inside the select step ---- */
+
+.social-graph-sync__modal-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+}
+
+.social-graph-sync__modal-search:focus-within {
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+.social-graph-sync__modal-search-icon {
+  color: var(--fg-muted);
+  flex: 0 0 auto;
+}
+
+.social-graph-sync__modal-search-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--fg-primary);
+}
+
+.social-graph-sync__modal-search-input::placeholder {
+  color: var(--fg-muted);
+}
+
+.social-graph-sync__modal-search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.social-graph-sync__modal-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.social-graph-sync__modal-select-page {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.social-graph-sync__modal-select-page:hover:not(:disabled) {
+  color: var(--fg-primary);
+}
+
+.social-graph-sync__modal-select-page:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.social-graph-sync__modal-counter {
+  font-weight: 500;
+  color: var(--fg-secondary);
+}
+
+/* ---- Candidate list ---- */
+
+.social-graph-sync__modal-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+}
+
+.social-graph-sync__modal-row {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.social-graph-sync__modal-row:last-child {
+  border-bottom: none;
+}
+
+.social-graph-sync__modal-row-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.social-graph-sync__modal-row-label:hover {
+  background: var(--overlay-weak);
+}
+
+.social-graph-sync__modal-checkbox {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--fg-primary);
+  cursor: pointer;
+}
+
+.social-graph-sync__modal-avatar-skel {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--overlay-weak);
+  flex: 0 0 auto;
+}
+
+.social-graph-sync__modal-row-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.social-graph-sync__modal-row-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.social-graph-sync__modal-row-handle {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.social-graph-sync__modal-empty {
+  padding: 16px 12px;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  text-align: center;
+  list-style: none;
+}
+
+/* ---- Pagination ---- */
+
+.social-graph-sync__modal-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.social-graph-sync__modal-page-btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--fg-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.social-graph-sync__modal-page-btn:hover:not(:disabled) {
+  background: var(--overlay-weak);
+  border-color: var(--border-hover);
+}
+
+.social-graph-sync__modal-page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.social-graph-sync__modal-page-status {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+/* ---- Result view ---- */
+
+.social-graph-sync__result {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--overlay-weak);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+}
+
+.social-graph-sync__result-icon {
+  color: var(--fg-primary);
+  flex: 0 0 auto;
+}
+
+.social-graph-sync__result-text {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--fg-primary);
+}
+
+.social-graph-sync__result-text strong {
+  font-weight: 600;
+}
+
+.social-graph-sync__result-failed {
+  color: var(--color-error);
+}
+
+.social-graph-sync__result-details {
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+}
+
+.social-graph-sync__result-details summary {
+  cursor: pointer;
+  color: var(--fg-secondary);
+  margin-bottom: 6px;
+}
+
+.social-graph-sync__result-details code {
+  font-size: 0.75rem;
+  word-break: break-all;
+}

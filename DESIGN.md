@@ -211,7 +211,14 @@ All icons from **Lucide React**. Conventions:
 
 ### Modals
 
-**Standard modal** (sign-in, domain): Centered on desktop, full-width on mobile. `bg-elevated`, 1px `border-default`, `shadow-lg`. Entry animation: `modalFadeIn` (backdrop 200ms) + `modalSlideUp` (content 300ms, spring easing). Sign-in modal uses 20px radius — the only intentional exception to the 2px system.
+**Standard sign-in modal** (`.signin-modal` only): Centered on desktop, full-width on mobile. `bg-elevated`, 1px `border-default`, `shadow-lg`. Entry animation: `modalFadeIn` (backdrop 200ms) + `modalSlideUp` (content 300ms, spring easing). 20px radius + 40px hero padding. This shape is **reserved for the sign-in surface** — it's an intentional exception to the 2px system because sign-in is a once-per-session, branded surface.
+
+**App modals** (every other in-app dialog — endorse-people, create-list, sync-social-graph, future): use `<dialog className="signin-modal app-modal …">`. The `.app-modal` modifier inherits the sign-in chrome (backdrop / animation / close button / focus styling) but overrides:
+
+- `border-radius: var(--radius)` (2px — matches cards, dropdowns, inputs).
+- Padding trimmed to `16px 20px 12px` header / `0 20px 20px` body — denser than the sign-in surface, which is right for form-style and list-style modals.
+
+If you're building a new modal that isn't the sign-in flow, **always** add `app-modal` alongside `signin-modal`. Forgetting it makes the dialog read as a chunky sign-in surface and breaks the 2px system everywhere else.
 
 **Bottom sheet** (mobile account switcher, mobile feedback): Fixed to bottom, draggable handle, swipe-down-to-dismiss. `bg-elevated`, top border-radius. Expandable via swipe-up.
 
