@@ -470,7 +470,11 @@ ol.leaflet-doc__list {
    adding a second scroll container on the body broke the
    bottom-right rounded corner when the scrollbar appeared). */
 .long-description-modal {
-  max-width: min(720px, calc(100vw - 32px));
+  /* 100% (against the dialog's containing block, the viewport when
+     showModal()'d) rather than 100vw — 100vw includes the scrollbar
+     width and would push the dialog past the viewport edge whenever
+     a vertical scrollbar is present (AGENTS.md §11 rule 1). */
+  max-width: min(720px, calc(100% - 32px));
   /* Match the corner radius the other cards/dialogs in the design
      system use. 20px on a 720px-wide surface read as too chunky;
      this brings it in line with the card / dash-card family. */

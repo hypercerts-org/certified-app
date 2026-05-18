@@ -418,7 +418,7 @@
 .profile-endorsements-v2__given-revoke:hover {
   background: var(--overlay-weak);
   border-color: var(--border-default);
-  color: var(--danger, #d44);
+  color: var(--color-error);
 }
 
 .profile-endorsements-v2__given-revoke:focus-visible {
@@ -494,7 +494,7 @@
 .profile-endorsements-v2__endorse-error {
   display: block;
   font-size: 0.75rem;
-  color: var(--danger, #d44);
+  color: var(--color-error);
   margin-top: 4px;
 }
 
@@ -769,7 +769,7 @@
 .endorsement-lists__detail-error {
   margin: 0;
   font-size: 0.8125rem;
-  color: var(--danger, #d44);
+  color: var(--color-error);
 }
 
 /* Owner-only help text under the Received toolbar explaining what
@@ -925,7 +925,7 @@
 .endorsement-lists__item-remove:hover {
   background: var(--overlay-weak);
   border-color: var(--border-default);
-  color: var(--danger, #d44);
+  color: var(--color-error);
 }
 
 .endorsement-lists__item-remove:focus-visible {
@@ -996,7 +996,7 @@
 .endorsement-lists__create-error {
   margin: 0 0 12px;
   font-size: 0.8125rem;
-  color: var(--danger, #d44);
+  color: var(--color-error);
 }
 
 .endorsement-lists__create-footer {
@@ -1070,7 +1070,7 @@
 }
 
 .endorse-people-modal__reason-counter--warn {
-  color: var(--danger, #d44);
+  color: var(--color-error);
 }
 
 .endorse-people-modal__body {
@@ -1265,7 +1265,7 @@
 
 .endorse-people-modal__chip-failed {
   font-size: 0.6875rem;
-  color: var(--danger, #d44);
+  color: var(--color-error);
   font-weight: 600;
 }
 
@@ -1300,7 +1300,7 @@
 .endorse-people-modal__error {
   margin: 0;
   font-size: 0.8125rem;
-  color: var(--danger, #d44);
+  color: var(--color-error);
 }
 
 .endorse-people-modal__footer {
@@ -1365,13 +1365,13 @@
 }
 
 .endorse-reason-modal__counter--warn {
-  color: var(--danger, #d44);
+  color: var(--color-error);
 }
 
 .endorse-reason-modal__error {
   margin: 0;
   font-size: 0.8125rem;
-  color: var(--danger, #d44);
+  color: var(--color-error);
 }
 
 .endorse-reason-modal__footer {

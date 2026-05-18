@@ -86,6 +86,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Inline-edit chrome anchors absolute children (Edit pill, the
+     dashed outline below). Kept here rather than in a duplicate
+     rule lower in the file. */
+  position: relative;
 }
 
 .cert-detail__image-img {
@@ -112,10 +116,6 @@
 }
 
 /* Inline-edit chrome ---------------------------------------------- */
-
-.cert-detail__image {
-  position: relative;
-}
 
 .cert-detail__image--editing {
   outline: 1.5px dashed var(--border-hover);

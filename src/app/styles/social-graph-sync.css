@@ -75,7 +75,7 @@
 }
 
 .social-graph-sync__error {
-  color: var(--danger, #d44);
+  color: var(--color-error);
 }
 
 .social-graph-sync__actions {
@@ -191,7 +191,7 @@
 .social-graph-sync__modal-error {
   margin: 0;
   font-size: 0.8125rem;
-  color: var(--danger, #d44);
+  color: var(--color-error);
 }
 
 .social-graph-sync__modal-footer {
@@ -435,7 +435,7 @@
 }
 
 .social-graph-sync__result-failed {
-  color: var(--danger, #d44);
+  color: var(--color-error);
 }
 
 .social-graph-sync__result-details {
