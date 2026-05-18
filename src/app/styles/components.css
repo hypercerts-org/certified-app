@@ -1908,3 +1908,78 @@ dialog.signin-modal.app-modal .signin-modal__body {
   }
 }
 
+/* ==================================================================
+   ImageEditOverlay — shared image-upload pill(s) for record-detail
+   surfaces in inline-edit mode (cert image, project hero). The
+   parent (e.g. `.cert-detail__image`, `.project-detail__hero`)
+   must be `position: relative`. The dashed-outline `--editing`
+   treatment belongs to the parent, not to this overlay.
+   ================================================================== */
+
+.image-edit-overlay {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 1;
+}
+
+.image-edit-overlay__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(17, 17, 17, 0.78);
+  color: var(--color-white);
+  border: none;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.image-edit-overlay__btn:hover {
+  background: rgba(17, 17, 17, 0.92);
+}
+
+.image-edit-overlay__btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.image-edit-overlay__btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Quiet variant — same shape as the primary pill but a brighter,
+   lower-contrast surface. Mirrors the `.profile-banner-upload__btn
+   --ghost` pattern. */
+.image-edit-overlay__btn--ghost {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--fg-primary);
+}
+
+.image-edit-overlay__btn--ghost:hover {
+  background: var(--color-white);
+}
+
+/* Visually-hidden file input. `tabIndex={-1}` keeps it out of the
+   tab order so the only keyboard-reachable affordance is the
+   Change pill. */
+.image-edit-overlay__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+

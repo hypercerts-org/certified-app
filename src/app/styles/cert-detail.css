@@ -122,38 +122,10 @@
   outline-offset: -2px;
 }
 
-/* Floating Camera pill for cert image upload. Mirrors the
-   `.profile-sidebar__avatar-edit-btn` / `.profile-banner-upload__btn`
-   visual treatment used by other upload affordances. */
-.cert-detail__image-edit-btn {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(17, 17, 17, 0.78);
-  color: var(--color-white);
-  border: none;
-  border-radius: 999px;
-  padding: 6px 12px;
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.75rem;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: background var(--transition-fast);
-  z-index: 1;
-}
-
-.cert-detail__image-edit-btn:hover {
-  background: rgba(17, 17, 17, 0.92);
-}
-
-.cert-detail__image-edit-btn:disabled {
-  cursor: progress;
-  opacity: 0.9;
-}
+/* Cert image upload pill now lives in the shared
+   `<ImageEditOverlay>` component (`src/components/feed/image-edit-
+   overlay.tsx`); styles are at `.image-edit-overlay__*` in
+   components.css. The cert callsite uses the `single` variant. */
 
 /* Title and short-description inputs replace the static h1 / p
    while editing. Border treatment matches the profile-page inline

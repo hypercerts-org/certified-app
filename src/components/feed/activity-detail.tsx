@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { Award, Calendar, Camera, FileText, Pencil, Target } from "lucide-react"
+import { Award, Calendar, FileText, Pencil, Target } from "lucide-react"
+import ImageEditOverlay from "@/components/feed/image-edit-overlay"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import {
@@ -518,7 +519,7 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
             />
           )}
           {editing ? (
-            <CertImageEditOverlay
+            <ImageEditOverlay
               onFile={handleImageFile}
               hasPending={!!pendingImageBlob}
             />
@@ -723,67 +724,6 @@ function useRouteRkey(): string | null {
     }
   }, [])
   return rkey
-}
-
-/* ---------- Image edit overlay ----------
- *
- * Floating Camera pill anchored to the bottom-right of the cert
- * image. Same visual treatment as the avatar / banner upload
- * pills on the profile page (semi-transparent dark surface,
- * Camera icon + label). Triggers a hidden file input on click.
- */
-interface CertImageEditOverlayProps {
-  onFile: (file: File) => Promise<void>
-  hasPending: boolean
-}
-
-function CertImageEditOverlay({
-  onFile,
-  hasPending,
-}: CertImageEditOverlayProps) {
-  const inputRef = useRef<HTMLInputElement | null>(null)
-  const [isUploading, setIsUploading] = useState(false)
-
-  const handleClick = () => inputRef.current?.click()
-  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (inputRef.current) inputRef.current.value = ""
-    if (!file) return
-    setIsUploading(true)
-    try {
-      await onFile(file)
-    } finally {
-      setIsUploading(false)
-    }
-  }
-  return (
-    <>
-      <button
-        type="button"
-        className="cert-detail__image-edit-btn"
-        onClick={handleClick}
-        aria-label={isUploading ? "Uploading image" : "Change image"}
-        title="Change image"
-        disabled={isUploading}
-      >
-        {isUploading ? (
-          <LoadingSpinner size="sm" />
-        ) : (
-          <>
-            <Camera size={14} strokeWidth={1.75} aria-hidden />
-            <span>{hasPending ? "Replace image" : "Change image"}</span>
-          </>
-        )}
-      </button>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleChange}
-        style={{ position: "absolute", width: 1, height: 1, opacity: 0 }}
-      />
-    </>
-  )
 }
 
 /* ---------- Contributor row ----------
