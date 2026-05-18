@@ -112,7 +112,7 @@ export default function SyncSocialGraphSection({
         <SyncModal
           candidateDids={sync.stats.onlyBluesky}
           onClose={() => setIsModalOpen(false)}
-          onImport={(dids) => sync.importDids(dids)}
+          onImport={(dids, opts) => sync.importDids(dids, opts)}
         />
       ) : null}
     </div>
@@ -148,7 +148,10 @@ type ModalStep = "choose" | "select"
 interface SyncModalProps {
   candidateDids: string[]
   onClose: () => void
-  onImport: (dids: string[]) => Promise<SocialGraphSyncResult>
+  onImport: (
+    dids: string[],
+    opts?: { signal?: AbortSignal },
+  ) => Promise<SocialGraphSyncResult>
 }
 
 const PAGE_SIZE = 50
@@ -163,6 +166,13 @@ function SyncModal({ candidateDids, onClose, onImport }: SyncModalProps) {
   const [query, setQuery] = useState("")
   const [page, setPage] = useState(0)
 
+  // AbortController scoped to the modal's lifetime. If the modal
+  // unmounts (user closes, navigates away) mid-import, abort()
+  // signals the importDids loop to stop after the current write —
+  // otherwise it keeps writing follows to the user's repo and
+  // populating the local cache with rows they thought they cancelled.
+  const abortControllerRef = useRef<AbortController | null>(null)
+
   // Mount + close-via-Esc wiring.
   useEffect(() => {
     const dialog = dialogRef.current
@@ -172,6 +182,13 @@ function SyncModal({ candidateDids, onClose, onImport }: SyncModalProps) {
     dialog.addEventListener("close", handleClose)
     return () => dialog.removeEventListener("close", handleClose)
   }, [onClose])
+
+  // Abort any in-flight import on modal unmount.
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort()
+    }
+  }, [])
 
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent<HTMLDialogElement>) => {
@@ -183,15 +200,18 @@ function SyncModal({ candidateDids, onClose, onImport }: SyncModalProps) {
   const runImport = useCallback(
     async (dids: string[]) => {
       if (isImporting) return
+      const controller = new AbortController()
+      abortControllerRef.current = controller
       setIsImporting(true)
       setError(null)
       try {
-        const out = await onImport(dids)
+        const out = await onImport(dids, { signal: controller.signal })
         setResult(out)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Sync failed")
       } finally {
         setIsImporting(false)
+        abortControllerRef.current = null
       }
     },
     [isImporting, onImport],

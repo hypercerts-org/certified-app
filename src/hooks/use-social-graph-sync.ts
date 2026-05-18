@@ -53,7 +53,10 @@ export function useSocialGraphSync(
   isLoading: boolean
   error: string | null
   refetch: () => Promise<void>
-  importDids: (dids: string[]) => Promise<SocialGraphSyncResult>
+  importDids: (
+    dids: string[],
+    opts?: { signal?: AbortSignal },
+  ) => Promise<SocialGraphSyncResult>
 } {
   // Destructure both sources so the closures below close over
   // individually-stable callbacks rather than the always-fresh
@@ -96,7 +99,10 @@ export function useSocialGraphSync(
   const [isWriting, setIsWriting] = useState(false)
 
   const importDids = useCallback(
-    async (dids: string[]): Promise<SocialGraphSyncResult> => {
+    async (
+      dids: string[],
+      opts?: { signal?: AbortSignal },
+    ): Promise<SocialGraphSyncResult> => {
       if (!ownDid) {
         return {
           imported: 0,
@@ -113,34 +119,47 @@ export function useSocialGraphSync(
       setIsWriting(true)
       let imported = 0
       const errors: { subjectDid: string; message: string }[] = []
-      // Skip anything already in the certified set — covers the
-      // race where the user opens the modal, follows someone via the
-      // sidebar, then clicks Import. Also dedupes within `dids`.
-      const seen = new Set<string>()
-      for (const subjectDid of dids) {
-        if (seen.has(subjectDid)) continue
-        seen.add(subjectDid)
-        if (certifiedSubjects.has(subjectDid)) continue
-        try {
-          const result = await createFollow(ownDid, subjectDid, { targetDid })
-          // Optimistically update the local certified set so the
-          // stats tile flips immediately AND a partial failure
-          // leaves the count accurate. Refetch below catches up to
-          // the PDS for the final reconciliation.
-          certifiedAddFollow(subjectDid, result.uri, result.cid)
-          imported++
-        } catch (err) {
-          errors.push({
-            subjectDid,
-            message:
-              err instanceof Error ? err.message : "Failed to create follow",
-          })
+      try {
+        // Skip anything already in the certified set — covers the
+        // race where the user opens the modal, follows someone via
+        // the sidebar, then clicks Import. Also dedupes within `dids`.
+        const seen = new Set<string>()
+        for (const subjectDid of dids) {
+          // Honor caller cancellation between iterations. Closing the
+          // modal mid-import should stop further writes, otherwise the
+          // loop continues populating the user's repo (and the local
+          // cache) with rows the user thought they cancelled.
+          if (opts?.signal?.aborted) break
+          if (seen.has(subjectDid)) continue
+          seen.add(subjectDid)
+          if (certifiedSubjects.has(subjectDid)) continue
+          try {
+            const result = await createFollow(ownDid, subjectDid, {
+              targetDid,
+            })
+            // Optimistically update the local certified set so the
+            // stats tile flips immediately AND a partial failure
+            // leaves the count accurate. Refetch below catches up to
+            // the PDS for the final reconciliation.
+            certifiedAddFollow(subjectDid, result.uri, result.cid)
+            imported++
+          } catch (err) {
+            errors.push({
+              subjectDid,
+              message:
+                err instanceof Error ? err.message : "Failed to create follow",
+            })
+          }
         }
+        // Refetch the certified list so the cache reflects the new
+        // commits authoritatively. The bluesky side didn't change.
+        // If refetch throws, the finally below still clears
+        // `isWriting` — without the try/finally the modal would stay
+        // stuck on "Importing…" forever.
+        await certifiedRefetch()
+      } finally {
+        setIsWriting(false)
       }
-      // Refetch the certified list so the cache reflects the new
-      // commits authoritatively. The bluesky side didn't change.
-      await certifiedRefetch()
-      setIsWriting(false)
       return { imported, failed: errors.length, errors }
     },
     [ownDid, targetDid, isWriting, certifiedSubjects, certifiedAddFollow, certifiedRefetch],
