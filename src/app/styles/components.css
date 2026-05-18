@@ -109,6 +109,25 @@ dialog.signin-modal::backdrop {
   background: var(--navy-overlay-70);
 }
 
+/* App-wide modal shape. Add this class ALONGSIDE `.signin-modal` on
+   any non-sign-in dialog (`<dialog className="signin-modal app-modal">`)
+   so the radius drops from the sign-in surface's intentional 20px
+   down to the design system's 2px (`var(--radius)`). Padding is also
+   trimmed since dense form/list modals don't need the sign-in
+   surface's hero spacing. See DESIGN.md §11 — Modals. */
+dialog.signin-modal.app-modal {
+  border-radius: var(--radius);
+  padding: 0;
+}
+
+dialog.signin-modal.app-modal .signin-modal__header {
+  padding: 16px 20px 12px;
+}
+
+dialog.signin-modal.app-modal .signin-modal__body {
+  padding: 0 20px 20px;
+}
+
 .signin-modal__close {
   position: absolute;
   top: -8px;

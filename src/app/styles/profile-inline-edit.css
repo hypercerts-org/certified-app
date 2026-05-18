@@ -113,12 +113,14 @@
 
 /* --- Page-level edit banner -----------------------------------------
 
-   Rendered ABOVE the two-column profile layout when the user is in
+   Rendered ABOVE the two-column page layout when the user is in
    inline-edit mode. Spans the full width of the page (sidebar + main
    column) so the Save / Cancel actions are unmistakable and never
-   scroll out of reach. Sits above the avatar AND the banner image. */
+   scroll out of reach. Shared by the profile and cert detail pages
+   (was `.profile-edit-banner` before the cert page started reusing it
+   — renamed to `.edit-banner` for the broader scope). */
 
-.profile-edit-banner {
+.edit-banner {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -127,12 +129,9 @@
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
-  position: sticky;
-  top: calc(var(--top-bar-row1) + var(--top-bar-row2) + 8px);
-  z-index: 5;
 }
 
-.profile-edit-banner__label {
+.edit-banner__label {
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 0.8125rem;
   font-weight: 600;
@@ -140,7 +139,7 @@
   letter-spacing: 0.01em;
 }
 
-.profile-edit-banner__error {
+.edit-banner__error {
   font-size: 0.8125rem;
   color: var(--color-error, #d33);
   min-width: 0;
@@ -149,14 +148,14 @@
   white-space: nowrap;
 }
 
-.profile-edit-banner__actions {
+.edit-banner__actions {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   margin-left: auto;
 }
 
-.profile-edit-banner__btn {
+.edit-banner__btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -175,22 +174,22 @@
   transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
-.profile-edit-banner__btn:hover:not(:disabled) {
+.edit-banner__btn:hover:not(:disabled) {
   background: var(--overlay-weak);
 }
 
-.profile-edit-banner__btn:disabled {
+.edit-banner__btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.profile-edit-banner__btn--primary {
+.edit-banner__btn--primary {
   background: var(--fg-primary);
   color: var(--bg-canvas);
   border-color: var(--fg-primary);
 }
 
-.profile-edit-banner__btn--primary:hover:not(:disabled) {
+.edit-banner__btn--primary:hover:not(:disabled) {
   opacity: 0.9;
 }
 

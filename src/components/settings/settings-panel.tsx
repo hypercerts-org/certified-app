@@ -2,11 +2,12 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import dynamic from "next/dynamic"
-import { AtSign, KeyRound, Mail, Palette } from "lucide-react"
+import { AtSign, KeyRound, Mail, Palette, Share2 } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useSession } from "@/hooks/use-session"
 import { useOrg } from "@/lib/groups/org-context"
 import OrgSettings from "@/components/groups/org-settings"
+import SyncSocialGraphSection from "@/components/settings/sync-social-graph-section"
 import ThemeToggle from "@/components/ui/theme-toggle"
 
 const UsernameCard = dynamic(
@@ -19,7 +20,12 @@ const PasswordSection = dynamic(
   () => import("@/components/account/password-section"),
 )
 
-type CategoryKey = "username" | "email" | "password" | "appearance"
+type CategoryKey =
+  | "username"
+  | "email"
+  | "password"
+  | "appearance"
+  | "social-graph"
 
 type CategoryDef = {
   key: CategoryKey
@@ -52,6 +58,13 @@ const CATEGORIES: CategoryDef[] = [
     label: "Appearance",
     description: "Light or dark theme — or match your system preference.",
     Icon: Palette,
+  },
+  {
+    key: "social-graph",
+    label: "Sync social graph",
+    description:
+      "Compare your Certified follows with your Bluesky follows and import any that are missing.",
+    Icon: Share2,
   },
 ]
 
@@ -224,6 +237,9 @@ export default function SettingsPanel() {
                   <PasswordSection email={email || ""} />
                 )}
                 {cat.key === "appearance" && <ThemeToggle />}
+                {cat.key === "social-graph" && did ? (
+                  <SyncSocialGraphSection did={did} ownDid={did} />
+                ) : null}
               </div>
             </section>
           ))}

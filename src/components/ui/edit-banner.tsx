@@ -11,12 +11,10 @@ import React from "react"
  * edit mode lands the banner at the same offset, with the same
  * chrome and the same sticky behaviour.
  *
- * Position rules live on the `.profile-edit-banner` class in
+ * Position rules live on the `.edit-banner` class in
  * `styles/profile-inline-edit.css` (sticky-under-top-bar with
- * 24px lateral margin). The component is name-neutral —
- * `<EditBanner>` — but the class name stays for backwards-compat
- * with the existing CSS (the inline-edit click-guard on the
- * profile page also keys on the class).
+ * 24px lateral margin). The profile page's inline-edit click
+ * guard also keys on this class.
  */
 
 export interface EditBannerProps {
@@ -46,17 +44,17 @@ export default function EditBanner({
   cancelLabel = "Cancel",
 }: EditBannerProps) {
   return (
-    <div className="profile-edit-banner" role="region" aria-label={label}>
-      <span className="profile-edit-banner__label">{label}</span>
+    <div className="edit-banner" role="region" aria-label={label}>
+      <span className="edit-banner__label">{label}</span>
       {error ? (
-        <span className="profile-edit-banner__error" role="alert">
+        <span className="edit-banner__error" role="alert">
           {error}
         </span>
       ) : null}
-      <div className="profile-edit-banner__actions">
+      <div className="edit-banner__actions">
         <button
           type="button"
-          className="profile-edit-banner__btn"
+          className="edit-banner__btn"
           onClick={onCancel}
           disabled={isSaving}
         >
@@ -64,7 +62,7 @@ export default function EditBanner({
         </button>
         <button
           type="button"
-          className="profile-edit-banner__btn profile-edit-banner__btn--primary"
+          className="edit-banner__btn edit-banner__btn--primary"
           onClick={onSave}
           disabled={isSaving}
         >

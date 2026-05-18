@@ -35,6 +35,10 @@ const ALLOWED_WRITE_COLLECTIONS = [
   "app.certified.badge.definition",
   "app.certified.badge.award",
   "app.certified.badge.response",
+  // Certified social graph — follow records live on the viewer's PDS;
+  // the followers view is served by the magic-indexer via the
+  // `appCertifiedGraphFollow` connection.
+  "app.certified.graph.follow",
   "org.hypercerts.claim.activity",
 ]
 

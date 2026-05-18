@@ -87,7 +87,7 @@ export default function LinkDialog({
   return (
     <dialog
       ref={dialogRef}
-      className="signin-modal"
+      className="signin-modal app-modal"
       role="dialog"
       aria-label={resolvedTitle}
       onClick={handleBackdropClick}

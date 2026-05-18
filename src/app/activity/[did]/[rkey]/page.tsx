@@ -2,16 +2,17 @@
 
 import { useMemo } from "react"
 import { useParams } from "next/navigation"
-import { usePageTitle, usePageTitleBreadcrumb } from "@/lib/navbar-context"
+import { usePageTitleBreadcrumb } from "@/lib/navbar-context"
 import { useActivity } from "@/hooks/use-activity"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import ActivityDetail from "@/components/feed/activity-detail"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 
 export default function ActivityDetailPage() {
-  // Plain-string fallback while author/cert data is still resolving. The
-  // breadcrumb below takes precedence once both pieces are available.
-  usePageTitle("Activity")
+  // No plain-string fallback — the breadcrumb below renders once
+  // author + cert data resolve; until then the top-bar title slot
+  // stays empty rather than flashing a generic "Activity" word that
+  // never matches what the user clicked.
 
   const params = useParams()
   const did = useMemo(() => {

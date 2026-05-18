@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   ArrowRight,
   Calendar,
@@ -13,17 +13,30 @@ import {
   Link as LinkIcon,
   Pencil,
   Plus,
+  ThumbsUp,
   UserPlus,
   Users,
   X,
 } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
+import ConfirmDialog from "@/components/ui/confirm-dialog"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import SmartLink from "@/components/ui/smart-link"
 import { getInitials } from "@/lib/utils/initials"
 import { useProfilePds } from "@/hooks/use-profile-pds"
 import { useUserGroups, type UserGroup } from "@/hooks/use-user-groups"
+import { useAuth } from "@/lib/auth/auth-context"
+import { useFollowing } from "@/hooks/use-following"
+import { useFollowers } from "@/hooks/use-followers"
+import { useGivenEndorsements } from "@/hooks/use-endorsements"
+import { useAuthorInfo } from "@/hooks/use-author-info"
+import EndorseReasonModal from "@/components/profile/endorse-reason-modal"
+import { createFollow, deleteFollow, listFollowing } from "@/lib/atproto/follow"
+import {
+  createEndorsementAward,
+  deleteEndorsementAward,
+} from "@/lib/atproto/badges"
 import type { CertifiedProfile } from "@/lib/atproto/types"
 import {
   newDraftUrlRow,
@@ -141,6 +154,24 @@ export default function ProfileSidebar({
   const hasEditLink = !hasInline && !!editHref
   const previewGroups = groups.slice(0, GROUPS_GRID_LIMIT)
 
+  // Follower / following counts for THIS profile (shown under the
+  // action row). The Following count comes straight from the viewed
+  // user's PDS; the Followers count is best-effort via the indexer
+  // and will read 0 until the magic-indexer ships
+  // `appCertifiedGraphFollow` support.
+  const viewedFollowing = useFollowing(did)
+  const viewedFollowers = useFollowers(did)
+
+  // Viewer's own following set — used to decide whether the Follow
+  // button reads "Follow" or "Following" for foreign profiles. Skip
+  // when the viewer is signed out or when they're looking at their
+  // own profile (no Follow button to render in either case).
+  const { did: viewerDid, isAuthenticated } = useAuth()
+  const isOwnProfile = !!viewerDid && viewerDid === did
+  const viewerFollowing = useFollowing(
+    isAuthenticated && !isOwnProfile ? viewerDid : null,
+  )
+
   // Local avatar uploading flag — toggled around the parent's upload
   // call so the AvatarUpload overlay can show its spinner.
   const [avatarUploading, setAvatarUploading] = useState(false)
@@ -223,8 +254,31 @@ export default function ProfileSidebar({
             <Pencil size={14} strokeWidth={1.75} aria-hidden />
             Edit profile
           </Link>
+        ) : isAuthenticated && viewerDid ? (
+          <>
+            <FollowButton
+              viewerDid={viewerDid}
+              subjectDid={did}
+              isFollowing={viewerFollowing.subjects.has(did)}
+              isLoading={viewerFollowing.isLoading}
+              onFollowed={(uri, cid) => {
+                // Both surfaces update instantly: the viewer's
+                // "following" set gains the subject; the foreign
+                // profile's follower list (count + grid) gains the
+                // viewer. Real server-side data refreshes on the next
+                // tab-mount / focus-revalidate.
+                viewerFollowing.addFollow(did, uri, cid)
+                viewedFollowers.addFollower(viewerDid, uri, cid)
+              }}
+              onUnfollowed={() => {
+                viewerFollowing.removeFollow(did)
+                viewedFollowers.removeFollower(viewerDid)
+              }}
+            />
+            <EndorseButton viewerDid={viewerDid} subjectDid={did} />
+          </>
         ) : (
-          <Button variant="primary" size="sm">
+          <Button variant="primary" size="sm" disabled>
             <UserPlus size={14} strokeWidth={1.75} aria-hidden />
             Follow
           </Button>
@@ -234,11 +288,29 @@ export default function ProfileSidebar({
       <p className="profile-sidebar__followers" aria-label="Followers and following">
         <Users size={16} strokeWidth={1.75} aria-hidden />
         <span>
-          <span className="profile-sidebar__followers-count">—</span> followers
+          <span className="profile-sidebar__followers-count">
+            {formatGraphCount(viewedFollowers.count ?? viewedFollowers.entries.length)}
+          </span>{" "}
+          <Link
+            href={`${basePath}?tab=followers`}
+            scroll={false}
+            className="profile-sidebar__followers-link"
+          >
+            followers
+          </Link>
         </span>
         <span aria-hidden className="profile-sidebar__followers-sep">·</span>
         <span>
-          <span className="profile-sidebar__followers-count">—</span> following
+          <span className="profile-sidebar__followers-count">
+            {formatGraphCount(viewedFollowing.count)}
+          </span>{" "}
+          <Link
+            href={`${basePath}?tab=followers&sub=following`}
+            scroll={false}
+            className="profile-sidebar__followers-link"
+          >
+            following
+          </Link>
         </span>
       </p>
 
@@ -308,13 +380,18 @@ export default function ProfileSidebar({
           </li>
         ) : null}
         {isBskyHosted && handle ? (
-          <li>
-            <LinkIcon size={16} strokeWidth={1.75} aria-hidden />
+          <li className="profile-sidebar__bsky-row">
+            {/* Tag-style chip (not a regular link) so the viewer can
+                tell at a glance that this profile's metadata is
+                imported from Bluesky rather than authored on
+                Certified. The tooltip spells out the relationship
+                explicitly for anyone hovering. */}
             <a
               href={`https://bsky.app/profile/${encodeURIComponent(handle)}`}
-              className="profile-sidebar__detail-link"
+              className="profile-sidebar__bsky-tag"
               rel="noopener noreferrer"
               target="_blank"
+              title="The profile information is imported from Bluesky"
             >
               Bluesky profile
             </a>
@@ -335,7 +412,12 @@ export default function ProfileSidebar({
               <span>Founded {orgFoundedDate}</span>
             </li>
           ) : null
-        ) : joinedText ? (
+        ) : joinedText && !isBskyHosted ? (
+          // Skip "Joined …" on bluesky-hosted profiles — `createdAt`
+          // there reflects when the bsky.app account was created, not
+          // when the user joined Certified, so the line would mislead
+          // viewers. The Bluesky-profile chip above already signals
+          // the data source.
           <li className="profile-sidebar__details-date">
             <Calendar size={16} strokeWidth={1.75} aria-hidden />
             <span>{joinedText}</span>
@@ -589,6 +671,234 @@ function AvatarEditOverlay({ onFile, isUploading, hasPending }: AvatarEditOverla
         className="profile-sidebar__avatar-edit-input"
         onChange={handleChange}
       />
+    </>
+  )
+}
+
+/* ------------------------------ Follow ------------------------------
+ *
+ * Sidebar Follow / Following toggle, shown to signed-in viewers who
+ * are looking at someone else's profile. Hidden for own-profile views
+ * and for viewers who can edit (the Edit button takes the slot).
+ *
+ * Optimistically flips its own label between "Follow" and "Following"
+ * while the write is in flight; the parent's `onAfterWrite` re-pages
+ * the viewer's follow list so the true state catches up.
+ */
+
+interface FollowButtonProps {
+  viewerDid: string
+  subjectDid: string
+  isFollowing: boolean
+  isLoading: boolean
+  /** Fired after a successful createFollow with the new record's
+   *  strong ref. Caller does the optimistic state update on both
+   *  the viewer's "following" hook and the subject's "followers"
+   *  hook. */
+  onFollowed: (uri: string, cid: string) => void
+  /** Fired after a successful deleteFollow. Caller does the
+   *  optimistic state update mirroring `onFollowed`. */
+  onUnfollowed: () => void
+}
+
+function FollowButton({
+  viewerDid,
+  subjectDid,
+  isFollowing,
+  isLoading,
+  onFollowed,
+  onUnfollowed,
+}: FollowButtonProps) {
+  const [isWriting, setIsWriting] = useState(false)
+  const disabled = isLoading || isWriting
+
+  const handleClick = async () => {
+    if (disabled) return
+    const next = !isFollowing
+    setIsWriting(true)
+    try {
+      if (next) {
+        const result = await createFollow(viewerDid, subjectDid)
+        // Hand the new ref to the parent so the viewer's following
+        // set and the subject's follower list update instantly.
+        onFollowed(result.uri, result.cid)
+      } else {
+        // Unfollow path: walk the viewer's follows to find the rkey
+        // targeting this subject. Fetched fresh here to handle the
+        // duplicate-follow edge case (delete the most recent record).
+        const records = await listFollowing(viewerDid, undefined, {
+          noCache: true,
+        })
+        const match = records
+          .filter((r) => r.value.subject === subjectDid)
+          .sort((a, b) =>
+            a.value.createdAt < b.value.createdAt ? 1 : -1,
+          )[0]
+        if (match) {
+          await deleteFollow(viewerDid, match.rkey)
+        }
+        onUnfollowed()
+      }
+    } catch (err) {
+      console.error("Follow toggle failed:", err)
+    } finally {
+      setIsWriting(false)
+    }
+  }
+
+  return (
+    <Button
+      variant={isFollowing ? "secondary" : "primary"}
+      size="sm"
+      onClick={handleClick}
+      disabled={disabled}
+      aria-pressed={isFollowing}
+    >
+      {isFollowing ? (
+        <Check size={14} strokeWidth={1.75} aria-hidden />
+      ) : (
+        <UserPlus size={14} strokeWidth={1.75} aria-hidden />
+      )}
+      {isFollowing ? "Following" : "Follow"}
+    </Button>
+  )
+}
+
+/**
+ * Sidebar count formatter. `null` (not yet loaded) renders as an em
+ * dash so the layout doesn't jump; `0` renders as `0` because that's
+ * a real, meaningful value to viewers ("nobody follows this account
+ * yet").
+ */
+function formatGraphCount(n: number | null | undefined): string {
+  if (n === null || n === undefined) return "—"
+  return new Intl.NumberFormat().format(n)
+}
+
+/* ----------------------------- Endorse ------------------------------
+ *
+ * Endorse / Endorsed toggle. Lives next to FollowButton on foreign
+ * profiles. Writes against the viewer's default endorsement
+ * definition (`ensureEndorsementDefinition` runs implicitly inside
+ * `createEndorsementAward`). Revoking gates on a Confirm dialog
+ * because endorsement deletion is silent on the recipient's side.
+ *
+ * Used to live as `EndorseShortcut` at the top of the Received
+ * sub-tab — moved into the sidebar so the action sits with Follow,
+ * and discovery doesn't depend on the viewer landing on the
+ * Endorsements tab first.
+ */
+
+interface EndorseButtonProps {
+  viewerDid: string
+  subjectDid: string
+}
+
+function EndorseButton({ viewerDid, subjectDid }: EndorseButtonProps) {
+  const ownGiven = useGivenEndorsements(viewerDid)
+  const { info: subjectInfo } = useAuthorInfo(subjectDid)
+  const subjectLabel =
+    subjectInfo?.displayName || subjectInfo?.handle || subjectDid
+  const [isWriting, setIsWriting] = useState(false)
+  const [confirmRevoke, setConfirmRevoke] = useState(false)
+  const [reasonOpen, setReasonOpen] = useState(false)
+  // Optimistic flip — mirrors FollowButton. The hook's `endorsements`
+  // refetch may lag the PDS write by a beat, so we override locally
+  // until the parent value catches up.
+  const [optimistic, setOptimistic] = useState<boolean | null>(null)
+
+  const existing = ownGiven.endorsements.find((e) => e.subjectDid === subjectDid)
+  const isEndorsedFromState = !!existing
+  const isEndorsed = optimistic ?? isEndorsedFromState
+
+  // Once the parent confirms the same state, drop the override so
+  // the hook value becomes authoritative again.
+  useEffect(() => {
+    if (optimistic !== null && isEndorsedFromState === optimistic) {
+      setOptimistic(null)
+    }
+  }, [isEndorsedFromState, optimistic])
+
+  const disabled = isWriting || ownGiven.isLoading
+
+  /**
+   * Click on the unfilled button → open the reason modal. The actual
+   * write happens inside the modal's confirm so the note travels
+   * with the award. If the user cancels the modal we never touch
+   * the optimistic state — the button stays on "Endorse".
+   */
+  const handleEndorseClick = () => {
+    if (disabled) return
+    setReasonOpen(true)
+  }
+
+  const handleReasonConfirm = async (note: string) => {
+    setOptimistic(true)
+    setIsWriting(true)
+    try {
+      await createEndorsementAward(viewerDid, subjectDid, note)
+      await ownGiven.refetch()
+      setReasonOpen(false)
+    } catch (err) {
+      console.error("Endorse failed:", err)
+      setOptimistic(null)
+      throw err
+    } finally {
+      setIsWriting(false)
+    }
+  }
+
+  const handleConfirmRevoke = async () => {
+    if (!existing || disabled) return
+    setOptimistic(false)
+    setIsWriting(true)
+    try {
+      await deleteEndorsementAward(viewerDid, existing.rkey)
+      await ownGiven.refetch()
+      setConfirmRevoke(false)
+    } catch (err) {
+      console.error("Revoke endorsement failed:", err)
+      setOptimistic(null)
+    } finally {
+      setIsWriting(false)
+    }
+  }
+
+  return (
+    <>
+      <Button
+        variant={isEndorsed ? "secondary" : "primary"}
+        size="sm"
+        onClick={isEndorsed ? () => setConfirmRevoke(true) : handleEndorseClick}
+        disabled={disabled}
+        aria-pressed={isEndorsed}
+      >
+        {isEndorsed ? (
+          <Check size={14} strokeWidth={1.75} aria-hidden />
+        ) : (
+          <ThumbsUp size={14} strokeWidth={1.75} aria-hidden />
+        )}
+        {isEndorsed ? "Endorsed" : "Endorse"}
+      </Button>
+      {reasonOpen ? (
+        <EndorseReasonModal
+          subjectLabel={subjectLabel}
+          onConfirm={handleReasonConfirm}
+          onClose={() => setReasonOpen(false)}
+        />
+      ) : null}
+      {confirmRevoke ? (
+        <ConfirmDialog
+          title="Revoke endorsement?"
+          message="Your endorsement will be removed from this profile. You can endorse them again later."
+          confirmLabel="Revoke"
+          cancelLabel="Keep endorsement"
+          confirmVariant="destructive"
+          isConfirming={isWriting}
+          onConfirm={handleConfirmRevoke}
+          onCancel={() => !isWriting && setConfirmRevoke(false)}
+        />
+      ) : null}
     </>
   )
 }

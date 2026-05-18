@@ -47,6 +47,7 @@ const PROFILE_TABS: ProfileTab[] = [
   { key: "projects", label: "Projects" },
   { key: "groups", label: "Groups", groupsOnly: true },
   { key: "endorsements", label: "Endorsements" },
+  { key: "followers", label: "Followers" },
   { key: "about", label: "About", aboutOnly: true },
   // Settings is now a real `?tab=settings` panel on the profile page —
   // no special `href` shortcut. The `/settings` route still works as a
@@ -309,10 +310,11 @@ export default function DesktopTopBar() {
 
           {isAuthenticated ? (
             <Link
-              // Route to the active identity's profile settings tab
-              // so the cog and the in-page tab strip end up at the
-              // same surface. Falls back to /settings for the rare
-              // case where no handle has resolved yet.
+              // Target the ACTIVE identity's settings — personal when
+              // signed in as the user, the group's when acting-as
+              // group. The cog and the in-page tab strip end up on
+              // the same surface as a result. Falls back to /settings
+              // for the rare case where no handle has resolved yet.
               href={
                 identity.handle
                   ? `/profile/${encodeURIComponent(identity.handle)}?tab=settings`

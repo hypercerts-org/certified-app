@@ -48,7 +48,7 @@ export default function ActivityCard({ record, did, label }: ActivityCardProps) 
           <img
             className="feed-card__image"
             src={imageUrl}
-            alt={value.title || "Activity image"}
+            alt={value.title || "Cert image"}
             loading="lazy"
             onError={() => setImageFailed(true)}
           />

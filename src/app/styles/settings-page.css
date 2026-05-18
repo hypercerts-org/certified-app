@@ -85,15 +85,14 @@
 
 @media (min-width: 800px) {
   .sx__menu {
-    position: sticky;
-    /* Clear both top bar rows (row 1 chrome + row 2 tab strip) so
-       the menu sits flush below the bar. We drop the max-height +
-       overflow-y combination on purpose: the category list is
-       always short (≤ 5 items), so an inner scroll just introduces
-       sub-pixel jitter as the viewport changes height while the
-       main pane scrolls. A plain sticky with a fixed offset stays
-       pixel-stable. */
-    top: calc(var(--top-bar-row1) + var(--top-bar-row2) + 16px);
+    /* Menu scrolls with the page. Previously this was `position:
+       sticky` with a fixed top offset, but two things made that
+       behaviour wrong: (1) the offset interacted with sub-pixel
+       viewport changes and produced visible jitter as the main pane
+       scrolled, and (2) the desktop top bar is no longer sticky
+       either, so a sticky menu would float at a fixed viewport
+       offset with empty space above it once the bar scrolled out.
+       Plain in-flow positioning matches the rest of the page. */
     align-self: start;
   }
 }

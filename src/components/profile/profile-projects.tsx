@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ArrowRight, Award, Calendar, FolderGit2 } from "lucide-react"
+import { ArrowRight, Award, Calendar, FolderGit2, Plus } from "lucide-react"
+import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { useUserProjects } from "@/hooks/use-user-projects"
@@ -14,73 +15,96 @@ import type { CollectionRecord } from "@/lib/atproto/collection"
 
 interface ProfileProjectsProps {
   did: string
+  /** True when the viewer is looking at their OWN profile (or
+   *  acting-as the group whose profile is shown). Controls whether
+   *  the Create new project CTA renders. */
+  viewerIsOwner?: boolean
 }
 
 /** Cert rows shown inline per project before deferring to the project
- *  detail page via the "See all →" link. Five is a comfortable limit
- *  for a compact list — the project itself is the focus on this tab. */
+ *  detail page via the "See all →" link. */
 const CERTS_PER_PROJECT_PREVIEW = 5
 
 /**
- * Projects tab — sectioned layout.
+ * Projects tab — boxed sections.
  *
- * Each project gets its own section (header + a row of up to three
- * cert cards). Pattern mirrors GitHub pinned-repos / Behance
- * collections / a user's GitHub Organization page: scannable from top
- * to bottom, each section is its own surface with a clear "See all →"
- * deep link into the project detail page.
- *
- * Data source: `com.atproto.repo.listRecords` for the user's projects
- * (via `useUserProjects`), then `getRecord` per item to hydrate the
- * cert cards inside each section (via `useProjectItems`). The indexer
- * gets to skip this for now — `eqi` (case-insensitive type filter) is
- * still on PR hb-agent/magic-indexer#81 and not deployed.
+ * Each project gets its own bordered box: a hero image on the left,
+ * title / description / "published" meta on the right, and a
+ * "Certs" sub-section listing the cert items (image + title + time
+ * period of work) underneath. Owners see a "Create new project"
+ * CTA at the top; it links to `/project/new` (currently a
+ * coming-soon placeholder while the editor is being built).
  */
-export default function ProfileProjects({ did }: ProfileProjectsProps) {
+export default function ProfileProjects({ did, viewerIsOwner }: ProfileProjectsProps) {
   const { projects, isLoading, error } = useUserProjects(did)
+
+  const createCta = viewerIsOwner ? (
+    <div className="profile-projects__toolbar">
+      <Link href="/project/new">
+        <Button variant="primary" size="sm">
+          <Plus size={14} strokeWidth={1.75} aria-hidden />
+          Create new project
+        </Button>
+      </Link>
+    </div>
+  ) : null
 
   if (isLoading && projects.length === 0) {
     return (
-      <div className="profile-projects__loading">
-        <LoadingSpinner size="sm" />
+      <div className="profile-projects">
+        {createCta}
+        <div className="profile-projects__loading">
+          <LoadingSpinner size="sm" />
+        </div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <EmptyState
-        icon={FolderGit2}
-        title="Couldn't load projects"
-        description={error}
-      />
+      <div className="profile-projects">
+        {createCta}
+        <EmptyState
+          icon={FolderGit2}
+          title="Couldn't load projects"
+          description={error}
+        />
+      </div>
     )
   }
 
   if (projects.length === 0) {
     return (
-      <EmptyState
-        icon={FolderGit2}
-        title="No projects yet"
-        description="When this profile creates a project collection, it'll appear here."
-      />
+      <div className="profile-projects">
+        {createCta}
+        <EmptyState
+          icon={FolderGit2}
+          title="No projects yet"
+          description={
+            viewerIsOwner
+              ? "Create your first project to group related certs together."
+              : "When this profile creates a project collection, it'll appear here."
+          }
+        />
+      </div>
     )
   }
 
   return (
     <div className="profile-projects">
+      {createCta}
       {projects.map((p) => (
-        <ProjectSection key={p.uri} project={p} />
+        <ProjectBox key={p.uri} project={p} />
       ))}
     </div>
   )
 }
 
-interface ProjectSectionProps {
+interface ProjectBoxProps {
   project: CollectionRecord
 }
 
-function ProjectSection({ project }: ProjectSectionProps) {
+function ProjectBox({ project }: ProjectBoxProps) {
   const { value, uri } = project
   const parsed = parseAtUri(uri)
   const projectDid = parsed?.did ?? ""
@@ -94,13 +118,11 @@ function ProjectSection({ project }: ProjectSectionProps) {
   const createdAt = asString(value.createdAt)
   const createdLabel = createdAt ? formatShortDate(createdAt) : null
 
-  // Hydrate the items array via `getRecord` per strong-ref. The hook
-  // skips non-activity collections so the cards rendered below are
-  // always cert cards.
   const { resolutions, isLoading } = useProjectItems(value.items)
 
-  // Image: same hero shape as the project detail page (banner falls
-  // back to legacy `image`). Used only for the section header thumb.
+  // Banner falls back to legacy `image`. Rendered much larger than
+  // the previous compact thumbnail so the project reads as the
+  // primary unit on the page.
   const rawImage = (value as Record<string, unknown>).banner ?? value.image
   const imageUrl =
     rawImage && projectDid
@@ -112,10 +134,6 @@ function ProjectSection({ project }: ProjectSectionProps) {
   const [imageFailed, setImageFailed] = useState(false)
   const showImage = !!imageUrl && !imageFailed
 
-  // Total cert count comes from the resolutions list (which already
-  // filtered non-activity items). Until the resolutions arrive, fall
-  // back to a best-effort raw count of activity-typed items so the
-  // header doesn't flash "0 certs".
   const totalCerts = isLoading
     ? countActivityItems(value.items)
     : resolutions.length
@@ -123,82 +141,89 @@ function ProjectSection({ project }: ProjectSectionProps) {
   const previews = resolutions.slice(0, CERTS_PER_PROJECT_PREVIEW)
   const hiddenCount = Math.max(0, totalCerts - previews.length)
 
-  const header = (
-    <div className="profile-projects__section-head">
-      <div className="profile-projects__section-thumb-wrap">
-        {showImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageUrl!}
-            alt=""
-            className="profile-projects__section-thumb"
-            onError={() => setImageFailed(true)}
-            loading="lazy"
-          />
-        ) : (
-          <div className="profile-projects__section-thumb profile-projects__section-thumb--placeholder">
-            <FolderGit2 size={20} strokeWidth={1.5} aria-hidden />
-          </div>
-        )}
-      </div>
-
-      <div className="profile-projects__section-meta">
-        <div className="profile-projects__section-titleline">
-          {detailHref ? (
-            <Link
-              href={detailHref}
-              className="profile-projects__section-title-link"
-            >
-              <h2 className="profile-projects__section-title">{title}</h2>
-            </Link>
+  return (
+    <section
+      className="profile-projects__box"
+      aria-label={title}
+    >
+      <header className="profile-projects__box-head">
+        <div className="profile-projects__box-image-wrap">
+          {showImage ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={imageUrl!}
+              alt=""
+              className="profile-projects__box-image"
+              onError={() => setImageFailed(true)}
+              loading="lazy"
+            />
           ) : (
-            <h2 className="profile-projects__section-title">{title}</h2>
+            <div className="profile-projects__box-image profile-projects__box-image--placeholder">
+              <FolderGit2 size={40} strokeWidth={1.25} aria-hidden />
+            </div>
           )}
-          <span className="profile-projects__section-count">
-            {totalCerts === 1 ? "1 cert" : `${totalCerts} certs`}
+        </div>
+
+        <div className="profile-projects__box-meta">
+          <div className="profile-projects__box-titleline">
+            {detailHref ? (
+              <Link
+                href={detailHref}
+                className="profile-projects__box-title-link"
+              >
+                <h2 className="profile-projects__box-title">{title}</h2>
+              </Link>
+            ) : (
+              <h2 className="profile-projects__box-title">{title}</h2>
+            )}
+          </div>
+          {shortDesc ? (
+            <p className="profile-projects__box-desc">{shortDesc}</p>
+          ) : null}
+          {createdLabel ? (
+            <p className="profile-projects__box-when">
+              <Calendar size={12} strokeWidth={1.75} aria-hidden />
+              <span>Published {createdLabel}</span>
+            </p>
+          ) : null}
+        </div>
+      </header>
+
+      <div className="profile-projects__box-certs">
+        <div className="profile-projects__box-certs-head">
+          <h3 className="profile-projects__box-certs-title">Certs</h3>
+          <span className="profile-projects__box-certs-count">
+            {totalCerts}
           </span>
         </div>
-        {shortDesc ? (
-          <p className="profile-projects__section-desc">{shortDesc}</p>
-        ) : null}
-        {createdLabel ? (
-          <p className="profile-projects__section-when">
-            <Calendar size={12} strokeWidth={1.75} aria-hidden />
-            <span>Published {createdLabel}</span>
+
+        {isLoading && previews.length === 0 ? (
+          <div className="profile-projects__section-loading">
+            <LoadingSpinner size="sm" />
+          </div>
+        ) : previews.length === 0 ? (
+          <p className="profile-projects__section-empty">
+            <Award size={14} strokeWidth={1.5} aria-hidden /> No certs in this
+            project yet.
           </p>
-        ) : null}
+        ) : (
+          <>
+            <ul className="profile-projects__cert-list">
+              {previews.map((r) =>
+                r.record && r.did ? (
+                  <CertRow key={r.uri} resolution={r} />
+                ) : null,
+              )}
+            </ul>
+            {detailHref && hiddenCount > 0 ? (
+              <Link href={detailHref} className="profile-projects__box-see-all">
+                See all {totalCerts} certs
+                <ArrowRight size={14} strokeWidth={1.75} aria-hidden />
+              </Link>
+            ) : null}
+          </>
+        )}
       </div>
-
-      {detailHref && hiddenCount > 0 ? (
-        <Link href={detailHref} className="profile-projects__see-all">
-          See all <ArrowRight size={14} strokeWidth={1.75} aria-hidden />
-        </Link>
-      ) : null}
-    </div>
-  )
-
-  return (
-    <section className="profile-projects__section" aria-label={title}>
-      {header}
-
-      {isLoading && previews.length === 0 ? (
-        <div className="profile-projects__section-loading">
-          <LoadingSpinner size="sm" />
-        </div>
-      ) : previews.length === 0 ? (
-        <p className="profile-projects__section-empty">
-          <Award size={14} strokeWidth={1.5} aria-hidden /> No certs in this
-          project yet.
-        </p>
-      ) : (
-        <ul className="profile-projects__cert-list">
-          {previews.map((r) =>
-            r.record && r.did ? (
-              <CertRow key={r.uri} resolution={r} />
-            ) : null,
-          )}
-        </ul>
-      )}
     </section>
   )
 }
@@ -214,10 +239,13 @@ function CertRow({ resolution }: CertRowProps) {
   const rkey = parsed?.rkey ?? ""
   const href = activityDetailHref(did, rkey)
   const title = asString(record.value.title) || "Untitled cert"
-  const shortDesc = asString(record.value.shortDescription)
   const imageUrl = record.value.image
     ? resolveActivityImageUrl(record.value.image, did)
     : null
+  const period = formatTimePeriod(
+    asString(record.value.startDate),
+    asString(record.value.endDate),
+  )
   return (
     <li className="profile-projects__cert-row">
       <Link
@@ -228,8 +256,11 @@ function CertRow({ resolution }: CertRowProps) {
         <CertThumb url={imageUrl} />
         <span className="profile-projects__cert-meta">
           <span className="profile-projects__cert-title">{title}</span>
-          {shortDesc ? (
-            <span className="profile-projects__cert-desc">{shortDesc}</span>
+          {period ? (
+            <span className="profile-projects__cert-period">
+              <Calendar size={12} strokeWidth={1.75} aria-hidden />
+              {period}
+            </span>
           ) : null}
         </span>
       </Link>
@@ -256,6 +287,26 @@ function CertThumb({ url }: { url: string | null }) {
 
 function asString(v: unknown): string | null {
   return typeof v === "string" && v.length > 0 ? v : null
+}
+
+/**
+ * Render the cert's time period exactly the way the cert detail page
+ * formats it — so the row reads the same whether the user sees it
+ * here or on the cert itself.
+ *
+ *   - both set    → "Jan 1, 2026 – Mar 15, 2026"
+ *   - only start  → "Jan 1, 2026 (ongoing)"
+ *   - only end    → "Until Mar 15, 2026"
+ *   - neither     → null (caller skips the row)
+ */
+function formatTimePeriod(start: string | null, end: string | null): string | null {
+  if (!start && !end) return null
+  const s = start ? formatShortDate(start) : null
+  const e = end ? formatShortDate(end) : null
+  if (s && e) return `${s} – ${e}`
+  if (s) return `${s} (ongoing)`
+  if (e) return `Until ${e}`
+  return null
 }
 
 function countActivityItems(items: unknown): number {

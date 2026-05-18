@@ -462,7 +462,7 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
         />
       ) : null}
 
-      <article className="cert-detail cert-detail--wide">
+      <article className="page-layout cert-detail--wide">
       <aside className="cert-detail__aside" aria-label="Cert details">
         <div
           className={
@@ -536,7 +536,7 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
         </dl>
       </aside>
 
-      <div className="cert-detail__main">
+      <div className="page-layout__main cert-detail__main">
         {headline}
         {shortDescSection}
 

@@ -65,7 +65,7 @@ export default function EmbedDialog({
   return (
     <dialog
       ref={dialogRef}
-      className="signin-modal"
+      className="signin-modal app-modal"
       role="dialog"
       aria-label="Embed video"
       onClick={handleBackdropClick}

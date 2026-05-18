@@ -165,11 +165,15 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  /* Surfaces — elevated is LIGHTER than canvas in dark */
-  --bg-canvas: #0b0b0d;
-  --bg-sunken: #08080a;
-  --bg-raised: #141417;
-  --bg-elevated: #1a1a1e;
+  /* Surfaces — elevated is LIGHTER than canvas in dark.
+     Values sit in the zinc-900..zinc-700 band so the page reads as
+     "dark gray" rather than near-black (GitHub-dark uses #0d1117 for
+     reference; we sit slightly lighter to give surfaces visible
+     separation without losing dark-mode contrast). */
+  --bg-canvas: #18181b;
+  --bg-sunken: #111114;
+  --bg-raised: #26262b;
+  --bg-elevated: #2d2d33;
 
   /* Foregrounds */
   --fg-primary: #f5f5f7;

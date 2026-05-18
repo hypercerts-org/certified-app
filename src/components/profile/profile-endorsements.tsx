@@ -5,9 +5,12 @@ import Link from "next/link"
 import {
   ArrowUpDown,
   Check,
+  Filter,
   Inbox,
+  Plus,
   Search,
   ThumbsUp,
+  X,
 } from "lucide-react"
 import { useGivenEndorsements, type GivenEndorsement } from "@/hooks/use-endorsements"
 import {
@@ -23,6 +26,8 @@ import {
   deleteEndorsementAward,
 } from "@/lib/atproto/badges"
 import ResponseMenu from "@/components/badges/response-menu"
+import EndorsementLists from "@/components/profile/endorsement-lists"
+import EndorsePeopleModal from "@/components/profile/endorse-people-modal"
 import Avatar from "@/components/ui/avatar"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import EmptyState from "@/components/ui/empty-state"
@@ -59,6 +64,13 @@ const GIVEN_SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "alpha-desc", label: "Recipient Z → A" },
 ]
 
+type ResponseFilterKey = "hide-rejected" | "only-rejected" | "show-all"
+const RESPONSE_FILTER_OPTIONS: { key: ResponseFilterKey; label: string }[] = [
+  { key: "hide-rejected", label: "Hide rejected" },
+  { key: "only-rejected", label: "Show only rejected" },
+  { key: "show-all", label: "Show all" },
+]
+
 /**
  * Endorsements tab on a user profile page. Mirrors the ProfileCerts
  * shape: sub-tabs (Received | Given) + right-aligned toolbar (search
@@ -77,8 +89,31 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
   const viewerIsOwner = !!viewerDid && viewerDid === did
 
   const given = useGivenEndorsements(did)
-  const received = useReceivedEndorsements(did)
+  // Owner-side surfaces see ALL received endorsements (including
+  // the rejected ones) so the filter dropdown below can offer
+  // "Show only rejected" / "Show all". Foreign viewers stay on the
+  // default (rejected filtered out at the hook).
+  const received = useReceivedEndorsements(did, {
+    includeRejected: viewerIsOwner,
+  })
   const ownStates = useOwnResponseStates()
+
+  // Toolbar state — default to Received per spec. Declared up here
+  // (above the data memos) because `filteredReceived` reads
+  // `responseFilter` and `dids` reads `tab`.
+  const [tab, setTab] = useState<SubTab>("received")
+  const [query, setQuery] = useState("")
+  const [sort, setSort] = useState<SortKey>("created-desc")
+  const [sortOpen, setSortOpen] = useState(false)
+  // Owner-only response filter on the Received sub-tab.
+  // `hide-rejected` is the default — rejected entries stay in the
+  // underlying data so the user can flip the filter without re-
+  // fetching. Foreign viewers never see this control; their hook
+  // call doesn't include rejected entries at all (privacy).
+  const [responseFilter, setResponseFilter] = useState<
+    "hide-rejected" | "only-rejected" | "show-all"
+  >("hide-rejected")
+  const [filterOpen, setFilterOpen] = useState(false)
 
   // Optimistic overlay on the received list so the viewer's own
   // Endorse/Revoke action shows up immediately. The indexer-backed
@@ -100,6 +135,20 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
     merged.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
     return merged
   }, [received.endorsements, optimisticAdds, optimisticHides])
+
+  // Owner-only response filter on top of `displayReceived`. Foreign
+  // viewers fall through with the full list unchanged — their hook
+  // call already strips rejected entries server-side via the
+  // `includeRejected: false` default. Default = hide rejected.
+  const filteredReceived = useMemo(() => {
+    if (!viewerIsOwner) return displayReceived
+    return displayReceived.filter((e) => {
+      const { state } = ownStates.resolve(e.uri)
+      if (responseFilter === "show-all") return true
+      if (responseFilter === "only-rejected") return state === "rejected"
+      return state !== "rejected"
+    })
+  }, [displayReceived, viewerIsOwner, ownStates, responseFilter])
 
   const handleEndorsed = useCallback((entry: ReceivedEndorsement) => {
     setOptimisticHides((prev) => {
@@ -123,14 +172,22 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
     })
   }, [])
 
-  // Toolbar state — default to Received per spec.
-  const [tab, setTab] = useState<SubTab>("received")
-  const [query, setQuery] = useState("")
-  const [sort, setSort] = useState<SortKey>("created-desc")
-  const [sortOpen, setSortOpen] = useState(false)
+  // Endorse-people modal (own-profile only). The viewer can search
+  // for one or many people and write a batch of endorsements in a
+  // single pass.
+  const [isEndorseModalOpen, setIsEndorseModalOpen] = useState(false)
+  const ownGivenForModal = useGivenEndorsements(
+    viewerIsOwner ? viewerDid : null,
+  )
+  const ownAlreadyEndorsedDids = useMemo(
+    () => new Set(ownGivenForModal.endorsements.map((e) => e.subjectDid)),
+    [ownGivenForModal.endorsements],
+  )
 
   const sortBtnRef = useRef<HTMLButtonElement>(null)
   const sortMenuRef = useRef<HTMLDivElement>(null)
+  const filterBtnRef = useRef<HTMLButtonElement>(null)
+  const filterMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!sortOpen) return
@@ -152,6 +209,29 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
     }
   }, [sortOpen])
 
+  // Same outside-click + Escape contract for the response-filter
+  // menu. Identical shape to the sort handler — kept as a separate
+  // effect so each dropdown's lifecycle is independent.
+  useEffect(() => {
+    if (!filterOpen) return
+    const onMouseDown = (e: MouseEvent) => {
+      const t = e.target
+      if (!(t instanceof Node)) return
+      if (filterBtnRef.current?.contains(t)) return
+      if (filterMenuRef.current?.contains(t)) return
+      setFilterOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFilterOpen(false)
+    }
+    document.addEventListener("mousedown", onMouseDown)
+    document.addEventListener("keydown", onKey)
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown)
+      document.removeEventListener("keydown", onKey)
+    }
+  }, [filterOpen])
+
   // The DID set to hydrate names for — issuers for the Received tab,
   // recipients for the Given tab. Sort + search both read from the
   // resolved name map.
@@ -171,6 +251,8 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
 
   return (
     <div className="profile-endorsements-v2">
+      <EndorsementLists did={did} viewerIsOwner={viewerIsOwner} />
+
       <div className="profile-endorsements-v2__toolbar">
         <nav
           className="profile-endorsements-v2__subtabs"
@@ -212,6 +294,18 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
         </nav>
 
         <div className="profile-endorsements-v2__controls">
+          {viewerIsOwner ? (
+            <button
+              type="button"
+              className="profile-endorsements-v2__endorse-add"
+              onClick={() => setIsEndorseModalOpen(true)}
+              aria-label="Endorse people"
+              title="Endorse people"
+            >
+              <Plus size={16} strokeWidth={1.75} aria-hidden />
+            </button>
+          ) : null}
+
           <label className="profile-endorsements-v2__search">
             <Search
               size={16}
@@ -228,6 +322,60 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
               className="profile-endorsements-v2__search-input"
             />
           </label>
+
+          {/* Response filter — owner-only, Received sub-tab only.
+              Three states: hide rejected (default), show only
+              rejected, show all. The underlying data already
+              contains rejected entries (the hook was called with
+              `includeRejected: true` for owners) so flipping the
+              filter is purely client-side. */}
+          {viewerIsOwner && tab === "received" ? (
+            <div className="profile-endorsements-v2__sort-wrap">
+              <button
+                ref={filterBtnRef}
+                type="button"
+                className="profile-endorsements-v2__sort-btn"
+                onClick={() => setFilterOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={filterOpen}
+                aria-label="Filter endorsements by response"
+                title="Filter"
+              >
+                <Filter size={16} strokeWidth={1.75} aria-hidden />
+              </button>
+              {filterOpen ? (
+                <div
+                  ref={filterMenuRef}
+                  className="profile-endorsements-v2__sort-menu"
+                  role="menu"
+                >
+                  {RESPONSE_FILTER_OPTIONS.map((opt) => {
+                    const active = opt.key === responseFilter
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={active}
+                        className="profile-endorsements-v2__sort-item"
+                        onClick={() => {
+                          setResponseFilter(opt.key)
+                          setFilterOpen(false)
+                        }}
+                      >
+                        <span className="profile-endorsements-v2__sort-item-check">
+                          {active ? (
+                            <Check size={14} strokeWidth={2} aria-hidden />
+                          ) : null}
+                        </span>
+                        {opt.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="profile-endorsements-v2__sort-wrap">
             <button
@@ -277,17 +425,18 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
 
       {tab === "received" ? (
         <>
-          <div className="profile-endorsements-v2__endorse-row">
-            <EndorseShortcut
-              viewerDid={viewerDid}
-              profileDid={did}
-              viewerIsOwner={viewerIsOwner}
-              onEndorsed={handleEndorsed}
-              onRevoked={handleRevoked}
-            />
-          </div>
+          {/* The Endorse / Endorsed toggle moved to the profile
+              sidebar (next to Follow). The optimistic handlers
+              (`handleEndorsed` / `handleRevoked`) are still exported
+              to the sidebar via the optimistic-overlay state above. */}
+          {viewerIsOwner ? (
+            <p className="profile-endorsements-v2__response-note">
+              Endorsements with no response are shown on your profile by
+              default. Rejected endorsements are hidden from your profile.
+            </p>
+          ) : null}
           <ReceivedGrid
-            endorsements={displayReceived}
+            endorsements={filteredReceived}
             isLoading={received.isLoading}
             error={received.error}
             query={query}
@@ -311,8 +460,33 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
           query={query}
           sort={sort}
           names={names}
+          viewerIsOwner={viewerIsOwner}
+          viewerDid={viewerDid}
+          onAfterRevoke={() => given.refetch()}
         />
       )}
+
+      {isEndorseModalOpen && viewerIsOwner && viewerDid ? (
+        <EndorsePeopleModal
+          viewerDid={viewerDid}
+          alreadyEndorsedDids={ownAlreadyEndorsedDids}
+          requireReason
+          onEndorse={(subjectDid, note) =>
+            createEndorsementAward(viewerDid, subjectDid, note)
+          }
+          onClose={() => setIsEndorseModalOpen(false)}
+          onCompleted={async () => {
+            // Refresh the Given list so the new endorsements show up
+            // on the Given sub-tab the next time the viewer flips to
+            // it. The Received list is the OTHER profile's view of
+            // its own endorsements — no refresh needed here. Close
+            // after the refresh so the user sees the spinner clear.
+            setIsEndorseModalOpen(false)
+            await ownGivenForModal.refetch()
+            await given.refetch()
+          }}
+        />
+      ) : null}
     </div>
   )
 }
@@ -429,6 +603,7 @@ function ReceivedCard({
       isLoadingInfo={isLoading}
       createdAt={endorsement.createdAt}
       note={endorsement.note}
+      listTitle={endorsement.listTitle}
       menu={
         viewerIsOwner ? (
           <ResponseMenu
@@ -457,6 +632,12 @@ interface GivenGridProps {
   query: string
   sort: SortKey
   names: Map<string, string>
+  /** True when the profile being viewed is the signed-in user's
+   *  own profile — i.e. the cards represent endorsements THEY
+   *  issued. Controls whether the per-card revoke `×` renders. */
+  viewerIsOwner: boolean
+  viewerDid: string | null
+  onAfterRevoke: () => void | Promise<void>
 }
 
 function GivenGrid({
@@ -466,6 +647,9 @@ function GivenGrid({
   query,
   sort,
   names,
+  viewerIsOwner,
+  viewerDid,
+  onAfterRevoke,
 }: GivenGridProps) {
   const visible = useMemo(
     () => filterAndSortGiven(endorsements, query, sort, names),
@@ -508,13 +692,29 @@ function GivenGrid({
   return (
     <ul className="profile-endorsements-v2__grid">
       {visible.map((e) => (
-        <GivenCard key={e.uri} endorsement={e} />
+        <GivenCard
+          key={e.uri}
+          endorsement={e}
+          canRevoke={viewerIsOwner && !!viewerDid}
+          viewerDid={viewerDid}
+          onAfterRevoke={onAfterRevoke}
+        />
       ))}
     </ul>
   )
 }
 
-function GivenCard({ endorsement }: { endorsement: GivenEndorsement }) {
+function GivenCard({
+  endorsement,
+  canRevoke,
+  viewerDid,
+  onAfterRevoke,
+}: {
+  endorsement: GivenEndorsement
+  canRevoke: boolean
+  viewerDid: string | null
+  onAfterRevoke: () => void | Promise<void>
+}) {
   const { info, isLoading } = useAuthorInfo(endorsement.subjectDid)
   return (
     <PersonCard
@@ -523,7 +723,94 @@ function GivenCard({ endorsement }: { endorsement: GivenEndorsement }) {
       isLoadingInfo={isLoading}
       createdAt={endorsement.createdAt}
       note={endorsement.note}
+      listTitle={endorsement.listTitle}
+      menu={
+        canRevoke && viewerDid ? (
+          <RevokeGivenButton
+            viewerDid={viewerDid}
+            rkey={endorsement.rkey}
+            subjectDisplay={
+              info?.displayName || info?.handle || endorsement.subjectDid
+            }
+            onAfterRevoke={onAfterRevoke}
+          />
+        ) : null
+      }
     />
+  )
+}
+
+/**
+ * Small `×` revoke affordance shown on the owner's Given grid.
+ * Click → ConfirmDialog ("Revoke endorsement?") → on confirm,
+ * `deleteEndorsementAward` runs and the parent's `onAfterRevoke`
+ * refetches the Given list so the card disappears.
+ */
+function RevokeGivenButton({
+  viewerDid,
+  rkey,
+  subjectDisplay,
+  onAfterRevoke,
+}: {
+  viewerDid: string
+  rkey: string
+  subjectDisplay: string
+  onAfterRevoke: () => void | Promise<void>
+}) {
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [isRevoking, setIsRevoking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleConfirm = async () => {
+    if (isRevoking) return
+    setIsRevoking(true)
+    setError(null)
+    try {
+      await deleteEndorsementAward(viewerDid, rkey)
+      await onAfterRevoke()
+      setConfirmOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to revoke")
+    } finally {
+      setIsRevoking(false)
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className="profile-endorsements-v2__given-revoke"
+        onClick={(e) => {
+          // PersonCard's outer Link otherwise catches the click and
+          // navigates to the subject's profile.
+          e.preventDefault()
+          e.stopPropagation()
+          setConfirmOpen(true)
+        }}
+        aria-label={`Revoke endorsement of ${subjectDisplay}`}
+        title="Revoke endorsement"
+      >
+        <X size={14} strokeWidth={2} aria-hidden />
+      </button>
+      {confirmOpen ? (
+        <ConfirmDialog
+          title={`Revoke endorsement of ${subjectDisplay}?`}
+          message="Your endorsement will be removed from this profile. You can endorse them again later."
+          confirmLabel="Revoke"
+          cancelLabel="Keep endorsement"
+          confirmVariant="destructive"
+          isConfirming={isRevoking}
+          onConfirm={handleConfirm}
+          onCancel={() => !isRevoking && setConfirmOpen(false)}
+        />
+      ) : null}
+      {error ? (
+        <span className="profile-endorsements-v2__endorse-error" role="alert">
+          {error}
+        </span>
+      ) : null}
+    </>
   )
 }
 
@@ -535,6 +822,7 @@ function PersonCard({
   isLoadingInfo,
   createdAt,
   note,
+  listTitle,
   menu,
 }: {
   did: string
@@ -542,6 +830,11 @@ function PersonCard({
   isLoadingInfo: boolean
   createdAt: string
   note?: string
+  /** Optional name of the list this endorsement was awarded under.
+   *  When set, renders as a 4th row in the card. Omitted for default
+   *  "Endorsement" awards (and for surfaces that ARE a list view,
+   *  where the context is implicit). */
+  listTitle?: string
   menu?: React.ReactNode
 }) {
   const displayName = info?.displayName || info?.handle || did
@@ -565,26 +858,35 @@ function PersonCard({
             fallbackInitials={initials}
           />
         )}
+        {/* Vertical stack — name (row 1), @handle (row 2), date
+            (row 3), list name (row 4 when present). The previous
+            layout pinned the date to the right of the name; lifting
+            it into its own row keeps the card visually scannable
+            even when the list-name row appears below it. */}
         <div className="profile-endorsements-v2__card-body">
-          <header className="profile-endorsements-v2__card-id-row">
-            <div className="profile-endorsements-v2__card-names">
-              <span className="profile-endorsements-v2__card-name">
-                {displayName}
-              </span>
-              {handle ? (
-                <span className="profile-endorsements-v2__card-handle">
-                  @{handle}
-                </span>
-              ) : null}
-            </div>
-            <time
-              dateTime={createdAt}
-              className="profile-endorsements-v2__card-date"
-              title={new Date(createdAt).toLocaleString()}
+          <span className="profile-endorsements-v2__card-name">
+            {displayName}
+          </span>
+          {handle ? (
+            <span className="profile-endorsements-v2__card-handle">
+              @{handle}
+            </span>
+          ) : null}
+          <time
+            dateTime={createdAt}
+            className="profile-endorsements-v2__card-date"
+            title={new Date(createdAt).toLocaleString()}
+          >
+            {formatShortDate(createdAt)}
+          </time>
+          {listTitle ? (
+            <span
+              className="profile-endorsements-v2__card-list"
+              title={`From list: ${listTitle}`}
             >
-              {formatShortDate(createdAt)}
-            </time>
-          </header>
+              {listTitle}
+            </span>
+          ) : null}
           {note ? (
             <p className="profile-endorsements-v2__card-note">{note}</p>
           ) : null}

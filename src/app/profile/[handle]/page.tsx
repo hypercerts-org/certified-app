@@ -40,6 +40,7 @@ import ProfileHeader from "@/components/profile/profile-header"
 import ProfileSidebar from "@/components/profile/profile-sidebar"
 import ProfileOverview from "@/components/profile/profile-overview"
 import ProfileEndorsements from "@/components/profile/profile-endorsements"
+import ProfileFollowers from "@/components/profile/profile-followers"
 import ProfileProjects from "@/components/profile/profile-projects"
 import ProfileCerts from "@/components/profile/profile-certs"
 import ProfileGroups from "@/components/profile/profile-groups"
@@ -65,6 +66,7 @@ type TabKey =
   | "projects"
   | "groups"
   | "endorsements"
+  | "followers"
   | "settings"
 
 // Tab strip order — keep in sync with PROFILE_TABS in
@@ -78,6 +80,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "projects", label: "Projects" },
   { key: "groups", label: "Groups" },
   { key: "endorsements", label: "Endorsements" },
+  { key: "followers", label: "Followers" },
   { key: "about", label: "About" },
   { key: "settings", label: "Settings" },
 ]
@@ -435,8 +438,12 @@ export default function UserProfilePage() {
   // unmount).
   const aboutEditingForOrg = isEditing && canEditInline && sidebarIsOrg
   const isViewerThisEntity = isOwnProfile || isActingAsThisGroup
+  // About tab is org-only — individual profiles never expose it, even
+  // when the viewer is the profile owner. Groups still surface it when
+  // they have content OR when an admin can edit / is editing.
   useProfileAboutAvailable(
-    !!displayLongDescription || isViewerThisEntity || aboutEditingForOrg,
+    sidebarIsOrg &&
+      (!!displayLongDescription || isViewerThisEntity || aboutEditingForOrg),
   )
   // Gate the Groups tab: visible whenever the viewer is currently
   // signed in as this entity (own profile, or acting-as this group),
@@ -873,7 +880,7 @@ export default function UserProfilePage() {
       // Anchors inside the edit banner (Save / Cancel) or the inline-
       // edit affordances (avatar/banner upload, URL list controls)
       // mustn't trigger the guard — they're part of the edit flow.
-      if (target.closest(".profile-edit-banner")) return
+      if (target.closest(".edit-banner")) return
       if (target.closest(".profile-sidebar__avatar-edit-btn")) return
       if (target.closest(".profile-banner-upload__btn")) return
       // External `target="_blank"` links open in a new tab so the
@@ -996,7 +1003,7 @@ export default function UserProfilePage() {
         // Appearance) instead of the profile identity sidebar.
         <SettingsPanel />
       ) : (
-        <div className="profile-page__layout">
+        <div className="page-layout">
           <ProfileSidebar
             profile={effectiveProfile}
             avatarUrl={effectiveAvatarUrl}
@@ -1022,7 +1029,7 @@ export default function UserProfilePage() {
             saveError={saveError}
           />
 
-          <div className="profile-page__main">
+          <div className="page-layout__main">
             {activeTab === "overview" && (
               <div role="tabpanel" id="tabpanel-overview" aria-labelledby="tab-overview">
                 <ProfileOverview
@@ -1097,7 +1104,10 @@ export default function UserProfilePage() {
                 id="tabpanel-projects"
                 aria-labelledby="tab-projects"
               >
-                <ProfileProjects did={did} />
+                <ProfileProjects
+                  did={did}
+                  viewerIsOwner={isViewerThisEntity}
+                />
               </div>
             )}
             {activeTab === "groups" && (
@@ -1116,6 +1126,15 @@ export default function UserProfilePage() {
                 aria-labelledby="tab-endorsements"
               >
                 <ProfileEndorsements did={did} />
+              </div>
+            )}
+            {activeTab === "followers" && did && (
+              <div
+                role="tabpanel"
+                id="tabpanel-followers"
+                aria-labelledby="tab-followers"
+              >
+                <ProfileFollowers did={did} />
               </div>
             )}
           </div>

@@ -53,7 +53,7 @@ export default function LongDescriptionModal({
   return (
     <dialog
       ref={dialogRef}
-      className="signin-modal long-description-modal"
+      className="signin-modal app-modal long-description-modal"
       role="dialog"
       aria-label={title ?? "Description"}
       onClick={handleBackdropClick}

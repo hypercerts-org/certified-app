@@ -1,51 +1,38 @@
 /* ========== Cert detail page ==========
 
-   Profile-mirroring layout: a slim left pane that opens with a 1:1
-   square cert image (placeholder when missing) and carries the small
-   metadata block (Created / Time period / Work scope / Rights) + the
-   author byline; main pane that opens with the title and carries the
-   description, contributors and locations.
+   The cert page shares its outer layout with the profile page: the
+   article root uses `.page-layout` (2-column grid: 296px sidebar +
+   fluid main) and the right pane uses `.page-layout__main`.
+   This keeps the page chrome (sidebar slot, main pane, gutters) and
+   the inline-edit banner visually identical to the profile page. The
+   cert-specific content classes (`.cert-detail__aside`,
+   `.cert-detail__image`, `.cert-detail__meta`, etc.) carry only the
+   cert pane's interior styling.
 
-   `.cert-detail--wide` is the opt-in marker. The `:has()` rule below
-   widens this page's `.app-shell__content` so the two columns have
-   room to breathe; every other page keeps its 600px reading cap. */
+   `.cert-detail--wide` is the opt-in marker on the article root. The
+   `:has()` rule below mirrors `.app-shell--fullbleed` so the shell's
+   content slot caps at 1280px with no lateral padding — same as the
+   profile page's full-bleed shell — and the banner renders at the
+   same width on both pages. We keep the shell's default padding-top
+   though, because the cert page does NOT use an overlay navbar; its
+   content must start below the solid top bar. */
 
 .cert-detail-page {
-  padding: 24px 0 64px;
+  padding-bottom: 64px;
 }
 
-/* When the edit banner is present, drop the page wrapper's top
-   padding — the banner's own `margin-top` (16px) provides the gap
-   from the top bar. Otherwise the cert page renders the banner
-   24px lower than the profile page does (which has no wrapper
-   padding), and they look mis-aligned even though they share the
-   same component. */
-.cert-detail-page:has(.profile-edit-banner) {
-  padding-top: 0;
+.app-shell:has(.cert-detail--wide) .app-shell__content {
+  /* Zero ALL `.app-shell__content` padding so the cert page renders
+     edge-to-edge like the profile page's `.app-shell--fullbleed`.
+     Top spacing for the read-only view comes from the inner
+     `.page-layout` (which has padding: 24px on desktop); top spacing
+     in edit mode comes from the edit banner's own margin-top. */
+  padding: 0;
 }
 
-/* Stacked on mobile (image + byline + meta on top, content below); two
-   columns on desktop matching the profile-page layout (296px sidebar +
-   fluid main, 32px gap). */
-.cert-detail {
-  display: grid;
-  gap: 24px;
-}
-
-@media (min-width: 800px) {
-  .cert-detail {
-    grid-template-columns: 296px minmax(0, 1fr);
-    gap: 32px;
-    align-items: start;
-  }
-}
-
-/* Widen the reading column ONLY for the cert detail page. Scoped via
-   `:has()` so we don't touch `.app-shell__content` globally — other
-   pages keep their 600px desktop cap. */
 @media (min-width: 800px) {
   .app-shell:has(.cert-detail--wide) .app-shell__content {
-    max-width: 1100px;
+    max-width: 1280px;
   }
 }
 
@@ -92,6 +79,13 @@
   border-radius: 8px;
   background: var(--bg-sunken);
   border: 1px solid var(--border-subtle);
+  /* Center the placeholder icon (Award) when there's no <img>. The
+     icon used to sit in the top-left because the box had default
+     block layout. The img child fills 100% / 100% so flex centering
+     doesn't visibly change it. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .cert-detail__image-img {
