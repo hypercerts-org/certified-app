@@ -5,9 +5,28 @@ import {
 } from "@/lib/groups/proxy-agent"
 import { checkCsrf } from "@/lib/auth/csrf"
 import { isValidDid } from "@/lib/utils/did"
-import { extractRouteError, parseJsonBody } from "@/lib/utils/api"
+import { extractRouteError, parseJsonBody, pickAllowedFields } from "@/lib/utils/api"
 
 const ACTIVITY_COLLECTION = "org.hypercerts.claim.activity"
+
+// Mirror the `org.hypercerts.claim.activity` lexicon (see
+// `src/lib/atproto/activity-types.ts:ClaimActivity`). Allowlist on the
+// BFF in line with sibling routes (`/profile`, `/metadata`,
+// `/location`) — see AUDIT_REPORT.md CS-005 and AGENTS.md §17 #6.
+const ALLOWED_ACTIVITY_FIELDS = [
+  "title",
+  "shortDescription",
+  "createdAt",
+  "shortDescriptionFacets",
+  "description",
+  "image",
+  "contributors",
+  "workScope",
+  "startDate",
+  "endDate",
+  "locations",
+  "rights",
+] as const
 
 /**
  * PUT /api/groups/[groupDid]/activity
@@ -62,10 +81,16 @@ export async function PUT(
         { status: 400 },
       )
     }
-    const record = { ...rawRecord, $type: ACTIVITY_COLLECTION } as Record<
-      string,
-      unknown
-    >
+    // Allowlist record fields. Without this, every property on the
+    // caller's body — including unknown / future / accidental keys —
+    // gets persisted on the group's repo. CGS may also validate
+    // upstream but defense-in-depth on the BFF matches the pattern
+    // used by sibling group routes (profile/metadata/location).
+    const record = pickAllowedFields(
+      rawRecord as Record<string, unknown>,
+      ALLOWED_ACTIVITY_FIELDS,
+      ACTIVITY_COLLECTION,
+    )
 
     const groupAgent = createGroupAgent(auth.agent, groupDid)
     const upstream = await groupAgent.call(
