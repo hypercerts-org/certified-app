@@ -37,7 +37,7 @@ export default function MembershipSyncModal({
     <div className="signin-modal__backdrop" onClick={onClose}>
       <div
         ref={focusTrapRef}
-        className="signin-modal app-modal"
+        className="signin-modal"
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}

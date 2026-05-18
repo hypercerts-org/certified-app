@@ -123,7 +123,7 @@ export default function CreatePage() {
   return (
     <div className="dashboard">
       <div className="dashboard__topbar">
-        <h1 className="dashboard__page-title">Create Cert</h1>
+        <h1 className="dashboard__page-title">Create Activity</h1>
       </div>
       <div className="dashboard__body">
         <div className="dashboard__main">

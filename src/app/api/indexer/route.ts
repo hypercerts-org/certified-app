@@ -22,21 +22,6 @@ const UPSTREAM_INDEXER_URL =
   process.env.NEXT_PUBLIC_INDEXER_URL ||
   "https://magic-indexer-dev.up.railway.app/graphql"
 
-// Mirror the module-load warning the notifications route already has
-// (src/app/api/notifications/route.ts:34) — without this a production
-// deploy that forgets to set INDEXER_URL silently routes every feed
-// query at the dev indexer, returning stale or inconsistent data.
-if (
-  process.env.NODE_ENV === "production" &&
-  !process.env.INDEXER_URL &&
-  !process.env.NEXT_PUBLIC_INDEXER_URL
-) {
-  console.warn(
-    "[indexer] no INDEXER_URL set in production — falling back to the dev " +
-      "instance. Set INDEXER_URL in the Vercel project env.",
-  )
-}
-
 /** Hard cap on the upstream request — matches the indexer's typical
  *  warm-cache response time (~500ms) with generous headroom. */
 const UPSTREAM_TIMEOUT_MS = 15_000
@@ -103,29 +88,6 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Block mutation operations. The indexer's public /graphql endpoint
-  // is for reads; the notifications mutations live on a separate
-  // /notifications/graphql endpoint reached via the
-  // /api/notifications proxy with operation allowlisting. Without
-  // this guard, an XSS payload (or any same-origin context) could
-  // call arbitrary GraphQL operations through us.
-  //
-  // The detection trims leading whitespace + GraphQL comments before
-  // scanning for the `mutation` keyword to defeat
-  // `\n# comment\nmutation { … }` style smuggling.
-  try {
-    const parsed = JSON.parse(body) as { query?: unknown }
-    if (typeof parsed.query === "string" && isLikelyMutation(parsed.query)) {
-      return NextResponse.json(
-        { error: "Mutations are not allowed through this proxy" },
-        { status: 400 },
-      )
-    }
-  } catch {
-    // Not JSON — let the upstream return its native parse error. The
-    // body-size cap already bounds the work.
-  }
-
   // Inherit the client's abort signal where possible so a navigation
   // away cancels the upstream fetch instead of leaving it dangling,
   // and add a hard timeout in case the indexer hangs.
@@ -173,27 +135,4 @@ export async function POST(request: NextRequest) {
   } finally {
     clearTimeout(timeoutId)
   }
-}
-
-/** True when the GraphQL query string starts (ignoring leading whitespace
- *  and `#` line-comments) with the `mutation` keyword. */
-function isLikelyMutation(query: string): boolean {
-  // Strip leading whitespace and `# …\n` comments. Bounded loop in
-  // case of pathological input (e.g. one-megabyte comment block —
-  // already prevented by MAX_BODY_SIZE but belt + braces).
-  let i = 0
-  const n = query.length
-  let guard = 0
-  while (i < n && guard < 4096) {
-    const ch = query.charCodeAt(i)
-    if (ch === 32 || ch === 9 || ch === 10 || ch === 13) {
-      i++
-    } else if (ch === 35 /* # */) {
-      while (i < n && query.charCodeAt(i) !== 10) i++
-    } else {
-      break
-    }
-    guard++
-  }
-  return query.slice(i, i + 8).toLowerCase().startsWith("mutation")
 }

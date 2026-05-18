@@ -120,7 +120,7 @@ export default function AddOrgModal({ did, onClose, onAdded }: AddOrgModalProps)
     <div className="signin-modal__backdrop" role="presentation" onClick={onClose}>
       <div
         ref={focusTrapRef}
-        className="signin-modal app-modal"
+        className="signin-modal"
         role="dialog"
         aria-modal="true"
         aria-label="Add Existing Group"

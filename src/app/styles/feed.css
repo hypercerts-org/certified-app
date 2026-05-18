@@ -476,23 +476,6 @@
   display: block;
 }
 
-.feed-card__image-wrap--placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background:
-    linear-gradient(
-      135deg,
-      var(--bg-sunken) 0%,
-      var(--overlay-weak) 100%
-    );
-}
-
-.feed-card__image-placeholder-icon {
-  color: var(--fg-muted);
-  opacity: 0.6;
-}
-
 .feed-card__title {
   font-family: var(--font-headline), "Noto Serif", serif;
   font-size: 1.125rem;
@@ -1898,7 +1881,7 @@
 
 .endorsement-multi-row__error {
   font-size: 0.75rem;
-  color: var(--color-error);
+  color: var(--danger, #d44);
   margin-top: 2px;
 }
 
@@ -1924,7 +1907,7 @@
 }
 
 .endorsement-multi-row__status--error {
-  background: var(--color-error);
+  background: var(--danger, #d44);
   color: white;
 }
 
@@ -2028,7 +2011,7 @@
 .profile-endorsements__endorse-error {
   display: block;
   font-size: 0.75rem;
-  color: var(--color-error);
+  color: var(--danger, #d44);
   margin-top: 4px;
 }
 

@@ -3,7 +3,7 @@
 import React from "react";
 import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
-import { ArrowLeftRight, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import type { Group } from "@/lib/groups/types";
 
 interface AccountSwitcherListProps {
@@ -18,9 +18,6 @@ interface AccountSwitcherListProps {
    * (e.g. /groups/<did> for an org, / for personal). */
   onAfterSwitch: (next: Group | null) => void;
   onSignOut: () => void;
-  /** Open the sign-in flow to add / switch to a different individual
-   *  atproto account. Replaces the current session on completion. */
-  onSwitchAccount: () => void;
 }
 
 export default function AccountSwitcherList({
@@ -32,7 +29,6 @@ export default function AccountSwitcherList({
   switchOrg,
   onAfterSwitch,
   onSignOut,
-  onSwitchAccount,
 }: AccountSwitcherListProps) {
   const { handle } = session;
 
@@ -67,12 +63,11 @@ export default function AccountSwitcherList({
           className="account-switcher__signout"
           onClick={(e) => {
             e.stopPropagation();
-            onSwitchAccount();
+            onSignOut();
           }}
-          aria-label="Switch to a different account"
-          title="Switch account"
+          aria-label="Sign out"
         >
-          <ArrowLeftRight size={16} />
+          <LogOut size={16} />
         </button>
       </div>
 
@@ -106,19 +101,6 @@ export default function AccountSwitcherList({
           ))}
         </>
       )}
-
-      <div className="account-switcher__divider" />
-      <button
-        role="menuitem"
-        className="account-switcher__signout-row"
-        onClick={(e) => {
-          e.stopPropagation();
-          onSignOut();
-        }}
-      >
-        <LogOut size={16} aria-hidden />
-        <span>Sign out</span>
-      </button>
     </>
   );
 }

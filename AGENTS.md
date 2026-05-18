@@ -54,7 +54,7 @@ Certified is a passwordless identity platform built on **AT Protocol** (atproto)
   - `app.certified.actor.membership` — user-side record of group memberships.
   - `app.bsky.actor.profile` — fallback profile (for Bluesky discoverability).
   - `org.impactindexer.link.attestation` — EIP-712 wallet attestation linking an EVM address to a DID.
-- **Group service** — a separate atproto service (currently `groups.certified.app`) that manages multi-user organizations. The app proxies all group operations through the user's PDS using a custom `certified_group` proxy pattern with custom NSIDs (`app.certified.group.*`).
+- **Group service** — a separate atproto service (currently `atproto-group-gate-staging.up.railway.app`) that manages multi-user organizations. The app proxies all group operations through the user's PDS using a custom `certified_group` proxy pattern with custom NSIDs (`app.certified.group.*`).
 
 ## 2. Tech Stack
 
@@ -105,8 +105,8 @@ Source: `.env.local.example` and `src/lib/utils/config.ts`.
 | `RESEND_API_KEY` | optional | Resend key for `/api/feedback`. |
 | `RESEND_FROM_EMAIL` | optional | Override "from" header. Defaults to `Certified <no-reply@certified.one>`. |
 | `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | optional | Adds WalletConnect connector to the wagmi config when set. |
-| `NEXT_PUBLIC_GROUP_SERVICE_URL` | optional | Group service base URL. Defaults to `https://groups.certified.app`. |
-| `NEXT_PUBLIC_GROUP_SERVICE_DID` | optional | Group service DID (for `getServiceAuth` `aud`). Defaults to `did:web:groups.certified.app`. |
+| `NEXT_PUBLIC_GROUP_SERVICE_URL` | optional | Group service base URL. Defaults to the staging Railway deployment. |
+| `NEXT_PUBLIC_GROUP_SERVICE_DID` | optional | Group service DID (for `getServiceAuth` `aud`). Defaults to `did:web:atproto-group-gate-staging.up.railway.app`. |
 
 `PUBLIC_URL` is the most consequential variable — it is checked against the `Origin` header on every CSRF-protected route, baked into the OAuth client metadata, and used to build the `redirect_uris` array. If it does not match the deployed domain, sign-in and every POST will fail.
 
@@ -380,15 +380,6 @@ If you need to write a new collection, **add it to `ALLOWED_WRITE_COLLECTIONS`**
 3. **Reuse the CSS variables** above; don't hard-code colors or transitions in new rules.
 4. **Skip-nav styles** are at the top of `globals.css`. Don't duplicate.
 
-### Modals — the radius rule
-
-Two-tier convention codified in DESIGN.md §11:
-
-- **Sign-in modal** (`.signin-modal` only): 20px radius, hero padding — the **only** intentional exception to the 2px system. Reserved for the sign-in surface.
-- **Every other dialog**: `<dialog className="signin-modal app-modal …">`. The `.app-modal` class (in `components.css`) inherits the sign-in chrome (backdrop, animation, close X, focus styling) but overrides `border-radius: var(--radius)` and trims padding.
-
-If you ship a new modal that extends `.signin-modal` without `.app-modal`, the dialog comes out comically rounded and breaks the visual system. Search for `className="signin-modal"` before merging.
-
 ## 12. Component Conventions
 
 - **Internal links:** `next/link`. Don't use `<a href>` for in-app routes.
@@ -464,54 +455,6 @@ Defined in `src/lib/groups/proxy-agent.ts`:
 ### Group creation limit
 
 `MAX_SELF_CREATED_ORGS = 5`. Enforced both server-side (in `/api/groups/register`) and client-side (in `useOrgCreationLimit()`). A group is "self-created" when the user's member entry has `addedBy === ownerDid`. The server-side check fetches all memberships and member lists for those groups, then counts.
-
-## 15a. Social Graph + Endorsements
-
-### Lexicons in play
-- `app.certified.graph.follow` — `{subject: did, createdAt, via?}`. Viewer's PDS holds *their* follows; "followers of X" is reconstructed via the indexer (`appCertifiedGraphFollow` with `subject.eq` filter).
-- `app.certified.badge.{definition, award, response}` — endorsements + lists. A **list** is a `badge.definition` with `badgeType: "endorsement"` and `title !== "Endorsement"`. The reserved `"Endorsement"` title backs the regular endorse flow.
-- Allowlist any new collection in `ALLOWED_WRITE_COLLECTIONS` in `src/app/api/xrpc/[...method]/route.ts` — silent 403 otherwise.
-
-### Write helpers
-- `createFollow(ownDid, subjectDid, { targetDid? })` — XRPC for personal, BFF (`/api/groups/[did]/follow`) when `targetDid` set. Mirror this `targetDid` opt-in for any new group-aware write.
-- `createEndorsementAward(ownDid, subjectDid, note?)` — default endorsement; lazy-ensures the default definition.
-- `createListAward(ownDid, subjectDid, badge: StrongRef)` — award under a specific list. Skip ensure-def; caller passes the list's strong ref.
-- `createListDefinition` / `updateListDefinition` / `deleteListAndAwards` — list CRUD; delete walks every linked award first so the def-delete never orphans records.
-- `BADGE_AWARD_NOTE_MAX = 500` enforced in `writeBadgeAward` and again in every UI surface that captures a note. The UI also clamps via `maxLength` + `slice` (belt-and-suspenders).
-
-### Hooks (own + foreign profiles)
-- `useFollowing(did)` — PDS listRecords; exposes `addFollow` / `removeFollow` for optimistic updates.
-- `useFollowers(did)` — indexer `appCertifiedGraphFollow(where: { subject })`; dedupes by follower DID; exposes `addFollower` / `removeFollower`.
-- `useGivenEndorsements(did)` / `useReceivedEndorsements(did, { includeRejected? })` — both attach `listTitle` per award (`undefined` for default endorsements). `includeRejected` defaults to false; pass true on the owner view so the response filter dropdown can switch between Hide rejected / Only rejected / Show all.
-- `useEndorsementLists(did)` — definitions + awards on one repo, grouped by def URI. Exposes `createList` / `updateList` / `deleteList`, all optimistic. `listAwards` here is paginated only by the PDS' default page (no full walk yet).
-- `useSocialGraphSync(did, { ownDid, targetDid })` — composes `useFollowing` + `useBlueskyFollows`; returns `inBoth` / `onlyCertified` / `onlyBluesky` sets plus an `importDids(dids)` batch writer.
-
-### Card / modal patterns
-- `<PersonCard>` in `profile-endorsements.tsx` (and a parallel one in `profile-followers.tsx`) is the shared row used by Received/Given/Followers/Following. Layout: name → @handle → date → optional `listTitle` pill → optional note. Top-right `menu` slot is reserved for the × revoke / kebab / etc. Don't restore the right-aligned date.
-- `<EndorsePeopleModal>` is callback-driven via `onEndorse(did, note?)`. It serves three flows: regular endorse (with `requireReason`), list `+ Add people` (skip reason — list is the reason), future awards (just supply a different `onEndorse`).
-- `<EndorseReasonModal>` is the single-target reason capture used by the sidebar Endorse button. Pops up *before* the write, never after.
-- All new dialogs use `<dialog className="signin-modal app-modal …">`. See §11 modal radius rule.
-
-### Indexer queries
-All four social-graph / endorsement hooks already target the post-#87 / #88 / #89 magic-indexer schema:
-- `appCertifiedBadgeAward.badge.{badgeType, …}` nested-where is live; **`useReceivedEndorsements` still uses the 2-call workaround** (one indexer for awards, one for endorsement-typed definition URIs). Migrating to the nested-where is a self-contained client change.
-- `appCertifiedHypercertsCollection.items.itemIdentifier.uri` array-element where is live; `useCertProjects` could swap from PDS-scan-(same-DID-only) to a single cross-DID indexer query.
-- `AppCertifiedBadgeDefinition.awardCount` is live; `useEndorsementLists` could drop its `listAwards` round-trip and read counts directly.
-
-If you touch one of these hooks, prefer the nested-where shape — search the file's comments for "round-trip" to find the migration notes inline.
-
-### Optimistic state — the pattern
-Every follow / endorse / unfollow button uses the same shape:
-
-```ts
-const [optimistic, setOptimistic] = useState<boolean | null>(null)
-const effective = optimistic ?? parentValue
-useEffect(() => {
-  if (optimistic !== null && parentValue === optimistic) setOptimistic(null)
-}, [parentValue, optimistic])
-```
-
-Don't clear `optimistic` in `finally` — the parent's refetch may lag the PDS write, and clearing too early snaps the button back to a stale value for a frame. The `useEffect` reconciler clears the override only when the parent confirms.
 
 ## 16. Identity-Link / Wallet Attestation
 
@@ -855,13 +798,6 @@ certified-app/
 13. **`100vw` in CSS** — causes horizontal scroll when a vertical scrollbar is present. Use `100%`.
 14. **Treating `next.config.ts`'s `serverExternalPackages: ["@atproto/oauth-client-node"]` as optional** — it's not. Without it, the OAuth client fails to bundle correctly for serverless.
 15. **`ATPROTO_PRIVATE_KEY` / JWKS coupling** — if you set `ATPROTO_PRIVATE_KEY`, the OAuth client switches to confidential auth and the published `oauth-client-metadata` includes a `jwks_uri`. Removing the var without updating the registered metadata can desync clients.
-16. **Forgetting `.app-modal` on a new dialog** — every modal except the sign-in surface needs `<dialog className="signin-modal app-modal …">`. See §11 modal radius rule. The 20px chunky-modal regression is the symptom.
-17. **Clearing optimistic state in `finally`** — see §15a "Optimistic state — the pattern". The parent's refetch lags the PDS write; clear via the parent-value-caught-up `useEffect` instead.
-18. **Reverting the PersonCard layout to right-aligned date** — Received/Given/Followers/Following cards intentionally stack name → @handle → date → listTitle. The previous "name on left, date on right" layout breaks the new `listTitle` row 4.
-19. **`listTitle` privacy leak** — `useReceivedEndorsements` returns `listTitle` to ALL viewers (the def title is public on the issuer's repo). That's fine for endorsements. Don't accidentally apply the same logic to private metadata.
-20. **Group follow writes via the personal XRPC proxy** — `createFollow(ownDid, subjectDid)` without `targetDid` writes to the PERSONAL repo, even when acting-as-group. Pass `{ targetDid: groupDid }` to route through `/api/groups/[did]/follow`.
-21. **Hiding rejected endorsements from non-owners** — `useReceivedEndorsements` default keeps the privacy contract (foreign viewers never see rejected). Only pass `{ includeRejected: true }` on owner-side surfaces, and filter client-side from there.
-22. **Static segments under dynamic routes** — `/project/new` lives at `src/app/project/new/page.tsx` alongside `[did]/[rkey]`. Static wins (and `[did]/[rkey]` is two segments so `/project/new` wouldn't match it anyway), but if you change the dynamic pattern to single-segment make sure `new` still wins.
 
 ## 23. Adding a New Feature — Checklist
 

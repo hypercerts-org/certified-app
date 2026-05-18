@@ -119,18 +119,6 @@
   /* Navbar */
   --navbar-height: 64px;
 
-  /* Desktop top bar (rendered ≥800px). Row 1 is chrome
-     (brandmark + page title + search + icon buttons + switcher); row 2
-     is the profile tabs strip, conditional on /profile/[handle]. The
-     `--top-bar-total` value is row 1 by default and is bumped to
-     row 1 + row 2 on the .app-shell--fullbleed marker, which the
-     profile page sets via useProfileNavbar(). Right rail uses
-     --top-bar-total for its sticky top so it never slides under
-     the bar. */
-  --top-bar-row1: 52px;
-  --top-bar-row2: 44px;
-  --top-bar-total: var(--top-bar-row1);
-
   /* ===== Breakpoints (informational; CSS @media rules hardcode these
      numbers because vanilla CSS can't `var()` inside @media queries.
      Keep CSS in sync with these tokens AND with src/lib/hooks/use-layout-breakpoints.ts. */
@@ -165,15 +153,11 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  /* Surfaces — elevated is LIGHTER than canvas in dark.
-     Values sit in the zinc-900..zinc-700 band so the page reads as
-     "dark gray" rather than near-black (GitHub-dark uses #0d1117 for
-     reference; we sit slightly lighter to give surfaces visible
-     separation without losing dark-mode contrast). */
-  --bg-canvas: #18181b;
-  --bg-sunken: #111114;
-  --bg-raised: #26262b;
-  --bg-elevated: #2d2d33;
+  /* Surfaces — elevated is LIGHTER than canvas in dark */
+  --bg-canvas: #0b0b0d;
+  --bg-sunken: #08080a;
+  --bg-raised: #141417;
+  --bg-elevated: #1a1a1e;
 
   /* Foregrounds */
   --fg-primary: #f5f5f7;

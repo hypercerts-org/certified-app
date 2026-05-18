@@ -251,17 +251,6 @@
   padding: 16px;
 }
 
-/* Reading-column constraint for the non-Overview tab panels (Activities,
-   Endorsements, Groups) on desktop. The profile page widens to 1280px
-   for the GitHub-style Overview, but list views still want a narrow
-   reading column. */
-@media (min-width: 800px) {
-  .profile-panel--reading {
-    max-width: 720px;
-    margin: 0 auto;
-  }
-}
-
 /* ========== Profile › Groups tab ========== */
 .profile-groups {
   list-style: none;
@@ -332,73 +321,3 @@
   padding: 24px 0;
 }
 
-
-/* ========== Profile › Projects tab ==========
-   Lists `org.hypercerts.collection` records with `type === "project"`
-   from the profile's PDS. Each row mirrors the GitHub repo-row look:
-   a leading folder/repo glyph, then title + description + meta. */
-.profile-projects {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.profile-projects__item {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.profile-projects__item:first-child {
-  border-top: 1px solid var(--border-subtle);
-}
-
-.profile-projects__icon {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius);
-  background: var(--bg-sunken);
-  color: var(--fg-secondary);
-}
-
-.profile-projects__body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.profile-projects__title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--fg-primary);
-  margin: 0;
-}
-
-.profile-projects__desc {
-  font-size: 0.875rem;
-  color: var(--fg-secondary);
-  line-height: 1.4;
-  margin: 0;
-}
-
-.profile-projects__meta {
-  font-size: 0.75rem;
-  color: var(--fg-muted);
-  margin: 4px 0 0;
-}
-
-.profile-projects__loading {
-  display: flex;
-  justify-content: center;
-  padding: 24px 0;
-}

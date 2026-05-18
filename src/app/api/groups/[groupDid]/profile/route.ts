@@ -96,10 +96,8 @@ export async function PUT(
 
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
-    // extractRouteError calls logSafe internally; bare console.error
-    // would duplicate the log line and bypass the redactSecrets pass
-    // that strips JWT/DPoP material from the atproto SDK's cause chain.
-    const { status, message } = extractRouteError(err, "[groups/profile]")
+    console.error("PUT org profile error:", err)
+    const { status, message } = extractRouteError(err)
     return NextResponse.json({ error: message }, { status })
   }
 }

@@ -3,7 +3,6 @@ import type { LexiconDoc } from "@atproto/lexicon"
 import { getOAuthClient } from "@/lib/auth/oauth-client"
 import { getSessionDid, deleteSession } from "@/lib/auth/session"
 import { getServiceAuthToken as mintServiceAuthToken } from "@/lib/atproto/service-auth"
-import { logSafe } from "@/lib/utils/log-safe"
 import { GROUP_SERVICE_DID } from "./constants"
 
 /**
@@ -164,13 +163,7 @@ export async function getAuthenticatedAgent(): Promise<{
   let oauthSession
   try {
     oauthSession = await client.restore(did)
-  } catch (err) {
-    // Mirrors the XRPC proxy's pattern at
-    // `src/app/api/xrpc/[...method]/route.ts:152` — without this log,
-    // every BFF route's session-expiry event is invisible in Vercel
-    // logs and operator can't tell user-reported "I got signed out"
-    // events from real auth failures.
-    logSafe("[proxy-agent] oauth restore failed", err)
+  } catch {
     await deleteSession()
     return null
   }
