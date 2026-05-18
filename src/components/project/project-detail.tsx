@@ -1,17 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { Award, FolderGit2 } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { FolderGit2, Inbox } from "lucide-react"
 import ActivityAuthor from "@/components/feed/activity-author"
 import ActivityContributor from "@/components/feed/activity-contributor"
-import LoadingSpinner from "@/components/ui/loading-spinner"
+import FeedLayout from "@/components/feed/feed-layout"
+import EmptyState from "@/components/ui/empty-state"
 import { useProjectItems } from "@/hooks/use-project-items"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
-import {
-  activityDetailHref,
-  parseActivityUri,
-} from "@/lib/atproto/activity-uri"
 import { formatShortDate } from "@/lib/utils/format-date"
 import type { CollectionValue } from "@/lib/atproto/collection"
 import type {
@@ -77,77 +73,6 @@ function contributionRoleText(details: unknown): string | null {
 }
 
 /**
- * Compact single-row representation of a cert that belongs to this
- * project. Deliberately not `<ActivityCard>` — we want a denser, more
- * secondary visual treatment so the project hero/description above
- * stays dominant. Pattern is close to a GitHub repo file row or a
- * Behance "more from this project" thumbnail.
- */
-function ProjectCertRow({
-  record,
-  did,
-}: {
-  record: ActivityRecord
-  did: string
-}) {
-  const { value } = record
-  const imageUrl = value.image
-    ? resolveActivityImageUrl(value.image, did)
-    : null
-  const [imageFailed, setImageFailed] = useState(false)
-
-  const parsed = parseActivityUri(record.uri)
-  const href = parsed ? activityDetailHref(parsed.did, parsed.rkey) : null
-
-  const inner = (
-    <>
-      {imageUrl && !imageFailed ? (
-        <span className="project-cert-row__thumb">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            className="project-cert-row__thumb-img"
-            src={imageUrl}
-            alt=""
-            loading="lazy"
-            onError={() => setImageFailed(true)}
-          />
-        </span>
-      ) : (
-        <span
-          className="project-cert-row__thumb project-cert-row__thumb--placeholder"
-          aria-hidden="true"
-        >
-          <Award size={20} strokeWidth={1.5} />
-        </span>
-      )}
-
-      <span className="project-cert-row__text">
-        <span className="project-cert-row__title">{value.title}</span>
-        {value.shortDescription ? (
-          <span className="project-cert-row__desc">
-            {value.shortDescription}
-          </span>
-        ) : null}
-      </span>
-    </>
-  )
-
-  return (
-    <li className="project-cert-row-item">
-      {href ? (
-        <Link href={href} className="project-cert-row">
-          {inner}
-        </Link>
-      ) : (
-        <span className="project-cert-row project-cert-row--static">
-          {inner}
-        </span>
-      )}
-    </li>
-  )
-}
-
-/**
  * Detail view for a single `org.hypercerts.collection` project record.
  *
  * Layout reads top-down like a GitHub repo README or a Behance project
@@ -207,6 +132,26 @@ export default function ProjectDetail({ did, value }: ProjectDetailProps) {
     : []
 
   const { resolutions, isLoading: itemsLoading } = useProjectItems(value.items)
+
+  // Resolved-only view for the FeedLayout below: an item that didn't
+  // resolve (`null` record or missing DID) isn't a renderable
+  // ActivityCard. We surface the total `certCount` from the raw
+  // resolutions so the count tile stays accurate even while items
+  // trickle in; the cards array only includes ones we can paint.
+  const resolvedActivities = useMemo<ActivityRecord[]>(
+    () =>
+      resolutions
+        .map((r) => r.record)
+        .filter((r): r is ActivityRecord => r != null),
+    [resolutions],
+  )
+  const didByUri = useMemo<Map<string, string>>(() => {
+    const m = new Map<string, string>()
+    for (const r of resolutions) {
+      if (r.record && r.did) m.set(r.record.uri, r.did)
+    }
+    return m
+  }, [resolutions])
 
   // Time period rendering — same rules as the cert detail.
   let timePeriodLabel: string | null = null
@@ -325,35 +270,29 @@ export default function ProjectDetail({ did, value }: ProjectDetailProps) {
           <span className="project-detail__certs-count">{certCount}</span>
         </div>
 
-        {certCount === 0 ? (
-          <p className="project-detail__certs-empty">
-            {itemsLoading
-              ? "Loading certs…"
-              : "This project doesn't reference any certs yet."}
-          </p>
-        ) : (
-          <ul className="project-cert-list">
-            {resolutions.map((r) => {
-              if (!r.record || !r.did) {
-                return (
-                  <li
-                    key={r.uri}
-                    className="project-cert-row-item project-cert-row-item--loading"
-                  >
-                    <LoadingSpinner size="sm" />
-                  </li>
-                )
-              }
-              return (
-                <ProjectCertRow
-                  key={r.uri}
-                  record={r.record}
-                  did={r.did}
-                />
-              )
-            })}
-          </ul>
-        )}
+        {/* `<FeedLayout>` matches what the profile Certs tab and the
+            global feed paint. Pre-resolved cards come from
+            `useProjectItems`; we drive `loadMore` as a no-op since
+            project items are a curated finite array. The first card
+            renders as soon as it resolves (`isLoading` flips false);
+            the rest stream in with the bottom-loading spinner via
+            `isLoadingMore`. */}
+        <FeedLayout
+          activities={resolvedActivities}
+          getDid={(uri) => didByUri.get(uri) ?? did}
+          isLoading={itemsLoading && resolvedActivities.length === 0}
+          isLoadingMore={itemsLoading && resolvedActivities.length > 0}
+          error={null}
+          hasMore={false}
+          loadMore={() => {}}
+          emptyState={
+            <EmptyState
+              icon={Inbox}
+              title="No certs in this project yet"
+              description="When certs are added to this project, they'll appear here."
+            />
+          }
+        />
       </section>
     </article>
   )
