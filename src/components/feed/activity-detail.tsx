@@ -310,7 +310,13 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
       await putCertRecord(sessionDid, editTargetDid ?? sessionDid, rkey, next)
       setLocalValue(next)
       if (pendingImagePreviewUrl) {
-        setLocalImageUrl(pendingImagePreviewUrl)
+        // Revoke the prior localImageUrl before promoting the new
+        // preview — otherwise repeated edit-then-save cycles leak
+        // blob URLs into the document for the lifetime of the page.
+        setLocalImageUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev)
+          return pendingImagePreviewUrl
+        })
       }
       setPendingImagePreviewUrl(null)
       setPendingImageBlob(null)
@@ -331,6 +337,30 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
     pendingImagePreviewUrl,
     editTargetDid,
   ])
+
+  // Revoke any outstanding object URL on unmount. Without this, a
+  // user who navigates away mid-edit (or whose page unmounts after
+  // save) leaks the pending preview / local mirror until the tab
+  // closes. The setters above already revoke on replacement; this
+  // is the unmount-side guarantee.
+  //
+  // Use refs (not deps) so the cleanup only fires on unmount — a
+  // deps array on (pendingImagePreviewUrl, localImageUrl) would
+  // revoke the prior render's URLs on every state transition,
+  // including the save flow where one URL is *moved* from pending
+  // to localImageUrl (revoking the URL we just promoted).
+  const pendingImagePreviewUrlRef = useRef(pendingImagePreviewUrl)
+  pendingImagePreviewUrlRef.current = pendingImagePreviewUrl
+  const localImageUrlRef = useRef(localImageUrl)
+  localImageUrlRef.current = localImageUrl
+  useEffect(() => {
+    return () => {
+      const a = pendingImagePreviewUrlRef.current
+      const b = localImageUrlRef.current
+      if (a) URL.revokeObjectURL(a)
+      if (b && b !== a) URL.revokeObjectURL(b)
+    }
+  }, [])
 
   // Resolution order for the displayed cert image:
   //   1. In-flight preview (object URL created the instant the user
