@@ -55,8 +55,21 @@ export function useSocialGraphSync(
   refetch: () => Promise<void>
   importDids: (dids: string[]) => Promise<SocialGraphSyncResult>
 } {
-  const certified = useFollowing(did)
-  const bluesky = useBlueskyFollows(did)
+  // Destructure both sources so the closures below close over
+  // individually-stable callbacks rather than the always-fresh
+  // wrapping object literal returned each render. This lets the React
+  // Compiler preserve memoization for `refetch` and `importDids`.
+  const {
+    subjects: certifiedSubjects,
+    count: certifiedCount,
+    isLoading: certifiedLoading,
+    error: certifiedError,
+    refetch: certifiedRefetch,
+    addFollow: certifiedAddFollow,
+  } = useFollowing(did)
+  const { followedDids: blueskyDids, isLoading: blueskyLoading, error: blueskyError } =
+    useBlueskyFollows(did)
+  const blueskyCount = blueskyDids.size
   const ownDid = opts?.ownDid ?? did
   const targetDid = opts?.targetDid
 
@@ -64,23 +77,21 @@ export function useSocialGraphSync(
     const inBoth: string[] = []
     const onlyCertified: string[] = []
     const onlyBluesky: string[] = []
-    certified.subjects.forEach((d) => {
-      if (bluesky.followedDids.has(d)) inBoth.push(d)
+    certifiedSubjects.forEach((d) => {
+      if (blueskyDids.has(d)) inBoth.push(d)
       else onlyCertified.push(d)
     })
-    bluesky.followedDids.forEach((d) => {
-      if (!certified.subjects.has(d)) onlyBluesky.push(d)
+    blueskyDids.forEach((d) => {
+      if (!certifiedSubjects.has(d)) onlyBluesky.push(d)
     })
     return { inBoth, onlyCertified, onlyBluesky }
-  }, [certified.subjects, bluesky.followedDids])
+  }, [certifiedSubjects, blueskyDids])
 
-  const refetch = useCallback(async () => {
-    await Promise.all([certified.refetch(), bluesky ? Promise.resolve() : Promise.resolve()])
-  }, [certified])
   // `useBlueskyFollows` doesn't expose a refetch — the cache
   // refreshes on focus when stale, which is good enough for the
   // post-import view (the bluesky data didn't change, only certified
   // did).
+  const refetch = useCallback(() => certifiedRefetch(), [certifiedRefetch])
 
   const [isWriting, setIsWriting] = useState(false)
 
@@ -109,14 +120,14 @@ export function useSocialGraphSync(
       for (const subjectDid of dids) {
         if (seen.has(subjectDid)) continue
         seen.add(subjectDid)
-        if (certified.subjects.has(subjectDid)) continue
+        if (certifiedSubjects.has(subjectDid)) continue
         try {
           const result = await createFollow(ownDid, subjectDid, { targetDid })
           // Optimistically update the local certified set so the
           // stats tile flips immediately AND a partial failure
           // leaves the count accurate. Refetch below catches up to
           // the PDS for the final reconciliation.
-          certified.addFollow(subjectDid, result.uri, result.cid)
+          certifiedAddFollow(subjectDid, result.uri, result.cid)
           imported++
         } catch (err) {
           errors.push({
@@ -128,19 +139,19 @@ export function useSocialGraphSync(
       }
       // Refetch the certified list so the cache reflects the new
       // commits authoritatively. The bluesky side didn't change.
-      await certified.refetch()
+      await certifiedRefetch()
       setIsWriting(false)
       return { imported, failed: errors.length, errors }
     },
-    [ownDid, targetDid, isWriting, certified],
+    [ownDid, targetDid, isWriting, certifiedSubjects, certifiedAddFollow, certifiedRefetch],
   )
 
   return {
-    certifiedCount: certified.count,
-    blueskyCount: bluesky.followedDids.size,
+    certifiedCount,
+    blueskyCount,
     stats,
-    isLoading: certified.isLoading || bluesky.isLoading,
-    error: certified.error || bluesky.error,
+    isLoading: certifiedLoading || blueskyLoading,
+    error: certifiedError || blueskyError,
     refetch,
     importDids,
   }

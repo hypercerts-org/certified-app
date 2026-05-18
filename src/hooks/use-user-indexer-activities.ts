@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { fetchUserIndexerActivities } from "@/lib/atproto/indexer"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 
@@ -179,17 +179,11 @@ function useMergedDidsMap(
   a: Map<string, string>,
   b: Map<string, string>,
 ): Map<string, string> {
-  // Both maps key URIs to author DIDs; union them without
-  // re-computing on every render unless the inputs actually change.
-  // useState gives us a stable reference between renders; we only
-  // refresh when either side's reference flips.
-  const [merged, setMerged] = useState<Map<string, string>>(() => mergeMaps(a, b))
-  const lastRef = useRef<{ a: typeof a; b: typeof b } | null>({ a, b })
-  if (lastRef.current?.a !== a || lastRef.current?.b !== b) {
-    lastRef.current = { a, b }
-    setMerged(mergeMaps(a, b))
-  }
-  return merged
+  // Union of two URI→DID maps, recomputed only when either input
+  // reference flips. useMemo gives the stable-reference-unless-deps-
+  // change semantic without the ref-during-render pattern the React
+  // 19 lint rule (correctly) rejects.
+  return useMemo(() => mergeMaps(a, b), [a, b])
 }
 
 function mergeMaps(
