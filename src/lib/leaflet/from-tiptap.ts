@@ -161,10 +161,15 @@ function listItemsFromContent(content: TipTapNode[]): ListItem[] {
     const inner = node.content ?? []
     // A listItem typically contains a paragraph as its first child,
     // then optionally a nested list. We flatten the first paragraph's
-    // text into `content`, and recurse into any nested list as
-    // `children`.
+    // text into `content`, and recurse into any nested list. The
+    // ListItem schema uses two distinct fields: `children` for a
+    // nested *bullet* list, `orderedListChildren.children` for a
+    // nested *ordered* list. Without the type-driven split, a nested
+    // ordered list round-trips as a nested bullet list — silent
+    // data-loss the user only sees on the next edit.
     let contentValue: ListItem["content"] | undefined
-    let nestedChildren: ListItem[] | undefined
+    let nestedBullet: ListItem[] | undefined
+    let nestedOrdered: ListItem[] | undefined
     for (const child of inner) {
       if (child.type === "paragraph" && !contentValue) {
         const { text, facets } = flattenInline(child.content ?? [])
@@ -172,15 +177,21 @@ function listItemsFromContent(content: TipTapNode[]): ListItem[] {
           plaintext: text,
           ...(facets.length ? { facets } : {}),
         }
-      } else if (child.type === "bulletList" || child.type === "orderedList") {
+      } else if (child.type === "bulletList") {
         const nested = listItemsFromContent(child.content ?? [])
-        if (nested.length > 0) nestedChildren = nested
+        if (nested.length > 0) nestedBullet = nested
+      } else if (child.type === "orderedList") {
+        const nested = listItemsFromContent(child.content ?? [])
+        if (nested.length > 0) nestedOrdered = nested
       }
     }
-    if (!contentValue && !nestedChildren) continue
+    if (!contentValue && !nestedBullet && !nestedOrdered) continue
     out.push({
       ...(contentValue ? { content: contentValue } : {}),
-      ...(nestedChildren ? { children: nestedChildren } : {}),
+      ...(nestedBullet ? { children: nestedBullet } : {}),
+      ...(nestedOrdered
+        ? { orderedListChildren: { children: nestedOrdered } }
+        : {}),
     })
   }
   return out
