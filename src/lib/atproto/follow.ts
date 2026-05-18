@@ -21,6 +21,7 @@
  */
 
 import { authFetch } from "@/lib/auth/fetch"
+import { extractError } from "@/lib/utils/api"
 
 export const FOLLOW_COLLECTION = "app.certified.graph.follow"
 
@@ -76,15 +77,12 @@ export async function createFollow(
         body: JSON.stringify({ subjectDid, createdAt }),
       },
     )
-    const data = (await res.json().catch(() => ({}))) as {
-      uri?: string
-      cid?: string
-      error?: string
+    if (!res.ok) {
+      throw new Error(await extractError(res, "Failed to create follow on group"))
     }
-    if (!res.ok || !data.uri || !data.cid) {
-      throw new Error(
-        data.error || `Failed to create follow on group: ${res.status}`,
-      )
+    const data = (await res.json()) as { uri?: string; cid?: string }
+    if (!data.uri || !data.cid) {
+      throw new Error("createFollow: upstream returned no record reference")
     }
     return { uri: data.uri, cid: data.cid }
   }
@@ -103,13 +101,12 @@ export async function createFollow(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   })
-  const data = (await res.json().catch(() => ({}))) as {
-    uri?: string
-    cid?: string
-    error?: string
+  if (!res.ok) {
+    throw new Error(await extractError(res, "Failed to create follow"))
   }
-  if (!res.ok || !data.uri || !data.cid) {
-    throw new Error(data.error || `Failed to create follow: ${res.status}`)
+  const data = (await res.json()) as { uri?: string; cid?: string }
+  if (!data.uri || !data.cid) {
+    throw new Error("createFollow: upstream returned no record reference")
   }
   return { uri: data.uri, cid: data.cid }
 }
@@ -129,8 +126,7 @@ export async function deleteFollow(
     }),
   })
   if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { error?: string }
-    throw new Error(data.error || `Failed to delete follow: ${res.status}`)
+    throw new Error(await extractError(res, "Failed to delete follow"))
   }
 }
 
