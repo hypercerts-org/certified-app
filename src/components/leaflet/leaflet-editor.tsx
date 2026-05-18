@@ -142,15 +142,25 @@ export default function LeafletEditor({
   })
 
   // Keep the editor in sync when `value` changes from outside (e.g.
-  // the parent resets the form). We only re-set content when the
-  // change came from outside the editor — comparing against the
-  // current editor JSON would cause feedback loops.
-  const lastExternalRef = useRef(initial)
+  // the parent resets the form).
+  //
+  // The naive `compare against lastExternalRef` pattern resets the
+  // cursor on every keystroke when the parent is a controlled form:
+  // each keystroke fires onUpdate → parent setState → re-render with
+  // a fresh `value` whose `toInitialDoc(value)` doesn't shallow-match
+  // `lastExternalRef` (the ref is the *prior* external doc, not what
+  // the editor currently holds), so setContent runs every time and
+  // ProseMirror's `tr.replaceWith` blows away the selection.
+  //
+  // Compare against the editor's *current* JSON instead — that is the
+  // source of truth for "is the new value already on screen". When
+  // they match, the parent's new `value` is the round-tripped echo of
+  // what the editor just produced; skip the setContent.
   useEffect(() => {
     if (!editor) return
     const next = toInitialDoc(value)
-    if (!shallowEqual(next, lastExternalRef.current)) {
-      lastExternalRef.current = next
+    const current = editor.getJSON()
+    if (!shallowEqual(next, current)) {
       editor.commands.setContent(next, { emitUpdate: false })
     }
   }, [editor, value])
