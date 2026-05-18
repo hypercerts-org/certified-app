@@ -284,9 +284,83 @@
   background: var(--overlay-weak);
 }
 
-/* Certs section body is now `<FeedLayout>` (matches profile Certs
-   tab + global feed). The old compact `.project-cert-*` rules were
-   removed when the dense single-row treatment was retired. */
+/* Certs section uses `<FeedLayout>` so each card is a literal
+   `<ActivityCard>` — the same component the home feed and profile
+   certs tab render. The default `.feed` is a stacked single column;
+   on the project page we override to a 3-column grid so a project
+   that lists a handful of certs reads as a compact gallery instead
+   of a tall stack. Columns are fixed `1fr` tracks so a single cert
+   sits in column 1 at the "1/3 of the row" max width — it doesn't
+   stretch to fill alone.
+
+   The card chrome below mirrors the profile certs grid styling at
+   `layout.css` ~3058 — padding, no per-card divider, hover tint,
+   2-line clamps on title/desc, meta pinned to the bottom. Keep the
+   two sets in lock-step so the two grid surfaces stay visually
+   identical. The profile-certs version is wrapped in a
+   `@media (min-width: 800px)` because that page only switches to a
+   grid above 800px; on the project page the grid (and therefore the
+   tile chrome) applies at all widths. */
+
+.project-detail__certs .feed {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  justify-content: start;
+}
+
+@media (min-width: 600px) {
+  .project-detail__certs .feed {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .project-detail__certs .feed {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.project-detail__certs .feed-card {
+  padding: 10px;
+  border-bottom: none;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  transition: background var(--transition-fast);
+}
+
+.project-detail__certs .feed-card:hover {
+  background: var(--overlay-weak);
+}
+
+.project-detail__certs .feed-card__body:hover .feed-card__title {
+  text-decoration: none;
+}
+
+.project-detail__certs .feed-card__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.project-detail__certs .feed-card__title {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: calc(1.125rem * 1.3 * 2);
+}
+
+.project-detail__certs .feed-card__desc {
+  -webkit-line-clamp: 2;
+  min-height: calc(0.875rem * 1.6 * 2);
+}
+
+.project-detail__certs .feed-card__meta {
+  margin-top: auto;
+}
 
 /* ==================================================================
    Inline-edit chrome (issue #67). Mirrors cert detail's editing

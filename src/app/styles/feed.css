@@ -391,10 +391,12 @@
 
 .feed-card__author-meta {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
   min-width: 0;
   overflow: hidden;
+  line-height: 1.2;
 }
 
 .feed-card__author-name {
@@ -404,7 +406,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 14ch;
+  max-width: 100%;
 }
 
 .feed-card__author-handle {
@@ -413,7 +415,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
+  max-width: 100%;
 }
 
 .feed-card__author--skeleton {
@@ -435,7 +437,6 @@
   border-radius: 4px;
   background: var(--overlay-weak);
   animation: feed-author-skel-pulse 1.4s ease-in-out infinite;
-  margin-bottom: 4px;
 }
 
 .feed-card__author-handle-skel {

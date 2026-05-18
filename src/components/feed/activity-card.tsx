@@ -7,7 +7,6 @@ import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import {
   resolveActivityImageUrl,
   formatRelativeTime,
-  workScopeToLabel,
 } from "@/lib/atproto/activity"
 import { activityDetailHref, parseActivityUri } from "@/lib/atproto/activity-uri"
 import type { LabelValue } from "@/lib/atproto/labeller"
@@ -26,10 +25,6 @@ export default function ActivityCard({ record, did, label }: ActivityCardProps) 
     ? resolveActivityImageUrl(value.image, did)
     : null
   const [imageFailed, setImageFailed] = useState(false)
-
-  const contributorCount = value.contributors?.length ?? 0
-
-  const workScopeLabel = workScopeToLabel(value.workScope)
 
   // Derive the detail-page URL from the record's at:// URI. We prefer
   // the URI over the `did` prop because it encodes the rkey too.
@@ -79,22 +74,6 @@ export default function ActivityCard({ record, did, label }: ActivityCardProps) 
         <time className="feed-card__time">
           {formatRelativeTime(value.createdAt)}
         </time>
-
-        {contributorCount > 0 && (
-          <>
-            <span className="feed-card__meta-sep" aria-hidden="true" />
-            <span className="feed-card__badge">
-              {contributorCount} contributor{contributorCount !== 1 ? "s" : ""}
-            </span>
-          </>
-        )}
-
-        {workScopeLabel && (
-          <>
-            <span className="feed-card__meta-sep" aria-hidden="true" />
-            <span className="feed-card__scope">{workScopeLabel}</span>
-          </>
-        )}
       </div>
     </>
   )
