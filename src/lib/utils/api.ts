@@ -3,34 +3,64 @@ import { logSafe } from "./log-safe"
 
 /**
  * Extract a usable HTTP status from an unknown caught error and emit a
- * redacted server-side log. The returned `message` is always one of a
- * small set of generic strings — we never echo `err.message` to the
- * client because the atproto SDK and group-service error payloads can
- * embed upstream URLs, handles, and incidental detail that's unsafe to
- * expose. Callers should pass `prefix` so log lines are greppable.
+ * redacted server-side log. The raw cause is always logged so operators
+ * can diagnose. Status and message semantics:
  *
- * Status semantics:
- *   - 4xx upstream → returned to client as-is with the matching generic
- *     message; the raw cause is logged for diagnosis.
- *   - 5xx upstream OR a non-numeric status → returned as 500 "Internal
- *     server error" to the client; raw cause logged.
+ *   - 4xx upstream  → status is preserved; `err.message` is echoed (after
+ *     redaction) when it is a usable string. 4xx errors are usually
+ *     validation responses a user can act on (AGENTS.md §17 #7).
+ *   - 5xx upstream OR non-numeric / out-of-range status → returned as
+ *     500 "Internal server error" so we don't leak upstream specifics.
+ *
+ * The status is clamped to the valid HTTP range (200..599); anything
+ * outside collapses to 500 to avoid emitting non-standard codes that
+ * caches/browsers handle weirdly.
  */
 export function extractRouteError(
   err: unknown,
   prefix = "[route] upstream error"
 ): { status: number; message: string } {
-  let status = 500
+  const raw = readRawStatus(err)
+  const status = clampHttpStatus(raw)
+  logSafe(prefix, err, { status })
+  const message =
+    status >= 400 && status < 500
+      ? messageFor4xx(err, status)
+      : genericMessageFor(status)
+  return { status, message }
+}
+
+function readRawStatus(err: unknown): number {
+  if (!err || typeof err !== "object") return 500
+  const e = err as Record<string, unknown>
+  if (typeof e.status === "number") return e.status
+  if (typeof e.statusCode === "number") return e.statusCode
+  return 500
+}
+
+function clampHttpStatus(s: number): number {
+  if (!Number.isInteger(s) || s < 200 || s > 599) return 500
+  return s
+}
+
+function messageFor4xx(err: unknown, status: number): string {
   if (err && typeof err === "object") {
     const e = err as Record<string, unknown>
-    const raw = typeof e.status === "number"
-      ? e.status
-      : typeof e.statusCode === "number"
-        ? e.statusCode
-        : 500
-    status = raw
+    if (typeof e.message === "string" && e.message.trim().length > 0) {
+      return redactSecrets(e.message).trim()
+    }
   }
-  logSafe(prefix, err, { status })
-  return { status, message: genericMessageFor(status) }
+  return genericMessageFor(status)
+}
+
+// Mirror of the redaction shape in logSafe — strip anything that looks
+// like a token / authorization header / DPoP material that the atproto
+// SDK sometimes embeds in error messages.
+function redactSecrets(s: string): string {
+  return s
+    .replace(/Bearer\s+[A-Za-z0-9._\-]+/g, "Bearer [redacted]")
+    .replace(/DPoP\s+[A-Za-z0-9._\-]+/g, "DPoP [redacted]")
+    .replace(/eyJ[A-Za-z0-9._\-]+/g, "[jwt-redacted]")
 }
 
 function genericMessageFor(status: number): string {
