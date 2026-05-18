@@ -42,12 +42,14 @@ In rough commit order — each commit lands green on `tsc`, `eslint`,
    allowlist AND a read-modify-write step that server-pins
    `createdAt`, `type`, and `items` from the stored record (per
    review B1 / B2 / B5).
-5a. **Retrofit `groups/activity/route.ts`** with `pickAllowedFields`
+5a. ~~**Retrofit `groups/activity/route.ts`** with `pickAllowedFields`
    in the same PR (per review B4 — same CS-005 fix shape, sibling
-   route was missed when the audit landed). Adds `ACTIVITY_FIELDS`
-   constant + swaps the mass-assignment spread. Activity route does
-   not get the read-modify-write step in this PR (cert detail
-   doesn't rely on it yet); flagged as a follow-up if needed.
+   route was missed when the audit landed).~~ **Landed independently
+   in overnight commit `89da494 fix(api/groups/activity): allowlist
+   record fields on PUT to close mass-assignment`** before this branch rebased. My local commit
+   for this step was skipped during rebase as redundant. The
+   intent of B4 is met; both this branch and the overnight work
+   reached the same conclusion in parallel.
 6. **Wire inline-edit chrome into project-detail.tsx.** Same state
    machine as cert detail: edit drafts (`title`, `shortDescription`,
    `description`), pending image blob, optimistic local mirror,
