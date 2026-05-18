@@ -69,6 +69,14 @@ export function useSession(): {
     if (!isAuthenticated) {
       cachedPromise = null;
       cachedResult = null;
+      // Without these, long-lived components that mounted while
+      // signed in keep returning the previous user's handle/email
+      // after sign-out — the initial-state expressions at the top
+      // of the hook only gate on `isAuthenticated` for FRESH mounts,
+      // not existing ones.
+      setHandle(null);
+      setEmail(null);
+      setError(null);
       setIsLoading(false);
       return;
     }
