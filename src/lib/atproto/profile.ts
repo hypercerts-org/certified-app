@@ -69,37 +69,11 @@ export async function getBlueskyProfile(
  * Create or update a user's profile record
  * @param did - The DID of the user whose profile to update
  * @param profile - The profile data to save
- * @param options - Optional overrides. When `targetDid` differs from the
- *   session DID (i.e. the viewer is saving a group's profile they admin),
- *   the call is routed through the group profile BFF route instead of the
- *   direct PDS XRPC putRecord. The BFF route handles the proxied write to
- *   the group service.
  */
 export async function putProfile(
   did: string,
-  profile: CertifiedProfile,
-  options?: { targetDid?: string }
+  profile: CertifiedProfile
 ): Promise<void> {
-  const targetDid = options?.targetDid ?? did;
-  // Group-profile save: route through the BFF, which proxies the write
-  // through the user's PDS to the group service. The route expects the
-  // bare profile record body (no $type wrapper — it adds the right
-  // collection / rkey on the server side).
-  if (targetDid !== did) {
-    const res = await authFetch(
-      `/api/groups/${encodeURIComponent(targetDid)}/profile`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profile),
-      }
-    );
-    if (!res.ok) {
-      throw new Error(await extractError(res, res.statusText));
-    }
-    return;
-  }
-
   const res = await authFetch("/api/xrpc/com/atproto/repo/putRecord", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -130,21 +104,11 @@ export interface UploadedBlob {
 }
 
 /**
- * Upload a blob (image file) to the PDS.
- *
- * When `options.targetDid` is provided and differs from the session DID,
- * the upload is routed through the group's repo via the group service
- * proxy (so the blob lands in the GROUP's repo, not the viewer's). This
- * is required for avatars/banners on group profiles the viewer admins.
- *
+ * Upload a blob (image file) to the PDS
  * @param file - The file to upload
- * @param options.targetDid - Optional group DID to upload on behalf of
  * @returns The blob reference, typed as UploadedBlob
  */
-export async function uploadBlob(
-  file: File,
-  options?: { targetDid?: string }
-): Promise<UploadedBlob> {
+export async function uploadBlob(file: File): Promise<UploadedBlob> {
   // Validate file type
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
     throw new Error(
@@ -153,13 +117,7 @@ export async function uploadBlob(
   }
 
   const buffer = await file.arrayBuffer();
-  // Group upload path: hits the BFF route that calls
-  // app.certified.group.repo.uploadBlob via the proxied agent. The
-  // response shape is { blob: UploadedBlob } — same as the XRPC route.
-  const url = options?.targetDid
-    ? `/api/groups/${encodeURIComponent(options.targetDid)}/upload-blob`
-    : "/api/xrpc/com/atproto/repo/uploadBlob";
-  const res = await authFetch(url, {
+  const res = await authFetch("/api/xrpc/com/atproto/repo/uploadBlob", {
     method: "POST",
     headers: { "Content-Type": file.type },
     body: buffer,
@@ -176,32 +134,24 @@ export async function uploadBlob(
   return data.blob;
 }
 
-/** Upload an avatar image (max 4MB) — returns a typed UploadedBlob.
- *  Pass `targetDid` to upload to a group repo instead of the viewer's. */
-export async function uploadAvatar(
-  file: File,
-  options?: { targetDid?: string }
-): Promise<UploadedBlob> {
+/** Upload an avatar image (max 4MB) — returns a typed UploadedBlob. */
+export async function uploadAvatar(file: File): Promise<UploadedBlob> {
   if (file.size > MAX_AVATAR_SIZE) {
     throw new Error(
       `Avatar file size exceeds maximum of ${MAX_AVATAR_SIZE / 1024 / 1024}MB`
     );
   }
-  return uploadBlob(file, options);
+  return uploadBlob(file);
 }
 
-/** Upload a banner image (max 4MB) — returns a typed UploadedBlob.
- *  Pass `targetDid` to upload to a group repo instead of the viewer's. */
-export async function uploadBanner(
-  file: File,
-  options?: { targetDid?: string }
-): Promise<UploadedBlob> {
+/** Upload a banner image (max 4MB) — returns a typed UploadedBlob. */
+export async function uploadBanner(file: File): Promise<UploadedBlob> {
   if (file.size > MAX_BANNER_SIZE) {
     throw new Error(
       `Banner file size exceeds maximum of ${MAX_BANNER_SIZE / 1024 / 1024}MB`
     );
   }
-  return uploadBlob(file, options);
+  return uploadBlob(file);
 }
 
 /**

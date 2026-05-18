@@ -1,213 +1,33 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { usePathname, useParams, useSearchParams } from "next/navigation"
-import {
-  useProfileNavbar,
-  usePageTitle,
-  usePageTitleBreadcrumb,
-  useProfileAboutAvailable,
-  useProfileGroupsAvailable,
-} from "@/lib/navbar-context"
-import { useUserGroups } from "@/hooks/use-user-groups"
+import { useCallback, useMemo, useState } from "react"
+import { usePathname, useRouter, useParams, useSearchParams } from "next/navigation"
+import { useProfileNavbar } from "@/lib/navbar-context"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { useUserActivities } from "@/hooks/use-user-activities"
-import { useOrgMarker } from "@/hooks/use-org-marker"
 import { useOrg } from "@/lib/groups/org-context"
-import { useAuth } from "@/lib/auth/auth-context"
-import {
-  putProfile,
-  uploadAvatar,
-  uploadBanner,
-  uploadBlob,
-  type UploadedBlob,
-} from "@/lib/atproto/profile"
-import { putOrgMarker } from "@/lib/groups/org-marker"
-import {
-  putLocationRecord,
-  readLocationStrongRef,
-  rkeyFromStrongRefUri,
-  type StrongRef,
-} from "@/lib/atproto/location"
-import type {
-  CertifiedProfile,
-  HypercertsSmallImage,
-  HypercertsLargeImage,
-} from "@/lib/atproto/types"
-import type { BlobRef } from "@atproto/api"
-import type { GroupMetadata, OrgUrlItem } from "@/lib/groups/types"
 import ProfileHeader from "@/components/profile/profile-header"
-import ProfileSidebar from "@/components/profile/profile-sidebar"
-import ProfileOverview from "@/components/profile/profile-overview"
 import ProfileEndorsements from "@/components/profile/profile-endorsements"
-import ProfileFollowers from "@/components/profile/profile-followers"
-import ProfileProjects from "@/components/profile/profile-projects"
-import ProfileCerts from "@/components/profile/profile-certs"
 import ProfileGroups from "@/components/profile/profile-groups"
-import SettingsPanel from "@/components/settings/settings-panel"
-import LeafletDocument from "@/components/leaflet/leaflet-document"
-import LeafletEditor from "@/components/leaflet/leaflet-editor"
-import type { LinearDocument } from "@/lib/leaflet/types"
+import UserFeed from "@/components/feed/user-feed"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import EditBanner from "@/components/ui/edit-banner"
 import EmptyState from "@/components/ui/empty-state"
-import { AlignLeft, UserX } from "lucide-react"
-import {
-  newDraftUrlRow,
-  type ProfileDrafts,
-} from "@/components/profile/profile-inline-edit-types"
-import { ORG_TYPE_PRESETS } from "@/lib/groups/org-types"
-import { asLinearDocument, isEmptyLongDescription } from "@/lib/leaflet/guards"
+import { UserX } from "lucide-react"
 
 type TabKey =
-  | "overview"
-  | "about"
-  | "certs"
-  | "projects"
+  | "activities"
   | "groups"
   | "endorsements"
-  | "followers"
-  | "settings"
 
-// Tab strip order — keep in sync with PROFILE_TABS in
-// desktop-top-bar.tsx, which is the single source the user clicks on
-// desktop. About sits right after Overview and only renders when the
-// viewed profile carries a non-empty `longDescription`; Settings is
-// own-profile only.
+// Comments + Evaluations were earlier placeholder tabs with "coming
+// soon" empty states. Hidden until they have real content — leaving
+// dead tabs in the tablist dilutes information scent and adds noise
+// to keyboard nav.
 const TABS: { key: TabKey; label: string }[] = [
-  { key: "overview", label: "Overview" },
-  { key: "certs", label: "Certs" },
-  { key: "projects", label: "Projects" },
+  { key: "activities", label: "Activities" },
   { key: "groups", label: "Groups" },
   { key: "endorsements", label: "Endorsements" },
-  { key: "followers", label: "Followers" },
-  { key: "about", label: "About" },
-  { key: "settings", label: "Settings" },
 ]
-
-// `ProfileDrafts` lives in `profile-inline-edit-types` so the sidebar and
-// overview can import it without creating a cycle with this page module.
-
-// --- Read helpers for org-marker fields with looser legacy shapes -----
-
-/**
- * Coerce the record's `organizationType` into the editor's two-bucket
- * shape: `presets` is the intersection with `ORG_TYPE_PRESETS`,
- * `other` collects everything else (typically one free-text value
- * typed into the "Other" chip).
- */
-function parseOrgTypes(v: unknown): { presets: string[]; other: string } {
-  const items: string[] = []
-  if (typeof v === "string" && v.trim().length > 0) items.push(v.trim())
-  else if (Array.isArray(v)) {
-    for (const x of v) {
-      if (typeof x === "string" && x.trim().length > 0) items.push(x.trim())
-    }
-  }
-  const presetSet = new Set<string>(ORG_TYPE_PRESETS as readonly string[])
-  const presets = items.filter((x) => presetSet.has(x))
-  const otherItems = items.filter((x) => !presetSet.has(x))
-  return { presets, other: otherItems.join(", ") }
-}
-
-/** All org-type tags to show in read mode, in canonical preset order
- *  followed by any free-text "other" entries. */
-function readableOrgTypeTags(v: unknown): string[] {
-  const { presets, other } = parseOrgTypes(v)
-  const otherTags = other ? other.split(",").map((s) => s.trim()).filter(Boolean) : []
-  // Re-order presets to match the canonical preset order.
-  const orderedPresets = ORG_TYPE_PRESETS.filter((p) => presets.includes(p))
-  return [...orderedPresets, ...otherTags]
-}
-
-export interface ParsedLocation {
-  name: string | null
-  coords: { lat: number; lng: number } | null
-  /** When the marker stores a strongRef to a separate
-   *  `app.certified.location` record, this is the URI. The save
-   *  handler reuses it to overwrite the existing record instead of
-   *  spawning a new one. */
-  refUri?: string
-}
-
-/**
- * Coerce the marker's raw `location` field into the editor / display
- * shape. Accepts every historical form:
- *   - `{ uri, cid }` strongRef → resolved out-of-band by
- *     `useLocationStrongRef` (this synchronous parser just records
- *     the URI so the save handler can update in place).
- *   - `{ lat, lng, name? }` inline coord object (legacy local writes).
- *   - plain `string` (legacy free-text only, no coords).
- */
-function parseLocation(v: unknown): ParsedLocation {
-  if (typeof v === "string" && v.trim().length > 0) {
-    return { name: v.trim(), coords: null }
-  }
-  if (v && typeof v === "object") {
-    const obj = v as Record<string, unknown>
-    // strongRef shape — uri + cid. The reader hook resolves the
-    // referenced record async; here we just capture the URI for the
-    // save path so it can putRecord in-place.
-    if (
-      typeof obj.uri === "string" &&
-      obj.uri.length > 0 &&
-      typeof obj.cid === "string"
-    ) {
-      return { name: null, coords: null, refUri: obj.uri }
-    }
-    if (typeof obj.lat === "number" && typeof obj.lng === "number") {
-      const name = typeof obj.name === "string" && obj.name.trim().length > 0
-        ? obj.name.trim()
-        : null
-      return { name, coords: { lat: obj.lat, lng: obj.lng } }
-    }
-    if (typeof obj.uri === "string" && obj.uri.length > 0) {
-      return { name: obj.uri, coords: null }
-    }
-  }
-  return { name: null, coords: null }
-}
-
-/**
- * Format `foundedDate` for display. Accepts the full ISO datetime the
- * record stores, a plain `yyyy-mm-dd` string, or just a 4-digit year.
- * Returns `null` for missing / unparseable values.
- */
-function readableFoundedDate(v: unknown): string | null {
-  if (typeof v !== "string" || v.trim().length === 0) return null
-  const s = v.trim()
-  // Year-only form: render as-is.
-  if (/^\d{4}$/.test(s)) return s
-  const d = new Date(s)
-  if (Number.isNaN(d.getTime())) return s
-  // Render as "Mon yyyy" for ISO datetimes / yyyy-mm-dd values to
-  // avoid showing a noisy day-precision date when we only need year/month.
-  return d.toLocaleDateString("en-US", { month: "short", year: "numeric" })
-}
-
-/** Build the form a `<input type="date">` expects from a stored value. */
-function toDateInputValue(v: unknown): string {
-  if (typeof v !== "string") return ""
-  const s = v.trim()
-  if (s === "") return ""
-  // Year-only: pad to Jan 1 so the date input has something to display.
-  if (/^\d{4}$/.test(s)) return `${s}-01-01`
-  // yyyy-mm-dd or ISO datetime — strip to the date portion.
-  return s.slice(0, 10)
-}
-
-/** Normalise a `<input type="date">` value (yyyy-mm-dd) to an ISO
- *  datetime at UTC midnight so the record stores a stable value. Empty
- *  input yields `undefined` (the field is cleared). */
-function fromDateInputValue(s: string): string | undefined {
-  const v = s.trim()
-  if (v === "") return undefined
-  // The input element guarantees the yyyy-mm-dd shape on supporting
-  // browsers; fall back to a Date() round-trip otherwise.
-  const d = new Date(v)
-  if (Number.isNaN(d.getTime())) return undefined
-  return d.toISOString()
-}
 
 export default function UserProfilePage() {
   useProfileNavbar()
@@ -230,718 +50,71 @@ export default function UserProfilePage() {
     error: profileError,
   } = useUserProfile(handleOrDid)
 
-  const { isAuthenticated, did: sessionDid } = useAuth()
-
-  const titleForTopBar =
-    profile?.displayName || resolvedHandle || "Profile"
-  usePageTitle(titleForTopBar)
-  // Single-part breadcrumb: the handle (without the `@` sigil) is the
-  // only segment, but it's clickable. Matches the cert-page pattern
-  // (which uses two parts).
-  usePageTitleBreadcrumb(
-    resolvedHandle
-      ? {
-          left: {
-            text: resolvedHandle,
-            href: `/profile/${encodeURIComponent(resolvedHandle)}`,
-          },
-        }
-      : null,
-  )
-
-  // Detect the org marker on the viewed DID so the sidebar can switch into
-  // org-mode (extra URL list). While loading we pass isOrg=false to keep
-  // the sidebar in non-org mode; the hook caches per-DID so subsequent
-  // visits hydrate synchronously.
-  const {
-    isOrg,
-    additionalUrls,
-    urls: orgUrls,
-    marker: orgMarker,
-    isLoading: isOrgMarkerLoading,
-    refresh: refreshOrgMarker,
-  } = useOrgMarker(did)
-  const sidebarIsOrg = isOrgMarkerLoading ? false : isOrg
-
-  const { activeOrg, groups, isLoading: orgGroupsLoading } = useOrg()
+  // If the viewed profile is one of the viewer's groups, surface
+  // admin affordances (Edit Profile + Settings cog) on the hero.
+  // /groups/[groupDid] used to host these on a separate page; we
+  // consolidated to a single profile surface.
+  const { groups } = useOrg()
   const memberOrg = did ? groups.find((g) => g.groupDid === did) : undefined
   const isAdminOfThisGroup =
     !!memberOrg && (memberOrg.role === "owner" || memberOrg.role === "admin")
 
-  // Inline-edit is gated on the *active session identity* exactly
-  // matching the viewed profile — being an admin of a group is not
-  // enough; the user must be currently acting as that group (or as
-  // themselves on their own profile). This means:
-  //   - Own profile: only when no org is currently active.
-  //   - Group profile: only when activeOrg.groupDid === viewed DID.
-  // Group admins who want to edit a group switch into it from the
-  // account switcher.
-  const isActingAsThisGroup =
-    !!activeOrg && !!did && activeOrg.groupDid === did
-  const canEditInline =
-    (isOwnProfile && !activeOrg) || isActingAsThisGroup
-  // The save/upload `targetDid` for inline edit. `undefined` keeps the
-  // helpers on the personal session-DID path; setting it routes through
-  // the group BFF endpoints instead.
-  const editTargetDid = isActingAsThisGroup ? did : undefined
-
-  // -------------------------------------------------------------------
-  // Inline edit state
-  // -------------------------------------------------------------------
-  // We keep edit state local to the page so the sidebar and overview
-  // can both swap into input mode in lockstep. Drafts are seeded from
-  // `profile` when the user enters edit mode; on save we PUT the
-  // profile record, update local profile/URL state, and exit edit mode.
-  const [isEditing, setIsEditing] = useState(false)
-  const [drafts, setDrafts] = useState<ProfileDrafts>({
-    displayName: "",
-    description: "",
-    website: "",
-    locationName: "",
-    locationLat: null,
-    locationLng: null,
-    foundedDate: "",
-    organizationTypes: [],
-    organizationTypeOther: "",
-    longDescription: null,
-    additionalUrls: [],
-  })
-  // Local mirrors so the sidebar/overview show fresh values immediately
-  // after save (without round-tripping through useUserProfile, which
-  // doesn't expose a mutate(). The hook re-fetches on its own props
-  // changing, so on a hard nav back to the page the canonical value
-  // wins again.)
-  const [localProfile, setLocalProfile] = useState<CertifiedProfile | null>(
-    null,
-  )
-  // Local mirror of the org marker so post-save renders show the new
-  // values immediately. Cleared on cancel / next edit-click.
-  const [localOrgMarker, setLocalOrgMarker] = useState<GroupMetadata | null>(
-    null,
-  )
-  const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null>(null)
-  const [localBannerUrl, setLocalBannerUrl] = useState<string | null>(null)
-  const [pendingAvatarBlob, setPendingAvatarBlob] =
-    useState<UploadedBlob | null>(null)
-  const [pendingBannerBlob, setPendingBannerBlob] =
-    useState<UploadedBlob | null>(null)
-  // Local object-URL previews. Created the moment the user picks a
-  // file (before the network upload completes) so the edit view shows
-  // the new image immediately. On Save these get promoted to
-  // `localAvatarUrl` / `localBannerUrl` so the read-only render also
-  // shows the new image without waiting for the resolve-did refetch.
-  // On Cancel they're revoked and discarded.
-  const [pendingAvatarPreviewUrl, setPendingAvatarPreviewUrl] =
-    useState<string | null>(null)
-  const [pendingBannerPreviewUrl, setPendingBannerPreviewUrl] =
-    useState<string | null>(null)
-  // Explicit "remove banner" intent within the current edit session.
-  // When true, save persists `next.banner = undefined` instead of
-  // copying the previous value off the base record. Reset on
-  // edit-click / cancel / save.
-  const [pendingBannerRemoved, setPendingBannerRemoved] = useState(false)
-  // Post-save mirror for the same intent: distinguishes "no banner
-  // was ever set" (fall back to hook `bannerUrl`) from "we just saved
-  // a removal" (force null until the next refetch).
-  const [bannerCleared, setBannerCleared] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
-  // Tracks whether the viewer has touched anything in edit mode (typed
-  // into an input, picked a new avatar / banner, edited an URL row,
-  // etc.). Drives the unsaved-changes guard below — without it we'd
-  // warn even when the user opened edit mode and immediately tried to
-  // navigate away.
-  const [hasInteracted, setHasInteracted] = useState(false)
-
-  // Effective values used everywhere the UI renders read-only content:
-  // preview (in-flight upload) wins, then post-save mirror, then the
-  // hook-supplied snapshot.
-  const effectiveProfile = localProfile ?? profile
-  const effectiveAvatarUrl =
-    pendingAvatarPreviewUrl ?? localAvatarUrl ?? avatarUrl
-  // Banner resolution honours the explicit-remove intent — both in
-  // flight (pendingBannerRemoved) and post-save (bannerCleared) — by
-  // collapsing to `null` so the banner box renders empty.
-  const effectiveBannerUrl =
-    pendingBannerPreviewUrl !== null
-      ? pendingBannerPreviewUrl
-      : pendingBannerRemoved || bannerCleared
-        ? null
-        : (localBannerUrl ?? bannerUrl)
-  const effectiveOrgMarker = localOrgMarker ?? orgMarker
-  // Read-only displayable forms of the org-only marker fields. Each
-  // returns `null` when the field is absent so the sidebar / overview
-  // can skip rendering the row entirely (no "Not specified" placeholders).
-  const displayOrgTypeTags = readableOrgTypeTags(effectiveOrgMarker?.organizationType)
-  const inlineLocation = parseLocation(effectiveOrgMarker?.location)
-
-  // Resolve `app.certified.location` strongRefs out-of-band. The
-  // parsed shape above captures the URI synchronously; this effect
-  // fetches the referenced record and stashes `{name, coords}` in
-  // state. Re-runs whenever the URI changes (e.g. after save).
-  const [resolvedLocationRef, setResolvedLocationRef] = useState<{
-    uri: string
-    name: string | null
-    coords: { lat: number; lng: number } | null
-  } | null>(null)
-  useEffect(() => {
-    const uri = inlineLocation.refUri
-    if (!uri) {
-      setResolvedLocationRef(null)
-      return
-    }
-    let cancelled = false
-    readLocationStrongRef({ uri, cid: "" }).then((res) => {
-      if (cancelled) return
-      if (!res) {
-        setResolvedLocationRef({ uri, name: null, coords: null })
-        return
-      }
-      setResolvedLocationRef({ uri, name: res.name, coords: res.coords })
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [inlineLocation.refUri])
-
-  // Effective location for both display and the editor seed: the
-  // resolved strongRef wins when present; otherwise fall back to the
-  // inline-coords path (legacy + during the brief moment between
-  // marker load and ref resolve).
-  const displayLocation: ParsedLocation = inlineLocation.refUri
-    ? {
-        name: resolvedLocationRef?.name ?? null,
-        coords: resolvedLocationRef?.coords ?? null,
-        refUri: inlineLocation.refUri,
-      }
-    : inlineLocation
-  const displayFoundedDate = readableFoundedDate(effectiveOrgMarker?.foundedDate)
-  // `longDescription` can be a string, an inline leaflet linearDocument,
-  // or a strong-ref to a separate record. The renderer (LeafletDocument)
-  // handles all three; we pass the raw value through. Empty values
-  // collapse to `null` so the overview can skip the section entirely.
-  const displayLongDescription = isEmptyLongDescription(
-    effectiveOrgMarker?.longDescription,
-  )
-    ? null
-    : (effectiveOrgMarker?.longDescription ?? null)
-  // Publish "this profile has a long description" to the navbar
-  // context so the top-bar can render the About tab. Three reasons
-  // to show the tab:
-  //   1. The profile actually carries a long description.
-  //   2. The viewer is currently signed in as this entity (own
-  //      personal profile, or acting-as this group) — they need the
-  //      tab in order to write their first one, even when empty.
-  //   3. Edit mode is open for an org admin — kept for parity with
-  //      the active-edit flow.
-  // Always reset when navigating away (the hook returns `false` on
-  // unmount).
-  const aboutEditingForOrg = isEditing && canEditInline && sidebarIsOrg
-  const isViewerThisEntity = isOwnProfile || isActingAsThisGroup
-  // About tab is org-only — individual profiles never expose it, even
-  // when the viewer is the profile owner. Groups still surface it when
-  // they have content OR when an admin can edit / is editing.
-  useProfileAboutAvailable(
-    sidebarIsOrg &&
-      (!!displayLongDescription || isViewerThisEntity || aboutEditingForOrg),
-  )
-  // Gate the Groups tab: visible whenever the viewer is currently
-  // signed in as this entity (own profile, or acting-as this group),
-  // OR when the profile carries at least one public membership.
-  // Foreign empty profiles hide the tab entirely.
-  const viewedPublicGroups = useUserGroups(did)
-  const hasGroupTab =
-    isViewerThisEntity || (viewedPublicGroups.groups?.length ?? 0) > 0
-  useProfileGroupsAvailable(hasGroupTab)
-  // Memoised so the array reference is stable when no inputs changed —
-  // otherwise the `handleEditClick` useCallback below would invalidate
-  // on every render (each `??` falls back to a freshly-allocated `[]`).
-  const effectiveOrgUrls: OrgUrlItem[] = useMemo(
-    () => localOrgMarker?.urls ?? orgUrls ?? [],
-    [localOrgMarker, orgUrls],
-  )
-  const effectiveAdditionalUrls = localOrgMarker
-    ? effectiveOrgUrls.map((u) => u.url)
-    : additionalUrls
-
-  const handleEditClick = useCallback(() => {
-    if (!effectiveProfile) return
-    const parsedLoc = parseLocation(effectiveOrgMarker?.location)
-    // When the marker stores a strongRef to a separate location
-    // record, prefer the resolved `{name, coords}` over the
-    // synchronous inline parse (which returns nulls for the
-    // strongRef branch). Falls back to inline values when the
-    // strongRef hasn't been resolved yet.
-    const seedName =
-      parsedLoc.refUri && resolvedLocationRef?.name
-        ? resolvedLocationRef.name
-        : parsedLoc.name
-    const seedCoords =
-      parsedLoc.refUri && resolvedLocationRef?.coords
-        ? resolvedLocationRef.coords
-        : parsedLoc.coords
-    const parsedTypes = parseOrgTypes(effectiveOrgMarker?.organizationType)
-    setDrafts({
-      displayName: effectiveProfile.displayName ?? "",
-      description: effectiveProfile.description ?? "",
-      website: effectiveProfile.website ?? "",
-      // Org-only seeds. When the marker is missing these are empty
-      // strings / an empty array, which the editor renders as blank
-      // inputs. The save handler skips writing the marker entirely
-      // when `isOrg` is false (see handleSave below).
-      locationName: seedName ?? "",
-      locationLat: seedCoords?.lat ?? null,
-      locationLng: seedCoords?.lng ?? null,
-      foundedDate: toDateInputValue(effectiveOrgMarker?.foundedDate),
-      organizationTypes: parsedTypes.presets,
-      organizationTypeOther: parsedTypes.other,
-      // Seed the editor with the stored linearDocument when present;
-      // legacy plain-string values are hydrated as a single paragraph
-      // by `<LeafletEditor>`'s own coercion path so we pass them
-      // through unchanged here.
-      longDescription:
-        asLinearDocument(effectiveOrgMarker?.longDescription) ??
-        (typeof effectiveOrgMarker?.longDescription === "string"
-          ? {
-              $type: "pub.leaflet.pages.linearDocument",
-              blocks: [
-                {
-                  block: {
-                    $type: "pub.leaflet.blocks.text",
-                    plaintext: effectiveOrgMarker.longDescription,
-                  },
-                },
-              ],
-            }
-          : null),
-      additionalUrls:
-        effectiveOrgUrls.length > 0
-          ? effectiveOrgUrls.map((u) => newDraftUrlRow({ url: u.url, label: u.label }))
-          : [],
-    })
-    setPendingAvatarBlob(null)
-    setPendingBannerBlob(null)
-    setPendingBannerRemoved(false)
-    setSaveError(null)
-    setHasInteracted(false)
-    setIsEditing(true)
-  }, [effectiveProfile, effectiveOrgMarker, effectiveOrgUrls, resolvedLocationRef])
-
-  const handleCancelEdit = useCallback(() => {
-    setIsEditing(false)
-    setPendingAvatarBlob(null)
-    setPendingBannerBlob(null)
-    // Revoke in-flight object URLs to avoid leaking the bytes after
-    // the user cancels (browsers GC them on unload, but earlier is
-    // cheaper and matches the BannerUpload's old cleanup behaviour).
-    if (pendingAvatarPreviewUrl) URL.revokeObjectURL(pendingAvatarPreviewUrl)
-    if (pendingBannerPreviewUrl) URL.revokeObjectURL(pendingBannerPreviewUrl)
-    setPendingAvatarPreviewUrl(null)
-    setPendingBannerPreviewUrl(null)
-    setPendingBannerRemoved(false)
-    setSaveError(null)
-    setHasInteracted(false)
-    // Note: we keep `localOrgMarker` so any *previous* save still
-    // reflects in the read-only render. Only the in-flight draft state
-    // is discarded.
-  }, [pendingAvatarPreviewUrl, pendingBannerPreviewUrl])
-
-  const handleDraftChange = useCallback(
-    <K extends keyof ProfileDrafts>(key: K, value: ProfileDrafts[K]) => {
-      setDrafts((prev) => ({ ...prev, [key]: value }))
-      setHasInteracted(true)
-    },
-    [],
-  )
-
-  const handleAvatarFile = useCallback(
-    async (file: File) => {
-      // Build the object URL synchronously so the avatar shows the new
-      // image the instant the user picks a file — the network upload
-      // runs in the background. Revoke any prior in-flight preview to
-      // avoid leaking memory across rapid re-selections.
-      const previewUrl = URL.createObjectURL(file)
-      setPendingAvatarPreviewUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev)
-        return previewUrl
-      })
-      setHasInteracted(true)
-      const blob = await uploadAvatar(
-        file,
-        editTargetDid ? { targetDid: editTargetDid } : undefined,
-      )
-      setPendingAvatarBlob(blob)
-    },
-    [editTargetDid],
-  )
-
-  const handleBannerFile = useCallback(
-    async (file: File) => {
-      const previewUrl = URL.createObjectURL(file)
-      setPendingBannerPreviewUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev)
-        return previewUrl
-      })
-      // Picking a new banner cancels any pending removal intent.
-      setPendingBannerRemoved(false)
-      setHasInteracted(true)
-      const blob = await uploadBanner(
-        file,
-        editTargetDid ? { targetDid: editTargetDid } : undefined,
-      )
-      setPendingBannerBlob(blob)
-    },
-    [editTargetDid],
-  )
-
-  /** Image upload for the long-description rich-text editor. Routes
-   *  through the same BFF/XRPC split that avatar + banner uploads
-   *  use — `editTargetDid` is set when editing a group profile. */
-  const handleLongDescImageUpload = useCallback(
-    async (file: File) => {
-      return await uploadBlob(
-        file,
-        editTargetDid ? { targetDid: editTargetDid } : undefined,
-      )
-    },
-    [editTargetDid],
-  )
-
-  const handleRemoveBanner = useCallback(() => {
-    // Clear any in-flight preview / blob and mark the banner as
-    // explicitly removed so the save step omits it from the record.
-    setPendingBannerPreviewUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev)
-      return null
-    })
-    setPendingBannerBlob(null)
-    setPendingBannerRemoved(true)
-    setHasInteracted(true)
-  }, [])
-
-  const handleSave = useCallback(async () => {
-    if (!did || !isAuthenticated || !sessionDid) {
-      setSaveError("Not authenticated")
-      return
-    }
-    const base = effectiveProfile ?? null
-    const next: CertifiedProfile = {
-      createdAt: base?.createdAt || new Date().toISOString(),
-      ...(drafts.displayName.trim() && {
-        displayName: drafts.displayName.trim(),
-      }),
-      ...(base?.pronouns && { pronouns: base.pronouns }),
-      ...(drafts.description.trim() && {
-        description: drafts.description.trim(),
-      }),
-      ...(drafts.website.trim() && { website: drafts.website.trim() }),
-    }
-
-    if (pendingAvatarBlob) {
-      const avatarImage: HypercertsSmallImage = {
-        $type: "org.hypercerts.defs#smallImage",
-        image: pendingAvatarBlob as unknown as BlobRef,
-      }
-      next.avatar = avatarImage
-    } else if (base?.avatar) {
-      next.avatar = base.avatar
-    }
-
-    if (pendingBannerBlob) {
-      const bannerImage: HypercertsLargeImage = {
-        $type: "org.hypercerts.defs#largeImage",
-        image: pendingBannerBlob as unknown as BlobRef,
-      }
-      next.banner = bannerImage
-    } else if (pendingBannerRemoved) {
-      // Explicit removal — don't carry over `base.banner`. Leaving
-      // `next.banner` undefined means JSON.stringify drops it and the
-      // PDS overwrites the record without a banner.
-    } else if (base?.banner) {
-      next.banner = base.banner
-    }
-
-    try {
-      setIsSaving(true)
-      setSaveError(null)
-      // First arg is the *session* DID (the actor doing the write).
-      // When editing a group profile the viewed `did` is the group's
-      // DID, not the session DID — passing `did` here would make the
-      // XRPC proxy reject the write with "repo is required and must
-      // match the authenticated user". The BFF route handles the
-      // proxied write when the target differs from the session.
-      await putProfile(
-        sessionDid,
-        next,
-        editTargetDid ? { targetDid: editTargetDid } : undefined,
-      )
-
-      // Second write: org marker. Only attempted when we know this is an
-      // org (marker already exists). We don't create a marker from
-      // scratch here — that flow lives behind group registration / the
-      // settings page. When `isOrg` is false, leave the marker alone.
-      let nextMarker: GroupMetadata | null = null
-      if (sidebarIsOrg) {
-        const markerBase =
-          effectiveOrgMarker ?? { createdAt: new Date().toISOString() }
-        // Build the urls array from the editable rows. Empty rows
-        // (no url) are dropped silently; labels are kept when present.
-        const urls = drafts.additionalUrls
-          .map<OrgUrlItem | null>((row) => {
-            const url = row.url.trim()
-            if (url === "") return null
-            const label = row.label.trim()
-            return label ? { url, label } : { url }
-          })
-          .filter((u): u is OrgUrlItem => u !== null)
-
-        // Combine preset chips with the free-text "Other" entry into a
-        // single array. The editor enforces uniqueness within each
-        // bucket but not across, so we dedupe defensively here.
-        const otherTokens = drafts.organizationTypeOther
-          .split(",")
-          .map((s) => s.trim())
-          .filter((s) => s.length > 0)
-        const orgTypeArray = Array.from(
-          new Set<string>([...drafts.organizationTypes, ...otherTokens]),
-        )
-
-        // Location serialisation follows the lexicon: write a
-        // separate `app.certified.location` record on the same repo
-        // and reference it from the marker via a
-        // `com.atproto.repo.strongRef`.
-        //
-        // Three cases:
-        //   - Have coords (with or without a name): putLocationRecord
-        //     (using the previous strongRef's rkey when available so
-        //     we overwrite rather than orphan).
-        //   - No coords, only a name: free-text-only legacy fallback
-        //     — stored inline on the marker as a string.
-        //   - Neither: clear the field.
-        let locationValue: GroupMetadata["location"] | undefined
-        const trimmedName = drafts.locationName.trim()
-        const hasCoords =
-          drafts.locationLat !== null && drafts.locationLng !== null
-        if (hasCoords) {
-          const existingRkey = inlineLocation.refUri
-            ? rkeyFromStrongRefUri(inlineLocation.refUri) ?? undefined
-            : undefined
-          const ref: StrongRef = await putLocationRecord(
-            sessionDid,
-            editTargetDid ?? sessionDid,
-            { lat: drafts.locationLat as number, lng: drafts.locationLng as number },
-            trimmedName || null,
-            { rkey: existingRkey },
-          )
-          locationValue = ref
-        } else if (trimmedName) {
-          locationValue = trimmedName
-        } else {
-          locationValue = undefined
-        }
-
-        // Build the new marker. We use a fresh object so old, no-longer-
-        // edited fields (e.g. fields the editor doesn't surface) are
-        // preserved verbatim from the base.
-        nextMarker = {
-          ...markerBase,
-          // Empty arrays/strings collapse to `undefined` so the BFF
-          // allowlist (which only copies defined fields) clears them when
-          // written. The XRPC path also drops `undefined` via JSON.stringify.
-          organizationType: orgTypeArray.length > 0 ? orgTypeArray : undefined,
-          location: locationValue,
-          foundedDate: fromDateInputValue(drafts.foundedDate),
-          longDescription: isEmptyLongDescription(drafts.longDescription)
-            ? undefined
-            : drafts.longDescription ?? undefined,
-          urls: urls.length > 0 ? urls : undefined,
-        }
-
-        // Same session-vs-target pattern as the putProfile call above:
-        // first arg is the session DID, second is the repo to write
-        // to (group DID via BFF, or session DID via XRPC).
-        await putOrgMarker(sessionDid, editTargetDid ?? sessionDid, nextMarker)
-      }
-
-      // Defensive: evict any cached resolve-did response so navigation
-      // back through the app sees the new record. Best-effort.
-      fetch(`/api/resolve-did?did=${encodeURIComponent(did)}`, {
-        cache: "reload",
-        credentials: "include",
-      }).catch(() => undefined)
-
-      // Mirror the saved profile locally so the read-only render
-      // immediately reflects the change without a hard reload.
-      setLocalProfile(next)
-      // Mirror the marker locally + invalidate the module-level cache so
-      // subsequent navigations re-fetch instead of showing stale data.
-      if (nextMarker) {
-        setLocalOrgMarker(nextMarker)
-        refreshOrgMarker()
-      }
-      // Promote the in-flight object URLs to the read-only render
-      // mirror so the new image stays visible after exiting edit mode.
-      // Without this, the read-only branch falls back to the stale
-      // `avatarUrl` / `bannerUrl` from useUserProfile (which doesn't
-      // refetch on save) and the user only sees the new image after a
-      // hard reload. We keep the same URL — the browser revokes it on
-      // unload when the page navigates away.
-      if (pendingAvatarPreviewUrl) {
-        setLocalAvatarUrl(pendingAvatarPreviewUrl)
-      } else if (pendingAvatarBlob) {
-        setLocalAvatarUrl(null)
-      }
-      if (pendingBannerPreviewUrl) {
-        setLocalBannerUrl(pendingBannerPreviewUrl)
-        setBannerCleared(false)
-      } else if (pendingBannerRemoved) {
-        // Persist the cleared state past edit-mode exit so the
-        // read-only render shows no banner until the next hook
-        // refetch (which will agree).
-        setLocalBannerUrl(null)
-        setBannerCleared(true)
-      } else if (pendingBannerBlob) {
-        setLocalBannerUrl(null)
-        setBannerCleared(false)
-      }
-
-      setPendingAvatarPreviewUrl(null)
-      setPendingBannerPreviewUrl(null)
-      setPendingAvatarBlob(null)
-      setPendingBannerBlob(null)
-      setPendingBannerRemoved(false)
-      setHasInteracted(false)
-      setIsEditing(false)
-    } catch (err) {
-      console.error("Failed to save profile:", err)
-      setSaveError(
-        err instanceof Error ? err.message : "Failed to save profile",
-      )
-    } finally {
-      setIsSaving(false)
-    }
-  }, [
-    did,
-    sessionDid,
-    isAuthenticated,
-    effectiveProfile,
-    drafts,
-    pendingAvatarBlob,
-    pendingBannerBlob,
-    pendingAvatarPreviewUrl,
-    pendingBannerPreviewUrl,
-    pendingBannerRemoved,
-    editTargetDid,
-    sidebarIsOrg,
-    effectiveOrgMarker,
-    refreshOrgMarker,
-    inlineLocation.refUri,
-  ])
-
-  // -------------------------------------------------------------------
-  // Unsaved-changes guard
-  // -------------------------------------------------------------------
-  // Warn before the viewer leaves the page mid-edit. Covers three exit
-  // routes:
-  //   1. Browser refresh / tab close — native `beforeunload` dialog.
-  //   2. In-app navigation (top-bar tab clicks, sidebar group links,
-  //      brand logo, etc.) — caught with a document-level capture
-  //      handler on `<a>` elements that pops a `window.confirm()`.
-  //      Save / Cancel inside the edit banner is intentionally
-  //      exempted so the user can leave through them without a prompt.
-  // We don't guard the React Router push API directly because App
-  // Router doesn't expose a stable navigation-guard API; intercepting
-  // anchor clicks covers every realistic in-app navigation path.
-  const isDirty = isEditing && hasInteracted
-  useEffect(() => {
-    if (!isDirty) return
-
-    const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault()
-      e.returnValue = ""
-    }
-
-    const onClickCapture = (e: MouseEvent) => {
-      if (
-        e.button !== 0 ||
-        e.metaKey ||
-        e.ctrlKey ||
-        e.shiftKey ||
-        e.altKey ||
-        e.defaultPrevented
-      ) {
-        return
-      }
-      const target =
-        e.target instanceof Element
-          ? (e.target.closest("a[href]") as HTMLAnchorElement | null)
-          : null
-      if (!target) return
-      // Anchors inside the edit banner (Save / Cancel) or the inline-
-      // edit affordances (avatar/banner upload, URL list controls)
-      // mustn't trigger the guard — they're part of the edit flow.
-      if (target.closest(".edit-banner")) return
-      if (target.closest(".profile-sidebar__avatar-edit-btn")) return
-      if (target.closest(".profile-banner-upload__btn")) return
-      // External `target="_blank"` links open in a new tab so the
-      // current edit state is preserved — no prompt needed.
-      if (target.target && target.target !== "_self") return
-
-      const proceed = window.confirm(
-        "You have unsaved changes. Leave and discard them?",
-      )
-      if (!proceed) {
-        e.preventDefault()
-        e.stopImmediatePropagation()
-      }
-    }
-
-    window.addEventListener("beforeunload", onBeforeUnload)
-    document.addEventListener("click", onClickCapture, true)
-    return () => {
-      window.removeEventListener("beforeunload", onBeforeUnload)
-      document.removeEventListener("click", onClickCapture, true)
-    }
-  }, [isDirty])
-
-  // Mobile <ProfileHeader> still uses the legacy edit pages as a
-  // fallback (inline edit isn't wired on the compact mobile header
-  // yet). Same gate as `canEditInline` above — the signed-in identity
-  // must match the viewed profile exactly.
-  const mobileEditHref =
-    isOwnProfile && !activeOrg
-      ? "/settings/edit-profile"
-      : isActingAsThisGroup && did
-        ? `/groups/${encodeURIComponent(did)}/edit-profile`
-        : undefined
+  const editHref = isOwnProfile
+    ? "/settings/edit-profile"
+    : isAdminOfThisGroup && did
+      ? `/groups/${encodeURIComponent(did)}/edit-profile`
+      : undefined
 
   const settingsHref =
     isAdminOfThisGroup && did
       ? `/groups/${encodeURIComponent(did)}/settings`
       : undefined
 
-  const eyebrow = isOwnProfile
-    ? "Your profile"
-    : isAdminOfThisGroup
-      ? "Admin of this group"
-      : undefined
+  const eyebrow = isOwnProfile ? "Your profile" : undefined
 
+  // We fetch activities here only so we can derive the count label shown
+  // in the header. The UserFeed inside the Activities tab re-fetches them;
+  // both calls use the same cached URL path so browser HTTP caching makes
+  // this cheap. Optimization (shared cache) can come later.
   const { activities, hasMore } = useUserActivities(did)
   const activityCountLabel = hasMore
     ? `${activities.length}+`
     : `${activities.length}`
 
+  // Persist the active tab in the URL (`?tab=endorsements`) so refresh
+  // or share lands on the same view. Falls back to "activities" if the
+  // param is missing or unrecognised.
+  const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const tabFromUrl = useMemo<TabKey>(() => {
     const v = searchParams?.get("tab")
-    return v && TABS.some((t) => t.key === v) ? (v as TabKey) : "overview"
+    return v && TABS.some((t) => t.key === v) ? (v as TabKey) : "activities"
   }, [searchParams])
   const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl)
 
+  // Keep state in sync when the user navigates with Back/Forward (the
+  // URL changes; mirror it into state). Comparing first prevents the
+  // setter from looping on every searchParams reference.
   if (tabFromUrl !== activeTab && TABS.some((t) => t.key === tabFromUrl)) {
     setActiveTab(tabFromUrl)
   }
+
+  const changeTab = useCallback(
+    (next: TabKey) => {
+      setActiveTab(next)
+      const params = new URLSearchParams(searchParams?.toString() ?? "")
+      if (next === "activities") {
+        // Default tab — keep the URL clean instead of carrying ?tab=activities.
+        params.delete("tab")
+      } else {
+        params.set("tab", next)
+      }
+      const qs = params.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    },
+    [router, pathname, searchParams],
+  )
 
   if (isProfileLoading) {
     return (
@@ -964,182 +137,82 @@ export default function UserProfilePage() {
     )
   }
 
-  const editing = isEditing && canEditInline
-
   return (
     <div className="profile-page">
-      {/* Mobile-only identity block. Hidden on desktop where the sidebar
-          carries the identity. The desktop top bar's row 2 is the only
-          tab strip; there is no in-page tab strip. */}
-      <div className="profile-page__mobile-header">
-        <ProfileHeader
-          profile={effectiveProfile}
-          avatarUrl={effectiveAvatarUrl}
-          bannerUrl={effectiveBannerUrl}
-          handle={resolvedHandle || (rawHandle ?? null)}
-          did={did}
-          activityCountLabel={activityCountLabel}
-          editHref={mobileEditHref}
-          settingsHref={settingsHref}
-          eyebrow={eyebrow}
-        />
+      <ProfileHeader
+        profile={profile}
+        avatarUrl={avatarUrl}
+        bannerUrl={bannerUrl}
+        handle={resolvedHandle || (rawHandle ?? null)}
+        did={did}
+        activityCountLabel={activityCountLabel}
+        editHref={editHref}
+        settingsHref={settingsHref}
+        eyebrow={eyebrow}
+      />
+
+      <div
+        className="profile-tabs"
+        role="tablist"
+        aria-label="Profile sections"
+        onKeyDown={(e) => {
+          // WAI-ARIA Tabs Pattern: Left/Right move between tabs, Home/End
+          // jump to first/last. Wraps at the boundaries.
+          const idx = TABS.findIndex((t) => t.key === activeTab)
+          if (idx < 0) return
+          let next = idx
+          if (e.key === "ArrowRight") next = (idx + 1) % TABS.length
+          else if (e.key === "ArrowLeft") next = (idx - 1 + TABS.length) % TABS.length
+          else if (e.key === "Home") next = 0
+          else if (e.key === "End") next = TABS.length - 1
+          else return
+          e.preventDefault()
+          const nextKey = TABS[next].key
+          changeTab(nextKey)
+          const el = document.getElementById(`tab-${nextKey}`) as HTMLButtonElement | null
+          el?.focus()
+        }}
+      >
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            role="tab"
+            id={`tab-${tab.key}`}
+            tabIndex={activeTab === tab.key ? 0 : -1}
+            aria-selected={activeTab === tab.key}
+            // Only the active tab gets aria-controls because only the
+            // active tabpanel is mounted. Dangling refs from inactive
+            // tabs would point at non-existent ids and confuse screen
+            // readers that follow the relationship.
+            aria-controls={activeTab === tab.key ? `tabpanel-${tab.key}` : undefined}
+            className={`profile-tabs__tab ${
+              activeTab === tab.key ? "profile-tabs__tab--active" : ""
+            }`}
+            onClick={() => changeTab(tab.key)}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {editing ? (
-        <EditBanner
-          label="Editing profile"
-          error={saveError}
-          isSaving={isSaving}
-          onCancel={handleCancelEdit}
-          onSave={handleSave}
-        />
-      ) : null}
-
-      {activeTab === "settings" && isViewerThisEntity ? (
-        // Settings tab swaps the entire profile-page two-pane layout
-        // out for the settings panel's own menu+sections two-pane
-        // layout — same 296px slim rail, but the left pane carries
-        // settings categories (Username / Email / Password /
-        // Appearance) instead of the profile identity sidebar.
-        <SettingsPanel />
-      ) : (
-        <div className="page-layout">
-          <ProfileSidebar
-            profile={effectiveProfile}
-            avatarUrl={effectiveAvatarUrl}
-            handle={resolvedHandle || (rawHandle ?? null)}
-            did={did}
-            basePath={pathname || ""}
-            settingsHref={settingsHref}
-            isOrg={sidebarIsOrg}
-            additionalUrls={effectiveAdditionalUrls}
-            orgFoundedDate={displayFoundedDate}
-            groupsOverride={isOwnProfile ? groups : undefined}
-            groupsLoadingOverride={isOwnProfile ? orgGroupsLoading : undefined}
-            canInlineEdit={canEditInline}
-            isEditing={editing}
-            drafts={drafts}
-            onEditClick={handleEditClick}
-            onCancelEdit={handleCancelEdit}
-            onSaveEdit={handleSave}
-            onDraftChange={handleDraftChange}
-            onAvatarFile={handleAvatarFile}
-            hasPendingAvatar={!!pendingAvatarBlob}
-            isSaving={isSaving}
-            saveError={saveError}
-          />
-
-          <div className="page-layout__main">
-            {activeTab === "overview" && (
-              <div role="tabpanel" id="tabpanel-overview" aria-labelledby="tab-overview">
-                <ProfileOverview
-                  bannerUrl={effectiveBannerUrl}
-                  did={did}
-                  profile={effectiveProfile}
-                  basePath={pathname || ""}
-                  isEditing={editing}
-                  drafts={drafts}
-                  onDraftChange={handleDraftChange}
-                  onBannerFile={handleBannerFile}
-                  onBannerRemove={handleRemoveBanner}
-                  hasPendingBanner={!!pendingBannerBlob}
-                  isOrg={sidebarIsOrg}
-                  orgLongDescription={displayLongDescription}
-                  orgTypeTags={displayOrgTypeTags}
-                  orgLocationName={displayLocation.name}
-                  orgLocationCoords={displayLocation.coords}
-                />
-              </div>
-            )}
-            {activeTab === "about" ? (
-              <div
-                role="tabpanel"
-                id="tabpanel-about"
-                aria-labelledby="tab-about"
-                className="profile-page__about"
-              >
-                {editing && sidebarIsOrg ? (
-                  <LeafletEditor
-                    value={drafts.longDescription ?? null}
-                    onChange={(next: LinearDocument) =>
-                      handleDraftChange("longDescription", next)
-                    }
-                    placeholder="A longer, multi-line description of this organization."
-                    ariaLabel="Long description"
-                    did={did}
-                    onImageUpload={handleLongDescImageUpload}
-                  />
-                ) : displayLongDescription ? (
-                  <LeafletDocument
-                    value={displayLongDescription}
-                    did={did}
-                    className="profile-page__about-doc"
-                  />
-                ) : isViewerThisEntity ? (
-                  /* Empty About tab, but the viewer is signed in as
-                     this entity — show the prompt to click "Edit
-                     profile". Foreign viewers don't reach this branch
-                     because the tab gate hides the About tab when
-                     there's no content for them. */
-                  <EmptyState
-                    icon={AlignLeft}
-                    title="Nothing here yet"
-                    description="Click Edit profile to add an About section to your profile."
-                  />
-                ) : null}
-              </div>
-            ) : null}
-            {activeTab === "certs" && (
-              <div
-                role="tabpanel"
-                id="tabpanel-certs"
-                aria-labelledby="tab-certs"
-              >
-                <ProfileCerts did={did} />
-              </div>
-            )}
-            {activeTab === "projects" && (
-              <div
-                role="tabpanel"
-                id="tabpanel-projects"
-                aria-labelledby="tab-projects"
-              >
-                <ProfileProjects
-                  did={did}
-                  viewerIsOwner={isViewerThisEntity}
-                />
-              </div>
-            )}
-            {activeTab === "groups" && (
-              <div
-                role="tabpanel"
-                id="tabpanel-groups"
-                aria-labelledby="tab-groups"
-              >
-                <ProfileGroups did={did} />
-              </div>
-            )}
-            {activeTab === "endorsements" && (
-              <div
-                role="tabpanel"
-                id="tabpanel-endorsements"
-                aria-labelledby="tab-endorsements"
-              >
-                <ProfileEndorsements did={did} />
-              </div>
-            )}
-            {activeTab === "followers" && did && (
-              <div
-                role="tabpanel"
-                id="tabpanel-followers"
-                aria-labelledby="tab-followers"
-              >
-                <ProfileFollowers did={did} />
-              </div>
-            )}
+      <div className="profile-panel">
+        {activeTab === "activities" && (
+          <div role="tabpanel" id="tabpanel-activities" aria-labelledby="tab-activities">
+            <UserFeed authorDid={did} />
           </div>
-        </div>
-      )}
+        )}
+        {activeTab === "groups" && (
+          <div role="tabpanel" id="tabpanel-groups" aria-labelledby="tab-groups">
+            <ProfileGroups did={did} showRoles={isOwnProfile} />
+          </div>
+        )}
+        {activeTab === "endorsements" && (
+          <div role="tabpanel" id="tabpanel-endorsements" aria-labelledby="tab-endorsements">
+            <ProfileEndorsements did={did} />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

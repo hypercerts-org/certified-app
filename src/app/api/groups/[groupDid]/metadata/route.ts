@@ -8,14 +8,7 @@ import { checkCsrf } from "@/lib/auth/csrf"
 import { isValidDid } from "@/lib/utils/did"
 import { extractRouteError, pickAllowedFields, parseJsonBody } from "@/lib/utils/api"
 
-const METADATA_FIELDS = [
-  "organizationType",
-  "urls",
-  "location",
-  "foundedDate",
-  "longDescription",
-  "createdAt",
-] as const
+const METADATA_FIELDS = ["organizationType", "urls", "location", "foundedDate", "createdAt"] as const
 
 /**
  * GET /api/groups/[groupDid]/metadata
@@ -52,9 +45,8 @@ export async function GET(
     const data = await res.json()
     return NextResponse.json(data.value)
   } catch (err: unknown) {
-    // extractRouteError calls logSafe internally; bare console.error
-    // duplicated the log and skipped the redactSecrets pass.
-    const { status, message } = extractRouteError(err, "[groups/metadata/get]")
+    console.error("GET org metadata error:", err)
+    const { status, message } = extractRouteError(err)
     return NextResponse.json({ error: message }, { status })
   }
 }

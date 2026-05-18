@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  ENDORSEMENT_BADGE_TITLE,
+  listDefinitions,
   resolveResponseState,
+  ENDORSEMENT_BADGE_TYPE,
 } from "@/lib/atproto/badges"
 import { useProfileResponses } from "@/hooks/use-profile-responses"
 
@@ -24,11 +25,6 @@ export interface ReceivedEndorsement {
   /** ISO timestamp from the award record. */
   createdAt: string
   note?: string
-  /** Title of the issuer's list this endorsement was awarded under,
-   *  when the award belongs to a user-created list rather than the
-   *  default "Endorsement" definition. `undefined` for default
-   *  endorsements. */
-  listTitle?: string
 }
 
 /**
@@ -132,80 +128,32 @@ async function fetchReceivedAwardsFromIndexer(
 }
 
 /**
- * Single indexer query for every endorsement-typed definition URI
- * across the given set of issuer DIDs. Replaces what used to be a
- * per-issuer PDS `listDefinitions` fan-out — that path serialised at
- * the slowest issuer PDS in the set and was the dominant latency on
- * the Endorsements tab. The indexer already maintains
- * `appCertifiedBadgeDefinition` with `did: { in: [...] }` +
- * `badgeType: { eq: ... }` filters (see #65), so one round-trip
- * answers the "which of these issuers' definitions are
- * endorsement-typed?" question for the whole batch.
- *
- * Returns a Set of definition URIs.
+ * For each unique issuer that endorsed `profileDid`, ask the issuer's
+ * PDS which of their definitions are endorsement-typed. Cached so an
+ * issuer with multiple awards on this profile only triggers one
+ * definition fetch.
  */
-const DEFINITIONS_QUERY = `
-query EndorsementDefs($dids: [String!]!) {
-  appCertifiedBadgeDefinition(
-    where: { did: { in: $dids }, badgeType: { eq: "endorsement" } }
-    first: 1000
-  ) {
-    edges { node { uri title } }
-  }
-}
-`
-
-async function fetchEndorsementDefMapForIssuers(
-  issuerDids: string[],
+async function getEndorsementDefUris(
+  issuerDid: string,
+  cache: Map<string, Set<string>>,
   signal?: AbortSignal,
-): Promise<Map<string, string>> {
-  if (issuerDids.length === 0) return new Map()
-  const res = await fetch(INDEXER_PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      query: DEFINITIONS_QUERY,
-      variables: { dids: issuerDids },
-    }),
-    signal,
-  })
-  if (!res.ok) {
-    throw new Error(`Indexer definition query failed: ${res.status}`)
-  }
-  const json = (await res.json()) as {
-    data?: {
-      appCertifiedBadgeDefinition?: {
-        edges: { node: { uri: string; title: string | null } | null }[]
-      } | null
-    } | null
-    errors?: { message: string }[]
-  }
-  if (json.errors && json.errors.length > 0) {
-    throw new Error(json.errors[0].message)
-  }
-  const edges = json.data?.appCertifiedBadgeDefinition?.edges ?? []
-  const out = new Map<string, string>()
-  for (const e of edges) {
-    if (e.node?.uri) out.set(e.node.uri, e.node.title ?? "")
-  }
-  return out
+): Promise<Set<string>> {
+  const cached = cache.get(issuerDid)
+  if (cached) return cached
+  const defs = await listDefinitions(issuerDid, signal).catch(() => [])
+  const uris = new Set(
+    defs
+      .filter((d) => d.value.badgeType === ENDORSEMENT_BADGE_TYPE)
+      .map((d) => d.uri),
+  )
+  cache.set(issuerDid, uris)
+  return uris
 }
 
 /**
- * Run the scan in TWO indexer calls — no PDS fan-out.
- *
- *   1. Pull every badge.award whose subject is the profile DID.
- *   2. Pull every endorsement-typed badge.definition for the unique
- *      issuers in those awards (one batch query via
- *      `did: { in: [...] }` + `badgeType: { eq: "endorsement" }`).
- *   3. Locally filter awards to those whose badge ref points at one
- *      of the endorsement-typed definition URIs.
- *
- * Replaces the previous per-issuer PDS `listDefinitions` fan-out,
- * which serialised at the slowest issuer's PDS (~200ms × N issuers)
- * and was the dominant latency on the Endorsements tab. The proper
- * one-round-trip fix would be a nested-where on awards — see the
- * companion `hb-agent/magic-indexer` issue.
+ * Run the scan: one indexer query for awards-targeting-me, then per
+ * unique issuer load their definitions and keep awards whose badge
+ * ref points at an endorsement-typed one.
  */
 async function scanReceivedEndorsements(
   profileDid: string,
@@ -214,38 +162,20 @@ async function scanReceivedEndorsements(
   const awards = await fetchReceivedAwardsFromIndexer(profileDid, signal)
   if (signal?.aborted) return []
 
-  // Collect every unique issuer that also has a parseable badge ref
-  // — there's no point fetching definitions for an award we'd skip
-  // anyway because we couldn't extract its definition URI.
-  const uniqueIssuers = new Set<string>()
-  for (const a of awards) {
-    if (extractBadgeDefinitionUri(a.badge)) uniqueIssuers.add(a.did)
-  }
-
-  const endorsementDefs = await fetchEndorsementDefMapForIssuers(
-    Array.from(uniqueIssuers),
-    signal,
-  )
-  if (signal?.aborted) return []
-
+  const defCache = new Map<string, Set<string>>()
   const out: ReceivedEndorsement[] = []
   for (const a of awards) {
+    if (signal?.aborted) return []
     const defUri = extractBadgeDefinitionUri(a.badge)
     if (!defUri) continue
-    if (!endorsementDefs.has(defUri)) continue
-    const title = endorsementDefs.get(defUri)
-    // Surface the list title only when it's NOT the reserved default
-    // ("Endorsement") — otherwise the card would tag every regular
-    // endorsement with "Endorsement", which is noise.
-    const listTitle =
-      title && title !== ENDORSEMENT_BADGE_TITLE ? title : undefined
+    const endorsementDefUris = await getEndorsementDefUris(a.did, defCache, signal)
+    if (!endorsementDefUris.has(defUri)) continue
     out.push({
       uri: a.uri,
       cid: a.cid,
       issuerDid: a.did,
       createdAt: a.createdAt,
       note: a.note,
-      listTitle,
     })
   }
 
@@ -315,20 +245,7 @@ export function peekCachedReceivedEndorsements(
  *
  * Returns an empty list while loading, with `isLoading` true.
  */
-export function useReceivedEndorsements(
-  profileDid: string | null,
-  opts?: {
-    /** When true, the rejected awards stay in the returned list and
-     *  callers can filter / surface them client-side using their own
-     *  resolved response states. Owner-side surfaces (the profile
-     *  owner viewing their own Received tab) pass true so the filter
-     *  dropdown can offer "Show all" / "Show only rejected" without
-     *  re-fetching. Foreign viewers keep the default so the privacy
-     *  contract (don't reveal rejected endorsements to others) is
-     *  preserved. */
-    includeRejected?: boolean
-  },
-): {
+export function useReceivedEndorsements(profileDid: string | null): {
   endorsements: ReceivedEndorsement[]
   isLoading: boolean
   error: string | null
@@ -395,21 +312,17 @@ export function useReceivedEndorsements(
   // profileDid across both fetches.
   const { responses, isLoading: respLoading } = useProfileResponses(profileDid)
 
-  // Filter out awards whose latest response is "rejected" — unless
-  // the caller opted into seeing rejected entries (owner-side
-  // surfaces). Default and unknown states pass through (default =
-  // un-responded; unknown = a response value we don't recognise,
-  // treated as no-op so we never silently hide on an unrecognised
-  // value).
-  const includeRejected = opts?.includeRejected ?? false
+  // Filter out awards whose latest response is "rejected". Default
+  // and unknown states pass through (default = un-responded;
+  // unknown = a response value we don't recognise, treated as
+  // no-op so we never silently hide on an unrecognised value).
   const endorsements = useMemo(() => {
-    if (includeRejected) return scanResult
     if (responses.length === 0) return scanResult
     return scanResult.filter((e) => {
       const { state } = resolveResponseState(e.uri, responses)
       return state !== "rejected"
     })
-  }, [scanResult, responses, includeRejected])
+  }, [scanResult, responses])
 
   return {
     endorsements,
