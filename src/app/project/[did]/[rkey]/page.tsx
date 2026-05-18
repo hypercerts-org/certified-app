@@ -58,7 +58,7 @@ export default function ProjectDetailPage() {
     )
   }
 
-  if (error || !project) {
+  if (error || !project || !rkey) {
     return (
       <div className="project-detail-page">
         <div className="project-detail__error">
@@ -76,7 +76,7 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="project-detail-page">
-      <ProjectDetail did={project.did} value={project.value} />
+      <ProjectDetail did={project.did} rkey={rkey} value={project.value} />
     </div>
   )
 }
