@@ -22,6 +22,7 @@ import {
   FEATURE_ITALIC,
   FEATURE_LINK,
 } from "./types"
+import { safeHttpUrl } from "@/lib/utils/safe-url"
 
 /**
  * Hydrate a TipTap / ProseMirror JSON document from a leaflet
@@ -266,6 +267,15 @@ function activeMarksAt(
 function featureToMark(f: FacetFeature): TipTapMark | null {
   if (f.$type === FEATURE_BOLD) return { type: "bold" }
   if (f.$type === FEATURE_ITALIC) return { type: "italic" }
-  if (f.$type === FEATURE_LINK) return { type: "link", attrs: { href: f.uri } }
+  if (f.$type === FEATURE_LINK) {
+    // Defense in depth on the read boundary: a foreign record can
+    // carry a `javascript:` URI in the link facet, which would
+    // otherwise persist in editor JSON until the user edited the
+    // mark (or the from-tiptap guard fired on save). Drop the mark
+    // entirely on rejection so the editor surfaces the plain text.
+    const safe = safeHttpUrl(f.uri)
+    if (!safe) return null
+    return { type: "link", attrs: { href: safe } }
+  }
   return null
 }

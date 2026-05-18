@@ -18,6 +18,7 @@ import {
   FEATURE_LINK,
   LINEAR_DOC_TYPE,
 } from "./types"
+import { safeHttpUrl } from "@/lib/utils/safe-url"
 
 /**
  * Convert a TipTap / ProseMirror JSON document into a
@@ -230,7 +231,13 @@ function marksToFeatures(marks: TipTapMark[]): FacetFeature[] {
     else if (m.type === "link") {
       const href =
         typeof m.attrs?.href === "string" ? (m.attrs.href as string) : ""
-      if (href) features.push({ $type: FEATURE_LINK, uri: href })
+      // Defense in depth on the write boundary: a `javascript:` URI
+      // could enter the editor's JSON via a `setContent()` call from
+      // a foreign record (`to-tiptap` hydrates marks symmetrically).
+      // Without this guard a benign-looking edit-and-save would
+      // re-publish the malicious URI under the user's identity.
+      const safe = safeHttpUrl(href)
+      if (safe) features.push({ $type: FEATURE_LINK, uri: safe })
     }
   }
   return features

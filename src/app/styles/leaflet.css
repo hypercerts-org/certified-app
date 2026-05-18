@@ -398,6 +398,13 @@ ol.leaflet-doc__list {
   line-height: 1.4;
 }
 
+.link-dialog__error {
+  font-size: 0.8125rem;
+  color: var(--color-error);
+  line-height: 1.4;
+  margin: 0;
+}
+
 .link-dialog__actions {
   display: flex;
   align-items: center;

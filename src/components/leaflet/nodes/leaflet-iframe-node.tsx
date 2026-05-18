@@ -4,6 +4,7 @@ import { Node, mergeAttributes } from "@tiptap/core"
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react"
 import type { NodeViewProps } from "@tiptap/react"
 import { isAllowedEmbedHost } from "@/lib/leaflet/embed-url"
+import { safeHttpUrl } from "@/lib/utils/safe-url"
 
 /**
  * TipTap custom node for `pub.leaflet.blocks.iframe`. Used for
@@ -50,17 +51,22 @@ function LeafletIframeNodeView({ node, selected }: NodeViewProps) {
     aspectHeight: number
   }
   if (!url || !isAllowedEmbedHost(url)) {
+    // safeHttpUrl drops `javascript:`/`data:` URIs that
+    // isAllowedEmbedHost lets fall through (it only inspects hostname).
+    const safe = url ? safeHttpUrl(url) : null
     return (
       <NodeViewWrapper
         as="div"
         className="leaflet-doc__embed leaflet-doc__embed--unsupported"
       >
-        {url ? (
-          <a href={url} target="_blank" rel="noopener noreferrer">
+        {!url ? (
+          <span>Embed URL not set</span>
+        ) : safe ? (
+          <a href={safe} target="_blank" rel="noopener noreferrer">
             {url}
           </a>
         ) : (
-          <span>Embed URL not set</span>
+          <span>{url}</span>
         )}
       </NodeViewWrapper>
     )

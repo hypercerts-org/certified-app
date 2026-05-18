@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react"
 import { X } from "lucide-react"
 import Button from "@/components/ui/button"
+import { safeHttpUrl } from "@/lib/utils/safe-url"
 
 export interface LinkDialogResult {
   /** Final URL — empty string means "remove the link". */
@@ -52,6 +53,7 @@ export default function LinkDialog({
 
   const [url, setUrl] = useState(initialUrl)
   const [text, setText] = useState(initialText)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -76,7 +78,17 @@ export default function LinkDialog({
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault()
-      onConfirm({ url: url.trim(), text: text.trim() })
+      const trimmed = url.trim()
+      // Reject non-http(s) URLs at the boundary. The editor and
+      // renderer also defend, but failing here gives the user an
+      // immediate, actionable message instead of silently dropping
+      // their link.
+      if (trimmed !== "" && safeHttpUrl(trimmed) === null) {
+        setSubmitError("Use a full http:// or https:// URL.")
+        return
+      }
+      setSubmitError(null)
+      onConfirm({ url: trimmed, text: text.trim() })
     },
     [onConfirm, url, text],
   )
@@ -121,6 +133,12 @@ export default function LinkDialog({
               spellCheck={false}
             />
           </label>
+
+          {submitError ? (
+            <p className="link-dialog__error" role="alert">
+              {submitError}
+            </p>
+          ) : null}
 
           {allowTextEdit ? (
             <label className="link-dialog__field">

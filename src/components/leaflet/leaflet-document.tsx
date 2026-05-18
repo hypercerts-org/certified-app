@@ -3,6 +3,7 @@
 import { Fragment, type ReactNode } from "react"
 import { asLinearDocument } from "@/lib/leaflet/guards"
 import { isAllowedEmbedHost } from "@/lib/leaflet/embed-url"
+import { safeHttpUrl } from "@/lib/utils/safe-url"
 import {
   BLOCK_HEADER,
   BLOCK_IFRAME,
@@ -212,13 +213,21 @@ function renderIframe(block: IframeBlock, key: string): ReactNode {
   if (!url || !isAllowedEmbedHost(url)) {
     // Unsupported origin — surface a plain link rather than silently
     // dropping the block. Keeps the content discoverable without
-    // executing untrusted embeds.
+    // executing untrusted embeds. The href passes through safeHttpUrl
+    // so `javascript:`/`data:` URIs (which `isAllowedEmbedHost` doesn't
+    // catch — it only inspects `hostname`) render as text rather than
+    // a one-click XSS anchor.
     if (url) {
+      const safe = safeHttpUrl(url)
       return (
         <p key={key} className="leaflet-doc__embed-fallback">
-          <a href={url} target="_blank" rel="noopener noreferrer">
-            {url}
-          </a>
+          {safe ? (
+            <a href={safe} target="_blank" rel="noopener noreferrer">
+              {url}
+            </a>
+          ) : (
+            <span>{url}</span>
+          )}
         </p>
       )
     }
@@ -359,16 +368,22 @@ function applyFacets(text: string, facets: Facet[], key: number): ReactNode {
   if (isItalic) node = <em>{node}</em>
   if (isBold) node = <strong>{node}</strong>
   if (linkUri) {
-    node = (
-      <a
-        href={linkUri}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="leaflet-doc__link"
-      >
-        {node}
-      </a>
-    )
+    // Validate the facet URI before assigning to href — a `javascript:`
+    // URI in a foreign record would otherwise be a one-click XSS on
+    // every viewer of the cert / profile. Render plain text on rejection.
+    const safe = safeHttpUrl(linkUri)
+    if (safe) {
+      node = (
+        <a
+          href={safe}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="leaflet-doc__link"
+        >
+          {node}
+        </a>
+      )
+    }
   }
   return <Fragment key={`r-${key}`}>{node}</Fragment>
 }

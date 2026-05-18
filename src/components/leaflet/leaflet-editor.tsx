@@ -27,6 +27,7 @@ import { LeafletIframe } from "./nodes/leaflet-iframe-node"
 import { asLinearDocument } from "@/lib/leaflet/guards"
 import { tiptapToLinearDocument } from "@/lib/leaflet/from-tiptap"
 import { linearDocumentToTipTap } from "@/lib/leaflet/to-tiptap"
+import { safeHttpUrl } from "@/lib/utils/safe-url"
 import type { LinearDocument } from "@/lib/leaflet/types"
 import type { UploadedBlob } from "@/lib/atproto/profile"
 
@@ -223,20 +224,34 @@ export default function LeafletEditor({
       return
     }
 
+    // Scheme-allowlist before BOTH branches. TipTap's Link extension
+    // only runs isAllowedUri on setLink/toggleLink — insertContent
+    // bypasses validation entirely. Without this check a typed or
+    // pasted `javascript:` URL would persist into the editor's JSON,
+    // round-trip through linearDocument, and render as a one-click
+    // XSS anchor for every viewer.
+    const safe = safeHttpUrl(url)
+    if (!safe) {
+      // Silently drop the invalid URL — the dialog should also reject
+      // this on submit (LinkDialog has its own guard), but we keep
+      // this branch as defense-in-depth.
+      return
+    }
+
     if (stash && !stash.empty) {
       // Selection: just wrap it in a link mark.
       editor
         .chain()
         .focus()
         .extendMarkRange("link")
-        .setLink({ href: url })
+        .setLink({ href: safe })
         .run()
       return
     }
 
     // No selection: insert the label (or the URL itself if blank) as
     // a fresh text node carrying the link mark.
-    const label = result.text.trim() || url
+    const label = result.text.trim() || safe
     editor
       .chain()
       .focus()
@@ -244,7 +259,7 @@ export default function LeafletEditor({
         {
           type: "text",
           text: label,
-          marks: [{ type: "link", attrs: { href: url } }],
+          marks: [{ type: "link", attrs: { href: safe } }],
         },
       ])
       .run()
