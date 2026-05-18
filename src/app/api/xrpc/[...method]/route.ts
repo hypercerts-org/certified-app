@@ -40,6 +40,12 @@ const ALLOWED_WRITE_COLLECTIONS = [
   // `appCertifiedGraphFollow` connection.
   "app.certified.graph.follow",
   "org.hypercerts.claim.activity",
+  // Project records (and other curated collections like favorites /
+  // portfolio / program — same NSID, distinguished by `type` field).
+  // Used by the project detail inline-edit (issue #67) for own-DID
+  // writes; group-owned project writes go through the BFF route at
+  // `/api/groups/[groupDid]/project`.
+  "org.hypercerts.collection",
 ]
 
 const ALLOWED_BLOB_CONTENT_TYPES = [
