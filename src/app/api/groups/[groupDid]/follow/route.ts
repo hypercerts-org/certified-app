@@ -19,7 +19,13 @@ const FOLLOW_COLLECTION = "app.certified.graph.follow"
  * client-side `createFollow` writes to the personal repo instead.
  *
  * Body shape:
- *   { subjectDid: string }
+ *   { subjectDid: string, createdAt?: string }
+ *
+ * `createdAt` is optional. When present it must be a valid ISO-8601
+ * timestamp; the route passes it through unchanged so the
+ * social-graph sync flow can preserve the user's original follow
+ * timestamp from Bluesky. When absent the server stamps the record
+ * with the current time.
  *
  * Returns `{ uri, cid }` so the client can mirror the new commit
  * locally without a re-read.
@@ -52,10 +58,21 @@ export async function POST(
       )
     }
 
+    // Accept and validate an optional client-supplied createdAt.
+    // Sync flow uses it to preserve the original Bluesky follow
+    // time; absent → stamp now. Validate as a parseable ISO-8601
+    // string so a junk value doesn't end up on the group's repo.
+    const createdAtRaw =
+      typeof body.createdAt === "string" ? body.createdAt : null
+    const createdAt =
+      createdAtRaw && !Number.isNaN(Date.parse(createdAtRaw))
+        ? createdAtRaw
+        : new Date().toISOString()
+
     const record = {
       $type: FOLLOW_COLLECTION,
       subject: subjectDid,
-      createdAt: new Date().toISOString(),
+      createdAt,
     }
 
     const groupAgent = createGroupAgent(auth.agent, groupDid)

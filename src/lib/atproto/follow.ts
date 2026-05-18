@@ -64,15 +64,16 @@ function extractRkey(uri: string): string {
 export async function createFollow(
   ownDid: string,
   subjectDid: string,
-  opts?: { targetDid?: string },
+  opts?: { targetDid?: string; createdAt?: string },
 ): Promise<{ uri: string; cid: string }> {
+  const createdAt = opts?.createdAt ?? new Date().toISOString()
   if (opts?.targetDid && opts.targetDid !== ownDid) {
     const res = await authFetch(
       `/api/groups/${encodeURIComponent(opts.targetDid)}/follow`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subjectDid }),
+        body: JSON.stringify({ subjectDid, createdAt }),
       },
     )
     const data = (await res.json().catch(() => ({}))) as {
@@ -94,7 +95,7 @@ export async function createFollow(
     record: {
       $type: FOLLOW_COLLECTION,
       subject: subjectDid,
-      createdAt: new Date().toISOString(),
+      createdAt,
     } satisfies FollowRecordValue,
   }
   const res = await authFetch("/api/xrpc/com/atproto/repo/createRecord", {
