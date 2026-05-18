@@ -65,20 +65,27 @@ function plainDescription(value: unknown): string | null {
   return lines.length > 0 ? lines.join("\n\n") : null
 }
 
-/** True when the description value is a `com.atproto.repo.strongRef`
- *  union member rather than an inline string or linearDocument. In
- *  that case the leaflet editor would replace the ref with an empty
- *  document on save — silent data loss. We render a preserve-mode
- *  banner instead and only flip to the editor on explicit consent
- *  (issue #67 review B3). */
-function isStrongRefDescription(value: unknown): boolean {
-  if (!value || typeof value !== "object") return false
-  const obj = value as Record<string, unknown>
-  return (
-    typeof obj.uri === "string" &&
-    typeof obj.cid === "string" &&
-    !("blocks" in obj)
-  )
+/** True when the existing description is present but in a shape the
+ *  leaflet editor can't open in-place — a `com.atproto.repo.strongRef`
+ *  union member, a `org.hypercerts.defs#descriptionString`, or any
+ *  unrecognised variant. Without preserve-mode, saving from the
+ *  editor would silently overwrite the original with an empty leaflet
+ *  doc (issue #67 review B3 / round-2 #5).
+ *
+ *  Plain strings and linearDocuments are NOT preserved here — the
+ *  editor handles both natively (string is wrapped to a 1-block
+ *  linearDocument on enter, linearDocument round-trips). The
+ *  predicate uses the parsed `linear` result to decide: if we
+ *  produced a non-null linearDocument, the value is editable; if not
+ *  (and there's still something there), preserve. */
+function shouldPreserveDescription(
+  value: unknown,
+  linear: unknown,
+): boolean {
+  if (value == null) return false
+  if (typeof value === "string") return false
+  if (linear != null) return false
+  return true
 }
 
 function contributorKey(
@@ -285,7 +292,9 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
       shortDescription: asString(effectiveValue.shortDescription) || "",
       description: linear,
     })
-    setPreserveDescription(isStrongRefDescription(effectiveValue.description))
+    setPreserveDescription(
+      shouldPreserveDescription(effectiveValue.description, linear),
+    )
     setPendingImageBlob(null)
     setPendingImagePreviewUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev)
@@ -398,11 +407,27 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
       )
       setLocalValue(next as CollectionValue)
       if (pendingImagePreviewUrl) {
-        setLocalImageUrl(pendingImagePreviewUrl)
+        // Revoke any prior local mirror before promoting the
+        // pending preview, otherwise an edit→save cycle leaks the
+        // previous blob URL until tab close. Matches the cert
+        // detail save-time pattern (`activity-detail.tsx:317-320`).
+        setLocalImageUrl((prev) => {
+          if (prev && prev !== pendingImagePreviewUrl) {
+            URL.revokeObjectURL(prev)
+          }
+          return pendingImagePreviewUrl
+        })
       }
       if (imageRemoved) {
-        setLocalImageUrl(null)
+        setLocalImageUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev)
+          return null
+        })
       }
+      // Don't revoke `pendingImagePreviewUrl` here — it was just
+      // promoted to `localImageUrl` above (or is about to be); the
+      // unmount cleanup at the bottom of the component handles the
+      // final revoke.
       setPendingImagePreviewUrl(null)
       setPendingImageBlob(null)
       setImageRemoved(false)
@@ -427,6 +452,26 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
     preserveDescription,
     imageRemoved,
   ])
+
+  // Revoke any outstanding object URL on unmount. Without this, a
+  // user who navigates away mid-edit (or whose page unmounts after
+  // save) leaks the pending preview / local mirror until the tab
+  // closes. The setters above already revoke on replacement; this
+  // is the unmount-side guarantee. Mirrors the cert detail pattern
+  // (`activity-detail.tsx:357-364`) — refs (not deps) so the cleanup
+  // only fires on unmount.
+  const pendingImagePreviewUrlRef = useRef(pendingImagePreviewUrl)
+  pendingImagePreviewUrlRef.current = pendingImagePreviewUrl
+  const localImageUrlRef = useRef(localImageUrl)
+  localImageUrlRef.current = localImageUrl
+  useEffect(() => {
+    return () => {
+      const a = pendingImagePreviewUrlRef.current
+      const b = localImageUrlRef.current
+      if (a) URL.revokeObjectURL(a)
+      if (b && b !== a) URL.revokeObjectURL(b)
+    }
+  }, [])
 
   return (
     <>
