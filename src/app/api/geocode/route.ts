@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
+import { getSessionDid } from "@/lib/auth/session"
+import { logSafe } from "@/lib/utils/log-safe"
 
 /**
  * Proxy for Nominatim (OpenStreetMap's geocoding service). Two modes:
@@ -16,6 +18,12 @@ import { NextRequest, NextResponse } from "next/server"
  *      return without re-hitting upstream.
  *   3. Keeps the user's IP off Nominatim's logs; our server's IP
  *      hits them instead.
+ *
+ * Auth: requires an authenticated session. The geocode UI is only
+ * mounted on edit screens (cert / profile / group), which are all
+ * auth-gated; gating the route too closes an open-internet abuse
+ * surface (anonymous traffic can otherwise burn through our
+ * Nominatim quota and rate-limit our egress IP for legitimate users).
  *
  * Attribution requirement: callers (the location picker UI) display
  * "© OpenStreetMap contributors" near the map.
@@ -60,6 +68,11 @@ const CACHE_HEADERS = {
 } as const
 
 export async function GET(request: NextRequest) {
+  const did = await getSessionDid()
+  if (!did) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+  }
+
   const url = request.nextUrl
   const q = url.searchParams.get("q")
   const lat = url.searchParams.get("lat")
@@ -75,8 +88,11 @@ export async function GET(request: NextRequest) {
       if (trimmed.length === 0 || trimmed.length > 200) {
         return NextResponse.json({ error: "invalid q" }, { status: 400 })
       }
-      const parsedLimit = limitRaw ? parseInt(limitRaw, 10) : 1
-      const limit = Number.isFinite(parsedLimit)
+      // Number() rather than parseInt — parseInt silently truncates
+      // "3.7" to 3 and accepts trailing garbage ("3abc"). Number +
+      // isInteger rejects both consistently.
+      const parsedLimit = limitRaw === null ? 1 : Number(limitRaw)
+      const limit = Number.isInteger(parsedLimit)
         ? Math.min(10, Math.max(1, parsedLimit))
         : 1
 
@@ -90,8 +106,13 @@ export async function GET(request: NextRequest) {
         signal: AbortSignal.timeout(8_000),
       })
       if (!res.ok) {
+        // Never echo upstream status in the body (AGENTS.md §17 #7).
+        // logSafe so operators can still diagnose Nominatim health.
+        logSafe("[geocode] upstream non-2xx", undefined, {
+          status: res.status,
+        })
         return NextResponse.json(
-          { error: `Upstream returned ${res.status}` },
+          { error: "Geocoding upstream unavailable" },
           { status: 502 },
         )
       }
@@ -138,8 +159,13 @@ export async function GET(request: NextRequest) {
         signal: AbortSignal.timeout(8_000),
       })
       if (!res.ok) {
+        // Never echo upstream status in the body (AGENTS.md §17 #7).
+        // logSafe so operators can still diagnose Nominatim health.
+        logSafe("[geocode] upstream non-2xx", undefined, {
+          status: res.status,
+        })
         return NextResponse.json(
-          { error: `Upstream returned ${res.status}` },
+          { error: "Geocoding upstream unavailable" },
           { status: 502 },
         )
       }
@@ -160,7 +186,7 @@ export async function GET(request: NextRequest) {
       { status: 400 },
     )
   } catch (err) {
-    console.error("[geocode] upstream error", err)
+    logSafe("[geocode] upstream error", err)
     return NextResponse.json({ error: "Geocoding failed" }, { status: 502 })
   }
 }
