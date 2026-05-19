@@ -1746,6 +1746,37 @@
   color: var(--color-warning, #b04a2a);
 }
 
+/* Active state — filled background + white glyph so the
+   recipient's current decision is unambiguous at a glance.
+   Clicking the active button toggles back to default (the
+   handler in response-menu.tsx swaps `writeResponse` for
+   `resetToDefault` when the button matches the current state). */
+.response-menu__quick-btn--accept.response-menu__quick-btn--active {
+  background: var(--color-success, #2c8a3e);
+  border-color: var(--color-success, #2c8a3e);
+  color: var(--bg-canvas, #fff);
+}
+
+.response-menu__quick-btn--accept.response-menu__quick-btn--active:hover:not(:disabled) {
+  /* Slightly darker on hover to surface the "click to reset"
+     affordance without losing the filled-active read. */
+  background: color-mix(in srgb, var(--color-success, #2c8a3e) 85%, black);
+  border-color: color-mix(in srgb, var(--color-success, #2c8a3e) 85%, black);
+  color: var(--bg-canvas, #fff);
+}
+
+.response-menu__quick-btn--reject.response-menu__quick-btn--active {
+  background: var(--color-warning, #b04a2a);
+  border-color: var(--color-warning, #b04a2a);
+  color: var(--bg-canvas, #fff);
+}
+
+.response-menu__quick-btn--reject.response-menu__quick-btn--active:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-warning, #b04a2a) 85%, black);
+  border-color: color-mix(in srgb, var(--color-warning, #b04a2a) 85%, black);
+  color: var(--bg-canvas, #fff);
+}
+
 .response-menu__quick-btn:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;

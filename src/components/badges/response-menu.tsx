@@ -1,13 +1,7 @@
 "use client"
 
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type KeyboardEvent,
-} from "react"
-import { Check, MoreHorizontal, RotateCcw, X } from "lucide-react"
+import { useCallback, useState } from "react"
+import { Check, X } from "lucide-react"
 import {
   createResponse,
   deleteAllResponsesForAward,
@@ -71,126 +65,28 @@ export default function ResponseMenu({
   allResponses,
   onAfterWrite,
 }: ResponseMenuProps) {
-  const [isOpen, setIsOpen] = useState(false)
   const [isWriting, setIsWriting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const triggerRef = useRef<HTMLButtonElement>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
-
-  // -----------------------------------------------------------------
-  // Outside-click + Esc close.
-  // -----------------------------------------------------------------
-  useEffect(() => {
-    if (!isOpen) return
-    const onDocClick = (e: MouseEvent) => {
-      if (!menuRef.current || !triggerRef.current) return
-      if (
-        menuRef.current.contains(e.target as Node) ||
-        triggerRef.current.contains(e.target as Node)
-      ) {
-        return
-      }
-      setIsOpen(false)
-    }
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setIsOpen(false)
-        triggerRef.current?.focus()
-      }
-    }
-    document.addEventListener("mousedown", onDocClick)
-    document.addEventListener("keydown", onKey)
-    return () => {
-      document.removeEventListener("mousedown", onDocClick)
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [isOpen])
-
-  // Auto-focus the first menuitem when the menu opens so keyboard
-  // users land *inside* the menu, not still on the trigger.
-  useEffect(() => {
-    if (!isOpen || !menuRef.current) return
-    const first = menuRef.current.querySelector<HTMLElement>(
-      '[role="menuitem"]:not([disabled])',
-    )
-    first?.focus()
-  }, [isOpen])
-
-  // Arrow-key roving inside the menu (WAI-ARIA menu pattern). Tab
-  // still works — it just leaves the menu, which is also expected
-  // for menus.
-  const handleMenuKey = (e: KeyboardEvent<HTMLDivElement>) => {
-    const items = menuRef.current?.querySelectorAll<HTMLElement>(
-      '[role="menuitem"]:not([disabled])',
-    )
-    if (!items || items.length === 0) return
-    const list = Array.from(items)
-    const current = document.activeElement as HTMLElement | null
-    const idx = current ? list.indexOf(current) : -1
-    let next = idx
-    if (e.key === "ArrowDown") next = idx < 0 ? 0 : (idx + 1) % list.length
-    else if (e.key === "ArrowUp")
-      next = idx <= 0 ? list.length - 1 : idx - 1
-    else if (e.key === "Home") next = 0
-    else if (e.key === "End") next = list.length - 1
-    else return
-    e.preventDefault()
-    list[next].focus()
-  }
-
-  /** Find the next focusable kebab trigger in the same list. Used
-   *  on Hide so focus moves to the sibling row rather than falling
-   *  to <body>. (Plan AC#7.) */
-  const findNextFocusTarget = (): HTMLElement | null => {
-    const t = triggerRef.current
-    if (!t) return null
-    const list = t.closest(".endorsements-list")
-    if (!list) return null
-    const all = Array.from(
-      list.querySelectorAll<HTMLElement>(".response-menu__trigger"),
-    )
-    const i = all.indexOf(t)
-    if (i < 0) return null
-    return all[i + 1] ?? all[i - 1] ?? null
-  }
-
-  const finishWrite = useCallback(
-    async (afterFocusTarget?: HTMLElement | null) => {
-      await onAfterWrite?.()
-      if (afterFocusTarget && document.contains(afterFocusTarget)) {
-        afterFocusTarget.focus()
-      } else {
-        triggerRef.current?.focus()
-      }
-    },
-    [onAfterWrite],
-  )
 
   const writeResponse = useCallback(
     async (resp: "accepted" | "rejected") => {
       if (!ownerDid) return
       setIsWriting(true)
       setError(null)
-      // Capture the focus target BEFORE the write because the row
-      // may be removed by the parent's refetch and we want a stable
-      // sibling reference.
-      const focusTarget = resp === "rejected" ? findNextFocusTarget() : null
       try {
         await createResponse(
           ownerDid,
           { uri: awardUri, cid: awardCid },
           resp,
         )
-        setIsOpen(false)
-        await finishWrite(focusTarget)
+        await onAfterWrite?.()
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to update")
       } finally {
         setIsWriting(false)
       }
     },
-    [ownerDid, awardUri, awardCid, finishWrite],
+    [ownerDid, awardUri, awardCid, onAfterWrite],
   )
 
   const resetToDefault = useCallback(async () => {
@@ -199,137 +95,81 @@ export default function ResponseMenu({
     setError(null)
     try {
       await deleteAllResponsesForAward(ownerDid, awardUri, allResponses)
-      setIsOpen(false)
-      await finishWrite(null)
+      await onAfterWrite?.()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to reset")
     } finally {
       setIsWriting(false)
     }
-  }, [ownerDid, awardUri, allResponses, finishWrite])
+  }, [ownerDid, awardUri, allResponses, onAfterWrite])
 
-  const hasResponse = state === "accepted" || state === "rejected"
+  /** Single-click toggle:
+   *    - clicking the currently-active state → reset to default
+   *    - clicking the other state → write that response
+   * Both buttons are always shown; the active one carries the
+   * `--active` class so the rendered state is unambiguous. No
+   * menu, no kebab, no reset-to-default menuitem (clicking the
+   * active button serves that role). */
+  const onAcceptClick = useCallback(() => {
+    if (state === "accepted") resetToDefault()
+    else writeResponse("accepted")
+  }, [state, resetToDefault, writeResponse])
 
-  // State-aware trigger (#77):
-  //   - default: render two inline pill-buttons (Accept / Reject)
-  //     so the most-common actions are one click, not buried in a
-  //     kebab menu. The kebab disappears in this state.
-  //   - accepted / rejected: render the status as the trigger
-  //     glyph (✓ / ✕). Click opens the existing menu so the user
-  //     can flip the decision or reset.
-  //   - unknown: fall back to the kebab (something else wrote a
-  //     response we don't model; finer control via the menu).
+  const onRejectClick = useCallback(() => {
+    if (state === "rejected") resetToDefault()
+    else writeResponse("rejected")
+  }, [state, resetToDefault, writeResponse])
+
   return (
     <div className="response-menu" aria-busy={isWriting}>
-      {state === "default" ? (
-        <div
-          className="response-menu__quick-actions"
-          role="group"
-          aria-label={`Respond to endorsement from ${issuerDisplayName}`}
-        >
-          <button
-            type="button"
-            className="response-menu__quick-btn response-menu__quick-btn--accept"
-            aria-label={`Accept endorsement from ${issuerDisplayName}`}
-            title="Accept"
-            onClick={() => writeResponse("accepted")}
-            disabled={!ownerDid || isWriting}
-          >
-            <Check size={14} strokeWidth={2.25} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className="response-menu__quick-btn response-menu__quick-btn--reject"
-            aria-label={`Reject endorsement from ${issuerDisplayName}`}
-            title="Reject"
-            onClick={() => writeResponse("rejected")}
-            disabled={!ownerDid || isWriting}
-          >
-            <X size={14} strokeWidth={2.25} aria-hidden="true" />
-          </button>
-        </div>
-      ) : (
+      <div
+        className="response-menu__quick-actions"
+        role="group"
+        aria-label={`Respond to endorsement from ${issuerDisplayName}`}
+      >
         <button
-          ref={triggerRef}
           type="button"
-          className={`response-menu__trigger response-menu__trigger--${state}`}
-          aria-haspopup="menu"
-          aria-expanded={isOpen}
+          className={`response-menu__quick-btn response-menu__quick-btn--accept ${
+            state === "accepted"
+              ? "response-menu__quick-btn--active"
+              : ""
+          }`}
           aria-label={
             state === "accepted"
-              ? `Endorsement from ${issuerDisplayName} accepted — change decision`
-              : state === "rejected"
-                ? `Endorsement from ${issuerDisplayName} rejected — change decision`
-                : `Manage endorsement from ${issuerDisplayName}`
+              ? `Reset accepted endorsement from ${issuerDisplayName} to default`
+              : `Accept endorsement from ${issuerDisplayName}`
           }
-          title={
-            state === "accepted"
-              ? "Accepted"
-              : state === "rejected"
-                ? "Rejected"
-                : "Manage"
-          }
-          onClick={() => setIsOpen((v) => !v)}
+          aria-pressed={state === "accepted"}
+          title={state === "accepted" ? "Accepted — click to reset" : "Accept"}
+          onClick={onAcceptClick}
           disabled={!ownerDid || isWriting}
         >
-          {state === "accepted" ? (
-            <Check size={14} strokeWidth={2.25} aria-hidden="true" />
-          ) : state === "rejected" ? (
-            <X size={14} strokeWidth={2.25} aria-hidden="true" />
-          ) : (
-            <MoreHorizontal size={16} aria-hidden="true" />
-          )}
+          <Check size={14} strokeWidth={2.25} aria-hidden="true" />
         </button>
-      )}
-      {isOpen ? (
-        <div
-          ref={menuRef}
-          role="menu"
-          aria-label={`Endorsement from ${issuerDisplayName}`}
-          className="response-menu__menu"
-          onKeyDown={handleMenuKey}
+        <button
+          type="button"
+          className={`response-menu__quick-btn response-menu__quick-btn--reject ${
+            state === "rejected"
+              ? "response-menu__quick-btn--active"
+              : ""
+          }`}
+          aria-label={
+            state === "rejected"
+              ? `Reset rejected endorsement from ${issuerDisplayName} to default`
+              : `Reject endorsement from ${issuerDisplayName}`
+          }
+          aria-pressed={state === "rejected"}
+          title={state === "rejected" ? "Rejected — click to reset" : "Reject"}
+          onClick={onRejectClick}
+          disabled={!ownerDid || isWriting}
         >
-          {state === "rejected" ? (
-            <button
-              type="button"
-              role="menuitem"
-              className="response-menu__item"
-              onClick={() => writeResponse("accepted")}
-              disabled={isWriting}
-            >
-              <Check size={14} aria-hidden="true" />
-              <span>Accept</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              role="menuitem"
-              className="response-menu__item"
-              onClick={() => writeResponse("rejected")}
-              disabled={isWriting}
-            >
-              <X size={14} aria-hidden="true" />
-              <span>Reject</span>
-            </button>
-          )}
-          {hasResponse ? (
-            <button
-              type="button"
-              role="menuitem"
-              className="response-menu__item"
-              onClick={resetToDefault}
-              disabled={isWriting}
-            >
-              <RotateCcw size={14} aria-hidden="true" />
-              <span>Reset to default</span>
-            </button>
-          ) : null}
-          {error ? (
-            <p className="response-menu__error" role="alert">
-              {error}
-            </p>
-          ) : null}
-        </div>
+          <X size={14} strokeWidth={2.25} aria-hidden="true" />
+        </button>
+      </div>
+      {error ? (
+        <p className="response-menu__error" role="alert">
+          {error}
+        </p>
       ) : null}
     </div>
   )
