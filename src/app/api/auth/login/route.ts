@@ -6,8 +6,22 @@ import { sanitizeEmail, sanitizeHandle } from "@/lib/utils/sanitize"
 import { resolveHandleToDid, resolveHandleViaWellKnown } from "@/lib/atproto/did"
 import { parseJsonBody } from "@/lib/utils/api"
 import { logSafe } from "@/lib/utils/log-safe"
+import { enforceRateLimit, makeLimiter } from "@/lib/auth/rate-limit"
+import { clientIp } from "@/lib/utils/ip"
+
+// 30/min by IP. Bumped from #70's table-suggested 10/min to avoid
+// breaking shared-NAT / CGNAT users where dozens of legitimate users
+// share one egress IP (corporate, mobile carriers). Plan H4.
+const LIMITER = makeLimiter("auth-login", 30, 60)
 
 export async function POST(request: NextRequest) {
+  // Rate-limit BEFORE CSRF (plan H6): the limiter is cheap (one
+  // Redis INCR) and catches floods before they parse headers, and
+  // pre-session bots hitting /api/auth/login don't have a CSRF
+  // cookie yet — gating them on volume is the only available knob.
+  const rateDenied = await enforceRateLimit(LIMITER, clientIp(request))
+  if (rateDenied) return rateDenied
+
   const csrfError = checkCsrf(request)
   if (csrfError) return csrfError
 

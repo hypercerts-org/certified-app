@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
+import { enforceRateLimitMulti, makeLimiter } from "@/lib/auth/rate-limit"
+import { clientIp } from "@/lib/utils/ip"
+import { getSessionDid } from "@/lib/auth/session"
 
 const PUBLIC_BSKY_APPVIEW = "https://public.api.bsky.app"
+
+// 60/min. Plan H5: DID **and** IP simultaneously — DID rotation
+// would otherwise bypass the limit and search-actors proxies an
+// upstream we don't want to get throttled on.
+const LIMITER_DID = makeLimiter("search-actors-did", 60, 60)
+const LIMITER_IP = makeLimiter("search-actors-ip", 60, 60)
 
 interface BskyActor {
   did?: string
@@ -25,6 +34,15 @@ interface BskySearchResponse {
  * Mirrors the implementation in hypercerts-org/certified-app#51.
  */
 export async function GET(request: NextRequest) {
+  // Rate-limit first — search is unauthenticated so we want to
+  // block floods before any upstream work.
+  const did = await getSessionDid()
+  const rateDenied = await enforceRateLimitMulti([
+    { limit: LIMITER_DID, identifier: did ?? "anon" },
+    { limit: LIMITER_IP, identifier: clientIp(request) },
+  ])
+  if (rateDenied) return rateDenied
+
   const q = (request.nextUrl.searchParams.get("q") || "").trim()
   const rawLimit = Number(request.nextUrl.searchParams.get("limit") || "8")
   const limit = Math.min(Math.max(Number.isFinite(rawLimit) ? rawLimit : 8, 1), 25)

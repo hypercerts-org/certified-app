@@ -4,15 +4,27 @@ import { GROUP_SERVICE, GROUP_SERVICE_DID, MAX_SELF_CREATED_ORGS } from "@/lib/g
 import { checkCsrf } from "@/lib/auth/csrf"
 import { extractRouteError, parseJsonBody } from "@/lib/utils/api"
 import { logSafe } from "@/lib/utils/log-safe"
+import { enforceRateLimit, makeLimiter } from "@/lib/auth/rate-limit"
+
+// 5 / 10 min by session DID. Group registration is a privileged
+// write (CGS-side state); cap per-DID. The route is auth-gated so
+// IP-level enforcement is redundant.
+const LIMITER = makeLimiter("groups-register", 5, 600)
 
 export async function POST(request: NextRequest) {
-  const csrfError = checkCsrf(request)
-  if (csrfError) return csrfError
-
   try {
     const auth = await getAuthenticatedAgent()
     if (!auth)
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+
+    // Rate-limit BEFORE CSRF — DID is known after auth, so RL keys
+    // off the session DID. (Pre-auth check would have no identifier
+    // for an authenticated route.)
+    const rateDenied = await enforceRateLimit(LIMITER, auth.did)
+    if (rateDenied) return rateDenied
+
+    const csrfError = checkCsrf(request)
+    if (csrfError) return csrfError
 
     const parsed = await parseJsonBody(request, "[groups/register]")
     if (!parsed.ok) return parsed.response

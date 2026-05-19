@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getSessionDid } from "@/lib/auth/session"
 import { logSafe } from "@/lib/utils/log-safe"
+import { enforceRateLimit, makeLimiter } from "@/lib/auth/rate-limit"
+
+// 60/min by session DID. The route is auth-gated so DID is always
+// available; IP enforcement would just duplicate the budget.
+const LIMITER = makeLimiter("geocode", 60, 60)
 
 /**
  * Proxy for Nominatim (OpenStreetMap's geocoding service). Two modes:
@@ -72,6 +77,9 @@ export async function GET(request: NextRequest) {
   if (!did) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
   }
+
+  const rateDenied = await enforceRateLimit(LIMITER, did)
+  if (rateDenied) return rateDenied
 
   const url = request.nextUrl
   const q = url.searchParams.get("q")

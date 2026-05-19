@@ -3,6 +3,8 @@ import { Agent, type ComAtprotoRepoPutRecord } from "@atproto/api"
 import { getOAuthClient } from "@/lib/auth/oauth-client"
 import { createSession, deleteSession } from "@/lib/auth/session"
 import { logSafe } from "@/lib/utils/log-safe"
+import { enforceRateLimit, makeLimiter } from "@/lib/auth/rate-limit"
+import { clientIp } from "@/lib/utils/ip"
 
 /** Collections that should always have a "self" record after sign-in */
 const PROFILE_COLLECTIONS = [
@@ -10,7 +12,15 @@ const PROFILE_COLLECTIONS = [
   "app.bsky.actor.profile",
 ]
 
+// 20/min by IP — the OAuth callback completes the PDS handshake;
+// legitimate users hit it once per sign-in. Higher than zero to
+// allow retries on transient PDS hiccups + multi-tab races.
+const LIMITER = makeLimiter("auth-callback", 20, 60)
+
 export async function GET(request: NextRequest) {
+  const rateDenied = await enforceRateLimit(LIMITER, clientIp(request))
+  if (rateDenied) return rateDenied
+
   try {
     const params = request.nextUrl.searchParams
 

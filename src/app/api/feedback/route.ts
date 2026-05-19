@@ -5,12 +5,29 @@ import { getSessionDid } from "@/lib/auth/session";
 import { stripInvisible } from "@/lib/utils/sanitize";
 import { parseJsonBody } from "@/lib/utils/api";
 import { logSafe } from "@/lib/utils/log-safe";
+import { enforceRateLimitMulti, makeLimiter } from "@/lib/auth/rate-limit";
+import { clientIp } from "@/lib/utils/ip";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const SUPPORT_EMAIL = "support@hypercerts.org";
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "Certified <no-reply@certified.one>";
 
+// 5 / 10 minutes. Plan H5: enforce DID **and** IP simultaneously so
+// DID rotation (cheap on atproto) doesn't bypass the limit on a
+// pay-per-send route. Both buckets INCR even on denial so a burst
+// attacker stays on trajectory.
+const LIMITER_DID = makeLimiter("feedback-did", 5, 600);
+const LIMITER_IP = makeLimiter("feedback-ip", 5, 600);
+
 export async function POST(req: NextRequest) {
+  // Rate-limit BEFORE CSRF (H6).
+  const did = await getSessionDid();
+  const rateDenied = await enforceRateLimitMulti([
+    { limit: LIMITER_DID, identifier: did ?? "anon" },
+    { limit: LIMITER_IP, identifier: clientIp(req) },
+  ]);
+  if (rateDenied) return rateDenied;
+
   const csrfError = checkCsrf(req);
   if (csrfError) return csrfError;
 
@@ -46,7 +63,8 @@ export async function POST(req: NextRequest) {
 
     // Trust the server-side session for the DID. If the user isn't
     // signed in, senderDid is null and the email just omits it.
-    const senderDid = await getSessionDid();
+    // Reuses `did` resolved at the top for rate-limiting.
+    const senderDid = did;
     const handle = clientHandle || null;
 
     // ---- Support email ------------------------------------------------
