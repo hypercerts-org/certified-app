@@ -30,54 +30,6 @@ import type { LabelValue } from "./labeller"
  */
 const INDEXER_PROXY_URL = "/api/indexer"
 
-const ACTIVITIES_QUERY = `
-query Activities(
-  $first: Int!
-  $after: String
-  $labels: [String!]
-  $excludeLabels: [String!]
-  $authors: [String!]
-  $search: String
-) {
-  orgHypercertsClaimActivity(
-    first: $first
-    after: $after
-    labels: $labels
-    excludeLabels: $excludeLabels
-    authors: $authors
-    search: $search
-  ) {
-    totalCount
-    edges {
-      cursor
-      node {
-        uri
-        cid
-        did
-        title
-        shortDescription
-        createdAt
-        startDate
-        endDate
-        labels
-        image {
-          __typename
-          ... on OrgHypercertsDefsUri { uri }
-          ... on OrgHypercertsDefsSmallImage { image { ref mimeType } }
-        }
-        workScope {
-          ... on OrgHypercertsClaimActivityWorkScopeString { scope }
-        }
-      }
-    }
-    pageInfo {
-      hasNextPage
-      endCursor
-    }
-  }
-}
-`
-
 interface GraphQLNode {
   uri: string
   cid: string
@@ -205,7 +157,7 @@ export async function fetchIndexerActivities(
   const res = await fetch(INDEXER_PROXY_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query: ACTIVITIES_QUERY, variables }),
+    body: JSON.stringify({ operationName: "Activities", variables }),
     signal,
   })
 
@@ -274,83 +226,11 @@ export async function fetchIndexerActivities(
  * including the per-URI `dids` map — callers split authored vs contributed
  * by comparing each record's DID to the queried user.
  */
-/** Two separate queries — one for each side of the
+/** Two separate operations (server-held) — one for each side of the
  *  `_or { did | contributor }` split. The hook below calls both in
  *  parallel so a record where the user is BOTH author and
  *  contributor lands in both result lists. */
-const ACTIVITY_NODE_SELECTION = `
-    totalCount
-    edges {
-      cursor
-      node {
-        uri
-        cid
-        did
-        title
-        shortDescription
-        createdAt
-        startDate
-        endDate
-        labels
-        image {
-          __typename
-          ... on OrgHypercertsDefsUri { uri }
-          ... on OrgHypercertsDefsSmallImage { image { ref mimeType } }
-        }
-        workScope {
-          ... on OrgHypercertsClaimActivityWorkScopeString { scope }
-        }
-      }
-    }
-    pageInfo {
-      hasNextPage
-      endCursor
-    }
-`
 
-const ACTIVITIES_AUTHORED_QUERY = `
-query AuthoredActivities(
-  $did: String!
-  $first: Int!
-  $after: String
-  $labels: [String!]
-  $excludeLabels: [String!]
-  $search: String
-) {
-  orgHypercertsClaimActivity(
-    first: $first
-    after: $after
-    labels: $labels
-    excludeLabels: $excludeLabels
-    search: $search
-    where: { did: { eq: $did } }
-  ) {
-${ACTIVITY_NODE_SELECTION}
-  }
-}
-`
-
-const ACTIVITIES_CONTRIBUTED_QUERY = `
-query ContributedActivities(
-  $did: String!
-  $first: Int!
-  $after: String
-  $labels: [String!]
-  $excludeLabels: [String!]
-  $search: String
-) {
-  orgHypercertsClaimActivity(
-    first: $first
-    after: $after
-    labels: $labels
-    excludeLabels: $excludeLabels
-    search: $search
-    where: { contributor: { eq: $did } }
-  ) {
-${ACTIVITY_NODE_SELECTION}
-  }
-}
-`
 
 export interface FetchUserActivitiesOptions
   extends Omit<FetchIndexerOptions, "authors"> {
@@ -394,15 +274,13 @@ export async function fetchUserIndexerActivities(
     search: search || null,
   }
 
-  const query =
-    mode === "contributed"
-      ? ACTIVITIES_CONTRIBUTED_QUERY
-      : ACTIVITIES_AUTHORED_QUERY
+  const operationName =
+    mode === "contributed" ? "ContributedActivities" : "AuthoredActivities"
 
   const res = await fetch(INDEXER_PROXY_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, variables }),
+    body: JSON.stringify({ operationName, variables }),
     signal,
   })
 
@@ -446,27 +324,6 @@ export async function fetchUserIndexerActivities(
 // ---------------------------------------------------------------------------
 // Endorsement records
 // ---------------------------------------------------------------------------
-
-const ENDORSEMENTS_QUERY = `
-query Endorsements($authors: [String!]!, $first: Int!, $after: String) {
-  appCertifiedTempGraphEndorsement(
-    first: $first
-    after: $after
-    authors: $authors
-  ) {
-    edges {
-      cursor
-      node {
-        uri
-        did
-        subject { did }
-        createdAt
-      }
-    }
-    pageInfo { hasNextPage endCursor }
-  }
-}
-`
 
 export interface IndexerEndorsementRecord {
   uri: string
@@ -520,7 +377,7 @@ export async function fetchEndorsements(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        query: ENDORSEMENTS_QUERY,
+        operationName: "LegacyEndorsements",
         variables: {
           authors: options.authors,
           first: PAGE_SIZE,

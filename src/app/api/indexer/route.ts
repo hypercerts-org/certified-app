@@ -3,29 +3,39 @@ import { checkCsrf } from "@/lib/auth/csrf"
 import { logSafe } from "@/lib/utils/log-safe"
 
 /**
- * The upstream Magic Indexer GraphQL endpoint. Read on the server only.
+ * Same-origin proxy in front of the Magic Indexer's public GraphQL
+ * endpoint.
  *
- * Resolution order:
- *   1. INDEXER_URL — preferred, server-only env var.
- *   2. NEXT_PUBLIC_INDEXER_URL — kept as a fallback so existing
- *      Vercel project configs continue to work without an env-var
- *      rename. Going forward this can drop the NEXT_PUBLIC_ prefix.
- *   3. The hardcoded dev instance, matching the previous client
- *      default in src/lib/atproto/indexer.ts.
+ * Trust boundary: the client sends an `operationName` + `variables`.
+ * The server holds the actual query strings (see `OPERATIONS` below)
+ * and per-operation variable validators. The indexer endpoint itself
+ * is public (read-only, no service-auth required for these
+ * operations), but holding the queries server-side means:
  *
- * The path (`/graphql`) is included in the env value so we can point
- * at production instances that mount the schema under a different
- * path without a code change.
+ *   - Same-origin contexts (including any XSS payload that lands
+ *     in our origin via a leaflet link / facet) can only invoke
+ *     queries we know about — not arbitrary `mutation` ops, not
+ *     deeply-nested introspection, not server-side request forgery
+ *     of arbitrary indexer endpoints.
+ *   - Variables are clamped + type-checked per-operation rather than
+ *     forwarded raw, so an attacker can't push pathological inputs
+ *     (10k-element arrays, multi-MB strings) downstream.
+ *
+ * Mirrors the pattern established by `/api/notifications`. The
+ * difference is auth: notifications are personalised and require a
+ * service-auth JWT minted from the user's PDS; the operations below
+ * are public reads (feed, followers, received endorsements) and run
+ * unauthenticated.
  */
+
 const UPSTREAM_INDEXER_URL =
   process.env.INDEXER_URL ||
   process.env.NEXT_PUBLIC_INDEXER_URL ||
   "https://magic-indexer-dev.up.railway.app/graphql"
 
-// Mirror the module-load warning the notifications route already has
-// (src/app/api/notifications/route.ts:34) — without this a production
-// deploy that forgets to set INDEXER_URL silently routes every feed
-// query at the dev indexer, returning stale or inconsistent data.
+// Mirror the module-load warning the notifications route has — without
+// this a production deploy that forgets to set INDEXER_URL silently
+// routes every feed query at the dev indexer.
 if (
   process.env.NODE_ENV === "production" &&
   !process.env.INDEXER_URL &&
@@ -37,115 +47,392 @@ if (
   )
 }
 
-/** Hard cap on the upstream request — matches the indexer's typical
- *  warm-cache response time (~500ms) with generous headroom. */
 const UPSTREAM_TIMEOUT_MS = 15_000
+const MAX_BODY_SIZE = 16 * 1024 // 16KB — operationName + variables only
+const MAX_FIRST = 100
+const MAX_FIRST_DEFINITIONS = 1000
+const MAX_SEARCH_LEN = 200
+const MAX_AFTER_LEN = 1024
+const MAX_DID_LEN = 256
+const MAX_DID_LIST = 1000
+const MAX_LABEL_LIST = 50
+const MAX_LABEL_LEN = 64
 
-/** Maximum allowed request body size (100 KB). GraphQL queries for
- *  this endpoint are small; anything larger is likely abuse. */
-const MAX_BODY_SIZE = 100 * 1024
+/** Activity node selection — shared by the three activity ops below. */
+const ACTIVITY_NODE_SELECTION = `
+  totalCount
+  edges {
+    cursor
+    node {
+      uri
+      cid
+      did
+      title
+      shortDescription
+      createdAt
+      startDate
+      endDate
+      labels
+      image {
+        __typename
+        ... on OrgHypercertsDefsUri { uri }
+        ... on OrgHypercertsDefsSmallImage { image { ref mimeType } }
+      }
+      workScope {
+        ... on OrgHypercertsClaimActivityWorkScopeString { scope }
+      }
+    }
+  }
+  pageInfo {
+    hasNextPage
+    endCursor
+  }
+`
+
+/**
+ * Allowlist of GraphQL operations we forward. Names are stable across
+ * client + server; query strings are server-only.
+ *
+ * NOTE on adding ops: a new entry MUST come with a `buildVariables`
+ * branch below or the request 400s on unknown variables.
+ */
+const OPERATIONS: Record<string, string> = {
+  // Global activity feed + per-label / per-author filters.
+  Activities: `
+    query Activities(
+      $first: Int!
+      $after: String
+      $labels: [String!]
+      $excludeLabels: [String!]
+      $authors: [String!]
+      $search: String
+    ) {
+      orgHypercertsClaimActivity(
+        first: $first
+        after: $after
+        labels: $labels
+        excludeLabels: $excludeLabels
+        authors: $authors
+        search: $search
+      ) {
+${ACTIVITY_NODE_SELECTION}
+      }
+    }
+  `,
+
+  // Per-user "authored" activities (Certs tab > Created bucket).
+  AuthoredActivities: `
+    query AuthoredActivities(
+      $did: String!
+      $first: Int!
+      $after: String
+      $labels: [String!]
+      $excludeLabels: [String!]
+      $search: String
+    ) {
+      orgHypercertsClaimActivity(
+        first: $first
+        after: $after
+        labels: $labels
+        excludeLabels: $excludeLabels
+        search: $search
+        where: { did: { eq: $did } }
+      ) {
+${ACTIVITY_NODE_SELECTION}
+      }
+    }
+  `,
+
+  // Per-user "contributed to" activities (Certs tab > Contributed bucket).
+  ContributedActivities: `
+    query ContributedActivities(
+      $did: String!
+      $first: Int!
+      $after: String
+      $labels: [String!]
+      $excludeLabels: [String!]
+      $search: String
+    ) {
+      orgHypercertsClaimActivity(
+        first: $first
+        after: $after
+        labels: $labels
+        excludeLabels: $excludeLabels
+        search: $search
+        where: { contributor: { eq: $did } }
+      ) {
+${ACTIVITY_NODE_SELECTION}
+      }
+    }
+  `,
+
+  // Followers of a profile DID.
+  Followers: `
+    query Followers($did: String!, $first: Int!, $after: String) {
+      appCertifiedGraphFollow(
+        where: { subject: { eq: $did } }
+        first: $first
+        after: $after
+      ) {
+        totalCount
+        edges { node { uri cid did createdAt } }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  `,
+
+  // Endorsement awards received by a profile DID.
+  ReceivedEndorsements: `
+    query ReceivedEndorsements($did: String!, $first: Int!, $after: String) {
+      appCertifiedBadgeAward(
+        where: { subject: { eq: $did } }
+        first: $first
+        after: $after
+      ) {
+        edges { node { uri cid did createdAt note badge } }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  `,
+
+  // Endorsement-typed badge definitions for a batch of issuer DIDs.
+  EndorsementDefs: `
+    query EndorsementDefs($dids: [String!]!, $first: Int!) {
+      appCertifiedBadgeDefinition(
+        where: { did: { in: $dids }, badgeType: { eq: "endorsement" } }
+        first: $first
+      ) {
+        edges { node { uri title } }
+      }
+    }
+  `,
+
+  // Legacy temp endorsement records — pre-badge-migration. Kept for
+  // the read-side compatibility window. Drop when no longer referenced.
+  LegacyEndorsements: `
+    query LegacyEndorsements($authors: [String!]!, $first: Int!, $after: String) {
+      appCertifiedTempGraphEndorsement(
+        first: $first
+        after: $after
+        authors: $authors
+      ) {
+        edges {
+          cursor
+          node {
+            uri
+            did
+            subject { did }
+            createdAt
+          }
+        }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  `,
+}
+
+type ClientVariables = Record<string, unknown>
+
+function clampFirst(value: unknown, max: number, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback
+  return Math.min(Math.max(1, Math.floor(value)), max)
+}
+
+function readString(value: unknown, maxLen: number): string | null {
+  if (typeof value !== "string") return null
+  if (value.length === 0 || value.length > maxLen) return null
+  return value
+}
+
+function readDid(value: unknown): string | null {
+  const s = readString(value, MAX_DID_LEN)
+  if (!s) return null
+  return s.startsWith("did:") ? s : null
+}
+
+function readDidList(value: unknown, maxItems: number): string[] | null {
+  if (!Array.isArray(value)) return null
+  if (value.length === 0 || value.length > maxItems) return null
+  const out: string[] = []
+  for (const item of value) {
+    const did = readDid(item)
+    if (!did) return null
+    out.push(did)
+  }
+  return out
+}
+
+function readOptionalDidList(value: unknown): string[] | null | undefined {
+  // tri-state: undefined (no filter), [] (match nothing), [...] (filter)
+  if (value === undefined || value === null) return undefined
+  if (!Array.isArray(value)) return undefined
+  if (value.length === 0) return []
+  if (value.length > MAX_DID_LIST) return undefined
+  const out: string[] = []
+  for (const item of value) {
+    const did = readDid(item)
+    if (!did) return undefined
+    out.push(did)
+  }
+  return out
+}
+
+function readLabelList(value: unknown): string[] | null {
+  if (value === undefined || value === null) return null
+  if (!Array.isArray(value)) return null
+  if (value.length === 0 || value.length > MAX_LABEL_LIST) return null
+  const out: string[] = []
+  for (const item of value) {
+    if (typeof item !== "string") return null
+    if (item.length === 0 || item.length > MAX_LABEL_LEN) return null
+    out.push(item)
+  }
+  return out
+}
+
+/**
+ * Normalize client-supplied variables per-operation. Returns null when
+ * required vars are missing or malformed — the route then 400s.
+ *
+ * Required vars are pulled with strict readers (`readDid` etc.) that
+ * return null on miss. Optional vars are pulled with permissive
+ * readers that fall back to `null` so the GraphQL query receives the
+ * "no filter" sentinel.
+ */
+function buildVariables(
+  operationName: string,
+  vars: ClientVariables,
+): Record<string, unknown> | null {
+  switch (operationName) {
+    case "Activities": {
+      const authors = readOptionalDidList(vars.authors)
+      return {
+        first: clampFirst(vars.first, MAX_FIRST, 20),
+        after: readString(vars.after, MAX_AFTER_LEN),
+        labels: readLabelList(vars.labels),
+        excludeLabels: readLabelList(vars.excludeLabels),
+        authors: authors === undefined ? null : authors,
+        search: readString(vars.search, MAX_SEARCH_LEN),
+      }
+    }
+    case "AuthoredActivities":
+    case "ContributedActivities": {
+      const did = readDid(vars.did)
+      if (!did) return null
+      return {
+        did,
+        first: clampFirst(vars.first, MAX_FIRST, 20),
+        after: readString(vars.after, MAX_AFTER_LEN),
+        labels: readLabelList(vars.labels),
+        excludeLabels: readLabelList(vars.excludeLabels),
+        search: readString(vars.search, MAX_SEARCH_LEN),
+      }
+    }
+    case "Followers":
+    case "ReceivedEndorsements": {
+      const did = readDid(vars.did)
+      if (!did) return null
+      return {
+        did,
+        first: clampFirst(vars.first, MAX_FIRST, 100),
+        after: readString(vars.after, MAX_AFTER_LEN),
+      }
+    }
+    case "EndorsementDefs": {
+      const dids = readDidList(vars.dids, MAX_DID_LIST)
+      if (!dids) return null
+      return {
+        dids,
+        first: clampFirst(vars.first, MAX_FIRST_DEFINITIONS, MAX_FIRST_DEFINITIONS),
+      }
+    }
+    case "LegacyEndorsements": {
+      const authors = readDidList(vars.authors, MAX_DID_LIST)
+      if (!authors) return null
+      return {
+        authors,
+        first: clampFirst(vars.first, MAX_FIRST, 100),
+        after: readString(vars.after, MAX_AFTER_LEN),
+      }
+    }
+    default:
+      return null
+  }
+}
 
 /**
  * POST /api/indexer
  *
- * Server-side proxy in front of the Magic Indexer GraphQL endpoint.
+ * Body: `{ operationName: string; variables?: Record<string, unknown> }`
  *
- * Why: when the browser fetches the indexer directly, every Vercel
- * preview / staging / custom domain has to be added to the
- * indexer's CORS allowlist (`ALLOWED_ORIGINS` env var on Magic
- * Indexer). Routing the request through this same-origin proxy
- * sidesteps CORS entirely — the browser only ever talks to its own
- * origin, and the server-to-server fetch downstream isn't subject
- * to CORS.
- *
- * The body is forwarded verbatim as `application/json` and the
- * upstream response is returned with its status code preserved so
- * the client hook (`fetchIndexerActivities`) can surface
- * GraphQL-level errors the same way it always has.
+ * Response: the upstream GraphQL response body verbatim, with
+ * upstream status code preserved. GraphQL errors (200 with `errors`)
+ * pass through to the client as they always have.
  */
 export async function POST(request: NextRequest) {
-  // Same-origin guard: this is a write-shaped (POST) endpoint that
-  // forwards bandwidth and IP anonymization to an upstream service.
-  // Without checkCsrf any origin could POST through us. (Reading the
-  // feed unauthenticated is fine — that's why we don't require a
-  // session DID — but the request must originate from this app.)
   const csrfError = checkCsrf(request)
   if (csrfError) return csrfError
 
-  // Forward the raw body to keep the proxy schema-agnostic — we
-  // don't validate the GraphQL query shape here, the upstream does.
-  // Reading the body as text avoids re-serializing JSON.
-  // Reject oversized payloads early via Content-Length, then enforce
-  // the limit again after reading the body in case the header was
-  // absent or spoofed.
   const contentLength = request.headers.get("content-length")
   if (contentLength && Number(contentLength) > MAX_BODY_SIZE) {
     return NextResponse.json(
       { error: "Request body too large" },
-      { status: 413 }
+      { status: 413 },
     )
   }
 
-  let body: string
+  let parsed: { operationName?: unknown; variables?: unknown }
   try {
-    body = await request.text()
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to read request body" },
-      { status: 400 }
-    )
-  }
-
-  if (body.length > MAX_BODY_SIZE) {
-    return NextResponse.json(
-      { error: "Request body too large" },
-      { status: 413 }
-    )
-  }
-
-  // Block mutation operations. The indexer's public /graphql endpoint
-  // is for reads; the notifications mutations live on a separate
-  // /notifications/graphql endpoint reached via the
-  // /api/notifications proxy with operation allowlisting. Without
-  // this guard, an XSS payload (or any same-origin context) could
-  // call arbitrary GraphQL operations through us.
-  //
-  // The detection trims leading whitespace + GraphQL comments before
-  // scanning for the `mutation` keyword to defeat
-  // `\n# comment\nmutation { … }` style smuggling.
-  try {
-    const parsed = JSON.parse(body) as { query?: unknown }
-    if (typeof parsed.query === "string" && isLikelyMutation(parsed.query)) {
+    const text = await request.text()
+    if (text.length > MAX_BODY_SIZE) {
       return NextResponse.json(
-        { error: "Mutations are not allowed through this proxy" },
-        { status: 400 },
+        { error: "Request body too large" },
+        { status: 413 },
       )
     }
+    parsed = JSON.parse(text) as typeof parsed
   } catch {
-    // Not JSON — let the upstream return its native parse error. The
-    // body-size cap already bounds the work.
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
   }
 
-  // Inherit the client's abort signal where possible so a navigation
-  // away cancels the upstream fetch instead of leaving it dangling,
-  // and add a hard timeout in case the indexer hangs.
+  if (typeof parsed.operationName !== "string") {
+    return NextResponse.json(
+      { error: "operationName is required" },
+      { status: 400 },
+    )
+  }
+  const operationName = parsed.operationName
+
+  const query = OPERATIONS[operationName]
+  if (!query) {
+    return NextResponse.json({ error: "Unknown operation" }, { status: 400 })
+  }
+
+  const clientVars =
+    parsed.variables && typeof parsed.variables === "object"
+      ? (parsed.variables as ClientVariables)
+      : {}
+  const variables = buildVariables(operationName, clientVars)
+  if (!variables) {
+    return NextResponse.json(
+      { error: "Invalid variables for operation" },
+      { status: 400 },
+    )
+  }
+
   const timeoutController = new AbortController()
   const timeoutId = setTimeout(
     () => timeoutController.abort(),
-    UPSTREAM_TIMEOUT_MS
+    UPSTREAM_TIMEOUT_MS,
   )
-  // Combine the request signal with the timeout signal so either
-  // can cancel the upstream fetch.
   const signal = AbortSignal.any([request.signal, timeoutController.signal])
 
   try {
     const upstream = await fetch(UPSTREAM_INDEXER_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body,
+      body: JSON.stringify({ query, variables, operationName }),
       signal,
-      // No credentials forwarded — the indexer's public /graphql
-      // endpoint doesn't accept auth on this path anyway.
     })
 
     const responseBody = await upstream.text()
@@ -162,38 +449,15 @@ export async function POST(request: NextRequest) {
       logSafe("[indexer] upstream timeout", err)
       return NextResponse.json(
         { error: "Indexer request timed out" },
-        { status: 504 }
+        { status: 504 },
       )
     }
     logSafe("[indexer] upstream failed", err)
     return NextResponse.json(
       { error: "Indexer request failed" },
-      { status: 502 }
+      { status: 502 },
     )
   } finally {
     clearTimeout(timeoutId)
   }
-}
-
-/** True when the GraphQL query string starts (ignoring leading whitespace
- *  and `#` line-comments) with the `mutation` keyword. */
-function isLikelyMutation(query: string): boolean {
-  // Strip leading whitespace and `# …\n` comments. Bounded loop in
-  // case of pathological input (e.g. one-megabyte comment block —
-  // already prevented by MAX_BODY_SIZE but belt + braces).
-  let i = 0
-  const n = query.length
-  let guard = 0
-  while (i < n && guard < 4096) {
-    const ch = query.charCodeAt(i)
-    if (ch === 32 || ch === 9 || ch === 10 || ch === 13) {
-      i++
-    } else if (ch === 35 /* # */) {
-      while (i < n && query.charCodeAt(i) !== 10) i++
-    } else {
-      break
-    }
-    guard++
-  }
-  return query.slice(i, i + 8).toLowerCase().startsWith("mutation")
 }

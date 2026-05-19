@@ -41,20 +41,11 @@ export interface ReceivedEndorsement {
  *
  * This collapses what used to be a PDS fan-out across every certified
  * user (N round-trips) into one query.
+ *
+ * Query string lives server-side in `OPERATIONS.ReceivedEndorsements`
+ * (`src/app/api/indexer/route.ts`); the client only sends
+ * `{ operationName, variables }`.
  */
-const RECEIVED_AWARDS_QUERY = `
-query ReceivedEndorsements($did: String!, $first: Int!, $after: String) {
-  appCertifiedBadgeAward(
-    where: { subject: { eq: $did } }
-    first: $first
-    after: $after
-  ) {
-    edges { node { uri cid did createdAt note badge } }
-    pageInfo { hasNextPage endCursor }
-  }
-}
-`
-
 const INDEXER_PROXY_URL = "/api/indexer"
 
 /**
@@ -106,7 +97,7 @@ async function fetchReceivedAwardsFromIndexer(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        query: RECEIVED_AWARDS_QUERY,
+        operationName: "ReceivedEndorsements",
         variables: { did: profileDid, first: PAGE_SIZE, after: cursor },
       }),
       signal,
@@ -144,28 +135,20 @@ async function fetchReceivedAwardsFromIndexer(
  *
  * Returns a Set of definition URIs.
  */
-const DEFINITIONS_QUERY = `
-query EndorsementDefs($dids: [String!]!) {
-  appCertifiedBadgeDefinition(
-    where: { did: { in: $dids }, badgeType: { eq: "endorsement" } }
-    first: 1000
-  ) {
-    edges { node { uri title } }
-  }
-}
-`
-
 async function fetchEndorsementDefMapForIssuers(
   issuerDids: string[],
   signal?: AbortSignal,
 ): Promise<Map<string, string>> {
   if (issuerDids.length === 0) return new Map()
+  // Query string lives server-side in `OPERATIONS.EndorsementDefs`
+  // (`src/app/api/indexer/route.ts`); the `first` param is clamped
+  // server-side, we pass it explicitly for clarity.
   const res = await fetch(INDEXER_PROXY_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      query: DEFINITIONS_QUERY,
-      variables: { dids: issuerDids },
+      operationName: "EndorsementDefs",
+      variables: { dids: issuerDids, first: 1000 },
     }),
     signal,
   })

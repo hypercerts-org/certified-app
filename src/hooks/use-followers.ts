@@ -23,21 +23,11 @@ export interface FollowerEntry {
  * `subject` is the given DID. The indexer maintains a partial
  * expression index over `(json->>'subject')` (migration 029) so this
  * is a single round-trip regardless of how many PDSes host followers.
+ *
+ * Query string lives server-side in `OPERATIONS.Followers`
+ * (`src/app/api/indexer/route.ts`); the client only sends
+ * `{ operationName, variables }` per the indexer proxy's trust model.
  */
-const FOLLOWERS_QUERY = `
-query Followers($did: String!, $first: Int!, $after: String) {
-  appCertifiedGraphFollow(
-    where: { subject: { eq: $did } }
-    first: $first
-    after: $after
-  ) {
-    totalCount
-    edges { node { uri cid did createdAt } }
-    pageInfo { hasNextPage endCursor }
-  }
-}
-`
-
 const INDEXER_PROXY_URL = "/api/indexer"
 
 interface IndexerFollowNode {
@@ -72,7 +62,7 @@ async function fetchFollowersPage(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      query: FOLLOWERS_QUERY,
+      operationName: "Followers",
       variables: { did, first: 100, after: cursor },
     }),
     signal,
