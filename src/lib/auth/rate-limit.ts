@@ -105,3 +105,185 @@ export const RATE_LIMITED_WRITE_COLLECTIONS: Record<
   "app.certified.badge.award": "endorsement-issue",
   "app.certified.temp.graph.endorsement": "endorsement-issue",
 }
+
+// ============================================================================
+// HTTP-layer rate limiter (issue #70)
+// ============================================================================
+//
+// Generic per-(name, identifier) sliding-window limiter for the
+// auth-touching API routes. Layered on TOP of the per-DID write
+// limiter above — that one guards the endorsement-issuance
+// lexicon writes specifically; this one guards arbitrary HTTP
+// endpoints (login, feedback, search, etc.) by IP or DID.
+//
+// Distinct key prefix (`rl:` here, `rate:` above) so buckets never
+// collide across the two limiters even when they share an
+// identifier.
+//
+// Response shape matches the existing XRPC proxy 429 shape:
+//   - body: { error: string, resetAt: number }
+//   - headers: Retry-After, X-RateLimit-Reset
+
+import type { NextRequest } from "next/server"
+import { NextResponse } from "next/server"
+
+export interface HttpRateLimit {
+  /** Used as the bucket key prefix. Distinct per route so budgets
+   *  don't share across routes. */
+  name: string
+  /** Maximum number of requests allowed in `windowSec`. */
+  max: number
+  /** Window size in seconds. */
+  windowSec: number
+}
+
+export interface HttpRateLimitResult {
+  allowed: boolean
+  /** Approximate remaining capacity in the current window. */
+  remaining: number
+  /** Unix ms when the current window resets. */
+  resetAt: number
+}
+
+/**
+ * Helper to declare a limit once at module scope and reuse it
+ * across route invocations. Returned object is pure data — no
+ * preconnect or Redis state, just the limit shape.
+ */
+export function makeLimiter(
+  name: string,
+  max: number,
+  windowSec: number,
+): HttpRateLimit {
+  return { name, max, windowSec }
+}
+
+/**
+ * INCR + EXPIRE the bucket for `(limit.name, identifier)`. Same
+ * fixed-window strategy as `checkAndIncrementWriteRate` above —
+ * not a true sliding window, but simple, atomic-enough at our
+ * scale, and consistent with the existing limiter's behaviour. */
+export async function checkHttpRateLimit(
+  limit: HttpRateLimit,
+  identifier: string,
+): Promise<HttpRateLimitResult> {
+  const redis = getRedis()
+  const nowSec = Math.floor(Date.now() / 1000)
+  const bucket = Math.floor(nowSec / limit.windowSec)
+  const key = `rl:${limit.name}:${identifier}:${bucket}`
+
+  const count = await redis.incr(key)
+  if (count === 1) {
+    // Set TTL once on first hit; +60s buffer so the bucket outlives
+    // the wall-clock window slightly. Don't await — fire and forget
+    // since the count is what we care about.
+    void redis.expire(key, limit.windowSec + 60).catch(() => undefined)
+  }
+
+  const allowed = count <= limit.max
+  const resetAt = (bucket + 1) * limit.windowSec * 1000
+  const remaining = allowed ? Math.max(0, limit.max - count) : 0
+  return { allowed, remaining, resetAt }
+}
+
+/**
+ * Check N limits in parallel against N identifiers; deny if ANY
+ * exceeds its budget. Used for "DID AND IP" enforcement on routes
+ * where a session-DID rotation alone would bypass the limit (see
+ * #70 H5: cheap to spin up a new did:plc). Both buckets INCR even
+ * on denial so a burst attacker stays on the same trajectory. */
+export async function checkHttpRateLimitMulti(
+  pairs: { limit: HttpRateLimit; identifier: string }[],
+): Promise<HttpRateLimitResult> {
+  const results = await Promise.all(
+    pairs.map((p) => checkHttpRateLimit(p.limit, p.identifier)),
+  )
+  // Deny if any pair tripped. resetAt = the earliest reset across
+  // the denied buckets (so Retry-After reflects when SOMETHING
+  // unblocks — not necessarily everything).
+  const deniedResults = results.filter((r) => !r.allowed)
+  const allowed = deniedResults.length === 0
+  const resetAt = allowed
+    ? Math.min(...results.map((r) => r.resetAt))
+    : Math.min(...deniedResults.map((r) => r.resetAt))
+  const remaining = allowed
+    ? Math.min(...results.map((r) => r.remaining))
+    : 0
+  return { allowed, remaining, resetAt }
+}
+
+/**
+ * Build the canonical 429 response. Shape matches the existing XRPC
+ * proxy 429 (`{error, resetAt}` + `Retry-After` + `X-RateLimit-Reset`)
+ * so the client-side error handling stays uniform. */
+export function rateLimitResponse(
+  result: HttpRateLimitResult,
+  message = "Too many requests — try again later.",
+): NextResponse {
+  const retryAfterSec = Math.max(
+    1,
+    Math.ceil((result.resetAt - Date.now()) / 1000),
+  )
+  return NextResponse.json(
+    { error: message, resetAt: result.resetAt },
+    {
+      status: 429,
+      headers: {
+        "Retry-After": String(retryAfterSec),
+        "X-RateLimit-Reset": String(Math.floor(result.resetAt / 1000)),
+      },
+    },
+  )
+}
+
+/**
+ * Convenience wrapper: run the limiter and return a 429 response if
+ * denied, or null if allowed. Lets each route do:
+ *
+ *   const denied = await enforceRateLimit(LIMITER, ip)
+ *   if (denied) return denied
+ *
+ * which is one line + a guard. The dual-identifier variant uses
+ * `enforceRateLimitMulti` below. */
+export async function enforceRateLimit(
+  limit: HttpRateLimit,
+  identifier: string,
+  message?: string,
+): Promise<NextResponse | null> {
+  try {
+    const result = await checkHttpRateLimit(limit, identifier)
+    if (!result.allowed) return rateLimitResponse(result, message)
+    return null
+  } catch (err) {
+    // Same fail-open behaviour as the per-DID limiter above: if
+    // Redis is unreachable, don't block legitimate traffic. The
+    // route should still log via its own error pipeline; we don't
+    // import logSafe here to keep this module dependency-light.
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(
+        `[rate-limit] check failed (${limit.name}, ${identifier})`,
+        err,
+      )
+    }
+    return null
+  }
+}
+
+export async function enforceRateLimitMulti(
+  pairs: { limit: HttpRateLimit; identifier: string }[],
+  message?: string,
+): Promise<NextResponse | null> {
+  try {
+    const result = await checkHttpRateLimitMulti(pairs)
+    if (!result.allowed) return rateLimitResponse(result, message)
+    return null
+  } catch (err) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[rate-limit] multi-check failed", err)
+    }
+    return null
+  }
+}
+
+// Re-export NextRequest type for consumers' convenience.
+export type { NextRequest }
