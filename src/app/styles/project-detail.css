@@ -626,28 +626,32 @@
 }
 
 /* Per-cert cell while editing. Wraps the shared `<ActivityCard>`
-   plus the ⋯ menu trigger. `display: contents` makes the cell
-   transparent to the parent grid — the grid still sees `.feed-card`
-   (inside ActivityCard) as the immediate grid item — so card sizing
-   stays identical to view mode. The ⋯ button positions against the
-   `.feed-card` inside, which has `position: relative` via the
-   .project-detail__certs scoped chrome above. */
+   plus the ⋯ menu trigger. The cell IS the grid item (positioned
+   so the absolute-positioned menu can anchor against it), and the
+   card chrome rules above still target `.feed-card` inside, so
+   sizing matches view mode. */
 .project-detail__cert-cell {
-  display: contents;
+  position: relative;
+  /* The cell flexes the card to full height — when one card in a
+     row has a longer title (and therefore taller content), the
+     others get the same height so the ⋯ button line up across the
+     row instead of floating mid-card on shorter neighbors. */
+  display: flex;
 }
 
-.project-detail__cert-cell .feed-card {
-  position: relative;
+.project-detail__cert-cell > .feed-card {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 /* ⋯ menu cluster: button + popover. Lives top-right of each card.
-   The button is visible only on hover/focus on desktop so it doesn't
-   compete with the card content; on touch viewports (no hover), it
-   stays visible always. */
+   The button is always visible while editing so the affordance is
+   discoverable — a hover-only reveal is too easy to miss on a
+   surface users haven't seen before. */
 .project-detail__cert-menu {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 8px;
+  right: 8px;
   z-index: 1;
 }
 
@@ -660,30 +664,17 @@
   padding: 0;
   background: var(--bg-elevated);
   color: var(--fg-secondary);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-default);
   border-radius: 999px;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity var(--transition-fast), background var(--transition-fast),
-    border-color var(--transition-fast);
-}
-
-.project-detail__cert-cell:hover .project-detail__cert-menu-btn,
-.project-detail__cert-cell:focus-within .project-detail__cert-menu-btn,
-.project-detail__cert-menu-btn[aria-expanded="true"] {
-  opacity: 1;
-}
-
-@media (hover: none) {
-  /* Touch devices have no hover state — keep the button visible so
-     it's always reachable. */
-  .project-detail__cert-menu-btn {
-    opacity: 1;
-  }
+  box-shadow: var(--shadow-sm);
+  transition: background var(--transition-fast),
+    border-color var(--transition-fast), color var(--transition-fast);
 }
 
 .project-detail__cert-menu-btn:hover,
-.project-detail__cert-menu-btn:focus-visible {
+.project-detail__cert-menu-btn:focus-visible,
+.project-detail__cert-menu-btn[aria-expanded="true"] {
   background: var(--bg-canvas);
   color: var(--fg-primary);
   border-color: var(--border-hover);
