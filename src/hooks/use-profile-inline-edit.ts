@@ -1,0 +1,793 @@
+"use client"
+
+import { useCallback, useEffect, useMemo, useState } from "react"
+import {
+  putProfile,
+  uploadAvatar,
+  uploadBanner,
+  uploadBlob,
+  type UploadedBlob,
+} from "@/lib/atproto/profile"
+import { putOrgMarker } from "@/lib/groups/org-marker"
+import {
+  putLocationRecord,
+  readLocationStrongRef,
+  rkeyFromStrongRefUri,
+  type StrongRef,
+} from "@/lib/atproto/location"
+import type {
+  CertifiedProfile,
+  HypercertsSmallImage,
+  HypercertsLargeImage,
+} from "@/lib/atproto/types"
+import type { BlobRef } from "@atproto/api"
+import type { GroupMetadata, OrgUrlItem } from "@/lib/groups/types"
+import {
+  newDraftUrlRow,
+  type ProfileDrafts,
+} from "@/components/profile/profile-inline-edit-types"
+import { ORG_TYPE_PRESETS } from "@/lib/groups/org-types"
+import { asLinearDocument, isEmptyLongDescription } from "@/lib/leaflet/guards"
+
+// =====================================================================
+// Pure helpers — re-coerce stored marker shapes into the editor /
+// display shape. Live with the hook because they're only useful in the
+// inline-edit context; nothing else in the app reads or writes the
+// org-marker fields through these.
+// =====================================================================
+
+export interface ParsedLocation {
+  name: string | null
+  coords: { lat: number; lng: number } | null
+  /** When the marker stores a strongRef to a separate
+   *  `app.certified.location` record, this is the URI. The save
+   *  handler reuses it to overwrite the existing record instead of
+   *  spawning a new one. */
+  refUri?: string
+}
+
+/**
+ * Coerce the marker's raw `location` field into the editor / display
+ * shape. Accepts every historical form:
+ *   - `{ uri, cid }` strongRef → resolved out-of-band by the hook
+ *     below; this synchronous parser just records the URI so the save
+ *     handler can update in place.
+ *   - `{ lat, lng, name? }` inline coord object (legacy local writes).
+ *   - plain `string` (legacy free-text only, no coords).
+ */
+export function parseLocation(v: unknown): ParsedLocation {
+  if (typeof v === "string" && v.trim().length > 0) {
+    return { name: v.trim(), coords: null }
+  }
+  if (v && typeof v === "object") {
+    const obj = v as Record<string, unknown>
+    if (
+      typeof obj.uri === "string" &&
+      obj.uri.length > 0 &&
+      typeof obj.cid === "string"
+    ) {
+      return { name: null, coords: null, refUri: obj.uri }
+    }
+    if (typeof obj.lat === "number" && typeof obj.lng === "number") {
+      const name =
+        typeof obj.name === "string" && obj.name.trim().length > 0
+          ? obj.name.trim()
+          : null
+      return { name, coords: { lat: obj.lat, lng: obj.lng } }
+    }
+    if (typeof obj.uri === "string" && obj.uri.length > 0) {
+      return { name: obj.uri, coords: null }
+    }
+  }
+  return { name: null, coords: null }
+}
+
+/**
+ * Coerce the record's `organizationType` into the editor's two-bucket
+ * shape: `presets` is the intersection with `ORG_TYPE_PRESETS`,
+ * `other` collects everything else (typically one free-text value
+ * typed into the "Other" chip).
+ */
+function parseOrgTypes(v: unknown): { presets: string[]; other: string } {
+  const items: string[] = []
+  if (typeof v === "string" && v.trim().length > 0) items.push(v.trim())
+  else if (Array.isArray(v)) {
+    for (const x of v) {
+      if (typeof x === "string" && x.trim().length > 0) items.push(x.trim())
+    }
+  }
+  const presetSet = new Set<string>(ORG_TYPE_PRESETS as readonly string[])
+  const presets = items.filter((x) => presetSet.has(x))
+  const otherItems = items.filter((x) => !presetSet.has(x))
+  return { presets, other: otherItems.join(", ") }
+}
+
+/** All org-type tags to show in read mode, in canonical preset order
+ *  followed by any free-text "other" entries. */
+export function readableOrgTypeTags(v: unknown): string[] {
+  const { presets, other } = parseOrgTypes(v)
+  const otherTags = other
+    ? other.split(",").map((s) => s.trim()).filter(Boolean)
+    : []
+  const orderedPresets = ORG_TYPE_PRESETS.filter((p) => presets.includes(p))
+  return [...orderedPresets, ...otherTags]
+}
+
+/**
+ * Format `foundedDate` for display. Accepts the full ISO datetime the
+ * record stores, a plain `yyyy-mm-dd` string, or just a 4-digit year.
+ * Returns `null` for missing / unparseable values.
+ */
+export function readableFoundedDate(v: unknown): string | null {
+  if (typeof v !== "string" || v.trim().length === 0) return null
+  const s = v.trim()
+  if (/^\d{4}$/.test(s)) return s
+  const d = new Date(s)
+  if (Number.isNaN(d.getTime())) return s
+  return d.toLocaleDateString("en-US", { month: "short", year: "numeric" })
+}
+
+/** Build the form a `<input type="date">` expects from a stored value. */
+function toDateInputValue(v: unknown): string {
+  if (typeof v !== "string") return ""
+  const s = v.trim()
+  if (s === "") return ""
+  if (/^\d{4}$/.test(s)) return `${s}-01-01`
+  return s.slice(0, 10)
+}
+
+/** Normalise a `<input type="date">` value (yyyy-mm-dd) to an ISO
+ *  datetime at UTC midnight so the record stores a stable value. Empty
+ *  input yields `undefined` (the field is cleared). */
+function fromDateInputValue(s: string): string | undefined {
+  const v = s.trim()
+  if (v === "") return undefined
+  const d = new Date(v)
+  if (Number.isNaN(d.getTime())) return undefined
+  return d.toISOString()
+}
+
+// =====================================================================
+// Hook
+// =====================================================================
+
+export interface UseProfileInlineEditInput {
+  /** DID of the viewed profile. */
+  did: string | null
+  /** DID of the signed-in viewer (may differ from `did`). */
+  sessionDid: string | null
+  isAuthenticated: boolean
+  /** Whether inline-edit is permitted for the current viewer. The
+   *  caller computes this from `isOwnProfile && !activeOrg ||
+   *  isActingAsThisGroup`. */
+  canEditInline: boolean
+  /** When the save should route through the group BFF, the group
+   *  DID. `undefined` keeps writes on the personal-DID XRPC path. */
+  editTargetDid: string | undefined
+  /** True when the viewed profile is an org (has an org marker). */
+  sidebarIsOrg: boolean
+  /** Snapshot of the profile record from useUserProfile. */
+  profile: CertifiedProfile | null
+  /** Snapshot of the avatar URL from useUserProfile. */
+  avatarUrl: string | null
+  /** Snapshot of the banner URL from useUserProfile. */
+  bannerUrl: string | null
+  /** Snapshot of the org marker from useOrgMarker. */
+  orgMarker: GroupMetadata | null | undefined
+  /** Cache-invalidate callback from useOrgMarker. */
+  refreshOrgMarker: () => void | Promise<void>
+  /** Org-marker URL list from useOrgMarker. */
+  orgUrls: OrgUrlItem[] | null | undefined
+  /** Profile-record URLs derived by the caller. */
+  additionalUrls: string[]
+}
+
+export interface UseProfileInlineEditOutput {
+  // --- Edit state ---
+  isEditing: boolean
+  drafts: ProfileDrafts
+  isSaving: boolean
+  saveError: string | null
+  hasInteracted: boolean
+  /** True when the viewer has typed/picked something in edit mode.
+   *  Drives the unsaved-changes guard the hook wires up. */
+  isDirty: boolean
+  /** True when the viewer has picked a new avatar / banner this edit
+   *  session (regardless of whether the upload has resolved yet).
+   *  Surfaced for UI hints like "Save before navigating away". */
+  hasPendingAvatar: boolean
+  hasPendingBanner: boolean
+
+  // --- Effective values for rendering (preview > local mirror > snapshot) ---
+  effectiveProfile: CertifiedProfile | null
+  effectiveAvatarUrl: string | null
+  effectiveBannerUrl: string | null
+  effectiveOrgMarker: GroupMetadata | null | undefined
+  effectiveOrgUrls: OrgUrlItem[]
+  effectiveAdditionalUrls: string[]
+
+  // --- Derived display values ---
+  displayOrgTypeTags: string[]
+  displayLocation: ParsedLocation
+  displayFoundedDate: string | null
+  displayLongDescription: unknown | null
+  /** Synchronous location parse off the marker (mostly used by the
+   *  save path to recover the existing strongRef rkey). */
+  inlineLocation: ParsedLocation
+  resolvedLocationRef: {
+    uri: string
+    name: string | null
+    coords: { lat: number; lng: number } | null
+  } | null
+
+  // --- Handlers ---
+  handleEditClick: () => void
+  handleCancelEdit: () => void
+  handleDraftChange: <K extends keyof ProfileDrafts>(
+    key: K,
+    value: ProfileDrafts[K],
+  ) => void
+  handleAvatarFile: (file: File) => Promise<void>
+  handleBannerFile: (file: File) => Promise<void>
+  handleRemoveBanner: () => void
+  handleLongDescImageUpload: (file: File) => Promise<UploadedBlob>
+  handleSave: () => Promise<void>
+}
+
+/**
+ * Owns the inline-edit state machine for the profile page: drafts,
+ * pending uploads, post-save local mirrors, unsaved-changes guard,
+ * and the two-write save path (profile record + org marker +
+ * location strongRef). Extracted from the page so the orchestration
+ * + tab body rendering reads cleanly without the ~600 lines of
+ * inline-edit plumbing intermixed.
+ *
+ * The hook does NOT own the navbar publish-flags (about-available /
+ * groups-available) — those depend on hook outputs plus other
+ * page-level facts, so the page composes them.
+ *
+ * The hook also installs a document-level unsaved-changes guard
+ * while `isDirty` is true. Save / Cancel inside the edit banner are
+ * exempted by the guard's anchor-closest-class checks.
+ */
+export function useProfileInlineEdit(
+  input: UseProfileInlineEditInput,
+): UseProfileInlineEditOutput {
+  const {
+    did,
+    sessionDid,
+    isAuthenticated,
+    canEditInline,
+    editTargetDid,
+    sidebarIsOrg,
+    profile,
+    avatarUrl,
+    bannerUrl,
+    orgMarker,
+    refreshOrgMarker,
+    orgUrls,
+    additionalUrls,
+  } = input
+
+  // -------------------------------------------------------------------
+  // Inline edit state
+  // -------------------------------------------------------------------
+  const [isEditing, setIsEditing] = useState(false)
+  const [drafts, setDrafts] = useState<ProfileDrafts>({
+    displayName: "",
+    description: "",
+    website: "",
+    locationName: "",
+    locationLat: null,
+    locationLng: null,
+    foundedDate: "",
+    organizationTypes: [],
+    organizationTypeOther: "",
+    longDescription: null,
+    additionalUrls: [],
+  })
+  // Local mirrors so the sidebar/overview show fresh values immediately
+  // after save (without round-tripping through useUserProfile, which
+  // doesn't expose a mutate(). The hook re-fetches on its own props
+  // changing, so on a hard nav back to the page the canonical value
+  // wins again.)
+  const [localProfile, setLocalProfile] = useState<CertifiedProfile | null>(
+    null,
+  )
+  const [localOrgMarker, setLocalOrgMarker] = useState<GroupMetadata | null>(
+    null,
+  )
+  const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null>(null)
+  const [localBannerUrl, setLocalBannerUrl] = useState<string | null>(null)
+  const [pendingAvatarBlob, setPendingAvatarBlob] =
+    useState<UploadedBlob | null>(null)
+  const [pendingBannerBlob, setPendingBannerBlob] =
+    useState<UploadedBlob | null>(null)
+  // Local object-URL previews. Created the moment the user picks a
+  // file (before the network upload completes) so the edit view shows
+  // the new image immediately. On Save these get promoted to
+  // `localAvatarUrl` / `localBannerUrl` so the read-only render also
+  // shows the new image without waiting for the resolve-did refetch.
+  // On Cancel they're revoked and discarded.
+  const [pendingAvatarPreviewUrl, setPendingAvatarPreviewUrl] =
+    useState<string | null>(null)
+  const [pendingBannerPreviewUrl, setPendingBannerPreviewUrl] =
+    useState<string | null>(null)
+  // Explicit "remove banner" intent within the current edit session.
+  // When true, save persists `next.banner = undefined` instead of
+  // copying the previous value off the base record. Reset on
+  // edit-click / cancel / save.
+  const [pendingBannerRemoved, setPendingBannerRemoved] = useState(false)
+  // Post-save mirror for the same intent: distinguishes "no banner
+  // was ever set" (fall back to hook `bannerUrl`) from "we just saved
+  // a removal" (force null until the next refetch).
+  const [bannerCleared, setBannerCleared] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [hasInteracted, setHasInteracted] = useState(false)
+
+  // -------------------------------------------------------------------
+  // Effective values
+  // -------------------------------------------------------------------
+  const effectiveProfile = localProfile ?? profile
+  const effectiveAvatarUrl =
+    pendingAvatarPreviewUrl ?? localAvatarUrl ?? avatarUrl
+  const effectiveBannerUrl =
+    pendingBannerPreviewUrl !== null
+      ? pendingBannerPreviewUrl
+      : pendingBannerRemoved || bannerCleared
+        ? null
+        : (localBannerUrl ?? bannerUrl)
+  const effectiveOrgMarker = localOrgMarker ?? orgMarker
+
+  const displayOrgTypeTags = readableOrgTypeTags(
+    effectiveOrgMarker?.organizationType,
+  )
+  const inlineLocation = parseLocation(effectiveOrgMarker?.location)
+
+  // -------------------------------------------------------------------
+  // Async strongRef resolve for the location field
+  // -------------------------------------------------------------------
+  const [resolvedLocationRef, setResolvedLocationRef] = useState<{
+    uri: string
+    name: string | null
+    coords: { lat: number; lng: number } | null
+  } | null>(null)
+  useEffect(() => {
+    const uri = inlineLocation.refUri
+    if (!uri) {
+      setResolvedLocationRef(null)
+      return
+    }
+    let cancelled = false
+    readLocationStrongRef({ uri, cid: "" }).then((res) => {
+      if (cancelled) return
+      if (!res) {
+        setResolvedLocationRef({ uri, name: null, coords: null })
+        return
+      }
+      setResolvedLocationRef({ uri, name: res.name, coords: res.coords })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [inlineLocation.refUri])
+
+  const displayLocation: ParsedLocation = inlineLocation.refUri
+    ? {
+        name: resolvedLocationRef?.name ?? null,
+        coords: resolvedLocationRef?.coords ?? null,
+        refUri: inlineLocation.refUri,
+      }
+    : inlineLocation
+  const displayFoundedDate = readableFoundedDate(
+    effectiveOrgMarker?.foundedDate,
+  )
+  const displayLongDescription = isEmptyLongDescription(
+    effectiveOrgMarker?.longDescription,
+  )
+    ? null
+    : (effectiveOrgMarker?.longDescription ?? null)
+
+  // Memoised so the array reference is stable when no inputs changed —
+  // otherwise the `handleEditClick` useCallback below would invalidate
+  // on every render (each `??` falls back to a freshly-allocated `[]`).
+  const effectiveOrgUrls: OrgUrlItem[] = useMemo(
+    () => localOrgMarker?.urls ?? orgUrls ?? [],
+    [localOrgMarker, orgUrls],
+  )
+  const effectiveAdditionalUrls = localOrgMarker
+    ? effectiveOrgUrls.map((u) => u.url)
+    : additionalUrls
+
+  // -------------------------------------------------------------------
+  // Handlers
+  // -------------------------------------------------------------------
+  const handleEditClick = useCallback(() => {
+    if (!effectiveProfile) return
+    const parsedLoc = parseLocation(effectiveOrgMarker?.location)
+    const seedName =
+      parsedLoc.refUri && resolvedLocationRef?.name
+        ? resolvedLocationRef.name
+        : parsedLoc.name
+    const seedCoords =
+      parsedLoc.refUri && resolvedLocationRef?.coords
+        ? resolvedLocationRef.coords
+        : parsedLoc.coords
+    const parsedTypes = parseOrgTypes(effectiveOrgMarker?.organizationType)
+    setDrafts({
+      displayName: effectiveProfile.displayName ?? "",
+      description: effectiveProfile.description ?? "",
+      website: effectiveProfile.website ?? "",
+      locationName: seedName ?? "",
+      locationLat: seedCoords?.lat ?? null,
+      locationLng: seedCoords?.lng ?? null,
+      foundedDate: toDateInputValue(effectiveOrgMarker?.foundedDate),
+      organizationTypes: parsedTypes.presets,
+      organizationTypeOther: parsedTypes.other,
+      longDescription:
+        asLinearDocument(effectiveOrgMarker?.longDescription) ??
+        (typeof effectiveOrgMarker?.longDescription === "string"
+          ? {
+              $type: "pub.leaflet.pages.linearDocument",
+              blocks: [
+                {
+                  block: {
+                    $type: "pub.leaflet.blocks.text",
+                    plaintext: effectiveOrgMarker.longDescription,
+                  },
+                },
+              ],
+            }
+          : null),
+      additionalUrls:
+        effectiveOrgUrls.length > 0
+          ? effectiveOrgUrls.map((u) =>
+              newDraftUrlRow({ url: u.url, label: u.label }),
+            )
+          : [],
+    })
+    setPendingAvatarBlob(null)
+    setPendingBannerBlob(null)
+    setPendingBannerRemoved(false)
+    setSaveError(null)
+    setHasInteracted(false)
+    setIsEditing(true)
+  }, [effectiveProfile, effectiveOrgMarker, effectiveOrgUrls, resolvedLocationRef])
+
+  const handleCancelEdit = useCallback(() => {
+    setIsEditing(false)
+    setPendingAvatarBlob(null)
+    setPendingBannerBlob(null)
+    if (pendingAvatarPreviewUrl) URL.revokeObjectURL(pendingAvatarPreviewUrl)
+    if (pendingBannerPreviewUrl) URL.revokeObjectURL(pendingBannerPreviewUrl)
+    setPendingAvatarPreviewUrl(null)
+    setPendingBannerPreviewUrl(null)
+    setPendingBannerRemoved(false)
+    setSaveError(null)
+    setHasInteracted(false)
+  }, [pendingAvatarPreviewUrl, pendingBannerPreviewUrl])
+
+  const handleDraftChange = useCallback(
+    <K extends keyof ProfileDrafts>(key: K, value: ProfileDrafts[K]) => {
+      setDrafts((prev) => ({ ...prev, [key]: value }))
+      setHasInteracted(true)
+    },
+    [],
+  )
+
+  const handleAvatarFile = useCallback(
+    async (file: File) => {
+      const previewUrl = URL.createObjectURL(file)
+      setPendingAvatarPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev)
+        return previewUrl
+      })
+      setHasInteracted(true)
+      const blob = await uploadAvatar(
+        file,
+        editTargetDid ? { targetDid: editTargetDid } : undefined,
+      )
+      setPendingAvatarBlob(blob)
+    },
+    [editTargetDid],
+  )
+
+  const handleBannerFile = useCallback(
+    async (file: File) => {
+      const previewUrl = URL.createObjectURL(file)
+      setPendingBannerPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev)
+        return previewUrl
+      })
+      setPendingBannerRemoved(false)
+      setHasInteracted(true)
+      const blob = await uploadBanner(
+        file,
+        editTargetDid ? { targetDid: editTargetDid } : undefined,
+      )
+      setPendingBannerBlob(blob)
+    },
+    [editTargetDid],
+  )
+
+  const handleLongDescImageUpload = useCallback(
+    async (file: File) => {
+      return await uploadBlob(
+        file,
+        editTargetDid ? { targetDid: editTargetDid } : undefined,
+      )
+    },
+    [editTargetDid],
+  )
+
+  const handleRemoveBanner = useCallback(() => {
+    setPendingBannerPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+    setPendingBannerBlob(null)
+    setPendingBannerRemoved(true)
+    setHasInteracted(true)
+  }, [])
+
+  const handleSave = useCallback(async () => {
+    if (!did || !isAuthenticated || !sessionDid) {
+      setSaveError("Not authenticated")
+      return
+    }
+    const base = effectiveProfile ?? null
+    const next: CertifiedProfile = {
+      createdAt: base?.createdAt || new Date().toISOString(),
+      ...(drafts.displayName.trim() && {
+        displayName: drafts.displayName.trim(),
+      }),
+      ...(base?.pronouns && { pronouns: base.pronouns }),
+      ...(drafts.description.trim() && {
+        description: drafts.description.trim(),
+      }),
+      ...(drafts.website.trim() && { website: drafts.website.trim() }),
+    }
+
+    if (pendingAvatarBlob) {
+      const avatarImage: HypercertsSmallImage = {
+        $type: "org.hypercerts.defs#smallImage",
+        image: pendingAvatarBlob as unknown as BlobRef,
+      }
+      next.avatar = avatarImage
+    } else if (base?.avatar) {
+      next.avatar = base.avatar
+    }
+
+    if (pendingBannerBlob) {
+      const bannerImage: HypercertsLargeImage = {
+        $type: "org.hypercerts.defs#largeImage",
+        image: pendingBannerBlob as unknown as BlobRef,
+      }
+      next.banner = bannerImage
+    } else if (pendingBannerRemoved) {
+      // Explicit removal — don't carry over `base.banner`.
+    } else if (base?.banner) {
+      next.banner = base.banner
+    }
+
+    try {
+      setIsSaving(true)
+      setSaveError(null)
+      await putProfile(
+        sessionDid,
+        next,
+        editTargetDid ? { targetDid: editTargetDid } : undefined,
+      )
+
+      let nextMarker: GroupMetadata | null = null
+      if (sidebarIsOrg) {
+        const markerBase =
+          effectiveOrgMarker ?? { createdAt: new Date().toISOString() }
+        const urls = drafts.additionalUrls
+          .map<OrgUrlItem | null>((row) => {
+            const url = row.url.trim()
+            if (url === "") return null
+            const label = row.label.trim()
+            return label ? { url, label } : { url }
+          })
+          .filter((u): u is OrgUrlItem => u !== null)
+
+        const otherTokens = drafts.organizationTypeOther
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0)
+        const orgTypeArray = Array.from(
+          new Set<string>([...drafts.organizationTypes, ...otherTokens]),
+        )
+
+        let locationValue: GroupMetadata["location"] | undefined
+        const trimmedName = drafts.locationName.trim()
+        const hasCoords =
+          drafts.locationLat !== null && drafts.locationLng !== null
+        if (hasCoords) {
+          const existingRkey = inlineLocation.refUri
+            ? (rkeyFromStrongRefUri(inlineLocation.refUri) ?? undefined)
+            : undefined
+          const ref: StrongRef = await putLocationRecord(
+            sessionDid,
+            editTargetDid ?? sessionDid,
+            {
+              lat: drafts.locationLat as number,
+              lng: drafts.locationLng as number,
+            },
+            trimmedName || null,
+            { rkey: existingRkey },
+          )
+          locationValue = ref
+        } else if (trimmedName) {
+          locationValue = trimmedName
+        } else {
+          locationValue = undefined
+        }
+
+        nextMarker = {
+          ...markerBase,
+          organizationType:
+            orgTypeArray.length > 0 ? orgTypeArray : undefined,
+          location: locationValue,
+          foundedDate: fromDateInputValue(drafts.foundedDate),
+          longDescription: isEmptyLongDescription(drafts.longDescription)
+            ? undefined
+            : (drafts.longDescription ?? undefined),
+          urls: urls.length > 0 ? urls : undefined,
+        }
+
+        await putOrgMarker(sessionDid, editTargetDid ?? sessionDid, nextMarker)
+      }
+
+      // Defensive: evict any cached resolve-did response so navigation
+      // back through the app sees the new record. Best-effort.
+      fetch(`/api/resolve-did?did=${encodeURIComponent(did)}`, {
+        cache: "reload",
+        credentials: "include",
+      }).catch(() => undefined)
+
+      setLocalProfile(next)
+      if (nextMarker) {
+        setLocalOrgMarker(nextMarker)
+        refreshOrgMarker()
+      }
+      if (pendingAvatarPreviewUrl) {
+        setLocalAvatarUrl(pendingAvatarPreviewUrl)
+      } else if (pendingAvatarBlob) {
+        setLocalAvatarUrl(null)
+      }
+      if (pendingBannerPreviewUrl) {
+        setLocalBannerUrl(pendingBannerPreviewUrl)
+        setBannerCleared(false)
+      } else if (pendingBannerRemoved) {
+        setLocalBannerUrl(null)
+        setBannerCleared(true)
+      } else if (pendingBannerBlob) {
+        setLocalBannerUrl(null)
+        setBannerCleared(false)
+      }
+
+      setPendingAvatarPreviewUrl(null)
+      setPendingBannerPreviewUrl(null)
+      setPendingAvatarBlob(null)
+      setPendingBannerBlob(null)
+      setPendingBannerRemoved(false)
+      setHasInteracted(false)
+      setIsEditing(false)
+    } catch (err) {
+      console.error("Failed to save profile:", err)
+      setSaveError(
+        err instanceof Error ? err.message : "Failed to save profile",
+      )
+    } finally {
+      setIsSaving(false)
+    }
+  }, [
+    did,
+    sessionDid,
+    isAuthenticated,
+    effectiveProfile,
+    drafts,
+    pendingAvatarBlob,
+    pendingBannerBlob,
+    pendingAvatarPreviewUrl,
+    pendingBannerPreviewUrl,
+    pendingBannerRemoved,
+    editTargetDid,
+    sidebarIsOrg,
+    effectiveOrgMarker,
+    refreshOrgMarker,
+    inlineLocation.refUri,
+  ])
+
+  // -------------------------------------------------------------------
+  // Unsaved-changes guard
+  // -------------------------------------------------------------------
+  // Warn before the viewer leaves the page mid-edit. Covers:
+  //   1. Browser refresh / tab close — native `beforeunload`.
+  //   2. In-app navigation (top-bar tabs, sidebar links, brand logo)
+  //      — anchor-capture handler that pops `window.confirm()`.
+  //      Save / Cancel inside the edit banner is exempted.
+  // We don't guard the App Router navigation API directly because it
+  // doesn't expose a stable guard hook; anchor capture covers every
+  // realistic in-app navigation path.
+  const isDirty = isEditing && hasInteracted && canEditInline
+  useEffect(() => {
+    if (!isDirty) return
+
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ""
+    }
+
+    const onClickCapture = (e: MouseEvent) => {
+      if (
+        e.button !== 0 ||
+        e.metaKey ||
+        e.ctrlKey ||
+        e.shiftKey ||
+        e.altKey ||
+        e.defaultPrevented
+      ) {
+        return
+      }
+      const target =
+        e.target instanceof Element
+          ? (e.target.closest("a[href]") as HTMLAnchorElement | null)
+          : null
+      if (!target) return
+      if (target.closest(".edit-banner")) return
+      if (target.closest(".profile-sidebar__avatar-edit-btn")) return
+      if (target.closest(".profile-banner-upload__btn")) return
+      if (target.target && target.target !== "_self") return
+
+      const proceed = window.confirm(
+        "You have unsaved changes. Leave and discard them?",
+      )
+      if (!proceed) {
+        e.preventDefault()
+        e.stopImmediatePropagation()
+      }
+    }
+
+    window.addEventListener("beforeunload", onBeforeUnload)
+    document.addEventListener("click", onClickCapture, true)
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload)
+      document.removeEventListener("click", onClickCapture, true)
+    }
+  }, [isDirty])
+
+  return {
+    isEditing,
+    drafts,
+    isSaving,
+    saveError,
+    hasInteracted,
+    isDirty,
+    hasPendingAvatar: pendingAvatarBlob !== null,
+    hasPendingBanner: pendingBannerBlob !== null,
+    effectiveProfile,
+    effectiveAvatarUrl,
+    effectiveBannerUrl,
+    effectiveOrgMarker,
+    effectiveOrgUrls,
+    effectiveAdditionalUrls,
+    displayOrgTypeTags,
+    displayLocation,
+    displayFoundedDate,
+    displayLongDescription,
+    inlineLocation,
+    resolvedLocationRef,
+    handleEditClick,
+    handleCancelEdit,
+    handleDraftChange,
+    handleAvatarFile,
+    handleBannerFile,
+    handleRemoveBanner,
+    handleLongDescImageUpload,
+    handleSave,
+  }
+}
