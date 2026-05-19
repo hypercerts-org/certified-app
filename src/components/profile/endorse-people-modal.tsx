@@ -11,6 +11,7 @@ import { Check, Search, UserPlus, X } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import AppDialog from "@/components/ui/app-dialog"
 import { getInitials } from "@/lib/utils/initials"
 
 interface Actor {
@@ -96,7 +97,6 @@ export default function EndorsePeopleModal({
   onClose,
   onCompleted,
 }: EndorsePeopleModalProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const requestSeq = useRef(0)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -117,23 +117,11 @@ export default function EndorsePeopleModal({
   // in badges.ts.
   const [note, setNote] = useState("")
 
-  // Open + close-via-Esc wiring (mirrors ConfirmDialog).
+  // AppDialog owns showModal/close. This effect handles the
+  // search-input autofocus only.
   useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    dialog.showModal()
     inputRef.current?.focus()
-    const handleClose = () => onClose()
-    dialog.addEventListener("close", handleClose)
-    return () => dialog.removeEventListener("close", handleClose)
-  }, [onClose])
-
-  const handleBackdropClick = useCallback(
-    (e: React.MouseEvent<HTMLDialogElement>) => {
-      if (e.target === dialogRef.current && !isWriting) onClose()
-    },
-    [isWriting, onClose],
-  )
+  }, [])
 
   // Debounced fetch against `/api/search-actors`. Same endpoint as the
   // global PeopleSearch. We bail early when the query is empty so the
@@ -243,16 +231,14 @@ export default function EndorsePeopleModal({
   }, [selected, isWriting, note, requireReason, onEndorse, onCompleted])
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="signin-modal app-modal endorse-people-modal"
-      role="dialog"
-      aria-label={title}
-      onClick={handleBackdropClick}
-      style={{ maxWidth: 560 }}
+    <AppDialog
+      ariaLabel={title}
+      className="endorse-people-modal"
+      maxWidth={560}
+      onClose={onClose}
+      disableBackdropClose={isWriting}
     >
-      <div onClick={(e) => e.stopPropagation()}>
-        <div className="signin-modal__header">
+      <div className="signin-modal__header">
           <span className="signin-modal__title">{title}</span>
           <button
             type="button"
@@ -363,8 +349,7 @@ export default function EndorsePeopleModal({
             </Button>
           </div>
         </div>
-      </div>
-    </dialog>
+    </AppDialog>
   )
 }
 

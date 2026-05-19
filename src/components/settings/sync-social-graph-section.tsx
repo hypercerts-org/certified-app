@@ -11,6 +11,7 @@ import { ArrowLeft, RefreshCw, Search, Users, X } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import AppDialog from "@/components/ui/app-dialog"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import {
   useSocialGraphSync,
@@ -167,7 +168,6 @@ interface SyncModalProps {
 const PAGE_SIZE = 50
 
 function SyncModal({ candidateDids, onClose, onImport }: SyncModalProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
   const [step, setStep] = useState<ModalStep>("choose")
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [isImporting, setIsImporting] = useState(false)
@@ -183,29 +183,14 @@ function SyncModal({ candidateDids, onClose, onImport }: SyncModalProps) {
   // populating the local cache with rows they thought they cancelled.
   const abortControllerRef = useRef<AbortController | null>(null)
 
-  // Mount + close-via-Esc wiring.
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    dialog.showModal()
-    const handleClose = () => onClose()
-    dialog.addEventListener("close", handleClose)
-    return () => dialog.removeEventListener("close", handleClose)
-  }, [onClose])
-
-  // Abort any in-flight import on modal unmount.
+  // Abort any in-flight import on modal unmount. AppDialog handles
+  // the dialog lifecycle (showModal/close/Esc); this only owns the
+  // import-abort side.
   useEffect(() => {
     return () => {
       abortControllerRef.current?.abort()
     }
   }, [])
-
-  const handleBackdropClick = useCallback(
-    (e: React.MouseEvent<HTMLDialogElement>) => {
-      if (e.target === dialogRef.current && !isImporting) onClose()
-    },
-    [isImporting, onClose],
-  )
 
   const runImport = useCallback(
     async (dids: string[]) => {
@@ -228,16 +213,14 @@ function SyncModal({ candidateDids, onClose, onImport }: SyncModalProps) {
   )
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="signin-modal app-modal social-graph-sync__modal"
-      role="dialog"
-      aria-label="Sync social graph"
-      onClick={handleBackdropClick}
-      style={{ maxWidth: 560 }}
+    <AppDialog
+      ariaLabel="Sync social graph"
+      className="social-graph-sync__modal"
+      maxWidth={560}
+      onClose={onClose}
+      disableBackdropClose={isImporting}
     >
-      <div onClick={(e) => e.stopPropagation()}>
-        <div className="signin-modal__header">
+      <div className="signin-modal__header">
           {step === "select" && !result ? (
             <button
               type="button"
@@ -303,8 +286,7 @@ function SyncModal({ candidateDids, onClose, onImport }: SyncModalProps) {
             />
           )}
         </div>
-      </div>
-    </dialog>
+    </AppDialog>
   )
 }
 

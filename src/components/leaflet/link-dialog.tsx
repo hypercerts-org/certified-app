@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react"
 import { X } from "lucide-react"
 import Button from "@/components/ui/button"
+import AppDialog from "@/components/ui/app-dialog"
 import { safeHttpUrl } from "@/lib/utils/safe-url"
 
 export interface LinkDialogResult {
@@ -48,32 +49,18 @@ export default function LinkDialog({
   onCancel,
   onConfirm,
 }: LinkDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
   const urlInputRef = useRef<HTMLInputElement>(null)
 
   const [url, setUrl] = useState(initialUrl)
   const [text, setText] = useState(initialText)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
+  // Autofocus the URL field on open — the user almost always wants
+  // to type a URL first. AppDialog handles the showModal()/close
+  // lifecycle; this only owns the autofocus piece.
   useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    dialog.showModal()
-    // Autofocus the URL field on open — the user almost always
-    // wants to type a URL first.
     requestAnimationFrame(() => urlInputRef.current?.focus())
-
-    const handleClose = () => onCancel()
-    dialog.addEventListener("close", handleClose)
-    return () => dialog.removeEventListener("close", handleClose)
-  }, [onCancel])
-
-  const handleBackdropClick = useCallback(
-    (e: React.MouseEvent<HTMLDialogElement>) => {
-      if (e.target === dialogRef.current) onCancel()
-    },
-    [onCancel],
-  )
+  }, [])
 
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
@@ -97,86 +84,77 @@ export default function LinkDialog({
   const resolvedTitle = title ?? (isEdit ? "Edit link" : "Add link")
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="signin-modal app-modal"
-      role="dialog"
-      aria-label={resolvedTitle}
-      onClick={handleBackdropClick}
-      style={{ maxWidth: 440 }}
-    >
-      <div onClick={(e) => e.stopPropagation()}>
-        <div className="signin-modal__header">
-          <span className="signin-modal__title">{resolvedTitle}</span>
-          <button
-            type="button"
-            className="signin-modal__close"
-            onClick={onCancel}
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
-        </div>
-        <form className="signin-modal__body" onSubmit={handleSubmit}>
-          <label className="link-dialog__field">
-            <span className="link-dialog__label">URL</span>
-            <input
-              ref={urlInputRef}
-              type="url"
-              inputMode="url"
-              className="link-dialog__input"
-              value={url}
-              placeholder="https://example.com"
-              onChange={(e) => setUrl(e.target.value)}
-              autoCorrect="off"
-              autoCapitalize="off"
-              spellCheck={false}
-            />
-          </label>
-
-          {submitError ? (
-            <p className="link-dialog__error" role="alert">
-              {submitError}
-            </p>
-          ) : null}
-
-          {allowTextEdit ? (
-            <label className="link-dialog__field">
-              <span className="link-dialog__label">Text (optional)</span>
-              <input
-                type="text"
-                className="link-dialog__input"
-                value={text}
-                placeholder="Link label"
-                onChange={(e) => setText(e.target.value)}
-              />
-              <span className="link-dialog__hint">
-                Leave blank to show the URL as the link text.
-              </span>
-            </label>
-          ) : null}
-
-          <div className="link-dialog__actions">
-            {isEdit ? (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => onConfirm({ url: "", text: "" })}
-              >
-                Remove link
-              </Button>
-            ) : null}
-            <div className="link-dialog__actions-right">
-              <Button type="button" variant="ghost" onClick={onCancel}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary" disabled={url.trim() === ""}>
-                {isEdit ? "Update" : "Add link"}
-              </Button>
-            </div>
-          </div>
-        </form>
+    <AppDialog ariaLabel={resolvedTitle} maxWidth={440} onClose={onCancel}>
+      <div className="signin-modal__header">
+        <span className="signin-modal__title">{resolvedTitle}</span>
+        <button
+          type="button"
+          className="signin-modal__close"
+          onClick={onCancel}
+          aria-label="Close"
+        >
+          <X size={18} />
+        </button>
       </div>
-    </dialog>
+      <form className="signin-modal__body" onSubmit={handleSubmit}>
+        <label className="link-dialog__field">
+          <span className="link-dialog__label">URL</span>
+          <input
+            ref={urlInputRef}
+            type="url"
+            inputMode="url"
+            className="link-dialog__input"
+            value={url}
+            placeholder="https://example.com"
+            onChange={(e) => setUrl(e.target.value)}
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+          />
+        </label>
+
+        {submitError ? (
+          <p className="link-dialog__error" role="alert">
+            {submitError}
+          </p>
+        ) : null}
+
+        {allowTextEdit ? (
+          <label className="link-dialog__field">
+            <span className="link-dialog__label">Text (optional)</span>
+            <input
+              type="text"
+              className="link-dialog__input"
+              value={text}
+              placeholder="Link label"
+              onChange={(e) => setText(e.target.value)}
+            />
+            <span className="link-dialog__hint">
+              Leave blank to show the URL as the link text.
+            </span>
+          </label>
+        ) : null}
+
+        <div className="link-dialog__actions">
+          {isEdit ? (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onConfirm({ url: "", text: "" })}
+            >
+              Remove link
+            </Button>
+          ) : null}
+          <div className="link-dialog__actions-right">
+            <Button type="button" variant="ghost" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" disabled={url.trim() === ""}>
+              {isEdit ? "Update" : "Add link"}
+            </Button>
+          </div>
+        </div>
+      </form>
+    </AppDialog>
   )
 }

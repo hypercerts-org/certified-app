@@ -18,6 +18,7 @@ import {
   Trash2,
   X,
 } from "lucide-react"
+import AppDialog from "@/components/ui/app-dialog"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
@@ -646,29 +647,17 @@ function CreateListModal({
   onClose,
   onSubmit,
 }: CreateListModalProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
   const titleRef = useRef<HTMLInputElement>(null)
   const [title, setTitle] = useState(initialTitle)
   const [description, setDescription] = useState(initialDescription)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // AppDialog owns showModal/close. This effect just autofocuses the
+  // title field.
   useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    dialog.showModal()
     titleRef.current?.focus()
-    const handleClose = () => onClose()
-    dialog.addEventListener("close", handleClose)
-    return () => dialog.removeEventListener("close", handleClose)
-  }, [onClose])
-
-  const handleBackdropClick = useCallback(
-    (e: React.MouseEvent<HTMLDialogElement>) => {
-      if (e.target === dialogRef.current && !isSaving) onClose()
-    },
-    [isSaving, onClose],
-  )
+  }, [])
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -695,86 +684,83 @@ function CreateListModal({
   const submitLabel = mode === "edit" ? "Save" : "Create"
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="signin-modal app-modal endorsement-lists__create-modal"
-      role="dialog"
-      aria-label={headerLabel}
-      onClick={handleBackdropClick}
-      style={{ maxWidth: 480 }}
+    <AppDialog
+      ariaLabel={headerLabel}
+      className="endorsement-lists__create-modal"
+      maxWidth={480}
+      onClose={onClose}
+      disableBackdropClose={isSaving}
     >
-      <div onClick={(e) => e.stopPropagation()}>
-        <div className="signin-modal__header">
-          <span className="signin-modal__title">{headerLabel}</span>
-          <button
+      <div className="signin-modal__header">
+        <span className="signin-modal__title">{headerLabel}</span>
+        <button
+          type="button"
+          className="signin-modal__close"
+          onClick={onClose}
+          aria-label="Close"
+          disabled={isSaving}
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      <form className="signin-modal__body" onSubmit={handleSubmit}>
+        <label className="endorsement-lists__create-field">
+          <span className="endorsement-lists__create-label">Title</span>
+          <input
+            ref={titleRef}
+            type="text"
+            className="endorsement-lists__create-input"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={256}
+            required
+            disabled={isSaving}
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </label>
+
+        <label className="endorsement-lists__create-field">
+          <span className="endorsement-lists__create-label">
+            Description <span className="endorsement-lists__create-optional">(optional)</span>
+          </span>
+          <textarea
+            className="endorsement-lists__create-textarea"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength={1000}
+            rows={3}
+            disabled={isSaving}
+          />
+        </label>
+
+        {error ? (
+          <p className="endorsement-lists__create-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="endorsement-lists__create-footer">
+          <Button
             type="button"
-            className="signin-modal__close"
+            variant="ghost"
             onClick={onClose}
-            aria-label="Close"
             disabled={isSaving}
           >
-            <X size={18} />
-          </button>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            loading={isSaving}
+            disabled={isSaving || !title.trim()}
+          >
+            {submitLabel}
+          </Button>
         </div>
-
-        <form className="signin-modal__body" onSubmit={handleSubmit}>
-          <label className="endorsement-lists__create-field">
-            <span className="endorsement-lists__create-label">Title</span>
-            <input
-              ref={titleRef}
-              type="text"
-              className="endorsement-lists__create-input"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              maxLength={256}
-              required
-              disabled={isSaving}
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </label>
-
-          <label className="endorsement-lists__create-field">
-            <span className="endorsement-lists__create-label">
-              Description <span className="endorsement-lists__create-optional">(optional)</span>
-            </span>
-            <textarea
-              className="endorsement-lists__create-textarea"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              maxLength={1000}
-              rows={3}
-              disabled={isSaving}
-            />
-          </label>
-
-          {error ? (
-            <p className="endorsement-lists__create-error" role="alert">
-              {error}
-            </p>
-          ) : null}
-
-          <div className="endorsement-lists__create-footer">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={onClose}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              loading={isSaving}
-              disabled={isSaving || !title.trim()}
-            >
-              {submitLabel}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </dialog>
+      </form>
+    </AppDialog>
   )
 }
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ThumbsUp, X } from "lucide-react"
 import Button from "@/components/ui/button"
+import AppDialog from "@/components/ui/app-dialog"
 
 interface EndorseReasonModalProps {
   /** Display name / handle of the person being endorsed, surfaced in
@@ -39,28 +40,16 @@ export default function EndorseReasonModal({
   onConfirm,
   onClose,
 }: EndorseReasonModalProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [note, setNote] = useState("")
   const [isWriting, setIsWriting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // AppDialog owns the showModal()/close lifecycle; this only owns
+  // the autofocus.
   useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    dialog.showModal()
     textareaRef.current?.focus()
-    const handleClose = () => onClose()
-    dialog.addEventListener("close", handleClose)
-    return () => dialog.removeEventListener("close", handleClose)
-  }, [onClose])
-
-  const handleBackdropClick = useCallback(
-    (e: React.MouseEvent<HTMLDialogElement>) => {
-      if (e.target === dialogRef.current && !isWriting) onClose()
-    },
-    [isWriting, onClose],
-  )
+  }, [])
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -81,16 +70,14 @@ export default function EndorseReasonModal({
   const remaining = NOTE_MAX - note.length
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="signin-modal app-modal endorse-reason-modal"
-      role="dialog"
-      aria-label="Endorse"
-      onClick={handleBackdropClick}
-      style={{ maxWidth: 460 }}
+    <AppDialog
+      ariaLabel="Endorse"
+      className="endorse-reason-modal"
+      maxWidth={460}
+      onClose={onClose}
+      disableBackdropClose={isWriting}
     >
-      <div onClick={(e) => e.stopPropagation()}>
-        <div className="signin-modal__header">
+      <div className="signin-modal__header">
           <span className="signin-modal__title">Endorse {subjectLabel}</span>
           <button
             type="button"
@@ -155,7 +142,6 @@ export default function EndorseReasonModal({
             </Button>
           </div>
         </form>
-      </div>
-    </dialog>
+    </AppDialog>
   )
 }
