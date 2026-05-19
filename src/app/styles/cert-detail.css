@@ -517,6 +517,35 @@
   margin-left: 4px;
 }
 
+/* Inline-edit inputs in the meta strip (issue #75): a date or
+   plain text field rendered in place of the static value while
+   the cert is in edit mode. Sized to fit the narrow aside column;
+   border treatment matches the other inline-edit inputs on the
+   page so the editor reads as one family. */
+.cert-detail__meta-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cert-detail__meta-input {
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--fg-primary);
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border-hover);
+  border-radius: 4px;
+  padding: 2px 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.cert-detail__meta-input:focus {
+  outline: none;
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
 .cert-detail__uri {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 0.75rem;

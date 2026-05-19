@@ -208,6 +208,17 @@ export default function ActivityDetail({
     title: "",
     shortDescription: "",
     description: null as LinearDocument | null,
+    /** Per issue #75 — these scalar meta fields are now editable
+     *  inline. Date inputs use the `YYYY-MM-DD` shape browsers
+     *  emit; `null` means "field cleared by the user" (save
+     *  handler deletes the key). Work scope is edited as a plain
+     *  string and serialised as the `WorkScopeString` lexicon
+     *  variant. Complex variants (CEL, structured records),
+     *  contributors, locations, and rights remain read-only —
+     *  they need pickers / structured editors out of this scope. */
+    workScope: "",
+    startDate: "" as string,
+    endDate: "" as string,
   })
   const [localValue, setLocalValue] = useState<ClaimActivity | null>(null)
   const [pendingImageBlob, setPendingImageBlob] =
@@ -233,6 +244,23 @@ export default function ActivityDetail({
   const editing = isEditing && isCreator
 
   const handleEditClick = useCallback(() => {
+    // Seed the meta scalars from the effective value. Dates come
+    // out of the lexicon as ISO strings; truncate to YYYY-MM-DD
+    // for the HTML date input. evaluateWorkScope returns the
+    // displayed string (handles every union variant), so seeding
+    // the input with it is lossless on a round-trip when the
+    // source was a `WorkScopeString` — but DOES "downgrade" a
+    // CEL workScope to a plain string on save. Acceptable for
+    // v1; the workScope JSX comments document the trade-off.
+    const startSeed =
+      typeof effectiveValue.startDate === "string"
+        ? effectiveValue.startDate.slice(0, 10)
+        : ""
+    const endSeed =
+      typeof effectiveValue.endDate === "string"
+        ? effectiveValue.endDate.slice(0, 10)
+        : ""
+    const workScopeSeed = evaluateWorkScope(effectiveValue.workScope) ?? ""
     setDrafts({
       title: effectiveValue.title ?? "",
       shortDescription: effectiveValue.shortDescription ?? "",
@@ -252,6 +280,9 @@ export default function ActivityDetail({
               ],
             }
           : null),
+      workScope: workScopeSeed,
+      startDate: startSeed,
+      endDate: endSeed,
     })
     setPendingImageBlob(null)
     setPendingImagePreviewUrl((prev) => {
@@ -316,21 +347,40 @@ export default function ActivityDetail({
       // the full ClaimActivity by overlaying onto the captured
       // `effectiveValue` baseline (carries forward dates,
       // contributors, work scope, rights, locations).
+      // User-facing shape includes the editable scalars added in
+      // #75: workScope (serialised as the lexicon's WorkScopeString
+      // variant on save) and startDate / endDate. Dirty-set
+      // detection diffs against the mount snapshot in this shape.
       type UserShape = {
         title: string
         shortDescription: string
         description: typeof drafts.description
+        workScope: string
+        startDate: string
+        endDate: string
       }
       const userDrafts: UserShape = {
         title: trimmedTitle,
         shortDescription: trimmedShort,
         description: drafts.description,
+        workScope: drafts.workScope.trim(),
+        startDate: drafts.startDate,
+        endDate: drafts.endDate,
       }
       const userMountSnapshot: UserShape = {
         title: mountSnapshot.value.title ?? "",
         shortDescription: mountSnapshot.value.shortDescription ?? "",
         description: (mountSnapshot.value.description ??
           null) as UserShape["description"],
+        workScope: evaluateWorkScope(mountSnapshot.value.workScope) ?? "",
+        startDate:
+          typeof mountSnapshot.value.startDate === "string"
+            ? mountSnapshot.value.startDate.slice(0, 10)
+            : "",
+        endDate:
+          typeof mountSnapshot.value.endDate === "string"
+            ? mountSnapshot.value.endDate.slice(0, 10)
+            : "",
       }
 
       let nextSaved: ClaimActivity | null = null
@@ -356,6 +406,34 @@ export default function ActivityDetail({
               image: pendingImageBlob as unknown as BlobRef,
             }
             built.image = imageValue
+          }
+          // workScope — write as the WorkScopeString lexicon
+          // variant; empty string drops the field. This downgrades
+          // a CEL workScope to a plain string when the user edits
+          // (the seed used `evaluateWorkScope` which collapses
+          // every variant to its display string). Acceptable
+          // trade-off for v1 — CEL workscope authoring lives in
+          // a different surface anyway.
+          if (next.workScope) {
+            built.workScope = {
+              $type: "org.hypercerts.claim.activity#workScopeString",
+              scope: next.workScope,
+            }
+          } else {
+            delete (built as { workScope?: unknown }).workScope
+          }
+          // Dates — store as ISO-8601 (YYYY-MM-DD is a valid
+          // prefix; the lexicon accepts both date-only and
+          // full timestamp shapes). Empty input drops the field.
+          if (next.startDate) {
+            built.startDate = next.startDate
+          } else {
+            delete (built as { startDate?: unknown }).startDate
+          }
+          if (next.endDate) {
+            built.endDate = next.endDate
+          } else {
+            delete (built as { endDate?: unknown }).endDate
           }
           await putCertRecord(
             sessionDid,
@@ -387,6 +465,15 @@ export default function ActivityDetail({
               shortDescription: data.value.shortDescription ?? "",
               description: (data.value.description ??
                 null) as UserShape["description"],
+              workScope: evaluateWorkScope(data.value.workScope) ?? "",
+              startDate:
+                typeof data.value.startDate === "string"
+                  ? data.value.startDate.slice(0, 10)
+                  : "",
+              endDate:
+                typeof data.value.endDate === "string"
+                  ? data.value.endDate.slice(0, 10)
+                  : "",
             },
           }
         },
@@ -640,16 +727,64 @@ export default function ActivityDetail({
               <Calendar size={11} strokeWidth={2} aria-hidden />
               Time period
             </dt>
-            <dd className="cert-detail__meta-value">{timePeriodLabel}</dd>
+            <dd className="cert-detail__meta-value">
+              {editing ? (
+                /* Two date inputs in place of the rendered label.
+                   Empty input drops the field on save (#75). */
+                <span className="cert-detail__meta-edit">
+                  <input
+                    type="date"
+                    aria-label="Start date"
+                    className="cert-detail__meta-input"
+                    value={drafts.startDate}
+                    onChange={(e) =>
+                      setDrafts((d) => ({ ...d, startDate: e.target.value }))
+                    }
+                  />
+                  <span aria-hidden="true">–</span>
+                  <input
+                    type="date"
+                    aria-label="End date"
+                    className="cert-detail__meta-input"
+                    value={drafts.endDate}
+                    onChange={(e) =>
+                      setDrafts((d) => ({ ...d, endDate: e.target.value }))
+                    }
+                  />
+                </span>
+              ) : (
+                timePeriodLabel
+              )}
+            </dd>
           </div>
 
-          {workScopeLabel ? (
+          {editing || workScopeLabel ? (
             <div className="cert-detail__meta-row">
               <dt className="cert-detail__meta-label">
                 <Target size={11} strokeWidth={2} aria-hidden />
                 Work scope
               </dt>
-              <dd className="cert-detail__meta-value">{workScopeLabel}</dd>
+              <dd className="cert-detail__meta-value">
+                {editing ? (
+                  /* Plain text input. Serialised as the
+                     `WorkScopeString` lexicon variant on save;
+                     complex CEL workscope authoring lives
+                     elsewhere (#75 trade-off). */
+                  <input
+                    type="text"
+                    aria-label="Work scope"
+                    className="cert-detail__meta-input"
+                    placeholder="e.g. mentorship, code review…"
+                    value={drafts.workScope}
+                    maxLength={256}
+                    onChange={(e) =>
+                      setDrafts((d) => ({ ...d, workScope: e.target.value }))
+                    }
+                  />
+                ) : (
+                  workScopeLabel
+                )}
+              </dd>
             </div>
           ) : null}
 
