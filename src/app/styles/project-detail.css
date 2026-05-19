@@ -662,22 +662,22 @@
   width: 28px;
   height: 28px;
   padding: 0;
-  background: var(--bg-elevated);
+  background: transparent;
   color: var(--fg-secondary);
-  border: 1px solid var(--border-default);
+  border: none;
   border-radius: 999px;
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: background var(--transition-fast),
-    border-color var(--transition-fast), color var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
+/* Subtle background-only hover/focus state so the affordance is
+   still readable without a permanent chrome circle around the
+   dots. The pressed state (menu open) uses the same tint. */
 .project-detail__cert-menu-btn:hover,
 .project-detail__cert-menu-btn:focus-visible,
 .project-detail__cert-menu-btn[aria-expanded="true"] {
-  background: var(--bg-canvas);
+  background: var(--overlay-weak);
   color: var(--fg-primary);
-  border-color: var(--border-hover);
   outline: none;
 }
 

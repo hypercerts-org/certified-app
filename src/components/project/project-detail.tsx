@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { FolderGit2, Inbox, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
+import { FolderGit2, Inbox, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
 import ActivityAuthor from "@/components/feed/activity-author"
 import ActivityCard from "@/components/feed/activity-card"
 import ActivityContributor from "@/components/feed/activity-contributor"
@@ -867,7 +867,7 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
                           )
                         }}
                       >
-                        <MoreHorizontal
+                        <MoreVertical
                           size={16}
                           strokeWidth={1.75}
                           aria-hidden
