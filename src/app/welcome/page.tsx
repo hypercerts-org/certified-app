@@ -4,14 +4,14 @@ import LandingPage from "@/components/landing/landing-page"
 export const metadata: Metadata = {
   title: "Certified — Show your work, earn the trust to back it up",
   description:
-    "Mint verifiable certs, get endorsed by people who know your work, organize your impact into projects. Built on AT Protocol — your records live on your repo, not ours.",
+    "Show verified achievements, get endorsed by people who know your work, organize your impact into projects. Built on AT Protocol — your records live on your repo, not ours.",
   alternates: {
     canonical: "https://certified.app/welcome",
   },
   openGraph: {
     title: "Certified — Show your work, earn the trust to back it up",
     description:
-      "A portable atproto profile for the certs you mint, the endorsements you collect, and the projects you ship. No lock-in.",
+      "A portable atproto profile for what you've done, the endorsements you collect, and the projects you ship. No lock-in.",
     url: "https://certified.app/welcome",
     siteName: "Certified",
     images: [
@@ -42,7 +42,7 @@ const softwareAppJsonLd = {
   applicationCategory: "SocialNetworkingApplication",
   operatingSystem: "Web",
   description:
-    "Certified is an atproto-native reputation platform operated by the Hypercerts Foundation. Mint verifiable certs, get endorsed, organize work into projects — with full data portability.",
+    "Certified is an atproto-native reputation platform operated by the Hypercerts Foundation. Record verified achievements, get endorsed, organize work into projects — with full data portability.",
   offers: {
     "@type": "Offer",
     price: "0",

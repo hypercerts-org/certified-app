@@ -1,9 +1,12 @@
+"use client"
+
 import WhatYouGet from "@/components/landing/sections/what-you-get"
 import NetworkStats from "@/components/landing/sections/network-stats"
 import HowItWorks from "@/components/landing/sections/how-it-works"
 import BuiltForTrust from "@/components/landing/sections/built-for-trust"
 import ReadyCtaSection from "@/components/landing/sections/ready-cta-content"
 import HeroSignInButton from "@/components/landing/hero-signin-button"
+import { useProfileNavbar } from "@/lib/navbar-context"
 
 /**
  * Landing page for /welcome. Sections, in order:
@@ -24,6 +27,13 @@ import HeroSignInButton from "@/components/landing/hero-signin-button"
  *   6. ReadyCtaSection — closing CTA back to sign-in.
  */
 export default function LandingPage() {
+  // Opt the welcome page into the fullbleed app-shell — without
+  // this the global `.app-shell__content` caps at 600px on desktop
+  // and the hero / bento / stats grids render in a mobile-shaped
+  // column at every viewport size. Same hook the profile pages
+  // use for the wider GitHub-style layout.
+  useProfileNavbar()
+
   return (
     <>
       <section className="hero hero--landing">
@@ -52,7 +62,7 @@ export default function LandingPage() {
             </span>
           </h1>
           <p className="hero__subtitle hero-reveal">
-            A portable profile for the certs you mint, the people who endorse you, and the projects you ship — on an open protocol you don&rsquo;t have to ask permission to leave.
+            A portable profile for what you&rsquo;ve done, the people who vouch for it, and the projects you ship — on an open protocol you don&rsquo;t need permission to leave.
           </p>
           <div className="hero-reveal">
             <HeroSignInButton />

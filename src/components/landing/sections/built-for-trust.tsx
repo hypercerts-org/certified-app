@@ -42,8 +42,8 @@ export default function BuiltForTrust() {
               </svg>
             </div>
             <div>
-              <h4>Your records, your repo</h4>
-              <p>Every cert, endorsement, and project is a signed record on YOUR atproto PDS. Portable by design.</p>
+              <h4>Your records, your profile</h4>
+              <p>Every achievement, endorsement, and project is a signed record stored on your own atproto repository. Portable by design.</p>
             </div>
           </div>
           <div className="landing-trust__item">

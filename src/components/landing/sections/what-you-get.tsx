@@ -11,7 +11,10 @@ export default function WhatYouGet() {
           <h2 id="what-you-get-heading">Build a reputation that travels with you</h2>
         </div>
         <div className="landing-bento">
-          {/* Certs */}
+          {/* Achievements — the lexicon calls these "claim.activity"
+              records, but the welcome page intentionally never uses
+              the in-app jargon ("cert"). "Achievement" is the
+              first-touch language. */}
           <div className="landing-bento__card">
             <div className="landing-bento__icon">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -20,8 +23,8 @@ export default function WhatYouGet() {
                 <path d="M8.5 13.5 6 22l6-3 6 3-2.5-8.5" />
               </svg>
             </div>
-            <h3>Showcase verified work</h3>
-            <p>Mint certs for the work you do — talks, contributions, projects, milestones. Each one is a portable atproto record on your repo.</p>
+            <h3>Showcase verified achievements</h3>
+            <p>Record the work you do — talks, contributions, projects, milestones. Each one is a portable, signed record on your own profile.</p>
           </div>
 
           {/* Endorsements */}
@@ -33,7 +36,7 @@ export default function WhatYouGet() {
               </svg>
             </div>
             <h3>Get endorsed by people you trust</h3>
-            <p>Friends and collaborators can vouch for your work directly on your profile — public, signed, recallable.</p>
+            <p>Friends and collaborators can vouch for your work directly on your profile — public, signed, and you accept or reject each one.</p>
           </div>
 
           {/* Projects */}
@@ -47,7 +50,7 @@ export default function WhatYouGet() {
               </svg>
             </div>
             <h3>Organize work into projects</h3>
-            <p>Group related certs into projects — initiatives, repos, programs. Tell a coherent story across collaborators.</p>
+            <p>Group related achievements into projects — initiatives, repos, programs. Tell a coherent story across collaborators.</p>
           </div>
 
           {/* Portable / atproto */}

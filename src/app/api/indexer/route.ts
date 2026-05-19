@@ -229,21 +229,38 @@ ${ACTIVITY_NODE_SELECTION}
 
   // Network counts for the /welcome landing-page stats strip.
   // Each query asks for a single page (first: 1) just to surface
-  // `totalCount`; the edges array is discarded client-side. Cheap
-  // enough on the indexer side to run every page-view.
+  // `totalCount`; client discards the edge. The full selection
+  // (totalCount + edges + pageInfo) matches the shape every other
+  // op in this file uses — some GraphQL schemas reject a bare
+  // `totalCount` selection on a connection root because the
+  // root's resolver only runs when edges are queried. Including
+  // a minimal `edges { node { uri } }` keeps every count op
+  // valid against the schema and is essentially free upstream.
   ProfileCount: `
     query ProfileCount {
-      appCertifiedActorProfile(first: 1) { totalCount }
+      appCertifiedActorProfile(first: 1) {
+        totalCount
+        edges { node { uri } }
+        pageInfo { hasNextPage }
+      }
     }
   `,
   OrganizationCount: `
     query OrganizationCount {
-      appCertifiedActorOrganization(first: 1) { totalCount }
+      appCertifiedActorOrganization(first: 1) {
+        totalCount
+        edges { node { uri } }
+        pageInfo { hasNextPage }
+      }
     }
   `,
   ActivityCount: `
     query ActivityCount {
-      orgHypercertsClaimActivity(first: 1) { totalCount }
+      orgHypercertsClaimActivity(first: 1) {
+        totalCount
+        edges { node { uri } }
+        pageInfo { hasNextPage }
+      }
     }
   `,
   ProjectCount: `
@@ -251,12 +268,20 @@ ${ACTIVITY_NODE_SELECTION}
       orgHypercertsCollection(
         first: 1
         where: { type: { eq: "project" } }
-      ) { totalCount }
+      ) {
+        totalCount
+        edges { node { uri } }
+        pageInfo { hasNextPage }
+      }
     }
   `,
   AwardCount: `
     query AwardCount {
-      appCertifiedBadgeAward(first: 1) { totalCount }
+      appCertifiedBadgeAward(first: 1) {
+        totalCount
+        edges { node { uri } }
+        pageInfo { hasNextPage }
+      }
     }
   `,
 

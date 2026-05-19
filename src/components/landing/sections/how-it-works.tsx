@@ -24,22 +24,22 @@ export default function HowItWorks() {
           <div className="landing-protocol__step">
             <span className="landing-protocol__num">02</span>
             <div>
-              <h4>Mint and receive certs</h4>
-              <p>Issue certs for work you do or that you witness. Each one is a signed record on the issuer&apos;s repo.</p>
+              <h4>Record what you&rsquo;ve done</h4>
+              <p>Add achievements for the work you do or that you witness. Each one is a signed record on its author&rsquo;s profile.</p>
             </div>
           </div>
           <div className="landing-protocol__step">
             <span className="landing-protocol__num">03</span>
             <div>
               <h4>Endorse the people you trust</h4>
-              <p>Vouch for a person or for a specific cert. The recipient can accept, reject, or leave it pending — they&apos;re always in control.</p>
+              <p>Vouch for a person or for something specific they&rsquo;ve done. The recipient can accept, reject, or leave it pending — they&rsquo;re always in control.</p>
             </div>
           </div>
           <div className="landing-protocol__step">
             <span className="landing-protocol__num">04</span>
             <div>
               <h4>Organize into projects</h4>
-              <p>Curate related certs into project pages so contributors get credit and your story stays legible.</p>
+              <p>Curate related achievements into project pages so contributors get credit and your story stays legible.</p>
             </div>
           </div>
         </div>

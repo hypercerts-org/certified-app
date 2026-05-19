@@ -451,14 +451,45 @@ async function fetchCount(op: string, root: string): Promise<number | null> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ operationName: op, variables: {} }),
     })
-    if (!res.ok) return null
+    if (!res.ok) {
+      if (process.env.NODE_ENV !== "production") {
+        const body = await res.text().catch(() => "")
+        console.warn(
+          `[network-counts] ${op} → HTTP ${res.status}`,
+          body.slice(0, 200),
+        )
+      }
+      return null
+    }
     const json = (await res.json()) as {
       data?: Record<string, { totalCount?: number | null } | null>
+      errors?: { message?: string }[]
+    }
+    if (json.errors && json.errors.length > 0) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          `[network-counts] ${op} → GraphQL errors`,
+          json.errors.map((e) => e.message).join(" | "),
+        )
+      }
+      return null
     }
     const node = json.data?.[root]
     const total = node?.totalCount
-    return typeof total === "number" ? total : null
-  } catch {
+    if (typeof total !== "number") {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          `[network-counts] ${op} → unexpected response shape`,
+          { root, node },
+        )
+      }
+      return null
+    }
+    return total
+  } catch (err) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(`[network-counts] ${op} → exception`, err)
+    }
     return null
   }
 }
