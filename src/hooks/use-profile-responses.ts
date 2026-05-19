@@ -83,7 +83,13 @@ function loadInto(did: string, signal?: AbortSignal, opts?: { force?: boolean })
 
   const promise = (async () => {
     try {
-      const data = await listResponses(did, signal)
+      // Forced refetches (callers explicitly invalidated and
+      // re-asked) bypass the XRPC proxy's 5s Cache-Control window
+      // — otherwise the just-written response wouldn't appear in
+      // the next list and the rendered state would lag by a click.
+      const data = await listResponses(did, signal, {
+        noCache: !!opts?.force,
+      })
       if (signal?.aborted) return
       setEntry(did, {
         data,

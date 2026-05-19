@@ -451,6 +451,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
             names={names}
             viewerIsOwner={viewerIsOwner}
             viewerDid={viewerDid}
+            responseFilter={responseFilter}
             resolve={ownStates.resolve}
             allResponses={ownStates.responses}
             onAfterWrite={async () => {
@@ -514,6 +515,11 @@ interface ReceivedGridProps {
   names: Map<string, string>
   viewerIsOwner: boolean
   viewerDid: string | null
+  /** Active response filter — used by the empty-state copy so a
+   *  zero-results "Show only rejected" view says "No rejected
+   *  endorsements yet" instead of the generic "No endorsements
+   *  yet." */
+  responseFilter: ResponseFilterKey
   resolve: ReturnType<typeof useOwnResponseStates>["resolve"]
   allResponses: ReturnType<typeof useOwnResponseStates>["responses"]
   onAfterWrite: () => void | Promise<void>
@@ -528,6 +534,7 @@ function ReceivedGrid({
   names,
   viewerIsOwner,
   viewerDid,
+  responseFilter,
   resolve,
   allResponses,
   onAfterWrite,
@@ -556,17 +563,29 @@ function ReceivedGrid({
     )
   }
   if (visible.length === 0) {
+    // Three empty-state cases:
+    //   1. The "Show only rejected" filter is active with no matches
+    //      — phrase the empty state in terms of the filter so the
+    //      user knows nothing is missing, the filter just has no
+    //      hits yet.
+    //   2. There's a search query / sort filter but the pre-filter
+    //      set is non-empty — "No matches."
+    //   3. The user has zero endorsements total — the generic
+    //      "No endorsements yet" CTA.
+    const onlyRejectedActive = responseFilter === "only-rejected"
+    const title = onlyRejectedActive
+      ? "No rejected endorsements yet"
+      : endorsements.length === 0
+        ? "No endorsements yet"
+        : "No matches"
+    const description = onlyRejectedActive
+      ? "Endorsements you reject will appear here."
+      : endorsements.length === 0
+        ? "Endorsements from other people will appear here."
+        : "No endorsements match your search."
     return (
       <div className="profile-endorsements-v2__grid">
-        <EmptyState
-          icon={ThumbsUp}
-          title={endorsements.length === 0 ? "No endorsements yet" : "No matches"}
-          description={
-            endorsements.length === 0
-              ? "Endorsements from other people will appear here."
-              : "No endorsements match your search."
-          }
-        />
+        <EmptyState icon={ThumbsUp} title={title} description={description} />
       </div>
     )
   }

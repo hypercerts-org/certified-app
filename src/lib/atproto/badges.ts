@@ -760,15 +760,25 @@ export function awardAuthorDid(award: { uri: string }): string | null {
 export async function listResponses(
   did: string,
   signal?: AbortSignal,
+  opts?: { noCache?: boolean },
 ): Promise<BadgeResponseRecord[]> {
   const params = new URLSearchParams({
     repo: did,
     collection: BADGE_RESPONSE_COLLECTION,
     limit: "100",
   })
+  // After a response write, callers MUST pass `noCache: true` so
+  // the next read doesn't get the pre-write snapshot from the XRPC
+  // proxy's 5s `Cache-Control: private, max-age=5`. Without it the
+  // user has to click twice — the first write lands, but the refetch
+  // returns the stale list and the rendered state doesn't update.
+  // Same pattern as listDefinitions.
+  const init: RequestInit = {}
+  if (signal) init.signal = signal
+  if (opts?.noCache) init.cache = "no-store"
   const res = await authFetch(
     `/api/xrpc/com/atproto/repo/listRecords?${params.toString()}`,
-    signal ? { signal } : undefined,
+    init,
   )
   if (!res.ok) {
     if (res.status === 400 || res.status === 404) return []
