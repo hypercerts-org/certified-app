@@ -371,23 +371,21 @@ function ListsBody({
     )
   }
   if (lists.length === 0) {
-    // Owner view keeps the full EmptyState with its call-to-action
-    // copy so a fresh user has a clear next step ("create your
-    // first list"). On a foreign profile that prompt is irrelevant
-    // — collapse to a single-line note so the section doesn't
-    // dominate the page with empty real-estate the viewer can't
-    // act on.
-    if (!viewerIsOwner) {
-      return (
-        <p className="endorsement-lists__empty-inline">No lists yet.</p>
-      )
-    }
+    // Both viewer kinds get the same compact single-line note —
+    // per #76, the large icon-card empty state ate too much
+    // vertical space for a "you can do this later" prompt. The
+    // outer section header still surfaces the "Create" CTA to
+    // owners, so the next-step affordance isn't lost. Foreign
+    // viewers see the note too (the wrapping `{viewerIsOwner ?}`
+    // in profile-endorsements gates the whole section so this
+    // branch is unreachable for them today, but keep the inner
+    // foreign-safe shape as defense in depth).
     return (
-      <EmptyState
-        icon={ListIcon}
-        title="No lists yet"
-        description="Custom endorsement lists you create will appear here."
-      />
+      <p className="endorsement-lists__empty-inline">
+        {viewerIsOwner
+          ? "No lists yet. Use lists to structure your endorsements."
+          : "No lists yet."}
+      </p>
     )
   }
   return (
