@@ -12,14 +12,22 @@
    other pages keep their default reading cap. */
 
 .project-detail-page {
-  padding: 16px 0 64px;
+  /* No top padding here — the EditBanner is a child of this wrapper
+     when editing, and the banner's own `margin: 16px 24px 0` puts it
+     16px from the app-shell content top. Extra wrapper padding would
+     stack with the banner margin and push it lower than the profile
+     page's edit banner. Article gets its own `margin-top` below so
+     the view-mode breathing room is preserved. */
+  padding: 0 0 64px;
 }
 
 /* Reading column. Single-column, generous max-width so the hero and
-   prose feel like primary content. */
+   prose feel like primary content. The 16px top margin gives the
+   article breathing room from the app-shell content edge (view
+   mode) or from the EditBanner (edit mode). */
 .project-detail {
   max-width: 720px;
-  margin: 0 auto;
+  margin: 16px auto 0;
   padding: 0 16px;
   display: flex;
   flex-direction: column;
@@ -140,6 +148,7 @@
   font-size: 1.0625rem;
   line-height: 1.55;
   color: var(--fg-secondary);
+  font-style: italic;
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
@@ -156,6 +165,14 @@
 .project-detail__prose {
   margin: 0 0 28px;
   max-width: 68ch;
+}
+
+/* In edit mode the prose wrapper hosts the LeafletEditor (tiptap)
+   instead of static prose. Drop the 68ch reading column so the
+   editor stretches to the article width, matching the title input
+   and short-description textarea above it. */
+.project-detail__prose--editing {
+  max-width: none;
 }
 
 .project-detail__prose p {
@@ -534,15 +551,180 @@
   text-decoration: none;
 }
 
-/* Certs-section subtitle while editing — signals the items deferral
-   so users know the cert list isn't editable in v1 (B7). */
-.project-detail__certs-defer-note {
-  margin: 0 0 8px;
-  padding: 8px 12px;
-  background: var(--overlay-weak);
+/* "Add cert" button — sits at the end of the certs section header
+   when editing. `margin-left: auto` pushes it to the right edge of
+   the flex header next to the count chip. */
+.project-detail__add-cert-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  margin-left: auto;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1;
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
-  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.project-detail__add-cert-btn:hover {
+  background: var(--overlay-weak);
+  border-color: var(--border-hover);
+}
+
+.project-detail__add-cert-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Picker row — wraps the CertSearch input and a Cancel button so
+   the user can dismiss without picking anything. The CertSearch
+   itself is flex:1 so it fills the remaining width. */
+.project-detail__add-cert-picker {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.project-detail__add-cert-picker .cert-search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.project-detail__add-cert-cancel {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 0.8125rem;
   color: var(--fg-secondary);
-  line-height: 1.45;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.project-detail__add-cert-cancel:hover {
+  color: var(--fg-primary);
+  background: var(--overlay-weak);
+}
+
+.project-detail__certs-loading {
+  margin: 0;
+  padding: 24px 0;
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  text-align: center;
+}
+
+/* Per-cert cell while editing. Wraps the shared `<ActivityCard>`
+   plus the ⋯ menu trigger. `display: contents` makes the cell
+   transparent to the parent grid — the grid still sees `.feed-card`
+   (inside ActivityCard) as the immediate grid item — so card sizing
+   stays identical to view mode. The ⋯ button positions against the
+   `.feed-card` inside, which has `position: relative` via the
+   .project-detail__certs scoped chrome above. */
+.project-detail__cert-cell {
+  display: contents;
+}
+
+.project-detail__cert-cell .feed-card {
+  position: relative;
+}
+
+/* ⋯ menu cluster: button + popover. Lives top-right of each card.
+   The button is visible only on hover/focus on desktop so it doesn't
+   compete with the card content; on touch viewports (no hover), it
+   stays visible always. */
+.project-detail__cert-menu {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+}
+
+.project-detail__cert-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: var(--bg-elevated);
+  color: var(--fg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--transition-fast), background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.project-detail__cert-cell:hover .project-detail__cert-menu-btn,
+.project-detail__cert-cell:focus-within .project-detail__cert-menu-btn,
+.project-detail__cert-menu-btn[aria-expanded="true"] {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  /* Touch devices have no hover state — keep the button visible so
+     it's always reachable. */
+  .project-detail__cert-menu-btn {
+    opacity: 1;
+  }
+}
+
+.project-detail__cert-menu-btn:hover,
+.project-detail__cert-menu-btn:focus-visible {
+  background: var(--bg-canvas);
+  color: var(--fg-primary);
+  border-color: var(--border-hover);
+  outline: none;
+}
+
+/* Popover. Sits below the trigger button, right-aligned to the
+   card edge. z-index above the grid so it floats over neighboring
+   cells. */
+.project-detail__cert-menu-pop {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 180px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-popover);
+}
+
+.project-detail__cert-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--fg-primary);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition-fast);
+}
+
+.project-detail__cert-menu-item:hover,
+.project-detail__cert-menu-item:focus-visible {
+  background: var(--overlay-weak);
+  outline: none;
 }

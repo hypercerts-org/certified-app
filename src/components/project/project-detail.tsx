@@ -1,14 +1,16 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { FolderGit2, Inbox, Pencil } from "lucide-react"
+import { FolderGit2, Inbox, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
 import ActivityAuthor from "@/components/feed/activity-author"
+import ActivityCard from "@/components/feed/activity-card"
 import ActivityContributor from "@/components/feed/activity-contributor"
 import FeedLayout from "@/components/feed/feed-layout"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
 import EditBanner from "@/components/ui/edit-banner"
 import EmptyState from "@/components/ui/empty-state"
 import LeafletEditor from "@/components/leaflet/leaflet-editor"
+import CertSearch, { type CertSearchResult } from "@/components/search/cert-search"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useProjectItems } from "@/hooks/use-project-items"
@@ -170,6 +172,21 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
+  /** Editable mirror of `items[]`. Initialized from the stored
+   *  record on Edit-click and used as the source of truth for the
+   *  cert grid while in edit mode (so add/remove reflects live).
+   *  The shape matches the lexicon: `{ itemIdentifier: { uri, cid } }`
+   *  with arbitrary extra fields preserved verbatim (`itemWeight`
+   *  etc., though the inline-edit UI doesn't touch those). */
+  const [draftItems, setDraftItems] = useState<Record<string, unknown>[]>([])
+  /** Toggles the inline CertSearch picker between "Add cert" button
+   *  and the live search field. One picker open at a time. */
+  const [addingCert, setAddingCert] = useState(false)
+  /** Which card's ⋯ menu is currently open. `null` means none.
+   *  Only one open at a time — opening another auto-closes the
+   *  previous. */
+  const [openMenuUri, setOpenMenuUri] = useState<string | null>(null)
+
   const effectiveValue = localValue ?? value
   const editing = isEditing && isOwner
 
@@ -181,6 +198,28 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
   useEffect(() => {
     if (editing) titleInputRef.current?.focus()
   }, [editing])
+
+  // Close the per-card ⋯ menu when clicking outside it, or on ESC.
+  // The menu lives inside `.project-detail__cert-menu`, so a click on
+  // anything not in that container collapses it.
+  useEffect(() => {
+    if (!openMenuUri) return
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target
+      if (!(target instanceof Element)) return
+      if (target.closest(".project-detail__cert-menu")) return
+      setOpenMenuUri(null)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenMenuUri(null)
+    }
+    document.addEventListener("mousedown", onMouseDown)
+    document.addEventListener("keydown", onKey)
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown)
+      document.removeEventListener("keydown", onKey)
+    }
+  }, [openMenuUri])
 
   const title =
     asString(effectiveValue.title) ||
@@ -234,8 +273,15 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
     ? ((effectiveValue as Record<string, unknown>).contributors as ActivityContributorType[])
     : []
 
+  // While editing, the cert grid renders from `draftItems` so
+  // add/remove are immediately reflected. Outside edit mode it
+  // tracks the stored value. `useProjectItems` keys off the URI list
+  // so this swap triggers a refetch only when the user actually
+  // mutates the draft (the initial draft copies value.items verbatim
+  // → same key → no extra round-trip on Edit-click).
+  const itemsForResolve = isEditing ? draftItems : effectiveValue.items
   const { resolutions, isLoading: itemsLoading } = useProjectItems(
-    effectiveValue.items,
+    itemsForResolve,
   )
 
   const resolvedActivities = useMemo<ActivityRecord[]>(
@@ -295,6 +341,20 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
     setPreserveDescription(
       shouldPreserveDescription(effectiveValue.description, linear),
     )
+    // Seed draft items from the stored record. Keep extra fields
+    // (itemWeight, addedAt, …) by spreading each entry.
+    setDraftItems(
+      Array.isArray((effectiveValue as Record<string, unknown>).items)
+        ? (
+            (effectiveValue as Record<string, unknown>).items as Record<
+              string,
+              unknown
+            >[]
+          ).map((it) => ({ ...it }))
+        : [],
+    )
+    setAddingCert(false)
+    setOpenMenuUri(null)
     setPendingImageBlob(null)
     setPendingImagePreviewUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev)
@@ -314,9 +374,68 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
     })
     setImageRemoved(false)
     setPreserveDescription(false)
+    setAddingCert(false)
+    setOpenMenuUri(null)
+    // draftItems intentionally NOT reset here — it'll be rebuilt
+    // from value.items on the next handleEditClick. Keeping it
+    // around briefly avoids a render flash if the user reopens
+    // the editor immediately.
     setSaveError(null)
     editBtnRef.current?.focus()
   }, [])
+
+  /** Append a cert to the draft items list. Called by CertSearch's
+   *  onSelect. The `excludeUris` prop already filters out
+   *  already-added URIs from the search results, so the dedup
+   *  guard here is belt-and-suspenders. */
+  const handleAddCert = useCallback((result: CertSearchResult) => {
+    const item = {
+      itemIdentifier: {
+        uri: result.record.uri,
+        cid: result.record.cid,
+      },
+    }
+    setDraftItems((prev) => {
+      const uri = result.record.uri
+      if (
+        prev.some(
+          (p) =>
+            (p.itemIdentifier as { uri?: string } | undefined)?.uri === uri,
+        )
+      ) {
+        return prev
+      }
+      return [...prev, item]
+    })
+    setAddingCert(false)
+  }, [])
+
+  /** Drop a cert from the draft items list. The per-card menu auto-
+   *  closes after the click. Save is required to persist. */
+  const handleRemoveCert = useCallback((uri: string) => {
+    setDraftItems((prev) =>
+      prev.filter(
+        (p) =>
+          (p.itemIdentifier as { uri?: string } | undefined)?.uri !== uri,
+      ),
+    )
+    setOpenMenuUri(null)
+  }, [])
+
+  /** URIs already in the draft — passed to CertSearch so the picker
+   *  hides them from results. Memoized off the stable URI string
+   *  so the search component's effect doesn't re-fire on
+   *  unrelated state changes. */
+  const draftItemUris = useMemo(
+    () =>
+      draftItems
+        .map(
+          (it) =>
+            (it.itemIdentifier as { uri?: string } | undefined)?.uri ?? null,
+        )
+        .filter((u): u is string => !!u),
+    [draftItems],
+  )
 
   const handleImageFile = useCallback(
     async (file: File) => {
@@ -359,15 +478,17 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
         asString(effectiveValue.shortDescription) ||
         ""
 
-      // Start from the server value so unedited fields (items,
-      // location, contributors, startDate/endDate, etc.) round-trip
-      // untouched. The BFF route additionally server-pins
-      // createdAt / type / items, but we mirror the same intent on
-      // the client to keep the XRPC own-DID path safe too.
+      // Start from the server value so unedited fields (location,
+      // contributors, startDate/endDate, etc.) round-trip untouched.
+      // `items` IS now client-writable — overwrite with the draft so
+      // add/remove via the picker / per-card menu persists. The BFF
+      // route still server-pins createdAt / type and shape-validates
+      // items[] before forwarding.
       const next: Record<string, unknown> = {
         ...(effectiveValue as Record<string, unknown>),
         title: trimmedTitle,
         shortDescription: trimmedShort,
+        items: draftItems,
       }
 
       // Description: preserve strongRef when in preserve mode, drop
@@ -445,6 +566,7 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
     sessionDid,
     isAuthenticated,
     drafts,
+    draftItems,
     effectiveValue,
     pendingImageBlob,
     pendingImagePreviewUrl,
@@ -580,7 +702,7 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
         </div>
 
         {editing ? (
-          <div className="project-detail__prose">
+          <div className="project-detail__prose project-detail__prose--editing">
             {preserveDescription ? (
               <div className="project-detail__desc-preserve">
                 <p>
@@ -678,29 +800,122 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
           <div className="project-detail__certs-header">
             <h2 className="project-detail__certs-title">Certs in this project</h2>
             <span className="project-detail__certs-count">{certCount}</span>
+            {editing && !addingCert ? (
+              <button
+                type="button"
+                className="project-detail__add-cert-btn"
+                onClick={() => setAddingCert(true)}
+              >
+                <Plus size={14} strokeWidth={1.75} aria-hidden />
+                Add cert
+              </button>
+            ) : null}
           </div>
-          {editing ? (
-            <p className="project-detail__certs-defer-note">
-              Cert list editing — coming soon. Manage individual certs from
-              their detail pages.
-            </p>
-          ) : null}
-          <FeedLayout
-            activities={resolvedActivities}
-            getDid={(uri) => didByUri.get(uri) ?? did}
-            isLoading={itemsLoading && resolvedActivities.length === 0}
-            isLoadingMore={itemsLoading && resolvedActivities.length > 0}
-            error={null}
-            hasMore={false}
-            loadMore={() => {}}
-            emptyState={
-              <EmptyState
-                icon={Inbox}
-                title="No certs in this project yet"
-                description="When certs are added to this project, they'll appear here."
+
+          {editing && addingCert ? (
+            <div className="project-detail__add-cert-picker">
+              <CertSearch
+                onSelect={handleAddCert}
+                prioritizeAuthorDid={sessionDid ?? undefined}
+                excludeUris={draftItemUris}
+                placeholder="Search for a cert to add…"
+                autoFocus
+                clearOnSelect
               />
-            }
-          />
+              <button
+                type="button"
+                className="project-detail__add-cert-cancel"
+                onClick={() => setAddingCert(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : null}
+
+          {editing ? (
+            <div className="feed">
+              {itemsLoading && resolvedActivities.length === 0 ? (
+                <p className="project-detail__certs-loading">Loading…</p>
+              ) : resolvedActivities.length === 0 ? (
+                <EmptyState
+                  icon={Inbox}
+                  title="No certs in this project yet"
+                  description="Click “Add cert” above to search for and add certs."
+                />
+              ) : (
+                resolvedActivities.map((rec) => (
+                  <div
+                    key={rec.uri}
+                    className="project-detail__cert-cell"
+                  >
+                    <ActivityCard
+                      record={rec}
+                      did={didByUri.get(rec.uri) ?? did}
+                    />
+                    <div className="project-detail__cert-menu">
+                      <button
+                        type="button"
+                        className="project-detail__cert-menu-btn"
+                        aria-label="Cert actions"
+                        aria-haspopup="menu"
+                        aria-expanded={openMenuUri === rec.uri}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setOpenMenuUri((prev) =>
+                            prev === rec.uri ? null : rec.uri,
+                          )
+                        }}
+                      >
+                        <MoreHorizontal
+                          size={16}
+                          strokeWidth={1.75}
+                          aria-hidden
+                        />
+                      </button>
+                      {openMenuUri === rec.uri ? (
+                        <div
+                          role="menu"
+                          className="project-detail__cert-menu-pop"
+                        >
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className="project-detail__cert-menu-item"
+                            onClick={() => handleRemoveCert(rec.uri)}
+                          >
+                            <Trash2
+                              size={14}
+                              strokeWidth={1.75}
+                              aria-hidden
+                            />
+                            Remove from project
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : (
+            <FeedLayout
+              activities={resolvedActivities}
+              getDid={(uri) => didByUri.get(uri) ?? did}
+              isLoading={itemsLoading && resolvedActivities.length === 0}
+              isLoadingMore={itemsLoading && resolvedActivities.length > 0}
+              error={null}
+              hasMore={false}
+              loadMore={() => {}}
+              emptyState={
+                <EmptyState
+                  icon={Inbox}
+                  title="No certs in this project yet"
+                  description="When certs are added to this project, they'll appear here."
+                />
+              }
+            />
+          )}
         </section>
       </article>
     </>

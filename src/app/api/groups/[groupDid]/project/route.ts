@@ -16,17 +16,18 @@ const PROJECT_COLLECTION = "org.hypercerts.collection"
 
 /**
  * Fields the client may set on a project record via this route.
- * Per issue #67 plan A4:
  *   - Lexicon-defined: title, shortDescription, shortDescriptionFacets,
  *     description, avatar, banner, location.
+ *   - `items` — the list of certs (strongRefs) that belong to the
+ *     project. Now editable from the inline-edit UI; validated as an
+ *     array of `{ itemIdentifier: { uri, cid }, ... }` below.
  *   - Legacy fields some production records carry but aren't in the
  *     current `org.hypercerts.collection` lexicon: name, image,
  *     startDate, endDate, contributors. Kept so inline-edit saves
  *     don't silently drop them.
  *
- * `createdAt`, `type`, and `items` are deliberately NOT in this
- * list — they're server-pinned via read-modify-write below
- * (reviews B1 / B2 / B5).
+ * `createdAt` and `type` are deliberately NOT in this list —
+ * server-pinned via read-modify-write below (reviews B1 / B2).
  */
 const PROJECT_FIELDS = [
   "title",
@@ -36,6 +37,7 @@ const PROJECT_FIELDS = [
   "avatar",
   "banner",
   "location",
+  "items",
   // Legacy fields preserved for round-trip compatibility:
   "name",
   "image",
@@ -43,6 +45,39 @@ const PROJECT_FIELDS = [
   "endDate",
   "contributors",
 ] as const
+
+/**
+ * Shape-validate items[] before passing through to the PDS. The
+ * lexicon allows extra fields on each item (e.g. `itemWeight`,
+ * `addedAt`), so this only enforces the minimum invariant: it's an
+ * array, and every entry has an `itemIdentifier: { uri, cid }`
+ * strong-ref. Anything else on the entry is preserved verbatim.
+ *
+ * Returns `null` when the value is well-formed; an error string
+ * otherwise. The route 400s with that string so the client can
+ * surface it directly. */
+function validateItems(value: unknown): string | null {
+  if (value === undefined) return null
+  if (!Array.isArray(value)) return "items must be an array"
+  for (let i = 0; i < value.length; i++) {
+    const it = value[i]
+    if (!it || typeof it !== "object") {
+      return `items[${i}] must be an object`
+    }
+    const id = (it as Record<string, unknown>).itemIdentifier
+    if (!id || typeof id !== "object") {
+      return `items[${i}].itemIdentifier is required`
+    }
+    const idObj = id as Record<string, unknown>
+    if (typeof idObj.uri !== "string" || !idObj.uri.startsWith("at://")) {
+      return `items[${i}].itemIdentifier.uri must be an at:// URI`
+    }
+    if (typeof idObj.cid !== "string" || idObj.cid.length === 0) {
+      return `items[${i}].itemIdentifier.cid is required`
+    }
+  }
+  return null
+}
 
 /** atproto rkey charset per the spec — ≤512 chars of
  *  `A-Za-z0-9._:~-`. Validating client-side gives a clean 400
@@ -61,18 +96,23 @@ const RKEY_RE = /^[A-Za-z0-9._:~-]{1,512}$/
  * Body shape:
  *   { rkey: string, record: <project body> }
  *
- * The route does a read-modify-write to server-pin three fields
+ * The route does a read-modify-write to server-pin two fields
  * regardless of what the client sends:
  *   - `createdAt` — prevents back/forward-dating the record.
  *   - `type`      — a project rkey stays a project; can't morph into
  *                   "favorites" / "portfolio" / "program".
- *   - `items`     — the inline-edit flow doesn't touch items; pinning
- *                   prevents a stale-client save from clobbering a
- *                   concurrent items[] change made elsewhere.
+ *
+ * `items` IS client-writable (the inline-edit UI manages add/remove
+ * via the project edit page). The shape is validated by
+ * `validateItems` above so a malformed save returns 400 before
+ * touching the PDS. Concurrent items[] writes can clobber each
+ * other — the client always sends the full array from its last
+ * read, so a stale tab's save can overwrite an unrelated add. This
+ * is the same lost-update risk every PUT-based edit has today.
  *
  * Validation / shape correctness of nested unions, blob refs, and
- * strongRefs is delegated to the group service / PDS lexicon
- * validator — this route is field-name-level only.
+ * strongRefs (beyond items[]) is delegated to the group service /
+ * PDS lexicon validator — this route is field-name-level only.
  *
  * Returns `{ uri, cid }` so the client can mirror the new commit
  * locally without a re-read.
@@ -127,7 +167,19 @@ export async function PUT(
       PROJECT_COLLECTION,
     )
 
-    // Read the stored record to server-pin createdAt / type / items.
+    // Shape-validate items[] before forwarding. `pickAllowedFields`
+    // only filters by key, not value shape, so without this an
+    // attacker (or a buggy client) could still send `items: "oops"`
+    // or items[i] without an itemIdentifier and let the PDS handle
+    // it. Catch it here for a clean 400 instead.
+    const itemsError = validateItems(
+      (clientRecord as Record<string, unknown>).items,
+    )
+    if (itemsError) {
+      return NextResponse.json({ error: itemsError }, { status: 400 })
+    }
+
+    // Read the stored record to server-pin createdAt / type.
     // Atproto records are public, so a plain fetch against the
     // group's PDS works — matches the read pattern in the
     // groups/profile and groups/metadata GET handlers. Failing to
@@ -164,9 +216,11 @@ export async function PUT(
     }
     const existing = existingData.value ?? {}
 
-    // Force-pin the three server-managed fields. Anything in the
-    // client body for these keys is ignored — the allowlist already
-    // dropped them but this is belt-and-suspenders.
+    // Force-pin createdAt / type. Anything in the client body for
+    // these keys is ignored — the allowlist already dropped them
+    // but this is belt-and-suspenders. `items` is now client-driven
+    // so we DON'T pin it here; the allowlist + validateItems above
+    // are the safety net.
     const record: Record<string, unknown> = {
       ...clientRecord,
       createdAt:
@@ -177,10 +231,6 @@ export async function PUT(
       // doesn't have one — this BFF route is project-semantic; we
       // never persist a non-project type via it.
       type: typeof existing.type === "string" ? existing.type : "project",
-      // `items` is preserved verbatim — an opaque blob through the
-      // allowlist. Inline-edit doesn't touch it; future flows that
-      // DO edit items will use a different request shape.
-      items: Array.isArray(existing.items) ? existing.items : [],
     }
 
     const groupAgent = createGroupAgent(auth.agent, groupDid)

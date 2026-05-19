@@ -1721,6 +1721,177 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   white-space: nowrap;
 }
 
+/* Cert search typeahead. Mirrors the people-search combobox shape
+   so the two read as the same control family — used by the project
+   edit page's add-cert flow and by the top-bar global search. */
+
+.cert-search {
+  position: relative;
+  width: 100%;
+}
+
+.cert-search__field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  transition: border-color var(--transition-fast);
+}
+
+.cert-search__field:focus-within {
+  border-color: var(--border-hover);
+}
+
+.cert-search__icon {
+  flex: 0 0 auto;
+  color: var(--fg-muted);
+  margin-right: 8px;
+}
+
+.cert-search__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  padding: 0;
+}
+
+.cert-search__input::placeholder {
+  color: var(--fg-muted);
+}
+
+.cert-search__clear {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.cert-search__clear:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.cert-search__dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-popover);
+  max-height: min(360px, 50svh);
+  overflow-y: auto;
+}
+
+.cert-search__empty {
+  padding: 14px 12px;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  text-align: left;
+}
+
+/* Group header — "Your certs" / "Other certs". Acts as a section
+   label inside the dropdown. Pointer-events:none so a click on the
+   header doesn't fall through to whatever's behind. */
+.cert-search__group-header {
+  padding: 8px 10px 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  pointer-events: none;
+  user-select: none;
+}
+
+.cert-search__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition-fast);
+  user-select: none;
+}
+
+.cert-search__item:hover {
+  background: var(--overlay-weak);
+}
+
+.cert-search__item--highlighted {
+  background: var(--overlay-weak);
+  box-shadow: inset 2px 0 0 var(--fg-primary);
+}
+
+.cert-search__thumb {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--bg-sunken);
+}
+
+.cert-search__thumb--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-muted);
+}
+
+.cert-search__item-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 1px;
+}
+
+.cert-search__item-title {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cert-search__item-handle {
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Visually-hidden utility for sr-only labels */
 .sr-only {
   position: absolute;
