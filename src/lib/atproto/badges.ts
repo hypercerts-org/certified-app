@@ -224,56 +224,207 @@ export async function listDefinitions(
  */
 const inflightEnsure = new Map<string, Promise<StrongRef>>()
 
+/**
+ * Find or create the user's `endorsement` badge definition.
+ *
+ * Two-layer cross-tab safety:
+ *
+ *   - **Layer 1 — dedupe-on-read.** If `listDefinitions` returns
+ *     more than one `badgeType === "endorsement"` record (because a
+ *     previous race created duplicates), pick the OLDEST by
+ *     `createdAt` as the canonical, and best-effort delete the
+ *     newer duplicates in the background. The deletes use a
+ *     `suppressUnauthorizedHandler` authFetch so a transient 401
+ *     during cleanup doesn't log the user out as a side-effect of
+ *     a successful endorse. Selection stays stable across reads
+ *     (oldest never reshuffles), so concurrent reads converge.
+ *
+ *   - **Layer 2 — `navigator.locks`.** The create critical section
+ *     is wrapped in a Web Lock keyed by `endorse-def:${ownDid}` so
+ *     two tabs racing on the same account serialise; the loser
+ *     re-lists (with `noCache: true` to bypass the proxy's 5s
+ *     same-session cache) and returns the winner's def instead of
+ *     creating a second.
+ *
+ * The same-tab `inflightEnsure` Map still earns its keep: it dedupes
+ * React strict-mode double-invokes within a single tab, which Web
+ * Locks does NOT cover (one tab calling the lock twice still enters
+ * once but both call sites see the lock open before the first
+ * acquires).
+ *
+ * Existing duplicates from past races self-heal on the next read —
+ * no batch migration needed.
+ */
 export async function ensureEndorsementDefinition(
   ownDid: string,
 ): Promise<StrongRef> {
   const cached = inflightEnsure.get(ownDid)
   if (cached) return cached
 
-  const promise = (async (): Promise<StrongRef> => {
-    const existing = await listDefinitions(ownDid)
-    const match = existing.find(
-      (d) => d.value.badgeType === ENDORSEMENT_BADGE_TYPE,
-    )
-    if (match) return { uri: match.uri, cid: match.cid }
-
-    // No endorsement definition yet — create one. `icon` is
-    // intentionally omitted (optional in the canonical lexicon; the
-    // UI uses the live issuer avatar).
-    const body = {
-      repo: ownDid,
-      collection: BADGE_DEFINITION_COLLECTION,
-      record: {
-        $type: BADGE_DEFINITION_COLLECTION,
-        badgeType: ENDORSEMENT_BADGE_TYPE,
-        title: ENDORSEMENT_BADGE_TITLE,
-        createdAt: new Date().toISOString(),
-      } satisfies BadgeDefinitionValue,
-    }
-    const res = await authFetch("/api/xrpc/com/atproto/repo/createRecord", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    })
-    const data = (await res.json().catch(() => ({}))) as {
-      uri?: string
-      cid?: string
-      error?: string
-    }
-    if (!res.ok || !data.uri || !data.cid) {
-      throw new Error(
-        data.error || `Failed to create endorsement definition: ${res.status}`,
-      )
-    }
-    return { uri: data.uri, cid: data.cid }
-  })()
-
+  const promise = ensureEndorsementDefinitionInner(ownDid)
   inflightEnsure.set(ownDid, promise)
   try {
     return await promise
   } finally {
     inflightEnsure.delete(ownDid)
   }
+}
+
+async function ensureEndorsementDefinitionInner(
+  ownDid: string,
+): Promise<StrongRef> {
+  // Initial read — outside the lock so the common case (definition
+  // already exists, no race) skips the lock overhead entirely.
+  const existing = await listDefinitions(ownDid)
+  const matched = resolveCanonicalEndorsementDef(existing)
+  if (matched) {
+    if (matched.duplicates.length > 0) {
+      backgroundDeleteDuplicates(matched.duplicates)
+    }
+    return { uri: matched.canonical.uri, cid: matched.canonical.cid }
+  }
+
+  // No definition found — enter the create critical section. Web
+  // Locks serialises across tabs in the same browser; absent the
+  // API (very old browsers / non-browser env), fall through to the
+  // unlocked create path (today's behaviour). Lock name includes
+  // ownDid so two accounts in one browser don't serialise on each
+  // other.
+  const lockName = `endorse-def:${ownDid}`
+  if (typeof navigator !== "undefined" && navigator.locks) {
+    return navigator.locks.request(lockName, async () => {
+      // Re-list inside the lock with noCache so the just-written
+      // record from the lock-winner is visible to the loser. Without
+      // noCache, the 5s `Cache-Control: private, max-age=5` on the
+      // XRPC proxy's listRecords would hand back a stale response
+      // and the loser would create a second definition.
+      const recheck = await listDefinitions(ownDid, undefined, {
+        noCache: true,
+      })
+      const recheckMatch = resolveCanonicalEndorsementDef(recheck)
+      if (recheckMatch) {
+        if (recheckMatch.duplicates.length > 0) {
+          backgroundDeleteDuplicates(recheckMatch.duplicates)
+        }
+        return {
+          uri: recheckMatch.canonical.uri,
+          cid: recheckMatch.canonical.cid,
+        }
+      }
+      return createEndorsementDefinition(ownDid)
+    })
+  }
+  return createEndorsementDefinition(ownDid)
+}
+
+/**
+ * Pick the canonical endorsement definition out of a list of badge
+ * definitions, plus the duplicates that should be cleaned up.
+ *
+ * Canonical = OLDEST by `createdAt`. Stable: a definition with an
+ * earlier `createdAt` never loses to a later one regardless of
+ * which tab does the read, so concurrent readers converge.
+ *
+ * Stale-config concern: the default endorsement def is currently
+ * minimal (`title` + `badgeType` + `createdAt`) and never mutated
+ * post-create — `updateListDefinition` (`badges.ts:~340`) is only
+ * used for user-created list defs, not the default endorsement one.
+ * If list-style customisation ever lands on the default def, this
+ * invariant flips and the choice must be revisited.
+ */
+function resolveCanonicalEndorsementDef(
+  defs: BadgeDefinitionRecord[],
+): { canonical: BadgeDefinitionRecord; duplicates: BadgeDefinitionRecord[] } | null {
+  const matches = defs
+    .filter((d) => d.value.badgeType === ENDORSEMENT_BADGE_TYPE)
+    .slice()
+    .sort((a, b) =>
+      (a.value.createdAt ?? "") < (b.value.createdAt ?? "") ? -1 : 1,
+    )
+  if (matches.length === 0) return null
+  const [canonical, ...duplicates] = matches
+  return { canonical, duplicates }
+}
+
+/**
+ * Fire-and-forget delete of duplicate badge definitions. Errors are
+ * suppressed (cleanup is best-effort) but logged in dev so a
+ * persistent problem is debuggable. Uses
+ * `suppressUnauthorizedHandler` so a transient 401 here doesn't
+ * trigger the auth-context auto-logout — a sign-in race shouldn't
+ * sign the user out the moment they succeed.
+ */
+function backgroundDeleteDuplicates(
+  duplicates: BadgeDefinitionRecord[],
+): void {
+  for (const dup of duplicates) {
+    const repo = extractDidFromUri(dup.uri)
+    if (!repo) continue
+    const body = JSON.stringify({
+      repo,
+      collection: BADGE_DEFINITION_COLLECTION,
+      rkey: dup.rkey,
+    })
+    void authFetch(
+      "/api/xrpc/com/atproto/repo/deleteRecord",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      },
+      { suppressUnauthorizedHandler: true },
+    ).catch((err) => {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          "[badges] background dedupe-delete failed",
+          dup.uri,
+          err,
+        )
+      }
+    })
+  }
+}
+
+/**
+ * Helper to pull the repo DID out of a `at://did:.../<collection>/<rkey>`
+ * URI for the deleteRecord call. Defined here so it stays alongside
+ * the read/write paths. */
+function extractDidFromUri(uri: string): string | null {
+  if (!uri.startsWith("at://")) return null
+  const tail = uri.slice("at://".length)
+  const slash = tail.indexOf("/")
+  return slash >= 0 ? tail.slice(0, slash) : tail
+}
+
+async function createEndorsementDefinition(ownDid: string): Promise<StrongRef> {
+  // `icon` is intentionally omitted (optional in the canonical
+  // lexicon; the UI uses the live issuer avatar).
+  const body = {
+    repo: ownDid,
+    collection: BADGE_DEFINITION_COLLECTION,
+    record: {
+      $type: BADGE_DEFINITION_COLLECTION,
+      badgeType: ENDORSEMENT_BADGE_TYPE,
+      title: ENDORSEMENT_BADGE_TITLE,
+      createdAt: new Date().toISOString(),
+    } satisfies BadgeDefinitionValue,
+  }
+  const res = await authFetch("/api/xrpc/com/atproto/repo/createRecord", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  const data = (await res.json().catch(() => ({}))) as {
+    uri?: string
+    cid?: string
+    error?: string
+  }
+  if (!res.ok || !data.uri || !data.cid) {
+    throw new Error(
+      data.error || `Failed to create endorsement definition: ${res.status}`,
+    )
+  }
+  return { uri: data.uri, cid: data.cid }
 }
 
 /**

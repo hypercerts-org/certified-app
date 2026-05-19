@@ -37,6 +37,17 @@ function indicatesSessionExpiry(input: RequestInfo | URL): boolean {
   }
 }
 
+export interface AuthFetchOptions {
+  /**
+   * When true, a 401 response will NOT trigger `onUnauthorized` even
+   * if the URL is session-bearing. Use for fire-and-forget background
+   * work (e.g. best-effort cleanup deletes) where a transient 401
+   * shouldn't log the user out as a side-effect of unrelated work.
+   * The caller is responsible for handling the 401 themselves.
+   */
+  suppressUnauthorizedHandler?: boolean
+}
+
 /**
  * Wrapper around fetch that detects session-expiry 401s and triggers
  * re-authentication. Scope is intentionally narrow — see
@@ -44,9 +55,18 @@ function indicatesSessionExpiry(input: RequestInfo | URL): boolean {
  * a service-auth JWT) is reported back to the caller as a normal failed
  * response without disturbing the auth state.
  */
-export async function authFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+export async function authFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  opts?: AuthFetchOptions,
+): Promise<Response> {
   const res = await fetch(input, init)
-  if (res.status === 401 && onUnauthorized && indicatesSessionExpiry(input)) {
+  if (
+    res.status === 401 &&
+    onUnauthorized &&
+    indicatesSessionExpiry(input) &&
+    !opts?.suppressUnauthorizedHandler
+  ) {
     onUnauthorized()
   }
   return res
