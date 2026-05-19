@@ -84,6 +84,12 @@ export default function SyncSocialGraphSection({
         <p className="social-graph-sync__error" role="alert">
           {sync.error}
         </p>
+      ) : sync.truncated ? (
+        <p className="social-graph-sync__error" role="alert">
+          Your follow list is too large to compare safely (more than
+          10,000 follows). Importing would risk creating duplicate
+          records — sync is disabled.
+        </p>
       ) : summary ? (
         <p className="social-graph-sync__summary">{summary}</p>
       ) : null}
@@ -94,13 +100,17 @@ export default function SyncSocialGraphSection({
           size="sm"
           onClick={() => setIsModalOpen(true)}
           disabled={
-            sync.isLoading || sync.stats.onlyBluesky.length === 0
+            sync.isLoading ||
+            sync.truncated ||
+            sync.stats.onlyBluesky.length === 0
           }
         >
           <RefreshCw size={14} strokeWidth={1.75} aria-hidden />
           Sync from Bluesky
         </Button>
-        {sync.stats.onlyBluesky.length === 0 && !sync.isLoading ? (
+        {!sync.truncated &&
+        sync.stats.onlyBluesky.length === 0 &&
+        !sync.isLoading ? (
           <span className="social-graph-sync__hint">
             Nothing new to import — Certified is up to date with your Bluesky
             follows.

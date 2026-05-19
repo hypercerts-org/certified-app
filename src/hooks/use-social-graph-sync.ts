@@ -50,6 +50,12 @@ export function useSocialGraphSync(
   certifiedCount: number
   blueskyCount: number
   stats: SocialGraphSyncStats
+  /** True when either side's follow list was truncated by the 10k
+   *  safety cap. In that state the set-arithmetic above is unsafe —
+   *  `onlyBluesky` and `onlyCertified` may contain false-positives,
+   *  and re-importing would create duplicate follows on the user's
+   *  PDS. Callers must refuse to act on `stats` when this is true. */
+  truncated: boolean
   isLoading: boolean
   error: string | null
   refetch: () => Promise<void>
@@ -65,6 +71,7 @@ export function useSocialGraphSync(
   const {
     subjects: certifiedSubjects,
     count: certifiedCount,
+    truncated: certifiedTruncated,
     isLoading: certifiedLoading,
     error: certifiedError,
     refetch: certifiedRefetch,
@@ -116,6 +123,20 @@ export function useSocialGraphSync(
       if (isWriting) {
         return { imported: 0, failed: 0, errors: [] }
       }
+      // Refuse to act when the certified set is truncated — the
+      // `certifiedSubjects.has(subjectDid)` skip below would return
+      // false-negatives for any DID past the 10k cap and we'd write
+      // duplicate follow records to the user's PDS.
+      if (certifiedTruncated) {
+        return {
+          imported: 0,
+          failed: dids.length,
+          errors: dids.map((subjectDid) => ({
+            subjectDid,
+            message: "Your follow list is too large to sync safely",
+          })),
+        }
+      }
       setIsWriting(true)
       let imported = 0
       const errors: { subjectDid: string; message: string }[] = []
@@ -162,13 +183,14 @@ export function useSocialGraphSync(
       }
       return { imported, failed: errors.length, errors }
     },
-    [ownDid, targetDid, isWriting, certifiedSubjects, certifiedAddFollow, certifiedRefetch],
+    [ownDid, targetDid, isWriting, certifiedSubjects, certifiedTruncated, certifiedAddFollow, certifiedRefetch],
   )
 
   return {
     certifiedCount,
     blueskyCount,
     stats,
+    truncated: certifiedTruncated,
     isLoading: certifiedLoading || blueskyLoading,
     error: certifiedError || blueskyError,
     refetch,

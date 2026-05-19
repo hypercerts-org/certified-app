@@ -301,8 +301,15 @@ export default function ProfileSidebar({
         </span>
         <span aria-hidden className="profile-sidebar__followers-sep">·</span>
         <span>
-          <span className="profile-sidebar__followers-count">
-            {formatGraphCount(viewedFollowing.count)}
+          <span
+            className="profile-sidebar__followers-count"
+            title={
+              viewedFollowing.truncated
+                ? "Hit the 10,000 follow display cap; the underlying repo has more."
+                : undefined
+            }
+          >
+            {formatGraphCount(viewedFollowing.count, viewedFollowing.truncated)}
           </span>{" "}
           <Link
             href={`${basePath}?tab=followers&sub=following`}
@@ -726,7 +733,7 @@ function FollowButton({
         // Unfollow path: walk the viewer's follows to find the rkey
         // targeting this subject. Fetched fresh here to handle the
         // duplicate-follow edge case (delete the most recent record).
-        const records = await listFollowing(viewerDid, undefined, {
+        const { records } = await listFollowing(viewerDid, undefined, {
           noCache: true,
         })
         const match = records
@@ -770,9 +777,13 @@ function FollowButton({
  * a real, meaningful value to viewers ("nobody follows this account
  * yet").
  */
-function formatGraphCount(n: number | null | undefined): string {
+function formatGraphCount(
+  n: number | null | undefined,
+  truncated = false,
+): string {
   if (n === null || n === undefined) return "—"
-  return new Intl.NumberFormat().format(n)
+  const formatted = new Intl.NumberFormat().format(n)
+  return truncated ? `${formatted}+` : formatted
 }
 
 /* ----------------------------- Endorse ------------------------------

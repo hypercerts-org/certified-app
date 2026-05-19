@@ -140,11 +140,12 @@ export async function listFollowing(
   did: string,
   signal?: AbortSignal,
   opts?: { noCache?: boolean },
-): Promise<FollowRecord[]> {
+): Promise<{ records: FollowRecord[]; truncated: boolean }> {
   const PAGE_SIZE = 100
   const SAFETY_CAP = 10_000
   const out: FollowRecord[] = []
   let cursor: string | undefined
+  let truncated = false
   while (out.length < SAFETY_CAP) {
     const params = new URLSearchParams({
       repo: did,
@@ -164,7 +165,9 @@ export async function listFollowing(
     if (!res.ok) {
       // 400/404 on an empty / not-yet-created collection — treat as
       // "no follows" rather than an error.
-      if (res.status === 400 || res.status === 404) return out
+      if (res.status === 400 || res.status === 404) {
+        return { records: out, truncated: false }
+      }
       throw new Error(`Failed to list follows: ${res.status}`)
     }
     const data = (await res.json()) as ListRecordsResponse<FollowRecordValue>
@@ -179,5 +182,12 @@ export async function listFollowing(
     cursor = data.cursor
     if (!cursor || (data.records?.length ?? 0) < PAGE_SIZE) break
   }
-  return out
+  // Hit the safety cap *and* there's still a cursor pointing at more
+  // pages — caller's derived sets (count, subjects-for-set-arithmetic)
+  // are now incomplete. Surface this so consumers can show a "10,000+"
+  // indicator or refuse to compute set arithmetic.
+  if (out.length >= SAFETY_CAP && cursor) {
+    truncated = true
+  }
+  return { records: out, truncated }
 }

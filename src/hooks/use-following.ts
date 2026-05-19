@@ -11,6 +11,7 @@ const STALE_MS = 5 * 60 * 1000
 
 interface CacheEntry {
   data: FollowRecord[]
+  truncated: boolean
   fetchedAt: number
 }
 
@@ -38,6 +39,13 @@ const cache = new Map<string, CacheEntry>()
  *   - `subjects`   — `Set<string>` of subject DIDs, for O(1) lookup
  *                    in the Follow/Unfollow button.
  *   - `count`      — convenience for sidebar counts.
+ *   - `truncated`  — true if the underlying page walk hit the 10k
+ *                    safety cap and the upstream still has more.
+ *                    Consumers that derive set arithmetic from
+ *                    `subjects` (e.g. social-graph-sync) MUST refuse
+ *                    to act on the result when this is true — the
+ *                    "do I already follow X?" check would return
+ *                    false-negatives and cause duplicate writes.
  *   - `refetch`    — bypass cache; call after the viewer follows or
  *                    unfollows somebody.
  *   - `addFollow`/`removeFollow` — optimistic mutators so the Follow
@@ -52,6 +60,7 @@ export function useFollowing(did: string | null): {
   records: FollowRecord[]
   subjects: Set<string>
   count: number
+  truncated: boolean
   isLoading: boolean
   error: string | null
   refetch: () => Promise<void>
@@ -59,6 +68,7 @@ export function useFollowing(did: string | null): {
   removeFollow: (subjectDid: string) => void
 } {
   const [records, setRecords] = useState<FollowRecord[]>([])
+  const [truncated, setTruncated] = useState(false)
   const [isLoading, setIsLoading] = useState(!!did)
   const [error, setError] = useState<string | null>(null)
   const didRef = useRef(did)
@@ -68,6 +78,7 @@ export function useFollowing(did: string | null): {
     async (targetDid: string | null, signal?: AbortSignal, force = false) => {
       if (!targetDid) {
         setRecords([])
+        setTruncated(false)
         setIsLoading(false)
         setError(null)
         return
@@ -76,6 +87,7 @@ export function useFollowing(did: string | null): {
         const entry = cache.get(targetDid)
         if (entry && Date.now() - entry.fetchedAt < STALE_MS) {
           setRecords(entry.data)
+          setTruncated(entry.truncated)
           setIsLoading(false)
           return
         }
@@ -83,10 +95,19 @@ export function useFollowing(did: string | null): {
       setIsLoading(true)
       setError(null)
       try {
-        const data = await listFollowing(targetDid, signal, force ? { noCache: true } : undefined)
+        const result = await listFollowing(
+          targetDid,
+          signal,
+          force ? { noCache: true } : undefined,
+        )
         if (signal?.aborted) return
-        cache.set(targetDid, { data, fetchedAt: Date.now() })
-        setRecords(data)
+        cache.set(targetDid, {
+          data: result.records,
+          truncated: result.truncated,
+          fetchedAt: Date.now(),
+        })
+        setRecords(result.records)
+        setTruncated(result.truncated)
       } catch (err) {
         if (signal?.aborted) return
         setError(err instanceof Error ? err.message : "Failed to load follows")
@@ -134,7 +155,15 @@ export function useFollowing(did: string | null): {
       setRecords((prev) => {
         if (prev.some((r) => r.value.subject === subjectDid)) return prev
         const next = [record, ...prev]
-        cache.set(targetDid, { data: next, fetchedAt: Date.now() })
+        // Preserve the prior `truncated` flag — adding one record to a
+        // truncated cache doesn't change whether the upstream still
+        // has more pages.
+        const prior = cache.get(targetDid)
+        cache.set(targetDid, {
+          data: next,
+          truncated: prior?.truncated ?? false,
+          fetchedAt: Date.now(),
+        })
         return next
       })
     },
@@ -148,7 +177,12 @@ export function useFollowing(did: string | null): {
     setRecords((prev) => {
       if (!prev.some((r) => r.value.subject === subjectDid)) return prev
       const next = prev.filter((r) => r.value.subject !== subjectDid)
-      cache.set(targetDid, { data: next, fetchedAt: Date.now() })
+      const prior = cache.get(targetDid)
+      cache.set(targetDid, {
+        data: next,
+        truncated: prior?.truncated ?? false,
+        fetchedAt: Date.now(),
+      })
       return next
     })
   }, [])
@@ -162,6 +196,7 @@ export function useFollowing(did: string | null): {
     records,
     subjects,
     count: records.length,
+    truncated,
     isLoading,
     error,
     refetch,
