@@ -676,7 +676,7 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
         </div>
 
         {editing ? (
-          <div className="project-detail__prose project-detail__prose--editing">
+          <div className="project-detail__prose">
             {preserveDescription ? (
               <div className="project-detail__desc-preserve">
                 <p>

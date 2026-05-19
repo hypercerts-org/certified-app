@@ -162,21 +162,14 @@
 
 /* ---------- Long-form description (prose) ---------- */
 
-/* Read-mode wrapper for the structured description. The actual
-   typography lives on `.leaflet-doc__*` classes inside (see
+/* Read-mode wrapper for the structured description AND edit-mode
+   wrapper for the LeafletEditor. The actual typography lives on
+   `.leaflet-doc__*` / `.leaflet-editor__*` classes inside (see
    `leaflet.css`) so we match the cert detail page exactly — this
-   wrapper only contributes outer margin + the reading-column cap. */
+   wrapper only contributes outer margin and flows the full article
+   width. */
 .project-detail__prose {
   margin: 0 0 28px;
-  max-width: 68ch;
-}
-
-/* In edit mode the prose wrapper hosts the LeafletEditor (tiptap)
-   instead of static prose. Drop the 68ch reading column so the
-   editor stretches to the article width, matching the title input
-   and short-description textarea above it. */
-.project-detail__prose--editing {
-  max-width: none;
 }
 
 /* ---------- Meta strip ---------- */
