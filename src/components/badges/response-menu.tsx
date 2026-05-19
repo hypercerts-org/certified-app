@@ -7,7 +7,7 @@ import {
   useState,
   type KeyboardEvent,
 } from "react"
-import { Check, Eye, MoreHorizontal, RotateCcw, Undo2, X } from "lucide-react"
+import { Check, MoreHorizontal, RotateCcw, Undo2, X } from "lucide-react"
 import {
   createResponse,
   deleteAllResponsesForAward,
@@ -340,8 +340,8 @@ export default function ResponseMenu({
               onClick={() => writeResponse("accepted")}
               disabled={isWriting}
             >
-              <Eye size={14} aria-hidden="true" />
-              <span>Show on profile</span>
+              <Check size={14} aria-hidden="true" />
+              <span>Accept</span>
             </button>
           ) : (
             <button
