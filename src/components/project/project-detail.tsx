@@ -1,7 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import Link from "next/link"
+import { usePathname, useSearchParams } from "next/navigation"
 import { FolderGit2, Inbox, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
 import ActivityAuthor from "@/components/feed/activity-author"
 import ActivityCard from "@/components/feed/activity-card"
@@ -33,6 +34,14 @@ import type {
   ActivityRecord,
 } from "@/lib/atproto/activity-types"
 import type { BlobRef } from "@atproto/api"
+
+/** How many cert cards to show on the Overview tab's preview row.
+ *  Set to 3 to match the widest viewport's grid track count — at
+ *  ≥900px the preview is exactly one row; on narrower viewports it
+ *  wraps to two rows (still a compact summary). The "See all" link
+ *  in the section header takes the user to the dedicated Certs tab
+ *  for the full grid. */
+const OVERVIEW_CERT_PREVIEW = 3
 
 interface ProjectDetailProps {
   did: string
@@ -210,10 +219,30 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
   // Description / Certs) and writes `?tab=` on click. We read it
   // here and pick the right slice of content below. Matches the
   // cert detail's pattern.
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const tabParam = searchParams?.get("tab") ?? "overview"
   const activeTab: "overview" | "description" | "certs" =
     tabParam === "description" || tabParam === "certs" ? tabParam : "overview"
+
+  /** Build a URL pointing at another subtab on this page —
+   *  preserves any other query params the user might be carrying
+   *  (rare today; future-proof). Returns null when pathname isn't
+   *  resolved yet so callers can skip rendering the link. */
+  const buildTabHref = useCallback(
+    (tab: "overview" | "description" | "certs"): string | null => {
+      if (!pathname) return null
+      const params = new URLSearchParams(searchParams?.toString() ?? "")
+      if (tab === "overview") params.delete("tab")
+      else params.set("tab", tab)
+      const qs = params.toString()
+      return qs ? `${pathname}?${qs}` : pathname
+    },
+    [pathname, searchParams],
+  )
+
+  const descriptionHref = buildTabHref("description")
+  const certsHref = buildTabHref("certs")
 
   // Image resolution order:
   //   1. In-flight preview (object URL — atproto PDSes don't serve a
@@ -683,10 +712,24 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
           ) : shortDesc ? (
             <p className="project-detail__lead">{shortDesc}</p>
           ) : null}
+          {/* "more" link — only on Overview, and only when there's
+              a long description to navigate to. On the Description
+              tab the link would point at the page the user is
+              already on, so we skip it. */}
+          {activeTab === "overview" &&
+          showFullDescription &&
+          descriptionHref ? (
+            <p className="project-detail__lead-more">
+              <Link href={descriptionHref} replace>
+                more →
+              </Link>
+            </p>
+          ) : null}
         </div>
 
         {activeTab === "overview" ? (
-          hasAnyMeta ? (
+          <>
+          {hasAnyMeta ? (
             <aside
               className="project-detail__meta"
               aria-label="Project details"
@@ -738,11 +781,52 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
                 </div>
               ) : null}
             </aside>
-          ) : (
+          ) : null}
+          {/* Certs preview — up to one row (3 cards at widest
+              viewport, fewer on narrower). When the project has
+              more than the preview cap, a "See all" link points at
+              the Certs tab for the full grid. */}
+          {certCount > 0 && certsHref ? (
+            <section
+              className="project-detail__certs project-detail__certs--preview"
+              aria-label="Certs preview"
+            >
+              <div className="project-detail__certs-header">
+                <h2 className="project-detail__certs-title">
+                  Certs in this project
+                </h2>
+                <span className="project-detail__certs-count">
+                  {certCount}
+                </span>
+                {certCount > OVERVIEW_CERT_PREVIEW ? (
+                  <Link
+                    href={certsHref}
+                    replace
+                    className="project-detail__see-all"
+                  >
+                    See all →
+                  </Link>
+                ) : null}
+              </div>
+              <div className="feed">
+                {resolvedActivities
+                  .slice(0, OVERVIEW_CERT_PREVIEW)
+                  .map((rec) => (
+                    <ActivityCard
+                      key={rec.uri}
+                      record={rec}
+                      did={didByUri.get(rec.uri) ?? did}
+                    />
+                  ))}
+              </div>
+            </section>
+          ) : null}
+          {!hasAnyMeta && certCount === 0 ? (
             <p className="project-detail__tab-empty">
               No additional details yet for this project.
             </p>
-          )
+          ) : null}
+        </>
         ) : null}
 
         {activeTab === "description" ? (

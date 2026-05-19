@@ -154,6 +154,28 @@
   word-break: break-word;
 }
 
+/* "more →" link beneath the short description on the Overview
+   tab — jumps to the Description tab. Sits in its own paragraph
+   directly under the lead and is rendered only when there's a
+   long description to navigate to. Underlined on hover so it's
+   visually distinct from the static lead text above. */
+.project-detail__lead-more {
+  margin: 6px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.project-detail__lead-more a {
+  color: var(--fg-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.project-detail__lead-more a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 @media (min-width: 800px) {
   .project-detail__lead {
     font-size: 1.125rem;
@@ -276,6 +298,32 @@
   padding: 1px 8px;
   border-radius: 999px;
   background: var(--overlay-weak);
+}
+
+/* "See all →" link in the Overview tab's certs preview header.
+   Pushed to the right edge of the flex header next to the count
+   chip; navigates to the dedicated Certs tab. */
+.project-detail__see-all {
+  margin-left: auto;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  text-decoration: none;
+}
+
+.project-detail__see-all:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Preview variant of the certs section (Overview tab). The base
+   `.project-detail__certs` `border-top` separator is dropped here —
+   the meta strip above it already creates a visual break, and the
+   preview reads as a continuation of the overview rather than a
+   distinct section. */
+.project-detail__certs--preview {
+  border-top: none;
+  padding-top: 0;
 }
 
 /* Certs section uses `<FeedLayout>` so each card is a literal
