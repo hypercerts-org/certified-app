@@ -273,8 +273,12 @@
     box-shadow var(--transition-fast);
 }
 
+/* Hovering anywhere on the card tints the whole tile so the entire
+   card reads as a clickable target — the inner Link no longer
+   underlines the display name (that micro-affordance read as a
+   second focus point + competed with the card-level hover). */
 .profile-endorsements-v2__card:hover {
-  background: var(--bg-elevated);
+  background: var(--overlay-weak);
   border-color: var(--border-hover);
   box-shadow: var(--shadow-sm);
 }
@@ -290,7 +294,7 @@
 }
 
 .profile-endorsements-v2__card-link:hover .profile-endorsements-v2__card-name {
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 .profile-endorsements-v2__card-avatar-skel {

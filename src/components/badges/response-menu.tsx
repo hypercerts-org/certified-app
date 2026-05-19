@@ -7,7 +7,7 @@ import {
   useState,
   type KeyboardEvent,
 } from "react"
-import { Check, MoreHorizontal, RotateCcw, Undo2, X } from "lucide-react"
+import { Check, MoreHorizontal, RotateCcw, X } from "lucide-react"
 import {
   createResponse,
   deleteAllResponsesForAward,
@@ -74,11 +74,9 @@ export default function ResponseMenu({
   const [isOpen, setIsOpen] = useState(false)
   const [isWriting, setIsWriting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [pendingUndo, setPendingUndo] = useState<true | null>(null)
 
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
-  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // -----------------------------------------------------------------
   // Outside-click + Esc close.
@@ -186,7 +184,6 @@ export default function ResponseMenu({
         )
         setIsOpen(false)
         await finishWrite(focusTarget)
-        if (resp === "rejected") armUndoToast()
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to update")
       } finally {
@@ -210,46 +207,6 @@ export default function ResponseMenu({
       setIsWriting(false)
     }
   }, [ownerDid, awardUri, allResponses, finishWrite])
-
-  // -----------------------------------------------------------------
-  // Undo toast (plan AC#8). 6-second polite live region with an
-  // Undo button that sweeps every response on this award — the
-  // user's latest reject vanishes, plus any vestigial responses,
-  // returning the award to its un-responded "default" state.
-  // -----------------------------------------------------------------
-  function armUndoToast() {
-    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
-    setPendingUndo(true)
-    undoTimerRef.current = setTimeout(() => {
-      setPendingUndo(null)
-      undoTimerRef.current = null
-    }, 6_000)
-  }
-
-  const undoHide = useCallback(async () => {
-    if (!ownerDid || !pendingUndo) return
-    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
-    setIsWriting(true)
-    setError(null)
-    try {
-      // We're called after a fresh listResponses refetch (the parent
-      // ran `invalidate(); await refetch();` in onAfterWrite), so
-      // the responses we have via props are post-write — including
-      // the rejection we just wrote. Sweeping ALL responses for
-      // this award returns to default cleanly.
-      await deleteAllResponsesForAward(ownerDid, awardUri, allResponses)
-      setPendingUndo(null)
-      await finishWrite(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to undo")
-    } finally {
-      setIsWriting(false)
-    }
-  }, [ownerDid, awardUri, allResponses, pendingUndo, finishWrite])
-
-  useEffect(() => () => {
-    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
-  }, [])
 
   const hasResponse = state === "accepted" || state === "rejected"
 
@@ -372,20 +329,6 @@ export default function ResponseMenu({
               {error}
             </p>
           ) : null}
-        </div>
-      ) : null}
-      {pendingUndo ? (
-        <div role="status" aria-live="polite" className="response-menu__toast">
-          <span>Endorsement hidden from your profile.</span>
-          <button
-            type="button"
-            className="response-menu__toast-undo"
-            onClick={undoHide}
-            disabled={isWriting}
-          >
-            <Undo2 size={12} aria-hidden="true" />
-            <span>Undo</span>
-          </button>
         </div>
       ) : null}
     </div>
