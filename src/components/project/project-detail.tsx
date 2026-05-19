@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { FolderGit2, Inbox, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
 import ActivityAuthor from "@/components/feed/activity-author"
 import ActivityCard from "@/components/feed/activity-card"
@@ -204,6 +205,15 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
 
   const shortDesc = asString(effectiveValue.shortDescription)
   const showFullDescription = isRenderableDescription(effectiveValue.description)
+
+  // Subtab routing — the top bar renders the strip (Overview /
+  // Description / Certs) and writes `?tab=` on click. We read it
+  // here and pick the right slice of content below. Matches the
+  // cert detail's pattern.
+  const searchParams = useSearchParams()
+  const tabParam = searchParams?.get("tab") ?? "overview"
+  const activeTab: "overview" | "description" | "certs" =
+    tabParam === "description" || tabParam === "certs" ? tabParam : "overview"
 
   // Image resolution order:
   //   1. In-flight preview (object URL — atproto PDSes don't serve a
@@ -675,94 +685,120 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
           ) : null}
         </div>
 
-        {editing ? (
-          <div className="project-detail__prose">
-            {preserveDescription ? (
-              <div className="project-detail__desc-preserve">
-                <p>
-                  This project&rsquo;s description is hosted on an external
-                  record. Editing here will replace the link with new content.
-                </p>
-                <button
-                  type="button"
-                  className="project-detail__desc-preserve-cta"
-                  onClick={() => {
-                    setPreserveDescription(false)
-                    setDrafts((d) => ({ ...d, description: null }))
-                  }}
-                >
-                  Edit anyway
-                </button>
-              </div>
-            ) : (
-              <LeafletEditor
-                value={drafts.description}
-                onChange={(next) =>
-                  setDrafts((d) => ({ ...d, description: next }))
-                }
-                placeholder="A long description of this project."
-                ariaLabel="Project description"
+        {activeTab === "overview" ? (
+          hasAnyMeta ? (
+            <aside
+              className="project-detail__meta"
+              aria-label="Project details"
+            >
+              {createdAt ? (
+                <div className="project-detail__meta-row">
+                  <span className="project-detail__meta-label">Created</span>
+                  <span className="project-detail__meta-value">
+                    <time dateTime={createdAt}>
+                      {formatShortDate(createdAt)}
+                    </time>
+                  </span>
+                </div>
+              ) : null}
+
+              {timePeriodLabel ? (
+                <div className="project-detail__meta-row">
+                  <span className="project-detail__meta-label">
+                    Time period
+                  </span>
+                  <span className="project-detail__meta-value">
+                    {timePeriodLabel}
+                  </span>
+                </div>
+              ) : null}
+
+              {location ? (
+                <div className="project-detail__meta-row">
+                  <span className="project-detail__meta-label">Location</span>
+                  <span className="project-detail__meta-value">{location}</span>
+                </div>
+              ) : null}
+
+              {contributors.length > 0 ? (
+                <div className="project-detail__meta-row project-detail__meta-row--wide">
+                  <span className="project-detail__meta-label">
+                    Contributors
+                  </span>
+                  <ul className="project-detail__contributors">
+                    {contributors.map((c, i) => (
+                      <ActivityContributor
+                        key={contributorKey(c, i)}
+                        contributor={c}
+                        role={contributionRoleText(c.contributionDetails)}
+                        weight={c.contributionWeight ?? null}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </aside>
+          ) : (
+            <p className="project-detail__tab-empty">
+              No additional details yet for this project.
+            </p>
+          )
+        ) : null}
+
+        {activeTab === "description" ? (
+          editing ? (
+            <div className="project-detail__prose">
+              {preserveDescription ? (
+                <div className="project-detail__desc-preserve">
+                  <p>
+                    This project&rsquo;s description is hosted on an external
+                    record. Editing here will replace the link with new
+                    content.
+                  </p>
+                  <button
+                    type="button"
+                    className="project-detail__desc-preserve-cta"
+                    onClick={() => {
+                      setPreserveDescription(false)
+                      setDrafts((d) => ({ ...d, description: null }))
+                    }}
+                  >
+                    Edit anyway
+                  </button>
+                </div>
+              ) : (
+                <LeafletEditor
+                  value={drafts.description}
+                  onChange={(next) =>
+                    setDrafts((d) => ({ ...d, description: next }))
+                  }
+                  placeholder="A long description of this project."
+                  ariaLabel="Project description"
+                  did={did}
+                  onImageUpload={(file) =>
+                    uploadBlob(
+                      file,
+                      editTargetDid ? { targetDid: editTargetDid } : undefined,
+                    )
+                  }
+                />
+              )}
+            </div>
+          ) : showFullDescription ? (
+            <div className="project-detail__prose">
+              <LeafletDocument
+                value={effectiveValue.description}
                 did={did}
-                onImageUpload={(file) =>
-                  uploadBlob(
-                    file,
-                    editTargetDid ? { targetDid: editTargetDid } : undefined,
-                  )
-                }
               />
-            )}
-          </div>
-        ) : showFullDescription ? (
-          <div className="project-detail__prose">
-            <LeafletDocument value={effectiveValue.description} did={did} />
-          </div>
+            </div>
+          ) : (
+            <p className="project-detail__tab-empty">
+              No description has been added yet.
+            </p>
+          )
         ) : null}
 
-        {hasAnyMeta ? (
-          <aside className="project-detail__meta" aria-label="Project details">
-            {createdAt ? (
-              <div className="project-detail__meta-row">
-                <span className="project-detail__meta-label">Created</span>
-                <span className="project-detail__meta-value">
-                  <time dateTime={createdAt}>{formatShortDate(createdAt)}</time>
-                </span>
-              </div>
-            ) : null}
-
-            {timePeriodLabel ? (
-              <div className="project-detail__meta-row">
-                <span className="project-detail__meta-label">Time period</span>
-                <span className="project-detail__meta-value">
-                  {timePeriodLabel}
-                </span>
-              </div>
-            ) : null}
-
-            {location ? (
-              <div className="project-detail__meta-row">
-                <span className="project-detail__meta-label">Location</span>
-                <span className="project-detail__meta-value">{location}</span>
-              </div>
-            ) : null}
-
-            {contributors.length > 0 ? (
-              <div className="project-detail__meta-row project-detail__meta-row--wide">
-                <span className="project-detail__meta-label">Contributors</span>
-                <ul className="project-detail__contributors">
-                  {contributors.map((c, i) => (
-                    <ActivityContributor
-                      key={contributorKey(c, i)}
-                      contributor={c}
-                      role={contributionRoleText(c.contributionDetails)}
-                      weight={c.contributionWeight ?? null}
-                    />
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </aside>
-        ) : null}
-
+        {activeTab === "certs" ? (
         <section className="project-detail__certs">
           <div className="project-detail__certs-header">
             <h2 className="project-detail__certs-title">Certs in this project</h2>
@@ -884,6 +920,7 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
             />
           )}
         </section>
+        ) : null}
       </article>
     </>
   )

@@ -172,6 +172,20 @@
   margin: 0 0 28px;
 }
 
+/* Per-tab empty state — used when the Overview / Description tab
+   has nothing to render (no meta, no description). Keeps each tab
+   self-explanatory rather than appearing broken. */
+.project-detail__tab-empty {
+  margin: 8px 0 24px;
+  padding: 16px;
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  background: var(--bg-elevated);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
 /* ---------- Meta strip ---------- */
 
 .project-detail__meta {

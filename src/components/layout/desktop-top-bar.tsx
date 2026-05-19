@@ -65,6 +65,15 @@ const CERT_DETAIL_TABS: { key: string; label: string }[] = [
   { key: "contributors", label: "Contributors" },
 ];
 
+/** Project detail page subtabs. Same `?tab=` URL contract as the
+ *  cert detail above — `<ProjectDetail>` reads it and switches
+ *  content. "overview" is the implicit default (no param). */
+const PROJECT_DETAIL_TABS: { key: string; label: string }[] = [
+  { key: "overview", label: "Overview" },
+  { key: "description", label: "Description" },
+  { key: "certs", label: "Certs" },
+];
+
 /**
  * Desktop chrome (≥800px).
  *
@@ -405,13 +414,16 @@ export default function DesktopTopBar() {
             <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
             Back
           </button>
-          {isOnCertDetail && pathname ? (
+          {pathname && (isOnCertDetail || isOnProjectDetail) ? (
             <nav
               className="desktop-top-bar__tabs"
               role="tablist"
-              aria-label="Cert sections"
+              aria-label={isOnCertDetail ? "Cert sections" : "Project sections"}
             >
-              {CERT_DETAIL_TABS.map((t) => {
+              {(isOnCertDetail
+                ? CERT_DETAIL_TABS
+                : PROJECT_DETAIL_TABS
+              ).map((t) => {
                 const params = new URLSearchParams(
                   searchParams?.toString() ?? "",
                 )
@@ -427,10 +439,9 @@ export default function DesktopTopBar() {
                     href={href}
                     scroll={false}
                     // Replace (not push) so switching between tabs on
-                    // the same cert doesn't pollute browser history.
-                    // The Back button then skips tab states and goes
-                    // back to wherever the user came from (the certs
-                    // feed, a profile, etc.).
+                    // the same cert / project doesn't pollute browser
+                    // history. The Back button then skips tab states
+                    // and goes back to wherever the user came from.
                     replace
                     role="tab"
                     aria-selected={isActive}
