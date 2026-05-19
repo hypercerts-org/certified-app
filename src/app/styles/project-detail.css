@@ -162,6 +162,10 @@
 
 /* ---------- Long-form description (prose) ---------- */
 
+/* Read-mode wrapper for the structured description. The actual
+   typography lives on `.leaflet-doc__*` classes inside (see
+   `leaflet.css`) so we match the cert detail page exactly — this
+   wrapper only contributes outer margin + the reading-column cap. */
 .project-detail__prose {
   margin: 0 0 28px;
   max-width: 68ch;
@@ -173,40 +177,6 @@
    and short-description textarea above it. */
 .project-detail__prose--editing {
   max-width: none;
-}
-
-.project-detail__prose p {
-  font-size: 0.9375rem;
-  line-height: 1.7;
-  color: var(--fg-primary);
-  margin: 0 0 14px;
-  word-break: break-word;
-}
-
-@media (min-width: 800px) {
-  .project-detail__prose p {
-    font-size: 1rem;
-    line-height: 1.75;
-  }
-}
-
-.project-detail__prose p:last-child {
-  margin-bottom: 0;
-}
-
-.project-detail__raw-desc {
-  margin: 0 0 28px;
-  font-size: 0.8125rem;
-  color: var(--fg-muted);
-}
-
-.project-detail__raw-desc pre {
-  font-size: 0.75rem;
-  background: var(--bg-sunken);
-  padding: 12px;
-  border-radius: 6px;
-  overflow-x: auto;
-  margin-top: 8px;
 }
 
 /* ---------- Meta strip ---------- */

@@ -9,6 +9,9 @@ import FeedLayout from "@/components/feed/feed-layout"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
 import EditBanner from "@/components/ui/edit-banner"
 import EmptyState from "@/components/ui/empty-state"
+import LeafletDocument, {
+  isRenderableDescription,
+} from "@/components/leaflet/leaflet-document"
 import LeafletEditor from "@/components/leaflet/leaflet-editor"
 import CertSearch, { type CertSearchResult } from "@/components/search/cert-search"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -38,33 +41,6 @@ interface ProjectDetailProps {
 
 function asString(v: unknown): string | null {
   return typeof v === "string" && v.length > 0 ? v : null
-}
-
-/**
- * Flatten the structured `description` (leaflet blocks) into a plain
- * paragraph string. Project records authored in this app store
- * description as `{ blocks: [{ block: { plaintext, ... } }, ...] }`;
- * any node we don't know how to render falls through to the raw
- * `<details>` block so curious users can still see the payload.
- */
-function plainDescription(value: unknown): string | null {
-  if (value == null) return null
-  if (typeof value === "string") return value.trim() ? value : null
-  if (typeof value !== "object") return null
-  const obj = value as Record<string, unknown>
-  const blocks = obj.blocks
-  if (!Array.isArray(blocks)) return null
-  const lines: string[] = []
-  for (const entry of blocks) {
-    if (!entry || typeof entry !== "object") continue
-    const block = (entry as Record<string, unknown>).block
-    if (!block || typeof block !== "object") continue
-    const plaintext = (block as Record<string, unknown>).plaintext
-    if (typeof plaintext === "string" && plaintext.trim()) {
-      lines.push(plaintext)
-    }
-  }
-  return lines.length > 0 ? lines.join("\n\n") : null
 }
 
 /** True when the existing description is present but in a shape the
@@ -227,9 +203,7 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
     "Untitled project"
 
   const shortDesc = asString(effectiveValue.shortDescription)
-  const description = plainDescription(effectiveValue.description)
-  const hasRawDescription =
-    effectiveValue.description != null && description === null
+  const showFullDescription = isRenderableDescription(effectiveValue.description)
 
   // Image resolution order:
   //   1. In-flight preview (object URL — atproto PDSes don't serve a
@@ -738,17 +712,10 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
               />
             )}
           </div>
-        ) : description ? (
+        ) : showFullDescription ? (
           <div className="project-detail__prose">
-            {description.split(/\n{2,}/).map((para, i) => (
-              <p key={i}>{para}</p>
-            ))}
+            <LeafletDocument value={effectiveValue.description} did={did} />
           </div>
-        ) : hasRawDescription ? (
-          <details className="project-detail__raw-desc">
-            <summary>Full description</summary>
-            <pre>{JSON.stringify(effectiveValue.description, null, 2)}</pre>
-          </details>
         ) : null}
 
         {hasAnyMeta ? (
