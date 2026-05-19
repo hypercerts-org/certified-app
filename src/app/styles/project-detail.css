@@ -88,6 +88,29 @@
   margin: 0 0 20px;
 }
 
+/* Left side of the bar: eyebrow above the title, stacked tight.
+   Takes the flexible width so the title can ellipsize when long
+   without pushing the actions column off-screen. */
+.project-detail__head-title-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Eyebrow — small uppercase label that gives context for what this
+   page is ("Project"). Sits flush above the title with no gap so
+   it reads as a single unit. */
+.project-detail__eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-muted);
+  line-height: 1.2;
+}
+
 .project-detail__head-actions {
   display: flex;
   align-items: center;
@@ -159,7 +182,10 @@
   line-height: 1.2;
   letter-spacing: -0.01em;
   margin: 0;
-  flex: 1 1 auto;
+  /* Constrained by the parent `.project-detail__head-title-group`'s
+     flex 1; min-width:0 + ellipsis lets long titles truncate
+     instead of pushing the actions cluster off-screen. */
+  max-width: 100%;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -479,7 +505,7 @@
    matches the in-bar title sizing now that title lives in the
    head-bar (smaller than the previous hero-style 2.5rem). */
 .project-detail__title-input {
-  flex: 1 1 auto;
+  width: 100%;
   min-width: 0;
   font-family: var(--font-headline), "Noto Serif", serif;
   font-size: 1.5rem;

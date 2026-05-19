@@ -628,24 +628,29 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
             Title editing lives here too (input replaces h1 while
             editing) so the user can rename from any tab. */}
         <header className="project-detail__head-bar">
-          {editing ? (
-            <input
-              ref={titleInputRef}
-              type="text"
-              className="project-detail__title-input"
-              value={drafts.title}
-              maxLength={800}
-              placeholder="Project title"
-              aria-label="Project title"
-              onChange={(e) =>
-                setDrafts((d) => ({ ...d, title: e.target.value }))
-              }
-            />
-          ) : (
-            <h1 className="project-detail__title" title={title}>
-              {title}
-            </h1>
-          )}
+          <div className="project-detail__head-title-group">
+            <span className="project-detail__eyebrow" aria-hidden="true">
+              Project
+            </span>
+            {editing ? (
+              <input
+                ref={titleInputRef}
+                type="text"
+                className="project-detail__title-input"
+                value={drafts.title}
+                maxLength={800}
+                placeholder="Project title"
+                aria-label="Project title"
+                onChange={(e) =>
+                  setDrafts((d) => ({ ...d, title: e.target.value }))
+                }
+              />
+            ) : (
+              <h1 className="project-detail__title" title={title}>
+                {title}
+              </h1>
+            )}
+          </div>
           <div className="project-detail__head-actions">
             <ActivityAuthor did={did} />
             {!editing && isOwner ? (
