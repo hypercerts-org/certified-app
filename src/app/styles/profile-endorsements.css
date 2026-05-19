@@ -1070,7 +1070,7 @@
 }
 
 .endorse-people-modal__reason-counter--warn {
-  color: var(--color-error);
+  color: var(--color-warning);
 }
 
 .endorse-people-modal__body {
@@ -1365,7 +1365,7 @@
 }
 
 .endorse-reason-modal__counter--warn {
-  color: var(--color-error);
+  color: var(--color-warning);
 }
 
 .endorse-reason-modal__error {
