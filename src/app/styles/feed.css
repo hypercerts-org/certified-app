@@ -1689,6 +1689,72 @@
   cursor: not-allowed;
 }
 
+/* State-aware trigger glyph (#77): when the recipient has
+   accepted or rejected an endorsement, the kebab is replaced by
+   a status-coloured checkmark / X. Click still opens the menu so
+   the user can change their mind or reset. */
+.response-menu__trigger--accepted {
+  color: var(--color-success, #2c8a3e);
+}
+
+.response-menu__trigger--rejected {
+  color: var(--color-warning, #b04a2a);
+}
+
+.response-menu__trigger--accepted:hover:not(:disabled),
+.response-menu__trigger--rejected:hover:not(:disabled) {
+  /* Keep the status colour on hover; just add background so the
+     pressable affordance is unmistakable. */
+  background: var(--overlay-weak);
+}
+
+/* Quick accept/reject buttons (#77): rendered inline when the
+   endorsement has no response yet (`state === "default"`). One
+   click writes the response — no kebab → menu → menuitem
+   indirection. Two small pill buttons side-by-side. */
+.response-menu__quick-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.response-menu__quick-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  border-radius: 999px;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.response-menu__quick-btn--accept:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-success, #2c8a3e) 12%, transparent);
+  border-color: var(--color-success, #2c8a3e);
+  color: var(--color-success, #2c8a3e);
+}
+
+.response-menu__quick-btn--reject:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-warning, #b04a2a) 12%, transparent);
+  border-color: var(--color-warning, #b04a2a);
+  color: var(--color-warning, #b04a2a);
+}
+
+.response-menu__quick-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.response-menu__quick-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .response-menu__menu {
   position: absolute;
   top: calc(100% + 4px);

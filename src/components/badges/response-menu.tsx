@@ -7,7 +7,7 @@ import {
   useState,
   type KeyboardEvent,
 } from "react"
-import { MoreHorizontal, EyeOff, Eye, RotateCcw, Undo2 } from "lucide-react"
+import { Check, Eye, EyeOff, MoreHorizontal, RotateCcw, Undo2, X } from "lucide-react"
 import {
   createResponse,
   deleteAllResponsesForAward,
@@ -264,20 +264,77 @@ export default function ResponseMenu({
           ? "Unrecognised response state"
           : "Showing on your profile (default)"
 
+  // State-aware trigger (#77):
+  //   - default: render two inline pill-buttons (Accept / Reject)
+  //     so the most-common actions are one click, not buried in a
+  //     kebab menu. The kebab disappears in this state.
+  //   - accepted / rejected: render the status as the trigger
+  //     glyph (✓ / ✕). Click opens the existing menu so the user
+  //     can flip the decision or reset.
+  //   - unknown: fall back to the kebab (something else wrote a
+  //     response we don't model; finer control via the menu).
   return (
     <div className="response-menu" aria-busy={isWriting}>
-      <button
-        ref={triggerRef}
-        type="button"
-        className="response-menu__trigger"
-        aria-haspopup="menu"
-        aria-expanded={isOpen}
-        aria-label={`Manage endorsement from ${issuerDisplayName}`}
-        onClick={() => setIsOpen((v) => !v)}
-        disabled={!ownerDid || isWriting}
-      >
-        <MoreHorizontal size={16} aria-hidden="true" />
-      </button>
+      {state === "default" ? (
+        <div
+          className="response-menu__quick-actions"
+          role="group"
+          aria-label={`Respond to endorsement from ${issuerDisplayName}`}
+        >
+          <button
+            type="button"
+            className="response-menu__quick-btn response-menu__quick-btn--accept"
+            aria-label={`Accept endorsement from ${issuerDisplayName}`}
+            title="Accept"
+            onClick={() => writeResponse("accepted")}
+            disabled={!ownerDid || isWriting}
+          >
+            <Check size={14} strokeWidth={2.25} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="response-menu__quick-btn response-menu__quick-btn--reject"
+            aria-label={`Reject endorsement from ${issuerDisplayName}`}
+            title="Reject"
+            onClick={() => writeResponse("rejected")}
+            disabled={!ownerDid || isWriting}
+          >
+            <X size={14} strokeWidth={2.25} aria-hidden="true" />
+          </button>
+        </div>
+      ) : (
+        <button
+          ref={triggerRef}
+          type="button"
+          className={`response-menu__trigger response-menu__trigger--${state}`}
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          aria-label={
+            state === "accepted"
+              ? `Endorsement from ${issuerDisplayName} accepted — change decision`
+              : state === "rejected"
+                ? `Endorsement from ${issuerDisplayName} rejected — change decision`
+                : `Manage endorsement from ${issuerDisplayName}`
+          }
+          title={
+            state === "accepted"
+              ? "Accepted"
+              : state === "rejected"
+                ? "Rejected"
+                : "Manage"
+          }
+          onClick={() => setIsOpen((v) => !v)}
+          disabled={!ownerDid || isWriting}
+        >
+          {state === "accepted" ? (
+            <Check size={14} strokeWidth={2.25} aria-hidden="true" />
+          ) : state === "rejected" ? (
+            <X size={14} strokeWidth={2.25} aria-hidden="true" />
+          ) : (
+            <MoreHorizontal size={16} aria-hidden="true" />
+          )}
+        </button>
+      )}
       {isOpen ? (
         <div
           ref={menuRef}
