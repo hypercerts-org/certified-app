@@ -14,6 +14,7 @@ import { sanitizeEmail, sanitizeHandle } from "@/lib/utils/sanitize";
 import SignInModal from "@/components/ui/sign-in-modal";
 import ProviderRedirectOverlay from "@/components/ui/provider-redirect-overlay";
 import { setOnUnauthorized } from "./fetch";
+import { clearAllDraftsForViewer } from "@/lib/utils/swap-drafts";
 import { clearSessionCache, peekSessionHandle } from "@/hooks/use-session";
 import {
   recordPreSigninLocation,
@@ -246,6 +247,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Server-side session cleanup is best-effort; the client should always
     // clear its local state even if the fetch throws.
     clearSessionCache();
+    // Purge any same-field-conflict drafts the viewer left in
+    // localStorage (issue #71). Without this, a different user
+    // signing in on the same browser would see the previous
+    // viewer's pending drafts on the "Restore draft" affordance.
+    const previousDid = did;
+    if (previousDid) {
+      clearAllDraftsForViewer(previousDid);
+    }
     setIsAuthenticated(false);
     setDid(null);
     setPdsUrl(null);
@@ -255,7 +264,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Sign out error (server-side cleanup failed):", err);
       // Local state already cleared — user is signed out client-side.
     }
-  }, []);
+  }, [did]);
 
   // Register the 401 interceptor so authFetch can clear auth state on session expiry
   useEffect(() => {

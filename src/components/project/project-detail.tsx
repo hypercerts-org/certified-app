@@ -23,6 +23,9 @@ import {
   resolveActivityImageUrl,
 } from "@/lib/atproto/activity"
 import { putProjectRecord } from "@/lib/atproto/project"
+import { InvalidSwapError } from "@/lib/atproto/repo-write"
+import { saveWithSwap } from "@/lib/atproto/save-with-swap"
+import { saveDraft } from "@/lib/utils/swap-drafts"
 import { uploadBlob, type UploadedBlob } from "@/lib/atproto/profile"
 import { asLinearDocument, isEmptyLongDescription } from "@/lib/leaflet/guards"
 import { formatShortDate } from "@/lib/utils/format-date"
@@ -47,6 +50,10 @@ interface ProjectDetailProps {
   did: string
   rkey: string
   value: CollectionValue
+  /** CID of the record at read time. Threaded into `putRecord` as
+   *  `swapRecord` so a concurrent edit in another tab can't silently
+   *  clobber this save (issue #71). */
+  cid: string
 }
 
 function asString(v: unknown): string | null {
@@ -120,7 +127,12 @@ function contributionRoleText(details: unknown): string | null {
  * `/api/groups/<did>/project` for group writes (server-pins
  * `createdAt`, `type`, `items`) or straight XRPC for own-DID writes.
  */
-export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) {
+export default function ProjectDetail({
+  did,
+  rkey,
+  value,
+  cid,
+}: ProjectDetailProps) {
   // Edit-eligibility mirrors `activity-detail.tsx:165-184`.
   const { did: sessionDid, isAuthenticated } = useAuth()
   const { activeOrg } = useOrg()
@@ -157,6 +169,16 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
   const [imageRemoved, setImageRemoved] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  /** Snapshot of the record value + CID at edit-start (the
+   *  CID-precondition baseline for swapRecord). Captured on
+   *  `handleEditClick`; consumed by the swap-aware save handler
+   *  to detect concurrent edits and decide rebase vs banner
+   *  (issue #71). */
+  const [mountSnapshot, setMountSnapshot] = useState<{
+    value: CollectionValue
+    cid: string
+  } | null>(null)
 
   /** Editable mirror of `items[]`. Initialized from the stored
    *  record on Edit-click and used as the source of truth for the
@@ -368,6 +390,10 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
     )
     setAddingCert(false)
     setOpenMenuUri(null)
+    // Capture the value + CID at edit-start as the swapRecord
+    // baseline. Save handler compares fresh server reads against
+    // this to detect same-field conflicts.
+    setMountSnapshot({ value: effectiveValue, cid })
     setPendingImageBlob(null)
     setPendingImagePreviewUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev)
@@ -481,6 +507,10 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
       setSaveError("Not authenticated")
       return
     }
+    if (!mountSnapshot) {
+      setSaveError("Edit state lost — please refresh and try again")
+      return
+    }
     setIsSaving(true)
     setSaveError(null)
     try {
@@ -491,55 +521,158 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
         asString(effectiveValue.shortDescription) ||
         ""
 
-      // Start from the server value so unedited fields (location,
-      // contributors, startDate/endDate, etc.) round-trip untouched.
-      // `items` IS now client-writable — overwrite with the draft so
-      // add/remove via the picker / per-card menu persists. The BFF
-      // route still server-pins createdAt / type and shape-validates
-      // items[] before forwarding.
-      const next: Record<string, unknown> = {
-        ...(effectiveValue as Record<string, unknown>),
+      // saveWithSwap operates on a small "user-facing" shape used
+      // for dirty-set detection (title / shortDescription /
+      // description / items). The write callback expands this to
+      // the full record by merging into a captured baseline of
+      // ALL fields the user didn't touch via this form.
+      type UserShape = {
+        title: string
+        shortDescription: string
+        description: typeof drafts.description
+        items: unknown[]
+      }
+      const userDraftsShape: UserShape = {
         title: trimmedTitle,
         shortDescription: trimmedShort,
+        description: drafts.description,
         items: draftItems,
       }
-
-      // Description: preserve strongRef when in preserve mode, drop
-      // when empty linearDocument, write linearDocument otherwise.
-      if (preserveDescription) {
-        // Leave `next.description` as the original strongRef.
-      } else if (isEmptyLongDescription(drafts.description)) {
-        delete next.description
-      } else if (drafts.description) {
-        next.description = drafts.description
+      const userSnapshotShape: UserShape = {
+        title: asString(mountSnapshot.value.title) || "",
+        shortDescription:
+          asString(mountSnapshot.value.shortDescription) || "",
+        description: (mountSnapshot.value.description ?? null) as UserShape["description"],
+        items: Array.isArray(
+          (mountSnapshot.value as Record<string, unknown>).items,
+        )
+          ? ((mountSnapshot.value as Record<string, unknown>).items as unknown[])
+          : [],
       }
 
-      // Image: explicit Remove drops both legacy `image` and current
-      // `banner`. New upload writes to `banner` (lexicon-canonical for
-      // collections — see plan A3). Existing `image` is preserved
-      // through the spread above if neither remove nor new-upload
-      // path fired.
-      if (imageRemoved) {
-        delete next.banner
-        delete next.image
-      } else if (pendingImageBlob) {
-        const imageValue: HypercertsLargeImage = {
-          $type: "org.hypercerts.defs#largeImage",
-          image: pendingImageBlob as unknown as BlobRef,
+      let nextSaved: CollectionValue | null = null
+      const result = await saveWithSwap<UserShape, UserShape>({
+        mountSnapshot: userSnapshotShape,
+        initialCid: mountSnapshot.cid,
+        drafts: userDraftsShape,
+        // On each iteration: drafts (user edits) win on touched
+        // fields; serverShape (latest read) provides the baseline
+        // for everything else in the user-facing slice.
+        computeNext: (serverShape, draftsArg) => ({
+          title: draftsArg.title,
+          shortDescription: draftsArg.shortDescription,
+          description: draftsArg.description,
+          items: draftsArg.items,
+          // serverShape unused for these 4 user-touched fields —
+          // expansion to the full record below carries forward
+          // server-side disjoint fields (location, contributors,
+          // dates) via the effectiveValue baseline at write time.
+          _server: serverShape,
+        } as unknown as UserShape),
+        write: async (next, swapRecord) => {
+          // Expand user-facing shape back to full CollectionValue
+          // by overlaying onto the most-recently-known full record.
+          // Description / image flags handled here (they don't
+          // round-trip through the user shape because they have
+          // null-vs-strongRef edge cases).
+          const built: Record<string, unknown> = {
+            ...(effectiveValue as Record<string, unknown>),
+            title: next.title,
+            shortDescription: next.shortDescription,
+            items: next.items,
+          }
+          if (preserveDescription) {
+            // Leave the original strongRef.
+          } else if (isEmptyLongDescription(next.description)) {
+            delete built.description
+          } else if (next.description) {
+            built.description = next.description
+          }
+          if (imageRemoved) {
+            delete built.banner
+            delete built.image
+          } else if (pendingImageBlob) {
+            const imageValue: HypercertsLargeImage = {
+              $type: "org.hypercerts.defs#largeImage",
+              image: pendingImageBlob as unknown as BlobRef,
+            }
+            built.banner = imageValue
+            delete built.image
+          }
+          await putProjectRecord(
+            sessionDid,
+            editTargetDid ?? sessionDid,
+            rkey,
+            built as CollectionValue,
+            { swapRecord },
+          )
+          nextSaved = built as CollectionValue
+        },
+        read: async () => {
+          // Re-read via getRecord (same path useProject uses).
+          const params = new URLSearchParams({
+            repo: did,
+            collection: "org.hypercerts.collection",
+            rkey,
+          })
+          const res = await fetch(
+            `/api/xrpc/com/atproto/repo/getRecord?${params.toString()}`,
+          )
+          if (!res.ok) throw new Error(`Re-read failed (${res.status})`)
+          const data = (await res.json()) as {
+            cid: string
+            value: CollectionValue
+          }
+          return {
+            cid: data.cid,
+            value: {
+              title: asString(data.value.title) || "",
+              shortDescription:
+                asString(data.value.shortDescription) || "",
+              description: (data.value.description ??
+                null) as UserShape["description"],
+              items: Array.isArray(
+                (data.value as Record<string, unknown>).items,
+              )
+                ? ((data.value as Record<string, unknown>).items as unknown[])
+                : [],
+            },
+          }
+        },
+      })
+
+      if (!result.ok) {
+        // Conflict or livelock — persist drafts to localStorage so
+        // the user can recover after refresh, and surface a clear
+        // error in the EditBanner. Don't throw; the save handler's
+        // catch below is for unexpected errors.
+        saveDraft(sessionDid, "org.hypercerts.collection", rkey, {
+          title: trimmedTitle,
+          shortDescription: trimmedShort,
+          description: drafts.description,
+          items: draftItems,
+        })
+        if (result.reason === "conflict") {
+          setSaveError(
+            `Someone else saved while you were editing — conflicts on ${result.conflictingFields.join(", ")}. Your draft is saved locally; refresh to see the latest version and re-apply.`,
+          )
+        } else {
+          setSaveError(
+            "Couldn't auto-merge after several retries — your draft is saved locally; refresh to see the latest version.",
+          )
         }
-        ;(next as Record<string, unknown>).banner = imageValue
-        // If a legacy `image` field exists, drop it so we don't ship
-        // two images on the same record.
-        delete (next as Record<string, unknown>).image
+        return
       }
 
-      await putProjectRecord(
-        sessionDid,
-        editTargetDid ?? sessionDid,
-        rkey,
-        next as CollectionValue,
-      )
-      setLocalValue(next as CollectionValue)
+      // Success — clear any prior conflict draft.
+      try {
+        const { clearDraft } = await import("@/lib/utils/swap-drafts")
+        clearDraft(sessionDid, "org.hypercerts.collection", rkey)
+      } catch {
+        // Non-fatal — module load shouldn't fail; if it does,
+        // a stale draft just sticks around until next conflict.
+      }
+      if (nextSaved) setLocalValue(nextSaved)
       if (pendingImagePreviewUrl) {
         // Revoke any prior local mirror before promoting the
         // pending preview, otherwise an edit→save cycle leaks the
@@ -569,18 +702,29 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
       setIsEditing(false)
       editBtnRef.current?.focus()
     } catch (err) {
-      console.error("Failed to save project:", err)
-      setSaveError(err instanceof Error ? err.message : "Failed to save project")
+      if (err instanceof InvalidSwapError) {
+        // Should be caught inside saveWithSwap, but defense-in-depth:
+        // any uncaught InvalidSwap reaches here and we surface a
+        // recoverable error rather than crash.
+        setSaveError(
+          "Someone else saved while you were editing — please refresh and try again.",
+        )
+      } else {
+        console.error("Failed to save project:", err)
+        setSaveError(err instanceof Error ? err.message : "Failed to save project")
+      }
     } finally {
       setIsSaving(false)
     }
   }, [
     rkey,
+    did,
     sessionDid,
     isAuthenticated,
     drafts,
     draftItems,
     effectiveValue,
+    mountSnapshot,
     pendingImageBlob,
     pendingImagePreviewUrl,
     editTargetDid,

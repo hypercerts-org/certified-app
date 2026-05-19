@@ -76,7 +76,12 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="project-detail-page">
-      <ProjectDetail did={project.did} rkey={rkey} value={project.value} />
+      <ProjectDetail
+        did={project.did}
+        rkey={rkey}
+        value={project.value}
+        cid={project.cid}
+      />
     </div>
   )
 }
