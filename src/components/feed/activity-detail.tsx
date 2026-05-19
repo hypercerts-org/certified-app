@@ -15,7 +15,7 @@ import {
   useContributorInfo,
   isAtprotoIdentity,
 } from "@/hooks/use-contributor-info"
-import { useContributorInformation } from "@/hooks/use-contributor-information"
+import { useContributorInformationRecord } from "@/hooks/use-contributor-information-record"
 import { useRights } from "@/hooks/use-rights"
 import { getInitials } from "@/lib/utils/initials"
 import Avatar from "@/components/ui/avatar"
@@ -729,7 +729,7 @@ function useRouteRkey(): string | null {
  *
  * Compact row for the cert detail contributors grid. Resolves the
  * contributor identity the same way `ActivityContributor` does — see
- * `useContributorInfo` / `useContributorInformation` — but renders with
+ * `useContributorInfo` / `useContributorInformationRecord` — but renders with
  * the `cert-detail__contributor-*` class set so it inherits the new
  * pill-hover styling rather than the older `activity-detail__contributor-*`
  * rules in feed.css.
@@ -768,7 +768,7 @@ function ContributorRow({ contributor, role, weight }: ContributorRowProps) {
   )
 
   const { record: contribInfo, isLoading: contribInfoLoading } =
-    useContributorInformation(strongRefUri)
+    useContributorInformationRecord(strongRefUri)
 
   const atprotoCandidate =
     inlineIdentity ??

@@ -72,7 +72,7 @@ function fetchByUri(
  * Fetch the `contributorInformation` record pointed at by a strong
  * ref URI. Returns null for non-atproto URIs or if the fetch fails.
  */
-export function useContributorInformation(uri: string | null | undefined): {
+export function useContributorInformationRecord(uri: string | null | undefined): {
   record: ContributorInformationRecord | null
   isLoading: boolean
 } {

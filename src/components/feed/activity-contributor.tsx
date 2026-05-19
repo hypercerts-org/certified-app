@@ -6,7 +6,7 @@ import {
   useContributorInfo,
   isAtprotoIdentity,
 } from "@/hooks/use-contributor-info"
-import { useContributorInformation } from "@/hooks/use-contributor-information"
+import { useContributorInformationRecord } from "@/hooks/use-contributor-information-record"
 import { getInitials } from "@/lib/utils/initials"
 import type { ActivityContributor as ActivityContributorType } from "@/lib/atproto/activity-types"
 
@@ -109,7 +109,7 @@ export default function ActivityContributor({
   // candidate and (b) fall back to its own displayName + image if
   // the identifier isn't an atproto handle/DID.
   const { record: contribInfo, isLoading: contribInfoLoading } =
-    useContributorInformation(strongRefUri)
+    useContributorInformationRecord(strongRefUri)
 
   const atprotoCandidate =
     inlineIdentity ??
