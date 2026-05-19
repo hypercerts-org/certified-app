@@ -7,7 +7,7 @@ import {
   useState,
   type KeyboardEvent,
 } from "react"
-import { Check, Eye, EyeOff, MoreHorizontal, RotateCcw, Undo2, X } from "lucide-react"
+import { Check, Eye, MoreHorizontal, RotateCcw, Undo2, X } from "lucide-react"
 import {
   createResponse,
   deleteAllResponsesForAward,
@@ -253,17 +253,6 @@ export default function ResponseMenu({
 
   const hasResponse = state === "accepted" || state === "rejected"
 
-  // Owner-only state indicator inside the kebab. The plan promised
-  // this; the implementation review flagged it missing.
-  const indicator =
-    state === "accepted"
-      ? "Showing on your profile"
-      : state === "rejected"
-        ? "Hidden from your profile"
-        : state === "unknown"
-          ? "Unrecognised response state"
-          : "Showing on your profile (default)"
-
   // State-aware trigger (#77):
   //   - default: render two inline pill-buttons (Accept / Reject)
   //     so the most-common actions are one click, not buried in a
@@ -343,9 +332,6 @@ export default function ResponseMenu({
           className="response-menu__menu"
           onKeyDown={handleMenuKey}
         >
-          <p className="response-menu__indicator" aria-hidden="true">
-            {indicator}
-          </p>
           {state === "rejected" ? (
             <button
               type="button"
@@ -365,8 +351,8 @@ export default function ResponseMenu({
               onClick={() => writeResponse("rejected")}
               disabled={isWriting}
             >
-              <EyeOff size={14} aria-hidden="true" />
-              <span>Hide from profile</span>
+              <X size={14} aria-hidden="true" />
+              <span>Reject</span>
             </button>
           )}
           {hasResponse ? (
