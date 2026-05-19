@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { ArrowRight, Award, MapPin, X } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
+import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import BannerUpload from "@/components/profile/banner-upload"
 import Map from "@/components/map/map-dynamic"
@@ -524,19 +525,39 @@ interface EndorsementPreviewRowProps {
 }
 
 function EndorsementPreviewRow({ endorsement }: EndorsementPreviewRowProps) {
-  const { info } = useAuthorInfo(endorsement.issuerDid)
-  const displayName = info?.displayName || info?.handle || endorsement.issuerDid
-  const initials = getInitials(info?.displayName, endorsement.issuerDid)
-  const href = `/profile/${encodeURIComponent(info?.handle || endorsement.issuerDid)}`
+  // Prefer the indexer's denormalised issuer block (magic-indexer
+  // #96 — single-query received-endorsements). Falls back to the
+  // per-row useAuthorInfo lookup when the indexer fields are null
+  // (graceful-degradation state until profile-ingestion is enabled
+  // on magic-indexer dev). Passing null to useAuthorInfo skips its
+  // /api/resolve-did fetch entirely — the rule-of-hooks-compliant
+  // way to conditionally short-circuit identity hydration.
+  const idxIssuer = endorsement.issuer
+  const skipFetch = !!idxIssuer?.handle
+  const { info } = useAuthorInfo(skipFetch ? null : endorsement.issuerDid)
+
+  const displayName =
+    idxIssuer?.displayName ||
+    info?.displayName ||
+    idxIssuer?.handle ||
+    info?.handle ||
+    endorsement.issuerDid
+  const handle = idxIssuer?.handle ?? info?.handle ?? null
+  const initials = getInitials(
+    idxIssuer?.displayName ?? info?.displayName,
+    endorsement.issuerDid,
+  )
+  const indexerAvatar = buildAvatarUrlFromCid(
+    idxIssuer?.did ?? endorsement.issuerDid,
+    idxIssuer?.avatarCid,
+  )
+  const avatarSrc = indexerAvatar || info?.avatarUrl || undefined
+  const href = `/profile/${encodeURIComponent(handle || endorsement.issuerDid)}`
 
   return (
     <li className="profile-overview__endorse-item">
       <Link href={href} className="profile-overview__endorse-link">
-        <Avatar
-          size="sm"
-          src={info?.avatarUrl || undefined}
-          fallbackInitials={initials}
-        />
+        <Avatar size="sm" src={avatarSrc} fallbackInitials={initials} />
         <span className="profile-overview__endorse-meta">
           <span className="profile-overview__endorse-name">{displayName}</span>
           <span className="profile-overview__endorse-when">

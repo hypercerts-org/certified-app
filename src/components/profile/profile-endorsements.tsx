@@ -19,6 +19,7 @@ import {
 } from "@/hooks/use-received-endorsements"
 import { useOwnResponseStates } from "@/hooks/use-own-response-states"
 import { useAuthorInfo, type AuthorInfo } from "@/hooks/use-author-info"
+import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 import { useAuth } from "@/lib/auth/auth-context"
 import { authFetch } from "@/lib/auth/fetch"
 import {
@@ -595,7 +596,35 @@ function ReceivedCard({
   allResponses: ReturnType<typeof useOwnResponseStates>["responses"]
   onAfterWrite: () => void | Promise<void>
 }) {
-  const { info, isLoading } = useAuthorInfo(endorsement.issuerDid)
+  // Prefer the indexer's denormalised issuer block (magic-indexer #96).
+  // Skip the per-row useAuthorInfo fetch when issuer.handle is
+  // populated — null passed to useAuthorInfo short-circuits its
+  // /api/resolve-did fetch (rule-of-hooks-compliant). Falls back to
+  // useAuthorInfo when the indexer hasn't ingested the actor profile
+  // yet (graceful-degradation state per #69 H1).
+  const idxIssuer = endorsement.issuer
+  const skipFetch = !!idxIssuer?.handle
+  const { info: fetched, isLoading } = useAuthorInfo(
+    skipFetch ? null : endorsement.issuerDid,
+  )
+
+  // Compose a final AuthorInfo from indexer fields (preferred) +
+  // fetched fallback. PersonCard reads `info.displayName`,
+  // `info.handle`, `info.avatarUrl` to render.
+  const indexerAvatar = buildAvatarUrlFromCid(
+    idxIssuer?.did ?? endorsement.issuerDid,
+    idxIssuer?.avatarCid,
+  )
+  const info: AuthorInfo | null =
+    idxIssuer && idxIssuer.handle
+      ? {
+          did: idxIssuer.did,
+          handle: idxIssuer.handle,
+          displayName: idxIssuer.displayName,
+          avatarUrl: indexerAvatar ?? fetched?.avatarUrl ?? null,
+        }
+      : fetched
+
   return (
     <PersonCard
       did={endorsement.issuerDid}

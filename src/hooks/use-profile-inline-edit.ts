@@ -574,6 +574,20 @@ export function useProfileInlineEdit(
     try {
       setIsSaving(true)
       setSaveError(null)
+      // TODO(#71-profile-swap): plumb swapRecord through the
+      // profile + org-marker + location writes here. Blocked on
+      // useUserProfile / useOrgMarker exposing the underlying
+      // record CIDs (they currently synthesize via /api/resolve-did
+      // which doesn't surface the CID). Once that lands:
+      //   - take `profileCid` + `orgMarkerCid` (+ `locationCid`?)
+      //     as additional UseProfileInlineEditInput fields
+      //   - capture them as the mountSnapshot at handleEditClick
+      //   - use saveWithSwap (lib/atproto/save-with-swap.ts) here
+      //     with the same hybrid C+A conflict UX as project-detail
+      //     and activity-detail.
+      // The dual-path write helpers (putProfile, putOrgMarker,
+      // putLocationRecord) already accept opts.swapRecord; only
+      // the caller wiring is missing. Tracked as a follow-up.
       await putProfile(
         sessionDid,
         next,

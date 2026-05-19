@@ -234,6 +234,31 @@ export function getAvatarUrl(
 }
 
 /**
+ * Build an avatar URL from the indexer's denormalised
+ * `(did, avatarCid)` pair. Routes through the XRPC proxy which
+ * federates to the issuer's PDS via repo resolution — same pattern
+ * `getAvatarUrl` above uses for a record-side blob ref.
+ *
+ * Used by render sites that consume an indexer payload directly
+ * (e.g. profile-endorsements / profile-overview cards reading the
+ * `issuer { avatarCid }` block from magic-indexer #96) instead of
+ * resolving via `useAuthorInfo`.
+ *
+ * `cid` is validated as alphanumeric (base32 / base58 — CIDs never
+ * contain slashes or path-traversal characters) so a compromised
+ * indexer can't inject path-traversal into the URL we mount. Round-1
+ * security review NOTE on #69 — cheap defense in depth.
+ */
+export function buildAvatarUrlFromCid(
+  did: string | null | undefined,
+  cid: string | null | undefined,
+): string | null {
+  if (!did || !cid) return null
+  if (!/^[A-Za-z0-9]+$/.test(cid)) return null
+  return `/api/xrpc/com/atproto/sync/getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`
+}
+
+/**
  * Get the URL for a profile banner
  * @param profile - The profile record
  * @param did - The DID of the user
