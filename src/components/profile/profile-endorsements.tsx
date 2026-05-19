@@ -252,7 +252,13 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
 
   return (
     <div className="profile-endorsements-v2">
-      <EndorsementLists did={did} viewerIsOwner={viewerIsOwner} />
+      {/* Lists section is owner-only — per issue #72, foreign
+          viewers don't see the list curation UI. Hides the
+          create / rename / member-add affordances + the list
+          previews themselves when viewing someone else's profile. */}
+      {viewerIsOwner ? (
+        <EndorsementLists did={did} viewerIsOwner={viewerIsOwner} />
+      ) : null}
 
       <div className="profile-endorsements-v2__toolbar">
         <nav

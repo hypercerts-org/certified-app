@@ -202,6 +202,13 @@ export async function GET(request: NextRequest) {
     const avatar = certs?.avatarUrl ?? bsky?.avatar ?? undefined
     const banner = certs?.bannerUrl ?? bsky?.banner ?? undefined
     const createdAt = certs?.createdAt
+    // True when an app.certified.actor.profile record exists with a
+    // displayName populated. Surfaced to the client so the profile
+    // sidebar / header can render the "Bluesky profile" tag only
+    // when the user has NOT authored a Certified profile (i.e. the
+    // displayName + other fields we're showing all originate from
+    // app.bsky.actor.profile). Issue #74.
+    const hasCertifiedProfile = !!certs?.displayName
 
     // Own DID: short 10s cache so repeat navigations (clicking your
     // own profile from the nav) feel instant without a network hit,
@@ -228,6 +235,7 @@ export async function GET(request: NextRequest) {
         avatar,
         banner,
         createdAt,
+        hasCertifiedProfile,
       },
       { headers: { "Cache-Control": cacheControl } }
     )

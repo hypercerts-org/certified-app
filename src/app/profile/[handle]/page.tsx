@@ -85,6 +85,7 @@ export default function UserProfilePage() {
     isOwnProfile,
     isLoading: isProfileLoading,
     error: profileError,
+    hasCertifiedProfile,
   } = useUserProfile(handleOrDid)
 
   const { isAuthenticated, did: sessionDid } = useAuth()
@@ -291,6 +292,7 @@ export default function UserProfilePage() {
           editHref={mobileEditHref}
           settingsHref={settingsHref}
           eyebrow={eyebrow}
+          hasCertifiedProfile={hasCertifiedProfile}
         />
       </div>
 
@@ -322,6 +324,7 @@ export default function UserProfilePage() {
             settingsHref={settingsHref}
             isOrg={sidebarIsOrg}
             additionalUrls={effectiveAdditionalUrls}
+            hasCertifiedProfile={hasCertifiedProfile}
             orgFoundedDate={displayFoundedDate}
             groupsOverride={isOwnProfile ? groups : undefined}
             groupsLoadingOverride={isOwnProfile ? orgGroupsLoading : undefined}

@@ -61,6 +61,12 @@ interface ProfileSidebarProps {
   isOrg?: boolean
   /** Extra org-only URLs (only consulted when `isOrg` is true). */
   additionalUrls?: string[]
+  /** True when an `app.certified.actor.profile` record with a
+   *  populated displayName exists for this profile. When false,
+   *  the data we're rendering came from `app.bsky.actor.profile`
+   *  (bsky fallback) and we surface a "Bluesky profile" tag so
+   *  the viewer knows. Issue #74. */
+  hasCertifiedProfile?: boolean
   /** Pre-formatted founded-date string. `null` when the field is empty
    *  so the sidebar can skip the row entirely. When present this row
    *  replaces the generic "Joined ..." line below. */
@@ -121,6 +127,7 @@ export default function ProfileSidebar({
   settingsHref,
   isOrg = false,
   additionalUrls,
+  hasCertifiedProfile = false,
   orgFoundedDate = null,
   groupsOverride,
   groupsLoadingOverride,
@@ -386,13 +393,16 @@ export default function ProfileSidebar({
             />
           </li>
         ) : null}
-        {isBskyHosted && handle ? (
+        {!hasCertifiedProfile && handle ? (
           <li className="profile-sidebar__bsky-row">
             {/* Tag-style chip (not a regular link) so the viewer can
                 tell at a glance that this profile's metadata is
                 imported from Bluesky rather than authored on
-                Certified. The tooltip spells out the relationship
-                explicitly for anyone hovering. */}
+                Certified. Shown when the user has NO populated
+                `app.certified.actor.profile` displayName — every
+                field rendered above (displayName / description /
+                avatar / banner) came from `app.bsky.actor.profile`
+                via the resolve-did merge. Issue #74. */}
             <a
               href={`https://bsky.app/profile/${encodeURIComponent(handle)}`}
               className="profile-sidebar__bsky-tag"

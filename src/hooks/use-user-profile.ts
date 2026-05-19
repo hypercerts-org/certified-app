@@ -34,6 +34,11 @@ export function useUserProfile(handleOrDid: string | null): {
   isOwnProfile: boolean
   isLoading: boolean
   error: string | null
+  /** True when the resolved DID has an `app.certified.actor.profile`
+   *  record with a populated displayName. Surfaces / chrome that
+   *  want to flag bsky-sourced profile data ("Bluesky profile" tag
+   *  in the sidebar / header — issue #74) read this. */
+  hasCertifiedProfile: boolean
 } {
   const { did: myDid } = useAuth()
   const [did, setDid] = useState<string | null>(null)
@@ -41,6 +46,7 @@ export function useUserProfile(handleOrDid: string | null): {
   const [profile, setProfile] = useState<CertifiedProfile | null>(null)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [bannerUrl, setBannerUrl] = useState<string | null>(null)
+  const [hasCertifiedProfile, setHasCertifiedProfile] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -86,6 +92,7 @@ export function useUserProfile(handleOrDid: string | null): {
           avatar?: string
           banner?: string
           createdAt?: string
+          hasCertifiedProfile?: boolean
         }
         if (signal.aborted) return
 
@@ -100,6 +107,7 @@ export function useUserProfile(handleOrDid: string | null): {
         })
         setAvatarUrl(data.avatar ?? null)
         setBannerUrl(data.banner ?? null)
+        setHasCertifiedProfile(!!data.hasCertifiedProfile)
       } catch (err) {
         if (signal.aborted) return
         console.error("Failed to load user profile:", err)
@@ -107,6 +115,7 @@ export function useUserProfile(handleOrDid: string | null): {
         setProfile(null)
         setAvatarUrl(null)
         setBannerUrl(null)
+        setHasCertifiedProfile(false)
       } finally {
         if (!signal.aborted) setIsLoading(false)
       }
@@ -125,5 +134,6 @@ export function useUserProfile(handleOrDid: string | null): {
     isOwnProfile: !!did && did === myDid,
     isLoading,
     error,
+    hasCertifiedProfile,
   }
 }
