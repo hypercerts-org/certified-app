@@ -40,7 +40,11 @@
    content edge so it sits at the predictable "continue reading"
    spot. Quiet underlined text — never a button. */
 .more-link-row {
-  margin: 6px 0 0;
+  /* Sits flush against the preceding paragraph (no top margin) so
+     "more" is the immediate next line under the truncated content.
+     Bottom margin creates the breathing room before whatever
+     section follows. */
+  margin: 0 0 16px;
   font-size: 0.875rem;
   text-align: right;
 }
