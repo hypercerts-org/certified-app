@@ -181,15 +181,35 @@ ${ACTIVITY_NODE_SELECTION}
     }
   `,
 
-  // Endorsement awards received by a profile DID.
+  // Endorsement awards received by a profile DID — single-query
+  // shape per hb-agent/magic-indexer#96. Three indexer-side joins
+  // collapsed in here:
+  //   - `where.badgeType` filters out non-endorsement awards
+  //     server-side (drops the previous batch query against
+  //     `appCertifiedBadgeDefinition` + the local URI-match filter).
+  //   - `issuer { ... }` denormalises the issuer's actor profile
+  //     onto each award node (drops the per-row `/api/resolve-did`
+  //     fan-out on first paint, once the operator enables
+  //     `app.bsky.actor.profile` ingestion on magic-indexer dev).
+  //   - `response { state }` carries the recipient's latest
+  //     accept/reject response (drops the parallel PDS
+  //     `listResponses` call in `useProfileResponses` for this
+  //     hot path). Ordered by sort_at DESC NULLS LAST per indexer
+  //     #26, so reset-to-default-then-accept resolves correctly.
   ReceivedEndorsements: `
     query ReceivedEndorsements($did: String!, $first: Int!, $after: String) {
       appCertifiedBadgeAward(
-        where: { subject: { eq: $did } }
+        where: { subject: { eq: $did }, badgeType: { eq: "endorsement" } }
         first: $first
         after: $after
       ) {
-        edges { node { uri cid did createdAt note badge } }
+        edges {
+          node {
+            uri cid did createdAt note badge
+            issuer { did handle displayName description avatarCid pds }
+            response { state weight createdAt }
+          }
+        }
         pageInfo { hasNextPage endCursor }
       }
     }

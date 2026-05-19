@@ -1,11 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import {
-  ENDORSEMENT_BADGE_TITLE,
-  resolveResponseState,
-} from "@/lib/atproto/badges"
-import { useProfileResponses } from "@/hooks/use-profile-responses"
 
 /**
  * One endorsement received: who endorsed me, when, and the optional
@@ -29,6 +24,25 @@ export interface ReceivedEndorsement {
    *  default "Endorsement" definition. `undefined` for default
    *  endorsements. */
   listTitle?: string
+  /** Issuer's actor profile, denormalised by the indexer (magic-indexer#96).
+   *  Render sites read directly from here when fields are populated; fall
+   *  through to `useAuthorInfo(issuerDid)` otherwise (graceful-degradation
+   *  state until the operator enables `app.bsky.actor.profile` ingestion
+   *  on magic-indexer dev — all fields except `did` will be null until
+   *  then). */
+  issuer?: {
+    did: string
+    handle: string | null
+    displayName: string | null
+    description: string | null
+    avatarCid: string | null
+    pds: string | null
+  }
+  /** Recipient's latest response to this award, joined by the indexer
+   *  through the badgeAward strongRef. `null` means "no response yet"
+   *  (the default state — equivalent to `accepted` for owner-side
+   *  rendering, "neither accepted nor rejected" for foreign viewers). */
+  responseState?: "accepted" | "rejected" | null
 }
 
 /**
@@ -48,31 +62,19 @@ export interface ReceivedEndorsement {
  */
 const INDEXER_PROXY_URL = "/api/indexer"
 
-/**
- * The indexer currently serializes the `badge` strongRef as a
- * stringified Go map literal (`"map[cid:bafy... uri:at://...]"`)
- * rather than as structured JSON. Pull the URI out with a regex
- * so we can match awards to their issuer's endorsement definitions.
- *
- * If the indexer fix ships and `badge` becomes structured JSON,
- * this helper becomes a no-op for that shape but stays for backwards
- * compatibility.
- */
-function extractBadgeDefinitionUri(badge: unknown): string | null {
-  if (!badge) return null
-  if (typeof badge === "string") {
-    // Go map literal: "map[cid:... uri:at://.../app.certified.badge.definition/...]"
-    // Stop at whitespace OR the closing `]` of the map literal — otherwise
-    // the trailing `]` leaks into the captured URI and the equality check
-    // against the real definition URI silently fails.
-    const m = badge.match(/uri:(at:\/\/[^\s\]]+)/)
-    return m?.[1] ?? null
-  }
-  if (typeof badge === "object" && "uri" in badge) {
-    const uri = (badge as { uri?: unknown }).uri
-    return typeof uri === "string" ? uri : null
-  }
-  return null
+interface IndexerIssuerBlock {
+  did?: string | null
+  handle?: string | null
+  displayName?: string | null
+  description?: string | null
+  avatarCid?: string | null
+  pds?: string | null
+}
+
+interface IndexerResponseBlock {
+  state?: string | null
+  weight?: string | null
+  createdAt?: string | null
 }
 
 interface IndexerAwardNode {
@@ -82,6 +84,8 @@ interface IndexerAwardNode {
   createdAt: string
   note?: string
   badge: unknown
+  issuer?: IndexerIssuerBlock | null
+  response?: IndexerResponseBlock | null
 }
 
 async function fetchReceivedAwardsFromIndexer(
@@ -123,72 +127,27 @@ async function fetchReceivedAwardsFromIndexer(
 }
 
 /**
- * Single indexer query for every endorsement-typed definition URI
- * across the given set of issuer DIDs. Replaces what used to be a
- * per-issuer PDS `listDefinitions` fan-out — that path serialised at
- * the slowest issuer PDS in the set and was the dominant latency on
- * the Endorsements tab. The indexer already maintains
- * `appCertifiedBadgeDefinition` with `did: { in: [...] }` +
- * `badgeType: { eq: ... }` filters (see #65), so one round-trip
- * answers the "which of these issuers' definitions are
- * endorsement-typed?" question for the whole batch.
+ * Run the scan in ONE indexer call. Replaces the previous
+ * two-query (awards + definitions) pattern + PDS `listResponses`
+ * join with the magic-indexer#96 single-query shape:
  *
- * Returns a Set of definition URIs.
- */
-async function fetchEndorsementDefMapForIssuers(
-  issuerDids: string[],
-  signal?: AbortSignal,
-): Promise<Map<string, string>> {
-  if (issuerDids.length === 0) return new Map()
-  // Query string lives server-side in `OPERATIONS.EndorsementDefs`
-  // (`src/app/api/indexer/route.ts`); the `first` param is clamped
-  // server-side, we pass it explicitly for clarity.
-  const res = await fetch(INDEXER_PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      operationName: "EndorsementDefs",
-      variables: { dids: issuerDids, first: 1000 },
-    }),
-    signal,
-  })
-  if (!res.ok) {
-    throw new Error(`Indexer definition query failed: ${res.status}`)
-  }
-  const json = (await res.json()) as {
-    data?: {
-      appCertifiedBadgeDefinition?: {
-        edges: { node: { uri: string; title: string | null } | null }[]
-      } | null
-    } | null
-    errors?: { message: string }[]
-  }
-  if (json.errors && json.errors.length > 0) {
-    throw new Error(json.errors[0].message)
-  }
-  const edges = json.data?.appCertifiedBadgeDefinition?.edges ?? []
-  const out = new Map<string, string>()
-  for (const e of edges) {
-    if (e.node?.uri) out.set(e.node.uri, e.node.title ?? "")
-  }
-  return out
-}
-
-/**
- * Run the scan in TWO indexer calls — no PDS fan-out.
+ *   - `where.badgeType = "endorsement"` filters out non-endorsement
+ *     awards server-side (collapses the previous batch query
+ *     against `appCertifiedBadgeDefinition` + local URI filter).
+ *   - `issuer { ... }` block carries the issuer's actor profile
+ *     inline (drops the per-row `useAuthorInfo` on first paint
+ *     once the operator enables profile-ingestion on the indexer).
+ *   - `response { state }` carries the recipient's latest accept/
+ *     reject state (drops the parallel PDS `listResponses` call
+ *     for this hot path).
  *
- *   1. Pull every badge.award whose subject is the profile DID.
- *   2. Pull every endorsement-typed badge.definition for the unique
- *      issuers in those awards (one batch query via
- *      `did: { in: [...] }` + `badgeType: { eq: "endorsement" }`).
- *   3. Locally filter awards to those whose badge ref points at one
- *      of the endorsement-typed definition URIs.
- *
- * Replaces the previous per-issuer PDS `listDefinitions` fan-out,
- * which serialised at the slowest issuer's PDS (~200ms × N issuers)
- * and was the dominant latency on the Endorsements tab. The proper
- * one-round-trip fix would be a nested-where on awards — see the
- * companion `hb-agent/magic-indexer` issue.
+ * `listTitle` is intentionally NOT recovered from this path — it
+ * required the previous EndorsementDefs query to look up the
+ * definition's title. The indexer should expose this on the
+ * `badge` join in a future ticket; until then, list-typed
+ * endorsements render under the default treatment (no list-name
+ * pill). Acceptable for v1 since the default `"Endorsement"` def
+ * never had a pill anyway, and list-typed endorsements are rare.
  */
 async function scanReceivedEndorsements(
   profileDid: string,
@@ -197,38 +156,50 @@ async function scanReceivedEndorsements(
   const awards = await fetchReceivedAwardsFromIndexer(profileDid, signal)
   if (signal?.aborted) return []
 
-  // Collect every unique issuer that also has a parseable badge ref
-  // — there's no point fetching definitions for an award we'd skip
-  // anyway because we couldn't extract its definition URI.
-  const uniqueIssuers = new Set<string>()
-  for (const a of awards) {
-    if (extractBadgeDefinitionUri(a.badge)) uniqueIssuers.add(a.did)
-  }
-
-  const endorsementDefs = await fetchEndorsementDefMapForIssuers(
-    Array.from(uniqueIssuers),
-    signal,
-  )
-  if (signal?.aborted) return []
-
   const out: ReceivedEndorsement[] = []
   for (const a of awards) {
-    const defUri = extractBadgeDefinitionUri(a.badge)
-    if (!defUri) continue
-    if (!endorsementDefs.has(defUri)) continue
-    const title = endorsementDefs.get(defUri)
-    // Surface the list title only when it's NOT the reserved default
-    // ("Endorsement") — otherwise the card would tag every regular
-    // endorsement with "Endorsement", which is noise.
-    const listTitle =
-      title && title !== ENDORSEMENT_BADGE_TITLE ? title : undefined
+    // Map the issuer block conservatively. The indexer returns
+    // `null` for handle / displayName / etc. when profile-ingestion
+    // hasn't run on this DID yet (operator action item per
+    // magic-indexer#96 README). Render sites fall back to
+    // `useAuthorInfo` in that case.
+    const issuer = a.issuer
+      ? {
+          did: typeof a.issuer.did === "string" ? a.issuer.did : a.did,
+          handle:
+            typeof a.issuer.handle === "string" ? a.issuer.handle : null,
+          displayName:
+            typeof a.issuer.displayName === "string"
+              ? a.issuer.displayName
+              : null,
+          description:
+            typeof a.issuer.description === "string"
+              ? a.issuer.description
+              : null,
+          avatarCid:
+            typeof a.issuer.avatarCid === "string"
+              ? a.issuer.avatarCid
+              : null,
+          pds: typeof a.issuer.pds === "string" ? a.issuer.pds : null,
+        }
+      : undefined
+
+    // Response state — only surface known values; the lexicon
+    // declares `accepted | rejected` as knownValues. Anything else
+    // (including null / undefined / unknown future values) maps
+    // to `null` ("no response yet" — the default state).
+    const rawState = a.response?.state
+    const responseState: "accepted" | "rejected" | null =
+      rawState === "accepted" || rawState === "rejected" ? rawState : null
+
     out.push({
       uri: a.uri,
       cid: a.cid,
       issuerDid: a.did,
       createdAt: a.createdAt,
       note: a.note,
-      listTitle,
+      issuer,
+      responseState,
     })
   }
 
@@ -371,32 +342,29 @@ export function useReceivedEndorsements(
     return () => window.removeEventListener("focus", onFocus)
   }, [doScan])
 
-  // Response join: fetch the profile-OWNER's responses (their PDS).
-  // The R1 reviewer flagged "viewer's responses" as a federation bug
-  // — when viewing Alice's profile we need Alice's responses, not
-  // ours. The hook contract bakes the fix in by sharing the same
-  // profileDid across both fetches.
-  const { responses, isLoading: respLoading } = useProfileResponses(profileDid)
-
   // Filter out awards whose latest response is "rejected" — unless
   // the caller opted into seeing rejected entries (owner-side
-  // surfaces). Default and unknown states pass through (default =
-  // un-responded; unknown = a response value we don't recognise,
-  // treated as no-op so we never silently hide on an unrecognised
-  // value).
+  // surfaces with "Show only rejected" / "Show all"). The response
+  // state is now joined by the indexer (magic-indexer#96) onto each
+  // award node, so we read it directly from the scan result — no
+  // separate PDS `listResponses` round-trip needed (the previous
+  // path used `useProfileResponses`, dropped here).
+  //
+  // Privacy note: the indexer's `response.state` is delivered to
+  // every viewer (including non-owners), preserving today's contract
+  // of "client-side filter rejected for non-owner views." Strong
+  // privacy (rejected awards never leaving the indexer for non-owner
+  // viewers) would require authenticated indexer queries — out of
+  // scope per the round-1 review B5 resolution.
   const includeRejected = opts?.includeRejected ?? false
   const endorsements = useMemo(() => {
     if (includeRejected) return scanResult
-    if (responses.length === 0) return scanResult
-    return scanResult.filter((e) => {
-      const { state } = resolveResponseState(e.uri, responses)
-      return state !== "rejected"
-    })
-  }, [scanResult, responses, includeRejected])
+    return scanResult.filter((e) => e.responseState !== "rejected")
+  }, [scanResult, includeRejected])
 
   return {
     endorsements,
-    isLoading: scanLoading || respLoading,
+    isLoading: scanLoading,
     error,
   }
 }
