@@ -121,6 +121,22 @@
 
 .project-detail__head-actions .feed-card__author {
   margin: 0;
+  /* Hover state for the byline in the head bar — tint the whole
+     pill instead of underlining the display name (which is what
+     `.feed-card__author:hover .feed-card__author-name` does on
+     the home feed). Padding+radius give the background a button-
+     like shape; the override below kills the name underline. */
+  padding: 4px 6px;
+  border-radius: var(--radius);
+  transition: background var(--transition-fast);
+}
+
+.project-detail__head-actions .feed-card__author:hover {
+  background: var(--overlay-weak);
+}
+
+.project-detail__head-actions .feed-card__author:hover .feed-card__author-name {
+  text-decoration: none;
 }
 
 /* ---------- Hero banner ---------- */
