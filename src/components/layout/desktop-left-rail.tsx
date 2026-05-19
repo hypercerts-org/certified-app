@@ -3,6 +3,7 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Search,
@@ -240,12 +241,13 @@ export default function DesktopLeftRail() {
           <Brandmark size={28} className="left-rail__brand-mark" />
         </span>
         <span className="left-rail__brand-wordmark">
-          <img
+          <Image
             src="/brand/wordmark/certified_wordmark_black.svg"
             alt="Certified"
             className="left-rail__brand-wordmark-img"
             width={125}
             height={24}
+            priority
           />
         </span>
       </Link>

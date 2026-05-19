@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { ChevronDown } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import ActivityFeed from "@/components/feed/activity-feed";
@@ -241,13 +242,17 @@ function EvaluatorCheckbox({
         className="feed-evaluators__checkbox"
       />
       {avatarUrl ? (
-        <img
+        <Image
           src={avatarUrl}
           alt=""
           className="feed-evaluators__avatar"
           width={24}
           height={24}
           onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          // unoptimized: avatarUrl comes from a foreign blob source
+          // (Bluesky CDN / foreign PDS) not covered by
+          // next.config.ts remotePatterns.
+          unoptimized
         />
       ) : (
         <span className="feed-evaluators__avatar feed-evaluators__avatar--placeholder" />
