@@ -16,7 +16,7 @@ import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
 import AccountSwitcherList from "./account-switcher-list";
 import Brandmark from "@/components/ui/brandmark";
-import PeopleSearch from "@/components/search/people-search";
+import GlobalSearch from "@/components/search/global-search";
 
 const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
 
@@ -296,7 +296,7 @@ export default function DesktopTopBar() {
 
         <div className="desktop-top-bar__right">
           <div className="desktop-top-bar__search">
-            <PeopleSearch placeholder="Search people" />
+            <GlobalSearch placeholder="Search people and certs" />
           </div>
 
           <Link
