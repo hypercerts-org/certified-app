@@ -296,7 +296,7 @@ export default function DesktopTopBar() {
 
         <div className="desktop-top-bar__right">
           <div className="desktop-top-bar__search">
-            <GlobalSearch placeholder="Search people and certs" />
+            <GlobalSearch placeholder="Search Certified" />
           </div>
 
           <Link

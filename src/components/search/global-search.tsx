@@ -58,7 +58,7 @@ const CERTS_LIMIT = 6
  */
 export default function GlobalSearch({
   className = "",
-  placeholder = "Search people and certs",
+  placeholder = "Search Certified",
   autoFocus = false,
 }: GlobalSearchProps) {
   const router = useRouter()
@@ -309,10 +309,6 @@ export default function GlobalSearch({
     liveStatus = `${rows.length} result${rows.length === 1 ? "" : "s"}`
   else if (query.trim()) liveStatus = "No results"
 
-  // Index where the cert section begins, so we can insert a header
-  // between People and Certs at the right spot. -1 means no certs.
-  const certsStart = people.length
-
   return (
     <div
       ref={containerRef}
@@ -379,6 +375,10 @@ export default function GlobalSearch({
             </li>
           )}
 
+          {/* People section — header + person rows. Both the header
+              and the rows are conditional on people.length so we
+              don't render an empty "People" header when only certs
+              came back. */}
           {people.length > 0 ? (
             <li
               className="cert-search__group-header"
@@ -388,35 +388,45 @@ export default function GlobalSearch({
               People
             </li>
           ) : null}
+          {people.map((actor, i) => (
+            <PersonRowItem
+              key={`p-${actor.did}`}
+              actor={actor}
+              index={i}
+              highlighted={i === highlight}
+              onHover={() => setHighlight(i)}
+              onSelect={() => select({ kind: "person", actor })}
+            />
+          ))}
 
-          {rows.map((row, i) =>
-            row.kind === "person" ? (
-              <PersonRowItem
-                key={`p-${row.actor.did}`}
-                actor={row.actor}
-                index={i}
-                highlighted={i === highlight}
-                showCertHeader={
-                  i === certsStart && certs.length > 0 && people.length > 0
-                }
-                onHover={() => setHighlight(i)}
-                onSelect={() => select(row)}
-              />
-            ) : (
+          {/* Certs section — same shape. Header + cert rows, both
+              conditional on certs.length. */}
+          {certs.length > 0 ? (
+            <li
+              className="cert-search__group-header"
+              role="presentation"
+              aria-hidden="true"
+            >
+              Certs
+            </li>
+          ) : null}
+          {certs.map((row, i) => {
+            // Continue the flat-list highlight index past the
+            // people section so arrow-key nav matches the visual
+            // row order.
+            const flatIndex = people.length + i
+            return (
               <CertRowItem
                 key={`c-${row.record.uri}`}
                 record={row.record}
                 did={row.did}
-                index={i}
-                highlighted={i === highlight}
-                showCertHeader={
-                  i === certsStart && certs.length > 0 && people.length === 0
-                }
-                onHover={() => setHighlight(i)}
+                index={flatIndex}
+                highlighted={flatIndex === highlight}
+                onHover={() => setHighlight(flatIndex)}
                 onSelect={() => select(row)}
               />
-            ),
-          )}
+            )
+          })}
         </ul>
       )}
     </div>
@@ -433,7 +443,6 @@ interface PersonRowProps {
   actor: Actor
   index: number
   highlighted: boolean
-  showCertHeader: boolean
   onHover: () => void
   onSelect: () => void
 }
@@ -480,7 +489,6 @@ interface CertRowProps {
   did: string
   index: number
   highlighted: boolean
-  showCertHeader: boolean
   onHover: () => void
   onSelect: () => void
 }
@@ -490,7 +498,6 @@ function CertRowItem({
   did,
   index,
   highlighted,
-  showCertHeader,
   onHover,
   onSelect,
 }: CertRowProps) {
@@ -502,16 +509,6 @@ function CertRowItem({
   const handle = info?.handle ?? null
 
   return (
-    <>
-      {showCertHeader ? (
-        <li
-          className="cert-search__group-header"
-          role="presentation"
-          aria-hidden="true"
-        >
-          Certs
-        </li>
-      ) : null}
       <li
         id={`global-search-option-${index}`}
         role="option"
@@ -549,6 +546,5 @@ function CertRowItem({
           ) : null}
         </div>
       </li>
-    </>
   )
 }
