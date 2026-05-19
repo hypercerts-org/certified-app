@@ -623,6 +623,34 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
       ) : null}
 
       <article className="project-detail project-detail--wide">
+        {activeTab !== "overview" ? (
+          /* Compact header for Description / Certs tabs — banner +
+             short description are hidden so the tab content gets
+             the page real estate. The byline and title share one
+             inline row, with the Edit affordance at the far right.
+             Title / banner / short-description editing all happen
+             via the Overview tab. */
+          <header className="project-detail__compact-head">
+            <ActivityAuthor did={did} />
+            <h1 className="project-detail__compact-title" title={title}>
+              {title}
+            </h1>
+            {!editing && isOwner ? (
+              <button
+                ref={editBtnRef}
+                type="button"
+                className="project-detail__edit-btn"
+                aria-label="Edit project"
+                title="Edit project"
+                onClick={handleEditClick}
+              >
+                <Pencil size={14} strokeWidth={1.75} aria-hidden />
+                Edit
+              </button>
+            ) : null}
+          </header>
+        ) : (
+          <>
         <header className="project-detail__byline">
           <ActivityAuthor did={did} />
         </header>
@@ -721,11 +749,13 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
           descriptionHref ? (
             <p className="project-detail__lead-more">
               <Link href={descriptionHref} replace>
-                more →
+                more
               </Link>
             </p>
           ) : null}
         </div>
+          </>
+        )}
 
         {activeTab === "overview" ? (
           <>

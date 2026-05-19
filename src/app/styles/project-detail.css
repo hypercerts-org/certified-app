@@ -76,6 +76,49 @@
   margin: 0 0 16px;
 }
 
+/* Compact header — used on Description / Certs tabs. Single inline
+   row: byline + project title + Edit button. The full-bleed hero
+   banner and short description are dropped on those tabs so the
+   tab content (long description / certs grid) gets the page real
+   estate. Title / banner / short-description editing is handled
+   on the Overview tab. */
+.project-detail__compact-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 0 0 20px;
+}
+
+.project-detail__compact-head .feed-card__author {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.project-detail__compact-title {
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  line-height: 1.25;
+  letter-spacing: -0.005em;
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 800px) {
+  .project-detail__compact-title {
+    font-size: 1.5rem;
+  }
+}
+
+.project-detail__compact-head .project-detail__edit-btn {
+  flex: 0 0 auto;
+}
+
 /* ---------- Hero banner ---------- */
 
 .project-detail__hero {
