@@ -74,7 +74,11 @@ export default function ActivityDetailPage() {
 
   return (
     <div className="cert-detail-page">
-      <ActivityDetail did={activity.did} value={activity.value} />
+      <ActivityDetail
+        did={activity.did}
+        value={activity.value}
+        cid={activity.cid}
+      />
     </div>
   )
 }

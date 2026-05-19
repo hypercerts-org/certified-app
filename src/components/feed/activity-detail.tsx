@@ -33,6 +33,9 @@ import {
   type UploadedBlob,
 } from "@/lib/atproto/profile"
 import { putCertRecord } from "@/lib/atproto/cert"
+import { InvalidSwapError } from "@/lib/atproto/repo-write"
+import { saveWithSwap } from "@/lib/atproto/save-with-swap"
+import { saveDraft, clearDraft } from "@/lib/utils/swap-drafts"
 import { asLinearDocument } from "@/lib/leaflet/guards"
 import { isEmptyLongDescription } from "@/lib/leaflet/guards"
 import type { LinearDocument } from "@/lib/leaflet/types"
@@ -46,6 +49,10 @@ import type { BlobRef } from "@atproto/api"
 interface ActivityDetailProps {
   did: string
   value: ClaimActivity
+  /** CID of the record at read time. Threaded into `putRecord` as
+   *  `swapRecord` so a concurrent edit in another tab can't silently
+   *  clobber this save (issue #71). */
+  cid: string
 }
 
 /**
@@ -103,7 +110,11 @@ function formatDate(iso: string): string {
  * rule in `cert-detail.css` — scoped, so every other page keeps the
  * 600px reading cap.
  */
-export default function ActivityDetail({ did, value }: ActivityDetailProps) {
+export default function ActivityDetail({
+  did,
+  value,
+  cid,
+}: ActivityDetailProps) {
   const baseImageUrl = value.image
     ? resolveActivityImageUrl(value.image, did)
     : null
@@ -206,6 +217,15 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
   const [localImageUrl, setLocalImageUrl] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  /** Snapshot of the record value + CID at edit-start (the
+   *  CID-precondition baseline for swapRecord). Captured on
+   *  `handleEditClick`; consumed by the swap-aware save handler
+   *  to detect concurrent edits and decide rebase vs banner
+   *  (issue #71). */
+  const [mountSnapshot, setMountSnapshot] = useState<{
+    value: ClaimActivity
+    cid: string
+  } | null>(null)
 
   // Read values used everywhere a tab renders the cert: prefer the
   // local mirror (set after save) over the server-supplied `value`.
@@ -238,9 +258,13 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
       if (prev) URL.revokeObjectURL(prev)
       return null
     })
+    // Capture value + CID at edit-start as the swapRecord baseline.
+    // Save handler compares fresh server reads against this to
+    // detect same-field conflicts.
+    setMountSnapshot({ value: effectiveValue, cid })
     setSaveError(null)
     setIsEditing(true)
-  }, [effectiveValue])
+  }, [effectiveValue, cid])
 
   const handleCancelEdit = useCallback(() => {
     setIsEditing(false)
@@ -273,47 +297,122 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
       setSaveError("Not authenticated")
       return
     }
+    if (!mountSnapshot) {
+      setSaveError("Edit state lost — please refresh and try again")
+      return
+    }
     setIsSaving(true)
     setSaveError(null)
     try {
-      // Start from the server-supplied record so unedited fields
-      // (dates, contributors, work scope, rights, locations, etc.)
-      // round-trip verbatim — only the surfaces the editor exposes
-      // are mutated.
-      // `title` and `shortDescription` are required by the lexicon —
-      // keep the trimmed value (or fall back to the existing one if
-      // the user blanked the input by accident). Strip empty
-      // description so the PDS doesn't store an empty doc.
       const trimmedTitle =
         drafts.title.trim() || effectiveValue.title || ""
       const trimmedShort =
         drafts.shortDescription.trim() ||
         effectiveValue.shortDescription ||
         ""
-      const next: ClaimActivity = {
-        ...effectiveValue,
+
+      // saveWithSwap operates on a small user-facing shape for
+      // dirty-set detection. The write callback expands back to
+      // the full ClaimActivity by overlaying onto the captured
+      // `effectiveValue` baseline (carries forward dates,
+      // contributors, work scope, rights, locations).
+      type UserShape = {
+        title: string
+        shortDescription: string
+        description: typeof drafts.description
+      }
+      const userDrafts: UserShape = {
         title: trimmedTitle,
         shortDescription: trimmedShort,
+        description: drafts.description,
       }
-      if (isEmptyLongDescription(drafts.description)) {
-        delete (next as { description?: unknown }).description
-      } else if (drafts.description) {
-        next.description = drafts.description
-      }
-      if (pendingImageBlob) {
-        const imageValue: HypercertsSmallImage = {
-          $type: "org.hypercerts.defs#smallImage",
-          image: pendingImageBlob as unknown as BlobRef,
-        }
-        next.image = imageValue
+      const userMountSnapshot: UserShape = {
+        title: mountSnapshot.value.title ?? "",
+        shortDescription: mountSnapshot.value.shortDescription ?? "",
+        description: (mountSnapshot.value.description ??
+          null) as UserShape["description"],
       }
 
-      await putCertRecord(sessionDid, editTargetDid ?? sessionDid, rkey, next)
-      setLocalValue(next)
+      let nextSaved: ClaimActivity | null = null
+      const result = await saveWithSwap<UserShape, UserShape>({
+        mountSnapshot: userMountSnapshot,
+        initialCid: mountSnapshot.cid,
+        drafts: userDrafts,
+        computeNext: (_serverShape, draftsArg) => draftsArg,
+        write: async (next, swapRecord) => {
+          const built: ClaimActivity = {
+            ...effectiveValue,
+            title: next.title,
+            shortDescription: next.shortDescription,
+          }
+          if (isEmptyLongDescription(next.description)) {
+            delete (built as { description?: unknown }).description
+          } else if (next.description) {
+            built.description = next.description
+          }
+          if (pendingImageBlob) {
+            const imageValue: HypercertsSmallImage = {
+              $type: "org.hypercerts.defs#smallImage",
+              image: pendingImageBlob as unknown as BlobRef,
+            }
+            built.image = imageValue
+          }
+          await putCertRecord(
+            sessionDid,
+            editTargetDid ?? sessionDid,
+            rkey,
+            built,
+            { swapRecord },
+          )
+          nextSaved = built
+        },
+        read: async () => {
+          const params = new URLSearchParams({
+            repo: did,
+            collection: "org.hypercerts.claim.activity",
+            rkey,
+          })
+          const res = await fetch(
+            `/api/xrpc/com/atproto/repo/getRecord?${params.toString()}`,
+          )
+          if (!res.ok) throw new Error(`Re-read failed (${res.status})`)
+          const data = (await res.json()) as {
+            cid: string
+            value: ClaimActivity
+          }
+          return {
+            cid: data.cid,
+            value: {
+              title: data.value.title ?? "",
+              shortDescription: data.value.shortDescription ?? "",
+              description: (data.value.description ??
+                null) as UserShape["description"],
+            },
+          }
+        },
+      })
+
+      if (!result.ok) {
+        saveDraft(sessionDid, "org.hypercerts.claim.activity", rkey, {
+          title: trimmedTitle,
+          shortDescription: trimmedShort,
+          description: drafts.description,
+        })
+        if (result.reason === "conflict") {
+          setSaveError(
+            `Someone else saved while you were editing — conflicts on ${result.conflictingFields.join(", ")}. Your draft is saved locally; refresh and re-apply.`,
+          )
+        } else {
+          setSaveError(
+            "Couldn't auto-merge after several retries — your draft is saved locally; refresh to see the latest version.",
+          )
+        }
+        return
+      }
+
+      clearDraft(sessionDid, "org.hypercerts.claim.activity", rkey)
+      if (nextSaved) setLocalValue(nextSaved)
       if (pendingImagePreviewUrl) {
-        // Revoke the prior localImageUrl before promoting the new
-        // preview — otherwise repeated edit-then-save cycles leak
-        // blob URLs into the document for the lifetime of the page.
         setLocalImageUrl((prev) => {
           if (prev) URL.revokeObjectURL(prev)
           return pendingImagePreviewUrl
@@ -323,17 +422,25 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
       setPendingImageBlob(null)
       setIsEditing(false)
     } catch (err) {
-      console.error("Failed to save cert:", err)
-      setSaveError(err instanceof Error ? err.message : "Failed to save cert")
+      if (err instanceof InvalidSwapError) {
+        setSaveError(
+          "Someone else saved while you were editing — please refresh and try again.",
+        )
+      } else {
+        console.error("Failed to save cert:", err)
+        setSaveError(err instanceof Error ? err.message : "Failed to save cert")
+      }
     } finally {
       setIsSaving(false)
     }
   }, [
     rkey,
+    did,
     sessionDid,
     isAuthenticated,
     drafts,
     effectiveValue,
+    mountSnapshot,
     pendingImageBlob,
     pendingImagePreviewUrl,
     editTargetDid,
