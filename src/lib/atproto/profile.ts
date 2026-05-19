@@ -8,6 +8,7 @@ import {
 } from "./types";
 import { authFetch } from "@/lib/auth/fetch";
 import { extractError } from "@/lib/utils/api";
+import { writeToRepo } from "@/lib/atproto/repo-write";
 
 const COLLECTION = "app.certified.actor.profile";
 const BSKY_COLLECTION = "app.bsky.actor.profile";
@@ -81,41 +82,29 @@ export async function putProfile(
   options?: { targetDid?: string }
 ): Promise<void> {
   const targetDid = options?.targetDid ?? did;
-  // Group-profile save: route through the BFF, which proxies the write
-  // through the user's PDS to the group service. The route expects the
-  // bare profile record body (no $type wrapper — it adds the right
-  // collection / rkey on the server side).
-  if (targetDid !== did) {
-    const res = await authFetch(
-      `/api/groups/${encodeURIComponent(targetDid)}/profile`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profile),
-      }
-    );
-    if (!res.ok) {
-      throw new Error(await extractError(res, res.statusText));
-    }
-    return;
-  }
-
-  const res = await authFetch("/api/xrpc/com/atproto/repo/putRecord", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      repo: did,
-      collection: COLLECTION,
-      rkey: RKEY,
-      record: {
-        ...profile,
-        $type: "app.certified.actor.profile",
+  // Group-profile save: BFF expects the bare profile record (no
+  // $type wrapper — it adds collection/rkey/$type server-side). The
+  // own-DID XRPC path needs the wrapped record.
+  await writeToRepo<unknown>({
+    ownDid: did,
+    targetDid,
+    ownPath: {
+      url: "/api/xrpc/com/atproto/repo/putRecord",
+      method: "POST",
+      body: {
+        repo: did,
+        collection: COLLECTION,
+        rkey: RKEY,
+        record: { ...profile, $type: "app.certified.actor.profile" },
       },
-    }),
+    },
+    groupPath: {
+      url: `/api/groups/${encodeURIComponent(targetDid)}/profile`,
+      method: "PUT",
+      body: profile,
+    },
+    errorFallback: "Failed to save profile",
   });
-  if (!res.ok) {
-    throw new Error(await extractError(res, res.statusText));
-  }
 }
 
 /**

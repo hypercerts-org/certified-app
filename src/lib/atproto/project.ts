@@ -1,14 +1,13 @@
 "use client"
 
-import { authFetch } from "@/lib/auth/fetch"
-import { extractError } from "@/lib/utils/api"
+import { writeToRepo } from "@/lib/atproto/repo-write"
 import type { CollectionValue } from "@/lib/atproto/collection"
 
 const PROJECT_COLLECTION = "org.hypercerts.collection"
 
 /**
- * Write a project record (in place, by rkey). Dual-path, mirroring
- * `src/lib/atproto/cert.ts:putCertRecord`:
+ * Write a project record (in place, by rkey). Dual-path via
+ * writeToRepo, mirroring `putCertRecord`:
  *
  *   - When `targetDid === ownDid` (the user editing their own
  *     project), goes through the XRPC proxy's
@@ -36,34 +35,24 @@ export async function putProjectRecord(
   record: CollectionValue,
 ): Promise<{ uri: string; cid: string }> {
   const body = { ...record, $type: PROJECT_COLLECTION }
-
-  if (targetDid !== ownDid) {
-    const res = await authFetch(
-      `/api/groups/${encodeURIComponent(targetDid)}/project`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rkey, record: body }),
+  return writeToRepo<{ uri: string; cid: string }>({
+    ownDid,
+    targetDid,
+    ownPath: {
+      url: "/api/xrpc/com/atproto/repo/putRecord",
+      method: "POST",
+      body: {
+        repo: ownDid,
+        collection: PROJECT_COLLECTION,
+        rkey,
+        record: body,
       },
-    )
-    if (!res.ok) {
-      throw new Error(await extractError(res, "Failed to save project"))
-    }
-    return (await res.json()) as { uri: string; cid: string }
-  }
-
-  const res = await authFetch("/api/xrpc/com/atproto/repo/putRecord", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      repo: ownDid,
-      collection: PROJECT_COLLECTION,
-      rkey,
-      record: body,
-    }),
+    },
+    groupPath: {
+      url: `/api/groups/${encodeURIComponent(targetDid)}/project`,
+      method: "PUT",
+      body: { rkey, record: body },
+    },
+    errorFallback: "Failed to save project",
   })
-  if (!res.ok) {
-    throw new Error(await extractError(res, "Failed to save project"))
-  }
-  return (await res.json()) as { uri: string; cid: string }
 }

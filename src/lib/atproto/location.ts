@@ -250,7 +250,7 @@ export function osmUrl({ lat, lng }: LatLng, zoom = 14): string {
 // ====================================================================
 
 import { authFetch } from "@/lib/auth/fetch"
-import { extractError } from "@/lib/utils/api"
+import { writeToRepo } from "@/lib/atproto/repo-write"
 
 const LOCATION_COLLECTION = "app.certified.location"
 const LP_VERSION = "v0.1.0"
@@ -323,28 +323,13 @@ export async function putLocationRecord(
 ): Promise<StrongRef> {
   const record = buildLocationRecord(name, coords, options.createdAt)
 
-  // Group-target write — BFF route handles auth + repo routing.
-  if (targetDid !== ownDid) {
-    const res = await authFetch(
-      `/api/groups/${encodeURIComponent(targetDid)}/location`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rkey: options.rkey, record }),
-      },
-    )
-    if (!res.ok) {
-      throw new Error(await extractError(res, "Failed to save location"))
-    }
-    return (await res.json()) as StrongRef
-  }
-
-  // Own-repo write via the XRPC proxy. Use putRecord with a stable
-  // rkey when one's provided; createRecord otherwise.
-  const url = options.rkey
+  // Own-repo path picks createRecord vs putRecord based on whether
+  // the caller has a stable rkey. Group-repo path uses one BFF route
+  // that accepts an optional rkey and decides upstream.
+  const ownUrl = options.rkey
     ? "/api/xrpc/com/atproto/repo/putRecord"
     : "/api/xrpc/com/atproto/repo/createRecord"
-  const body = options.rkey
+  const ownBody = options.rkey
     ? {
         repo: ownDid,
         collection: LOCATION_COLLECTION,
@@ -352,15 +337,18 @@ export async function putLocationRecord(
         record,
       }
     : { repo: ownDid, collection: LOCATION_COLLECTION, record }
-  const res = await authFetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+
+  return writeToRepo<StrongRef>({
+    ownDid,
+    targetDid,
+    ownPath: { url: ownUrl, method: "POST", body: ownBody },
+    groupPath: {
+      url: `/api/groups/${encodeURIComponent(targetDid)}/location`,
+      method: "PUT",
+      body: { rkey: options.rkey, record },
+    },
+    errorFallback: "Failed to save location",
   })
-  if (!res.ok) {
-    throw new Error(await extractError(res, "Failed to save location"))
-  }
-  return (await res.json()) as StrongRef
 }
 
 /**

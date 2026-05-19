@@ -22,6 +22,7 @@
 
 import { authFetch } from "@/lib/auth/fetch"
 import { extractError } from "@/lib/utils/api"
+import { writeToRepo } from "@/lib/atproto/repo-write"
 
 export const FOLLOW_COLLECTION = "app.certified.graph.follow"
 
@@ -68,43 +69,33 @@ export async function createFollow(
   opts?: { targetDid?: string; createdAt?: string },
 ): Promise<{ uri: string; cid: string }> {
   const createdAt = opts?.createdAt ?? new Date().toISOString()
-  if (opts?.targetDid && opts.targetDid !== ownDid) {
-    const res = await authFetch(
-      `/api/groups/${encodeURIComponent(opts.targetDid)}/follow`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subjectDid, createdAt }),
+  const targetDid = opts?.targetDid ?? ownDid
+  const data = await writeToRepo<{ uri?: string; cid?: string }>({
+    ownDid,
+    targetDid,
+    ownPath: {
+      url: "/api/xrpc/com/atproto/repo/createRecord",
+      method: "POST",
+      body: {
+        repo: ownDid,
+        collection: FOLLOW_COLLECTION,
+        record: {
+          $type: FOLLOW_COLLECTION,
+          subject: subjectDid,
+          createdAt,
+        } satisfies FollowRecordValue,
       },
-    )
-    if (!res.ok) {
-      throw new Error(await extractError(res, "Failed to create follow on group"))
-    }
-    const data = (await res.json()) as { uri?: string; cid?: string }
-    if (!data.uri || !data.cid) {
-      throw new Error("createFollow: upstream returned no record reference")
-    }
-    return { uri: data.uri, cid: data.cid }
-  }
-
-  const body = {
-    repo: ownDid,
-    collection: FOLLOW_COLLECTION,
-    record: {
-      $type: FOLLOW_COLLECTION,
-      subject: subjectDid,
-      createdAt,
-    } satisfies FollowRecordValue,
-  }
-  const res = await authFetch("/api/xrpc/com/atproto/repo/createRecord", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    },
+    groupPath: {
+      url: `/api/groups/${encodeURIComponent(targetDid)}/follow`,
+      method: "POST",
+      body: { subjectDid, createdAt },
+    },
+    errorFallback:
+      targetDid !== ownDid
+        ? "Failed to create follow on group"
+        : "Failed to create follow",
   })
-  if (!res.ok) {
-    throw new Error(await extractError(res, "Failed to create follow"))
-  }
-  const data = (await res.json()) as { uri?: string; cid?: string }
   if (!data.uri || !data.cid) {
     throw new Error("createFollow: upstream returned no record reference")
   }
