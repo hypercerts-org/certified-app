@@ -135,10 +135,26 @@ describe("/api/indexer trust boundary", () => {
       expect(res.status).toBe(400)
     })
 
-    it("rejects EndorsementDefs with a non-DID in the dids array", async () => {
+    it("EndorsementDefs filters out non-DID entries silently (fail-soft)", async () => {
+      // Per #73: a single malformed DID in the input shouldn't reject
+      // the whole batch — the indexed data isn't fully under our
+      // control. readDidList now drops bad entries and forwards only
+      // valid DIDs. Returns 400 only when *nothing* valid remains
+      // (covered by the "empty dids array" test above).
       const res = await postIndexer({
         operationName: "EndorsementDefs",
         variables: { dids: ["did:plc:ok", "not-a-did"] },
+      })
+      expect(res.status).toBe(200)
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
+      // Bad entry filtered out; good entry forwarded.
+      expect(body.variables.dids).toEqual(["did:plc:ok"])
+    })
+
+    it("rejects EndorsementDefs when every entry is a non-DID", async () => {
+      const res = await postIndexer({
+        operationName: "EndorsementDefs",
+        variables: { dids: ["not-a-did", "still-not-a-did"] },
       })
       expect(res.status).toBe(400)
     })

@@ -273,12 +273,20 @@ function readDid(value: unknown): string | null {
 function readDidList(value: unknown, maxItems: number): string[] | null {
   if (!Array.isArray(value)) return null
   if (value.length === 0 || value.length > maxItems) return null
+  // Fail-soft: filter out non-DID entries silently rather than
+  // rejecting the whole batch. A single malformed DID in the
+  // indexed data (e.g. a contributor field that wasn't normalised
+  // upstream) shouldn't take out an entire Received-endorsements
+  // panel for every viewer. Issue #73 / round-2 receivers' fix.
+  // Returns null only when nothing valid remains — at that point
+  // the caller's GraphQL `where: { did: { in: [] } }` would return
+  // empty anyway, so saving a round-trip.
   const out: string[] = []
   for (const item of value) {
     const did = readDid(item)
-    if (!did) return null
-    out.push(did)
+    if (did) out.push(did)
   }
+  if (out.length === 0) return null
   return out
 }
 

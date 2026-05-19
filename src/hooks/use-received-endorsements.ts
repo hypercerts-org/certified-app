@@ -106,7 +106,22 @@ async function fetchReceivedAwardsFromIndexer(
       }),
       signal,
     })
-    if (!res.ok) throw new Error(`Indexer query failed: ${res.status}`)
+    if (!res.ok) {
+      // Surface the proxy's actual reject reason in the message —
+      // issue #73 noted that "Indexer query failed: 400" swallowed
+      // which of the three proxy 400 branches fired. Reading
+      // `body.error` puts the proxy's `{error: "..."}` string into
+      // the diagnostic so the next 400 is debuggable from the
+      // network panel + the error message alone.
+      let detail = ""
+      try {
+        const body = (await res.json()) as { error?: string }
+        if (typeof body.error === "string") detail = `: ${body.error}`
+      } catch {
+        // Body wasn't JSON — fall through to the status-only message.
+      }
+      throw new Error(`Indexer query failed: ${res.status}${detail}`)
+    }
     const json = (await res.json()) as {
       data?: {
         appCertifiedBadgeAward?: {

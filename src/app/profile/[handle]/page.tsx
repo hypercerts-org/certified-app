@@ -428,7 +428,7 @@ export default function UserProfilePage() {
                 <ProfileGroups did={did} />
               </div>
             )}
-            {activeTab === "endorsements" && (
+            {activeTab === "endorsements" && did && (
               <div
                 role="tabpanel"
                 id="tabpanel-endorsements"
