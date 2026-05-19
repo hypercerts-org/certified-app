@@ -32,6 +32,35 @@
   margin-top: 20px;
 }
 
+/* ========== "More" link ==========
+
+   Shared affordance used wherever a truncated / summarised piece
+   of content links to its full view (project / cert short
+   description → long description tab, etc.). Right-aligned to the
+   content edge so it sits at the predictable "continue reading"
+   spot. Quiet underlined text — never a button. */
+.more-link-row {
+  margin: 6px 0 0;
+  font-size: 0.875rem;
+  text-align: right;
+}
+
+.more-link {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.more-link:hover {
+  text-decoration-thickness: 2px;
+}
+
+.more-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 /* ========== Micro-interactions ========== */
 
 /* Press feedback — applied to interactive cards and buttons via utility class */

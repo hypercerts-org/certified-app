@@ -448,30 +448,29 @@ export default function ActivityDetail({ did, value }: ActivityDetailProps) {
       <section className="cert-detail__section">
         <p className="cert-detail__short-desc">
           {effectiveValue.shortDescription}
-          {showFullDescription && descriptionHref ? (
-            <>
-              {" "}
-              <Link
-                href={descriptionHref}
-                scroll={false}
-                replace
-                className="cert-detail__more-link"
-              >
-                more
-              </Link>
-            </>
-          ) : null}
         </p>
+        {showFullDescription && descriptionHref ? (
+          <p className="more-link-row">
+            <Link
+              href={descriptionHref}
+              scroll={false}
+              replace
+              className="more-link"
+            >
+              more
+            </Link>
+          </p>
+        ) : null}
       </section>
     ) : showFullDescription && descriptionHref ? (
       <section className="cert-detail__section">
-        <p className="cert-detail__short-desc">
+        <p className="more-link-row">
           <Link
             href={descriptionHref}
             scroll={false}
-            className="cert-detail__more-link"
+            className="more-link"
           >
-            Read description
+            more
           </Link>
         </p>
       </section>

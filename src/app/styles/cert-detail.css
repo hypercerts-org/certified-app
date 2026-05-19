@@ -359,23 +359,9 @@
   outline-offset: 2px;
 }
 
-/* Inline "more" link — quiet style; sits at the end of the short
-   description as natural prose continuation, no button chrome. */
-.cert-detail__more-link {
-  color: var(--fg-primary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.cert-detail__more-link:hover {
-  text-decoration-thickness: 2px;
-}
-
-.cert-detail__more-link:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
+/* "more" link below the short description — styling now lives in
+   `.more-link-row` / `.more-link` in `components.css` so the
+   project detail and cert detail share the same affordance shape. */
 
 /* ---------- Headline byline ----------
 

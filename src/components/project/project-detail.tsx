@@ -623,94 +623,31 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
       ) : null}
 
       <article className="project-detail project-detail--wide">
-        {activeTab !== "overview" ? (
-          /* Compact header for Description / Certs tabs — banner +
-             short description are hidden so the tab content gets
-             the page real estate. The byline and title share one
-             inline row, with the Edit affordance at the far right.
-             Title / banner / short-description editing all happen
-             via the Overview tab. */
-          <header className="project-detail__compact-head">
-            <ActivityAuthor did={did} />
-            <h1 className="project-detail__compact-title" title={title}>
-              {title}
-            </h1>
-            {!editing && isOwner ? (
-              <button
-                ref={editBtnRef}
-                type="button"
-                className="project-detail__edit-btn"
-                aria-label="Edit project"
-                title="Edit project"
-                onClick={handleEditClick}
-              >
-                <Pencil size={14} strokeWidth={1.75} aria-hidden />
-                Edit
-              </button>
-            ) : null}
-          </header>
-        ) : (
-          <>
-        <header className="project-detail__byline">
-          <ActivityAuthor did={did} />
-        </header>
-
-        <div
-          className={
-            editing
-              ? "project-detail__hero project-detail__hero--editing"
-              : "project-detail__hero"
-          }
-        >
-          {effectiveImageUrl && !imageFailed ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={effectiveImageUrl}
-              alt=""
-              className="project-detail__hero-img"
-              onError={() => setImageFailed(true)}
+        {/* Persistent head bar — same shape on every tab:
+              Title (left) ── Byline + Edit button (right)
+            Title editing lives here too (input replaces h1 while
+            editing) so the user can rename from any tab. */}
+        <header className="project-detail__head-bar">
+          {editing ? (
+            <input
+              ref={titleInputRef}
+              type="text"
+              className="project-detail__title-input"
+              value={drafts.title}
+              maxLength={800}
+              placeholder="Project title"
+              aria-label="Project title"
+              onChange={(e) =>
+                setDrafts((d) => ({ ...d, title: e.target.value }))
+              }
             />
           ) : (
-            <div
-              className="project-detail__hero-placeholder"
-              aria-hidden="true"
-            >
-              <FolderGit2
-                size={72}
-                strokeWidth={1.25}
-                className="project-detail__hero-placeholder-icon"
-              />
-            </div>
+            <h1 className="project-detail__title" title={title}>
+              {title}
+            </h1>
           )}
-          {editing ? (
-            <ImageEditOverlay
-              onFile={handleImageFile}
-              hasPending={!!pendingImageBlob}
-              variant="with-remove"
-              onRemove={handleImageRemove}
-              hasImage={!!effectiveImageUrl}
-            />
-          ) : null}
-        </div>
-
-        <div className="project-detail__head">
-          <div className="project-detail__head-row">
-            {editing ? (
-              <input
-                ref={titleInputRef}
-                type="text"
-                className="project-detail__title-input"
-                value={drafts.title}
-                maxLength={800}
-                placeholder="Project title"
-                aria-label="Project title"
-                onChange={(e) =>
-                  setDrafts((d) => ({ ...d, title: e.target.value }))
-                }
-              />
-            ) : (
-              <h1 className="project-detail__title">{title}</h1>
-            )}
+          <div className="project-detail__head-actions">
+            <ActivityAuthor did={did} />
             {!editing && isOwner ? (
               <button
                 ref={editBtnRef}
@@ -725,37 +662,83 @@ export default function ProjectDetail({ did, rkey, value }: ProjectDetailProps) 
               </button>
             ) : null}
           </div>
-          {editing ? (
-            <textarea
-              className="project-detail__lead-input"
-              value={drafts.shortDescription}
-              maxLength={3000}
-              placeholder="A short description (one or two lines)…"
-              aria-label="Short description"
-              onChange={(e) =>
-                setDrafts((d) => ({ ...d, shortDescription: e.target.value }))
+        </header>
+
+        {/* Overview-only: hero banner + short description + the
+            "more" link. Hidden on Description / Certs so those tabs
+            get the full page width for their content. */}
+        {activeTab === "overview" ? (
+          <>
+            <div
+              className={
+                editing
+                  ? "project-detail__hero project-detail__hero--editing"
+                  : "project-detail__hero"
               }
-              rows={2}
-            />
-          ) : shortDesc ? (
-            <p className="project-detail__lead">{shortDesc}</p>
-          ) : null}
-          {/* "more" link — only on Overview, and only when there's
-              a long description to navigate to. On the Description
-              tab the link would point at the page the user is
-              already on, so we skip it. */}
-          {activeTab === "overview" &&
-          showFullDescription &&
-          descriptionHref ? (
-            <p className="project-detail__lead-more">
-              <Link href={descriptionHref} replace>
-                more
-              </Link>
-            </p>
-          ) : null}
-        </div>
+            >
+              {effectiveImageUrl && !imageFailed ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={effectiveImageUrl}
+                  alt=""
+                  className="project-detail__hero-img"
+                  onError={() => setImageFailed(true)}
+                />
+              ) : (
+                <div
+                  className="project-detail__hero-placeholder"
+                  aria-hidden="true"
+                >
+                  <FolderGit2
+                    size={72}
+                    strokeWidth={1.25}
+                    className="project-detail__hero-placeholder-icon"
+                  />
+                </div>
+              )}
+              {editing ? (
+                <ImageEditOverlay
+                  onFile={handleImageFile}
+                  hasPending={!!pendingImageBlob}
+                  variant="with-remove"
+                  onRemove={handleImageRemove}
+                  hasImage={!!effectiveImageUrl}
+                />
+              ) : null}
+            </div>
+
+            {editing ? (
+              <textarea
+                className="project-detail__lead-input"
+                value={drafts.shortDescription}
+                maxLength={3000}
+                placeholder="A short description (one or two lines)…"
+                aria-label="Short description"
+                onChange={(e) =>
+                  setDrafts((d) => ({
+                    ...d,
+                    shortDescription: e.target.value,
+                  }))
+                }
+                rows={2}
+              />
+            ) : shortDesc ? (
+              <p className="project-detail__lead">{shortDesc}</p>
+            ) : null}
+
+            {showFullDescription && descriptionHref ? (
+              <p className="more-link-row">
+                <Link
+                  href={descriptionHref}
+                  replace
+                  className="more-link"
+                >
+                  more
+                </Link>
+              </p>
+            ) : null}
           </>
-        )}
+        ) : null}
 
         {activeTab === "overview" ? (
           <>

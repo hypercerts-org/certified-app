@@ -70,53 +70,34 @@
   line-height: 1.5;
 }
 
-/* ---------- Author byline ---------- */
+/* ---------- Persistent head bar ----------
 
-.project-detail__byline {
-  margin: 0 0 16px;
-}
+   One row, rendered on every tab. Title sits on the left, the byline
+   + Edit button cluster on the right. Title editing happens inline
+   here too (input replaces h1) so the user can rename from any tab.
+   Short description, hero banner, "more" link, and meta strip are
+   Overview-only and render BELOW this bar.
 
-/* Compact header — used on Description / Certs tabs. Single inline
-   row: byline + project title + Edit button. The full-bleed hero
-   banner and short description are dropped on those tabs so the
-   tab content (long description / certs grid) gets the page real
-   estate. Title / banner / short-description editing is handled
-   on the Overview tab. */
-.project-detail__compact-head {
+   The previous `.project-detail__byline`, `.project-detail__compact-head`,
+   `.project-detail__head`, and `.project-detail__head-row` were
+   collapsed into this single row. */
+.project-detail__head-bar {
   display: flex;
   align-items: center;
   gap: 16px;
   margin: 0 0 20px;
 }
 
-.project-detail__compact-head .feed-card__author {
+.project-detail__head-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
   flex: 0 0 auto;
+}
+
+.project-detail__head-actions .feed-card__author {
   margin: 0;
-}
-
-.project-detail__compact-title {
-  font-family: var(--font-headline), "Noto Serif", serif;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--fg-primary);
-  line-height: 1.25;
-  letter-spacing: -0.005em;
-  margin: 0;
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-@media (min-width: 800px) {
-  .project-detail__compact-title {
-    font-size: 1.5rem;
-  }
-}
-
-.project-detail__compact-head .project-detail__edit-btn {
-  flex: 0 0 auto;
 }
 
 /* ---------- Hero banner ---------- */
@@ -164,26 +145,30 @@
   opacity: 0.55;
 }
 
-/* ---------- Title block ---------- */
+/* ---------- Title (inside head-bar) ----------
 
-.project-detail__head {
-  margin: 0 0 20px;
-}
-
+   Sized to fit in the head-bar row alongside the byline; smaller
+   than the previous full-bleed hero title. Ellipsis-truncated when
+   space runs out so the byline + Edit cluster on the right keep
+   their footprint. */
 .project-detail__title {
   font-family: var(--font-headline), "Noto Serif", serif;
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: var(--fg-primary);
-  line-height: 1.15;
-  letter-spacing: -0.015em;
-  margin: 0 0 12px;
-  word-break: break-word;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (min-width: 800px) {
   .project-detail__title {
-    font-size: 2.5rem;
+    font-size: 1.75rem;
   }
 }
 
@@ -192,31 +177,9 @@
   line-height: 1.55;
   color: var(--fg-secondary);
   font-style: italic;
-  margin: 0;
+  margin: 0 0 4px;
   white-space: pre-wrap;
   word-break: break-word;
-}
-
-/* "more →" link beneath the short description on the Overview
-   tab — jumps to the Description tab. Sits in its own paragraph
-   directly under the lead and is rendered only when there's a
-   long description to navigate to. Underlined on hover so it's
-   visually distinct from the static lead text above. */
-.project-detail__lead-more {
-  margin: 6px 0 0;
-  font-size: 0.875rem;
-  line-height: 1.4;
-}
-
-.project-detail__lead-more a {
-  color: var(--fg-primary);
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.project-detail__lead-more a:hover {
-  text-decoration: underline;
-  text-underline-offset: 2px;
 }
 
 @media (min-width: 800px) {
@@ -224,6 +187,10 @@
     font-size: 1.125rem;
   }
 }
+
+/* Note: the project's "more" link is now `.more-link-row` /
+   `.more-link` (defined in components.css) — same utility the cert
+   detail uses. Right-aligned by default. */
 
 /* ---------- Long-form description (prose) ---------- */
 
@@ -477,22 +444,6 @@
   );
 }
 
-/* Head row: title (or input) + Edit button cluster. Flex so the
-   button sits inline-end of the title baseline. */
-.project-detail__head-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0 0 12px;
-}
-
-.project-detail__head-row .project-detail__title {
-  margin: 0;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
 .project-detail__edit-btn {
   display: inline-flex;
   align-items: center;
@@ -524,26 +475,28 @@
 
 /* Title + lead inputs replace the static h1 / p while editing.
    Border treatment matches the cert detail inline-edit inputs so
-   the two surfaces feel like one editor family. */
+   the two surfaces feel like one editor family. The title input
+   matches the in-bar title sizing now that title lives in the
+   head-bar (smaller than the previous hero-style 2.5rem). */
 .project-detail__title-input {
   flex: 1 1 auto;
   min-width: 0;
   font-family: var(--font-headline), "Noto Serif", serif;
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: var(--fg-primary);
-  line-height: 1.15;
-  letter-spacing: -0.015em;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
   background: var(--bg-elevated);
   border: 1.5px solid var(--border-hover);
   border-radius: var(--radius);
-  padding: 6px 12px;
+  padding: 4px 10px;
   word-break: break-word;
 }
 
 @media (min-width: 800px) {
   .project-detail__title-input {
-    font-size: 2.5rem;
+    font-size: 1.75rem;
   }
 }
 
