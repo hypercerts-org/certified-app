@@ -65,9 +65,9 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   // Close on navigation. Intentionally not dependent on onClose: the
   // parent passes an inline arrow that re-creates each render, and we
   // only want this effect to fire when the URL actually changes.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     onClose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   // Portal mount

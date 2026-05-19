@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Award, Search as SearchIcon, X } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
@@ -77,11 +77,17 @@ export default function GlobalSearch({
   const suppressNextSearchRef = useRef(false)
 
   // Flat row list used for keyboard nav. Order matches render
-  // order: People section first, then Certs.
-  const rows: Row[] = [
-    ...people.map((actor): PersonRow => ({ kind: "person", actor })),
-    ...certs,
-  ]
+  // order: People section first, then Certs. Memoised so the
+  // `onEnter` useCallback below isn't invalidated on every render —
+  // its `[rows, ...]` dep array would otherwise spawn a new identity
+  // each render, breaking downstream memoization.
+  const rows: Row[] = useMemo(
+    () => [
+      ...people.map((actor): PersonRow => ({ kind: "person", actor })),
+      ...certs,
+    ],
+    [people, certs],
+  )
 
   const search = useCallback(async (q: string, seq: number) => {
     const trimmed = q.trim()
