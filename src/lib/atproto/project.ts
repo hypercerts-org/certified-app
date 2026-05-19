@@ -33,8 +33,10 @@ export async function putProjectRecord(
   targetDid: string,
   rkey: string,
   record: CollectionValue,
+  opts?: { swapRecord?: string },
 ): Promise<{ uri: string; cid: string }> {
   const body = { ...record, $type: PROJECT_COLLECTION }
+  const swap = opts?.swapRecord
   return writeToRepo<{ uri: string; cid: string }>({
     ownDid,
     targetDid,
@@ -46,12 +48,13 @@ export async function putProjectRecord(
         collection: PROJECT_COLLECTION,
         rkey,
         record: body,
+        ...(swap ? { swapRecord: swap } : {}),
       },
     },
     groupPath: {
       url: `/api/groups/${encodeURIComponent(targetDid)}/project`,
       method: "PUT",
-      body: { rkey, record: body },
+      body: { rkey, record: body, ...(swap ? { swapRecord: swap } : {}) },
     },
     errorFallback: "Failed to save project",
   })

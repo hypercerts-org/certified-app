@@ -282,6 +282,10 @@ export interface PutLocationOptions {
   rkey?: string
   /** Preserve the original `createdAt` on updates. */
   createdAt?: string
+  /** CID of the record at read time — passed to upstream `putRecord`
+   *  as `swapRecord` for the CID-precondition write. Only meaningful
+   *  on the rkey-bound path; createRecord ignores it. */
+  swapRecord?: string
 }
 
 function buildLocationRecord(
@@ -326,6 +330,9 @@ export async function putLocationRecord(
   // Own-repo path picks createRecord vs putRecord based on whether
   // the caller has a stable rkey. Group-repo path uses one BFF route
   // that accepts an optional rkey and decides upstream.
+  // swapRecord is only meaningful on the putRecord path (rkey
+  // present) — createRecord doesn't take it.
+  const swap = options.rkey ? options.swapRecord : undefined
   const ownUrl = options.rkey
     ? "/api/xrpc/com/atproto/repo/putRecord"
     : "/api/xrpc/com/atproto/repo/createRecord"
@@ -335,6 +342,7 @@ export async function putLocationRecord(
         collection: LOCATION_COLLECTION,
         rkey: options.rkey,
         record,
+        ...(swap ? { swapRecord: swap } : {}),
       }
     : { repo: ownDid, collection: LOCATION_COLLECTION, record }
 
@@ -345,7 +353,7 @@ export async function putLocationRecord(
     groupPath: {
       url: `/api/groups/${encodeURIComponent(targetDid)}/location`,
       method: "PUT",
-      body: { rkey: options.rkey, record },
+      body: { rkey: options.rkey, record, ...(swap ? { swapRecord: swap } : {}) },
     },
     errorFallback: "Failed to save location",
   })

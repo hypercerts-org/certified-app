@@ -74,6 +74,13 @@ export async function PUT(
         { status: 400 },
       )
     }
+    // swapRecord is a putRecord envelope field — sibling of
+    // `record`, NOT inside it. Read off the raw body and forward
+    // to the upstream call. Caller passes it to enable
+    // CID-precondition writes per atproto's putRecord spec.
+    const swapRecord = typeof body.swapRecord === "string"
+      ? body.swapRecord
+      : undefined
     const rawRecord = body.record
     if (!rawRecord || typeof rawRecord !== "object") {
       return NextResponse.json(
@@ -101,6 +108,7 @@ export async function PUT(
         collection: ACTIVITY_COLLECTION,
         rkey,
         record,
+        ...(swapRecord ? { swapRecord } : {}),
       },
       { encoding: "application/json" },
     )

@@ -2,6 +2,26 @@ import { authFetch } from "@/lib/auth/fetch"
 import { extractError } from "@/lib/utils/api"
 
 /**
+ * Thrown when a `swapRecord` putRecord is rejected because the
+ * record's CID at write time differs from the CID the caller
+ * passed (i.e. someone else wrote between the caller's read and
+ * write). Per the atproto spec, the upstream PDS returns HTTP
+ * 400 with body `{error: "InvalidSwap", message: ...}` —
+ * `writeToRepo` detects that shape and re-raises as this typed
+ * error so save handlers can `instanceof`-check it.
+ *
+ * Caught by inline-edit save handlers to drive the conflict
+ * rebase + drafts banner; uncaught everywhere else (the caller
+ * should know whether they passed swapRecord). */
+export class InvalidSwapError extends Error {
+  readonly code = "InvalidSwap"
+  constructor(message = "Record was modified") {
+    super(message)
+    this.name = "InvalidSwapError"
+  }
+}
+
+/**
  * Single dual-path write seam shared by every helper that writes to a
  * repo on behalf of the viewer — `putCertRecord`, `putProjectRecord`,
  * `putLocationRecord`, `putProfile`, `putOrgMarker`, `createFollow`.
@@ -61,6 +81,34 @@ export async function writeToRepo<T>(
     body: JSON.stringify(target.body),
   })
   if (!res.ok) {
+    // Try to detect an InvalidSwap response and rethrow as the
+    // typed error before falling back to a generic Error. The XRPC
+    // proxy + the 5 group BFF routes both surface upstream PDS
+    // errors with the discriminator in `data.code` (preserved
+    // verbatim from the @atproto/api error body).
+    if (res.status === 400) {
+      try {
+        const cloned = res.clone()
+        const data = (await cloned.json()) as {
+          code?: unknown
+          error?: unknown
+          message?: unknown
+        }
+        if (data.code === "InvalidSwap" || data.error === "InvalidSwap") {
+          throw new InvalidSwapError(
+            typeof data.message === "string"
+              ? data.message
+              : typeof data.error === "string"
+              ? data.error
+              : undefined,
+          )
+        }
+      } catch (err) {
+        if (err instanceof InvalidSwapError) throw err
+        // Body wasn't JSON or didn't carry the discriminator —
+        // fall through to the generic error path below.
+      }
+    }
     throw new Error(await extractError(res, req.errorFallback))
   }
   return (await res.json()) as T

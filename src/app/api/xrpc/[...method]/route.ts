@@ -97,7 +97,11 @@ const SAME_SESSION_LIST_HEADERS = {
 } as const
 
 /** Extract a usable HTTP status + message from an unknown XRPC error. */
-function xrpcError(err: unknown): { status: number; message: string } {
+function xrpcError(err: unknown): {
+  status: number
+  message: string
+  code?: string
+} {
   if (!err || typeof err !== "object") {
     return { status: 500, message: "Internal server error" }
   }
@@ -106,15 +110,20 @@ function xrpcError(err: unknown): { status: number; message: string } {
   const status = typeof statusRaw === "number" ? statusRaw : 500
   const rawMessage = asString(e.message)
   const message = status >= 500 || !rawMessage ? "Internal server error" : rawMessage
+  // Preserve the atproto error discriminator (`InvalidSwap`,
+  // `RecordNotFound`, etc.) so the client can branch on it
+  // without re-parsing a localised human-readable string. The
+  // @atproto/api `XRPCError` carries it on `.error`.
+  const code = asString(e.error) ?? undefined
   // Server-side log so the masked-to-client message can still be diagnosed
   // from Vercel logs. Client never sees the original PDS error body.
   console.error("[xrpc] upstream error", {
     name: asString(e.name),
     status,
-    error: asString(e.error),
+    error: code,
     message: rawMessage ? redactSecrets(rawMessage) : undefined,
   })
-  return { status, message }
+  return { status, message, code }
 }
 
 /** Clamp and validate a limit query param. */
@@ -376,8 +385,11 @@ export async function GET(
         )
     }
   } catch (err: unknown) {
-    const { status, message } = xrpcError(err)
-    return NextResponse.json({ error: message }, { status })
+    const { status, message, code } = xrpcError(err)
+    return NextResponse.json(
+      code ? { error: message, code } : { error: message },
+      { status },
+    )
   }
 }
 
@@ -564,7 +576,10 @@ export async function POST(
         )
     }
   } catch (err: unknown) {
-    const { status, message } = xrpcError(err)
-    return NextResponse.json({ error: message }, { status })
+    const { status, message, code } = xrpcError(err)
+    return NextResponse.json(
+      code ? { error: message, code } : { error: message },
+      { status },
+    )
   }
 }

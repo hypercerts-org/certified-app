@@ -5,6 +5,42 @@ onto `feat/positioning-redesign` per the user's explicit choice (the
 "correct" answer is four branches off main, but the user took the
 trade-off knowingly).
 
+## Revisions after upstream changes (plan v3, 2026-05-19 evening)
+
+10+ commits landed on `feat/positioning-redesign` during the session.
+Material changes that affect the remaining plan:
+
+- **`src/lib/atproto/repo-write.ts` is now the shared seam** for the
+  six dual-path write helpers (`putCertRecord`, `putProjectRecord`,
+  `putLocationRecord`, `putProfile`, `putOrgMarker`, `createFollow`).
+  #71 doesn't need to touch the seam itself — each helper extends
+  its signature to accept `opts?: { swapRecord?: string }` and
+  includes it in BOTH `ownPath.body` and `groupPath.body` payloads.
+  Mechanical change across 5 helpers (follow uses `createRecord`,
+  not `putRecord`, so no swap).
+- **`useProfileInlineEdit` was extracted** from the profile page.
+  Centralises draft state for profile + org-marker + location edits.
+  #71's localStorage drafts + conflict banner integrate cleanly
+  here for the profile family; cert and project detail surfaces
+  retain their own save handlers (separate integration points).
+- **Vitest is bootstrapped.** Plan v2's "Manual: only" instruction
+  is revised — write Vitest unit tests for new helpers (`extractDidFromUri`,
+  `resolveCanonicalEndorsementDef`, `enforceRateLimit`, the
+  swap-aware conflict-rebase logic, the indexer response parser).
+- **Indexer proxy refactored** to server-held operations + per-op
+  variable validators (`src/app/api/indexer/route.ts:OPERATIONS`).
+  #69's new query shape is added by EDITING the `ReceivedEndorsements`
+  operation server-side (where the GraphQL string lives) — the
+  client just continues to send `operationName: "ReceivedEndorsements"`
+  with the same variables. Cleaner migration than v2 anticipated.
+- **B1 already addressed** — the rate-limit module was extended,
+  not replaced. Shipped in commits `054b117` + `e2048bf`.
+
+Implementation order remains `#71 → #69` (the original H12 swap
+still holds — #71 touches save handlers shared with #69).
+
+---
+
 ## Revisions after round-1 review
 
 Round-1 review (three lenses, see `review-round-1.md`) caught several

@@ -152,6 +152,11 @@ export async function PUT(
       )
     }
 
+    // swapRecord — putRecord envelope field, sibling of `record`.
+    const swapRecord = typeof body.swapRecord === "string"
+      ? body.swapRecord
+      : undefined
+
     const rawRecord = body.record
     if (!rawRecord || typeof rawRecord !== "object") {
       return NextResponse.json(
@@ -242,6 +247,7 @@ export async function PUT(
         collection: PROJECT_COLLECTION,
         rkey,
         record,
+        ...(swapRecord ? { swapRecord } : {}),
       },
       { encoding: "application/json" },
     )

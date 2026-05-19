@@ -79,9 +79,10 @@ export async function getBlueskyProfile(
 export async function putProfile(
   did: string,
   profile: CertifiedProfile,
-  options?: { targetDid?: string }
+  options?: { targetDid?: string; swapRecord?: string }
 ): Promise<void> {
   const targetDid = options?.targetDid ?? did;
+  const swap = options?.swapRecord;
   // Group-profile save: BFF expects the bare profile record (no
   // $type wrapper — it adds collection/rkey/$type server-side). The
   // own-DID XRPC path needs the wrapped record.
@@ -96,12 +97,18 @@ export async function putProfile(
         collection: COLLECTION,
         rkey: RKEY,
         record: { ...profile, $type: "app.certified.actor.profile" },
+        ...(swap ? { swapRecord: swap } : {}),
       },
     },
     groupPath: {
       url: `/api/groups/${encodeURIComponent(targetDid)}/profile`,
       method: "PUT",
-      body: profile,
+      // BFF route reads the profile fields via pickAllowedFields
+      // and `swapRecord` as a separate top-level key (swapRecord
+      // isn't in PROFILE_FIELDS so the allowlist filters it from
+      // the record itself — the route reads it from the raw body
+      // before allowlisting and forwards as the outer arg).
+      body: swap ? { ...profile, swapRecord: swap } : profile,
     },
     errorFallback: "Failed to save profile",
   });

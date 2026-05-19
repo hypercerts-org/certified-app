@@ -78,6 +78,13 @@ export async function PUT(
     const parsed = await parseJsonBody(request, "[groups/profile]")
     if (!parsed.ok) return parsed.response
     const body = (parsed.body ?? {}) as Record<string, unknown>
+    // Read swapRecord off the raw body BEFORE the allowlist filter —
+    // it's a top-level putRecord envelope field, not a profile-record
+    // field, so it isn't in PROFILE_FIELDS. Forwarded to the upstream
+    // call as the outer arg per the lexicon.
+    const swapRecord = typeof body.swapRecord === "string"
+      ? body.swapRecord
+      : undefined
     const record = pickAllowedFields(body, PROFILE_FIELDS, "app.certified.actor.profile")
     const groupAgent = createGroupAgent(auth.agent, groupDid)
 
@@ -90,6 +97,7 @@ export async function PUT(
         collection: "app.certified.actor.profile",
         rkey: "self",
         record,
+        ...(swapRecord ? { swapRecord } : {}),
       },
       { encoding: "application/json" }
     )

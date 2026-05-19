@@ -26,7 +26,9 @@ export async function putOrgMarker(
   ownDid: string,
   targetDid: string,
   metadata: GroupMetadata,
+  opts?: { swapRecord?: string },
 ): Promise<void> {
+  const swap = opts?.swapRecord
   await writeToRepo<unknown>({
     ownDid,
     targetDid,
@@ -41,12 +43,16 @@ export async function putOrgMarker(
           ...metadata,
           $type: ORG_MARKER_COLLECTION,
         },
+        ...(swap ? { swapRecord: swap } : {}),
       },
     },
     groupPath: {
       url: `/api/groups/${encodeURIComponent(targetDid)}/metadata`,
       method: "PUT",
-      body: metadata,
+      // metadata route allowlists known fields; swapRecord sits at
+      // the top level alongside them — same pattern as the profile
+      // route. The route reads it before pickAllowedFields strips it.
+      body: swap ? { ...metadata, swapRecord: swap } : metadata,
     },
     errorFallback: "Failed to update organization details",
   })

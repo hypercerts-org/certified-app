@@ -56,6 +56,13 @@ export async function PUT(
     if (!parsed.ok) return parsed.response
     const body = (parsed.body ?? {}) as Record<string, unknown>
     const rkey = typeof body.rkey === "string" ? body.rkey : undefined
+    // swapRecord — only meaningful on the putRecord (rkey-bound)
+    // path; createRecord doesn't take it. Ignored when rkey is
+    // absent.
+    const swapRecord =
+      rkey && typeof body.swapRecord === "string"
+        ? body.swapRecord
+        : undefined
     const rawRecord = body.record
     if (!rawRecord || typeof rawRecord !== "object") {
       return NextResponse.json(
@@ -83,6 +90,7 @@ export async function PUT(
           collection: LOCATION_COLLECTION,
           rkey,
           record,
+          ...(swapRecord ? { swapRecord } : {}),
         }
       : {
           repo: groupDid,

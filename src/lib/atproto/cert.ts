@@ -21,8 +21,10 @@ export async function putCertRecord(
   targetDid: string,
   rkey: string,
   record: ClaimActivity,
+  opts?: { swapRecord?: string },
 ): Promise<{ uri: string; cid: string }> {
   const body = { ...record, $type: ACTIVITY_COLLECTION }
+  const swap = opts?.swapRecord
   return writeToRepo<{ uri: string; cid: string }>({
     ownDid,
     targetDid,
@@ -34,12 +36,13 @@ export async function putCertRecord(
         collection: ACTIVITY_COLLECTION,
         rkey,
         record: body,
+        ...(swap ? { swapRecord: swap } : {}),
       },
     },
     groupPath: {
       url: `/api/groups/${encodeURIComponent(targetDid)}/activity`,
       method: "PUT",
-      body: { rkey, record: body },
+      body: { rkey, record: body, ...(swap ? { swapRecord: swap } : {}) },
     },
     errorFallback: "Failed to save cert",
   })
