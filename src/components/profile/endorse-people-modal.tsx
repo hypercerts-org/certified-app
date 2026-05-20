@@ -34,9 +34,9 @@ interface EndorsePeopleModalProps {
    * Per-row write callback. Called once per selected DID inside the
    * confirm loop. The default endorsements path uses this to issue a
    * regular `createEndorsementAward`; the list-detail "+ Add people"
-   * flow uses this to issue a `createListAward` against the list's
-   * own badge ref. Anything that throws marks the row as failed but
-   * doesn't break the rest of the batch.
+   * flow uses this to ensure-endorse + append the new award to the
+   * list's collection record. Anything that throws marks the row as
+   * failed but doesn't break the rest of the batch.
    */
   readonly onEndorse: (subjectDid: string, note?: string) => Promise<unknown>
   /** Modal header text. Defaults to "Endorse people". */

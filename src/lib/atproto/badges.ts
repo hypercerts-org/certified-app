@@ -326,12 +326,10 @@ async function ensureEndorsementDefinitionInner(
  * earlier `createdAt` never loses to a later one regardless of
  * which tab does the read, so concurrent readers converge.
  *
- * Stale-config concern: the default endorsement def is currently
- * minimal (`title` + `badgeType` + `createdAt`) and never mutated
- * post-create — `updateListDefinition` (`badges.ts:~340`) is only
- * used for user-created list defs, not the default endorsement one.
- * If list-style customisation ever lands on the default def, this
- * invariant flips and the choice must be revisited.
+ * Stale-config concern: the default endorsement def is minimal
+ * (`title` + `badgeType` + `createdAt`) and never mutated
+ * post-create. If list-style customisation ever lands on it the
+ * invariant flips and the canonical choice must be revisited.
  */
 function resolveCanonicalEndorsementDef(
   defs: BadgeDefinitionRecord[],
@@ -467,11 +465,9 @@ export async function listAwards(
 }
 
 /**
- * Write a badge award on `ownDid`'s repo against an arbitrary badge
- * definition. Lower-level helper: callers supply the badge strongRef
- * directly. Used by both `createEndorsementAward` (which adds a
- * lazy ensure-default-def step on top) and `createListAward` (which
- * already has the list's badge ref in hand).
+ * Write a badge award on `ownDid`'s repo against the supplied badge
+ * strongRef. Lower-level helper consumed by `createEndorsementAward`,
+ * which wraps it with the lazy ensure-default-def step.
  */
 /** Max byte length we'll allow on `note` from the client. Mirrors
  *  what the UI's character counter caps at, so writes never get

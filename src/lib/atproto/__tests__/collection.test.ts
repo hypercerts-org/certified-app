@@ -120,6 +120,45 @@ describe("createEndorsementListCollection", () => {
   })
 })
 
+describe("updateEndorsementListCollection", () => {
+  it("preserves items[] and createdAt across a title/description edit", async () => {
+    // 1st call: getRecord with one existing item.
+    const existingItems = [
+      {
+        itemIdentifier: awardRef("preserve-me"),
+        addedAt: "2026-05-19T00:00:00Z",
+      },
+    ]
+    mockAuthFetch.mockResolvedValueOnce(
+      ok({
+        value: {
+          type: "endorsement-list",
+          title: "Old title",
+          description: "Old desc",
+          createdAt: "2026-01-01T00:00:00Z",
+          items: existingItems,
+          // An unknown field a future-client could add; must round-trip.
+          futureField: "keep",
+        },
+        cid: "c0",
+      }),
+    )
+    // 2nd call: putRecord.
+    mockAuthFetch.mockResolvedValueOnce(ok({ uri: "u1", cid: "c1" }))
+
+    const { updateEndorsementListCollection } = await loadModule()
+    await updateEndorsementListCollection(DID, "list1", "New title", "New desc")
+
+    const putBody = JSON.parse(mockAuthFetch.mock.calls[1][1].body as string)
+    expect(putBody.record.title).toBe("New title")
+    expect(putBody.record.description).toBe("New desc")
+    expect(putBody.record.createdAt).toBe("2026-01-01T00:00:00Z")
+    expect(putBody.record.items).toEqual(existingItems)
+    expect(putBody.record.futureField).toBe("keep")
+    expect(putBody.swapRecord).toBe("c0")
+  })
+})
+
 describe("appendItemToList", () => {
   it("appends + dedupes-on-URI", async () => {
     // 1st call: getRecord with one existing item.

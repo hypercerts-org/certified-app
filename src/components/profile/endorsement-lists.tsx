@@ -83,10 +83,10 @@ export default function EndorsementLists({
   } = useEndorsementLists(did)
   const { did: viewerDid } = useAuth()
   const [selectedListUri, setSelectedListUri] = useState<string | null>(null)
-  // `+` button on the list-detail toolbar opens the same modal we
-  // use for issuing regular endorsements, just bound to the list's
-  // own badge ref so awards land under THIS list instead of the
-  // user's default "Endorsement" definition.
+  // `+` button on the list-detail toolbar reuses the regular
+  // endorsement modal. On confirm each subject gets a default-def
+  // endorsement award (idempotency guard in `addSubjectToList`) plus
+  // a strong-ref entry in the list's collection record.
   const [isAddingPeople, setIsAddingPeople] = useState(false)
   const [sort, setSort] = useState<SortKey>("created-desc")
   const [sortOpen, setSortOpen] = useState(false)

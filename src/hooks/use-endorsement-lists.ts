@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   listAwards,
   createEndorsementAward,
+  extractAwardSubjectDid,
   type BadgeAwardRecord,
 } from "@/lib/atproto/badges"
 import {
@@ -257,20 +258,26 @@ export function useEndorsementLists(did: string | null): {
     [lists],
   )
 
-  // Owner-only. Ensure an award exists for `subjectDid` (always issue
-  // a fresh one — matches the default-endorsement flow's idempotency
-  // behaviour; the modal's `alreadyEndorsedDids` set already prevents
-  // double-add at the UX layer), then append to the list's items[].
-  // If the subject is already in the list, the append is a no-op and
-  // we return the existing entry without issuing a new award.
+  // Owner-only. Ensures an award exists for `subjectDid` then appends
+  // it to the list's items[].
+  //
+  // Subject-level dedupe BEFORE the award create — `createEndorsementAward`
+  // always mints a fresh TID-keyed record, so without this short-
+  // circuit a race between two add-clicks for the same subject would
+  // leave two awards on the PDS pointing at the same person and both
+  // would render as separate rows. The dedupe-on-URI inside
+  // `appendItemToList` only catches identical-URI races, not
+  // distinct-URIs-same-subject ones.
   const addSubjectToList = useCallback(
     async (rkey: string, subjectDid: string): Promise<EndorsementList> => {
       const targetDid = didRef.current
       if (!targetDid) throw new Error("No active DID for addSubjectToList")
       const existing = lists.find((l) => l.rkey === rkey)
       if (!existing) throw new Error("List not found")
-      // Award-write first; the collection update strong-refs the new
-      // award URI, so we need it to exist before the put.
+      const alreadyInList = existing.items.some(
+        (a) => extractAwardSubjectDid(a.value.subject) === subjectDid,
+      )
+      if (alreadyInList) return existing
       const award = await createEndorsementAward(targetDid, subjectDid)
       const result = await appendItemToList(targetDid, rkey, {
         uri: award.uri,
