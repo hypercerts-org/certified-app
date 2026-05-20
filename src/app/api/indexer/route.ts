@@ -227,6 +227,61 @@ ${ACTIVITY_NODE_SELECTION}
     }
   `,
 
+  // Network-wide counts for the /welcome landing-page stats strip.
+  // Each query asks for a single page (first: 1) just to surface
+  // `totalCount`; client discards the edge. Selection mirrors the
+  // shape every other op uses (`totalCount + edges + pageInfo`)
+  // because some GraphQL schemas reject a bare-aggregate selection
+  // on a connection root.
+  ProfileCount: `
+    query ProfileCount {
+      appCertifiedActorProfile(first: 1) {
+        totalCount
+        edges { node { uri } }
+        pageInfo { hasNextPage }
+      }
+    }
+  `,
+  OrganizationCount: `
+    query OrganizationCount {
+      appCertifiedActorOrganization(first: 1) {
+        totalCount
+        edges { node { uri } }
+        pageInfo { hasNextPage }
+      }
+    }
+  `,
+  ActivityCount: `
+    query ActivityCount {
+      orgHypercertsClaimActivity(first: 1) {
+        totalCount
+        edges { node { uri } }
+        pageInfo { hasNextPage }
+      }
+    }
+  `,
+  ProjectCount: `
+    query ProjectCount {
+      orgHypercertsCollection(
+        first: 1
+        where: { type: { eq: "project" } }
+      ) {
+        totalCount
+        edges { node { uri } }
+        pageInfo { hasNextPage }
+      }
+    }
+  `,
+  AwardCount: `
+    query AwardCount {
+      appCertifiedBadgeAward(first: 1) {
+        totalCount
+        edges { node { uri } }
+        pageInfo { hasNextPage }
+      }
+    }
+  `,
+
   // Legacy temp endorsement records — pre-badge-migration. Kept for
   // the read-side compatibility window. Drop when no longer referenced.
   LegacyEndorsements: `
@@ -373,6 +428,16 @@ function buildVariables(
         dids,
         first: clampFirst(vars.first, MAX_FIRST_DEFINITIONS, MAX_FIRST_DEFINITIONS),
       }
+    }
+    case "ProfileCount":
+    case "OrganizationCount":
+    case "ActivityCount":
+    case "ProjectCount":
+    case "AwardCount": {
+      // Zero-argument operations — nothing to validate. Return an
+      // empty object so the route's null-check passes and the
+      // query is forwarded.
+      return {}
     }
     case "LegacyEndorsements": {
       const authors = readDidList(vars.authors, MAX_DID_LIST)

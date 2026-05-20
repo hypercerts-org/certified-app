@@ -1,4 +1,5 @@
 import WhatYouGet from "@/components/landing/sections/what-you-get";
+import NetworkStats from "@/components/landing/sections/network-stats";
 import HowItWorks from "@/components/landing/sections/how-it-works";
 import PartnerApps from "@/components/landing/sections/partner-apps";
 import BuiltForTrust from "@/components/landing/sections/built-for-trust";
@@ -41,6 +42,7 @@ export default function LandingPage() {
         </div>
       </section>
       <WhatYouGet />
+      <NetworkStats />
       <HowItWorks />
       <PartnerApps />
       <BuiltForTrust />
