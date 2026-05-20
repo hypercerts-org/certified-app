@@ -86,3 +86,42 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Authentication failed" }, { status: 500 })
   }
 }
+
+// ePDS handle-mode hand-off. Wired up via `epds_handle_login_url` in
+// the OAuth client metadata. When a user clicks "Or sign in with
+// ATProto/Bluesky" on the ePDS login page and types a handle, ePDS
+// navigates the browser here with ?handle=<value>; we resolve the
+// handle to its PDS and start a fresh OAuth flow against it.
+//
+// No CSRF: no state-changing body to forge — the OAuth state param
+// protects the round-trip.
+export async function GET(request: NextRequest) {
+  const raw = request.nextUrl.searchParams.get("handle")
+  if (!raw) {
+    return NextResponse.redirect(new URL("/", request.url))
+  }
+
+  const handle = sanitizeHandle(raw)
+  if (!handle) {
+    return NextResponse.redirect(new URL("/?error=invalid_handle", request.url))
+  }
+
+  try {
+    const client = await getOAuthClient()
+    const scope = "atproto transition:generic identity:handle account:email"
+    let url: URL
+    try {
+      url = await client.authorize(handle, { scope })
+    } catch (err) {
+      if (!handle.startsWith("http") && !handle.startsWith("did")) {
+        url = await client.authorize("https://" + handle, { scope })
+      } else {
+        throw err
+      }
+    }
+    return NextResponse.redirect(url)
+  } catch (err) {
+    console.error("[Auth] Handle login error:", err)
+    return NextResponse.redirect(new URL("/?error=auth_failed", request.url))
+  }
+}
