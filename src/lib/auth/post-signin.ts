@@ -78,11 +78,39 @@ export function rewritePathForNewIdentity(
 }
 
 /**
+ * Marketing / legal pages. A user who signs in from one of these
+ * is treated as a new entry into the app, not as someone reading X
+ * who happened to sign in mid-flow — so the saved-path restore is
+ * bypassed and they land on their own profile instead.
+ */
+const MARKETING_ROUTES = [
+  "/welcome",
+  "/about",
+  "/terms",
+  "/privacy",
+  "/imprint",
+] as const
+
+function isMarketingPath(path: string): boolean {
+  const pathname = path.split("?")[0]
+  return MARKETING_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(route + "/"),
+  )
+}
+
+/**
  * Convenience: combine the lookup + rewrite. Returns `/` when no
  * saved path is present — preserving the previous fallback.
+ *
+ * Sign-ins originating from a {@link MARKETING_ROUTES} page route
+ * the user to their own profile. Sign-ins from any other page
+ * preserve the user's prior location.
  */
 export function resolvePostSigninPath(newIdentifier: string | null): string {
   const { path, handle } = consumePreSigninLocation()
   if (!path) return "/"
+  if (newIdentifier && isMarketingPath(path)) {
+    return `/profile/${encodeURIComponent(newIdentifier)}`
+  }
   return rewritePathForNewIdentity(path, handle, newIdentifier)
 }
