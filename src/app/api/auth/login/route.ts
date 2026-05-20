@@ -98,12 +98,12 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const raw = request.nextUrl.searchParams.get("handle")
   if (!raw) {
-    return NextResponse.redirect(new URL("/", request.url))
+    return NextResponse.redirect(new URL("/", request.url), { status: 302 })
   }
 
   const handle = sanitizeHandle(raw)
   if (!handle) {
-    return NextResponse.redirect(new URL("/?error=invalid_handle", request.url))
+    return NextResponse.redirect(new URL("/?error=invalid_handle", request.url), { status: 302 })
   }
 
   try {
@@ -119,9 +119,9 @@ export async function GET(request: NextRequest) {
         throw err
       }
     }
-    return NextResponse.redirect(url)
+    return NextResponse.redirect(url, { status: 302 })
   } catch (err) {
     console.error("[Auth] Handle login error:", err)
-    return NextResponse.redirect(new URL("/?error=auth_failed", request.url))
+    return NextResponse.redirect(new URL("/?error=auth_failed", request.url), { status: 302 })
   }
 }
