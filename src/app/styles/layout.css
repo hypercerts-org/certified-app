@@ -534,7 +534,16 @@ html[data-theme="dark"] .signin-mark__img--light {
   line-height: 1;
 }
 
-/* Bottom nav is visible on all viewports — same navigation on mobile and desktop. */
+/* Bottom nav is mobile-only chrome (<800px). On desktop the top bar /
+   left rail host navigation; hide via CSS here so first paint is correct
+   even before JS hydrates and the component's own `if (isDesktop) return
+   null` runs. Mirrors the analogous rule on .navbar (~line 716) and the
+   inverse opt-in on .desktop-top-bar (~line 1918). */
+@media (min-width: 800px) {
+  .bottom-nav {
+    display: none;
+  }
+}
 
 
 /* ========== Sidebar ========== */
