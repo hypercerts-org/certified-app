@@ -326,11 +326,10 @@ html[data-theme="dark"] .signin-mark__img--light {
   gap: 16px;
 }
 
-/* Brand-lockup sign-in button — matches the desktop top-bar + the
-   hero/CTA pattern. Padding is kept for tap area, no border/fill. */
 .navbar__signin-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   padding: 4px 8px;
   background: none;
   border: none;
@@ -354,6 +353,7 @@ html[data-theme="dark"] .signin-mark__img--light {
 
 .navbar__signin-img {
   height: 26px;
+  width: auto;
   display: block;
 }
 
@@ -1981,6 +1981,18 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   flex-shrink: 0;
 }
 
+/* On pages with no title/breadcrumb the brandmark is swapped for
+   the wordmark — relax the square width so the lockup can render. */
+.desktop-top-bar__brand--wordmark {
+  width: auto;
+}
+
+.desktop-top-bar__wordmark {
+  height: 20px;
+  width: auto;
+  display: block;
+}
+
 .desktop-top-bar__brand:hover {
   opacity: 0.85;
 }
@@ -2132,13 +2144,12 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   }
 }
 
-/* Brand-lockup sign-in button — matches the hero/CTA pattern. The
-   button itself is just a click target; the image is the visual.
-   Padding is kept for tap area, no border/fill so the lockup reads
-   as a wordmark, not a chip. */
+/* Icon-only "Sign in" affordance — uses the Certified signin
+   brandmark glyph. Padding kept for tap area; no border/fill. */
 .desktop-top-bar__signin-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   padding: 4px 8px;
   background: none;
   border: none;
@@ -2162,6 +2173,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 
 .desktop-top-bar__signin-img {
   height: 28px;
+  width: auto;
   display: block;
 }
 

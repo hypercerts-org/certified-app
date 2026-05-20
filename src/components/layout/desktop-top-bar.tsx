@@ -279,10 +279,18 @@ export default function DesktopTopBar() {
         <div className="desktop-top-bar__left">
           <Link
             href={brandHref}
-            className="desktop-top-bar__brand"
+            className={`desktop-top-bar__brand${breadcrumb || pageTitle ? "" : " desktop-top-bar__brand--wordmark"}`}
             aria-label={brandAriaLabel}
           >
-            <Brandmark size={28} className="desktop-top-bar__brand-mark" />
+            {breadcrumb || pageTitle ? (
+              <Brandmark size={28} className="desktop-top-bar__brand-mark" />
+            ) : (
+              <img
+                src="/brand/wordmark/certified_wordmark_black.svg"
+                alt="Certified"
+                className="desktop-top-bar__wordmark"
+              />
+            )}
           </Link>
           {breadcrumb ? (
             <h1 className="desktop-top-bar__title" aria-live="polite">
@@ -368,10 +376,10 @@ export default function DesktopTopBar() {
               type="button"
               onClick={openSignIn}
               className="desktop-top-bar__signin-btn"
-              aria-label="Sign in with Certified"
+              aria-label="Sign in"
             >
               <img
-                src="/brand/signin/certified_signinwith_black.svg"
+                src="/brand/signin/certified_signin_black.svg"
                 alt=""
                 aria-hidden
                 className="desktop-top-bar__signin-img"
