@@ -1,12 +1,8 @@
-import ReadyCtaButton from "./ready-cta-button"
+import ReadyCtaButton from "./ready-cta-button";
 
 export default function ReadyCtaSection() {
   return (
-    <section
-      id="ready-cta"
-      className="landing-section landing-section--light landing-section--pattern"
-      aria-labelledby="ready-cta-heading"
-    >
+    <section id="ready-cta" className="landing-section landing-section--light landing-section--pattern">
       <div className="landing-section__pattern landing-section__pattern--dark" aria-hidden="true">
         <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -18,11 +14,11 @@ export default function ReadyCtaSection() {
         </svg>
       </div>
       <div className="landing-section__inner landing-cta">
-        <span className="landing-label">Join the network</span>
-        <h2 id="ready-cta-heading">Start building your reputation</h2>
-        <p>Create your Certified profile in under a minute.</p>
+        <span className="landing-label">Get Started</span>
+        <h2>Ready to get started?</h2>
+        <p>Create your account in under a minute.</p>
         <ReadyCtaButton />
       </div>
     </section>
-  )
+  );
 }
