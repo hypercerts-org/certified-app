@@ -34,7 +34,14 @@ async function loadCounts(force = false): Promise<NetworkCounts> {
   inflight = (async () => {
     try {
       const counts = await fetchNetworkCounts()
-      cache = { counts, fetchedAt: Date.now() }
+      // Don't poison the cache with an all-null result. Every op
+      // returning null means a transient failure (indexer down,
+      // CSRF mismatch in dev, etc.), and caching that for 5 minutes
+      // means the next render keeps showing "—" long after the
+      // underlying issue is fixed.
+      if (Object.values(counts).some((v) => v !== null)) {
+        cache = { counts, fetchedAt: Date.now() }
+      }
       return counts
     } finally {
       inflight = null
