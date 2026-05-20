@@ -1,4 +1,5 @@
 import { authFetch } from "@/lib/auth/fetch"
+import { purgeAwardFromLists } from "@/lib/atproto/collection"
 import type { ListRecordsResponse } from "@/lib/types/api"
 
 /**
@@ -428,155 +429,6 @@ async function createEndorsementDefinition(ownDid: string): Promise<StrongRef> {
 }
 
 /**
- * Create a new endorsement-typed badge definition with a custom
- * title (and optional description). Used by the "Lists" section on
- * the Endorsements tab — every list is a definition with
- * `badgeType = "endorsement"` and a `title != "Endorsement"` (the
- * reserved title is the auto-created default endorsement def).
- *
- * Returns the new record's strong ref.
- */
-export async function createListDefinition(
-  ownDid: string,
-  title: string,
-  description?: string,
-): Promise<StrongRef> {
-  const trimmedTitle = title.trim()
-  if (!trimmedTitle) throw new Error("List title is required")
-  if (trimmedTitle.toLowerCase() === ENDORSEMENT_BADGE_TITLE.toLowerCase()) {
-    throw new Error(
-      `"${ENDORSEMENT_BADGE_TITLE}" is reserved for the default endorsement def — pick another title.`,
-    )
-  }
-  const trimmedDescription = description?.trim()
-  const record: BadgeDefinitionValue = {
-    $type: BADGE_DEFINITION_COLLECTION,
-    badgeType: ENDORSEMENT_BADGE_TYPE,
-    title: trimmedTitle,
-    createdAt: new Date().toISOString(),
-  }
-  if (trimmedDescription) record.description = trimmedDescription
-  const res = await authFetch("/api/xrpc/com/atproto/repo/createRecord", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      repo: ownDid,
-      collection: BADGE_DEFINITION_COLLECTION,
-      record,
-    }),
-  })
-  const data = (await res.json().catch(() => ({}))) as {
-    uri?: string
-    cid?: string
-    error?: string
-  }
-  if (!res.ok || !data.uri || !data.cid) {
-    throw new Error(
-      data.error || `Failed to create list: ${res.status}`,
-    )
-  }
-  return { uri: data.uri, cid: data.cid }
-}
-
-/**
- * Overwrite an existing endorsement-typed `app.certified.badge.definition`
- * (a list) on the viewer's own repo. Only the title and description
- * change; `badgeType` and `createdAt` round-trip from the existing
- * record so the lexicon's required fields stay intact.
- *
- * Returns the updated record's strong ref.
- */
-export async function updateListDefinition(
-  ownDid: string,
-  rkey: string,
-  existingCreatedAt: string,
-  title: string,
-  description?: string,
-): Promise<StrongRef> {
-  const trimmedTitle = title.trim()
-  if (!trimmedTitle) throw new Error("List title is required")
-  if (trimmedTitle.toLowerCase() === ENDORSEMENT_BADGE_TITLE.toLowerCase()) {
-    throw new Error(
-      `"${ENDORSEMENT_BADGE_TITLE}" is reserved for the default endorsement def — pick another title.`,
-    )
-  }
-  const trimmedDescription = description?.trim()
-  const record: BadgeDefinitionValue = {
-    $type: BADGE_DEFINITION_COLLECTION,
-    badgeType: ENDORSEMENT_BADGE_TYPE,
-    title: trimmedTitle,
-    createdAt: existingCreatedAt,
-  }
-  if (trimmedDescription) record.description = trimmedDescription
-  const res = await authFetch("/api/xrpc/com/atproto/repo/putRecord", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      repo: ownDid,
-      collection: BADGE_DEFINITION_COLLECTION,
-      rkey,
-      record,
-    }),
-  })
-  const data = (await res.json().catch(() => ({}))) as {
-    uri?: string
-    cid?: string
-    error?: string
-  }
-  if (!res.ok || !data.uri || !data.cid) {
-    throw new Error(data.error || `Failed to update list: ${res.status}`)
-  }
-  return { uri: data.uri, cid: data.cid }
-}
-
-/**
- * Delete a list (an endorsement-typed `app.certified.badge.definition`)
- * AND every `app.certified.badge.award` on the same repo that strong-
- * refs that definition. Used by the Endorsements > Lists detail view's
- * Delete action. Awards are removed first so an interrupted run never
- * leaves orphan awards pointing at a missing definition.
- *
- * Returns the number of awards and the number of definitions that
- * were actually removed (both `0` or `1` for the definition).
- */
-export async function deleteListAndAwards(
-  ownDid: string,
-  listRkey: string,
-  awardRkeys: string[],
-): Promise<{ deletedAwards: number; deletedDefinition: boolean }> {
-  let deletedAwards = 0
-  for (const rkey of awardRkeys) {
-    const res = await authFetch("/api/xrpc/com/atproto/repo/deleteRecord", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        repo: ownDid,
-        collection: BADGE_AWARD_COLLECTION,
-        rkey,
-      }),
-    })
-    if (res.ok) deletedAwards++
-    // Carry on past per-award failures — the orphan can be cleaned
-    // up later; blocking the def-delete on a single transient PDS
-    // failure leaves the user unable to remove the list.
-  }
-  const res = await authFetch("/api/xrpc/com/atproto/repo/deleteRecord", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      repo: ownDid,
-      collection: BADGE_DEFINITION_COLLECTION,
-      rkey: listRkey,
-    }),
-  })
-  if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { error?: string }
-    throw new Error(data.error || `Failed to delete list: ${res.status}`)
-  }
-  return { deletedAwards, deletedDefinition: true }
-}
-
-/**
  * List badge awards from any user's PDS. Returns the raw records;
  * callers narrow to endorsement awards by resolving each record's
  * `badge` strongRef and filtering on the definition's `badgeType`.
@@ -696,25 +548,19 @@ export async function createEndorsementAward(
 }
 
 /**
- * Issue an award against a SPECIFIC list definition. Used by the
- * Endorsements > Lists detail view's "+ Add people" flow. Caller
- * passes the list's strong ref (`{uri, cid}`) so we skip the
- * ensure-default-def round-trip. Note isn't accepted because the
- * list itself is the reason — see profile-endorsements UX spec.
+ * Revoke an endorsement (delete the award record). Also purges the
+ * award from every endorsement-list owned by `ownDid` so a Given-
+ * panel revoke doesn't leave ghost rows on the Lists tab. The purge
+ * is best-effort (errors logged in dev, swallowed in prod) — the
+ * read path drops unresolved list items silently, so a partial
+ * failure delays cleanup but doesn't corrupt anything.
  */
-export async function createListAward(
-  ownDid: string,
-  subjectDid: string,
-  badge: StrongRef,
-): Promise<{ uri: string; cid: string }> {
-  return writeBadgeAward(ownDid, subjectDid, badge, "list award")
-}
-
-/** Revoke an endorsement (delete the award record). */
 export async function deleteEndorsementAward(
   ownDid: string,
   rkey: string,
 ): Promise<void> {
+  const awardUri = `at://${ownDid}/${BADGE_AWARD_COLLECTION}/${rkey}`
+  await purgeAwardFromLists(ownDid, awardUri)
   const res = await authFetch("/api/xrpc/com/atproto/repo/deleteRecord", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

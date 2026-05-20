@@ -69,9 +69,7 @@ See `discovery.md` and the user-facing pros/cons summary in the chat session —
   - `deleteEndorsementAward` extended to call `purgeAwardFromLists` (in `collection.ts`) before the actual award delete, so a revoke from the Given panel doesn't leave ghost rows on the issuer's lists.
   - Keep response helpers untouched.
 - `src/app/api/xrpc/[...method]/route.ts` — **no change.** `"org.hypercerts.collection"` is already in `ALLOWED_WRITE_COLLECTIONS` (used by the projects flow). Verified during review-round-1.
-- `src/lib/auth/rate-limit.ts` — `RATE_LIMITED_WRITE_COLLECTIONS`:
-  - Keep `"app.certified.badge.award" → "endorsement-issue"`.
-  - Add `"org.hypercerts.collection" → "endorsement-list-write"` (new scope, conservative limit: 30/hour, 100/day). Reason: prevents abuse via mass list creation.
+- `src/lib/auth/rate-limit.ts` — **no change.** The original plan added `"org.hypercerts.collection" → "endorsement-list-write"` to `RATE_LIMITED_WRITE_COLLECTIONS`, but that map keys on collection NSID, not on the `type` discriminator — adding it would silently rate-limit project writes too. Lists ride on the same un-rate-limited path as projects do today. If abuse becomes a concern, a follow-up can add a per-`type` layer.
 
 ### Hooks
 

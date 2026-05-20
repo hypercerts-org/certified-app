@@ -2,29 +2,38 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  ENDORSEMENT_BADGE_TITLE,
-  ENDORSEMENT_BADGE_TYPE,
-  createListDefinition,
-  deleteListAndAwards,
   listAwards,
-  listDefinitions,
-  updateListDefinition,
+  createEndorsementAward,
   type BadgeAwardRecord,
 } from "@/lib/atproto/badges"
+import {
+  appendItemToList,
+  createEndorsementListCollection,
+  deleteEndorsementListCollection,
+  listEndorsementListCollections,
+  removeItemFromList,
+  updateEndorsementListCollection,
+} from "@/lib/atproto/collection"
 
 /**
- * One "list" on a profile's Endorsements tab — an
- * `app.certified.badge.definition` whose `badgeType` is
- * `"endorsement"` and whose `title` is NOT the reserved default
- * (`"Endorsement"`). The default def is the auto-created shell that
- * backs the Received/Given panels; everything else with the same
- * badgeType is a user-created list.
+ * One "list" on a profile's Endorsements tab.
  *
- * `items` is every `app.certified.badge.award` on the same repo
- * whose `badge` strongRef points at this list's URI. We resolve
- * those locally — one PDS `listAwards` call covers the whole repo,
- * and we group by `badge.uri` here. See companion magic-indexer
- * issue for the server-side count we'd ideally consume instead.
+ * Backed by a single `org.hypercerts.collection` record with
+ * `type === "endorsement-list"`. The collection's `items[]` holds
+ * strongRefs to `app.certified.badge.award` records on the same
+ * issuer's repo. `items` here is resolved client-side — for each
+ * `itemIdentifier.uri` we look up the matching award record from a
+ * single `listAwards` call covering the whole repo.
+ *
+ * Unresolved items (URI doesn't appear in the issuer's awards — most
+ * likely because the underlying endorsement was revoked elsewhere)
+ * are dropped silently so the UI never renders ghost rows.
+ *
+ * Awards survive list lifecycle now:
+ *   - Removing a subject from a list = `items[]` shrinks; award untouched.
+ *   - Deleting the list = the collection record is removed; awards stay.
+ *   - Revoking an award from the Given panel triggers
+ *     `purgeAwardFromLists` so all of the issuer's lists self-heal.
  */
 export interface EndorsementList {
   uri: string
@@ -45,23 +54,31 @@ const STALE_MS = 5 * 60 * 1000
 const cache = new Map<string, CacheEntry>()
 
 /**
- * Read every list (custom endorsement definition) on `did`'s repo
- * plus the awards that link to each, grouped together.
+ * Read every endorsement-list on `did`'s repo plus the awards that
+ * each list curates, resolved together.
  *
  * Fetch shape:
- *   1. PDS `listDefinitions` and `listAwards` in parallel — both
- *      live on the same repo, so two cheap round-trips.
- *   2. Client-side filter + group: drop the default `"Endorsement"`
- *      def; for the rest, attach awards whose `badge.uri` matches.
+ *   1. PDS `listEndorsementListCollections` and `listAwards` in
+ *      parallel — both live on the same repo.
+ *   2. Client-side resolve: for each list's `items[i].itemIdentifier.uri`,
+ *      look up the matching award. Drop items that don't resolve.
  *
  * Exposes:
- *   - `lists`        — newest first.
- *   - `isLoading`    — true while the initial fetch is in flight.
- *   - `error`        — non-null on PDS failure.
- *   - `refetch`      — bypass cache, force a fresh page-walk.
- *   - `createList`   — viewer-only helper. Writes a new list def,
- *                      then optimistically inserts it so the UI
- *                      doesn't wait on refetch.
+ *   - `lists`                — newest first by `createdAt`.
+ *   - `isLoading`            — true while the initial fetch is in flight.
+ *   - `error`                — non-null on PDS failure.
+ *   - `refetch`              — bypass cache, force a fresh fetch.
+ *   - `createList`           — owner-only. Writes the new collection
+ *                              and optimistically inserts it.
+ *   - `updateList`           — owner-only. Round-trip title/description.
+ *   - `deleteList`           — owner-only. Removes the collection
+ *                              record; awards survive.
+ *   - `addSubjectToList`     — owner-only. Ensures an award exists for
+ *                              the subject then appends to `items[]`.
+ *                              Dedupes-on-URI so a double-click is a
+ *                              no-op rather than a double-write.
+ *   - `removeSubjectFromList` — owner-only. Drops the item by award
+ *                              URI; underlying award untouched.
  */
 export function useEndorsementLists(did: string | null): {
   lists: EndorsementList[]
@@ -74,7 +91,15 @@ export function useEndorsementLists(did: string | null): {
     title: string,
     description?: string,
   ) => Promise<EndorsementList>
-  deleteList: (rkey: string) => Promise<{ deletedAwards: number }>
+  deleteList: (rkey: string) => Promise<void>
+  addSubjectToList: (
+    rkey: string,
+    subjectDid: string,
+  ) => Promise<EndorsementList>
+  removeSubjectFromList: (
+    rkey: string,
+    awardUri: string,
+  ) => Promise<EndorsementList>
 } {
   const [lists, setLists] = useState<EndorsementList[]>([])
   const [isLoading, setIsLoading] = useState(!!did)
@@ -101,36 +126,33 @@ export function useEndorsementLists(did: string | null): {
       setIsLoading(true)
       setError(null)
       try {
-        const [defs, awards] = await Promise.all([
-          listDefinitions(targetDid, signal, force ? { noCache: true } : undefined),
+        const [collections, awards] = await Promise.all([
+          listEndorsementListCollections(targetDid, signal),
           listAwards(targetDid, signal, force ? { noCache: true } : undefined),
         ])
         if (signal?.aborted) return
-        // Group awards by their badge.uri so the per-list attach is
-        // O(awards) instead of O(lists × awards).
-        const awardsByDef = new Map<string, BadgeAwardRecord[]>()
-        for (const a of awards) {
-          const defUri = a.value.badge?.uri
-          if (typeof defUri !== "string") continue
-          const bucket = awardsByDef.get(defUri)
-          if (bucket) bucket.push(a)
-          else awardsByDef.set(defUri, [a])
-        }
-        const next: EndorsementList[] = defs
-          .filter(
-            (d) =>
-              d.value.badgeType === ENDORSEMENT_BADGE_TYPE &&
-              d.value.title !== ENDORSEMENT_BADGE_TITLE,
-          )
-          .map((d) => ({
-            uri: d.uri,
-            cid: d.cid,
-            rkey: d.rkey,
-            title: d.value.title,
-            description: d.value.description,
-            createdAt: d.value.createdAt,
-            items: awardsByDef.get(d.uri) ?? [],
-          }))
+        const awardByUri = new Map<string, BadgeAwardRecord>()
+        for (const a of awards) awardByUri.set(a.uri, a)
+        const next: EndorsementList[] = collections
+          .map((coll) => {
+            const items = Array.isArray(coll.value.items) ? coll.value.items : []
+            const resolved: BadgeAwardRecord[] = []
+            for (const item of items) {
+              const uri = item.itemIdentifier?.uri
+              if (typeof uri !== "string") continue
+              const award = awardByUri.get(uri)
+              if (award) resolved.push(award)
+            }
+            return {
+              uri: coll.uri,
+              cid: coll.cid,
+              rkey: coll.rkey,
+              title: coll.value.title,
+              description: coll.value.description,
+              createdAt: coll.value.createdAt,
+              items: resolved,
+            }
+          })
           .sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
         cache.set(targetDid, { lists: next, fetchedAt: Date.now() })
         setLists(next)
@@ -157,14 +179,18 @@ export function useEndorsementLists(did: string | null): {
     await doFetch(targetDid, undefined, true)
   }, [doFetch])
 
-  // Owner-only. Writes the new definition on the viewer's PDS and
+  // Owner-only. Writes the new collection on the viewer's PDS and
   // inserts it into local state so the UI flips to the new list
   // immediately. Throws if the write fails (caller surfaces).
   const createList = useCallback(
     async (title: string, description?: string): Promise<EndorsementList> => {
       const targetDid = didRef.current
       if (!targetDid) throw new Error("No active DID for createList")
-      const ref = await createListDefinition(targetDid, title, description)
+      const ref = await createEndorsementListCollection(
+        targetDid,
+        title,
+        description,
+      )
       const entry: EndorsementList = {
         uri: ref.uri,
         cid: ref.cid,
@@ -184,11 +210,9 @@ export function useEndorsementLists(did: string | null): {
     [],
   )
 
-  // Owner-only. Overwrites the existing definition's title /
-  // description while preserving its rkey and createdAt. Optimistic:
-  // we splice the updated entry into local state immediately so the
-  // detail view reflects the new metadata without waiting for a
-  // refetch.
+  // Owner-only. Overwrites the existing collection's title /
+  // description while preserving its rkey, createdAt, and items.
+  // Optimistic: splice the updated entry into local state immediately.
   const updateList = useCallback(
     async (
       rkey: string,
@@ -199,13 +223,7 @@ export function useEndorsementLists(did: string | null): {
       if (!targetDid) throw new Error("No active DID for updateList")
       const existing = lists.find((l) => l.rkey === rkey)
       if (!existing) throw new Error("List not found")
-      await updateListDefinition(
-        targetDid,
-        rkey,
-        existing.createdAt,
-        title,
-        description,
-      )
+      await updateEndorsementListCollection(targetDid, rkey, title, description)
       const updated: EndorsementList = {
         ...existing,
         title: title.trim(),
@@ -221,24 +239,74 @@ export function useEndorsementLists(did: string | null): {
     [lists],
   )
 
-  // Owner-only. Deletes every award linked to the list, then the
-  // list definition itself. The award delete happens first so an
-  // interrupted run never leaves orphan awards pointing at a missing
-  // definition. Optimistic local removal mirrors create/update.
+  // Owner-only. Removes the collection record only — awards survive.
+  // Optimistic local removal mirrors create/update.
   const deleteList = useCallback(
-    async (rkey: string): Promise<{ deletedAwards: number }> => {
+    async (rkey: string): Promise<void> => {
       const targetDid = didRef.current
       if (!targetDid) throw new Error("No active DID for deleteList")
       const existing = lists.find((l) => l.rkey === rkey)
       if (!existing) throw new Error("List not found")
-      const awardRkeys = existing.items.map((a) => a.rkey)
-      const result = await deleteListAndAwards(targetDid, rkey, awardRkeys)
+      await deleteEndorsementListCollection(targetDid, rkey)
       setLists((prev) => {
         const next = prev.filter((l) => l.rkey !== rkey)
         cache.set(targetDid, { lists: next, fetchedAt: Date.now() })
         return next
       })
-      return { deletedAwards: result.deletedAwards }
+    },
+    [lists],
+  )
+
+  // Owner-only. Ensure an award exists for `subjectDid` (always issue
+  // a fresh one — matches the default-endorsement flow's idempotency
+  // behaviour; the modal's `alreadyEndorsedDids` set already prevents
+  // double-add at the UX layer), then append to the list's items[].
+  // If the subject is already in the list, the append is a no-op and
+  // we return the existing entry without issuing a new award.
+  const addSubjectToList = useCallback(
+    async (rkey: string, subjectDid: string): Promise<EndorsementList> => {
+      const targetDid = didRef.current
+      if (!targetDid) throw new Error("No active DID for addSubjectToList")
+      const existing = lists.find((l) => l.rkey === rkey)
+      if (!existing) throw new Error("List not found")
+      // Award-write first; the collection update strong-refs the new
+      // award URI, so we need it to exist before the put.
+      const award = await createEndorsementAward(targetDid, subjectDid)
+      const result = await appendItemToList(targetDid, rkey, {
+        uri: award.uri,
+        cid: award.cid,
+      })
+      if (!result.added) return existing
+      // Locally we don't have the new award's full BadgeAwardRecord
+      // shape; rather than fake one and risk drift, just refetch on
+      // success. Optimistic insert isn't worth the divergence.
+      await refetch()
+      const refreshed = (cache.get(targetDid)?.lists ?? lists).find(
+        (l) => l.rkey === rkey,
+      )
+      return refreshed ?? existing
+    },
+    [lists, refetch],
+  )
+
+  // Owner-only. Drops the item from the list. Award is NOT deleted.
+  const removeSubjectFromList = useCallback(
+    async (rkey: string, awardUri: string): Promise<EndorsementList> => {
+      const targetDid = didRef.current
+      if (!targetDid) throw new Error("No active DID for removeSubjectFromList")
+      const existing = lists.find((l) => l.rkey === rkey)
+      if (!existing) throw new Error("List not found")
+      await removeItemFromList(targetDid, rkey, awardUri)
+      const updated: EndorsementList = {
+        ...existing,
+        items: existing.items.filter((a) => a.uri !== awardUri),
+      }
+      setLists((prev) => {
+        const next = prev.map((l) => (l.rkey === rkey ? updated : l))
+        cache.set(targetDid, { lists: next, fetchedAt: Date.now() })
+        return next
+      })
+      return updated
     },
     [lists],
   )
@@ -252,7 +320,19 @@ export function useEndorsementLists(did: string | null): {
       createList,
       updateList,
       deleteList,
+      addSubjectToList,
+      removeSubjectFromList,
     }),
-    [lists, isLoading, error, refetch, createList, updateList, deleteList],
+    [
+      lists,
+      isLoading,
+      error,
+      refetch,
+      createList,
+      updateList,
+      deleteList,
+      addSubjectToList,
+      removeSubjectFromList,
+    ],
   )
 }
