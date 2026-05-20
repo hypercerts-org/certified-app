@@ -925,11 +925,20 @@
 
 /* ============================================================================
    /apps — App-store directory
-   Editorial-card layout inspired by Apple's App Store. Each tile has an
-   icon-row header (squircle icon · name + tagline · "Get" pill) and a
-   longer description below. The "Get" pill is decorative — the whole
-   icon-row is the clickable link to the external app.
+   Editorial-card layout inspired by Apple's App Store. The entire tile is
+   one clickable link: squircle icon + name + tagline header row, then a
+   longer description below. Tiles sit two-up on wider viewports and stack
+   on narrow ones. The shell is widened on this route to give the cards
+   room to breathe.
    ============================================================================ */
+
+/* Widen the shell reading-column on /apps. The default 720px (set in
+   .app-shell__content) leaves cards cramped at two-up; bumping to
+   1080px gives each card a comfortable ~510px column. Scoped by
+   :has() so no other route is affected. */
+.app-shell__content:has(.apps-store) {
+  max-width: 1080px;
+}
 
 .apps-store {
   padding-top: 8px;
@@ -976,12 +985,20 @@
   gap: 16px;
 }
 
-.apps-store__tile {
+.apps-store__cell {
   margin: 0;
+  display: flex;
+}
+
+.apps-store__tile {
+  display: block;
+  width: 100%;
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: 16px;
-  padding: 16px 18px 18px;
+  padding: 18px 20px 20px;
+  text-decoration: none;
+  color: inherit;
   transition: box-shadow var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
 }
 
@@ -991,20 +1008,16 @@
   transform: translateY(-1px);
 }
 
-.apps-store__card {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  column-gap: 14px;
-  text-decoration: none;
-  color: inherit;
-  outline: none;
-}
-
-.apps-store__card:focus-visible {
+.apps-store__tile:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 4px;
-  border-radius: 8px;
+}
+
+.apps-store__row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 14px;
 }
 
 .apps-store__icon-wrap {
@@ -1053,34 +1066,9 @@
   overflow: hidden;
 }
 
-/* App Store "Get" pill — visual affordance only; the link target is
-   the icon-row. Inverts on tile hover so the whole card feels active. */
-.apps-store__cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 64px;
-  height: 28px;
-  padding: 0 14px;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--btn-primary-bg);
-  background: var(--overlay-medium);
-  border-radius: 999px;
-  transition: background var(--transition-fast), color var(--transition-fast);
-  flex-shrink: 0;
-}
-
-.apps-store__tile:hover .apps-store__cta,
-.apps-store__card:focus-visible .apps-store__cta {
-  background: var(--btn-primary-bg);
-  color: var(--btn-primary-fg);
-}
-
 .apps-store__desc {
-  margin: 14px 0 0;
+  display: block;
+  margin-top: 14px;
   padding-top: 14px;
   border-top: 1px solid var(--border-subtle);
   font-size: 0.875rem;
@@ -1095,8 +1083,9 @@
   text-align: center;
 }
 
-/* Two-column grid once there's room. */
-@media (min-width: 880px) {
+/* Two-column grid once there's room — caps at two so each card stays
+   wide and the editorial feel is preserved. */
+@media (min-width: 700px) {
   .apps-store__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

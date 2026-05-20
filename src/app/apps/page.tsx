@@ -20,32 +20,31 @@ export default function AppsPage() {
 
       <ul className="apps-store__grid">
         {CONNECTED_APPS.map((app) => (
-          <li key={app.name} className="apps-store__tile">
+          <li key={app.name} className="apps-store__cell">
             <a
               href={app.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="apps-store__card"
+              className="apps-store__tile"
               aria-label={`${app.name} — ${app.desc}`}
             >
-              <span className="apps-store__icon-wrap">
-                <Image
-                  src={app.logo}
-                  alt=""
-                  width={88}
-                  height={88}
-                  className="apps-store__icon"
-                />
+              <span className="apps-store__row">
+                <span className="apps-store__icon-wrap">
+                  <Image
+                    src={app.logo}
+                    alt=""
+                    width={88}
+                    height={88}
+                    className="apps-store__icon"
+                  />
+                </span>
+                <span className="apps-store__meta">
+                  <span className="apps-store__name">{app.name}</span>
+                  <span className="apps-store__tag">{app.desc}</span>
+                </span>
               </span>
-              <span className="apps-store__meta">
-                <span className="apps-store__name">{app.name}</span>
-                <span className="apps-store__tag">{app.desc}</span>
-              </span>
-              <span className="apps-store__cta" aria-hidden>
-                Get
-              </span>
+              <span className="apps-store__desc">{app.longDesc}</span>
             </a>
-            <p className="apps-store__desc">{app.longDesc}</p>
           </li>
         ))}
       </ul>
