@@ -2,7 +2,6 @@
 
 import React from "react"
 import Image from "next/image"
-import { ArrowUpRight } from "lucide-react"
 import { usePageTitle } from "@/lib/navbar-context"
 import { CONNECTED_APPS } from "@/lib/constants/apps"
 
@@ -10,50 +9,48 @@ export default function AppsPage() {
   usePageTitle("Apps")
 
   return (
-    <div className="apps-page">
-      <header className="apps-page__header">
-        <span className="apps-page__label">Ecosystem</span>
-        <h1 className="apps-page__title">Explore apps</h1>
-        <p className="apps-page__intro">
-          Apps built on the AT Protocol. Use your Certified identity to get
-          started — one account works across them all.
+    <div className="apps-store">
+      <header className="apps-store__header">
+        <span className="apps-store__eyebrow">Ecosystem</span>
+        <h1 className="apps-store__title">Apps</h1>
+        <p className="apps-store__intro">
+          Apps built on the AT Protocol. One Certified identity, every app.
         </p>
       </header>
 
-      <ul className="apps-page__list">
+      <ul className="apps-store__grid">
         {CONNECTED_APPS.map((app) => (
-          <li key={app.name} className="apps-page__item">
+          <li key={app.name} className="apps-store__tile">
             <a
               href={app.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="apps-page__card"
+              className="apps-store__card"
+              aria-label={`${app.name} — ${app.desc}`}
             >
-              <span className="apps-page__logo-wrap">
+              <span className="apps-store__icon-wrap">
                 <Image
                   src={app.logo}
                   alt=""
-                  width={56}
-                  height={56}
-                  className="apps-page__logo"
+                  width={88}
+                  height={88}
+                  className="apps-store__icon"
                 />
               </span>
-              <span className="apps-page__body">
-                <span className="apps-page__name">{app.name}</span>
-                <span className="apps-page__desc">{app.longDesc}</span>
+              <span className="apps-store__meta">
+                <span className="apps-store__name">{app.name}</span>
+                <span className="apps-store__tag">{app.desc}</span>
               </span>
-              <ArrowUpRight
-                size={20}
-                strokeWidth={1.75}
-                aria-hidden
-                className="apps-page__arrow"
-              />
+              <span className="apps-store__cta" aria-hidden>
+                Get
+              </span>
             </a>
+            <p className="apps-store__desc">{app.longDesc}</p>
           </li>
         ))}
       </ul>
 
-      <p className="apps-page__footnote">More apps coming soon.</p>
+      <p className="apps-store__footnote">More apps coming soon.</p>
     </div>
   )
 }
