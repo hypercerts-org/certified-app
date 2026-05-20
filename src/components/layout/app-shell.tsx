@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useNavbarContext } from "@/lib/navbar-context";
 import SiteFooter from "@/components/layout/site-footer";
 
@@ -22,7 +23,19 @@ import SiteFooter from "@/components/layout/site-footer";
  * center cell — banner extends to the cell width, not the viewport.
  */
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const { profileOverlay } = useNavbarContext();
+
+  // /welcome bypasses the app shell entirely — the marketing
+  // landing wants edge-to-edge hero / patterns / pricing strips,
+  // not the 600/720px reading column the shell applies to every
+  // other page. Mirrors the same short-circuit main's AppShell
+  // does. Note: SiteFooter is not rendered on /welcome either —
+  // the ReadyCta section is the page's own footer.
+  if (pathname === "/welcome") {
+    return <>{children}</>;
+  }
+
   return (
     <div className={`app-shell ${profileOverlay ? "app-shell--fullbleed" : ""}`}>
       <div className="app-shell__grid">
