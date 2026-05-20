@@ -10,7 +10,7 @@ export default function PartnerApps() {
           <h2>Works across partner apps</h2>
         </div>
         <div className="landing-network">
-          {CONNECTED_APPS.map((app) => (
+          {CONNECTED_APPS.filter((app) => app.name !== "Hyperboards").map((app) => (
             <div
               key={app.name}
               className="landing-network__cell"

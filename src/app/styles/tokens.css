@@ -37,6 +37,14 @@
   --color-accent: #5e5e5e;
   --color-accent-hover: #454747;
 
+  /* Landing-page palette — kept invariant so /welcome always renders
+     light-themed regardless of system colour scheme. */
+  --color-navy: #111111;
+  --color-off-white: #f9f9f9;
+  --color-gray-100: #eeeeee;
+  --color-dark-gray: #4c4546;
+  --color-surface-container-low: #f3f3f3;
+
   /* ===== Semantic tokens (overridden in dark theme) ===== */
 
   /* Surfaces (elevation ramp — lightest to darkest in light mode) */

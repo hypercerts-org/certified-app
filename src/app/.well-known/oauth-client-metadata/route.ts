@@ -34,6 +34,11 @@ export async function GET() {
     policy_uri: `${origin}/privacy`,
     email_template_uri: `${origin}/assets/otp-email-template.html`,
     email_subject_template: "{{code}} — Your Certified sign-in code",
+    // Opt in to ePDS's "Or sign in with ATProto/Bluesky" button. ePDS
+    // redirects to this URL with ?handle=<value>; the GET handler in
+    // src/app/api/auth/login/route.ts resolves the handle to its PDS
+    // and starts a fresh OAuth flow.
+    epds_handle_login_url: `${origin}/api/auth/login`,
   }
 
   return NextResponse.json(metadata, {

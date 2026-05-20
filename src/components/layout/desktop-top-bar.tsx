@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ChevronDown, LayoutGrid, Settings, LogIn } from "lucide-react";
+import { ArrowLeft, ChevronDown, LayoutGrid, Settings } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useNavbarContext } from "@/lib/navbar-context";
 import { useProfile } from "@/hooks/use-profile";
@@ -368,9 +368,14 @@ export default function DesktopTopBar() {
               type="button"
               onClick={openSignIn}
               className="desktop-top-bar__signin-btn"
+              aria-label="Sign in with Certified"
             >
-              <LogIn size={16} strokeWidth={1.75} aria-hidden />
-              Sign in
+              <img
+                src="/brand/signin/certified_signinwith_black.svg"
+                alt=""
+                aria-hidden
+                className="desktop-top-bar__signin-img"
+              />
             </button>
           )}
         </div>

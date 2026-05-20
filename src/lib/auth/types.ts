@@ -13,8 +13,11 @@ export interface AuthState {
   isModalOpen: boolean;
   /** Whether we are waiting for the external provider redirect (overlay shown) */
   isRedirectingToProvider: boolean;
-  /** Open the sign-in modal */
-  openSignIn: () => void;
+  /** Start the silent-default sign-in flow. Bounces to the Certified
+   *  PDS with no login_hint; if the browser already has a session at
+   *  the PDS the user is signed in without seeing any UI. Falls back
+   *  to opening the modal on error. */
+  openSignIn: () => Promise<void>;
   /** Close the modal */
   closeModal: () => void;
   /** Submit Certified email — calls /api/auth/login with mode "email" */

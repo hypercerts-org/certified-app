@@ -36,6 +36,19 @@ type CategoryDef = {
 
 const CATEGORIES: CategoryDef[] = [
   {
+    key: "appearance",
+    label: "Appearance",
+    description: "Light or dark theme — or match your system preference.",
+    Icon: Palette,
+  },
+  {
+    key: "social-graph",
+    label: "Sync social graph",
+    description:
+      "Compare your Certified follows with your Bluesky follows and import any that are missing.",
+    Icon: Share2,
+  },
+  {
     key: "username",
     label: "Username",
     description: "The @handle people use to find you on Certified.",
@@ -52,19 +65,6 @@ const CATEGORIES: CategoryDef[] = [
     label: "Password",
     description: "Reset the password used to sign in to this account.",
     Icon: KeyRound,
-  },
-  {
-    key: "appearance",
-    label: "Appearance",
-    description: "Light or dark theme — or match your system preference.",
-    Icon: Palette,
-  },
-  {
-    key: "social-graph",
-    label: "Sync social graph",
-    description:
-      "Compare your Certified follows with your Bluesky follows and import any that are missing.",
-    Icon: Share2,
   },
 ]
 

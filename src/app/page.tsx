@@ -9,17 +9,16 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
 /**
  * Home — `/`.
  *
- * The home of Certified is the signed-in user's own profile.
- * Unauthenticated visitors are redirected to /search (the people
- * explorer) AND the sign-in modal is auto-opened so they can complete
- * sign-in without an extra click.
+ * Signed-in visitors land on their own profile. Signed-out visitors
+ * land on `/welcome` (the marketing landing); we no longer auto-open
+ * the sign-in modal — the landing page has its own Sign-in CTAs.
  *
  * Implementation is a client-side redirect rather than an inline render
  * because the underlying profile page already lives at /profile/[handle]
  * and we want one canonical URL per profile rather than two.
  */
 export default function Home() {
-  const { isAuthenticated, isLoading, openSignIn } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const { handle } = useSession();
   const router = useRouter();
 
@@ -28,12 +27,9 @@ export default function Home() {
     if (isAuthenticated && handle) {
       router.replace(`/profile/${encodeURIComponent(handle)}`);
     } else if (!isAuthenticated) {
-      router.replace("/search");
-      // Open the sign-in modal after the navigation. Modal state lives in
-      // the AuthProvider (root layout) so it persists across route change.
-      openSignIn();
+      router.replace("/welcome");
     }
-  }, [isLoading, isAuthenticated, handle, router, openSignIn]);
+  }, [isLoading, isAuthenticated, handle, router]);
 
   return (
     <div className="loading-screen">

@@ -1583,3 +1583,12 @@
   border-radius: 999px;
   transform: translateY(-2px);
 }
+
+/* /welcome footer wrapper — the app shell skips SiteFooter on this
+   route, so the landing layout renders it directly. Padding matches
+   the landing sections' horizontal inset so the footer row aligns
+   with the section content above it. */
+.welcome-footer {
+  padding: 0 32px;
+  background: var(--color-off-white);
+}

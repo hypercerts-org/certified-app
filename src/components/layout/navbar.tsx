@@ -405,8 +405,14 @@ const Navbar: React.FC = () => {
               type="button"
               onClick={openSignIn}
               className="navbar__signin-btn"
+              aria-label="Sign in with Certified"
             >
-              Sign in
+              <img
+                src="/brand/signin/certified_signinwith_black.svg"
+                alt=""
+                aria-hidden
+                className="navbar__signin-img"
+              />
             </button>
         )}
         </div>

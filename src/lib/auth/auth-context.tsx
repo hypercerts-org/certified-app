@@ -172,16 +172,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("message", handleSwitchProvider);
   }, [handleLoginResponse]);
 
-  const openSignIn = useCallback(() => {
+  // Silent-default OAuth bounce: POST to /api/auth/login with no email
+  // or handle. The server calls client.authorize(PDS_URL, ...) without
+  // a login_hint, so the PDS's authorization server can return a code
+  // immediately if the browser already has a session at the PDS (e.g.
+  // from another partner app). Otherwise it shows its own login UI.
+  // On any failure we fall back to opening the modal so the user can
+  // still type an email or handle by hand.
+  const submitDefault = useCallback(async () => {
+    try {
+      setError(null);
+      setIsRedirectingToProvider(true);
+      setIsModalOpen(false);
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "default" }),
+      });
+      await handleLoginResponse(res);
+    } catch (err) {
+      console.error("Default sign-in error:", err);
+      setIsRedirectingToProvider(false);
+      setError(err instanceof Error ? err.message : "Failed to sign in");
+      setIsModalOpen(true);
+    }
+  }, [handleLoginResponse]);
+
+  const openSignIn = useCallback(async () => {
     // Stash the current pathname + handle so the post-signin handler
     // (iframe message OR `/oauth/callback` redirect) can put the user
     // back where they were instead of dropping them at `/`. Reading
     // the handle synchronously via the use-session cache avoids
     // having to thread it through every call site.
     recordPreSigninLocation(peekSessionHandle());
-    setError(null);
-    setIsModalOpen(true);
-  }, []);
+    await submitDefault();
+  }, [submitDefault]);
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false);

@@ -42,6 +42,13 @@ const CATEGORIES: CategoryDef[] = [
     Icon: AtSign,
   },
   {
+    key: "social-graph",
+    label: "Sync social graph",
+    description:
+      "Compare this group's Certified follows with its Bluesky follows and import any that are missing.",
+    Icon: Share2,
+  },
+  {
     key: "members",
     label: "Members & Roles",
     description: "Manage who can act on behalf of this group.",
@@ -52,13 +59,6 @@ const CATEGORIES: CategoryDef[] = [
     label: "Activity Log",
     description: "Recent actions performed within this group.",
     Icon: ScrollText,
-  },
-  {
-    key: "social-graph",
-    label: "Sync social graph",
-    description:
-      "Compare this group's Certified follows with its Bluesky follows and import any that are missing.",
-    Icon: Share2,
   },
 ]
 const DEFAULT_CATEGORY: CategoryKey = CATEGORIES[0].key
@@ -357,6 +357,37 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
             </div>
           </section>
 
+          <section
+            id="social-graph"
+            ref={setSectionRef("social-graph")}
+            className="sx-section"
+            aria-labelledby="sx-section-social-graph-title"
+          >
+            <header className="sx-panel__header">
+              <h2
+                id="sx-section-social-graph-title"
+                className="sx-panel__title"
+              >
+                Sync social graph
+              </h2>
+              <p className="sx-panel__desc">
+                Compare this group&apos;s Certified follows with its Bluesky
+                follows and import any that are missing.
+              </p>
+            </header>
+            <div className="sx-panel__body">
+              {did ? (
+                <SyncSocialGraphSection
+                  did={groupDid}
+                  ownDid={did}
+                  targetDid={groupDid}
+                />
+              ) : (
+                <p className="settings__note">Sign in to sync this group.</p>
+              )}
+            </div>
+          </section>
+
           {/* Members — list + role controls + add affordance. */}
           <section
             id="members"
@@ -631,36 +662,6 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
             </div>
           </section>
 
-          <section
-            id="social-graph"
-            ref={setSectionRef("social-graph")}
-            className="sx-section"
-            aria-labelledby="sx-section-social-graph-title"
-          >
-            <header className="sx-panel__header">
-              <h2
-                id="sx-section-social-graph-title"
-                className="sx-panel__title"
-              >
-                Sync social graph
-              </h2>
-              <p className="sx-panel__desc">
-                Compare this group&apos;s Certified follows with its Bluesky
-                follows and import any that are missing.
-              </p>
-            </header>
-            <div className="sx-panel__body">
-              {did ? (
-                <SyncSocialGraphSection
-                  did={groupDid}
-                  ownDid={did}
-                  targetDid={groupDid}
-                />
-              ) : (
-                <p className="settings__note">Sign in to sync this group.</p>
-              )}
-            </div>
-          </section>
         </div>
       </div>
 
