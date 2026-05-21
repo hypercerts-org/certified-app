@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Sparkles } from "lucide-react"
 import AppDialog from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -164,9 +163,6 @@ export default function OnboardingModal() {
         onClose={goToProfile}
       >
         <div className="onboarding-success">
-          <div className="onboarding-success__halo" aria-hidden>
-            <Sparkles size={28} strokeWidth={1.5} />
-          </div>
           {previewUrl ? (
             <img
               src={previewUrl}
@@ -206,14 +202,9 @@ export default function OnboardingModal() {
       <header className="onboarding-modal__header">
         {/* Banner-styled title row — mirrors the .onboarding-banner
             on the profile page so the modal feels like an expansion
-            of the same affordance, at the same relative sizing. */}
+            of the same affordance, at the same relative sizing.
+            Icon dropped per request — title-only. */}
         <div className="onboarding-modal__banner">
-          <Sparkles
-            size={18}
-            strokeWidth={1.75}
-            aria-hidden
-            className="onboarding-modal__banner-icon"
-          />
           <h2 className="onboarding-modal__banner-title">
             {STEP_TITLES[step]}
           </h2>
@@ -343,7 +334,6 @@ function FooterActions({
   }
   return (
     <>
-      <span style={{ flex: 1 }} />
       {step !== "profile" ? (
         <Button variant="ghost" onClick={onBack}>
           Back
