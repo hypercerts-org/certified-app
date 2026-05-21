@@ -33,11 +33,7 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { formatShortDate } from "@/lib/utils/format-date"
 import { getInitials } from "@/lib/utils/initials"
-import {
-  createListAward,
-  deleteEndorsementAward,
-  extractAwardSubjectDid,
-} from "@/lib/atproto/badges"
+import { extractAwardSubjectDid } from "@/lib/atproto/badges"
 
 interface EndorsementListsProps {
   /** DID of the profile being viewed. */
@@ -74,14 +70,23 @@ export default function EndorsementLists({
   did,
   viewerIsOwner,
 }: EndorsementListsProps) {
-  const { lists, isLoading, error, refetch, createList, updateList, deleteList } =
-    useEndorsementLists(did)
+  const {
+    lists,
+    isLoading,
+    error,
+    refetch,
+    createList,
+    updateList,
+    deleteList,
+    addSubjectToList,
+    removeSubjectFromList,
+  } = useEndorsementLists(did)
   const { did: viewerDid } = useAuth()
   const [selectedListUri, setSelectedListUri] = useState<string | null>(null)
-  // `+` button on the list-detail toolbar opens the same modal we
-  // use for issuing regular endorsements, just bound to the list's
-  // own badge ref so awards land under THIS list instead of the
-  // user's default "Endorsement" definition.
+  // `+` button on the list-detail toolbar reuses the regular
+  // endorsement modal. On confirm each subject gets a default-def
+  // endorsement award (idempotency guard in `addSubjectToList`) plus
+  // a strong-ref entry in the list's collection record.
   const [isAddingPeople, setIsAddingPeople] = useState(false)
   const [sort, setSort] = useState<SortKey>("created-desc")
   const [sortOpen, setSortOpen] = useState(false)
@@ -155,27 +160,25 @@ export default function EndorsementLists({
             setDeleteError(null)
             setIsConfirmingDelete(true)
           }}
-          onAfterItemRevoke={() => refetch()}
+          onRemoveItem={(awardUri) =>
+            removeSubjectFromList(selectedList.rkey, awardUri)
+          }
         />
         {isAddingPeople && viewerIsOwner && viewerDid ? (
           <EndorsePeopleModal
             viewerDid={viewerDid}
             alreadyEndorsedDids={alreadyInList}
             onEndorse={(subjectDid) =>
-              createListAward(viewerDid, subjectDid, {
-                uri: selectedList.uri,
-                cid: selectedList.cid,
-              })
+              addSubjectToList(selectedList.rkey, subjectDid)
             }
             title="Add people to list"
-            subtitle={`They'll be added to "${selectedList.title}".`}
+            subtitle={`They'll be endorsed (if not already) and added to "${selectedList.title}".`}
             confirmActionLabel="Add"
             alreadyLabel="In list"
             onClose={() => setIsAddingPeople(false)}
             onCompleted={async () => {
-              // Refetch so the new awards appear under this list
-              // and the item count bumps. The modal closes itself
-              // on completion.
+              // Refetch so the new items appear under this list and
+              // the count bumps. The modal closes itself on completion.
               setIsAddingPeople(false)
               await refetch()
             }}
@@ -198,9 +201,9 @@ export default function EndorsementLists({
             title={`Delete "${selectedList.title}"?`}
             message={
               selectedList.items.length > 0
-                ? `This will permanently delete the list AND remove all ${selectedList.items.length} endorsement${
+                ? `This will permanently delete the list. The ${selectedList.items.length} endorsement${
                     selectedList.items.length === 1 ? "" : "s"
-                  } in it. The people you endorsed via this list will no longer show up as endorsed by you.`
+                  } from you stay${selectedList.items.length === 1 ? "s" : ""} — only the list membership goes away.`
                 : "This will permanently delete the list. It has no endorsements in it yet."
             }
             confirmLabel="Delete list"
@@ -432,9 +435,10 @@ interface ListDetailProps {
   onAdd: () => void
   onEdit: () => void
   onDelete: () => void
-  /** Fired after a per-item × revoke succeeds. Caller should refetch
-   *  so the deleted award row drops and the counter ticks down. */
-  onAfterItemRevoke: () => void | Promise<void>
+  /** Called when the viewer confirms the × on an item row. Removes
+   *  the item from the list's collection record; the underlying
+   *  endorsement award is NOT deleted. */
+  onRemoveItem: (awardUri: string) => Promise<unknown>
 }
 
 function ListDetail({
@@ -445,10 +449,9 @@ function ListDetail({
   onAdd,
   onEdit,
   onDelete,
-  onAfterItemRevoke,
+  onRemoveItem,
 }: ListDetailProps) {
   const canRevokeItems = canEdit
-  const onAfterRevoke = onAfterItemRevoke
   return (
     <>
       <header className="endorsement-lists__header endorsement-lists__header--detail">
@@ -528,10 +531,9 @@ function ListDetail({
                 revoke={
                   canRevokeItems && viewerDid
                     ? {
-                        viewerDid,
-                        rkey: award.rkey,
+                        awardUri: award.uri,
                         listTitle: list.title,
-                        onAfterRevoke,
+                        onRemove: () => onRemoveItem(award.uri),
                       }
                     : null
                 }
@@ -548,14 +550,14 @@ interface ListItemRowProps {
   subjectDid: string | null
   createdAt: string
   note?: string
-  /** Owner-only delete handle for the linked award. When set, the
-   *  row renders a × that confirms + deletes the award + invokes
-   *  `onAfterRevoke` so the list refetches and the row drops. */
+  /** Owner-only "remove from list" handle. When set, the row renders
+   *  a × that confirms + drops the item from the list's collection
+   *  record. The underlying endorsement award is NOT deleted — the
+   *  subject still appears in the Given panel. */
   revoke: {
-    viewerDid: string
-    rkey: string
+    awardUri: string
     listTitle: string
-    onAfterRevoke: () => void | Promise<void>
+    onRemove: () => Promise<unknown>
   } | null
 }
 
@@ -613,11 +615,9 @@ function ListItemRow({ subjectDid, createdAt, note, revoke }: ListItemRowProps) 
       )}
       {revoke ? (
         <RevokeListItemButton
-          viewerDid={revoke.viewerDid}
-          rkey={revoke.rkey}
           listTitle={revoke.listTitle}
           subjectDisplay={displayName}
-          onAfterRevoke={revoke.onAfterRevoke}
+          onRemove={revoke.onRemove}
         />
       ) : null}
     </li>
@@ -762,26 +762,23 @@ function CreateListModal({
   )
 }
 
-// --------------------- Revoke a single list item ---------------------
+// --------------------- Remove a single list item ---------------------
 
 /**
  * `×` rendered to the right of each list-item row when the viewer
- * owns the list. Confirms in a destructive dialog, then deletes the
- * underlying `app.certified.badge.award` record. Doesn't touch the
- * list's definition — only one award disappears.
+ * owns the list. Confirms in a destructive dialog, then drops the
+ * item from the list's `org.hypercerts.collection` record. The
+ * underlying endorsement award survives — the subject still appears
+ * in the issuer's Given panel.
  */
 function RevokeListItemButton({
-  viewerDid,
-  rkey,
   listTitle,
   subjectDisplay,
-  onAfterRevoke,
+  onRemove,
 }: {
-  viewerDid: string
-  rkey: string
   listTitle: string
   subjectDisplay: string
-  onAfterRevoke: () => void | Promise<void>
+  onRemove: () => Promise<unknown>
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [isRevoking, setIsRevoking] = useState(false)
@@ -790,8 +787,7 @@ function RevokeListItemButton({
     if (isRevoking) return
     setIsRevoking(true)
     try {
-      await deleteEndorsementAward(viewerDid, rkey)
-      await onAfterRevoke()
+      await onRemove()
       setConfirmOpen(false)
     } catch (err) {
       console.error("Failed to remove list item:", err)
@@ -820,7 +816,7 @@ function RevokeListItemButton({
       {confirmOpen ? (
         <ConfirmDialog
           title={`Remove ${subjectDisplay} from "${listTitle}"?`}
-          message="The endorsement awarded under this list will be deleted. The person will no longer appear in the list."
+          message="Their endorsement from you stays — only the list membership is removed."
           confirmLabel="Remove"
           cancelLabel="Cancel"
           confirmVariant="destructive"

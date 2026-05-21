@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react"
 import {
   listAwards,
   listDefinitions,
-  ENDORSEMENT_BADGE_TITLE,
   ENDORSEMENT_BADGE_TYPE,
   type BadgeAwardRecord,
   type BadgeDefinitionValue,
@@ -13,8 +12,7 @@ import {
 /**
  * A user's endorsement award, with the subject DID pre-extracted
  * from the (string-or-strongRef) `subject` union and the note
- * surfaced for display. Shape is intentionally close to the previous
- * `EndorsementRecord` so callers don't all need rewriting.
+ * surfaced for display.
  */
 export interface GivenEndorsement {
   uri: string
@@ -23,9 +21,15 @@ export interface GivenEndorsement {
   subjectDid: string
   createdAt: string
   note?: string
-  /** Title of the list this endorsement was awarded under, when it
-   *  belongs to a user-created list rather than the default
-   *  "Endorsement" definition. `undefined` for default endorsements. */
+  /**
+   * Vestigial — kept for `<PersonCard listTitle?: string>` prop-shape
+   * continuity. Always `undefined` after the lists-as-collections
+   * migration: there's only one endorsement definition per issuer
+   * now, and lists are a separate curation overlay (see
+   * `docs/lists-as-collections/`). Multi-list chip rendering on the
+   * Given panel is deferred — when it lands, replace this field with
+   * `lists: string[]` populated from the issuer's collection records.
+   */
   listTitle?: string
 }
 
@@ -33,9 +37,9 @@ export interface GivenEndorsement {
  * Fetch and track the endorsement awards **given** by a user — read
  * from their own PDS via two listRecords calls:
  *
- *   1. `app.certified.badge.definition` to find every definition the
- *      user owns
- *   2. `app.certified.badge.award` to list all awards they've issued
+ *   1. `app.certified.badge.definition` to find the issuer's
+ *      endorsement-typed definition(s).
+ *   2. `app.certified.badge.award` to list all awards they've issued.
  *
  * We then keep only awards whose `badge.uri` resolves to a definition
  * with `badgeType === "endorsement"`. This sidesteps the indexer
@@ -76,25 +80,22 @@ export function useGivenEndorsements(did: string | null): {
         ])
         if (signal?.aborted) return
 
-        // Build a URI → title map of endorsement-typed definitions
-        // owned by this user. The default endorsement def keeps the
-        // reserved title "Endorsement"; anything else with this
-        // badgeType is a user-created list. Attaching the title to
-        // each award lets the UI surface the list name when
-        // rendering Given cards on the endorsements tab.
-        const endorsementDefs = new Map<string, string>()
+        // Build the set of endorsement-typed definition URIs owned by
+        // this user — used to filter awards to "actually endorsements"
+        // (vs. some other badgeType if one ever lands here). Lists
+        // no longer live in this collection (see
+        // `docs/lists-as-collections/`); the set therefore typically
+        // contains exactly one entry (the default def) but we still
+        // walk it so legacy custom-typed endorsement defs from before
+        // the migration still show up in Given.
+        const endorsementDefUris = new Set<string>()
         for (const d of defs) {
-          if (isEndorsementDefinition(d.value)) {
-            endorsementDefs.set(d.uri, d.value.title)
-          }
+          if (isEndorsementDefinition(d.value)) endorsementDefUris.add(d.uri)
         }
 
         const mapped = awards
-          .filter((a) => endorsementDefs.has(a.value.badge?.uri ?? ""))
-          .map((award) => {
-            const defTitle = endorsementDefs.get(award.value.badge?.uri ?? "")
-            return toGiven(award, defTitle)
-          })
+          .filter((a) => endorsementDefUris.has(a.value.badge?.uri ?? ""))
+          .map(toGiven)
           .filter((e): e is GivenEndorsement => e !== null)
 
         // Newest first by createdAt — matches the Received view and
@@ -131,16 +132,9 @@ function isEndorsementDefinition(v: BadgeDefinitionValue): boolean {
   return v?.badgeType === ENDORSEMENT_BADGE_TYPE
 }
 
-function toGiven(
-  award: BadgeAwardRecord,
-  defTitle: string | undefined,
-): GivenEndorsement | null {
+function toGiven(award: BadgeAwardRecord): GivenEndorsement | null {
   const subjectDid = extractSubjectDid(award.value.subject)
   if (!subjectDid) return null
-  // Only attach `listTitle` for awards under a user-created list —
-  // the default "Endorsement" def is the implicit fallback, so its
-  // title would be noise on the card.
-  const isList = !!defTitle && defTitle !== ENDORSEMENT_BADGE_TITLE
   return {
     uri: award.uri,
     cid: award.cid,
@@ -148,7 +142,7 @@ function toGiven(
     subjectDid,
     createdAt: award.value.createdAt,
     note: award.value.note,
-    listTitle: isList ? defTitle : undefined,
+    // listTitle intentionally unset — see interface JSDoc.
   }
 }
 
