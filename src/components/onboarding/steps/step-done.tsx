@@ -10,12 +10,11 @@ interface StepDoneProps {
 }
 
 /**
- * Final step — pure presentational. The commit (clone blobs →
- * putProfile) is fired by the modal's navigation handlers the moment
- * the user lands on this step, so the footer transitions straight
- * from "Continue" / "Finish" to "Finishing…" with no flash of
- * idle-state Finish buttons. Try-again on error is wired through
- * the footer Finish button at the modal level.
+ * Final step — pure presentational summary. The commit (clone blobs
+ * → putProfile) only runs when the user clicks the explicit Finish
+ * button in the modal footer. No auto-fire on mount or navigation
+ * so the user is never surprised by writes happening without their
+ * input.
  */
 export default function StepDone({ draft, commit }: StepDoneProps) {
   return (

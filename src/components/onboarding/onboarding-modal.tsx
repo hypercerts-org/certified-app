@@ -102,30 +102,15 @@ export default function OnboardingModal() {
     await commit.run(profileDraft)
   }, [commit, profileDraft])
 
-  // Navigating to "done" auto-fires the commit. Done inside the
-  // navigation handlers (not in StepDone's useEffect) so React's
-  // automatic batching pairs `setStep("done")` with the commit's
-  // status → "running" transition in a single render — no flash of
-  // the idle-state Finish button before "Finishing…".
-  const goToStep = useCallback(
-    (next: StepKey) => {
-      setStep(next)
-      if (next === "done" && commit.state.status === "idle") {
-        void runCommit()
-      }
-    },
-    [commit.state.status, runCommit],
-  )
-
   const advance = useCallback(() => {
     const i = STEP_ORDER.indexOf(step)
-    if (i < STEP_ORDER.length - 1) goToStep(STEP_ORDER[i + 1])
-  }, [step, goToStep])
+    if (i < STEP_ORDER.length - 1) setStep(STEP_ORDER[i + 1])
+  }, [step])
 
   const goBack = useCallback(() => {
     const i = STEP_ORDER.indexOf(step)
-    if (i > 0) goToStep(STEP_ORDER[i - 1])
-  }, [step, goToStep])
+    if (i > 0) setStep(STEP_ORDER[i - 1])
+  }, [step])
 
   const handleClose = useCallback(() => {
     // While a commit is in flight, ESC / backdrop / Close button do
@@ -171,10 +156,11 @@ export default function OnboardingModal() {
                 }`}
                 onClick={() => {
                   // Free-form navigation: clicking any step jumps
-                  // there. Going to "done" auto-fires the commit via
-                  // goToStep — no extra Finish click needed.
+                  // there. No auto-fire on Step 3 — the explicit
+                  // Finish button in the footer is the only commit
+                  // trigger.
                   if (commit.state.status === "running") return
-                  goToStep(s)
+                  setStep(s)
                 }}
                 disabled={commit.state.status === "running"}
               >
