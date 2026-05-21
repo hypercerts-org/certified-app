@@ -2073,8 +2073,15 @@ dialog.signin-modal.app-modal .signin-modal__body {
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 
-.onboarding-modal__step:hover:not(:disabled) {
+.onboarding-modal__step:hover:not(:disabled):not(.onboarding-modal__step--current) {
   background: var(--bg-raised);
+}
+
+.onboarding-modal__step--current:hover {
+  /* Active tab stays inverted on hover — `--bg-raised` from the
+     general hover rule above would otherwise wash the white text
+     onto a light background. */
+  background: var(--fg-primary);
 }
 
 .onboarding-modal__step:focus-visible {
@@ -2716,4 +2723,98 @@ dialog.signin-modal.app-modal .signin-modal__body {
 .onboarding-step__picker-pagination button:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+/* ============================================================================
+   Onboarding success screen — celebratory overlay after the commit
+   resolves. Replaces the entire modal body (no steps, no footer chrome).
+   ============================================================================ */
+
+.onboarding-modal--success {
+  /* Tighter cap than the multi-step modal — the success view is
+     intentionally narrower to keep the message focused. */
+}
+
+.onboarding-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 40px 32px 32px;
+  gap: 4px;
+}
+
+.onboarding-success__halo {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 18px;
+  color: var(--color-success-text);
+  background: radial-gradient(
+    circle at center,
+    rgba(46, 204, 113, 0.18) 0%,
+    rgba(46, 204, 113, 0.0) 70%
+  );
+  border-radius: 999px;
+}
+
+.onboarding-success__halo::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 999px;
+  border: 1px dashed rgba(46, 204, 113, 0.35);
+  animation: onboarding-success-spin 14s linear infinite;
+}
+
+@keyframes onboarding-success-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-success__halo::before {
+    animation: none;
+  }
+}
+
+.onboarding-success__avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bg-sunken);
+  box-shadow: 0 0 0 3px var(--bg-elevated), 0 6px 18px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.onboarding-success__avatar--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--fg-secondary);
+}
+
+.onboarding-success__title {
+  margin: 0 0 6px;
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--fg-primary);
+  line-height: 1.15;
+}
+
+.onboarding-success__subtitle {
+  margin: 0 0 28px;
+  font-size: 0.9375rem;
+  color: var(--fg-secondary);
+  line-height: 1.5;
 }

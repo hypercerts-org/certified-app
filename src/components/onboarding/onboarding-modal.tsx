@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { Sparkles } from "lucide-react"
 import AppDialog from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -12,17 +13,15 @@ import StepProfile, {
   emptyProfileDraft,
 } from "./steps/step-profile"
 import StepGraph, { type GraphIntent } from "./steps/step-graph"
-import StepDone from "./steps/step-done"
 import { useOnboardingCommit, type CommitState } from "./use-onboarding-commit"
 
-type StepKey = "profile" | "graph" | "done"
+type StepKey = "profile" | "graph"
 
-const STEP_ORDER: readonly StepKey[] = ["profile", "graph", "done"] as const
+const STEP_ORDER: readonly StepKey[] = ["profile", "graph"] as const
 
 const STEP_LABELS: Record<StepKey, string> = {
   profile: "Your profile",
   graph: "Your follows",
-  done: "Finish",
 }
 
 /**
@@ -31,15 +30,18 @@ const STEP_LABELS: Record<StepKey, string> = {
  * the provider), and can also be opened by hand from the profile banner
  * or settings card.
  *
- * Three steps with a single batched commit at the end:
- *   1. Profile — confirm/edit bsky-seeded display name, bio, pronouns,
- *      avatar, banner.
- *   2. Follows — decide whether to copy Bluesky follows over.
- *   3. Finish — run the commit (clone blobs → putProfile → optional
- *      sync), show progress + result.
+ * Two steps + a celebratory success screen:
+ *   1. Profile — confirm/edit bsky-seeded display name, bio, avatar,
+ *      banner.
+ *   2. Follows — three-way intent (Import all / Pick specific / Skip).
+ *      Sync runs in place on this step.
  *
- * The modal returns `null` when not open so it's cheap to mount
- * globally even for users who'll never see it.
+ * The Finish button on Step 2 fires the profile commit (clone blobs →
+ * putProfile). On success the modal swaps to a success screen that
+ * shows the freshly-imported avatar + name.
+ *
+ * Returns `null` when not open so it's cheap to mount globally even
+ * for users who'll never see it.
  */
 export default function OnboardingModal() {
   const { isOpen, bskySeed, dismissOnboarding, completeOnboarding } =
@@ -85,12 +87,8 @@ export default function OnboardingModal() {
     }
   }, [isOpen])
 
-  // Lift the social-graph comparison up so Step 2 can render stats
-  // inline AND Step 3's commit can call importDids on the same hook
-  // instance (no double-fetch, no race between the two steps).
-  // The hook safely no-ops when `did` is empty; we still mount it
-  // unconditionally so the comparison is already in flight by the
-  // time the user lands on Step 2.
+  // Lifted to the modal so Step 2 can render stats inline and share
+  // the same hook instance during in-place imports (no double-fetch).
   const sync = useSocialGraphSync(did ?? "", { ownDid: did ?? "" })
 
   const commit = useOnboardingCommit({
@@ -122,6 +120,52 @@ export default function OnboardingModal() {
   if (!isOpen) return null
   if (!did) return null
 
+  // Success state takes over the whole modal — no steps, no body,
+  // just celebration.
+  if (commit.state.status === "success") {
+    const previewUrl =
+      (profileDraft.replacementAvatarFile
+        ? URL.createObjectURL(profileDraft.replacementAvatarFile)
+        : profileDraft.sourceAvatarUrl) || null
+    return (
+      <AppDialog
+        ariaLabel="Welcome to Certified"
+        className="onboarding-modal onboarding-modal--success"
+        maxWidth={520}
+        onClose={handleClose}
+      >
+        <div className="onboarding-success">
+          <div className="onboarding-success__halo" aria-hidden>
+            <Sparkles size={28} strokeWidth={1.5} />
+          </div>
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              alt=""
+              aria-hidden
+              className="onboarding-success__avatar"
+            />
+          ) : (
+            <div className="onboarding-success__avatar onboarding-success__avatar--empty">
+              {(profileDraft.displayName || handle || "?")
+                .slice(0, 1)
+                .toUpperCase()}
+            </div>
+          )}
+          <h2 className="onboarding-success__title">
+            Welcome, {profileDraft.displayName.trim() || handle || "friend"}
+          </h2>
+          <p className="onboarding-success__subtitle">
+            Your Certified profile is live. Go say hi.
+          </p>
+          <Button variant="primary" onClick={handleClose}>
+            Take me to my profile
+          </Button>
+        </div>
+      </AppDialog>
+    )
+  }
+
   return (
     <AppDialog
       ariaLabel="Welcome to Certified"
@@ -135,9 +179,7 @@ export default function OnboardingModal() {
         <p className="onboarding-modal__subtitle">
           {step === "profile"
             ? "Edit your profile."
-            : step === "graph"
-              ? "Bring your Bluesky follows to Certified. You can re-run this any time from Settings → Sync social graph."
-              : "One tap to wrap up."}
+            : "Bring your Bluesky follows to Certified. You can re-run this any time from Settings → Sync social graph."}
         </p>
         <ol className="onboarding-modal__steps" aria-label="Onboarding steps">
           {STEP_ORDER.map((s, i) => (
@@ -155,10 +197,6 @@ export default function OnboardingModal() {
                     : ""
                 }`}
                 onClick={() => {
-                  // Free-form navigation: clicking any step jumps
-                  // there. No auto-fire on Step 3 — the explicit
-                  // Finish button in the footer is the only commit
-                  // trigger.
                   if (commit.state.status === "running") return
                   setStep(s)
                 }}
@@ -181,7 +219,7 @@ export default function OnboardingModal() {
             onChange={setProfileDraft}
             handle={handle ?? undefined}
           />
-        ) : step === "graph" ? (
+        ) : (
           <StepGraph
             stats={sync.stats}
             isLoading={sync.isLoading}
@@ -191,8 +229,6 @@ export default function OnboardingModal() {
             onChange={setGraphIntent}
             importDids={sync.importDids}
           />
-        ) : (
-          <StepDone draft={profileDraft} commit={commit.state} />
         )}
       </div>
 
@@ -208,7 +244,6 @@ export default function OnboardingModal() {
           onBack={goBack}
           onContinue={advance}
           onFinish={runCommit}
-          onDone={handleClose}
         />
       </footer>
     </AppDialog>
@@ -222,7 +257,6 @@ interface FooterActionsProps {
   onBack: () => void
   onContinue: () => void
   onFinish: () => void
-  onDone: () => void
 }
 
 function FooterActions({
@@ -232,32 +266,13 @@ function FooterActions({
   onBack,
   onContinue,
   onFinish,
-  onDone,
 }: FooterActionsProps) {
-  if (step === "done") {
-    if (commit.status === "success") {
-      return (
-        <Button variant="primary" onClick={onDone}>
-          Done
-        </Button>
-      )
-    }
-    if (commit.status === "running") {
-      return (
-        <Button variant="primary" disabled loading>
-          Finishing…
-        </Button>
-      )
-    }
+  const isLastStep = step === STEP_ORDER[STEP_ORDER.length - 1]
+  if (commit.status === "running") {
     return (
-      <>
-        <Button variant="ghost" onClick={onBack}>
-          Back
-        </Button>
-        <Button variant="primary" onClick={onFinish}>
-          {commit.status === "error" ? "Try again" : "Finish"}
-        </Button>
-      </>
+      <Button variant="primary" disabled loading>
+        Finishing…
+      </Button>
     )
   }
   return (
@@ -270,10 +285,14 @@ function FooterActions({
       ) : null}
       <Button
         variant="primary"
-        onClick={onContinue}
+        onClick={isLastStep ? onFinish : onContinue}
         disabled={!canContinue}
       >
-        Continue
+        {isLastStep
+          ? commit.status === "error"
+            ? "Try again"
+            : "Finish"
+          : "Continue"}
       </Button>
     </>
   )
