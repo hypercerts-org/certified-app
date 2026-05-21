@@ -43,5 +43,10 @@ export const CONNECTED_APPS = [
       "Hyperboards turn signed contributor records on AT Protocol into living, embeddable boards that show who built what.",
     logo: "/assets/partners/hyperboards_brandmark.webp",
     url: "https://hyperboards.org",
+    // Hyperboards exposes the ePDS handle-login GET endpoint with no
+    // `prompt=login`, so passing the viewer's handle silently SSOs them
+    // through the Certified PDS session. Appended with
+    // `encodeURIComponent(handle)` at render time.
+    ssoHandleUrl: "https://hyperboards.org/api/oauth/epds/login?handle=",
   },
 ] as const;

@@ -3,10 +3,12 @@
 import React from "react"
 import Image from "next/image"
 import { usePageTitle } from "@/lib/navbar-context"
+import { useSession } from "@/hooks/use-session"
 import { CONNECTED_APPS } from "@/lib/constants/apps"
 
 export default function AppsPage() {
   usePageTitle("Apps")
+  const { handle } = useSession()
 
   return (
     <div className="apps-store">
@@ -19,15 +21,26 @@ export default function AppsPage() {
       </header>
 
       <ul className="apps-store__grid">
-        {CONNECTED_APPS.map((app) => (
-          <li key={app.name} className="apps-store__cell">
-            <a
-              href={app.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="apps-store__tile"
-              aria-label={`${app.name} — ${app.desc}`}
-            >
+        {CONNECTED_APPS.map((app) => {
+          // Silent SSO: if the partner exposes an ePDS handle-login
+          // endpoint AND the viewer is signed in, deep-link them via
+          // the shared Certified PDS session so they land already
+          // signed in. Otherwise fall through to the marketing URL.
+          const ssoTemplate =
+            "ssoHandleUrl" in app ? app.ssoHandleUrl : undefined
+          const href =
+            handle && ssoTemplate
+              ? ssoTemplate + encodeURIComponent(handle)
+              : app.url
+          return (
+            <li key={app.name} className="apps-store__cell">
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="apps-store__tile"
+                aria-label={`${app.name} — ${app.desc}`}
+              >
               <span className="apps-store__row">
                 <span className="apps-store__icon-wrap">
                   <Image
@@ -44,9 +57,10 @@ export default function AppsPage() {
                 </span>
               </span>
               <span className="apps-store__desc">{app.longDesc}</span>
-            </a>
-          </li>
-        ))}
+              </a>
+            </li>
+          )
+        })}
       </ul>
 
       <p className="apps-store__footnote">More apps coming soon.</p>
