@@ -2016,3 +2016,481 @@ dialog.signin-modal.app-modal .signin-modal__body {
   border: 0;
 }
 
+
+/* ============================================================================
+   First-signin onboarding modal
+   Multi-step pane inside the shared AppDialog chrome. Each step renders
+   inside .onboarding-modal__body; the header + footer are constant across
+   steps.
+   ============================================================================ */
+
+.onboarding-modal {
+  width: 100%;
+}
+
+.onboarding-modal__header {
+  padding: 24px 24px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.onboarding-modal__title {
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 0 0 6px;
+  color: var(--fg-primary);
+}
+
+.onboarding-modal__subtitle {
+  margin: 0 0 16px;
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+  line-height: 1.5;
+}
+
+.onboarding-modal__steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 8px;
+}
+
+.onboarding-modal__step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.onboarding-modal__step--current {
+  background: var(--fg-primary);
+  color: var(--bg-canvas);
+}
+
+.onboarding-modal__step--done {
+  background: var(--bg-raised);
+  color: var(--fg-secondary);
+}
+
+.onboarding-modal__step-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--overlay-medium);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.onboarding-modal__step--current .onboarding-modal__step-index {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--bg-canvas);
+}
+
+.onboarding-modal__body {
+  padding: 20px 24px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.onboarding-modal__footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* ---------- Shared step chrome ---------- */
+
+.onboarding-step__lede {
+  margin: 0 0 16px;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--fg-secondary);
+}
+
+.onboarding-step__footnote {
+  margin: 16px 0 0;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  line-height: 1.45;
+}
+
+.onboarding-step__error {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  font-size: 0.8125rem;
+  color: var(--color-error);
+  background: rgba(186, 26, 26, 0.06);
+  border: 1px solid rgba(186, 26, 26, 0.18);
+  border-radius: var(--radius);
+}
+
+.onboarding-step__success {
+  margin: 12px 0 0;
+  font-size: 0.875rem;
+  color: var(--color-success-text);
+}
+
+.onboarding-step__loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px;
+  color: var(--fg-secondary);
+  font-size: 0.875rem;
+}
+
+/* ---------- Step 1: profile ---------- */
+
+.onboarding-step__hero {
+  position: relative;
+  margin-bottom: 36px;
+}
+
+.onboarding-step__banner {
+  display: block;
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.onboarding-step__banner--empty {
+  background: linear-gradient(
+    135deg,
+    var(--bg-raised) 0%,
+    var(--bg-sunken) 100%
+  );
+}
+
+.onboarding-step__avatar-slot {
+  position: absolute;
+  left: 20px;
+  bottom: -28px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid var(--bg-elevated);
+  overflow: hidden;
+  background: var(--bg-sunken);
+}
+
+.onboarding-step__avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.onboarding-step__avatar--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--fg-secondary);
+}
+
+.onboarding-step__media-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.onboarding-step__file-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.onboarding-step__file-btn:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-sunken);
+}
+
+.onboarding-step__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.onboarding-step__row {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.onboarding-step__row--split {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 599px) {
+  .onboarding-step__row--split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.onboarding-step__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.onboarding-step__label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  letter-spacing: 0.01em;
+}
+
+.onboarding-step__label-count {
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.onboarding-step__input,
+.onboarding-step__textarea {
+  width: 100%;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--fg-primary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.onboarding-step__textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.onboarding-step__input:focus,
+.onboarding-step__textarea:focus {
+  border-color: var(--fg-primary);
+}
+
+/* ---------- Step 2: graph ---------- */
+
+.onboarding-step__graph-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.onboarding-step__tile {
+  padding: 16px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.onboarding-step__tile--highlight {
+  background: var(--bg-elevated);
+  border-color: var(--border-hover);
+}
+
+.onboarding-step__tile-value {
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.onboarding-step__tile-label {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.onboarding-step__choice {
+  margin: 0;
+  padding: 0;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.onboarding-step__choice-legend {
+  padding: 0 0 8px;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+}
+
+.onboarding-step__radio {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.onboarding-step__radio:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-raised);
+}
+
+.onboarding-step__radio input[type="radio"] {
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.onboarding-step__radio strong {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.onboarding-step__radio-desc {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  line-height: 1.4;
+}
+
+/* ---------- Step 3: done ---------- */
+
+.onboarding-step__heading {
+  margin: 0 0 16px;
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--fg-primary);
+}
+
+.onboarding-step__checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.onboarding-step__check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+}
+
+.onboarding-step__check--done {
+  border-color: var(--color-success);
+  background: rgba(46, 204, 113, 0.05);
+}
+
+.onboarding-step__check--error {
+  border-color: var(--color-error);
+}
+
+.onboarding-step__check-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  color: var(--fg-secondary);
+  font-size: 0.8125rem;
+  flex-shrink: 0;
+}
+
+.onboarding-step__check--done .onboarding-step__check-icon {
+  background: var(--color-success);
+  color: var(--color-white);
+}
+
+.onboarding-step__check--error .onboarding-step__check-icon {
+  background: var(--color-error);
+  color: var(--color-white);
+}
+
+.onboarding-step__check-label {
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+}
+
+/* ============================================================================
+   Onboarding re-entry banner (rendered on the viewer's own profile)
+   ============================================================================ */
+
+.onboarding-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius);
+}
+
+.onboarding-banner__icon {
+  color: var(--fg-primary);
+  flex-shrink: 0;
+}
+
+.onboarding-banner__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.onboarding-banner__title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+}
+
+.onboarding-banner__desc {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  line-height: 1.4;
+}

@@ -31,6 +31,7 @@ import type { LinearDocument } from "@/lib/leaflet/types"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EditBanner from "@/components/ui/edit-banner"
 import EmptyState from "@/components/ui/empty-state"
+import OnboardingBanner from "@/components/onboarding/onboarding-banner"
 import { AlignLeft, UserX } from "lucide-react"
 
 type TabKey =
@@ -305,6 +306,11 @@ export default function UserProfilePage() {
           onSave={handleSave}
         />
       ) : null}
+
+      {/* Re-entry banner — only renders on the viewer's OWN profile
+          when the OnboardingContext gate holds (bsky profile present,
+          no certified profile yet). Internally self-gating. */}
+      {isOwnProfile && !activeOrg ? <OnboardingBanner /> : null}
 
       {activeTab === "settings" && isViewerThisEntity ? (
         // Settings tab swaps the entire profile-page two-pane layout

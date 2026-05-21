@@ -9,6 +9,8 @@ import DesktopTopBar from "@/components/layout/desktop-top-bar";
 import { Providers } from "@/lib/providers";
 import AppShell from "@/components/layout/app-shell";
 import { OrgProvider } from "@/lib/groups/org-context";
+import { OnboardingProvider } from "@/lib/onboarding/onboarding-context";
+import OnboardingModal from "@/components/onboarding/onboarding-modal";
 import FeedbackModal from "@/components/ui/feedback-modal";
 import { FeedbackProvider } from "@/lib/feedback-context";
 import { NotificationsProvider } from "@/lib/notifications-context";
@@ -145,6 +147,7 @@ export default function RootLayout({
         <Providers>
           <AuthProvider>
             <OrgProvider>
+              <OnboardingProvider>
               <NotificationsProvider>
               <NavbarProvider>
                 <FeedbackProvider>
@@ -163,9 +166,11 @@ export default function RootLayout({
                 </main>
                 <BottomNav />
                 <FeedbackModal />
+                <OnboardingModal />
                 </FeedbackProvider>
               </NavbarProvider>
               </NotificationsProvider>
+              </OnboardingProvider>
             </OrgProvider>
           </AuthProvider>
         </Providers>

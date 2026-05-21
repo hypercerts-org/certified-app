@@ -209,6 +209,23 @@ export async function GET(request: NextRequest) {
     // displayName + other fields we're showing all originate from
     // app.bsky.actor.profile). Issue #74.
     const hasCertifiedProfile = !!certs?.displayName
+    // True when an app.bsky.actor.profile is reachable + populated.
+    // Used by the first-signin onboarding gate so the import modal
+    // only opens for users who actually have bsky content worth
+    // importing (skips first-time-on-atproto users).
+    const hasBlueskyProfile = !!(bsky?.displayName || bsky?.avatar)
+    // The raw bsky-derived seed values, surfaced separately from
+    // the merged fields above so the onboarding form can populate
+    // its inputs from bsky even when the merged values already
+    // resolve to certified (e.g. partial onboarding states).
+    const blueskyProfile = bsky
+      ? {
+          displayName: bsky.displayName,
+          description: bsky.description,
+          avatar: bsky.avatar,
+          banner: bsky.banner,
+        }
+      : null
 
     // Own DID: short 10s cache so repeat navigations (clicking your
     // own profile from the nav) feel instant without a network hit,
@@ -236,6 +253,8 @@ export async function GET(request: NextRequest) {
         banner,
         createdAt,
         hasCertifiedProfile,
+        hasBlueskyProfile,
+        blueskyProfile,
       },
       { headers: { "Cache-Control": cacheControl } }
     )
