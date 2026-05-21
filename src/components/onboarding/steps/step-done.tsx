@@ -3,32 +3,25 @@
 import { useEffect, useRef } from "react"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import type { ProfileDraft } from "./step-profile"
-import type { GraphIntent } from "./step-graph"
 import type { CommitState } from "../use-onboarding-commit"
 
 interface StepDoneProps {
   readonly draft: ProfileDraft
-  readonly intent: GraphIntent
   readonly commit: CommitState
   onRun: () => void
 }
 
 /**
- * Final step — summarises what's about to happen, and runs the batched
- * commit. The Finish button in the modal footer triggers `onRun`; this
- * pane mirrors the commit state so the user gets per-substep progress.
+ * Final step — runs the profile commit (clone blobs → putProfile). The
+ * social-graph sync already ran on Step 2, so this pane is just the
+ * profile save + the "Welcome aboard" message.
  */
-export default function StepDone({
-  draft,
-  intent,
-  commit,
-  onRun,
-}: StepDoneProps) {
+export default function StepDone({ draft, commit, onRun }: StepDoneProps) {
   const hasRunRef = useRef(false)
 
-  // Auto-run the commit the first time this pane mounts, so the user
-  // doesn't have to press a button they just navigated to. The footer
-  // Finish button is the manual / "Try again" trigger for retries.
+  // Auto-run the commit the first time this pane mounts. The Finish
+  // button in the modal footer is the manual / "Try again" trigger
+  // for retries.
   useEffect(() => {
     if (hasRunRef.current) return
     if (commit.status !== "idle") return
@@ -41,16 +34,10 @@ export default function StepDone({
       <h3 className="onboarding-step__heading">Almost there</h3>
       <ul className="onboarding-step__checklist">
         <ChecklistItem
-          label={`Save your profile as @${draft.displayName.trim() || "you"}`}
+          label={`Save your profile as ${
+            draft.displayName.trim() || "you"
+          }`}
           state={profileStateLabel(commit)}
-        />
-        <ChecklistItem
-          label={
-            intent.kind === "importAll"
-              ? "Copy your Bluesky follows to Certified"
-              : "Skip social-graph import (you can run it later)"
-          }
-          state={syncStateLabel(commit, intent)}
         />
       </ul>
 
@@ -69,28 +56,13 @@ export default function StepDone({
   )
 }
 
-type CellState = "pending" | "running" | "done" | "skipped" | "error"
+type CellState = "pending" | "running" | "done" | "error"
 
 function profileStateLabel(commit: CommitState): CellState {
   if (commit.status === "idle") return "pending"
-  if (commit.status === "running") {
-    if (commit.stage === "profile-clone" || commit.stage === "profile-write")
-      return "running"
-    return "done"
-  }
+  if (commit.status === "running") return "running"
   if (commit.status === "success") return "done"
-  // error
-  return commit.stage === "sync" ? "done" : "error"
-}
-
-function syncStateLabel(commit: CommitState, intent: GraphIntent): CellState {
-  if (intent.kind === "skip") return "skipped"
-  if (commit.status === "idle") return "pending"
-  if (commit.status === "running") {
-    return commit.stage === "sync" ? "running" : "pending"
-  }
-  if (commit.status === "success") return "done"
-  return commit.stage === "sync" ? "error" : "pending"
+  return "error"
 }
 
 function ChecklistItem({
@@ -109,8 +81,6 @@ function ChecklistItem({
           <LoadingSpinner size="sm" />
         ) : state === "done" ? (
           "✓"
-        ) : state === "skipped" ? (
-          "—"
         ) : state === "error" ? (
           "✕"
         ) : (

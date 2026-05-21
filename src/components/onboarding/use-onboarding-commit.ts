@@ -15,55 +15,38 @@ import type {
   HypercertsSmallImage,
   HypercertsLargeImage,
 } from "@/lib/atproto/types"
-import type { SocialGraphSyncResult } from "@/hooks/use-social-graph-sync"
 import type { ProfileDraft } from "./steps/step-profile"
-import type { GraphIntent } from "./steps/step-graph"
 
 /**
- * Substep of the batched onboarding commit. Threaded into the CommitState
- * so Step 3's checklist can highlight which line is "running" right now.
+ * Substep of the onboarding profile commit. Step 2 runs the social-
+ * graph sync on its own page (see step-graph) — this hook only
+ * handles cloning the bsky avatar/banner into the user's PDS and
+ * writing the certified profile record.
  */
-export type CommitStage =
-  | "profile-clone"
-  | "profile-write"
-  | "sync"
+export type CommitStage = "profile-clone" | "profile-write"
 
 export type CommitState =
   | { status: "idle" }
   | { status: "running"; stage: CommitStage }
-  | {
-      status: "success"
-      syncResult: SocialGraphSyncResult | null
-    }
-  | {
-      status: "error"
-      stage: CommitStage
-      error: string
-    }
+  | { status: "success" }
+  | { status: "error"; stage: CommitStage; error: string }
 
 interface UseOnboardingCommitArgs {
   readonly did: string | null
-  readonly candidateDids: string[]
-  importDids: (
-    dids: string[],
-    opts?: { signal?: AbortSignal },
-  ) => Promise<SocialGraphSyncResult>
   onSuccess: () => void
 }
 
 export function useOnboardingCommit({
   did,
-  candidateDids,
-  importDids,
   onSuccess,
 }: UseOnboardingCommitArgs): {
   state: CommitState
-  run: (draft: ProfileDraft, intent: GraphIntent) => Promise<void>
+  run: (draft: ProfileDraft) => Promise<void>
 } {
   const [state, setState] = useState<CommitState>({ status: "idle" })
 
   const run = useCallback(
-    async (draft: ProfileDraft, intent: GraphIntent) => {
+    async (draft: ProfileDraft) => {
       if (!did) return
       // Profile-clone stage: upload any replacement files the user
       // picked, OR clone the bsky CDN URL into a fresh blob on the
@@ -99,14 +82,12 @@ export function useOnboardingCommit({
       const trimmed = {
         displayName: draft.displayName.trim(),
         description: draft.description.trim(),
-        pronouns: draft.pronouns.trim(),
         website: draft.website.trim(),
       }
       const profile: CertifiedProfile = {
         createdAt: new Date().toISOString(),
         ...(trimmed.displayName && { displayName: trimmed.displayName }),
         ...(trimmed.description && { description: trimmed.description }),
-        ...(trimmed.pronouns && { pronouns: trimmed.pronouns }),
         ...(trimmed.website && { website: trimmed.website }),
       }
       if (avatarBlob) {
@@ -134,29 +115,10 @@ export function useOnboardingCommit({
         return
       }
 
-      // Sync stage: only when the user opted in. A failure here
-      // leaves the profile in place (it's already saved) and the
-      // re-entry banner stays visible until they finish manually
-      // via Settings → Sync social graph.
-      let syncResult: SocialGraphSyncResult | null = null
-      if (intent.kind === "importAll" && candidateDids.length > 0) {
-        setState({ status: "running", stage: "sync" })
-        try {
-          syncResult = await importDids(candidateDids)
-        } catch (err) {
-          setState({
-            status: "error",
-            stage: "sync",
-            error: err instanceof Error ? err.message : "Failed to sync follows",
-          })
-          return
-        }
-      }
-
-      setState({ status: "success", syncResult })
+      setState({ status: "success" })
       onSuccess()
     },
-    [did, candidateDids, importDids, onSuccess],
+    [did, onSuccess],
   )
 
   return { state, run }

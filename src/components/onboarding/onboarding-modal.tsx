@@ -54,6 +54,11 @@ export default function OnboardingModal() {
   const [graphIntent, setGraphIntent] = useState<GraphIntent>({
     kind: "skip",
   })
+  // True once Step 2 has finished a sync (success). Gates the
+  // Continue button on Step 2 — users who opt-in to import must let
+  // it complete before advancing, while Skip lets them through
+  // immediately.
+  const [syncDone, setSyncDone] = useState(false)
 
   // Seed the profile draft from bsky values the first time the modal
   // opens for this DID. Subsequent re-opens (banner clicks) keep
@@ -67,7 +72,6 @@ export default function OnboardingModal() {
     setProfileDraft({
       displayName: bskySeed?.displayName?.trim() ?? "",
       description: bskySeed?.description?.trim() ?? "",
-      pronouns: "",
       website: "",
       sourceAvatarUrl: bskySeed?.avatar ?? null,
       sourceBannerUrl: bskySeed?.banner ?? null,
@@ -75,6 +79,7 @@ export default function OnboardingModal() {
       replacementBannerFile: null,
     })
     setGraphIntent({ kind: "skip" })
+    setSyncDone(false)
     setStep("profile")
   }, [isOpen, did, bskySeed])
 
@@ -96,8 +101,6 @@ export default function OnboardingModal() {
 
   const commit = useOnboardingCommit({
     did,
-    candidateDids: sync.stats.onlyBluesky,
-    importDids: sync.importDids,
     onSuccess: completeOnboarding,
   })
 
@@ -119,8 +122,8 @@ export default function OnboardingModal() {
   }, [commit.state.status, dismissOnboarding])
 
   const runCommit = useCallback(async () => {
-    await commit.run(profileDraft, graphIntent)
-  }, [commit, profileDraft, graphIntent])
+    await commit.run(profileDraft)
+  }, [commit, profileDraft])
 
   if (!isOpen) return null
   if (!did) return null
@@ -137,7 +140,7 @@ export default function OnboardingModal() {
         <h2 className="onboarding-modal__title">Welcome to Certified</h2>
         <p className="onboarding-modal__subtitle">
           {step === "profile"
-            ? "Bring your Bluesky profile over — edit anything you want."
+            ? "Edit your profile."
             : step === "graph"
               ? "Bring your follows with you so your timeline isn't empty."
               : "One tap to wrap up."}
@@ -178,12 +181,19 @@ export default function OnboardingModal() {
             truncated={sync.truncated}
             error={sync.error}
             intent={graphIntent}
-            onChange={setGraphIntent}
+            onChange={(i) => {
+              setGraphIntent(i)
+              // Switching choice after a sync has run resets the
+              // gate — but in practice this only fires while the
+              // runner is idle (choices unmount once started).
+              if (i.kind === "skip") setSyncDone(false)
+            }}
+            importDids={sync.importDids}
+            onSyncDone={() => setSyncDone(true)}
           />
         ) : (
           <StepDone
             draft={profileDraft}
-            intent={graphIntent}
             commit={commit.state}
             onRun={runCommit}
           />
@@ -195,7 +205,11 @@ export default function OnboardingModal() {
           step={step}
           commit={commit.state}
           canContinue={
-            step !== "profile" || profileDraft.displayName.trim().length > 0
+            step === "profile"
+              ? profileDraft.displayName.trim().length > 0
+              : step === "graph"
+                ? graphIntent.kind === "skip" || syncDone
+                : true
           }
           onBack={goBack}
           onContinue={advance}

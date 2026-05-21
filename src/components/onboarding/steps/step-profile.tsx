@@ -13,7 +13,6 @@ import { useId } from "react"
 export interface ProfileDraft {
   displayName: string
   description: string
-  pronouns: string
   website: string
   sourceAvatarUrl: string | null
   sourceBannerUrl: string | null
@@ -25,7 +24,6 @@ export function emptyProfileDraft(): ProfileDraft {
   return {
     displayName: "",
     description: "",
-    pronouns: "",
     website: "",
     sourceAvatarUrl: null,
     sourceBannerUrl: null,
@@ -47,7 +45,6 @@ export default function StepProfile({
 }: StepProfileProps) {
   const displayNameId = useId()
   const descriptionId = useId()
-  const pronounsId = useId()
   const websiteId = useId()
 
   const previewAvatarUrl = draft.replacementAvatarFile
@@ -119,42 +116,23 @@ export default function StepProfile({
       </div>
 
       <div className="onboarding-step__fields">
-        <div className="onboarding-step__row onboarding-step__row--split">
-          <div className="onboarding-step__field">
-            <label htmlFor={displayNameId} className="onboarding-step__label">
-              <span>Display name</span>
-              <span className="onboarding-step__label-count">
-                {draft.displayName.length}/64
-              </span>
-            </label>
-            <input
-              id={displayNameId}
-              type="text"
-              className="onboarding-step__input"
-              value={draft.displayName}
-              maxLength={64}
-              placeholder="Your name"
-              onChange={(e) => update("displayName", e.target.value)}
-              required
-            />
-          </div>
-          <div className="onboarding-step__field">
-            <label htmlFor={pronounsId} className="onboarding-step__label">
-              <span>Pronouns</span>
-              <span className="onboarding-step__label-count">
-                {draft.pronouns.length}/20
-              </span>
-            </label>
-            <input
-              id={pronounsId}
-              type="text"
-              className="onboarding-step__input"
-              value={draft.pronouns}
-              maxLength={20}
-              placeholder="they/them"
-              onChange={(e) => update("pronouns", e.target.value)}
-            />
-          </div>
+        <div className="onboarding-step__field">
+          <label htmlFor={displayNameId} className="onboarding-step__label">
+            <span>Display name</span>
+            <span className="onboarding-step__label-count">
+              {draft.displayName.length}/64
+            </span>
+          </label>
+          <input
+            id={displayNameId}
+            type="text"
+            className="onboarding-step__input"
+            value={draft.displayName}
+            maxLength={64}
+            placeholder="Your name"
+            onChange={(e) => update("displayName", e.target.value)}
+            required
+          />
         </div>
 
         <div className="onboarding-step__field">
