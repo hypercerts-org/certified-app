@@ -57,8 +57,6 @@ interface StepGraphProps {
   onSyncDone: (result: SocialGraphSyncResult) => void
 }
 
-const PAGE_SIZE = 50
-
 export default function StepGraph({
   stats,
   isLoading,
@@ -77,7 +75,6 @@ export default function StepGraph({
   // ---- Picker state (only relevant for intent.kind === "select") -----
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [query, setQuery] = useState("")
-  const [page, setPage] = useState(0)
 
   // ---- Sync runner state — owned here so the modal can read the
   // "done" signal without forcing the runner into context.
@@ -173,11 +170,6 @@ export default function StepGraph({
 
   return (
     <div className="onboarding-step onboarding-step--graph">
-      <p className="onboarding-step__lede">
-        Copy the people you follow on Bluesky into your Certified follow
-        graph. You can skip and run this from Settings later.
-      </p>
-
       <div className="onboarding-step__graph-stats">
         <Tile
           label="Now on Certified"
@@ -210,55 +202,51 @@ export default function StepGraph({
       ) : null}
 
       {/* Choices are hidden once a sync has been started — the
-          finished/failed state is the user's view. */}
+          finished/failed state is the user's view. Segmented-control
+          style: three short labels in a single row. */}
       {runner.status === "idle" && canImport ? (
-        <fieldset className="onboarding-step__choice">
-          <legend className="onboarding-step__choice-legend">
-            What should we do with the {candidateCount}{" "}
-            {candidateCount === 1 ? "follow" : "follows"} that aren&apos;t on
-            Certified yet?
+        <fieldset className="onboarding-step__segments">
+          <legend className="sr-only">
+            What to do with Bluesky-only follows
           </legend>
-          <label className="onboarding-step__radio">
+          <label
+            className={`onboarding-step__segment${
+              intent.kind === "all" ? " onboarding-step__segment--active" : ""
+            }`}
+          >
             <input
               type="radio"
               name="onboarding-graph-intent"
               checked={intent.kind === "all"}
               onChange={() => onChange({ kind: "all" })}
             />
-            <span>
-              <strong>Import everything</strong>
-              <span className="onboarding-step__radio-desc">
-                Follow them all on Certified.
-              </span>
-            </span>
+            <span>Import all</span>
           </label>
-          <label className="onboarding-step__radio">
+          <label
+            className={`onboarding-step__segment${
+              intent.kind === "select" ? " onboarding-step__segment--active" : ""
+            }`}
+          >
             <input
               type="radio"
               name="onboarding-graph-intent"
               checked={intent.kind === "select"}
               onChange={() => onChange({ kind: "select" })}
             />
-            <span>
-              <strong>Pick specific people</strong>
-              <span className="onboarding-step__radio-desc">
-                Search and tick the ones you want to bring over.
-              </span>
-            </span>
+            <span>Pick specific</span>
           </label>
-          <label className="onboarding-step__radio">
+          <label
+            className={`onboarding-step__segment${
+              intent.kind === "skip" ? " onboarding-step__segment--active" : ""
+            }`}
+          >
             <input
               type="radio"
               name="onboarding-graph-intent"
               checked={intent.kind === "skip"}
               onChange={() => onChange({ kind: "skip" })}
             />
-            <span>
-              <strong>Skip for now</strong>
-              <span className="onboarding-step__radio-desc">
-                Revisit any time from Settings → Sync social graph.
-              </span>
-            </span>
+            <span>Skip</span>
           </label>
         </fieldset>
       ) : null}
@@ -272,8 +260,6 @@ export default function StepGraph({
           setSelected={setSelected}
           query={query}
           setQuery={setQuery}
-          page={page}
-          setPage={setPage}
         />
       ) : null}
 
@@ -343,8 +329,6 @@ interface PickerProps {
   setSelected: React.Dispatch<React.SetStateAction<Set<string>>>
   query: string
   setQuery: React.Dispatch<React.SetStateAction<string>>
-  page: number
-  setPage: React.Dispatch<React.SetStateAction<number>>
 }
 
 function Picker({
@@ -353,8 +337,6 @@ function Picker({
   setSelected,
   query,
   setQuery,
-  page,
-  setPage,
 }: PickerProps) {
   const names = useNamesMap(candidateDids)
 
@@ -366,15 +348,6 @@ function Picker({
     )
   }, [candidateDids, query, names])
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const safePage = Math.min(page, totalPages - 1)
-  const startIndex = safePage * PAGE_SIZE
-  const pageDids = filtered.slice(startIndex, startIndex + PAGE_SIZE)
-
-  useEffect(() => {
-    if (page > totalPages - 1) setPage(0)
-  }, [page, totalPages, setPage])
-
   const toggle = (did: string) => {
     setSelected((prev) => {
       const next = new Set(prev)
@@ -384,18 +357,18 @@ function Picker({
     })
   }
 
-  const togglePage = () => {
+  const toggleAll = () => {
     setSelected((prev) => {
       const next = new Set(prev)
-      const allSelected = pageDids.every((d) => next.has(d))
-      if (allSelected) pageDids.forEach((d) => next.delete(d))
-      else pageDids.forEach((d) => next.add(d))
+      const allSelected = filtered.every((d) => next.has(d))
+      if (allSelected) filtered.forEach((d) => next.delete(d))
+      else filtered.forEach((d) => next.add(d))
       return next
     })
   }
 
-  const pageAllSelected =
-    pageDids.length > 0 && pageDids.every((d) => selected.has(d))
+  const allSelected =
+    filtered.length > 0 && filtered.every((d) => selected.has(d))
 
   return (
     <div className="onboarding-step__picker">
@@ -405,10 +378,7 @@ function Picker({
           type="search"
           placeholder="Search Bluesky-only follows…"
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value)
-            setPage(0)
-          }}
+          onChange={(e) => setQuery(e.target.value)}
           autoComplete="off"
           spellCheck={false}
         />
@@ -418,10 +388,10 @@ function Picker({
         <button
           type="button"
           className="onboarding-step__picker-toggle"
-          onClick={togglePage}
-          disabled={pageDids.length === 0}
+          onClick={toggleAll}
+          disabled={filtered.length === 0}
         >
-          {pageAllSelected ? "Deselect page" : "Select page"}
+          {allSelected ? "Deselect all" : "Select all"}
         </button>
         <span className="onboarding-step__picker-counter">
           {selected.size} selected · {filtered.length}{" "}
@@ -430,12 +400,12 @@ function Picker({
       </div>
 
       <ul className="onboarding-step__picker-list" role="listbox">
-        {pageDids.length === 0 ? (
+        {filtered.length === 0 ? (
           <li className="onboarding-step__picker-empty">
             {query.trim() ? `No matches for "${query.trim()}".` : "Empty."}
           </li>
         ) : (
-          pageDids.map((d) => (
+          filtered.map((d) => (
             <PickerRow
               key={d}
               did={d}
@@ -445,28 +415,6 @@ function Picker({
           ))
         )}
       </ul>
-
-      {totalPages > 1 ? (
-        <div className="onboarding-step__picker-pagination">
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-            disabled={safePage === 0}
-          >
-            Previous
-          </button>
-          <span>
-            Page {safePage + 1} of {totalPages}
-          </span>
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-            disabled={safePage >= totalPages - 1}
-          >
-            Next
-          </button>
-        </div>
-      ) : null}
     </div>
   )
 }

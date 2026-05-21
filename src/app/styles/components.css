@@ -2355,55 +2355,59 @@ dialog.signin-modal.app-modal .signin-modal__body {
   color: var(--fg-muted);
 }
 
-.onboarding-step__choice {
-  margin: 0;
+/* Segmented-control radio group — three short labels in one row,
+   visually selected when active. Hides the native radio input. */
+.onboarding-step__segments {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
   padding: 0;
-  border: none;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.onboarding-step__choice-legend {
-  padding: 0 0 8px;
-  font-size: 0.8125rem;
-  color: var(--fg-secondary);
-}
-
-.onboarding-step__radio {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--border-subtle);
+  margin: 0 0 4px;
+  border: 1px solid var(--border-default);
   border-radius: var(--radius);
-  cursor: pointer;
-  transition: border-color var(--transition-fast), background var(--transition-fast);
+  background: var(--bg-elevated);
+  overflow: hidden;
 }
 
-.onboarding-step__radio:hover {
-  border-color: var(--border-hover);
+.onboarding-step__segment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  border-right: 1px solid var(--border-default);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.onboarding-step__segment:last-child {
+  border-right: none;
+}
+
+.onboarding-step__segment:hover {
   background: var(--bg-raised);
 }
 
-.onboarding-step__radio input[type="radio"] {
-  margin-top: 4px;
-  flex-shrink: 0;
+.onboarding-step__segment input[type="radio"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
 }
 
-.onboarding-step__radio strong {
-  display: block;
-  font-size: 0.875rem;
-  color: var(--fg-primary);
-  font-weight: 600;
-  margin-bottom: 2px;
+.onboarding-step__segment--active {
+  background: var(--fg-primary);
+  color: var(--bg-canvas);
 }
 
-.onboarding-step__radio-desc {
-  display: block;
-  font-size: 0.8125rem;
-  color: var(--fg-muted);
-  line-height: 1.4;
+.onboarding-step__segment--active:hover {
+  background: var(--fg-primary);
 }
 
 /* ---------- Step 3: done ---------- */
@@ -2613,8 +2617,6 @@ dialog.signin-modal.app-modal .signin-modal__body {
   list-style: none;
   margin: 0;
   padding: 0;
-  max-height: 280px;
-  overflow-y: auto;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
   background: var(--bg-elevated);

@@ -12,16 +12,14 @@ interface StepDoneProps {
 }
 
 /**
- * Final step — runs the profile commit (clone blobs → putProfile). The
- * social-graph sync already ran on Step 2, so this pane is just the
- * profile save + the "Welcome aboard" message.
+ * Final step — fires the profile commit (clone blobs → putProfile)
+ * automatically the moment the user navigates to this pane (either
+ * by clicking the Finish tab in the step header or the Continue
+ * button on Step 2). The Finish button in the modal footer is the
+ * manual / "Try again" trigger for retries after an error.
  */
 export default function StepDone({ draft, commit, onRun }: StepDoneProps) {
   const hasRunRef = useRef(false)
-
-  // Auto-run the commit the first time this pane mounts. The Finish
-  // button in the modal footer is the manual / "Try again" trigger
-  // for retries.
   useEffect(() => {
     if (hasRunRef.current) return
     if (commit.status !== "idle") return

@@ -142,7 +142,7 @@ export default function OnboardingModal() {
           {step === "profile"
             ? "Edit your profile."
             : step === "graph"
-              ? "Bring your follows with you so your timeline isn't empty."
+              ? "Bring your Bluesky follows to Certified."
               : "One tap to wrap up."}
         </p>
         <ol className="onboarding-modal__steps" aria-label="Onboarding steps">
