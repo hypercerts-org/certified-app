@@ -2178,16 +2178,24 @@ dialog.signin-modal.app-modal .signin-modal__body {
   margin-bottom: 36px;
 }
 
+/* Match `.profile-overview__banner` proportions exactly — 3:1 aspect
+   ratio capped at 220px tall for the populated case, 6:1 / 96px for
+   the empty placeholder. Inside the modal's narrower width this
+   produces a banner that sits at the same relative footprint as the
+   one shown on the profile page. */
 .onboarding-step__banner {
   display: block;
   width: 100%;
-  height: 120px;
+  aspect-ratio: 3 / 1;
+  max-height: 220px;
   object-fit: cover;
   border-radius: var(--radius);
   background: var(--bg-sunken);
 }
 
 .onboarding-step__banner--empty {
+  aspect-ratio: 6 / 1;
+  max-height: 96px;
   background: linear-gradient(
     135deg,
     var(--bg-raised) 0%,

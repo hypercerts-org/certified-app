@@ -52,7 +52,7 @@ export default function OnboardingModal() {
     emptyProfileDraft(),
   )
   const [graphIntent, setGraphIntent] = useState<GraphIntent>({
-    kind: "skip",
+    kind: "all",
   })
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
 
@@ -74,7 +74,7 @@ export default function OnboardingModal() {
       replacementAvatarFile: null,
       replacementBannerFile: null,
     })
-    setGraphIntent({ kind: "skip" })
+    setGraphIntent({ kind: "all" })
     setSelected(new Set())
     setStep("profile")
   }, [isOpen, did, bskySeed])
