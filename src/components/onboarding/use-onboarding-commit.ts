@@ -15,21 +15,39 @@ import type {
   HypercertsSmallImage,
   HypercertsLargeImage,
 } from "@/lib/atproto/types"
+import type {
+  SocialGraphSyncResult,
+} from "@/hooks/use-social-graph-sync"
 import type { ProfileDraft } from "./steps/step-profile"
 
 /**
- * Substep of the onboarding profile commit. Step 2 runs the social-
- * graph sync on its own page (see step-graph) — this hook only
- * handles cloning the bsky avatar/banner into the user's PDS and
- * writing the certified profile record.
+ * Substages of the onboarding commit pipeline. Threaded through
+ * CommitState so the footer button + Step 2 progress UI can label
+ * the right phase: sync → profile-clone → profile-write.
  */
-export type CommitStage = "profile-clone" | "profile-write"
+export type CommitStage = "sync" | "profile-clone" | "profile-write"
 
 export type CommitState =
   | { status: "idle" }
   | { status: "running"; stage: CommitStage }
   | { status: "success" }
   | { status: "error"; stage: CommitStage; error: string }
+
+/**
+ * Optional social-graph import to run before the profile commit.
+ * Owned by the modal so it can plumb the user's pick-specific
+ * selection alongside the all-vs-skip decision.
+ */
+export type SyncRequest =
+  | { kind: "skip" }
+  | {
+      kind: "import"
+      dids: string[]
+      importDids: (
+        dids: string[],
+        opts?: { signal?: AbortSignal },
+      ) => Promise<SocialGraphSyncResult>
+    }
 
 interface UseOnboardingCommitArgs {
   readonly did: string | null
@@ -41,13 +59,32 @@ export function useOnboardingCommit({
   onSuccess,
 }: UseOnboardingCommitArgs): {
   state: CommitState
-  run: (draft: ProfileDraft) => Promise<void>
+  run: (draft: ProfileDraft, sync: SyncRequest) => Promise<void>
 } {
   const [state, setState] = useState<CommitState>({ status: "idle" })
 
   const run = useCallback(
-    async (draft: ProfileDraft) => {
+    async (draft: ProfileDraft, sync: SyncRequest) => {
       if (!did) return
+
+      // Sync stage (optional): writes one follow per DID via
+      // importDids. The hook itself updates the local certified
+      // cache after each successful write, so Step 2's stats tiles
+      // tick up live while this loop runs.
+      if (sync.kind === "import" && sync.dids.length > 0) {
+        setState({ status: "running", stage: "sync" })
+        try {
+          await sync.importDids(sync.dids)
+        } catch (err) {
+          setState({
+            status: "error",
+            stage: "sync",
+            error: err instanceof Error ? err.message : "Failed to import follows",
+          })
+          return
+        }
+      }
+
       // Profile-clone stage: upload any replacement files the user
       // picked, OR clone the bsky CDN URL into a fresh blob on the
       // user's certified PDS. Either way we end up with a blob ref

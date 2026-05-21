@@ -2029,24 +2029,39 @@ dialog.signin-modal.app-modal .signin-modal__body {
 }
 
 .onboarding-modal__header {
-  padding: 24px 24px 12px;
+  padding: 20px 24px 12px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.onboarding-modal__title {
-  font-family: var(--font-headline), "Noto Serif", serif;
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.15;
-  margin: 0 0 6px;
-  color: var(--fg-primary);
+/* Banner-styled title row — mirrors `.onboarding-banner` on the
+   profile page so the modal feels like the same affordance opened
+   up. Padding/font-size match the profile-page banner so the
+   relative sizing inside the modal is comparable to the banner's
+   on its host page. */
+.onboarding-modal__banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 12px 16px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
 }
 
-.onboarding-modal__subtitle {
-  margin: 0 0 16px;
-  font-size: 0.875rem;
-  color: var(--fg-secondary);
-  line-height: 1.5;
+.onboarding-modal__banner-icon {
+  color: var(--fg-primary);
+  flex-shrink: 0;
+}
+
+.onboarding-modal__banner-title {
+  margin: 0;
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--fg-primary);
 }
 
 .onboarding-modal__steps {

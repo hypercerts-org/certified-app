@@ -1,45 +1,30 @@
 "use client"
 
 import {
-  useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react"
 import { Search } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
-import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import type {
   SocialGraphSyncStats,
-  SocialGraphSyncResult,
 } from "@/hooks/use-social-graph-sync"
 import { getInitials } from "@/lib/utils/initials"
+import type { CommitState } from "../use-onboarding-commit"
 
 /**
- * Captures the user's intent for the social-graph step so the modal
- * can decide what to do when they click Continue / Finish.
- *
- * - `skip`: user chose not to sync. Continue is enabled immediately.
- * - `all`: user opted to import every bluesky-only follow.
- * - `select`: user opted to pick a subset.
- *
- * The actual sync runs in-place on this step — see `useSyncRunner`.
+ * Captures the user's intent for the social-graph step. The modal's
+ * footer Finish button dispatches based on this — "Skip and finish"
+ * runs the profile commit only, the other two prefix it with an
+ * importDids call.
  */
 export type GraphIntent =
   | { kind: "skip" }
   | { kind: "all" }
   | { kind: "select" }
-
-/** Sync lifecycle owned by this step. Mirrors what the modal needs to
- *  know about "is sync done so Continue can light up?" */
-export type SyncRunnerState =
-  | { status: "idle" }
-  | { status: "running"; importedCount: number; targetCount: number }
-  | { status: "success"; result: SocialGraphSyncResult }
-  | { status: "error"; message: string }
 
 interface StepGraphProps {
   readonly stats: SocialGraphSyncStats
@@ -48,10 +33,13 @@ interface StepGraphProps {
   readonly error: string | null
   readonly intent: GraphIntent
   onChange: (intent: GraphIntent) => void
-  importDids: (
-    dids: string[],
-    opts?: { signal?: AbortSignal },
-  ) => Promise<SocialGraphSyncResult>
+  /** Pick-specific selection set, lifted to the modal so the footer
+   *  Finish button can read the count for its label. */
+  readonly selected: Set<string>
+  setSelected: React.Dispatch<React.SetStateAction<Set<string>>>
+  /** Modal-level commit pipeline state. Drives the live progress
+   *  line during the sync stage. */
+  readonly commit: CommitState
 }
 
 export default function StepGraph({
@@ -61,70 +49,20 @@ export default function StepGraph({
   error,
   intent,
   onChange,
-  importDids,
+  selected,
+  setSelected,
+  commit,
 }: StepGraphProps) {
   const candidateDids = stats.onlyBluesky
   const candidateCount = candidateDids.length
   const overlapCount = stats.inBoth.length
   const canImport = !isLoading && !truncated && !error && candidateCount > 0
 
-  // ---- Picker state (only relevant for intent.kind === "select") -----
-  const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [query, setQuery] = useState("")
 
-  // ---- Sync runner state — owned here so the modal can read the
-  // "done" signal without forcing the runner into context.
-  const [runner, setRunner] = useState<SyncRunnerState>({ status: "idle" })
-  const abortRef = useRef<AbortController | null>(null)
-
-  // Abort any in-flight import on unmount (modal closing, account
-  // switch, etc.) so the importDids loop stops between writes.
-  useEffect(() => {
-    return () => {
-      abortRef.current?.abort()
-    }
-  }, [])
-
-  const startImport = useCallback(
-    async (dids: string[]) => {
-      if (dids.length === 0) return
-      if (runner.status === "running") return
-      const controller = new AbortController()
-      abortRef.current = controller
-      setRunner({
-        status: "running",
-        importedCount: 0,
-        targetCount: dids.length,
-      })
-      try {
-        const result = await importDids(dids, { signal: controller.signal })
-        setRunner({ status: "success", result })
-      } catch (err) {
-        setRunner({
-          status: "error",
-          message: err instanceof Error ? err.message : "Sync failed",
-        })
-      } finally {
-        abortRef.current = null
-      }
-    },
-    [importDids, runner.status],
-  )
-
-  // Live progress signal: certified.inBoth grows as importDids commits
-  // each follow (see use-social-graph-sync — certifiedAddFollow updates
-  // the local cache after each successful write). We re-render
-  // automatically when stats change, but the running counter on the
-  // tile needs the snapshot too.
-  const liveImportedCount =
-    runner.status === "running"
-      ? Math.max(
-          0,
-          runner.targetCount - (candidateCount), // shrinks as overlap grows
-        )
-      : runner.status === "success"
-        ? runner.result.imported
-        : 0
+  const isSyncRunning =
+    commit.status === "running" && commit.stage === "sync"
+  const isCommitting = commit.status === "running"
 
   // -------------------- Loading / error gates -----------------------
 
@@ -169,37 +107,21 @@ export default function StepGraph({
         <Tile
           label="Now on Certified"
           value={overlapCount}
-          highlight={runner.status !== "idle"}
+          highlight={isSyncRunning}
         />
-        <Tile
-          label="Bluesky-only remaining"
-          value={candidateCount}
-        />
+        <Tile label="Bluesky-only remaining" value={candidateCount} />
       </div>
 
-      {runner.status === "running" ? (
+      {isSyncRunning ? (
         <p className="onboarding-step__progress" role="status">
-          Importing…{" "}
-          <strong>
-            {liveImportedCount}
-          </strong>{" "}
-          of <strong>{runner.targetCount}</strong>
-        </p>
-      ) : runner.status === "success" ? (
-        <p className="onboarding-step__progress onboarding-step__progress--done">
-          Imported {runner.result.imported} of {runner.result.imported + runner.result.failed}.
-          {runner.result.failed > 0 ? ` ${runner.result.failed} failed.` : ""}
-        </p>
-      ) : runner.status === "error" ? (
-        <p className="onboarding-step__error" role="alert">
-          {runner.message}
+          Importing follows… <strong>{overlapCount}</strong>{" "}
+          {overlapCount === 1 ? "added" : "added"} so far
         </p>
       ) : null}
 
-      {/* Choices are hidden once a sync has been started — the
-          finished/failed state is the user's view. Three segments:
-          Import all / Pick specific / Skip. Skip is the default. */}
-      {runner.status === "idle" && canImport ? (
+      {/* Segments are hidden while the pipeline is mid-flight so the
+          user can't toggle intent under the commit's feet. */}
+      {!isCommitting && canImport ? (
         <fieldset className="onboarding-step__segments">
           <legend className="sr-only">
             What to do with Bluesky-only follows
@@ -246,36 +168,7 @@ export default function StepGraph({
         </fieldset>
       ) : null}
 
-      {/* Import-trigger button. Moved ABOVE the picker so the user
-          can see it without scrolling past the search + list. The
-          Continue button in the modal footer takes over once the
-          runner is success. */}
-      {runner.status === "idle" && canImport && intent.kind !== "skip" ? (
-        <div className="onboarding-step__import-actions">
-          <Button
-            variant="primary"
-            onClick={() => {
-              if (intent.kind === "all") {
-                void startImport(candidateDids)
-              } else {
-                void startImport(Array.from(selected))
-              }
-            }}
-            disabled={intent.kind === "select" && selected.size === 0}
-          >
-            {intent.kind === "all"
-              ? `Import all ${candidateCount}`
-              : selected.size > 0
-                ? `Import ${selected.size} selected`
-                : "Select people to import"}
-          </Button>
-        </div>
-      ) : null}
-
-      {/* Inline picker — only when "select" is the active intent
-          AND we haven't started a sync yet. Sits below the import
-          button. */}
-      {runner.status === "idle" && intent.kind === "select" ? (
+      {!isCommitting && intent.kind === "select" ? (
         <Picker
           candidateDids={candidateDids}
           selected={selected}
@@ -316,8 +209,7 @@ function Tile({
 }
 
 // ============================================================================
-// Inline picker — slim version of the settings sync modal's SelectStep.
-// Paginated checkbox list with search; no separate dialog.
+// Inline picker — checkbox list with search; no nested dialog.
 // ============================================================================
 
 interface PickerProps {
@@ -454,7 +346,6 @@ function PickerRow({
 
 // ============================================================================
 // Name cache (mirrors the pattern in sync-social-graph-section.tsx).
-// Kept local so we don't have to refactor that component to export.
 // ============================================================================
 
 const nameCache = new Map<string, string>()

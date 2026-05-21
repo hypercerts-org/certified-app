@@ -13,7 +13,11 @@ import StepProfile, {
   emptyProfileDraft,
 } from "./steps/step-profile"
 import StepGraph, { type GraphIntent } from "./steps/step-graph"
-import { useOnboardingCommit, type CommitState } from "./use-onboarding-commit"
+import {
+  useOnboardingCommit,
+  type CommitState,
+  type SyncRequest,
+} from "./use-onboarding-commit"
 
 type StepKey = "profile" | "graph"
 
@@ -24,24 +28,19 @@ const STEP_LABELS: Record<StepKey, string> = {
   graph: "Your follows",
 }
 
+/** Per-step modal-header copy. Lives at the top of the modal as a
+ *  banner-styled row that mirrors the profile-page banner's
+ *  relative sizing. */
+const STEP_TITLES: Record<StepKey, string> = {
+  profile: "Welcome to Certified",
+  graph: "Import your Bluesky follows",
+}
+
 /**
- * First-signin onboarding modal. Renders globally via the layout, opens
- * automatically when `useOnboarding().isOpen` flips (gate handled by
- * the provider), and can also be opened by hand from the profile banner
- * or settings card.
- *
- * Two steps + a celebratory success screen:
- *   1. Profile — confirm/edit bsky-seeded display name, bio, avatar,
- *      banner.
- *   2. Follows — three-way intent (Import all / Pick specific / Skip).
- *      Sync runs in place on this step.
- *
- * The Finish button on Step 2 fires the profile commit (clone blobs →
- * putProfile). On success the modal swaps to a success screen that
- * shows the freshly-imported avatar + name.
- *
- * Returns `null` when not open so it's cheap to mount globally even
- * for users who'll never see it.
+ * First-signin onboarding modal. Two steps + a celebratory success
+ * screen. The footer's primary button is dual-purpose: on Step 1
+ * it's "Continue", on Step 2 it labels the actual finish action
+ * based on the selected sync intent.
  */
 export default function OnboardingModal() {
   const { isOpen, bskySeed, dismissOnboarding, completeOnboarding } =
@@ -56,6 +55,7 @@ export default function OnboardingModal() {
   const [graphIntent, setGraphIntent] = useState<GraphIntent>({
     kind: "skip",
   })
+  const [selected, setSelected] = useState<Set<string>>(() => new Set())
 
   // Seed the profile draft from bsky values the first time the modal
   // opens for this DID. Subsequent re-opens (banner clicks) keep
@@ -76,19 +76,17 @@ export default function OnboardingModal() {
       replacementBannerFile: null,
     })
     setGraphIntent({ kind: "skip" })
+    setSelected(new Set())
     setStep("profile")
   }, [isOpen, did, bskySeed])
 
-  // Reset the seeded marker when the modal closes so reopening for a
-  // different DID gets fresh seed values.
   useEffect(() => {
-    if (!isOpen) {
-      seededForDid.current = null
-    }
+    if (!isOpen) seededForDid.current = null
   }, [isOpen])
 
-  // Lifted to the modal so Step 2 can render stats inline and share
-  // the same hook instance during in-place imports (no double-fetch).
+  // Lifted to the modal so Step 2 can render stats inline and the
+  // commit pipeline shares the same hook instance during in-place
+  // imports (no double-fetch).
   const sync = useSocialGraphSync(did ?? "", { ownDid: did ?? "" })
 
   const commit = useOnboardingCommit({
@@ -96,9 +94,37 @@ export default function OnboardingModal() {
     onSuccess: completeOnboarding,
   })
 
-  const runCommit = useCallback(async () => {
-    await commit.run(profileDraft)
-  }, [commit, profileDraft])
+  const runCommit = useCallback(
+    async (syncReq: SyncRequest) => {
+      await commit.run(profileDraft, syncReq)
+    },
+    [commit, profileDraft],
+  )
+
+  // The Finish path: dispatches based on the user's graph intent.
+  // Skip → no sync, just commit. Import all → sync the entire bsky-
+  // only candidate set, then commit. Pick specific → sync the picked
+  // DIDs, then commit. The commit hook publishes per-stage status so
+  // the footer button + Step 2 progress tile can label the moment.
+  const dispatchFinish = useCallback(() => {
+    if (graphIntent.kind === "skip") {
+      void runCommit({ kind: "skip" })
+      return
+    }
+    const dids =
+      graphIntent.kind === "all"
+        ? sync.stats.onlyBluesky
+        : Array.from(selected)
+    if (dids.length === 0) {
+      void runCommit({ kind: "skip" })
+      return
+    }
+    void runCommit({
+      kind: "import",
+      dids,
+      importDids: sync.importDids,
+    })
+  }, [graphIntent, sync.stats.onlyBluesky, sync.importDids, selected, runCommit])
 
   const advance = useCallback(() => {
     const i = STEP_ORDER.indexOf(step)
@@ -111,8 +137,6 @@ export default function OnboardingModal() {
   }, [step])
 
   const handleClose = useCallback(() => {
-    // While a commit is in flight, ESC / backdrop / Close button do
-    // nothing — finish first, or the user can refresh to abort.
     if (commit.state.status === "running") return
     dismissOnboarding()
   }, [commit.state.status, dismissOnboarding])
@@ -121,10 +145,8 @@ export default function OnboardingModal() {
   if (!did) return null
 
   // Success state takes over the whole modal — no steps, no body,
-  // just celebration. The "Take me to my profile" button does a full
-  // navigation (window.location.assign) so the resolve-did endpoint
-  // is re-fetched fresh — the in-memory cache from before the
-  // commit would otherwise serve a few seconds of stale data.
+  // just celebration. Button does a full reload so resolve-did's
+  // 10s own-DID cache doesn't serve stale data to the profile page.
   if (commit.state.status === "success") {
     const previewUrl =
       (profileDraft.replacementAvatarFile
@@ -132,8 +154,6 @@ export default function OnboardingModal() {
         : profileDraft.sourceAvatarUrl) || null
     const goToProfile = () => {
       const target = handle ? `/profile/${encodeURIComponent(handle)}` : "/"
-      // Full reload so useUserProfile re-fetches without hitting
-      // the 10s own-DID cache from /api/resolve-did.
       window.location.assign(target)
     }
     return (
@@ -177,25 +197,30 @@ export default function OnboardingModal() {
 
   return (
     <AppDialog
-      ariaLabel="Welcome to Certified"
+      ariaLabel={STEP_TITLES[step]}
       className="onboarding-modal"
       maxWidth={640}
       onClose={handleClose}
       disableBackdropClose={commit.state.status === "running"}
     >
       <header className="onboarding-modal__header">
-        <h2 className="onboarding-modal__title">Welcome to Certified</h2>
-        <p className="onboarding-modal__subtitle">
-          {step === "profile"
-            ? "Edit your profile."
-            : "Bring your Bluesky follows to Certified. You can re-run this any time from Settings → Sync social graph."}
-        </p>
+        {/* Banner-styled title row — mirrors the .onboarding-banner
+            on the profile page so the modal feels like an expansion
+            of the same affordance, at the same relative sizing. */}
+        <div className="onboarding-modal__banner">
+          <Sparkles
+            size={18}
+            strokeWidth={1.75}
+            aria-hidden
+            className="onboarding-modal__banner-icon"
+          />
+          <h2 className="onboarding-modal__banner-title">
+            {STEP_TITLES[step]}
+          </h2>
+        </div>
         <ol className="onboarding-modal__steps" aria-label="Onboarding steps">
           {STEP_ORDER.map((s, i) => (
-            <li
-              key={s}
-              aria-current={s === step ? "step" : undefined}
-            >
+            <li key={s} aria-current={s === step ? "step" : undefined}>
               <button
                 type="button"
                 className={`onboarding-modal__step${
@@ -236,7 +261,9 @@ export default function OnboardingModal() {
             error={sync.error}
             intent={graphIntent}
             onChange={setGraphIntent}
-            importDids={sync.importDids}
+            selected={selected}
+            setSelected={setSelected}
+            commit={commit.state}
           />
         )}
       </div>
@@ -250,19 +277,43 @@ export default function OnboardingModal() {
               ? profileDraft.displayName.trim().length > 0
               : true
           }
+          finishLabel={
+            step === "graph"
+              ? graphFinishLabel(graphIntent, sync.stats.onlyBluesky.length, selected.size)
+              : null
+          }
+          finishDisabled={
+            step === "graph" &&
+            graphIntent.kind === "select" &&
+            selected.size === 0
+          }
           onBack={goBack}
           onContinue={advance}
-          onFinish={runCommit}
+          onFinish={dispatchFinish}
         />
       </footer>
     </AppDialog>
   )
 }
 
+/** Per-intent label for the Step 2 Finish button. */
+function graphFinishLabel(
+  intent: GraphIntent,
+  candidateCount: number,
+  selectedCount: number,
+): string {
+  if (intent.kind === "skip") return "Skip import and finish"
+  if (intent.kind === "all") return `Import all ${candidateCount}`
+  if (selectedCount === 0) return "Select people to import"
+  return `Import ${selectedCount} selected`
+}
+
 interface FooterActionsProps {
   readonly step: StepKey
   readonly commit: CommitState
   readonly canContinue: boolean
+  readonly finishLabel: string | null
+  readonly finishDisabled: boolean
   onBack: () => void
   onContinue: () => void
   onFinish: () => void
@@ -272,6 +323,8 @@ function FooterActions({
   step,
   commit,
   canContinue,
+  finishLabel,
+  finishDisabled,
   onBack,
   onContinue,
   onFinish,
@@ -280,7 +333,11 @@ function FooterActions({
   if (commit.status === "running") {
     return (
       <Button variant="primary" disabled loading>
-        Finishing…
+        {commit.stage === "sync"
+          ? "Importing follows…"
+          : commit.stage === "profile-clone"
+            ? "Saving avatar…"
+            : "Finishing…"}
       </Button>
     )
   }
@@ -295,12 +352,12 @@ function FooterActions({
       <Button
         variant="primary"
         onClick={isLastStep ? onFinish : onContinue}
-        disabled={!canContinue}
+        disabled={isLastStep ? finishDisabled : !canContinue}
       >
         {isLastStep
           ? commit.status === "error"
             ? "Try again"
-            : "Finish"
+            : (finishLabel ?? "Finish")
           : "Continue"}
       </Button>
     </>
