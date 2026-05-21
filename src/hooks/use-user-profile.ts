@@ -125,13 +125,22 @@ export function useUserProfile(handleOrDid: string | null): {
     return () => controller.abort()
   }, [handleOrDid])
 
+  const isOwnProfile = !!did && did === myDid
+  // Hide bsky fallback values on the viewer's own profile when they
+  // haven't authored a Certified profile yet. The onboarding banner
+  // is the only thing they should see on their own page until they
+  // finish setup — otherwise pre-existing bsky data masquerades as
+  // "your Certified profile" before any record has been written.
+  // Foreign visitors continue to see the bsky fallback as before.
+  const suppressFallback = isOwnProfile && !hasCertifiedProfile
+
   return {
-    profile,
-    avatarUrl,
-    bannerUrl,
+    profile: suppressFallback ? null : profile,
+    avatarUrl: suppressFallback ? null : avatarUrl,
+    bannerUrl: suppressFallback ? null : bannerUrl,
     did,
     handle,
-    isOwnProfile: !!did && did === myDid,
+    isOwnProfile,
     isLoading,
     error,
     hasCertifiedProfile,

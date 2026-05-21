@@ -1,42 +1,43 @@
 "use client"
 
-import { Sparkles } from "lucide-react"
-import Button from "@/components/ui/button"
+import { Sparkles, ChevronRight } from "lucide-react"
 import { useOnboarding } from "@/lib/onboarding/onboarding-context"
 
 /**
  * Re-entry banner for users who skipped the first-signin onboarding
  * modal. Renders on the viewer's own profile when they have a
- * Bluesky profile but no Certified profile yet. Clicking opens the
- * same modal that auto-opened (or would have) right after sign-in.
+ * Bluesky profile but no Certified profile yet. The whole banner is
+ * a button — click anywhere on it to re-open the onboarding modal.
  *
- * Visibility is owned by the OnboardingContext (`shouldShowBanner`),
- * which is independent of the dismissed-auto-popup sentinel — this
- * banner is the recovery surface and stays until the user finishes
- * onboarding.
+ * Sits inside the page content (24px lateral margin / 16px top)
+ * matching the inline edit banner so the spacing under the navbar
+ * is consistent across surfaces.
  */
 export default function OnboardingBanner() {
   const { shouldShowBanner, openOnboarding } = useOnboarding()
   if (!shouldShowBanner) return null
   return (
-    <div className="onboarding-banner" role="status">
+    <button
+      type="button"
+      className="onboarding-banner"
+      onClick={openOnboarding}
+      aria-label="Finish setting up your Certified profile"
+    >
       <Sparkles
         size={18}
         strokeWidth={1.75}
         aria-hidden
         className="onboarding-banner__icon"
       />
-      <div className="onboarding-banner__body">
-        <span className="onboarding-banner__title">
-          Finish setting up your Certified profile
-        </span>
-        <span className="onboarding-banner__desc">
-          Bring your Bluesky profile and follows over — takes about a minute.
-        </span>
-      </div>
-      <Button variant="primary" size="sm" onClick={openOnboarding}>
-        Continue
-      </Button>
-    </div>
+      <span className="onboarding-banner__title">
+        Finish setting up your Certified profile
+      </span>
+      <ChevronRight
+        size={18}
+        strokeWidth={1.75}
+        aria-hidden
+        className="onboarding-banner__chevron"
+      />
+    </button>
   )
 }

@@ -149,19 +149,31 @@ export default function OnboardingModal() {
           {STEP_ORDER.map((s, i) => (
             <li
               key={s}
-              className={`onboarding-modal__step${
-                s === step ? " onboarding-modal__step--current" : ""
-              }${
-                STEP_ORDER.indexOf(step) > i
-                  ? " onboarding-modal__step--done"
-                  : ""
-              }`}
               aria-current={s === step ? "step" : undefined}
             >
-              <span className="onboarding-modal__step-index">{i + 1}</span>
-              <span className="onboarding-modal__step-label">
-                {STEP_LABELS[s]}
-              </span>
+              <button
+                type="button"
+                className={`onboarding-modal__step${
+                  s === step ? " onboarding-modal__step--current" : ""
+                }${
+                  STEP_ORDER.indexOf(step) > i
+                    ? " onboarding-modal__step--done"
+                    : ""
+                }`}
+                onClick={() => {
+                  // Free-form navigation: clicking any step jumps
+                  // there. Step 2's running-sync edge case is
+                  // handled by step-graph's unmount-abort.
+                  if (commit.state.status === "running") return
+                  setStep(s)
+                }}
+                disabled={commit.state.status === "running"}
+              >
+                <span className="onboarding-modal__step-index">{i + 1}</span>
+                <span className="onboarding-modal__step-label">
+                  {STEP_LABELS[s]}
+                </span>
+              </button>
             </li>
           ))}
         </ol>

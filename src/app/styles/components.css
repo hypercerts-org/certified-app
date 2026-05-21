@@ -2062,12 +2062,29 @@ dialog.signin-modal.app-modal .signin-modal__body {
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
+  border: none;
   border-radius: 999px;
   background: var(--bg-sunken);
   color: var(--fg-muted);
+  font: inherit;
   font-size: 0.75rem;
   font-weight: 500;
+  cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.onboarding-modal__step:hover:not(:disabled) {
+  background: var(--bg-raised);
+}
+
+.onboarding-modal__step:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.onboarding-modal__step:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
 .onboarding-modal__step--current {
@@ -2459,15 +2476,33 @@ dialog.signin-modal.app-modal .signin-modal__body {
    Onboarding re-entry banner (rendered on the viewer's own profile)
    ============================================================================ */
 
+/* Inset + spacing mirror `.edit-banner` in profile-inline-edit.css so
+   the banner sits at the same offset under the navbar as the inline
+   edit affordance on the profile page. */
 .onboarding-banner {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
-  padding: 14px 16px;
+  margin: 16px 24px 0;
+  padding: 12px 16px;
+  width: calc(100% - 48px);
   background: var(--bg-elevated);
-  border: 1px solid var(--border-hover);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.onboarding-banner:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-raised);
+}
+
+.onboarding-banner:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .onboarding-banner__icon {
@@ -2475,24 +2510,23 @@ dialog.signin-modal.app-modal .signin-modal__body {
   flex-shrink: 0;
 }
 
-.onboarding-banner__body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.onboarding-banner__title {
   flex: 1;
   min-width: 0;
-}
-
-.onboarding-banner__title {
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--fg-primary);
 }
 
-.onboarding-banner__desc {
-  font-size: 0.8125rem;
+.onboarding-banner__chevron {
   color: var(--fg-muted);
-  line-height: 1.4;
+  flex-shrink: 0;
+  transition: transform var(--transition-fast);
+}
+
+.onboarding-banner:hover .onboarding-banner__chevron {
+  transform: translateX(2px);
+  color: var(--fg-primary);
 }
 
 /* ---------- Step 2 additions: progress + inline picker ---------- */
