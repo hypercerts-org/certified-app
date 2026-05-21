@@ -197,11 +197,10 @@ export default function StepGraph({
       ) : null}
 
       {/* Choices are hidden once a sync has been started — the
-          finished/failed state is the user's view. Two segments:
-          Import all / Pick specific. Skip is implicit — Continue in
-          the modal footer advances without syncing. */}
+          finished/failed state is the user's view. Three segments:
+          Import all / Pick specific / Skip. Skip is the default. */}
       {runner.status === "idle" && canImport ? (
-        <fieldset className="onboarding-step__segments onboarding-step__segments--two">
+        <fieldset className="onboarding-step__segments">
           <legend className="sr-only">
             What to do with Bluesky-only follows
           </legend>
@@ -230,6 +229,19 @@ export default function StepGraph({
               onChange={() => onChange({ kind: "select" })}
             />
             <span>Pick specific</span>
+          </label>
+          <label
+            className={`onboarding-step__segment${
+              intent.kind === "skip" ? " onboarding-step__segment--active" : ""
+            }`}
+          >
+            <input
+              type="radio"
+              name="onboarding-graph-intent"
+              checked={intent.kind === "skip"}
+              onChange={() => onChange({ kind: "skip" })}
+            />
+            <span>Skip</span>
           </label>
         </fieldset>
       ) : null}
