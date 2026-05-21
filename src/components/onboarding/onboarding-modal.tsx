@@ -121,18 +121,27 @@ export default function OnboardingModal() {
   if (!did) return null
 
   // Success state takes over the whole modal — no steps, no body,
-  // just celebration.
+  // just celebration. The "Take me to my profile" button does a full
+  // navigation (window.location.assign) so the resolve-did endpoint
+  // is re-fetched fresh — the in-memory cache from before the
+  // commit would otherwise serve a few seconds of stale data.
   if (commit.state.status === "success") {
     const previewUrl =
       (profileDraft.replacementAvatarFile
         ? URL.createObjectURL(profileDraft.replacementAvatarFile)
         : profileDraft.sourceAvatarUrl) || null
+    const goToProfile = () => {
+      const target = handle ? `/profile/${encodeURIComponent(handle)}` : "/"
+      // Full reload so useUserProfile re-fetches without hitting
+      // the 10s own-DID cache from /api/resolve-did.
+      window.location.assign(target)
+    }
     return (
       <AppDialog
         ariaLabel="Welcome to Certified"
         className="onboarding-modal onboarding-modal--success"
         maxWidth={520}
-        onClose={handleClose}
+        onClose={goToProfile}
       >
         <div className="onboarding-success">
           <div className="onboarding-success__halo" aria-hidden>
@@ -158,7 +167,7 @@ export default function OnboardingModal() {
           <p className="onboarding-success__subtitle">
             Your Certified profile is live. Go say hi.
           </p>
-          <Button variant="primary" onClick={handleClose}>
+          <Button variant="primary" onClick={goToProfile}>
             Take me to my profile
           </Button>
         </div>

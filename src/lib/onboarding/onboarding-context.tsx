@@ -164,7 +164,9 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   }, [did])
 
   const completeOnboarding = useCallback(() => {
-    setIsOpen(false)
+    // Do NOT close the modal here — the modal's success view paints
+    // when commit.status === "success". The user closes it via the
+    // explicit "Take me to my profile" button on that screen.
     if (did) clearOnboardingDismissed(did)
     // Optimistically reflect the finished state so the banner
     // disappears immediately; the next resolve-did fetch will
