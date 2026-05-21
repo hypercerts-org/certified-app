@@ -2355,8 +2355,10 @@ dialog.signin-modal.app-modal .signin-modal__body {
   color: var(--fg-muted);
 }
 
-/* Segmented-control radio group — three short labels in one row,
-   visually selected when active. Hides the native radio input. */
+/* Segmented-control radio group — short labels in one row, visually
+   selected when active. Hides the native radio input. Defaults to
+   3 columns; --two modifier collapses to 2 for the post-skip-removal
+   Step 2. */
 .onboarding-step__segments {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2367,6 +2369,10 @@ dialog.signin-modal.app-modal .signin-modal__body {
   border-radius: var(--radius);
   background: var(--bg-elevated);
   overflow: hidden;
+}
+
+.onboarding-step__segments--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .onboarding-step__segment {

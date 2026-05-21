@@ -52,9 +52,6 @@ interface StepGraphProps {
     dids: string[],
     opts?: { signal?: AbortSignal },
   ) => Promise<SocialGraphSyncResult>
-  /** Called when the runner transitions to success — modal uses this
-   *  to enable the Continue button. */
-  onSyncDone: (result: SocialGraphSyncResult) => void
 }
 
 export default function StepGraph({
@@ -65,7 +62,6 @@ export default function StepGraph({
   intent,
   onChange,
   importDids,
-  onSyncDone,
 }: StepGraphProps) {
   const candidateDids = stats.onlyBluesky
   const candidateCount = candidateDids.length
@@ -103,7 +99,6 @@ export default function StepGraph({
       try {
         const result = await importDids(dids, { signal: controller.signal })
         setRunner({ status: "success", result })
-        onSyncDone(result)
       } catch (err) {
         setRunner({
           status: "error",
@@ -113,7 +108,7 @@ export default function StepGraph({
         abortRef.current = null
       }
     },
-    [importDids, onSyncDone, runner.status],
+    [importDids, runner.status],
   )
 
   // Live progress signal: certified.inBoth grows as importDids commits
@@ -202,10 +197,11 @@ export default function StepGraph({
       ) : null}
 
       {/* Choices are hidden once a sync has been started — the
-          finished/failed state is the user's view. Segmented-control
-          style: three short labels in a single row. */}
+          finished/failed state is the user's view. Two segments:
+          Import all / Pick specific. Skip is implicit — Continue in
+          the modal footer advances without syncing. */}
       {runner.status === "idle" && canImport ? (
-        <fieldset className="onboarding-step__segments">
+        <fieldset className="onboarding-step__segments onboarding-step__segments--two">
           <legend className="sr-only">
             What to do with Bluesky-only follows
           </legend>
@@ -235,37 +231,13 @@ export default function StepGraph({
             />
             <span>Pick specific</span>
           </label>
-          <label
-            className={`onboarding-step__segment${
-              intent.kind === "skip" ? " onboarding-step__segment--active" : ""
-            }`}
-          >
-            <input
-              type="radio"
-              name="onboarding-graph-intent"
-              checked={intent.kind === "skip"}
-              onChange={() => onChange({ kind: "skip" })}
-            />
-            <span>Skip</span>
-          </label>
         </fieldset>
       ) : null}
 
-      {/* Inline picker — only when "select" is the active intent
-          AND we haven't started a sync yet. */}
-      {runner.status === "idle" && intent.kind === "select" ? (
-        <Picker
-          candidateDids={candidateDids}
-          selected={selected}
-          setSelected={setSelected}
-          query={query}
-          setQuery={setQuery}
-        />
-      ) : null}
-
-      {/* Import-trigger button — only when there's something to do
-          AND a sync hasn't been started yet. The Continue button in
-          the modal footer takes over once the runner is success/skip. */}
+      {/* Import-trigger button. Moved ABOVE the picker so the user
+          can see it without scrolling past the search + list. The
+          Continue button in the modal footer takes over once the
+          runner is success. */}
       {runner.status === "idle" && canImport && intent.kind !== "skip" ? (
         <div className="onboarding-step__import-actions">
           <Button
@@ -286,6 +258,19 @@ export default function StepGraph({
                 : "Select people to import"}
           </Button>
         </div>
+      ) : null}
+
+      {/* Inline picker — only when "select" is the active intent
+          AND we haven't started a sync yet. Sits below the import
+          button. */}
+      {runner.status === "idle" && intent.kind === "select" ? (
+        <Picker
+          candidateDids={candidateDids}
+          selected={selected}
+          setSelected={setSelected}
+          query={query}
+          setQuery={setQuery}
+        />
       ) : null}
     </div>
   )

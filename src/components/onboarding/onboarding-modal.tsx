@@ -54,11 +54,6 @@ export default function OnboardingModal() {
   const [graphIntent, setGraphIntent] = useState<GraphIntent>({
     kind: "skip",
   })
-  // True once Step 2 has finished a sync (success). Gates the
-  // Continue button on Step 2 — users who opt-in to import must let
-  // it complete before advancing, while Skip lets them through
-  // immediately.
-  const [syncDone, setSyncDone] = useState(false)
 
   // Seed the profile draft from bsky values the first time the modal
   // opens for this DID. Subsequent re-opens (banner clicks) keep
@@ -79,7 +74,6 @@ export default function OnboardingModal() {
       replacementBannerFile: null,
     })
     setGraphIntent({ kind: "skip" })
-    setSyncDone(false)
     setStep("profile")
   }, [isOpen, did, bskySeed])
 
@@ -142,7 +136,7 @@ export default function OnboardingModal() {
           {step === "profile"
             ? "Edit your profile."
             : step === "graph"
-              ? "Bring your Bluesky follows to Certified."
+              ? "Bring your Bluesky follows to Certified. You can re-run this any time from Settings → Sync social graph."
               : "One tap to wrap up."}
         </p>
         <ol className="onboarding-modal__steps" aria-label="Onboarding steps">
@@ -193,15 +187,8 @@ export default function OnboardingModal() {
             truncated={sync.truncated}
             error={sync.error}
             intent={graphIntent}
-            onChange={(i) => {
-              setGraphIntent(i)
-              // Switching choice after a sync has run resets the
-              // gate — but in practice this only fires while the
-              // runner is idle (choices unmount once started).
-              if (i.kind === "skip") setSyncDone(false)
-            }}
+            onChange={setGraphIntent}
             importDids={sync.importDids}
-            onSyncDone={() => setSyncDone(true)}
           />
         ) : (
           <StepDone
@@ -219,9 +206,7 @@ export default function OnboardingModal() {
           canContinue={
             step === "profile"
               ? profileDraft.displayName.trim().length > 0
-              : step === "graph"
-                ? graphIntent.kind === "skip" || syncDone
-                : true
+              : true
           }
           onBack={goBack}
           onContinue={advance}
