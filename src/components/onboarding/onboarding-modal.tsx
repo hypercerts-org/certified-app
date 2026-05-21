@@ -200,15 +200,7 @@ export default function OnboardingModal() {
       disableBackdropClose={commit.state.status === "running"}
     >
       <header className="onboarding-modal__header">
-        {/* Banner-styled title row — mirrors the .onboarding-banner
-            on the profile page so the modal feels like an expansion
-            of the same affordance, at the same relative sizing.
-            Icon dropped per request — title-only. */}
-        <div className="onboarding-modal__banner">
-          <h2 className="onboarding-modal__banner-title">
-            {STEP_TITLES[step]}
-          </h2>
-        </div>
+        <h2 className="onboarding-modal__title">{STEP_TITLES[step]}</h2>
         <ol className="onboarding-modal__steps" aria-label="Onboarding steps">
           {STEP_ORDER.map((s, i) => (
             <li key={s} aria-current={s === step ? "step" : undefined}>
