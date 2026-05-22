@@ -464,7 +464,7 @@ html:has(.explore-page) .desktop-top-bar__row {
   margin: 0;
 }
 
-/* ---------- View toggle (certs only) ---------- */
+/* ---------- View toggle (certs + projects) ---------- */
 
 .explore__view-toggle {
   display: inline-flex;
@@ -507,7 +507,7 @@ html:has(.explore-page) .desktop-top-bar__row {
   border-left: 1px solid var(--border-subtle);
 }
 
-/* ---------- List view (certs) ---------- */
+/* ---------- List view (certs + projects) ---------- */
 
 .explore__list {
   list-style: none;
