@@ -1,4 +1,5 @@
 import { authFetch } from "@/lib/auth/fetch"
+import { parseAtUri } from "@/lib/atproto/activity-uri"
 
 export const CONTEXT_ATTACHMENT_COLLECTION = "org.hypercerts.context.attachment"
 
@@ -97,6 +98,21 @@ export async function fetchContextAttachments(
 
 /**
  * Convenience: fetch updates targeting a specific cert / project URI.
+ *
+ * Hard contract — **creator-only**: every returned record is authored
+ * by the same DID that owns `subjectUri`. Third-party updates (an
+ * actor publishing an attachment about someone else's cert / project)
+ * are a separate feature and are silently dropped here.
+ *
+ * Two layers enforce this:
+ *   1. The PDS-direct `listRecords` path is scoped to `authorDid`'s
+ *      repo, so foreign records can't appear in the response.
+ *   2. The post-fetch filter compares `record.uri`'s author DID to
+ *      `subjectUri`'s author DID. This is defensive against (a)
+ *      misuse — passing a non-matching `authorDid` — and (b) the
+ *      future indexer-backed path (magic-indexer#111) which CAN
+ *      surface third-party records and so MUST be filtered here.
+ *
  * `contentType === "update"` is the filter the call sites care about;
  * other contentType values (`"context"`, future variants) are dropped.
  */
@@ -105,6 +121,8 @@ export async function fetchContextUpdates(
   subjectUri: string,
   signal?: AbortSignal,
 ): Promise<ContextAttachmentRecord[]> {
+  const subjectAuthor = parseAtUri(subjectUri)?.did ?? null
+
   return fetchContextAttachments(
     authorDid,
     (value) =>
@@ -114,6 +132,12 @@ export async function fetchContextUpdates(
         (s) => typeof s?.uri === "string" && s.uri === subjectUri,
       ),
     signal,
+  ).then((records) =>
+    // Layer 2 — explicit creator-only check on the attachment URI.
+    records.filter((r) => {
+      const recordAuthor = parseAtUri(r.uri)?.did ?? null
+      return !!recordAuthor && recordAuthor === subjectAuthor
+    }),
   )
 }
 

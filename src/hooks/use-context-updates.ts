@@ -14,6 +14,11 @@ import { parseAtUri } from "@/lib/atproto/activity-uri"
  * because the indexer hasn't ingested this lexicon yet — see
  * `fetchContextUpdates` for the stopgap caveat.
  *
+ * Hard contract — **creator-only**: only updates authored by the
+ * cert / project's own creator are returned. Third-party updates
+ * (someone publishing an attachment about someone else's record)
+ * are a separate feature and are filtered out at the lib layer.
+ *
  * Returns updates ordered by `createdAt` DESC (newest first).
  */
 export function useContextUpdates(subjectUri: string | null): {
