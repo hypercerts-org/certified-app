@@ -253,6 +253,21 @@ ${ACTIVITY_NODE_SELECTION}
     }
   `,
 
+  // Just the DIDs of every actor that has published an
+  // app.certified.actor.organization record. Used by the /explore
+  // Users sub-category to split individuals from groups —
+  // displayName + avatar live on the actor-profile record, not the
+  // organization record, so consumers join both client-side.
+  OrganizationDids: `
+    query OrganizationDids($first: Int!, $after: String) {
+      appCertifiedActorOrganization(first: $first, after: $after) {
+        totalCount
+        edges { cursor node { did } }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  `,
+
   // Per-actor counts of the major lexicons. One round-trip via
   // aliased connections — each branch shares the where: { did: $did }
   // filter so we get five small headers back in one fetch.
@@ -609,7 +624,8 @@ function buildVariables(
         search: readString(vars.search, MAX_SEARCH_LEN),
       }
     }
-    case "NetworkActors": {
+    case "NetworkActors":
+    case "OrganizationDids": {
       return {
         first: clampFirst(vars.first, MAX_FIRST, 20),
         after: readString(vars.after, MAX_AFTER_LEN),

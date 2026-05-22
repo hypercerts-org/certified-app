@@ -87,6 +87,28 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
+.explore__kind:disabled {
+  color: var(--fg-muted, #b7bdc6);
+  cursor: not-allowed;
+}
+
+.explore__kind:disabled:hover {
+  color: var(--fg-muted, #b7bdc6);
+}
+
+/* Second segmented control: same shape as the primary kind switcher
+   but a half-step smaller and lighter so the visual hierarchy
+   reads "kind first, sub-category second" without the sub row
+   competing for attention. */
+.explore__sub-switch {
+  padding: 2px;
+}
+
+.explore__sub-switch .explore__kind {
+  font-size: 0.75rem;
+  padding: 5px 8px;
+}
+
 .explore__filter-list {
   list-style: none;
   margin: 0;

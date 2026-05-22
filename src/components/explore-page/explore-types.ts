@@ -70,3 +70,43 @@ export function defaultFilterForKind(kind: ExploreKind): string {
   if (kind === "projects") return "all"
   return "all"
 }
+
+// ---------------------------------------------------------------------------
+// Sub-category (second segmented row in the sidebar, under the kind switcher)
+// ---------------------------------------------------------------------------
+
+export type UserSub = "all" | "individuals" | "groups"
+export type CertSub = "all" | "created" | "contributed"
+export type ProjectSub = "all"
+export type SubCategory = UserSub | CertSub | ProjectSub
+
+/** Options shown in the sub-category row per kind. Empty array =
+ *  don't render the row at all. */
+export const SUB_OPTIONS: Record<
+  ExploreKind,
+  { key: string; label: string; requiresAuth?: boolean }[]
+> = {
+  users: [
+    { key: "all", label: "All" },
+    { key: "individuals", label: "Individuals" },
+    { key: "groups", label: "Groups" },
+  ],
+  projects: [],
+  certs: [
+    { key: "all", label: "All" },
+    { key: "created", label: "Created", requiresAuth: true },
+    { key: "contributed", label: "Contributed", requiresAuth: true },
+  ],
+}
+
+export function defaultSubForKind(kind: ExploreKind): string {
+  return "all"
+}
+
+export function parseSubForKind(kind: ExploreKind, v: string | null): string {
+  if (!v) return defaultSubForKind(kind)
+  const opts = SUB_OPTIONS[kind]
+  if (opts.some((o) => o.key === v)) return v
+  return defaultSubForKind(kind)
+}
+

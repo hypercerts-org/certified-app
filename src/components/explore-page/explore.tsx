@@ -18,13 +18,16 @@ import ExploreProjectCard from "./explore-project-card"
 import {
   CERT_FILTERS,
   PROJECT_FILTERS,
+  SUB_OPTIONS,
   USER_FILTERS,
   defaultFilterForKind,
   filtersForKind,
+  parseSubForKind,
   type ExploreKind,
   type SortOrder,
 } from "./explore-types"
 import { useExploreData } from "@/hooks/use-explore"
+import { useAuth } from "@/lib/auth/auth-context"
 
 const KIND_TABS: { key: ExploreKind; label: string; icon: typeof Users }[] = [
   { key: "users", label: "Users", icon: Users },
@@ -62,8 +65,10 @@ export default function Explore() {
   const filter = rawFilter && isValidFilter(kind, rawFilter)
     ? rawFilter
     : defaultFilterForKind(kind)
+  const sub = parseSubForKind(kind, searchParams?.get("sub") ?? null)
   const search = searchParams?.get("q") ?? ""
   const sort = parseSort(searchParams?.get("sort") ?? null)
+  const { did: viewerDid } = useAuth()
 
   // Client-side filter chip(s) — kind-specific simple boolean attributes
   // captured in URL as a comma-separated list under `attrs=`.
@@ -86,7 +91,7 @@ export default function Explore() {
     [pathname, searchParams, router],
   )
 
-  const data = useExploreData({ kind, filter, search })
+  const data = useExploreData({ kind, filter, sub, search })
 
   // Local search debounce: keep typing snappy, hit indexer once typing stops.
   const [localQuery, setLocalQuery] = useState(search)
@@ -122,7 +127,13 @@ export default function Explore() {
                   aria-selected={kind === t.key}
                   className={`explore__kind${kind === t.key ? " explore__kind--active" : ""}`}
                   onClick={() =>
-                    setUrl({ kind: t.key, filter: null, q: null, attrs: null })
+                    setUrl({
+                      kind: t.key,
+                      filter: null,
+                      sub: null,
+                      q: null,
+                      attrs: null,
+                    })
                   }
                 >
                   <Icon size={14} strokeWidth={1.75} aria-hidden />
@@ -131,6 +142,38 @@ export default function Explore() {
               )
             })}
           </nav>
+
+          {SUB_OPTIONS[kind].length > 0 ? (
+            <nav
+              className="explore__kind-switch explore__sub-switch"
+              role="tablist"
+              aria-label="Sub-category"
+            >
+              {SUB_OPTIONS[kind].map((opt) => {
+                const disabled = opt.requiresAuth && !viewerDid
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={sub === opt.key}
+                    disabled={disabled}
+                    title={
+                      disabled
+                        ? "Sign in to filter by your role"
+                        : undefined
+                    }
+                    className={`explore__kind${sub === opt.key ? " explore__kind--active" : ""}`}
+                    onClick={() =>
+                      setUrl({ sub: opt.key === "all" ? null : opt.key })
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </nav>
+          ) : null}
           <ul className="explore__filter-list">
             {filtersForKind(kind).map((f) => (
               <li key={f.key}>

@@ -58,6 +58,38 @@ function avatarUrlFromUnion(
   return null
 }
 
+interface OrganizationDidsGraphQLResponse {
+  data?: {
+    appCertifiedActorOrganization?: {
+      edges: { node: { did: string } | null }[]
+    } | null
+  } | null
+}
+
+/** Set of every DID that has published an
+ *  `app.certified.actor.organization` record. Used to split actors
+ *  into individuals vs groups in the /explore Users view. */
+export async function fetchOrganizationDids(
+  first = 100,
+  signal?: AbortSignal,
+): Promise<Set<string>> {
+  const res = await fetch(INDEXER_PROXY_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      operationName: "OrganizationDids",
+      variables: { first, after: null },
+    }),
+    signal,
+  })
+  const json = (await res.json()) as OrganizationDidsGraphQLResponse
+  const set = new Set<string>()
+  for (const edge of json.data?.appCertifiedActorOrganization?.edges ?? []) {
+    if (edge.node?.did) set.add(edge.node.did)
+  }
+  return set
+}
+
 export async function fetchNetworkActors(
   first = 30,
   signal?: AbortSignal,

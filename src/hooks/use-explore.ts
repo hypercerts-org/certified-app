@@ -4,8 +4,12 @@ import { useEffect, useState } from "react"
 import {
   fetchIndexerActivities,
   fetchProjects,
+  fetchUserIndexerActivities,
 } from "@/lib/atproto/indexer"
-import { fetchNetworkActors } from "@/lib/atproto/workspace"
+import {
+  fetchNetworkActors,
+  fetchOrganizationDids,
+} from "@/lib/atproto/workspace"
 import type { NetworkActor } from "@/lib/atproto/workspace"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { CollectionRecord } from "@/lib/atproto/collection"
@@ -18,8 +22,6 @@ interface ExploreData {
   users: NetworkActor[]
   projects: CollectionRecord[]
   certs: ActivityRecord[]
-  /** URI → DID map for cert nodes — ActivityCard needs the author DID
-   *  but ActivityRecord doesn't carry it directly. */
   certDids: Map<string, string>
   isLoading: boolean
 }
@@ -32,21 +34,58 @@ const EMPTY: ExploreData = {
   isLoading: false,
 }
 
+// Module-cached org-DID set — small, doesn't change often.
+//
+// NOTE on signal handling: we deliberately do NOT thread the caller's
+// AbortSignal into the shared fetch. The promise is shared across
+// every concurrent caller; if the first caller aborts, the underlying
+// request would be canceled and every subsequent awaiter would
+// resolve to an empty / errored set. Better: let the fetch run to
+// completion regardless of any one caller's abort, and have each
+// caller short-circuit on their own signal after the awaited result
+// lands.
+let orgDidsCache: Set<string> | null = null
+let orgDidsInflight: Promise<Set<string>> | null = null
+function getOrgDids(): Promise<Set<string>> {
+  if (orgDidsCache) return Promise.resolve(orgDidsCache)
+  if (!orgDidsInflight) {
+    orgDidsInflight = fetchOrganizationDids(200)
+      .then((set) => {
+        orgDidsCache = set
+        return set
+      })
+      .catch((err) => {
+        console.warn("[explore] org-dids fetch failed:", err)
+        return new Set<string>()
+      })
+      .finally(() => {
+        orgDidsInflight = null
+      })
+  }
+  return orgDidsInflight
+}
+
 /**
- * Resolves (kind, filter, search) into the right fetcher.
+ * Resolves (kind, filter, sub, search) into the right fetcher.
  *
- * Filters that require a list of DIDs ("by follows", "by-me") are
- * built from the auth/follow context before the indexer fetch fires.
- * When the required source is empty (unauthenticated, or no
- * follows yet) we short-circuit to an empty result rather than
- * hitting the indexer with an empty filter.
+ * The sub-category is a viewer-relation refinement that composes with
+ * the filter list:
+ *   - Users · individuals  → exclude orgs from the resolved actor list
+ *   - Users · groups       → keep only orgs
+ *   - Certs · created      → AND with author = viewer (overrides
+ *                            the filter's author scope)
+ *   - Certs · contributed  → AND with contributor = viewer
+ *
+ * "Created"/"Contributed" require a signed-in viewer; otherwise the
+ * UI disables those options.
  */
 export function useExploreData(opts: {
   kind: ExploreKind
   filter: string
+  sub: string
   search: string
 }): ExploreData {
-  const { kind, filter, search } = opts
+  const { kind, filter, sub, search } = opts
   const { did: viewerDid } = useAuth()
   const { subjects: followedDids } = useFollowing(viewerDid)
 
@@ -62,6 +101,7 @@ export function useExploreData(opts: {
         if (kind === "users") {
           const next = await loadUsers({
             filter,
+            sub,
             search,
             viewerDid,
             followedDids,
@@ -87,6 +127,7 @@ export function useExploreData(opts: {
         } else {
           const { certs, certDids } = await loadCerts({
             filter,
+            sub,
             search,
             viewerDid,
             followedDids,
@@ -103,7 +144,7 @@ export function useExploreData(opts: {
     }
     run()
     return () => controller.abort()
-  }, [kind, filter, search, viewerDid, followedDids])
+  }, [kind, filter, sub, search, viewerDid, followedDids])
 
   return data
 }
@@ -112,26 +153,23 @@ export function useExploreData(opts: {
 
 async function loadUsers(args: {
   filter: string
+  sub: string
   search: string
   viewerDid: string | null
   followedDids: Set<string>
   signal: AbortSignal
 }): Promise<NetworkActor[]> {
-  const { filter, search, viewerDid, followedDids, signal } = args
-  // Source: always the indexer's NetworkActors list. The filters
-  // below intersect that list with the viewer's follows /
-  // recently-viewed set client-side. For the "all" / "new" cases we
-  // pass straight through.
-  const all = await fetchNetworkActors(60, signal)
+  const { filter, sub, search, viewerDid, followedDids, signal } = args
+  const [all, orgDids] = await Promise.all([
+    fetchNetworkActors(60, signal),
+    sub !== "all" ? getOrgDids() : Promise.resolve(new Set<string>()),
+  ])
 
   let scoped = all
   if (filter === "follows") {
     if (!viewerDid) return []
     scoped = all.filter((a) => followedDids.has(a.did))
   } else if (filter === "endorsed") {
-    // TODO: requires the viewer's given-endorsement set. Returning
-    // empty for now — surfaces the empty-state hint instead of
-    // confusingly silent results.
     if (!viewerDid) return []
     return []
   } else if (filter === "recent") {
@@ -139,12 +177,16 @@ async function loadUsers(args: {
     const recentSet = new Set(recent)
     scoped = all
       .filter((a) => recentSet.has(a.did))
-      .sort(
-        (a, b) => recent.indexOf(a.did) - recent.indexOf(b.did),
-      )
+      .sort((a, b) => recent.indexOf(a.did) - recent.indexOf(b.did))
   } else if (filter === "new") {
-    // "New" = head of the indexer's newest-first list (top 12).
     scoped = all.slice(0, 12)
+  }
+
+  // Sub-category: split individuals vs groups via the org-DID set.
+  if (sub === "individuals") {
+    scoped = scoped.filter((a) => !orgDids.has(a.did))
+  } else if (sub === "groups") {
+    scoped = scoped.filter((a) => orgDids.has(a.did))
   }
 
   if (search.trim().length > 0) {
@@ -199,8 +241,6 @@ async function loadProjects(args: {
   if (filter === "recent") {
     const recent = getRecentlyViewed("project")
     if (recent.length === 0) return { projects: [], certDids }
-    // No bulk-fetch-by-URI for collections in the indexer yet; pull
-    // the network list and intersect. Cheap on dev (<300 projects).
     const all = await fetchProjects({ first: 100, signal })
     const recentSet = new Set(recent)
     const filtered = all.records
@@ -208,8 +248,6 @@ async function loadProjects(args: {
       .sort((a, b) => recent.indexOf(a.uri) - recent.indexOf(b.uri))
     return { projects: filtered, certDids }
   }
-  // "all" + "trending" — same data today; trending could become a
-  // server-side flag later (e.g. most attachments in last 30 days).
   const r = await fetchProjects({
     search: search || undefined,
     first: 50,
@@ -222,6 +260,7 @@ async function loadProjects(args: {
 
 async function loadCerts(args: {
   filter: string
+  sub: string
   search: string
   viewerDid: string | null
   followedDids: Set<string>
@@ -230,8 +269,32 @@ async function loadCerts(args: {
   certs: ActivityRecord[]
   certDids: Map<string, string>
 }> {
-  const { filter, search, viewerDid, followedDids, signal } = args
+  const { filter, sub, search, viewerDid, followedDids, signal } = args
 
+  // Sub-category override: "created" / "contributed" pin the viewer
+  // relation regardless of the filter list. Requires a signed-in
+  // viewer; otherwise we fall through to the filter-only path with
+  // sub treated as "all".
+  if (sub === "created" && viewerDid) {
+    const r = await fetchUserIndexerActivities(viewerDid, {
+      mode: "authored",
+      search: search || undefined,
+      first: 50,
+      signal,
+    })
+    return { certs: r.records, certDids: r.dids }
+  }
+  if (sub === "contributed" && viewerDid) {
+    const r = await fetchUserIndexerActivities(viewerDid, {
+      mode: "contributed",
+      search: search || undefined,
+      first: 50,
+      signal,
+    })
+    return { certs: r.records, certDids: r.dids }
+  }
+
+  // sub === "all" (or signed out with sub != all — same fallback)
   if (filter === "by-me") {
     if (!viewerDid) return { certs: [], certDids: new Map() }
     const r = await fetchIndexerActivities({
@@ -271,7 +334,6 @@ async function loadCerts(args: {
     }
     return { certs: filteredRecords, certDids: filteredDids }
   }
-  // "all"
   const r = await fetchIndexerActivities({
     search: search || undefined,
     first: 50,
