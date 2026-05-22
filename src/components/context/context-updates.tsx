@@ -8,6 +8,7 @@ import {
   ExternalLink,
   File,
   MessageSquareText,
+  Play,
 } from "lucide-react"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
@@ -17,6 +18,7 @@ import {
   mimeTypeLabel,
   resolveAttachment,
   uriHost,
+  uriThumbnailUrl,
   type ContextAttachmentRecord,
   type ResolvedAttachment,
 } from "@/lib/atproto/context-attachment"
@@ -328,6 +330,16 @@ function AttachmentTile({
 
   // attachment.kind === "uri"
   const host = uriHost(attachment.uri)
+  const thumbnail = uriThumbnailUrl(attachment.uri)
+  if (thumbnail) {
+    return (
+      <UriThumbnailTile
+        uri={attachment.uri}
+        host={host}
+        thumbnailUrl={thumbnail}
+      />
+    )
+  }
   return (
     <li className="context-updates__attachment context-updates__attachment--uri">
       <a
@@ -351,6 +363,81 @@ function AttachmentTile({
             {attachment.uri}
           </span>
         </span>
+      </a>
+    </li>
+  )
+}
+
+function UriThumbnailTile({
+  uri,
+  host,
+  thumbnailUrl,
+}: {
+  uri: string
+  host: string
+  thumbnailUrl: string
+}) {
+  // Fall back to the generic external-link tile when the thumbnail
+  // 404s (rare for YouTube hqdefault, but the provider can pull a
+  // video — once removed, the placeholder image bytes resolve but
+  // the URL responds 404).
+  const [failed, setFailed] = useState(false)
+  if (failed) {
+    return (
+      <li className="context-updates__attachment context-updates__attachment--uri">
+        <a
+          href={uri}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="context-updates__attachment-link"
+        >
+          <ExternalLink
+            size={20}
+            strokeWidth={1.5}
+            aria-hidden
+            className="context-updates__attachment-icon"
+          />
+          <span className="context-updates__attachment-meta">
+            <span className="context-updates__attachment-label">{host}</span>
+            <span className="context-updates__attachment-uri" title={uri}>
+              {uri}
+            </span>
+          </span>
+        </a>
+      </li>
+    )
+  }
+  return (
+    <li className="context-updates__attachment context-updates__attachment--video">
+      <a
+        href={uri}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="context-updates__attachment-link"
+        aria-label={`Open video on ${host} in new tab`}
+      >
+        <span className="context-updates__attachment-thumb">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={thumbnailUrl}
+            alt=""
+            loading="lazy"
+            onError={() => setFailed(true)}
+            className="context-updates__attachment-thumb-img"
+          />
+          <span
+            className="context-updates__attachment-thumb-overlay"
+            aria-hidden
+          >
+            <Play
+              size={18}
+              strokeWidth={1.75}
+              className="context-updates__attachment-play"
+              fill="currentColor"
+            />
+          </span>
+        </span>
+        <span className="context-updates__attachment-host">{host}</span>
       </a>
     </li>
   )

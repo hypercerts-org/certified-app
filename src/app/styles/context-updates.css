@@ -210,6 +210,63 @@
   outline-offset: -2px;
 }
 
+/* Video URI (e.g. YouTube): vertical tile — 16:9 thumbnail on top
+   with a play-icon overlay, host label underneath. */
+.context-updates__attachment--video .context-updates__attachment-link {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 156px;
+  padding: 0;
+}
+
+.context-updates__attachment-thumb {
+  position: relative;
+  display: block;
+  width: 156px;
+  height: 88px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-subtle);
+}
+
+.context-updates__attachment-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.context-updates__attachment-thumb-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.context-updates__attachment-play {
+  width: 32px;
+  height: 32px;
+  padding: 6px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 999px;
+}
+
+.context-updates__attachment-host {
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  line-height: 1.3;
+}
+
+.context-updates__attachment--video .context-updates__attachment-link:hover
+  .context-updates__attachment-thumb {
+  outline: 2px solid var(--border-strong, var(--fg-secondary));
+  outline-offset: -2px;
+}
+
 /* File + URI: pill-shaped link card with icon + meta. */
 .context-updates__attachment--file .context-updates__attachment-link,
 .context-updates__attachment--uri .context-updates__attachment-link {
@@ -259,6 +316,13 @@
   }
   .context-updates__attachment--image .context-updates__attachment-link {
     width: 72px;
+    height: 72px;
+  }
+  .context-updates__attachment--video .context-updates__attachment-link,
+  .context-updates__attachment-thumb {
+    width: 128px;
+  }
+  .context-updates__attachment-thumb {
     height: 72px;
   }
 }

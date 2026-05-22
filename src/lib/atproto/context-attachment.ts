@@ -264,3 +264,61 @@ export function uriHost(uri: string): string {
     return uri
   }
 }
+
+/**
+ * Extract a YouTube video ID from any of the URL shapes YouTube
+ * publishes — watch URLs, short links, embeds, /shorts, /v. Returns
+ * null when the input isn't a recognisable YouTube link or carries
+ * a malformed ID.
+ *
+ * YouTube IDs are 11 chars, base64url alphabet (A-Z a-z 0-9 - _).
+ * We validate the shape so a malformed URL can't smuggle an
+ * arbitrary value into the thumbnail URL we render below.
+ */
+const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{11}$/
+
+export function extractYouTubeId(uri: string): string | null {
+  let parsed: URL
+  try {
+    parsed = new URL(uri)
+  } catch {
+    return null
+  }
+  const host = parsed.hostname.replace(/^www\./, "").toLowerCase()
+
+  let candidate: string | null = null
+  if (host === "youtube.com" || host === "m.youtube.com") {
+    if (parsed.pathname === "/watch") {
+      candidate = parsed.searchParams.get("v")
+    } else {
+      // /embed/ID, /v/ID, /shorts/ID, /live/ID
+      const m = parsed.pathname.match(
+        /^\/(?:embed|v|shorts|live)\/([^/?#]+)/,
+      )
+      candidate = m ? m[1] : null
+    }
+  } else if (host === "youtu.be") {
+    // youtu.be/ID
+    candidate = parsed.pathname.replace(/^\//, "").split("/")[0] || null
+  }
+
+  if (!candidate) return null
+  return YOUTUBE_ID_RE.test(candidate) ? candidate : null
+}
+
+/**
+ * Resolve a URI attachment to a thumbnail image URL when we know how
+ * to derive one. Today: YouTube. Returns null when we don't have a
+ * provider-specific shortcut — callers should fall back to the
+ * generic external-link tile.
+ *
+ * The hqdefault.jpg endpoint exists for every uploaded YouTube
+ * video (unlike maxresdefault, which is uploader-dependent).
+ */
+export function uriThumbnailUrl(uri: string): string | null {
+  const ytId = extractYouTubeId(uri)
+  if (ytId) {
+    return `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`
+  }
+  return null
+}
