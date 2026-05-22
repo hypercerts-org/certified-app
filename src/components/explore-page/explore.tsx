@@ -6,6 +6,8 @@ import {
   Award,
   Filter as FilterIcon,
   FolderGit2,
+  LayoutGrid,
+  List as ListIcon,
   Search,
   SlidersHorizontal,
   Users,
@@ -13,6 +15,7 @@ import {
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import ActivityCard from "@/components/feed/activity-card"
+import CertListRow from "./cert-list-row"
 import ExploreUserCard from "./explore-user-card"
 import ExploreProjectCard from "./explore-project-card"
 import {
@@ -52,6 +55,11 @@ function parseSort(v: string | null): SortOrder {
   return "newest"
 }
 
+type CertView = "list" | "gallery"
+function parseView(v: string | null): CertView {
+  return v === "gallery" ? "gallery" : "list"
+}
+
 function isValidFilter(kind: ExploreKind, filter: string): boolean {
   return filtersForKind(kind).some((f) => f.key === filter)
 }
@@ -69,6 +77,7 @@ export default function Explore() {
   const sub = parseSubForKind(kind, searchParams?.get("sub") ?? null)
   const search = searchParams?.get("q") ?? ""
   const sort = parseSort(searchParams?.get("sort") ?? null)
+  const certView = parseView(searchParams?.get("view") ?? null)
   const { did: viewerDid } = useAuth()
 
   // Client-side filter chip(s) — kind-specific simple boolean attributes
@@ -205,6 +214,32 @@ export default function Explore() {
             </label>
 
             <div className="explore__chrome-actions">
+              {kind === "certs" ? (
+                <div
+                  className="explore__view-toggle"
+                  role="group"
+                  aria-label="Cert view"
+                >
+                  <button
+                    type="button"
+                    aria-label="List view"
+                    aria-pressed={certView === "list"}
+                    className={`explore__view-btn${certView === "list" ? " explore__view-btn--active" : ""}`}
+                    onClick={() => setUrl({ view: null })}
+                  >
+                    <ListIcon size={14} strokeWidth={1.75} aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Gallery view"
+                    aria-pressed={certView === "gallery"}
+                    className={`explore__view-btn${certView === "gallery" ? " explore__view-btn--active" : ""}`}
+                    onClick={() => setUrl({ view: "gallery" })}
+                  >
+                    <LayoutGrid size={14} strokeWidth={1.75} aria-hidden />
+                  </button>
+                </div>
+              ) : null}
               <Popover
                 open={sortOpen}
                 onClose={() => setSortOpen(false)}
@@ -288,6 +323,7 @@ export default function Explore() {
             data={data}
             sort={sort}
             attrs={attrs}
+            certView={certView}
           />
         </main>
       </div>
@@ -355,11 +391,13 @@ function ResultsArea({
   data,
   sort,
   attrs,
+  certView,
 }: {
   kind: ExploreKind
   data: ReturnType<typeof useExploreData>
   sort: SortOrder
   attrs: Set<string>
+  certView: CertView
 }) {
   if (data.isLoading && data.users.length === 0 && data.projects.length === 0 && data.certs.length === 0) {
     return (
@@ -422,6 +460,22 @@ function ResultsArea({
     )
   certs = sortCerts(certs, sort)
   if (certs.length === 0) return <EmptyResults kind={kind} />
+
+  if (certView === "list") {
+    return (
+      <ul className="explore__list explore__list--certs">
+        {certs.map((rec) => {
+          const did = certDids.get(rec.uri) ?? ""
+          return (
+            <li key={rec.uri}>
+              <CertListRow record={rec} did={did} />
+            </li>
+          )
+        })}
+      </ul>
+    )
+  }
+
   return (
     <ul className="explore__grid explore__grid--certs">
       {certs.map((rec) => {
