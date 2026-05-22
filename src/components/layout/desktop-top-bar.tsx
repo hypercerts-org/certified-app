@@ -66,6 +66,16 @@ const PROFILE_TABS: ProfileTab[] = [
  *  its own page. */
 type DetailTab = { key: string; label: string; subRoute?: string };
 
+/** /explore page tabs. Mirror the kind switcher that lived inside
+ *  the explore main pane (Certs / Projects / Accounts). Switching
+ *  tabs replaces ?kind= on /explore and clears the kind-specific
+ *  state to match the on-page behavior. */
+const EXPLORE_TABS: { key: string; label: string }[] = [
+  { key: "certs", label: "Certs" },
+  { key: "projects", label: "Projects" },
+  { key: "accounts", label: "Accounts" },
+];
+
 const CERT_DETAIL_TABS: DetailTab[] = [
   { key: "overview", label: "Overview" },
   { key: "description", label: "Description" },
@@ -154,8 +164,9 @@ export default function DesktopTopBar() {
   // affordance so the navigation rhythm stays consistent across the app.
   const isOnCertDetail = pathname?.startsWith("/activity/") ?? false;
   const isOnProjectDetail = pathname?.startsWith("/project/") ?? false;
+  const isOnExplore = pathname === "/explore";
   const showBackRow = isOnCertDetail || isOnProjectDetail;
-  const showTabsRow = isOnProfile || isOnSettings;
+  const showTabsRow = isOnProfile || isOnSettings || isOnExplore;
   // Compare the URL handle slug to the signed-in user's handle to decide
   // whether to show own-only tabs (e.g. Settings). Activeorg switches the
   // "you" identity to the org, so we compare against `identity.handle`.
@@ -411,7 +422,49 @@ export default function DesktopTopBar() {
         </div>
       </div>
 
-      {showTabsRow ? (
+      {isOnExplore ? (
+        <div className="desktop-top-bar__row desktop-top-bar__row--tabs">
+          <nav
+            className="desktop-top-bar__tabs"
+            role="tablist"
+            aria-label="Explore sections"
+          >
+            {EXPLORE_TABS.map((t) => {
+              // Active kind: read ?kind= with the same migration shim
+              // <Explore> uses (users / profiles legacy → accounts).
+              const raw = searchParams?.get("kind") ?? null;
+              const currentKind =
+                raw === "accounts" || raw === "projects" || raw === "certs"
+                  ? raw
+                  : raw === "users" || raw === "profiles"
+                  ? "accounts"
+                  : "certs";
+              const isActive = currentKind === t.key;
+              const params = new URLSearchParams();
+              // Reset other state (filter/sub/q/sort/view/attrs) when
+              // switching kind — matches the on-page kind switcher.
+              params.set("kind", t.key);
+              const href = `/explore?${params.toString()}`;
+              return (
+                <Link
+                  key={t.key}
+                  href={href}
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-current={isActive ? "page" : undefined}
+                  scroll={false}
+                  replace
+                  className={`desktop-top-bar__tab ${
+                    isActive ? "desktop-top-bar__tab--active" : ""
+                  }`}
+                >
+                  {t.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      ) : showTabsRow ? (
         <div className="desktop-top-bar__row desktop-top-bar__row--tabs">
           <nav
             className="desktop-top-bar__tabs"

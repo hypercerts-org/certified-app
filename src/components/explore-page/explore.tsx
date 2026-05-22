@@ -34,11 +34,6 @@ import { useExploreData } from "@/hooks/use-explore"
 import { useAuth } from "@/lib/auth/auth-context"
 import { usePageTitle } from "@/lib/navbar-context"
 
-const KIND_TABS: { key: ExploreKind; label: string; icon: typeof Users }[] = [
-  { key: "certs", label: "Certs", icon: Award },
-  { key: "projects", label: "Projects", icon: FolderGit2 },
-  { key: "accounts", label: "Accounts", icon: Users },
-]
 
 const SORT_LABEL: Record<SortOrder, string> = {
   newest: "Newest first",
@@ -151,36 +146,10 @@ export default function Explore() {
         </aside>
 
         <main className="explore__main">
-          <nav
-            className="explore__kind-switch explore__kind-switch--main"
-            role="tablist"
-            aria-label="Browse by kind"
-          >
-            {KIND_TABS.map((t) => {
-              const Icon = t.icon
-              return (
-                <button
-                  key={t.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={kind === t.key}
-                  className={`explore__kind${kind === t.key ? " explore__kind--active" : ""}`}
-                  onClick={() =>
-                    setUrl({
-                      kind: t.key,
-                      filter: null,
-                      sub: null,
-                      q: null,
-                      attrs: null,
-                    })
-                  }
-                >
-                  <Icon size={14} strokeWidth={1.75} aria-hidden />
-                  {t.label}
-                </button>
-              )
-            })}
-          </nav>
+          {/* Kind switcher (Certs / Projects / Accounts) is now
+              rendered as a second row in the top navbar — same
+              pattern profile pages use for their tab strip. See
+              EXPLORE_TABS in desktop-top-bar.tsx. */}
           <div className="explore__chrome">
             {SUB_OPTIONS[kind].length > 0 ? (
               <SubPrefixDropdown
