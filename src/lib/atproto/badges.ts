@@ -466,6 +466,41 @@ export async function listAwards(
 }
 
 /**
+ * Read the set of DIDs `did` has endorsed (degree-1 outbound edges on
+ * the certified endorsement graph). Authoritative from the viewer's
+ * own PDS — no indexer call. Used as a fallback for the /explore
+ * "Endorsed accounts" filter while magic-indexer #117 (the server-
+ * side closure endpoint) is still open, and as the source of truth
+ * for degree 1 once it lands.
+ */
+export async function fetchGivenEndorsementDids(
+  did: string,
+  signal?: AbortSignal,
+): Promise<Set<string>> {
+  const [defs, awards] = await Promise.all([
+    listDefinitions(did, signal),
+    listAwards(did, signal),
+  ])
+  // Endorsement-typed definition URIs owned by this DID. Lists no
+  // longer live in this collection (post lists-as-collections), so
+  // this is typically exactly one entry — but we walk the set anyway
+  // in case any legacy custom endorsement defs survived the migration.
+  const endorsementDefUris = new Set<string>()
+  for (const d of defs) {
+    if (d.value.badgeType === ENDORSEMENT_BADGE_TYPE) {
+      endorsementDefUris.add(d.uri)
+    }
+  }
+  const out = new Set<string>()
+  for (const award of awards) {
+    if (!endorsementDefUris.has(award.value.badge?.uri ?? "")) continue
+    const subject = extractAwardSubjectDid(award.value.subject)
+    if (subject && subject !== did) out.add(subject)
+  }
+  return out
+}
+
+/**
  * Write a badge award on `ownDid`'s repo against the supplied badge
  * strongRef. Lower-level helper consumed by `createEndorsementAward`,
  * which wraps it with the lazy ensure-default-def step.

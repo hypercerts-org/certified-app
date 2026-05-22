@@ -30,6 +30,7 @@ import type { CollectionRecord } from "@/lib/atproto/collection"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useFollowing } from "@/hooks/use-following"
+import { fetchGivenEndorsementDids } from "@/lib/atproto/badges"
 import {
   getRecentlyViewed,
   removeRecentlyViewed,
@@ -720,25 +721,65 @@ async function loadClosure(opts: {
     if (signal?.aborted) return { meta: null }
     // ENDORSEMENT_GRAPH_WARMING is a transient state during the
     // indexer's first refresh — surface as warming so the UI shows
-    // a skeleton, not "no results". Other coded errors (invalid
-    // viewer / disabled feature) are user-facing config bugs; log
-    // and return null so the surface shows the empty state with
-    // a debugger-friendly console line.
-    if (err instanceof EndorsementClosureError) {
-      if (err.code === "ENDORSEMENT_GRAPH_WARMING") {
-        return {
-          meta: {
-            closureByDid: new Map(),
-            truncated: false,
-            degree,
-            warming: true,
-          },
-        }
+    // a skeleton, not "no results".
+    if (
+      err instanceof EndorsementClosureError &&
+      err.code === "ENDORSEMENT_GRAPH_WARMING"
+    ) {
+      return {
+        meta: {
+          closureByDid: new Map(),
+          truncated: false,
+          degree,
+          warming: true,
+        },
       }
-      console.warn("[explore] endorsement closure error:", err.code, err.message)
+    }
+    // Any other failure (notably "Cannot query field endorsementClosure"
+    // — magic-indexer #117 is still open as of this writing) falls
+    // through to a client-side degree-1 fallback: read the viewer's
+    // own badge.award records from their PDS and surface those DIDs.
+    // Degree-2/3 expansion still needs the server endpoint; until #117
+    // ships, "Endorsed accounts" effectively means "degree-1 only".
+    if (err instanceof EndorsementClosureError) {
+      console.warn(
+        "[explore] endorsement closure unavailable, falling back to PDS degree-1:",
+        err.code ?? err.message,
+      )
+    } else {
+      console.warn(
+        "[explore] endorsement closure fetch failed, falling back to PDS degree-1:",
+        err,
+      )
+    }
+    try {
+      const direct = await fetchGivenEndorsementDids(
+        viewerDid,
+        signal ?? undefined,
+      )
+      if (signal?.aborted) return { meta: null }
+      const closureByDid = new Map<string, EndorsementClosureAccount>()
+      for (const did of direct) {
+        closureByDid.set(did, { did, degree: 1, via: [] })
+      }
+      return {
+        meta: {
+          closureByDid,
+          truncated: false,
+          // The fallback is degree-1-only by construction. Even if the
+          // caller asked for 2 or 3 we can't expand without the
+          // indexer endpoint, so we honestly report what we resolved.
+          degree: 1,
+          warming: false,
+        },
+      }
+    } catch (fallbackErr) {
+      if (signal?.aborted) return { meta: null }
+      console.warn(
+        "[explore] PDS degree-1 fallback also failed:",
+        fallbackErr,
+      )
       return { meta: null }
     }
-    console.warn("[explore] endorsement closure fetch failed:", err)
-    return { meta: null }
   }
 }
