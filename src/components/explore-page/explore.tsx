@@ -60,6 +60,11 @@ function parseView(v: string | null): CertView {
   return v === "gallery" ? "gallery" : "list"
 }
 
+type SubLayout = "prefix" | "breadcrumb"
+function parseSubLayout(v: string | null): SubLayout {
+  return v === "breadcrumb" ? "breadcrumb" : "prefix"
+}
+
 function isValidFilter(kind: ExploreKind, filter: string): boolean {
   return filtersForKind(kind).some((f) => f.key === filter)
 }
@@ -78,6 +83,7 @@ export default function Explore() {
   const search = searchParams?.get("q") ?? ""
   const sort = parseSort(searchParams?.get("sort") ?? null)
   const certView = parseView(searchParams?.get("view") ?? null)
+  const subLayout = parseSubLayout(searchParams?.get("sublayout") ?? null)
   const { did: viewerDid } = useAuth()
 
   // Client-side filter chip(s) — kind-specific simple boolean attributes
@@ -153,37 +159,10 @@ export default function Explore() {
             })}
           </nav>
 
-          {SUB_OPTIONS[kind].length > 0 ? (
-            <nav
-              className="explore__kind-switch explore__sub-switch"
-              role="tablist"
-              aria-label="Sub-category"
-            >
-              {SUB_OPTIONS[kind].map((opt) => {
-                const disabled = opt.requiresAuth && !viewerDid
-                return (
-                  <button
-                    key={opt.key}
-                    type="button"
-                    role="tab"
-                    aria-selected={sub === opt.key}
-                    disabled={disabled}
-                    title={
-                      disabled
-                        ? "Sign in to filter by your role"
-                        : undefined
-                    }
-                    className={`explore__kind${sub === opt.key ? " explore__kind--active" : ""}`}
-                    onClick={() =>
-                      setUrl({ sub: opt.key === "all" ? null : opt.key })
-                    }
-                  >
-                    {opt.label}
-                  </button>
-                )
-              })}
-            </nav>
-          ) : null}
+          {/* Sub-category controls were hoisted out of the sidebar so
+              we can A/B two new locations (prefix on the search bar
+              vs breadcrumb above the chrome row). See the chrome row
+              below for both variants. */}
           <ul className="explore__filter-list">
             {filtersForKind(kind).map((f) => (
               <li key={f.key}>
@@ -200,7 +179,51 @@ export default function Explore() {
         </aside>
 
         <main className="explore__main">
+          {/* Tiny dev toggle for comparing the two sub-row locations.
+              Will be removed once one is picked. */}
+          {SUB_OPTIONS[kind].length > 0 ? (
+            <div className="explore__sublayout-pick">
+              <span>Sub layout:</span>
+              <button
+                type="button"
+                className={`explore__sublayout-btn${subLayout === "prefix" ? " explore__sublayout-btn--active" : ""}`}
+                onClick={() => setUrl({ sublayout: null })}
+              >
+                A — search-bar prefix
+              </button>
+              <button
+                type="button"
+                className={`explore__sublayout-btn${subLayout === "breadcrumb" ? " explore__sublayout-btn--active" : ""}`}
+                onClick={() => setUrl({ sublayout: "breadcrumb" })}
+              >
+                B — above chrome
+              </button>
+            </div>
+          ) : null}
+
+          {/* B — breadcrumb above the chrome row */}
+          {subLayout === "breadcrumb" && SUB_OPTIONS[kind].length > 0 ? (
+            <SubControls
+              kind={kind}
+              sub={sub}
+              viewerDid={viewerDid}
+              setUrl={setUrl}
+              variant="breadcrumb"
+            />
+          ) : null}
+
           <div className="explore__chrome">
+            {/* A — sub controls sit inline before the search input */}
+            {subLayout === "prefix" && SUB_OPTIONS[kind].length > 0 ? (
+              <SubControls
+                kind={kind}
+                sub={sub}
+                viewerDid={viewerDid}
+                setUrl={setUrl}
+                variant="prefix"
+              />
+            ) : null}
+
             <label className="explore__search">
               <Search size={14} strokeWidth={1.75} aria-hidden />
               <input
@@ -329,6 +352,104 @@ export default function Explore() {
       </div>
     </div>
   )
+}
+
+/** Sub-category controls rendered in one of two locations the user
+ *  is comparing:
+ *
+ *  - variant="prefix"      → inline pill cluster sitting before the
+ *                            search input inside the chrome row.
+ *  - variant="breadcrumb"  → standalone row above the chrome,
+ *                            reading as a `Kind › Sub` breadcrumb.
+ *
+ *  Both render the same options + behavior; only the container
+ *  styling differs. */
+function SubControls({
+  kind,
+  sub,
+  viewerDid,
+  setUrl,
+  variant,
+}: {
+  kind: ExploreKind
+  sub: string
+  viewerDid: string | null
+  setUrl: (patch: Record<string, string | null>) => void
+  variant: "prefix" | "breadcrumb"
+}) {
+  const options = SUB_OPTIONS[kind]
+  if (options.length === 0) return null
+
+  if (variant === "breadcrumb") {
+    return (
+      <nav
+        className="explore__sub-breadcrumb"
+        role="navigation"
+        aria-label="Sub-category"
+      >
+        <span className="explore__sub-breadcrumb-kind">
+          {kindLabel(kind)}
+        </span>
+        <span className="explore__sub-breadcrumb-sep" aria-hidden>
+          ›
+        </span>
+        {options.map((opt, i) => {
+          const disabled = opt.requiresAuth && !viewerDid
+          return (
+            <span key={opt.key} className="explore__sub-breadcrumb-segment">
+              <button
+                type="button"
+                disabled={disabled}
+                aria-pressed={sub === opt.key}
+                title={disabled ? "Sign in to filter by your role" : undefined}
+                className={`explore__sub-breadcrumb-btn${sub === opt.key ? " explore__sub-breadcrumb-btn--active" : ""}`}
+                onClick={() => setUrl({ sub: opt.key === "all" ? null : opt.key })}
+              >
+                {opt.label}
+              </button>
+              {i < options.length - 1 ? (
+                <span className="explore__sub-breadcrumb-divider" aria-hidden>
+                  /
+                </span>
+              ) : null}
+            </span>
+          )
+        })}
+      </nav>
+    )
+  }
+
+  // prefix variant
+  return (
+    <div
+      className="explore__sub-prefix"
+      role="group"
+      aria-label="Sub-category"
+    >
+      {options.map((opt) => {
+        const disabled = opt.requiresAuth && !viewerDid
+        return (
+          <button
+            key={opt.key}
+            type="button"
+            disabled={disabled}
+            aria-pressed={sub === opt.key}
+            title={disabled ? "Sign in to filter by your role" : undefined}
+            className={`explore__sub-prefix-btn${sub === opt.key ? " explore__sub-prefix-btn--active" : ""}`}
+            onClick={() => setUrl({ sub: opt.key === "all" ? null : opt.key })}
+          >
+            {opt.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function kindLabel(k: ExploreKind): string {
+  if (k === "certs") return "Certs"
+  if (k === "projects") return "Projects"
+  return "Users"
 }
 
 function searchPlaceholder(kind: ExploreKind): string {
