@@ -44,6 +44,22 @@ html:has(.explore-page) .desktop-top-bar__row {
   grid-template-columns: 220px 1fr;
   gap: 0;
   align-items: start;
+  position: relative;
+}
+
+/* Vertical divider between the sidebar and the main pane,
+   matching GitHub's repo-list layout. A pseudo-element so the
+   line extends the full content height regardless of which column
+   is taller (sidebar is sticky; main can be arbitrarily long). */
+.explore__layout::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 220px;
+  width: 1px;
+  background: var(--border-subtle);
+  pointer-events: none;
 }
 
 @media (max-width: 760px) {
@@ -245,7 +261,9 @@ html:has(.explore-page) .desktop-top-bar__row {
   display: flex;
   gap: 8px;
   align-items: center;
+  padding-bottom: 16px;
   margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
   flex-wrap: wrap;
 }
 
