@@ -4,12 +4,18 @@
   padding: 24px 16px 64px;
 }
 
-/* GitHub-style frame: the rail hugs the left edge of the content
-   area, and the main pane centers its content in whatever
-   horizontal space is left. We undo the outer .app-shell__grid
-   1280px cap plus the .app-shell__content max-width + horizontal
-   padding so our own grid can stretch the full viewport, then put
-   per-pane padding back inside. */
+/* Full-viewport frame: the rail hugs the actual left edge of the
+   screen, and the main pane centers its content in whatever
+   horizontal space is left. We undo every ancestor width cap —
+   .app-shell__grid (1300px max-width + minmax grid track),
+   .app-shell__content (720/600px max-width + 32px horizontal
+   padding), and .explore-page's own padding — so the layout
+   spans the entire viewport. Per-pane padding is then put back
+   inside the rail/main so their contents breathe correctly. */
+.app-shell:has(.explore-page) .app-shell__grid {
+  max-width: none;
+}
+
 @media (min-width: 800px) {
   .app-shell:has(.explore-page) .app-shell__grid {
     grid-template-columns: 1fr;
@@ -47,12 +53,11 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  /* Align the rail's visible left edge with the navbar brandmark:
-     the brandmark sits ~32px from the viewport left, the rail outer
-     comes in at ~26px from .app-shell scaffold padding, so 6px of
-     local left padding lands the inner controls on the same vertical
-     line as the brandmark above. */
-  padding: 0 16px 0 6px;
+  /* Flush-left to the viewport. The brandmark in the navbar sits
+     ~32px in because of the top bar's own padding; the rail's
+     32px left padding lands its inner controls on the same vertical
+     line as the brandmark above without adding any extra offset. */
+  padding: 0 16px 0 32px;
 }
 
 .explore__kind-switch {
