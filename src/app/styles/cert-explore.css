@@ -1,9 +1,17 @@
 /* ---------- Explore page ---------- */
 
+/* Opt the app-shell content column into the wider cert/project
+   reading width. Same pattern as `.cert-detail--wide` so the
+   Explore route sits inside the same 1280px frame as the cert
+   detail page (aside + main combined). */
+@media (min-width: 800px) {
+  .app-shell:has(.cert-explore-page) .app-shell__content {
+    max-width: 1280px;
+  }
+}
+
 .cert-explore-page {
   padding: 24px 16px 64px;
-  max-width: 1200px;
-  margin: 0 auto;
 }
 
 .cert-explore__head {
