@@ -1,0 +1,430 @@
+/* ---------- /explore page ---------- */
+
+.explore-page {
+  padding: 24px 16px 64px;
+}
+
+@media (min-width: 800px) {
+  .app-shell:has(.explore-page) .app-shell__content {
+    max-width: 1280px;
+  }
+}
+
+.explore__head {
+  margin-bottom: 20px;
+}
+
+.explore__eyebrow {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-secondary);
+}
+
+.explore__title {
+  margin: 4px 0 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--fg-primary);
+}
+
+.explore__layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  .explore__layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Sidebar ---------- */
+
+.explore__sidebar {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.explore__kind-switch {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--bg-subtle);
+  border-radius: 8px;
+}
+
+.explore__kind {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.explore__kind:hover {
+  color: var(--fg-primary);
+}
+
+.explore__kind--active {
+  background: var(--bg-primary, #fff);
+  color: var(--fg-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.explore__filter-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.explore__filter {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--fg-primary);
+  cursor: pointer;
+}
+
+.explore__filter:hover {
+  background: var(--bg-subtle);
+}
+
+.explore__filter--active {
+  background: var(--fg-primary);
+  color: var(--bg-primary, #fff);
+}
+
+/* ---------- Main pane ---------- */
+
+.explore__main {
+  min-width: 0;
+}
+
+.explore__chrome {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.explore__search {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-primary, transparent);
+  color: var(--fg-secondary);
+}
+
+.explore__search:focus-within {
+  border-color: var(--fg-primary);
+}
+
+.explore__search-input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+}
+
+.explore__chrome-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.explore__chrome-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-primary, transparent);
+  font-size: 0.85rem;
+  color: var(--fg-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.explore__chrome-btn:hover {
+  background: var(--bg-subtle);
+}
+
+.explore__loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+/* ---------- Popover (sort + filter dropdowns) ---------- */
+
+.popover {
+  position: relative;
+}
+
+.popover__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+}
+
+.popover__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  padding: 4px;
+  background: var(--bg-primary, var(--bg-subtle));
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.popover__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: none;
+  border: 0;
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--fg-primary);
+  cursor: pointer;
+}
+
+.popover__item:hover {
+  background: var(--bg-subtle);
+}
+
+.popover__item--active {
+  font-weight: 500;
+}
+
+.popover__item--check {
+  cursor: pointer;
+}
+
+.popover__item--check input {
+  margin: 0;
+}
+
+/* ---------- Result grids ---------- */
+
+.explore__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.explore__grid--users {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.explore__grid--projects {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.explore__grid--certs {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+/* ---------- User card ---------- */
+
+.explore-user-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-primary, transparent);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+  min-width: 0;
+}
+
+.explore-user-card:hover {
+  border-color: var(--fg-secondary);
+  background: var(--bg-subtle);
+}
+
+.explore-user-card__avatar-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bg-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.explore-user-card__avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.explore-user-card__initial {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--fg-secondary);
+}
+
+.explore-user-card__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.explore-user-card__name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explore-user-card__desc {
+  font-size: 0.8rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* ---------- Project card ---------- */
+
+.explore-project-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-primary, transparent);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.explore-project-card:hover {
+  border-color: var(--fg-secondary);
+  background: var(--bg-subtle);
+}
+
+.explore-project-card__image-wrap {
+  aspect-ratio: 16 / 9;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-subtle);
+}
+
+.explore-project-card__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.explore-project-card__image--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-secondary);
+}
+
+.explore-project-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.explore-project-card__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.explore-project-card__desc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.explore-project-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+}
+
+.explore-project-card__count {
+  font-weight: 500;
+}
+
+.explore-project-card__when {
+  margin-left: auto;
+}

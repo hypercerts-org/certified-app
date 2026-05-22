@@ -626,6 +626,73 @@ export interface UserProjectsResult {
  * Projects tab renders "Untitled project" / no banner for those so
  * authors notice and republish on the canonical shape.
  */
+/**
+ * Generic project listing — same node shape as fetchUserProjects but
+ * not scoped to a single DID. `authors === undefined` means "no
+ * scope" (network-wide); `authors: []` means "match nothing";
+ * `authors: [DID...]` filters to those authors.
+ */
+export async function fetchProjects(
+  options: {
+    first?: number
+    after?: string
+    authors?: string[]
+    search?: string
+    signal?: AbortSignal
+  } = {},
+): Promise<UserProjectsResult> {
+  const { first = 24, after, authors, search, signal } = options
+
+  const res = await fetch(INDEXER_PROXY_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      operationName: "Projects",
+      variables: {
+        first,
+        after: after ?? null,
+        authors:
+          authors === undefined ? null : authors.length > 0 ? authors : [],
+        search: search || null,
+      },
+    }),
+    signal,
+  })
+
+  const json = (await res.json()) as UserProjectsGraphQLResponse
+  const empty: UserProjectsResult = {
+    records: [],
+    hasMore: false,
+    endCursor: null,
+    totalCount: null,
+  }
+
+  if (!json.data?.orgHypercertsCollection) {
+    if (json.errors?.length) {
+      console.warn(
+        "[Indexer] Projects GraphQL error:",
+        json.errors[0].message,
+      )
+    } else if (!res.ok) {
+      throw new Error(`Indexer request failed: ${res.status}`)
+    }
+    return empty
+  }
+
+  const connection = json.data.orgHypercertsCollection
+  const records: CollectionRecord[] = []
+  for (const edge of connection.edges) {
+    if (!edge.node) continue
+    records.push(nodeToCollectionRecord(edge.node))
+  }
+  return {
+    records,
+    hasMore: connection.pageInfo.hasNextPage,
+    endCursor: connection.pageInfo.endCursor,
+    totalCount: connection.totalCount,
+  }
+}
+
 export async function fetchUserProjects(
   did: string,
   options: { first?: number; after?: string; signal?: AbortSignal } = {},

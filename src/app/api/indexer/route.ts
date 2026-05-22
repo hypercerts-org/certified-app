@@ -343,6 +343,51 @@ ${ACTIVITY_NODE_SELECTION}
     }
   `,
 
+  // Generic project listing for the /explore page. Takes an optional
+  // `authors` filter (null = no scope, [] = match nothing, [...] =
+  // restrict to those DIDs) and an optional case-insensitive
+  // free-text search. Returns the same node shape as UserProjects.
+  Projects: `
+    query Projects(
+      $first: Int!
+      $after: String
+      $authors: [String!]
+      $search: String
+    ) {
+      orgHypercertsCollection(
+        first: $first
+        after: $after
+        where: { type: { eqi: "project" } }
+        authors: $authors
+        search: $search
+      ) {
+        totalCount
+        edges {
+          cursor
+          node {
+            uri
+            cid
+            did
+            createdAt
+            title
+            shortDescription
+            items {
+              itemIdentifier {
+                ... on ComAtprotoRepoStrongRef { uri cid }
+              }
+            }
+            banner {
+              __typename
+              ... on OrgHypercertsDefsUri { uri }
+              ... on OrgHypercertsDefsLargeImage { image { ref mimeType } }
+            }
+          }
+        }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  `,
+
   // Projects authored by a single DID. Replaces the per-DID PDS
   // listRecords scan in useUserProjects: the indexer handles the
   // case-insensitive "project" type filter server-side via eqi
@@ -553,6 +598,15 @@ function buildVariables(
         did,
         first: clampFirst(vars.first, MAX_FIRST, 50),
         after: readString(vars.after, MAX_AFTER_LEN),
+      }
+    }
+    case "Projects": {
+      const authors = readOptionalDidList(vars.authors)
+      return {
+        first: clampFirst(vars.first, MAX_FIRST, 24),
+        after: readString(vars.after, MAX_AFTER_LEN),
+        authors: authors === undefined ? null : authors,
+        search: readString(vars.search, MAX_SEARCH_LEN),
       }
     }
     case "NetworkActors": {
