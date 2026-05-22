@@ -2,22 +2,29 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Award } from "lucide-react"
+import { Award, MapPin } from "lucide-react"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import {
-  resolveActivityImageUrl,
+  evaluateWorkScope,
   formatRelativeTime,
+  resolveActivityImageUrl,
 } from "@/lib/atproto/activity"
 import { activityDetailHref, parseActivityUri } from "@/lib/atproto/activity-uri"
+import { formatShortDate } from "@/lib/utils/format-date"
 import ActivityAuthor from "@/components/feed/activity-author"
 
 /**
  * Dense single-row representation of a cert for the /explore list
- * view. Same data as <ActivityCard>, laid out horizontally so many
- * certs fit on screen at once.
+ * view. Four columns on desktop:
  *
- *   [thumb] [ title                              ] [ author ] [date]
- *           [ shortDescription                   ]
+ *   [thumb] [ title             ] [ author col ] [ date ]
+ *           [ period · scope · 📍 ]
+ *
+ *  - Title + meta line stack on the left (flex-grow).
+ *  - Author has a reserved fixed-width column, left-aligned inside
+ *    it so author bylines stack vertically across rows.
+ *  - Time period / work-scope / location are rendered as a single
+ *    inline meta line under the title.
  */
 export default function CertListRow({
   record,
@@ -36,6 +43,11 @@ export default function CertListRow({
   const detailHref = parsed
     ? activityDetailHref(parsed.did, parsed.rkey)
     : null
+
+  const period = formatTimePeriod(value.startDate ?? null, value.endDate ?? null)
+  const scope = evaluateWorkScope(value.workScope)
+  const hasLocation = Array.isArray(value.locations) && value.locations.length > 0
+  const metaParts = [period, scope].filter((s): s is string => !!s)
 
   return (
     <article className="cert-list-row">
@@ -62,23 +74,64 @@ export default function CertListRow({
           </div>
           <div className="cert-list-row__body">
             <h3 className="cert-list-row__title">{value.title}</h3>
-            {value.shortDescription ? (
-              <p className="cert-list-row__desc">{value.shortDescription}</p>
+            {metaParts.length > 0 || hasLocation ? (
+              <p className="cert-list-row__meta">
+                {metaParts.map((m, i) => (
+                  <span key={i} className="cert-list-row__meta-item">
+                    {i > 0 ? (
+                      <span
+                        className="cert-list-row__meta-sep"
+                        aria-hidden
+                      >
+                        ·
+                      </span>
+                    ) : null}
+                    {m}
+                  </span>
+                ))}
+                {hasLocation ? (
+                  <span className="cert-list-row__meta-item">
+                    {metaParts.length > 0 ? (
+                      <span
+                        className="cert-list-row__meta-sep"
+                        aria-hidden
+                      >
+                        ·
+                      </span>
+                    ) : null}
+                    <MapPin
+                      size={12}
+                      strokeWidth={1.75}
+                      aria-label="Has location"
+                      className="cert-list-row__meta-icon"
+                    />
+                  </span>
+                ) : null}
+              </p>
             ) : null}
           </div>
         </Link>
       ) : null}
 
-      <div className="cert-list-row__aside">
-        {did ? (
-          <div className="cert-list-row__author">
-            <ActivityAuthor did={did} />
-          </div>
-        ) : null}
-        <time className="cert-list-row__time">
-          {formatRelativeTime(value.createdAt)}
-        </time>
+      <div className="cert-list-row__author-col">
+        {did ? <ActivityAuthor did={did} /> : null}
       </div>
+      <time className="cert-list-row__time">
+        {formatRelativeTime(value.createdAt)}
+      </time>
     </article>
   )
+}
+
+function formatTimePeriod(
+  start: string | null,
+  end: string | null,
+): string | null {
+  if (!start && !end) return null
+  const s = start ? formatShortDate(start) : null
+  const e = end ? formatShortDate(end) : null
+  if (s && e) return `${s} – ${e}`
+  if (s) return `${s} (ongoing)`
+  if (e) return `Until ${e}`
+  return null
 }

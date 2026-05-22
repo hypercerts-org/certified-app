@@ -425,7 +425,11 @@ html:has(.explore-page) .desktop-top-bar__row {
 }
 
 .cert-list-row {
-  display: flex;
+  /* Four columns: link block (thumb + title/meta), author column,
+     and time. The link block shrinks; the author column has a
+     fixed minimum so author bylines stack vertically across rows. */
+  display: grid;
+  grid-template-columns: 1fr 200px 84px;
   align-items: center;
   gap: 16px;
   padding: 10px 14px;
@@ -440,7 +444,6 @@ html:has(.explore-page) .desktop-top-bar__row {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex: 1;
   min-width: 0;
   text-decoration: none;
   color: inherit;
@@ -484,24 +487,41 @@ html:has(.explore-page) .desktop-top-bar__row {
   white-space: nowrap;
 }
 
-.cert-list-row__desc {
+.cert-list-row__meta {
   margin: 0;
-  font-size: 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
   color: var(--fg-secondary);
   line-height: 1.3;
   overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.cert-list-row__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   white-space: nowrap;
 }
 
-.cert-list-row__aside {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-shrink: 0;
+.cert-list-row__meta-sep {
+  color: var(--fg-muted, #b7bdc6);
 }
 
-.cert-list-row__author {
+.cert-list-row__meta-icon {
+  color: var(--fg-secondary);
+}
+
+/* Reserved fixed-width column for the author, left-aligned so
+   author bylines stack vertically across rows (instead of right-
+   floating into a ragged column). */
+.cert-list-row__author-col {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
   font-size: 0.8rem;
 }
 
@@ -510,17 +530,19 @@ html:has(.explore-page) .desktop-top-bar__row {
   color: var(--fg-secondary);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 @media (max-width: 760px) {
   .cert-list-row {
+    grid-template-columns: 1fr;
     padding: 10px 12px;
-    gap: 10px;
+    gap: 8px;
   }
-  .cert-list-row__aside {
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
+  .cert-list-row__author-col,
+  .cert-list-row__time {
+    justify-self: start;
+    text-align: left;
   }
 }
 
