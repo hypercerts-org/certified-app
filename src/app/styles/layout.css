@@ -1959,6 +1959,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 .desktop-top-bar__row--tabs {
   height: var(--top-bar-row2);
   gap: 20px;
+  border-bottom: 1px solid var(--border-medium);
 }
 
 .desktop-top-bar__left {

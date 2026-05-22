@@ -50,11 +50,10 @@ const PROFILE_TABS: ProfileTab[] = [
   { key: "endorsements", label: "Endorsements" },
   { key: "followers", label: "Followers" },
   { key: "about", label: "About", aboutOnly: true },
-  // Settings is now a real `?tab=settings` panel on the profile page —
-  // no special `href` shortcut. The `/settings` route still works as a
-  // standalone deep-link target (and `isOnSettings` below keeps the
-  // top-bar tab strip rendering for it).
-  { key: "settings", label: "Settings", ownOnly: true },
+  // Settings used to sit here as an own-only tab; it's now a
+  // standalone page reachable only from the hamburger site drawer
+  // (and from the legacy /settings deep link). The profile tab
+  // strip stays focused on viewing-your-own-profile concerns.
 ];
 
 /** Tabs for the cert-detail back-row strip. Mirrors the routing
@@ -155,9 +154,6 @@ export default function DesktopTopBar() {
       };
 
   const isOnProfile = pathname?.startsWith("/profile/") ?? false;
-  // The tab strip also renders on /settings since "Settings" is an
-  // own-profile tab — visiting /settings means the user is in their
-  // own-profile context.
   const isOnSettings =
     pathname === "/settings" || (pathname?.startsWith("/settings/") ?? false);
   // Cert / project detail pages get a thin row-2 with just a back
@@ -166,7 +162,9 @@ export default function DesktopTopBar() {
   const isOnProjectDetail = pathname?.startsWith("/project/") ?? false;
   const isOnExplore = pathname === "/explore";
   const showBackRow = isOnCertDetail || isOnProjectDetail;
-  const showTabsRow = isOnProfile || isOnSettings || isOnExplore;
+  // Settings is its own standalone surface now (reachable from the
+  // site drawer); no tab strip there.
+  const showTabsRow = isOnProfile || isOnExplore;
   // Compare the URL handle slug to the signed-in user's handle to decide
   // whether to show own-only tabs (e.g. Settings). Activeorg switches the
   // "you" identity to the org, so we compare against `identity.handle`.
@@ -183,25 +181,21 @@ export default function DesktopTopBar() {
   const isOnOwnProfile =
     !!identity.handle && !!profileHandleFromUrl &&
     profileHandleFromUrl.toLowerCase() === identity.handle.toLowerCase();
-  // /settings is always an own-profile context, so own-only tabs render
-  // even though the pathname isn't /profile/<handle>.
-  const showOwnOnlyTabs = isOnOwnProfile || isOnSettings;
   const visibleProfileTabs = useMemo(
     () =>
       PROFILE_TABS.filter((t) => {
-        if (t.ownOnly && !showOwnOnlyTabs) return false
+        if (t.ownOnly && !isOnOwnProfile) return false
         if (t.aboutOnly && !profileAboutAvailable) return false
         if (t.groupsOnly && !profileGroupsAvailable) return false
         return true
       }),
-    [showOwnOnlyTabs, profileAboutAvailable, profileGroupsAvailable],
+    [isOnOwnProfile, profileAboutAvailable, profileGroupsAvailable],
   );
   const activeTab = useMemo(() => {
-    if (isOnSettings) return "settings";
     const v = searchParams?.get("tab");
     if (v && visibleProfileTabs.some((t) => t.key === v)) return v;
     return "overview";
-  }, [searchParams, visibleProfileTabs, isOnSettings]);
+  }, [searchParams, visibleProfileTabs]);
 
   // Switcher dropdown — portaled to <body> so it escapes the bar's
   // overflow/transform context. Anchor recomputed on resize/scroll.
@@ -268,13 +262,6 @@ export default function DesktopTopBar() {
 
   const tabHref = (tab: ProfileTab) => {
     if (tab.href) return tab.href;
-    // From /settings, the other tabs need to point at the signed-in
-    // user's own profile (you're in own-profile context but the URL
-    // isn't /profile/<handle>).
-    if (isOnSettings && identity.handle) {
-      const base = `/profile/${encodeURIComponent(identity.handle)}`;
-      return tab.key === "overview" ? base : `${base}?tab=${tab.key}`;
-    }
     if (!pathname) return "#";
     const params = new URLSearchParams(searchParams?.toString() ?? "");
     if (tab.key === "overview") params.delete("tab");
@@ -360,16 +347,7 @@ export default function DesktopTopBar() {
 
           {isAuthenticated ? (
             <Link
-              // Target the ACTIVE identity's settings — personal when
-              // signed in as the user, the group's when acting-as
-              // group. The cog and the in-page tab strip end up on
-              // the same surface as a result. Falls back to /settings
-              // for the rare case where no handle has resolved yet.
-              href={
-                identity.handle
-                  ? `/profile/${encodeURIComponent(identity.handle)}?tab=settings`
-                  : "/settings"
-              }
+              href="/settings"
               className="desktop-top-bar__icon-btn"
               aria-label="Settings"
               title="Settings"

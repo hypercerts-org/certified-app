@@ -50,7 +50,10 @@ html:has(.explore-page) .desktop-top-bar__row {
 /* Vertical divider between the sidebar and the main pane,
    matching GitHub's repo-list layout. A pseudo-element so the
    line extends the full content height regardless of which column
-   is taller (sidebar is sticky; main can be arbitrarily long). */
+   is taller (sidebar is sticky; main can be arbitrarily long).
+   Uses --border-medium (~10% opacity black) for a stronger weight
+   than the default --border-subtle — the divider does load-
+   bearing visual work separating the two panes. */
 .explore__layout::before {
   content: "";
   position: absolute;
@@ -58,7 +61,7 @@ html:has(.explore-page) .desktop-top-bar__row {
   bottom: 0;
   left: 220px;
   width: 1px;
-  background: var(--border-subtle);
+  background: var(--border-medium);
   pointer-events: none;
 }
 
