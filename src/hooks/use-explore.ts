@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   fetchIndexerActivities,
   fetchProjects,
@@ -18,32 +18,42 @@ import { useFollowing } from "@/hooks/use-following"
 import { getRecentlyViewed } from "@/lib/utils/recently-viewed"
 import type { ExploreKind } from "@/components/explore-page/explore-types"
 
-interface ExploreData {
+export interface ExploreData {
   users: NetworkActor[]
   projects: CollectionRecord[]
   certs: ActivityRecord[]
   certDids: Map<string, string>
   isLoading: boolean
+  isLoadingMore: boolean
+  hasMore: boolean
+  loadMore: () => void
 }
 
-const EMPTY: ExploreData = {
+interface InternalState {
+  users: NetworkActor[]
+  projects: CollectionRecord[]
+  certs: ActivityRecord[]
+  certDids: Map<string, string>
+  isLoading: boolean
+  isLoadingMore: boolean
+  hasMore: boolean
+  cursor: string | null
+}
+
+const EMPTY: InternalState = {
   users: [],
   projects: [],
   certs: [],
   certDids: new Map(),
   isLoading: false,
+  isLoadingMore: false,
+  hasMore: false,
+  cursor: null,
 }
 
+const PAGE_SIZE = 50
+
 // Module-cached org-DID set — small, doesn't change often.
-//
-// NOTE on signal handling: we deliberately do NOT thread the caller's
-// AbortSignal into the shared fetch. The promise is shared across
-// every concurrent caller; if the first caller aborts, the underlying
-// request would be canceled and every subsequent awaiter would
-// resolve to an empty / errored set. Better: let the fetch run to
-// completion regardless of any one caller's abort, and have each
-// caller short-circuit on their own signal after the awaited result
-// lands.
 let orgDidsCache: Set<string> | null = null
 let orgDidsInflight: Promise<Set<string>> | null = null
 function getOrgDids(): Promise<Set<string>> {
@@ -66,18 +76,28 @@ function getOrgDids(): Promise<Set<string>> {
 }
 
 /**
- * Resolves (kind, filter, sub, search) into the right fetcher.
+ * Resolves (kind, filter, sub, search) into the right fetcher and
+ * exposes cursor-based pagination via `loadMore`.
  *
- * The sub-category is a viewer-relation refinement that composes with
- * the filter list:
- *   - Users · individuals  → exclude orgs from the resolved actor list
- *   - Users · groups       → keep only orgs
- *   - Certs · created      → AND with author = viewer (overrides
- *                            the filter's author scope)
- *   - Certs · contributed  → AND with contributor = viewer
+ * Pagination model:
+ *   - Initial load resets `cursor` and `items` whenever any of
+ *     (kind, filter, sub, search, viewerDid, followedDids) change.
+ *   - `loadMore()` fetches the next page from the server using the
+ *     stored cursor and APPENDS to the current items array.
+ *   - `hasMore` reflects the indexer's `pageInfo.hasNextPage`. The
+ *     view renders a sentinel + explicit "Load more" button while
+ *     `hasMore` is true; the sentinel auto-triggers via
+ *     IntersectionObserver, the button is the keyboard fallback.
  *
- * "Created"/"Contributed" require a signed-in viewer; otherwise the
- * UI disables those options.
+ * Caveats:
+ *   - Client-side filters (recently-viewed, endorsed) don't have
+ *     server cursors; they return all matches up-front and
+ *     `hasMore` stays false.
+ *   - Sort order: the indexer's natural order is sort_at DESC.
+ *     Switching to alphabetical / oldest applies only to the
+ *     already-loaded set — subsequent pages append at the tail of
+ *     the server's order regardless. Acceptable for the early
+ *     state; a server-side sort arg is the long-term fix.
  */
 export function useExploreData(opts: {
   kind: ExploreKind
@@ -89,255 +109,385 @@ export function useExploreData(opts: {
   const { did: viewerDid } = useAuth()
   const { subjects: followedDids } = useFollowing(viewerDid)
 
-  const [data, setData] = useState<ExploreData>(EMPTY)
+  const [state, setState] = useState<InternalState>(EMPTY)
+  // Track the latest controller so loadMore can short-circuit if a
+  // fresh filter-change has superseded it mid-fetch.
+  const generationRef = useRef(0)
 
+  // Initial fetch — runs on every state-resetting input change.
   useEffect(() => {
+    const generation = ++generationRef.current
     const controller = new AbortController()
-    const signal = controller.signal
+    setState({ ...EMPTY, isLoading: true })
 
     async function run() {
-      setData((prev) => ({ ...prev, isLoading: true }))
       try {
-        if (kind === "accounts") {
-          const next = await loadUsers({
-            filter,
-            sub,
-            search,
-            viewerDid,
-            followedDids,
-            signal,
-          })
-          if (signal.aborted) return
-          setData({ ...EMPTY, users: next, isLoading: false })
-        } else if (kind === "projects") {
-          const { projects, certDids } = await loadProjects({
-            filter,
-            search,
-            viewerDid,
-            followedDids,
-            signal,
-          })
-          if (signal.aborted) return
-          setData({
-            ...EMPTY,
-            projects,
-            certDids,
-            isLoading: false,
-          })
-        } else {
-          const { certs, certDids } = await loadCerts({
-            filter,
-            sub,
-            search,
-            viewerDid,
-            followedDids,
-            signal,
-          })
-          if (signal.aborted) return
-          setData({ ...EMPTY, certs, certDids, isLoading: false })
-        }
+        const page = await loadPage({
+          kind,
+          filter,
+          sub,
+          search,
+          viewerDid,
+          followedDids,
+          cursor: null,
+          signal: controller.signal,
+        })
+        if (controller.signal.aborted) return
+        if (generation !== generationRef.current) return
+        setState({
+          ...EMPTY,
+          ...page,
+          isLoading: false,
+        })
       } catch (err) {
-        if (signal.aborted) return
+        if (controller.signal.aborted) return
         console.warn("[explore] fetch failed:", err)
-        setData({ ...EMPTY, isLoading: false })
+        if (generation !== generationRef.current) return
+        setState({ ...EMPTY, isLoading: false })
       }
     }
     run()
     return () => controller.abort()
   }, [kind, filter, sub, search, viewerDid, followedDids])
 
-  return data
+  const loadMore = useCallback(() => {
+    setState((prev) => {
+      if (prev.isLoading || prev.isLoadingMore || !prev.hasMore) return prev
+      if (prev.cursor === null) return prev
+      const generation = generationRef.current
+      const cursor = prev.cursor
+
+      void (async () => {
+        try {
+          const page = await loadPage({
+            kind,
+            filter,
+            sub,
+            search,
+            viewerDid,
+            followedDids,
+            cursor,
+            signal: null,
+          })
+          if (generation !== generationRef.current) return
+          setState((current) => {
+            // Append new items to the existing arrays without
+            // re-introducing duplicates that may have shifted on a
+            // server-side concurrent insert.
+            const seenCerts = new Set(current.certs.map((c) => c.uri))
+            const certs = [
+              ...current.certs,
+              ...page.certs.filter((c) => !seenCerts.has(c.uri)),
+            ]
+            const certDids = new Map(current.certDids)
+            for (const [uri, did] of page.certDids) certDids.set(uri, did)
+
+            const seenProjects = new Set(current.projects.map((p) => p.uri))
+            const projects = [
+              ...current.projects,
+              ...page.projects.filter((p) => !seenProjects.has(p.uri)),
+            ]
+
+            const seenUsers = new Set(current.users.map((u) => u.did))
+            const users = [
+              ...current.users,
+              ...page.users.filter((u) => !seenUsers.has(u.did)),
+            ]
+
+            return {
+              ...current,
+              users,
+              projects,
+              certs,
+              certDids,
+              cursor: page.cursor,
+              hasMore: page.hasMore,
+              isLoadingMore: false,
+            }
+          })
+        } catch (err) {
+          if (generation !== generationRef.current) return
+          console.warn("[explore] loadMore failed:", err)
+          setState((current) => ({ ...current, isLoadingMore: false }))
+        }
+      })()
+
+      return { ...prev, isLoadingMore: true }
+    })
+  }, [kind, filter, sub, search, viewerDid, followedDids])
+
+  return {
+    users: state.users,
+    projects: state.projects,
+    certs: state.certs,
+    certDids: state.certDids,
+    isLoading: state.isLoading,
+    isLoadingMore: state.isLoadingMore,
+    hasMore: state.hasMore,
+    loadMore,
+  }
 }
 
-// ----------------------------- Users -----------------------------------
+// ---------------------------------------------------------------------------
+// Page loader — dispatches one fetch for the given (kind, filter, sub, cursor)
+// ---------------------------------------------------------------------------
 
-async function loadUsers(args: {
+interface LoadedPage {
+  users: NetworkActor[]
+  projects: CollectionRecord[]
+  certs: ActivityRecord[]
+  certDids: Map<string, string>
+  cursor: string | null
+  hasMore: boolean
+}
+
+const EMPTY_PAGE: LoadedPage = {
+  users: [],
+  projects: [],
+  certs: [],
+  certDids: new Map(),
+  cursor: null,
+  hasMore: false,
+}
+
+async function loadPage(args: {
+  kind: ExploreKind
   filter: string
   sub: string
   search: string
   viewerDid: string | null
   followedDids: Set<string>
-  signal: AbortSignal
-}): Promise<NetworkActor[]> {
-  const { filter, sub, search, viewerDid, followedDids, signal } = args
-  const [all, orgDids] = await Promise.all([
-    fetchNetworkActors(60, signal),
+  cursor: string | null
+  signal: AbortSignal | null
+}): Promise<LoadedPage> {
+  if (args.kind === "accounts") return loadAccountsPage(args)
+  if (args.kind === "projects") return loadProjectsPage(args)
+  return loadCertsPage(args)
+}
+
+// ----------------------------- Accounts --------------------------------
+
+async function loadAccountsPage(args: {
+  filter: string
+  sub: string
+  search: string
+  viewerDid: string | null
+  followedDids: Set<string>
+  cursor: string | null
+  signal: AbortSignal | null
+}): Promise<LoadedPage> {
+  const { filter, sub, search, viewerDid, followedDids, cursor, signal } = args
+
+  // Filters that aren't server-backed: short-circuit pagination.
+  if (filter === "follows" || filter === "endorsed" || filter === "recent") {
+    if (cursor !== null) return EMPTY_PAGE
+    const [page, orgDids] = await Promise.all([
+      fetchNetworkActors({ first: 200, signal: signal ?? undefined }),
+      sub !== "all" ? getOrgDids() : Promise.resolve(new Set<string>()),
+    ])
+    let scoped = page.actors
+    if (filter === "follows") {
+      if (!viewerDid) return EMPTY_PAGE
+      scoped = scoped.filter((a) => followedDids.has(a.did))
+    } else if (filter === "endorsed") {
+      return EMPTY_PAGE
+    } else if (filter === "recent") {
+      const recent = getRecentlyViewed("user")
+      const recentSet = new Set(recent)
+      scoped = scoped
+        .filter((a) => recentSet.has(a.did))
+        .sort((a, b) => recent.indexOf(a.did) - recent.indexOf(b.did))
+    }
+    if (sub === "people") scoped = scoped.filter((a) => !orgDids.has(a.did))
+    else if (sub === "organizations")
+      scoped = scoped.filter((a) => orgDids.has(a.did))
+    if (search.trim().length > 0) {
+      const q = search.trim().toLowerCase()
+      scoped = scoped.filter(
+        (a) =>
+          (a.displayName ?? "").toLowerCase().includes(q) ||
+          (a.description ?? "").toLowerCase().includes(q) ||
+          a.did.includes(q),
+      )
+    }
+    return { ...EMPTY_PAGE, users: scoped }
+  }
+
+  // "all" / "new" — server-backed; paginate via NetworkActors.
+  const [page, orgDids] = await Promise.all([
+    fetchNetworkActors({
+      first: PAGE_SIZE,
+      after: cursor,
+      signal: signal ?? undefined,
+    }),
     sub !== "all" ? getOrgDids() : Promise.resolve(new Set<string>()),
   ])
-
-  let scoped = all
-  if (filter === "follows") {
-    if (!viewerDid) return []
-    scoped = all.filter((a) => followedDids.has(a.did))
-  } else if (filter === "endorsed") {
-    if (!viewerDid) return []
-    return []
-  } else if (filter === "recent") {
-    const recent = getRecentlyViewed("user")
-    const recentSet = new Set(recent)
-    scoped = all
-      .filter((a) => recentSet.has(a.did))
-      .sort((a, b) => recent.indexOf(a.did) - recent.indexOf(b.did))
-  } else if (filter === "new") {
-    scoped = all.slice(0, 12)
-  }
-
-  // Sub-category: split people vs organizations via the org-DID set.
-  if (sub === "people") {
-    scoped = scoped.filter((a) => !orgDids.has(a.did))
-  } else if (sub === "organizations") {
-    scoped = scoped.filter((a) => orgDids.has(a.did))
-  }
-
+  let actors = page.actors
+  if (sub === "people") actors = actors.filter((a) => !orgDids.has(a.did))
+  else if (sub === "organizations")
+    actors = actors.filter((a) => orgDids.has(a.did))
   if (search.trim().length > 0) {
     const q = search.trim().toLowerCase()
-    scoped = scoped.filter((a) => {
-      const name = (a.displayName ?? "").toLowerCase()
-      const desc = (a.description ?? "").toLowerCase()
-      return name.includes(q) || desc.includes(q) || a.did.includes(q)
-    })
+    actors = actors.filter(
+      (a) =>
+        (a.displayName ?? "").toLowerCase().includes(q) ||
+        (a.description ?? "").toLowerCase().includes(q) ||
+        a.did.includes(q),
+    )
   }
-  return scoped
+  return {
+    ...EMPTY_PAGE,
+    users: actors,
+    cursor: page.endCursor,
+    hasMore: page.hasMore,
+  }
 }
 
 // ----------------------------- Projects --------------------------------
 
-async function loadProjects(args: {
+async function loadProjectsPage(args: {
   filter: string
   search: string
   viewerDid: string | null
   followedDids: Set<string>
-  signal: AbortSignal
-}): Promise<{
-  projects: CollectionRecord[]
-  certDids: Map<string, string>
-}> {
-  const { filter, search, viewerDid, followedDids, signal } = args
-  const certDids = new Map<string, string>()
+  cursor: string | null
+  signal: AbortSignal | null
+}): Promise<LoadedPage> {
+  const { filter, search, viewerDid, followedDids, cursor, signal } = args
 
-  if (filter === "by-me") {
-    if (!viewerDid) return { projects: [], certDids }
-    const r = await fetchProjects({
-      authors: [viewerDid],
-      search: search || undefined,
-      first: 100,
-      signal,
-    })
-    return { projects: r.records, certDids }
-  }
-  if (filter === "by-follows") {
-    if (!viewerDid || followedDids.size === 0) return { projects: [], certDids }
-    const r = await fetchProjects({
-      authors: Array.from(followedDids),
-      search: search || undefined,
-      first: 100,
-      signal,
-    })
-    return { projects: r.records, certDids }
-  }
-  if (filter === "by-endorsed") {
-    return { projects: [], certDids }
-  }
-  if (filter === "recent") {
+  if (filter === "by-endorsed" || filter === "recent") {
+    if (cursor !== null) return EMPTY_PAGE
+    if (filter === "by-endorsed") return EMPTY_PAGE
+    // recent
     const recent = getRecentlyViewed("project")
-    if (recent.length === 0) return { projects: [], certDids }
-    const all = await fetchProjects({ first: 100, signal })
+    if (recent.length === 0) return EMPTY_PAGE
+    const r = await fetchProjects({
+      first: 100,
+      signal: signal ?? undefined,
+    })
     const recentSet = new Set(recent)
-    const filtered = all.records
+    const projects = r.records
       .filter((p) => recentSet.has(p.uri))
       .sort((a, b) => recent.indexOf(a.uri) - recent.indexOf(b.uri))
-    return { projects: filtered, certDids }
+    return { ...EMPTY_PAGE, projects }
   }
+
+  let authors: string[] | undefined
+  if (filter === "by-me") {
+    if (!viewerDid) return EMPTY_PAGE
+    authors = [viewerDid]
+  } else if (filter === "by-follows") {
+    if (!viewerDid || followedDids.size === 0) return EMPTY_PAGE
+    authors = Array.from(followedDids)
+  }
+
   const r = await fetchProjects({
+    first: PAGE_SIZE,
+    after: cursor ?? undefined,
+    authors,
     search: search || undefined,
-    first: 100,
-    signal,
+    signal: signal ?? undefined,
   })
-  return { projects: r.records, certDids }
+  return {
+    ...EMPTY_PAGE,
+    projects: r.records,
+    cursor: r.endCursor,
+    hasMore: r.hasMore,
+  }
 }
 
 // ----------------------------- Certs -----------------------------------
 
-async function loadCerts(args: {
+async function loadCertsPage(args: {
   filter: string
   sub: string
   search: string
   viewerDid: string | null
   followedDids: Set<string>
-  signal: AbortSignal
-}): Promise<{
-  certs: ActivityRecord[]
-  certDids: Map<string, string>
-}> {
-  const { filter, sub, search, viewerDid, followedDids, signal } = args
+  cursor: string | null
+  signal: AbortSignal | null
+}): Promise<LoadedPage> {
+  const { filter, sub, search, viewerDid, followedDids, cursor, signal } = args
 
-  // Sub-category override: "created" / "contributed" pin the viewer
-  // relation regardless of the filter list. Requires a signed-in
-  // viewer; otherwise we fall through to the filter-only path with
-  // sub treated as "all".
+  // Sub-category overrides — pinned to viewer.
   if (sub === "created" && viewerDid) {
     const r = await fetchUserIndexerActivities(viewerDid, {
       mode: "authored",
+      first: PAGE_SIZE,
+      after: cursor ?? undefined,
       search: search || undefined,
-      first: 100,
-      signal,
+      signal: signal ?? undefined,
     })
-    return { certs: r.records, certDids: r.dids }
+    return {
+      ...EMPTY_PAGE,
+      certs: r.records,
+      certDids: r.dids,
+      cursor: r.endCursor,
+      hasMore: r.hasMore,
+    }
   }
   if (sub === "contributed" && viewerDid) {
     const r = await fetchUserIndexerActivities(viewerDid, {
       mode: "contributed",
+      first: PAGE_SIZE,
+      after: cursor ?? undefined,
       search: search || undefined,
-      first: 100,
-      signal,
+      signal: signal ?? undefined,
     })
-    return { certs: r.records, certDids: r.dids }
+    return {
+      ...EMPTY_PAGE,
+      certs: r.records,
+      certDids: r.dids,
+      cursor: r.endCursor,
+      hasMore: r.hasMore,
+    }
   }
 
-  // sub === "all" (or signed out with sub != all — same fallback)
-  if (filter === "by-me") {
-    if (!viewerDid) return { certs: [], certDids: new Map() }
-    const r = await fetchIndexerActivities({
-      authors: [viewerDid],
-      search: search || undefined,
-      first: 100,
-      signal,
-    })
-    return { certs: r.records, certDids: r.dids }
-  }
-  if (filter === "by-follows") {
-    if (!viewerDid || followedDids.size === 0)
-      return { certs: [], certDids: new Map() }
-    const r = await fetchIndexerActivities({
-      authors: Array.from(followedDids),
-      search: search || undefined,
-      first: 100,
-      signal,
-    })
-    return { certs: r.records, certDids: r.dids }
-  }
   if (filter === "by-contributor" || filter === "by-endorsed") {
-    return { certs: [], certDids: new Map() }
+    if (cursor !== null) return EMPTY_PAGE
+    return EMPTY_PAGE
   }
   if (filter === "recent") {
+    if (cursor !== null) return EMPTY_PAGE
     const recent = getRecentlyViewed("cert")
-    if (recent.length === 0) return { certs: [], certDids: new Map() }
-    const all = await fetchIndexerActivities({ first: 100, signal })
+    if (recent.length === 0) return EMPTY_PAGE
+    const all = await fetchIndexerActivities({
+      first: 100,
+      signal: signal ?? undefined,
+    })
     const recentSet = new Set(recent)
-    const filteredDids = new Map<string, string>()
-    const filteredRecords = all.records
+    const certDids = new Map<string, string>()
+    const certs = all.records
       .filter((r) => recentSet.has(r.uri))
       .sort((a, b) => recent.indexOf(a.uri) - recent.indexOf(b.uri))
-    for (const r of filteredRecords) {
+    for (const r of certs) {
       const d = all.dids.get(r.uri)
-      if (d) filteredDids.set(r.uri, d)
+      if (d) certDids.set(r.uri, d)
     }
-    return { certs: filteredRecords, certDids: filteredDids }
+    return { ...EMPTY_PAGE, certs, certDids }
   }
+
+  let authors: string[] | undefined
+  if (filter === "by-me") {
+    if (!viewerDid) return EMPTY_PAGE
+    authors = [viewerDid]
+  } else if (filter === "by-follows") {
+    if (!viewerDid || followedDids.size === 0) return EMPTY_PAGE
+    authors = Array.from(followedDids)
+  }
+
   const r = await fetchIndexerActivities({
+    first: PAGE_SIZE,
+    after: cursor ?? undefined,
+    authors,
     search: search || undefined,
-    first: 100,
-    signal,
+    signal: signal ?? undefined,
   })
-  return { certs: r.records, certDids: r.dids }
+  return {
+    ...EMPTY_PAGE,
+    certs: r.records,
+    certDids: r.dids,
+    cursor: r.endCursor,
+    hasMore: r.hasMore,
+  }
 }

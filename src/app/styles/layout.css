@@ -1962,16 +1962,16 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   border-bottom: 1px solid var(--border-medium);
 }
 
-/* Align the first tab's text with the page title text in row-1.
-   The row's default 12px left padding + the first tab's 18px
-   button padding-left puts tab text at x=30; the page title sits
-   at x=116 (after hamburger + brandmark + gaps). Adding 86px here
-   lines them up so row-2 reads as "content column" with the same
-   left edge as row-1's title. Skipped when the row carries a back
-   button (cert / project detail pages) — the back button owns the
-   left gutter there. */
-.desktop-top-bar__row--tabs:not(:has(.desktop-top-bar__back)) {
-  padding-left: 98px;
+/* Align the first tab's button left-edge with the hamburger above.
+   The hamburger sits at the row's 12px padding-left; the first
+   tab's button starts at the same x so the two rows share a clean
+   left gutter. The tab's own button padding takes care of the
+   internal text breathing room. Skipped when the row carries a
+   back button (cert / project detail pages) — the back button
+   already owns the left gutter there. */
+.desktop-top-bar__row--tabs:not(:has(.desktop-top-bar__back))
+  .desktop-top-bar__tab:first-of-type {
+  padding-left: 0;
 }
 
 .desktop-top-bar__left {
@@ -2063,8 +2063,20 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   }
 }
 
-/* The PeopleSearch field has a 44px height by default; the top bar's
-   row 1 is 64px so we let the field breathe naturally. No override. */
+/* Shrink the PeopleSearch field when it lives in the top bar — the
+   44px default is too tall for a navbar control and made row 1
+   feel cramped. Drop to 32px (still keyboard-accessible, matches
+   the chrome buttons on /explore). Focus border matches the
+   explore-page search input (--fg-primary) so the affordance reads
+   the same across the two search surfaces. */
+.desktop-top-bar__search .people-search__field {
+  height: 32px;
+  border-radius: 6px;
+}
+
+.desktop-top-bar__search .people-search__field:focus-within {
+  border-color: var(--fg-primary);
+}
 
 .desktop-top-bar__icon-btn {
   display: inline-flex;

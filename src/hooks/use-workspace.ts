@@ -38,16 +38,16 @@ export function useNetworkActors(): {
     }
     const controller = new AbortController()
     if (!actorsInflight) {
-      actorsInflight = fetchNetworkActors(30, controller.signal)
-        .then((list) => {
-          actorsCache = list
-          return list
+      actorsInflight = fetchNetworkActors({ first: 30, signal: controller.signal })
+        .then((page) => {
+          actorsCache = page.actors
+          return page.actors
         })
         .finally(() => {
           actorsInflight = null
         })
     }
-    actorsInflight
+    actorsInflight!
       .then((list) => {
         if (controller.signal.aborted) return
         setActors(list)

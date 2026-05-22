@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowUpDown,
@@ -286,8 +286,61 @@ export default function Explore() {
             attrs={attrs}
             certView={certView}
           />
+          {data.hasMore || data.isLoadingMore ? (
+            <LoadMoreSentinel
+              onLoadMore={data.loadMore}
+              isLoading={data.isLoadingMore}
+            />
+          ) : null}
         </main>
       </div>
+    </div>
+  )
+}
+
+/** Pagination sentinel — auto-fires `onLoadMore` when scrolled into
+ *  view (IntersectionObserver) and also renders an explicit "Load
+ *  more" button so the affordance is keyboard-accessible and
+ *  visually anchored at the end of the list. */
+function LoadMoreSentinel({
+  onLoadMore,
+  isLoading,
+}: {
+  onLoadMore: () => void
+  isLoading: boolean
+}) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  // Capture the latest onLoadMore so the observer doesn't bind a
+  // stale closure when the callback identity changes.
+  const cbRef = useRef(onLoadMore)
+  useEffect(() => {
+    cbRef.current = onLoadMore
+  }, [onLoadMore])
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return
+    const el = ref.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) cbRef.current()
+        }
+      },
+      { rootMargin: "200px 0px" },
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+  return (
+    <div ref={ref} className="explore__load-more">
+      <button
+        type="button"
+        className="explore__load-more-btn"
+        onClick={onLoadMore}
+        disabled={isLoading}
+      >
+        {isLoading ? "Loading…" : "Load more"}
+      </button>
     </div>
   )
 }

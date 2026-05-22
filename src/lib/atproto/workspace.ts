@@ -90,21 +90,28 @@ export async function fetchOrganizationDids(
   return set
 }
 
+export interface NetworkActorsPage {
+  actors: NetworkActor[]
+  endCursor: string | null
+  hasMore: boolean
+}
+
 export async function fetchNetworkActors(
-  first = 30,
-  signal?: AbortSignal,
-): Promise<NetworkActor[]> {
+  opts: { first?: number; after?: string | null; signal?: AbortSignal } = {},
+): Promise<NetworkActorsPage> {
+  const { first = 30, after = null, signal } = opts
   const res = await fetch(INDEXER_PROXY_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       operationName: "NetworkActors",
-      variables: { first, after: null },
+      variables: { first, after },
     }),
     signal,
   })
   const json = (await res.json()) as NetworkActorsGraphQLResponse
-  const edges = json.data?.appCertifiedActorProfile?.edges ?? []
+  const connection = json.data?.appCertifiedActorProfile
+  const edges = connection?.edges ?? []
   const actors: NetworkActor[] = []
   for (const edge of edges) {
     if (!edge.node) continue
@@ -116,7 +123,11 @@ export async function fetchNetworkActors(
       avatarUrl: avatarUrlFromUnion(n.did, n.avatar),
     })
   }
-  return actors
+  return {
+    actors,
+    endCursor: connection?.pageInfo?.endCursor ?? null,
+    hasMore: connection?.pageInfo?.hasNextPage ?? false,
+  }
 }
 
 // --------------------------- Workspace counts ---------------------------

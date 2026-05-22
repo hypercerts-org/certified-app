@@ -365,6 +365,37 @@ html:has(.explore-page) .desktop-top-bar__row {
   padding: 48px 0;
 }
 
+/* Load-more sentinel — sits below the result list, auto-triggers
+   the next page when scrolled into view, and renders an explicit
+   button as the keyboard fallback / end-of-list affordance. */
+.explore__load-more {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.explore__load-more-btn {
+  padding: 8px 18px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.explore__load-more-btn:hover:not(:disabled) {
+  background: var(--bg-sunken);
+}
+
+.explore__load-more-btn:disabled {
+  color: var(--fg-secondary);
+  cursor: progress;
+}
+
 /* ---------- Popover (sort + filter dropdowns) ---------- */
 
 .popover {
