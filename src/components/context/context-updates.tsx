@@ -140,7 +140,10 @@ export default function ContextUpdates({
       </header>
       <ul className="context-updates__list">
         {updates.map((u) => (
-          <UpdateCard key={u.uri} record={u} clamp={variant === "overview"} />
+          // Clamp in both variants — the dedicated Updates subtab gets
+          // the same Read more / Show less affordance as the overview
+          // preview, so a single long update doesn't dominate the tab.
+          <UpdateCard key={u.uri} record={u} clamp />
         ))}
       </ul>
     </section>
