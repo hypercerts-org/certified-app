@@ -1,12 +1,13 @@
 "use client"
 
-import { useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import { useParams } from "next/navigation"
 import { usePageTitle, usePageTitleBreadcrumb } from "@/lib/navbar-context"
 import { useProject } from "@/hooks/use-project"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import ProjectDetail from "@/components/project/project-detail"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
 
 export default function ProjectDetailPage() {
   // Plain-string fallback while author/project data is still resolving.
@@ -27,6 +28,12 @@ export default function ProjectDetailPage() {
 
   const { project, isLoading, error } = useProject(did, rkey)
   const { info: authorInfo } = useAuthorInfo(did)
+
+  // Recently-viewed: record the at:// URI once the project resolves so
+  // the /explore "Recently viewed" filter can surface it later.
+  useEffect(() => {
+    if (project?.uri) trackRecentlyViewed("project", project.uri)
+  }, [project?.uri])
 
   const handle = authorInfo?.handle ?? null
   const projectTitle =

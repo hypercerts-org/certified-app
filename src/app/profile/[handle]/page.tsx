@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { usePathname, useParams, useSearchParams } from "next/navigation"
 import {
   useProfileNavbar,
@@ -33,6 +33,7 @@ import EditBanner from "@/components/ui/edit-banner"
 import EmptyState from "@/components/ui/empty-state"
 import OnboardingBanner from "@/components/onboarding/onboarding-banner"
 import { AlignLeft, UserX } from "lucide-react"
+import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
 
 type TabKey =
   | "overview"
@@ -121,6 +122,14 @@ export default function UserProfilePage() {
     refresh: refreshOrgMarker,
   } = useOrgMarker(did)
   const sidebarIsOrg = isOrgMarkerLoading ? false : isOrg
+
+  // Recently-viewed: record the viewed DID once it resolves so the
+  // /explore "Recently viewed" filter (Accounts kind) can surface this
+  // profile later. Foreign profiles only — skip own-profile views to
+  // avoid the user's own DID dominating their own recents list.
+  useEffect(() => {
+    if (did && !isOwnProfile) trackRecentlyViewed("user", did)
+  }, [did, isOwnProfile])
 
   const { activeOrg, groups, isLoading: orgGroupsLoading } = useOrg()
   const memberOrg = did ? groups.find((g) => g.groupDid === did) : undefined

@@ -15,7 +15,14 @@ import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useFollowing } from "@/hooks/use-following"
-import { getRecentlyViewed } from "@/lib/utils/recently-viewed"
+import {
+  getRecentlyViewed,
+  removeRecentlyViewed,
+} from "@/lib/utils/recently-viewed"
+import {
+  fetchActivitiesByUris,
+  fetchProjectsByUris,
+} from "@/lib/atproto/records-by-uri"
 import type { ExploreKind } from "@/components/explore-page/explore-types"
 
 export interface ExploreData {
@@ -281,8 +288,12 @@ async function loadAccountsPage(args: {
   // Filters that aren't server-backed: short-circuit pagination.
   if (filter === "follows" || filter === "endorsed" || filter === "recent") {
     if (cursor !== null) return EMPTY_PAGE
+    // 500 widens the net for the "recent" filter so recently-viewed
+    // profiles that aren't currently in the top-200 active actors
+    // still resolve. follows / endorsed filters benefit too — they
+    // were never bounded by the 200 cap conceptually.
     const [page, orgDids] = await Promise.all([
-      fetchNetworkActors({ first: 200, signal: signal ?? undefined }),
+      fetchNetworkActors({ first: 500, signal: signal ?? undefined }),
       sub !== "all" ? getOrgDids() : Promise.resolve(new Set<string>()),
     ])
     let scoped = page.actors
@@ -358,17 +369,17 @@ async function loadProjectsPage(args: {
   if (filter === "by-endorsed" || filter === "recent") {
     if (cursor !== null) return EMPTY_PAGE
     if (filter === "by-endorsed") return EMPTY_PAGE
-    // recent
+    // recent — URI-keyed fan-out, same pattern as the cert recent
+    // filter. See loadCertsPage for the rationale.
     const recent = getRecentlyViewed("project")
     if (recent.length === 0) return EMPTY_PAGE
-    const r = await fetchProjects({
-      first: 100,
-      signal: signal ?? undefined,
-    })
-    const recentSet = new Set(recent)
-    const projects = r.records
-      .filter((p) => recentSet.has(p.uri))
-      .sort((a, b) => recent.indexOf(a.uri) - recent.indexOf(b.uri))
+    const res = await fetchProjectsByUris(recent, signal ?? undefined)
+    if (signal?.aborted) return EMPTY_PAGE
+    if (res.missing.length > 0) removeRecentlyViewed("project", res.missing)
+    const order = new Map(recent.map((u, i) => [u, i] as const))
+    const projects = [...res.records].sort(
+      (a, b) => (order.get(a.uri) ?? 0) - (order.get(b.uri) ?? 0),
+    )
     return { ...EMPTY_PAGE, projects }
   }
 
@@ -443,28 +454,30 @@ async function loadCertsPage(args: {
     }
   }
 
-  if (filter === "by-contributor" || filter === "by-endorsed") {
-    if (cursor !== null) return EMPTY_PAGE
+  if (filter === "by-endorsed") {
+    // Not yet implemented — surface an empty list rather than
+    // crashing. Wire up once the indexer exposes an endorsed-by-DID
+    // filter on activity records.
     return EMPTY_PAGE
   }
   if (filter === "recent") {
     if (cursor !== null) return EMPTY_PAGE
     const recent = getRecentlyViewed("cert")
     if (recent.length === 0) return EMPTY_PAGE
-    const all = await fetchIndexerActivities({
-      first: 100,
-      signal: signal ?? undefined,
-    })
-    const recentSet = new Set(recent)
-    const certDids = new Map<string, string>()
-    const certs = all.records
-      .filter((r) => recentSet.has(r.uri))
-      .sort((a, b) => recent.indexOf(a.uri) - recent.indexOf(b.uri))
-    for (const r of certs) {
-      const d = all.dids.get(r.uri)
-      if (d) certDids.set(r.uri, d)
-    }
-    return { ...EMPTY_PAGE, certs, certDids }
+    // URI-keyed fan-out so we resolve any cert in the cache, not just
+    // ones that happen to fall inside the indexer's last-100-newest
+    // window. 404s are pruned from the cache so dead entries don't
+    // keep re-triggering futile lookups on every page load.
+    const res = await fetchActivitiesByUris(recent, signal ?? undefined)
+    if (signal?.aborted) return EMPTY_PAGE
+    if (res.missing.length > 0) removeRecentlyViewed("cert", res.missing)
+    // Restore the user's visit order — the cache holds it (newest
+    // first), the parallel fetches don't guarantee response order.
+    const order = new Map(recent.map((u, i) => [u, i] as const))
+    const certs = [...res.records].sort(
+      (a, b) => (order.get(a.uri) ?? 0) - (order.get(b.uri) ?? 0),
+    )
+    return { ...EMPTY_PAGE, certs, certDids: res.dids }
   }
 
   let authors: string[] | undefined

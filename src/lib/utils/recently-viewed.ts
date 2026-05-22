@@ -72,6 +72,23 @@ export function getRecentlyViewed(kind: RecentlyViewedKind): string[] {
   return readAll()[kind]
 }
 
+/**
+ * Drop one or more IDs from a kind's recently-viewed list. Used by the
+ * explore page when a recorded URI / DID returns 404 from the PDS — we
+ * prune dead entries so they don't keep appearing in the filter and
+ * triggering futile lookups.
+ */
+export function removeRecentlyViewed(
+  kind: RecentlyViewedKind,
+  ids: string[],
+): void {
+  if (!ids || ids.length === 0) return
+  const all = readAll()
+  const drop = new Set(ids)
+  all[kind] = all[kind].filter((v) => !drop.has(v))
+  writeAll(all)
+}
+
 export function clearRecentlyViewed(kind?: RecentlyViewedKind): void {
   if (!isBrowser()) return
   if (!kind) {

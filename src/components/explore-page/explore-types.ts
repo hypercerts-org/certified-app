@@ -18,7 +18,6 @@ export type ProjectFilter =
 export type CertFilter =
   | "recent"
   | "by-me"
-  | "by-contributor"
   | "by-follows"
   | "by-endorsed"
   | "all"
@@ -45,7 +44,7 @@ export const PROJECT_FILTERS: FilterOption[] = [
   { key: "recent", label: "Recently viewed" },
   { key: "by-me", label: "By me", requiresAuth: true },
   { key: "by-follows", label: "By my follows", requiresAuth: true },
-  { key: "by-endorsed", label: "By people I endorsed", requiresAuth: true },
+  { key: "by-endorsed", label: "By endorsed users", requiresAuth: true },
   { key: "trending", label: "Trending" },
   { key: "all", label: "All projects" },
 ]
@@ -53,9 +52,8 @@ export const PROJECT_FILTERS: FilterOption[] = [
 export const CERT_FILTERS: FilterOption[] = [
   { key: "recent", label: "Recently viewed" },
   { key: "by-me", label: "By me", requiresAuth: true },
-  { key: "by-contributor", label: "I contributed to", requiresAuth: true },
   { key: "by-follows", label: "By my follows", requiresAuth: true },
-  { key: "by-endorsed", label: "By people I endorsed", requiresAuth: true },
+  { key: "by-endorsed", label: "By endorsed users", requiresAuth: true },
   { key: "all", label: "All certs" },
 ]
 

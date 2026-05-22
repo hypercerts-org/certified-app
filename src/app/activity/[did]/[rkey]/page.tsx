@@ -1,12 +1,13 @@
 "use client"
 
-import { useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import { useParams } from "next/navigation"
 import { usePageTitleBreadcrumb } from "@/lib/navbar-context"
 import { useActivity } from "@/hooks/use-activity"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import ActivityDetail from "@/components/feed/activity-detail"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
 
 export default function ActivityDetailPage() {
   // No plain-string fallback — the breadcrumb below renders once
@@ -28,6 +29,13 @@ export default function ActivityDetailPage() {
 
   const { activity, isLoading, error } = useActivity(did, rkey)
   const { info: authorInfo } = useAuthorInfo(did)
+
+  // Recently-viewed: record the at:// URI once the cert resolves so the
+  // /explore "Recently viewed" filter can surface it later. Keyed by
+  // URI (not did/rkey) because the cache stores at:// URIs verbatim.
+  useEffect(() => {
+    if (activity?.uri) trackRecentlyViewed("cert", activity.uri)
+  }, [activity?.uri])
 
   const handle = authorInfo?.handle ?? null
   const certTitle = activity?.value.title ?? null
