@@ -28,6 +28,7 @@ import {
 } from "./explore-types"
 import { useExploreData } from "@/hooks/use-explore"
 import { useAuth } from "@/lib/auth/auth-context"
+import { usePageTitle } from "@/lib/navbar-context"
 
 const KIND_TABS: { key: ExploreKind; label: string; icon: typeof Users }[] = [
   { key: "users", label: "Users", icon: Users },
@@ -107,13 +108,13 @@ export default function Explore() {
   const [sortOpen, setSortOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
 
+  // Register the page title in the top bar's title slot — the chrome
+  // already pairs the brandmark with this. Mirrors the convention
+  // every other top-level page uses (Apps, Settings, Endorsements…).
+  usePageTitle("Explore")
+
   return (
     <div className="explore">
-      <header className="explore__head">
-        <span className="explore__eyebrow">Explore</span>
-        <h1 className="explore__title">Browse the network</h1>
-      </header>
-
       <div className="explore__layout">
         <aside className="explore__sidebar" aria-label="Explore filters">
           <nav className="explore__kind-switch" role="tablist">

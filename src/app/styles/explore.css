@@ -10,25 +10,6 @@
   }
 }
 
-.explore__head {
-  margin-bottom: 20px;
-}
-
-.explore__eyebrow {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--fg-secondary);
-}
-
-.explore__title {
-  margin: 4px 0 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--fg-primary);
-}
-
 .explore__layout {
   display: grid;
   grid-template-columns: 220px 1fr;
