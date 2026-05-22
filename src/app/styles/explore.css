@@ -30,10 +30,16 @@ html:has(.explore-page) .desktop-top-bar__row {
   }
   .app-shell:has(.explore-page) .app-shell__content {
     max-width: none;
+    /* Hug the navbar's row-2 bottom border so the page-frame
+       borders (vertical divider, sidebar filters) connect to it
+       without a vertical gap. The navbar offset still applies but
+       the extra 16px of breathing room is removed. */
+    padding-top: var(--navbar-height);
     padding-left: 0;
     padding-right: 0;
   }
   .explore-page {
+    padding-top: 0;
     padding-left: 0;
     padding-right: 0;
   }
@@ -80,14 +86,14 @@ html:has(.explore-page) .desktop-top-bar__row {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  /* Flush-left to the viewport. The brandmark in the navbar sits
-     ~32px in because of the top bar's own padding; the rail's
-     32px left padding lands its inner controls on the same vertical
-     line as the brandmark above without adding any extra offset.
-     No right padding — children that need it set their own — so
-     the kind-switch's underline can extend to the vertical divider
-     at the sidebar's right edge. */
-  padding: 0 0 0 32px;
+  /* Flush-left to the viewport, with breathing room at the top so
+     the filter list doesn't kiss the navbar's bottom border. The
+     vertical divider (drawn on .explore__layout::before) still
+     extends from y=0 to meet that border without a gap — only the
+     content inside the rail is pushed down. Left padding matches
+     the navbar's 12px so the rail content lines up under the
+     hamburger / brandmark above. */
+  padding: 20px 0 0 12px;
 }
 
 /* Filter list rows need their own right padding now that the
@@ -164,7 +170,7 @@ html:has(.explore-page) .desktop-top-bar__row {
   padding: 3px 8px;
   min-width: 0;
   white-space: nowrap;
-  background: var(--bg-primary, transparent);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: 999px;
   font-size: 0.7rem;
@@ -190,7 +196,7 @@ html:has(.explore-page) .desktop-top-bar__row {
   color: var(--fg-muted, #b7bdc6);
   cursor: not-allowed;
   border-color: var(--border-subtle);
-  background: var(--bg-primary, transparent);
+  background: var(--bg-elevated);
 }
 
 .explore__sub-switch .explore__kind:disabled:hover {
@@ -235,11 +241,13 @@ html:has(.explore-page) .desktop-top-bar__row {
   min-width: 0;
   /* Center the content in the space right of the sidebar. The grid
      cell takes the full remaining width; the inner content is
-     bounded + auto-margined so it sits in the middle of the cell. */
+     bounded + auto-margined so it sits in the middle of the cell.
+     Top padding matches the sidebar so both panes' content starts
+     at the same y, with the navbar border still flush at y=0. */
   width: 100%;
-  max-width: 1040px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 20px 24px 0;
 }
 
 /* ---------- Sub-category dropdown prefix to the search bar ---------- */
@@ -249,7 +257,7 @@ html:has(.explore-page) .desktop-top-bar__row {
   align-items: center;
   gap: 6px;
   padding: 7px 12px;
-  background: var(--bg-primary, transparent);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   font-size: 0.85rem;
@@ -297,7 +305,7 @@ html:has(.explore-page) .desktop-top-bar__row {
   padding: 7px 12px;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  background: var(--bg-primary, transparent);
+  background: var(--bg-elevated);
   color: var(--fg-secondary);
 }
 
@@ -326,7 +334,7 @@ html:has(.explore-page) .desktop-top-bar__row {
   padding: 7px 12px;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  background: var(--bg-primary, transparent);
+  background: var(--bg-elevated);
   font-size: 0.85rem;
   color: var(--fg-primary);
   cursor: pointer;
@@ -368,7 +376,7 @@ html:has(.explore-page) .desktop-top-bar__row {
   flex-direction: column;
   min-width: 200px;
   padding: 4px;
-  background: var(--bg-primary, var(--bg-subtle));
+  background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
@@ -412,7 +420,7 @@ html:has(.explore-page) .desktop-top-bar__row {
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   overflow: hidden;
-  background: var(--bg-primary, transparent);
+  background: var(--bg-elevated);
 }
 
 .explore__view-btn {
@@ -455,7 +463,7 @@ html:has(.explore-page) .desktop-top-bar__row {
   padding: 0;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  background: var(--bg-primary, transparent);
+  background: var(--bg-elevated);
   overflow: hidden;
 }
 
@@ -616,7 +624,7 @@ html:has(.explore-page) .desktop-top-bar__row {
   padding: 12px;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  background: var(--bg-primary, transparent);
+  background: var(--bg-elevated);
   text-decoration: none;
   color: inherit;
   transition: border-color var(--transition-fast), background var(--transition-fast);
@@ -688,7 +696,7 @@ html:has(.explore-page) .desktop-top-bar__row {
   padding: 12px;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  background: var(--bg-primary, transparent);
+  background: var(--bg-elevated);
   text-decoration: none;
   color: inherit;
   transition: border-color var(--transition-fast), background var(--transition-fast);
