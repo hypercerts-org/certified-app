@@ -410,6 +410,10 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
   // out — known limitation, blocked on
   // https://github.com/hypercerts-org/magic-indexer/issues/118 which
   // would let us pull actor profiles by an explicit DID list.
+  // For the endorsed filter the closure-DID set is known up-front,
+  // so we paginate NetworkActors until every closure DID is covered
+  // (capped at 10 pages = 1000 actors) instead of relying on the
+  // first 100 alone. Degree-2 / -3 closures routinely exceed 100.
   if (
     filter === "follows" ||
     filter === "endorsed" ||
@@ -417,32 +421,42 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
     filter === "my-groups"
   ) {
     if (cursor !== null) return EMPTY_PAGE
+    if (filter === "endorsed") {
+      if (!viewerDid) return EMPTY_PAGE
+      const closureResult = await loadClosure({ viewerDid, degree, signal })
+      if (signal?.aborted) return EMPTY_PAGE
+      const closureMeta = closureResult.meta
+      const orgDids =
+        sub !== "all" ? await getOrgDids() : new Set<string>()
+      if (signal?.aborted) return EMPTY_PAGE
+      let scoped: NetworkActor[] = []
+      if (closureMeta && closureMeta.closureByDid.size > 0) {
+        const targetDids = new Set(closureMeta.closureByDid.keys())
+        scoped = await fetchActorsCoveringDids(targetDids, signal ?? undefined)
+      }
+      if (sub === "people") scoped = scoped.filter((a) => !orgDids.has(a.did))
+      else if (sub === "organizations")
+        scoped = scoped.filter((a) => orgDids.has(a.did))
+      if (search.trim().length > 0) {
+        const q = search.trim().toLowerCase()
+        scoped = scoped.filter(
+          (a) =>
+            (a.displayName ?? "").toLowerCase().includes(q) ||
+            (a.description ?? "").toLowerCase().includes(q) ||
+            a.did.includes(q),
+        )
+      }
+      return { ...EMPTY_PAGE, users: scoped, endorsementClosure: closureMeta }
+    }
     const [page, orgDids] = await Promise.all([
       fetchNetworkActors({ first: 100, signal: signal ?? undefined }),
       sub !== "all" ? getOrgDids() : Promise.resolve(new Set<string>()),
     ])
     let scoped = page.actors
-    let closureMeta: EndorsementClosureMeta | null = null
+    const closureMeta: EndorsementClosureMeta | null = null
     if (filter === "follows") {
       if (!viewerDid) return EMPTY_PAGE
       scoped = scoped.filter((a) => followedDids.has(a.did))
-    } else if (filter === "endorsed") {
-      // Endorsement-graph closure (magic-indexer #117). Fetch DIDs
-      // within `degree` hops, intersect with NetworkActors so we
-      // only show accounts the indexer has profile records for —
-      // the closure can include DIDs whose profiles aren't yet
-      // ingested, and showing a row with just a DID is worse UX
-      // than just dropping it.
-      if (!viewerDid) return EMPTY_PAGE
-      const closureResult = await loadClosure({ viewerDid, degree, signal })
-      if (signal?.aborted) return EMPTY_PAGE
-      closureMeta = closureResult.meta
-      if (closureResult.meta && closureResult.meta.closureByDid.size > 0) {
-        const closureDids = closureResult.meta.closureByDid
-        scoped = scoped.filter((a) => closureDids.has(a.did))
-      } else {
-        scoped = []
-      }
     } else if (filter === "my-groups") {
       if (!viewerDid || myGroupDids.size === 0) return EMPTY_PAGE
       scoped = scoped.filter((a) => myGroupDids.has(a.did))
@@ -681,6 +695,45 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
     cursor: r.endCursor,
     hasMore: r.hasMore,
   }
+}
+
+// ---------------------------- Profile coverage -------------------------------
+
+/**
+ * Paginate NetworkActors until every DID in `targetDids` has been
+ * resolved to an actor profile, or no more pages exist, or we've
+ * burned `cap` pages. Used by the /explore "endorsed" filter to
+ * surface degree-2 / degree-3 closure members whose profiles aren't
+ * in the indexer's most-recently-active first 100. Returns only the
+ * actors whose DID was in the target set — the rest are discarded.
+ *
+ * Sequential because cursor-based pagination doesn't let us issue
+ * pages in parallel. At cap=10 × first=100 we cover up to 1000
+ * recently-active actors — enough headroom for typical closures
+ * without making the page load painful when the indexer is cold.
+ */
+async function fetchActorsCoveringDids(
+  targetDids: Set<string>,
+  signal: AbortSignal | undefined,
+  cap = 10,
+): Promise<NetworkActor[]> {
+  const found = new Map<string, NetworkActor>()
+  let cursor: string | null = null
+  for (let i = 0; i < cap; i++) {
+    const page = await fetchNetworkActors({
+      first: 100,
+      after: cursor,
+      signal,
+    })
+    if (signal?.aborted) break
+    for (const actor of page.actors) {
+      if (targetDids.has(actor.did)) found.set(actor.did, actor)
+    }
+    if (found.size === targetDids.size) break
+    if (!page.hasMore) break
+    cursor = page.endCursor
+  }
+  return Array.from(found.values())
 }
 
 // ---------------------------- Endorsement closure ---------------------------
