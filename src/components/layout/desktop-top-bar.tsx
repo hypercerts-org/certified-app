@@ -4,7 +4,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ChevronDown, LayoutGrid, Settings } from "lucide-react";
+import { ArrowLeft, ChevronDown, LayoutGrid, Menu, Settings } from "lucide-react";
+import SiteDrawer from "./site-drawer";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useNavbarContext } from "@/lib/navbar-context";
 import { useProfile } from "@/hooks/use-profile";
@@ -194,6 +195,7 @@ export default function DesktopTopBar() {
   // Switcher dropdown — portaled to <body> so it escapes the bar's
   // overflow/transform context. Anchor recomputed on resize/scroll.
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
@@ -285,8 +287,18 @@ export default function DesktopTopBar() {
 
   return (
     <header className="desktop-top-bar" aria-label="App chrome">
+      <SiteDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       <div className="desktop-top-bar__row desktop-top-bar__row--chrome">
         <div className="desktop-top-bar__left">
+          <button
+            type="button"
+            className="desktop-top-bar__menu"
+            aria-label="Open site navigation"
+            aria-expanded={drawerOpen}
+            onClick={() => setDrawerOpen(true)}
+          >
+            <Menu size={18} strokeWidth={1.75} aria-hidden />
+          </button>
           <Link
             href={brandHref}
             className={`desktop-top-bar__brand${breadcrumb || pageTitle ? "" : " desktop-top-bar__brand--wordmark"}`}
