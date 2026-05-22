@@ -16,6 +16,7 @@ import LeafletDocument, {
 } from "@/components/leaflet/leaflet-document"
 import LeafletEditor from "@/components/leaflet/leaflet-editor"
 import CertSearch, { type CertSearchResult } from "@/components/search/cert-search"
+import ContextUpdates from "@/components/context/context-updates"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useProjectItems } from "@/hooks/use-project-items"
@@ -988,6 +989,10 @@ export default function ProjectDetail({
               No additional details yet for this project.
             </p>
           ) : null}
+
+          <ContextUpdates
+            subjectUri={`at://${did}/org.hypercerts.collection/${rkey}`}
+          />
         </>
         ) : null}
 

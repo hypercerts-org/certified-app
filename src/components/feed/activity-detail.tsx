@@ -28,6 +28,7 @@ import LeafletDocument, {
 } from "@/components/leaflet/leaflet-document"
 import LeafletEditor from "@/components/leaflet/leaflet-editor"
 import CertLocationsMap from "./cert-locations-map"
+import ContextUpdates from "@/components/context/context-updates"
 import {
   uploadBlob,
   type UploadedBlob,
@@ -880,6 +881,12 @@ export default function ActivityDetail({
                 </div>
                 <CertLocationsMap locations={locations} />
               </section>
+            ) : null}
+
+            {rkey ? (
+              <ContextUpdates
+                subjectUri={`at://${did}/org.hypercerts.claim.activity/${rkey}`}
+              />
             ) : null}
           </>
         ) : activeTab === "description" ? (
