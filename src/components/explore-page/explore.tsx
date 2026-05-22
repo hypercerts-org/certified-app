@@ -19,6 +19,7 @@ import ActivityCard from "@/components/feed/activity-card"
 import CertListRow from "./cert-list-row"
 import ExploreUserCard from "./explore-user-card"
 import ExploreProjectCard from "./explore-project-card"
+import ProjectListRow from "./project-list-row"
 import {
   ACCOUNT_FILTERS,
   CERT_FILTERS,
@@ -54,8 +55,8 @@ function parseSort(v: string | null): SortOrder {
   return "newest"
 }
 
-type CertView = "list" | "gallery"
-function parseView(v: string | null): CertView {
+type ListGalleryView = "list" | "gallery"
+function parseView(v: string | null): ListGalleryView {
   return v === "gallery" ? "gallery" : "list"
 }
 
@@ -77,7 +78,7 @@ export default function Explore() {
   const sub = parseSubForKind(kind, searchParams?.get("sub") ?? null)
   const search = searchParams?.get("q") ?? ""
   const sort = parseSort(searchParams?.get("sort") ?? null)
-  const certView = parseView(searchParams?.get("view") ?? null)
+  const view = parseView(searchParams?.get("view") ?? null)
   const { did: viewerDid } = useAuth()
 
   // Client-side filter chip(s) — kind-specific simple boolean attributes
@@ -175,17 +176,17 @@ export default function Explore() {
             </label>
 
             <div className="explore__chrome-actions">
-              {kind === "certs" ? (
+              {kind === "certs" || kind === "projects" ? (
                 <div
                   className="explore__view-toggle"
                   role="group"
-                  aria-label="Cert view"
+                  aria-label={`${kind === "certs" ? "Cert" : "Project"} view`}
                 >
                   <button
                     type="button"
                     aria-label="List view"
-                    aria-pressed={certView === "list"}
-                    className={`explore__view-btn${certView === "list" ? " explore__view-btn--active" : ""}`}
+                    aria-pressed={view === "list"}
+                    className={`explore__view-btn${view === "list" ? " explore__view-btn--active" : ""}`}
                     onClick={() => setUrl({ view: null })}
                   >
                     <ListIcon size={14} strokeWidth={1.75} aria-hidden />
@@ -193,8 +194,8 @@ export default function Explore() {
                   <button
                     type="button"
                     aria-label="Gallery view"
-                    aria-pressed={certView === "gallery"}
-                    className={`explore__view-btn${certView === "gallery" ? " explore__view-btn--active" : ""}`}
+                    aria-pressed={view === "gallery"}
+                    className={`explore__view-btn${view === "gallery" ? " explore__view-btn--active" : ""}`}
                     onClick={() => setUrl({ view: "gallery" })}
                   >
                     <LayoutGrid size={14} strokeWidth={1.75} aria-hidden />
@@ -284,7 +285,7 @@ export default function Explore() {
             data={data}
             sort={sort}
             attrs={attrs}
-            certView={certView}
+            view={view}
           />
           {data.hasMore || data.isLoadingMore ? (
             <LoadMoreSentinel
@@ -477,13 +478,13 @@ function ResultsArea({
   data,
   sort,
   attrs,
-  certView,
+  view,
 }: {
   kind: ExploreKind
   data: ReturnType<typeof useExploreData>
   sort: SortOrder
   attrs: Set<string>
-  certView: CertView
+  view: ListGalleryView
 }) {
   if (data.isLoading && data.users.length === 0 && data.projects.length === 0 && data.certs.length === 0) {
     return (
@@ -524,6 +525,17 @@ function ResultsArea({
       )
     projects = sortProjects(projects, sort)
     if (projects.length === 0) return <EmptyResults kind={kind} />
+    if (view === "list") {
+      return (
+        <ul className="explore__list explore__list--projects">
+          {projects.map((p) => (
+            <li key={p.uri}>
+              <ProjectListRow project={p} />
+            </li>
+          ))}
+        </ul>
+      )
+    }
     return (
       <ul className="explore__grid explore__grid--projects">
         {projects.map((p) => (
@@ -547,7 +559,7 @@ function ResultsArea({
   certs = sortCerts(certs, sort)
   if (certs.length === 0) return <EmptyResults kind={kind} />
 
-  if (certView === "list") {
+  if (view === "list") {
     return (
       <ul className="explore__list explore__list--certs">
         {certs.map((rec) => {
