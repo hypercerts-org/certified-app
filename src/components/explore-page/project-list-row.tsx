@@ -123,7 +123,7 @@ export default function ProjectListRow({
         {did ? (
           <ActivityAuthor
             did={did}
-            handlePrefix={
+            nameSuffix={
               endorsementMeta &&
               endorsementCorroboration &&
               endorsementIdentities ? (

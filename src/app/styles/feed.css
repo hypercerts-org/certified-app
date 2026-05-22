@@ -399,6 +399,17 @@
   line-height: 1.2;
 }
 
+/* Holds the display name + optional inline suffix (e.g. /explore's
+ * endorsement-degree pill). Inline flex so the pill sits on the same
+ * baseline as the name without forcing it onto the next line. */
+.feed-card__author-name-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .feed-card__author-name {
   font-size: 0.875rem;
   font-weight: 600;

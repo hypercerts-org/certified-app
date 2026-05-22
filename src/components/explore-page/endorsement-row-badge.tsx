@@ -120,9 +120,6 @@ export default function EndorsementRowBadge({
           {DEGREE_LABEL[meta.degree]}
         </span>
       )}
-      <span className="endorsement-row-badge__sep" aria-hidden>
-        ·
-      </span>
       {open && hasVia ? (
         <ul
           className="endorsement-row-badge__via-list"

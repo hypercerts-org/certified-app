@@ -9,10 +9,10 @@ import { getInitials } from "@/lib/utils/initials"
 interface ActivityAuthorProps {
   /** DID of the user who created the activity claim. */
   did: string
-  /** Optional content rendered on the @handle line, before the handle
-   *  itself, separated by a middle dot. Used by the /explore endorsement
-   *  filter to put the degree-of-separation pill next to the handle. */
-  handlePrefix?: ReactNode
+  /** Optional content rendered inline immediately after the display
+   *  name (same line). Used by the /explore endorsement filter to put
+   *  the degree-of-separation pill next to the name. */
+  nameSuffix?: ReactNode
 }
 
 /**
@@ -24,7 +24,7 @@ interface ActivityAuthorProps {
  * cache, so the same author appearing in multiple feed cards only
  * triggers one network request.
  */
-export default function ActivityAuthor({ did, handlePrefix }: ActivityAuthorProps) {
+export default function ActivityAuthor({ did, nameSuffix }: ActivityAuthorProps) {
   const { info, isLoading } = useAuthorInfo(did)
 
   // Skeleton while the resolve request is in flight. Keeps the card
@@ -62,12 +62,12 @@ export default function ActivityAuthor({ did, handlePrefix }: ActivityAuthorProp
         className="shrink-0"
       />
       <span className="feed-card__author-meta">
-        <span className="feed-card__author-name">{displayName}</span>
-        {handlePrefix || info.handle ? (
-          <span className="feed-card__author-handle">
-            {handlePrefix}
-            {info.handle ? `@${info.handle}` : null}
-          </span>
+        <span className="feed-card__author-name-line">
+          <span className="feed-card__author-name">{displayName}</span>
+          {nameSuffix}
+        </span>
+        {info.handle ? (
+          <span className="feed-card__author-handle">@{info.handle}</span>
         ) : null}
       </span>
     </Link>

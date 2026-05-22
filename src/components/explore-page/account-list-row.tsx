@@ -81,11 +81,16 @@ export default function AccountListRow({
       <div className="cert-list-row__author-col">
         <span className="cert-list-row__handle">
           {endorsementMeta && endorsementCorroboration && endorsementIdentities ? (
-            <EndorsementRowBadge
-              meta={endorsementMeta}
-              corroboration={endorsementCorroboration}
-              identityMap={endorsementIdentities}
-            />
+            <>
+              <EndorsementRowBadge
+                meta={endorsementMeta}
+                corroboration={endorsementCorroboration}
+                identityMap={endorsementIdentities}
+              />
+              <span className="endorsement-row-badge__sep" aria-hidden>
+                {" · "}
+              </span>
+            </>
           ) : null}
           {handle}
         </span>
