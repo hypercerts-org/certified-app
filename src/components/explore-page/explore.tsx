@@ -31,9 +31,9 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { usePageTitle } from "@/lib/navbar-context"
 
 const KIND_TABS: { key: ExploreKind; label: string; icon: typeof Users }[] = [
-  { key: "users", label: "Users", icon: Users },
-  { key: "projects", label: "Projects", icon: FolderGit2 },
   { key: "certs", label: "Certs", icon: Award },
+  { key: "projects", label: "Projects", icon: FolderGit2 },
+  { key: "users", label: "Users", icon: Users },
 ]
 
 const SORT_LABEL: Record<SortOrder, string> = {
@@ -44,7 +44,7 @@ const SORT_LABEL: Record<SortOrder, string> = {
 
 function parseKind(v: string | null): ExploreKind {
   if (v === "users" || v === "projects" || v === "certs") return v
-  return "users"
+  return "certs"
 }
 
 function parseSort(v: string | null): SortOrder {

@@ -111,19 +111,26 @@ html:has(.explore-page) .desktop-top-bar__row {
 .explore__sub-switch {
   border: 0;
   background: transparent;
-  gap: 6px;
+  gap: 4px;
   padding: 0;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  /* Allow the row's children to shrink past their content size if
+     needed; combined with min-width:0 on each chip this avoids the
+     flex default of refusing to shrink labels below their intrinsic
+     text width. */
+  min-width: 0;
 }
 
 .explore__sub-switch .explore__kind {
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
+  padding: 3px 8px;
+  min-width: 0;
+  white-space: nowrap;
   background: var(--bg-primary, transparent);
   border: 1px solid var(--border-subtle);
   border-radius: 999px;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 500;
   color: var(--fg-secondary);
   cursor: pointer;
