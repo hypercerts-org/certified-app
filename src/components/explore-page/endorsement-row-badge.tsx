@@ -100,7 +100,15 @@ export default function EndorsementRowBadge({
         <button
           type="button"
           className={pillClass}
-          onClick={() => setOpen((v) => !v)}
+          // Stop click from bubbling to the parent <Link> in
+          // ActivityAuthor (which would otherwise navigate to the
+          // author profile when the user just wants to expand the
+          // popover).
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            setOpen((v) => !v)
+          }}
           aria-expanded={open}
           aria-haspopup="true"
           title={title}
@@ -116,7 +124,14 @@ export default function EndorsementRowBadge({
         ·
       </span>
       {open && hasVia ? (
-        <ul className="endorsement-row-badge__via-list" role="menu">
+        <ul
+          className="endorsement-row-badge__via-list"
+          role="menu"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+          }}
+        >
           <li className="endorsement-row-badge__via-list-header">
             Connected via {orderedVia.length}
             {orderedVia.length === 1 ? " person" : " people"}
