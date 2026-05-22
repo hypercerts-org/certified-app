@@ -227,6 +227,67 @@ ${ACTIVITY_NODE_SELECTION}
     }
   `,
 
+  // Network-wide actor list for the /workspace pages. Returns the
+  // most-recently-indexed profiles so the actor switcher has
+  // something to show even before the user has interacted.
+  NetworkActors: `
+    query NetworkActors($first: Int!, $after: String) {
+      appCertifiedActorProfile(first: $first, after: $after) {
+        totalCount
+        edges {
+          cursor
+          node {
+            uri
+            did
+            displayName
+            description
+            avatar {
+              __typename
+              ... on OrgHypercertsDefsUri { uri }
+              ... on OrgHypercertsDefsSmallImage { image { ref mimeType } }
+            }
+          }
+        }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  `,
+
+  // Per-actor counts of the major lexicons. One round-trip via
+  // aliased connections — each branch shares the where: { did: $did }
+  // filter so we get five small headers back in one fetch.
+  ActorWorkspaceCounts: `
+    query ActorWorkspaceCounts($did: String!) {
+      certs: orgHypercertsClaimActivity(first: 1, where: { did: { eq: $did } }) {
+        totalCount
+      }
+      projects: orgHypercertsCollection(
+        first: 1
+        where: { did: { eq: $did }, type: { eqi: "project" } }
+      ) {
+        totalCount
+      }
+      lists: orgHypercertsCollection(
+        first: 1
+        where: { did: { eq: $did }, type: { eqi: "endorsement-list" } }
+      ) {
+        totalCount
+      }
+      endorsementsReceived: appCertifiedBadgeAward(
+        first: 1
+        where: { subject: { eq: $did }, badgeType: { eq: "endorsement" } }
+      ) {
+        totalCount
+      }
+      followers: appCertifiedGraphFollow(
+        first: 1
+        where: { subject: { eq: $did } }
+      ) {
+        totalCount
+      }
+    }
+  `,
+
   // Network-wide counts for the /welcome landing-page stats strip.
   // Each query asks for a single page (first: 1) just to surface
   // `totalCount`; client discards the edge. Selection mirrors the
@@ -493,6 +554,17 @@ function buildVariables(
         first: clampFirst(vars.first, MAX_FIRST, 50),
         after: readString(vars.after, MAX_AFTER_LEN),
       }
+    }
+    case "NetworkActors": {
+      return {
+        first: clampFirst(vars.first, MAX_FIRST, 20),
+        after: readString(vars.after, MAX_AFTER_LEN),
+      }
+    }
+    case "ActorWorkspaceCounts": {
+      const did = readDid(vars.did)
+      if (!did) return null
+      return { did }
     }
     case "LegacyEndorsements": {
       const authors = readDidList(vars.authors, MAX_DID_LIST)
