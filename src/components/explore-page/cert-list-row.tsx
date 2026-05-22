@@ -12,6 +12,10 @@ import {
 import { activityDetailHref, parseActivityUri } from "@/lib/atproto/activity-uri"
 import { formatShortDate } from "@/lib/utils/format-date"
 import ActivityAuthor from "@/components/feed/activity-author"
+import type { EndorsementClosureAccount } from "@/lib/atproto/indexer"
+import EndorsementRowBadge, {
+  type ViaIdentityMap,
+} from "./endorsement-row-badge"
 
 /**
  * Dense single-row representation of a cert for the /explore list
@@ -29,9 +33,17 @@ import ActivityAuthor from "@/components/feed/activity-author"
 export default function CertListRow({
   record,
   did,
+  endorsementMeta,
+  endorsementCorroboration,
+  endorsementIdentities,
 }: {
   record: ActivityRecord
   did: string
+  /** Closure-graph metadata for the cert AUTHOR's DID, when the
+   *  active explore filter is endorsement-based (#84). */
+  endorsementMeta?: EndorsementClosureAccount
+  endorsementCorroboration?: Map<string, number>
+  endorsementIdentities?: ViaIdentityMap
 }) {
   const { value } = record
   const imageUrl = value.image
@@ -115,6 +127,13 @@ export default function CertListRow({
 
       <div className="cert-list-row__author-col">
         {did ? <ActivityAuthor did={did} /> : null}
+        {endorsementMeta && endorsementCorroboration && endorsementIdentities ? (
+          <EndorsementRowBadge
+            meta={endorsementMeta}
+            corroboration={endorsementCorroboration}
+            identityMap={endorsementIdentities}
+          />
+        ) : null}
       </div>
       <time className="cert-list-row__time">
         {formatRelativeTime(value.createdAt)}

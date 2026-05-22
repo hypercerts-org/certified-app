@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { User } from "lucide-react"
 import type { NetworkActor } from "@/lib/atproto/workspace"
+import type { EndorsementClosureAccount } from "@/lib/atproto/indexer"
 
 /**
  * Dense single-row representation of an account for the /explore list
@@ -11,8 +12,21 @@ import type { NetworkActor } from "@/lib/atproto/workspace"
  * don't carry a relative-time signal in this listing. The
  * `cert-list-row--account` modifier widens the grid into 2 columns
  * (link block · handle column).
+ *
+ * When `endorsementMeta` is present (certified-app #84), renders the
+ * degree-badge pill in the trailing column. Per spec the Account row
+ * shows degree only — no "via" line, because the row IS the
+ * endorsement target, not an author. The via attribution lives on
+ * Project / Cert rows where the row's author is the one being
+ * vouched for.
  */
-export default function AccountListRow({ actor }: { actor: NetworkActor }) {
+export default function AccountListRow({
+  actor,
+  endorsementMeta,
+}: {
+  actor: NetworkActor
+  endorsementMeta?: EndorsementClosureAccount
+}) {
   const handle = actor.did.startsWith("did:plc:")
     ? `${actor.did.slice(8, 14)}…${actor.did.slice(-4)}`
     : actor.did
@@ -61,6 +75,18 @@ export default function AccountListRow({ actor }: { actor: NetworkActor }) {
 
       <div className="cert-list-row__author-col">
         <span className="cert-list-row__handle">{handle}</span>
+        {endorsementMeta ? (
+          <span
+            className={`endorsement-row-badge__degree endorsement-row-badge__degree--d${endorsementMeta.degree}`}
+            title={`Reachable at degree ${endorsementMeta.degree} through your endorsement graph`}
+          >
+            {endorsementMeta.degree === 1
+              ? "1st"
+              : endorsementMeta.degree === 2
+              ? "2nd"
+              : "3rd"}
+          </span>
+        ) : null}
       </div>
     </article>
   )

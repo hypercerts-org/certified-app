@@ -17,6 +17,10 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import ActivityCard from "@/components/feed/activity-card"
 import CertListRow from "./cert-list-row"
+import {
+  buildCorroborationCounts,
+  type ViaIdentityMap,
+} from "./endorsement-row-badge"
 import ExploreUserCard from "./explore-user-card"
 import ExploreProjectCard from "./explore-project-card"
 import ProjectListRow from "./project-list-row"
@@ -655,6 +659,38 @@ function ResultsArea({
   attrs: Set<string>
   view: ListGalleryView
 }) {
+  // Compute closure-decoration helpers once per render — O(N) on the
+  // closure result size, shared across every row instead of
+  // recomputed per-row. (certified-app #84.)
+  //   - corroboration: how many times each predecessor DID appears as
+  //     a `via` entry across the closure; drives "most-corroborated"
+  //     representative selection.
+  //   - identityMap: { did → {handle, displayName} } drawn from the
+  //     already-loaded NetworkActors. Unresolved DIDs fall back to a
+  //     shortened DID — no per-row PDS fetches.
+  const closure = data.endorsementClosure
+  const corroboration = useMemo<Map<string, number> | null>(() => {
+    if (!closure) return null
+    return buildCorroborationCounts(closure.closureByDid)
+  }, [closure])
+  const identityMap = useMemo<ViaIdentityMap>(() => {
+    // NetworkActor doesn't carry a handle today — only displayName.
+    // EndorsementRowBadge prefers handle when present, else
+    // displayName, else falls back to a shortened DID. Wire what we
+    // have; resolving handles for predecessor DIDs that aren't in
+    // the actor cache is a follow-up (issue #84 "Provenance handle
+    // resolution" item).
+    const m: ViaIdentityMap = new Map()
+    for (const actor of data.users) {
+      m.set(actor.did, {
+        did: actor.did,
+        handle: null,
+        displayName: actor.displayName ?? null,
+      })
+    }
+    return m
+  }, [data.users])
+
   if (data.isLoading && data.users.length === 0 && data.projects.length === 0 && data.certs.length === 0) {
     return (
       <div className="explore__loading">
@@ -676,7 +712,10 @@ function ResultsArea({
         <ul className="explore__list explore__list--accounts">
           {actors.map((a) => (
             <li key={a.did}>
-              <AccountListRow actor={a} />
+              <AccountListRow
+                actor={a}
+                endorsementMeta={closure?.closureByDid.get(a.did)}
+              />
             </li>
           ))}
         </ul>
@@ -708,11 +747,24 @@ function ResultsArea({
     if (view === "list") {
       return (
         <ul className="explore__list explore__list--projects">
-          {projects.map((p) => (
-            <li key={p.uri}>
-              <ProjectListRow project={p} />
-            </li>
-          ))}
+          {projects.map((p) => {
+            const authorDid = projectAuthorDid(p)
+            const meta = closure && authorDid
+              ? closure.closureByDid.get(authorDid)
+              : undefined
+            return (
+              <li key={p.uri}>
+                <ProjectListRow
+                  project={p}
+                  endorsementMeta={meta}
+                  endorsementCorroboration={
+                    corroboration ?? undefined
+                  }
+                  endorsementIdentities={identityMap}
+                />
+              </li>
+            )
+          })}
         </ul>
       )
     }
@@ -744,9 +796,18 @@ function ResultsArea({
       <ul className="explore__list explore__list--certs">
         {certs.map((rec) => {
           const did = certDids.get(rec.uri) ?? ""
+          const meta = closure && did
+            ? closure.closureByDid.get(did)
+            : undefined
           return (
             <li key={rec.uri}>
-              <CertListRow record={rec} did={did} />
+              <CertListRow
+                record={rec}
+                did={did}
+                endorsementMeta={meta}
+                endorsementCorroboration={corroboration ?? undefined}
+                endorsementIdentities={identityMap}
+              />
             </li>
           )
         })}
@@ -823,4 +884,17 @@ function sortCerts<
     const bc = b.value.createdAt ?? ""
     return sort === "oldest" ? ac.localeCompare(bc) : bc.localeCompare(ac)
   })
+}
+
+/**
+ * Extract the author DID from an AT-URI of the form
+ * `at://<did>/<collection>/<rkey>`. Returns null on a malformed
+ * URI so callers can skip the row's endorsement decoration
+ * silently rather than crashing the render.
+ */
+function projectAuthorDid(p: { uri: string }): string | null {
+  if (!p.uri.startsWith("at://")) return null
+  const tail = p.uri.slice("at://".length)
+  const slash = tail.indexOf("/")
+  return slash >= 0 ? tail.slice(0, slash) : null
 }

@@ -917,3 +917,111 @@ html:has(.explore-page) .desktop-top-bar__row {
   margin: 0;
   font-style: italic;
 }
+
+/* -----------------------------------------------------------------
+ * Row-level endorsement decoration (certified-app #84). Shows the
+ * degree pill + "↩ via @{rep} +N" line on Project / Cert rows when
+ * the active filter is endorsement-based. Account rows show only
+ * the degree pill (the account IS the endorsement target, not the
+ * author — "via" doesn't apply per the issue spec).
+ * --------------------------------------------------------------- */
+
+.endorsement-row-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.endorsement-row-badge__degree {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+
+/* Color tiers — denser pill for direct endorsements, lighter for
+ * the wider rings. Keeps the visual hierarchy obvious at a glance. */
+.endorsement-row-badge__degree--d1 {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+.endorsement-row-badge__degree--d2 {
+  background: var(--surface-3);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+.endorsement-row-badge__degree--d3 {
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  border-color: var(--border-subtle);
+}
+
+.endorsement-row-badge__via {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.endorsement-row-badge__via-rep {
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endorsement-row-badge__via-more {
+  background: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 0 5px;
+  font-size: 10px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  line-height: 14px;
+}
+
+.endorsement-row-badge__via-more:hover {
+  background: var(--surface-3);
+  color: var(--text-primary);
+}
+
+.endorsement-row-badge__via-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 160px;
+  list-style: none;
+  margin: 0;
+  padding: 6px 8px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  font-size: 11px;
+  color: var(--text-secondary);
+  z-index: 10;
+}
+
+.endorsement-row-badge__via-list li {
+  padding: 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endorsement-row-badge__via-list-more {
+  color: var(--text-tertiary);
+  font-style: italic;
+}

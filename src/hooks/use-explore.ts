@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import {
   fetchEndorsementClosure,
   fetchIndexerActivities,
@@ -9,6 +9,10 @@ import {
   EndorsementClosureError,
   type EndorsementClosureAccount,
 } from "@/lib/atproto/indexer"
+import {
+  subscribeClosureCacheVersion,
+  getClosureCacheVersionSnapshot,
+} from "@/lib/atproto/endorsement-closure-cache"
 import {
   fetchNetworkActors,
   fetchOrganizationDids,
@@ -161,6 +165,18 @@ export function useExploreData(opts: {
   const viewerDid = activeOrg?.groupDid ?? personalDid
   const { subjects: followedDids } = useFollowing(viewerDid)
 
+  // Subscribe to the closure-cache invalidation token. When an
+  // endorsement mutation calls invalidateEndorsementClosure() the
+  // version bumps; we put it in the effect deps so the closure
+  // refetches without anyone having to drill an explicit prop down
+  // through the explore page. Mirrors the pattern in
+  // use-profile-responses.
+  const closureVersion = useSyncExternalStore(
+    subscribeClosureCacheVersion,
+    getClosureCacheVersionSnapshot,
+    getClosureCacheVersionSnapshot,
+  )
+
   const [state, setState] = useState<InternalState>(EMPTY)
   // Track the latest controller so loadMore can short-circuit if a
   // fresh filter-change has superseded it mid-fetch.
@@ -201,7 +217,7 @@ export function useExploreData(opts: {
     }
     run()
     return () => controller.abort()
-  }, [kind, filter, sub, search, viewerDid, followedDids, degree])
+  }, [kind, filter, sub, search, viewerDid, followedDids, degree, closureVersion])
 
   const loadMore = useCallback(() => {
     setState((prev) => {
@@ -268,7 +284,7 @@ export function useExploreData(opts: {
 
       return { ...prev, isLoadingMore: true }
     })
-  }, [kind, filter, sub, search, viewerDid, followedDids, degree])
+  }, [kind, filter, sub, search, viewerDid, followedDids, degree, closureVersion])
 
   return {
     users: state.users,

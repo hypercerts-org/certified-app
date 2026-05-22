@@ -1,5 +1,6 @@
 import { authFetch } from "@/lib/auth/fetch"
 import { purgeAwardFromLists } from "@/lib/atproto/collection"
+import { invalidateEndorsementClosure } from "@/lib/atproto/endorsement-closure-cache"
 import type { ListRecordsResponse } from "@/lib/types/api"
 
 /**
@@ -540,7 +541,13 @@ export async function createEndorsementAward(
   note?: string,
 ): Promise<{ uri: string; cid: string }> {
   const badge = await ensureEndorsementDefinition(ownDid)
-  return writeBadgeAward(ownDid, subjectDid, badge, "endorsement award", note)
+  const result = await writeBadgeAward(ownDid, subjectDid, badge, "endorsement award", note)
+  // Bust the endorsement-closure cache (certified-app #84). Cheap
+  // counter bump + listener notify; the explore hook re-fetches
+  // because its effect deps include the cache version. Safe to fire
+  // even if no /explore tab is open — no subscribers, no work.
+  invalidateEndorsementClosure()
+  return result
 }
 
 /**
@@ -572,6 +579,9 @@ export async function deleteEndorsementAward(
       data.error || `Failed to delete endorsement award: ${res.status}`,
     )
   }
+  // Bust the endorsement-closure cache — same rationale as
+  // createEndorsementAward above.
+  invalidateEndorsementClosure()
 }
 
 /**
@@ -677,6 +687,13 @@ export async function createResponse(
       data.error || `Failed to create badge response: ${res.status}`,
     )
   }
+  // Bust the endorsement-closure cache (certified-app #84). A
+  // rejection response REMOVES the edge from the indexer's
+  // materialised view on next refresh; an acceptance response is
+  // ignored by the view but bumping anyway is cheap (counter +
+  // notify-listeners) and avoids the conditional. The explore hook
+  // re-fetches because its effect deps include the cache version.
+  invalidateEndorsementClosure()
   return { uri: data.uri, cid: data.cid }
 }
 
@@ -707,6 +724,10 @@ export async function deleteResponse(
       data.error || `Failed to delete badge response: ${res.status}`,
     )
   }
+  // Bust the endorsement-closure cache (certified-app #84). Deleting
+  // a rejection response causes the edge to *reappear* on the next
+  // indexer refresh — the explore view should refetch.
+  invalidateEndorsementClosure()
 }
 
 /**
