@@ -2,9 +2,9 @@ export type ExploreKind = "accounts" | "projects" | "certs"
 
 export type AccountFilter =
   | "recent"
+  | "my-groups"
   | "follows"
   | "endorsed"
-  | "new"
   | "all"
 
 export type ProjectFilter =
@@ -13,7 +13,6 @@ export type ProjectFilter =
   | "by-follows"
   | "by-endorsed"
   | "all"
-  | "trending"
 
 export type CertFilter =
   | "recent"
@@ -34,26 +33,25 @@ export interface FilterOption {
 
 export const ACCOUNT_FILTERS: FilterOption[] = [
   { key: "recent", label: "Recently viewed" },
-  { key: "follows", label: "My follows", requiresAuth: true },
-  { key: "endorsed", label: "I endorsed", requiresAuth: true },
-  { key: "new", label: "New on the network" },
+  { key: "my-groups", label: "My organizations", requiresAuth: true },
+  { key: "follows", label: "Accounts I follow", requiresAuth: true },
+  { key: "endorsed", label: "Endorsed accounts", requiresAuth: true },
   { key: "all", label: "All accounts" },
 ]
 
 export const PROJECT_FILTERS: FilterOption[] = [
   { key: "recent", label: "Recently viewed" },
   { key: "by-me", label: "My projects", requiresAuth: true },
-  { key: "by-follows", label: "Users I follow", requiresAuth: true },
-  { key: "by-endorsed", label: "Endorsed users", requiresAuth: true },
-  { key: "trending", label: "Trending" },
+  { key: "by-follows", label: "Accounts I follow", requiresAuth: true },
+  { key: "by-endorsed", label: "Endorsed accounts", requiresAuth: true },
   { key: "all", label: "All projects" },
 ]
 
 export const CERT_FILTERS: FilterOption[] = [
   { key: "recent", label: "Recently viewed" },
   { key: "by-me", label: "My certs", requiresAuth: true },
-  { key: "by-follows", label: "Users I follow", requiresAuth: true },
-  { key: "by-endorsed", label: "Endorsed users", requiresAuth: true },
+  { key: "by-follows", label: "Accounts I follow", requiresAuth: true },
+  { key: "by-endorsed", label: "Endorsed accounts", requiresAuth: true },
   { key: "all", label: "All certs" },
 ]
 

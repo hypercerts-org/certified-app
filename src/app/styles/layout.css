@@ -1991,11 +1991,11 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 .desktop-top-bar__left {
   display: flex;
   align-items: center;
-  /* Tight gap = hamburger sits flush next to the brandmark. The
-     title's larger separation comes from its own margin-left override
-     below (additive to this gap) so the brand→title space reads as
-     "breadcrumb-y" instead of "icon cluster". */
-  gap: 2px;
+  /* Zero base gap — hamburger sits flush next to the brandmark. The
+     title's separation comes entirely from its own margin-left
+     override below so brand→title reads as "breadcrumb-y" instead
+     of "icon cluster". */
+  gap: 0;
   min-width: 0;
 }
 
@@ -2029,17 +2029,18 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 }
 
 .desktop-top-bar__title {
-  /* Extra left margin on top of the row's 2px gap so the title
-     sits clearly separated from the brandmark, while the hamburger
-     stays flush against the brandmark. Total brand→title space
-     ≈ 14px. */
-  margin-left: 12px;
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 1rem;
   font-weight: 450;
   color: var(--fg-primary);
   letter-spacing: -0.01em;
-  margin: 0;
+  /* Brand→title separation. The row's gap is 0 so this margin is
+     the full space — sized to read as a breadcrumb separator, not
+     as an icon cluster (the hamburger is flush against the brand;
+     the title floats slightly away). Written as the long-form
+     `margin` shorthand so the h1's UA `margin: 0` reset that lived
+     here doesn't stomp it. */
+  margin: 0 0 0 14px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

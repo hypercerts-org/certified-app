@@ -1,6 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import {
   fetchEndorsementClosure,
   fetchIndexerActivities,
@@ -156,14 +163,26 @@ export function useExploreData(opts: {
   const { kind, filter, sub, search } = opts
   const degree: 1 | 2 | 3 = opts.degree ?? 1
   const { did: personalDid } = useAuth()
-  const { activeOrg } = useOrg()
-  // When the user is acting as a group, "by-me" + "by-follows" should
-  // operate on the group's identity, not the personal one — otherwise
-  // a group admin sees an empty "My projects" / "My certs" because
-  // the org's records live on the group DID. Same logic for follows:
-  // the group's own follow graph drives "Users I follow".
+  const { activeOrg, groups } = useOrg()
+  // "My X" — records OWNED by the current identity. Switches with the
+  // org context: a group admin browsing while acting as the group
+  // should see the group's records here.
   const viewerDid = activeOrg?.groupDid ?? personalDid
-  const { subjects: followedDids } = useFollowing(viewerDid)
+  // "Accounts I follow" — the human's social graph. Stays anchored on
+  // the personal DID even when acting as a group, because follows are
+  // a per-human relationship (mirrors bsky/twitter semantics) and
+  // groups typically don't maintain their own follow lists. If we read
+  // the group's follows when acting-as, the filter goes empty for
+  // most admins.
+  const { subjects: followedDids } = useFollowing(personalDid)
+  // "My organizations" — DIDs of every group the human belongs to.
+  // Always personal-scoped (membership is a human relationship).
+  // Memoized on the groups array reference so the effect below
+  // doesn't re-fire on every org-context render.
+  const myGroupDids = useMemo(
+    () => new Set(groups.map((g) => g.groupDid)),
+    [groups],
+  )
 
   // Subscribe to the closure-cache invalidation token. When an
   // endorsement mutation calls invalidateEndorsementClosure() the
@@ -197,6 +216,7 @@ export function useExploreData(opts: {
           search,
           viewerDid,
           followedDids,
+          myGroupDids,
           cursor: null,
           signal: controller.signal,
           degree,
@@ -217,7 +237,17 @@ export function useExploreData(opts: {
     }
     run()
     return () => controller.abort()
-  }, [kind, filter, sub, search, viewerDid, followedDids, degree, closureVersion])
+  }, [
+    kind,
+    filter,
+    sub,
+    search,
+    viewerDid,
+    followedDids,
+    myGroupDids,
+    degree,
+    closureVersion,
+  ])
 
   const loadMore = useCallback(() => {
     setState((prev) => {
@@ -235,6 +265,7 @@ export function useExploreData(opts: {
             search,
             viewerDid,
             followedDids,
+            myGroupDids,
             cursor,
             signal: null,
             degree,
@@ -284,7 +315,17 @@ export function useExploreData(opts: {
 
       return { ...prev, isLoadingMore: true }
     })
-  }, [kind, filter, sub, search, viewerDid, followedDids, degree, closureVersion])
+  }, [
+    kind,
+    filter,
+    sub,
+    search,
+    viewerDid,
+    followedDids,
+    myGroupDids,
+    degree,
+    closureVersion,
+  ])
 
   return {
     users: state.users,
@@ -334,6 +375,7 @@ interface LoadArgs {
   search: string
   viewerDid: string | null
   followedDids: Set<string>
+  myGroupDids: Set<string>
   cursor: string | null
   signal: AbortSignal | null
   degree: 1 | 2 | 3
@@ -348,17 +390,34 @@ async function loadPage(args: LoadArgs): Promise<LoadedPage> {
 // ----------------------------- Accounts --------------------------------
 
 async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
-  const { filter, sub, search, viewerDid, followedDids, cursor, signal, degree } = args
+  const {
+    filter,
+    sub,
+    search,
+    viewerDid,
+    followedDids,
+    myGroupDids,
+    cursor,
+    signal,
+    degree,
+  } = args
 
   // Filters that aren't server-backed: short-circuit pagination.
-  if (filter === "follows" || filter === "endorsed" || filter === "recent") {
+  // All operate by fetching a NetworkActors window and intersecting
+  // client-side. The window is bounded by the indexer's MAX_FIRST
+  // (100), so accounts outside the most-recently-active top-N drop
+  // out — known limitation, blocked on
+  // https://github.com/hypercerts-org/magic-indexer/issues/118 which
+  // would let us pull actor profiles by an explicit DID list.
+  if (
+    filter === "follows" ||
+    filter === "endorsed" ||
+    filter === "recent" ||
+    filter === "my-groups"
+  ) {
     if (cursor !== null) return EMPTY_PAGE
-    // 500 widens the net for the "recent" filter so recently-viewed
-    // profiles that aren't currently in the top-200 active actors
-    // still resolve. follows / endorsed filters benefit too — they
-    // were never bounded by the 200 cap conceptually.
     const [page, orgDids] = await Promise.all([
-      fetchNetworkActors({ first: 500, signal: signal ?? undefined }),
+      fetchNetworkActors({ first: 100, signal: signal ?? undefined }),
       sub !== "all" ? getOrgDids() : Promise.resolve(new Set<string>()),
     ])
     let scoped = page.actors
@@ -383,6 +442,9 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
       } else {
         scoped = []
       }
+    } else if (filter === "my-groups") {
+      if (!viewerDid || myGroupDids.size === 0) return EMPTY_PAGE
+      scoped = scoped.filter((a) => myGroupDids.has(a.did))
     } else if (filter === "recent") {
       const recent = getRecentlyViewed("user")
       const recentSet = new Set(recent)
