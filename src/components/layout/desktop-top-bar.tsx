@@ -59,21 +59,29 @@ const PROFILE_TABS: ProfileTab[] = [
 /** Tabs for the cert-detail back-row strip. Mirrors the routing
  *  contract that `<ActivityDetail>` reads via `?tab=`. Keep keys in
  *  sync with the switch in that component. */
-const CERT_DETAIL_TABS: { key: string; label: string }[] = [
+/** A detail-page subtab. Plain `key` entries map to `?tab=<key>` on
+ *  the current pathname. `subRoute` entries link to a child route
+ *  (`<pathname>/<subRoute>`) instead — used by `Explore` which has
+ *  its own page. */
+type DetailTab = { key: string; label: string; subRoute?: string };
+
+const CERT_DETAIL_TABS: DetailTab[] = [
   { key: "overview", label: "Overview" },
   { key: "description", label: "Description" },
   { key: "contributors", label: "Contributors" },
   { key: "updates", label: "Updates" },
+  { key: "explore", label: "Explore", subRoute: "explore" },
 ];
 
 /** Project detail page subtabs. Same `?tab=` URL contract as the
  *  cert detail above — `<ProjectDetail>` reads it and switches
  *  content. "overview" is the implicit default (no param). */
-const PROJECT_DETAIL_TABS: { key: string; label: string }[] = [
+const PROJECT_DETAIL_TABS: DetailTab[] = [
   { key: "overview", label: "Overview" },
   { key: "description", label: "Description" },
   { key: "certs", label: "Certs" },
   { key: "updates", label: "Updates" },
+  { key: "explore", label: "Explore", subRoute: "explore" },
 ];
 
 /**
@@ -439,15 +447,30 @@ export default function DesktopTopBar() {
                 ? CERT_DETAIL_TABS
                 : PROJECT_DETAIL_TABS
               ).map((t) => {
-                const params = new URLSearchParams(
-                  searchParams?.toString() ?? "",
-                )
-                if (t.key === "overview") params.delete("tab")
-                else params.set("tab", t.key)
-                const qs = params.toString()
-                const href = qs ? `${pathname}?${qs}` : pathname
-                const currentTab = searchParams?.get("tab") ?? "overview"
-                const isActive = currentTab === t.key
+                // Two flavors: query-param tabs (overview/description/…)
+                // and sub-route tabs (explore). Sub-route tabs leave
+                // the same pathname behind so the user can navigate
+                // back to the parent detail page with the Back button.
+                let href: string
+                let isActive: boolean
+                const isOnSubRoute = pathname?.endsWith("/explore")
+                if (t.subRoute) {
+                  // Strip any trailing /<subRoute> to avoid /explore/explore.
+                  const base = pathname?.replace(/\/explore$/, "") ?? ""
+                  href = `${base}/${t.subRoute}`
+                  isActive = !!isOnSubRoute && t.key === "explore"
+                } else {
+                  const params = new URLSearchParams(
+                    searchParams?.toString() ?? "",
+                  )
+                  if (t.key === "overview") params.delete("tab")
+                  else params.set("tab", t.key)
+                  const qs = params.toString()
+                  const base = pathname?.replace(/\/explore$/, "") ?? ""
+                  href = qs ? `${base}?${qs}` : base
+                  const currentTab = searchParams?.get("tab") ?? "overview"
+                  isActive = !isOnSubRoute && currentTab === t.key
+                }
                 return (
                   <Link
                     key={t.key}
