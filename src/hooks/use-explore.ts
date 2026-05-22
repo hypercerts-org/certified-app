@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
+  fetchEndorsementClosure,
   fetchIndexerActivities,
   fetchProjects,
   fetchUserIndexerActivities,
+  EndorsementClosureError,
+  type EndorsementClosureAccount,
 } from "@/lib/atproto/indexer"
 import {
   fetchNetworkActors,
@@ -26,6 +29,31 @@ import {
 } from "@/lib/atproto/records-by-uri"
 import type { ExploreKind } from "@/components/explore-page/explore-types"
 
+/**
+ * Endorsement-graph closure metadata carried alongside an explore
+ * result when the user picked the "Endorsed users" / "I endorsed"
+ * filter (certified-app #84 + magic-indexer #117).
+ *
+ *   - `closureByDid`: per-DID degree + immediate-predecessor list.
+ *     Lookup key is the account DID (for the Accounts kind) or the
+ *     project / cert AUTHOR DID (for Projects / Certs). Empty when
+ *     the active filter isn't endorsement-based.
+ *   - `truncated`: indexer hit the per-viewer cap. UI shows a
+ *     "showing a subset of your trust graph" notice.
+ *   - `degree`: the depth the closure was fetched at — echoed back
+ *     so the chip / segmented control can render against the right
+ *     state without a second source of truth.
+ *   - `warming`: indexer's refresh worker hasn't completed its first
+ *     pass. Surface as a transient loading state (don't crash, don't
+ *     show empty-state copy). Cleared on the next successful fetch.
+ */
+export interface EndorsementClosureMeta {
+  closureByDid: Map<string, EndorsementClosureAccount>
+  truncated: boolean
+  degree: 1 | 2 | 3
+  warming: boolean
+}
+
 export interface ExploreData {
   users: NetworkActor[]
   projects: CollectionRecord[]
@@ -35,6 +63,8 @@ export interface ExploreData {
   isLoadingMore: boolean
   hasMore: boolean
   loadMore: () => void
+  /** Non-null only when the active filter is endorsement-based. */
+  endorsementClosure: EndorsementClosureMeta | null
 }
 
 interface InternalState {
@@ -46,6 +76,7 @@ interface InternalState {
   isLoadingMore: boolean
   hasMore: boolean
   cursor: string | null
+  endorsementClosure: EndorsementClosureMeta | null
 }
 
 const EMPTY: InternalState = {
@@ -57,6 +88,7 @@ const EMPTY: InternalState = {
   isLoadingMore: false,
   hasMore: false,
   cursor: null,
+  endorsementClosure: null,
 }
 
 const PAGE_SIZE = 50
@@ -112,8 +144,13 @@ export function useExploreData(opts: {
   filter: string
   sub: string
   search: string
+  /** Endorsement-graph depth, ∈ {1, 2, 3}. Only consulted when the
+   *  active filter is endorsement-based (Accounts/"endorsed",
+   *  Projects/"by-endorsed", Certs/"by-endorsed"). Defaults to 1. */
+  degree?: 1 | 2 | 3
 }): ExploreData {
   const { kind, filter, sub, search } = opts
+  const degree: 1 | 2 | 3 = opts.degree ?? 1
   const { did: personalDid } = useAuth()
   const { activeOrg } = useOrg()
   // When the user is acting as a group, "by-me" + "by-follows" should
@@ -146,6 +183,7 @@ export function useExploreData(opts: {
           followedDids,
           cursor: null,
           signal: controller.signal,
+          degree,
         })
         if (controller.signal.aborted) return
         if (generation !== generationRef.current) return
@@ -163,7 +201,7 @@ export function useExploreData(opts: {
     }
     run()
     return () => controller.abort()
-  }, [kind, filter, sub, search, viewerDid, followedDids])
+  }, [kind, filter, sub, search, viewerDid, followedDids, degree])
 
   const loadMore = useCallback(() => {
     setState((prev) => {
@@ -183,6 +221,7 @@ export function useExploreData(opts: {
             followedDids,
             cursor,
             signal: null,
+            degree,
           })
           if (generation !== generationRef.current) return
           setState((current) => {
@@ -229,7 +268,7 @@ export function useExploreData(opts: {
 
       return { ...prev, isLoadingMore: true }
     })
-  }, [kind, filter, sub, search, viewerDid, followedDids])
+  }, [kind, filter, sub, search, viewerDid, followedDids, degree])
 
   return {
     users: state.users,
@@ -240,6 +279,7 @@ export function useExploreData(opts: {
     isLoadingMore: state.isLoadingMore,
     hasMore: state.hasMore,
     loadMore,
+    endorsementClosure: state.endorsementClosure,
   }
 }
 
@@ -254,6 +294,11 @@ interface LoadedPage {
   certDids: Map<string, string>
   cursor: string | null
   hasMore: boolean
+  /** Set when the loader actually fetched a closure; null otherwise.
+   *  The hook hoists this into InternalState.endorsementClosure so
+   *  downstream rendering can decorate rows + show the truncated /
+   *  warming notices. */
+  endorsementClosure?: EndorsementClosureMeta | null
 }
 
 const EMPTY_PAGE: LoadedPage = {
@@ -263,9 +308,10 @@ const EMPTY_PAGE: LoadedPage = {
   certDids: new Map(),
   cursor: null,
   hasMore: false,
+  endorsementClosure: null,
 }
 
-async function loadPage(args: {
+interface LoadArgs {
   kind: ExploreKind
   filter: string
   sub: string
@@ -274,7 +320,10 @@ async function loadPage(args: {
   followedDids: Set<string>
   cursor: string | null
   signal: AbortSignal | null
-}): Promise<LoadedPage> {
+  degree: 1 | 2 | 3
+}
+
+async function loadPage(args: LoadArgs): Promise<LoadedPage> {
   if (args.kind === "accounts") return loadAccountsPage(args)
   if (args.kind === "projects") return loadProjectsPage(args)
   return loadCertsPage(args)
@@ -282,16 +331,8 @@ async function loadPage(args: {
 
 // ----------------------------- Accounts --------------------------------
 
-async function loadAccountsPage(args: {
-  filter: string
-  sub: string
-  search: string
-  viewerDid: string | null
-  followedDids: Set<string>
-  cursor: string | null
-  signal: AbortSignal | null
-}): Promise<LoadedPage> {
-  const { filter, sub, search, viewerDid, followedDids, cursor, signal } = args
+async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
+  const { filter, sub, search, viewerDid, followedDids, cursor, signal, degree } = args
 
   // Filters that aren't server-backed: short-circuit pagination.
   if (filter === "follows" || filter === "endorsed" || filter === "recent") {
@@ -305,11 +346,27 @@ async function loadAccountsPage(args: {
       sub !== "all" ? getOrgDids() : Promise.resolve(new Set<string>()),
     ])
     let scoped = page.actors
+    let closureMeta: EndorsementClosureMeta | null = null
     if (filter === "follows") {
       if (!viewerDid) return EMPTY_PAGE
       scoped = scoped.filter((a) => followedDids.has(a.did))
     } else if (filter === "endorsed") {
-      return EMPTY_PAGE
+      // Endorsement-graph closure (magic-indexer #117). Fetch DIDs
+      // within `degree` hops, intersect with NetworkActors so we
+      // only show accounts the indexer has profile records for —
+      // the closure can include DIDs whose profiles aren't yet
+      // ingested, and showing a row with just a DID is worse UX
+      // than just dropping it.
+      if (!viewerDid) return EMPTY_PAGE
+      const closureResult = await loadClosure({ viewerDid, degree, signal })
+      if (signal?.aborted) return EMPTY_PAGE
+      closureMeta = closureResult.meta
+      if (closureResult.meta && closureResult.meta.closureByDid.size > 0) {
+        const closureDids = closureResult.meta.closureByDid
+        scoped = scoped.filter((a) => closureDids.has(a.did))
+      } else {
+        scoped = []
+      }
     } else if (filter === "recent") {
       const recent = getRecentlyViewed("user")
       const recentSet = new Set(recent)
@@ -329,7 +386,7 @@ async function loadAccountsPage(args: {
           a.did.includes(q),
       )
     }
-    return { ...EMPTY_PAGE, users: scoped }
+    return { ...EMPTY_PAGE, users: scoped, endorsementClosure: closureMeta }
   }
 
   // "all" / "new" — server-backed; paginate via NetworkActors.
@@ -364,19 +421,37 @@ async function loadAccountsPage(args: {
 
 // ----------------------------- Projects --------------------------------
 
-async function loadProjectsPage(args: {
-  filter: string
-  search: string
-  viewerDid: string | null
-  followedDids: Set<string>
-  cursor: string | null
-  signal: AbortSignal | null
-}): Promise<LoadedPage> {
-  const { filter, search, viewerDid, followedDids, cursor, signal } = args
+async function loadProjectsPage(args: LoadArgs): Promise<LoadedPage> {
+  const { filter, search, viewerDid, followedDids, cursor, signal, degree } = args
 
-  if (filter === "by-endorsed" || filter === "recent") {
+  if (filter === "by-endorsed") {
     if (cursor !== null) return EMPTY_PAGE
-    if (filter === "by-endorsed") return EMPTY_PAGE
+    if (!viewerDid) return EMPTY_PAGE
+    const closureResult = await loadClosure({ viewerDid, degree, signal })
+    if (signal?.aborted) return EMPTY_PAGE
+    const closureMeta = closureResult.meta
+    if (!closureMeta || closureMeta.closureByDid.size === 0) {
+      return { ...EMPTY_PAGE, endorsementClosure: closureMeta }
+    }
+    const authors = Array.from(closureMeta.closureByDid.keys())
+    const r = await fetchProjects({
+      first: PAGE_SIZE,
+      after: cursor ?? undefined,
+      authors,
+      search: search || undefined,
+      signal: signal ?? undefined,
+    })
+    return {
+      ...EMPTY_PAGE,
+      projects: r.records,
+      cursor: r.endCursor,
+      hasMore: r.hasMore,
+      endorsementClosure: closureMeta,
+    }
+  }
+
+  if (filter === "recent") {
+    if (cursor !== null) return EMPTY_PAGE
     // recent — URI-keyed fan-out, same pattern as the cert recent
     // filter. See loadCertsPage for the rationale.
     const recent = getRecentlyViewed("project")
@@ -417,16 +492,8 @@ async function loadProjectsPage(args: {
 
 // ----------------------------- Certs -----------------------------------
 
-async function loadCertsPage(args: {
-  filter: string
-  sub: string
-  search: string
-  viewerDid: string | null
-  followedDids: Set<string>
-  cursor: string | null
-  signal: AbortSignal | null
-}): Promise<LoadedPage> {
-  const { filter, sub, search, viewerDid, followedDids, cursor, signal } = args
+async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
+  const { filter, sub, search, viewerDid, followedDids, cursor, signal, degree } = args
 
   // Sub-category overrides — pinned to viewer.
   if (sub === "created" && viewerDid) {
@@ -463,10 +530,34 @@ async function loadCertsPage(args: {
   }
 
   if (filter === "by-endorsed") {
-    // Not yet implemented — surface an empty list rather than
-    // crashing. Wire up once the indexer exposes an endorsed-by-DID
-    // filter on activity records.
-    return EMPTY_PAGE
+    if (cursor !== null) return EMPTY_PAGE
+    if (!viewerDid) return EMPTY_PAGE
+    // Compute the closure once for this filter activation, then pass
+    // its DIDs into the existing Activities-by-author indexer query.
+    // The per-author cert metadata + cursor pagination ride the
+    // existing fetchIndexerActivities path; only the seed-set changes.
+    const closureResult = await loadClosure({ viewerDid, degree, signal })
+    if (signal?.aborted) return EMPTY_PAGE
+    const closureMeta = closureResult.meta
+    if (!closureMeta || closureMeta.closureByDid.size === 0) {
+      return { ...EMPTY_PAGE, endorsementClosure: closureMeta }
+    }
+    const authors = Array.from(closureMeta.closureByDid.keys())
+    const r = await fetchIndexerActivities({
+      first: PAGE_SIZE,
+      after: cursor ?? undefined,
+      authors,
+      search: search || undefined,
+      signal: signal ?? undefined,
+    })
+    return {
+      ...EMPTY_PAGE,
+      certs: r.records,
+      certDids: r.dids,
+      cursor: r.endCursor,
+      hasMore: r.hasMore,
+      endorsementClosure: closureMeta,
+    }
   }
   if (filter === "recent") {
     if (cursor !== null) return EMPTY_PAGE
@@ -510,5 +601,66 @@ async function loadCertsPage(args: {
     certDids: r.dids,
     cursor: r.endCursor,
     hasMore: r.hasMore,
+  }
+}
+
+// ---------------------------- Endorsement closure ---------------------------
+
+interface ClosureFetchResult {
+  /** Meta — null if the viewer is unauthenticated; warming-loaded if
+   *  the indexer is still doing its first refresh; otherwise the
+   *  populated closure. Callers that observe `warming: true` should
+   *  show a loading skeleton, not an empty state. */
+  meta: EndorsementClosureMeta | null
+}
+
+async function loadClosure(opts: {
+  viewerDid: string
+  degree: 1 | 2 | 3
+  signal: AbortSignal | null
+}): Promise<ClosureFetchResult> {
+  const { viewerDid, degree, signal } = opts
+  try {
+    const closure = await fetchEndorsementClosure(
+      viewerDid,
+      degree,
+      signal ?? undefined,
+    )
+    const closureByDid = new Map<string, EndorsementClosureAccount>()
+    for (const account of closure.accounts) {
+      closureByDid.set(account.did, account)
+    }
+    return {
+      meta: {
+        closureByDid,
+        truncated: closure.truncated,
+        degree,
+        warming: false,
+      },
+    }
+  } catch (err) {
+    if (signal?.aborted) return { meta: null }
+    // ENDORSEMENT_GRAPH_WARMING is a transient state during the
+    // indexer's first refresh — surface as warming so the UI shows
+    // a skeleton, not "no results". Other coded errors (invalid
+    // viewer / disabled feature) are user-facing config bugs; log
+    // and return null so the surface shows the empty state with
+    // a debugger-friendly console line.
+    if (err instanceof EndorsementClosureError) {
+      if (err.code === "ENDORSEMENT_GRAPH_WARMING") {
+        return {
+          meta: {
+            closureByDid: new Map(),
+            truncated: false,
+            degree,
+            warming: true,
+          },
+        }
+      }
+      console.warn("[explore] endorsement closure error:", err.code, err.message)
+      return { meta: null }
+    }
+    console.warn("[explore] endorsement closure fetch failed:", err)
+    return { meta: null }
   }
 }

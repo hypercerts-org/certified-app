@@ -471,6 +471,28 @@ ${ACTIVITY_NODE_SELECTION}
       }
     }
   `,
+
+  // Viewer-centric endorsement-graph closure — magic-indexer issue
+  // #117. Returns DIDs reachable within `degree` hops of `viewer`
+  // through active (non-rejected, endorsement-typed) badge awards,
+  // plus per-DID provenance (which degree-(d-1) accounts brought
+  // them in). Powers /explore "Endorsed users" filter via
+  // src/hooks/use-explore.ts → fetchEndorsementClosure → this
+  // operation. Truncates with `truncated: true` if the closure
+  // exceeds the server cap (default 3000); UI shows a "showing a
+  // subset" notice in that case.
+  EndorsementClosure: `
+    query EndorsementClosure($viewer: String!, $degree: Int!) {
+      endorsementClosure(viewer: $viewer, degree: $degree) {
+        accounts {
+          did
+          degree
+          via
+        }
+        truncated
+      }
+    }
+  `,
 }
 
 type ClientVariables = Record<string, unknown>
@@ -644,6 +666,19 @@ function buildVariables(
         first: clampFirst(vars.first, MAX_FIRST, 100),
         after: readString(vars.after, MAX_AFTER_LEN),
       }
+    }
+    case "EndorsementClosure": {
+      // Viewer-centric BFS closure (magic-indexer #117). `viewer`
+      // must be a DID; `degree` must be ∈ {1, 2, 3}. Validation here
+      // mirrors the indexer-side gate so a malformed request 400s
+      // at the proxy rather than producing a noisy GraphQL error
+      // downstream.
+      const viewer = readDid(vars.viewer)
+      if (!viewer) return null
+      const rawDegree = vars.degree
+      if (typeof rawDegree !== "number" || !Number.isInteger(rawDegree)) return null
+      if (rawDegree < 1 || rawDegree > 3) return null
+      return { viewer, degree: rawDegree }
     }
     default:
       return null

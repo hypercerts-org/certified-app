@@ -861,3 +861,59 @@ html:has(.explore-page) .desktop-top-bar__row {
 .explore-project-card__when {
   margin-left: auto;
 }
+
+/* -----------------------------------------------------------------
+ * Endorsement-degree segmented control (certified-app #84 +
+ * magic-indexer #117). Renders above the explore result list when
+ * the active filter is endorsement-based.
+ * --------------------------------------------------------------- */
+
+.explore__degree-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 0 6px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 12px;
+}
+
+.explore__degree-pills {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.explore__degree-pill {
+  border: 1px solid var(--border-default);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.explore__degree-pill:hover {
+  background: var(--surface-3);
+  color: var(--text-primary);
+}
+
+.explore__degree-pill--active {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+.explore__degree-caption {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.explore__degree-truncated {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin: 0;
+  font-style: italic;
+}

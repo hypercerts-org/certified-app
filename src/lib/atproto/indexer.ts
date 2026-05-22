@@ -363,6 +363,131 @@ interface EndorsementGraphQLResponse {
  *
  * Returns [] if authors is empty (short-circuits without a network call).
  */
+// ----------------------------- Endorsement closure (BFS) ---------------------
+//
+// Viewer-centric endorsement-graph closure (magic-indexer issue #117).
+// Powers the "Endorsed users" filter on /explore by returning every
+// DID reachable within `degree` hops of `viewer` through active
+// (non-rejected, endorsement-typed) badge awards, plus per-DID
+// provenance.
+
+export interface EndorsementClosureAccount {
+  did: string
+  degree: 1 | 2 | 3
+  /**
+   * Degree-(degree − 1) predecessors that endorsed this account, deduped
+   * and sorted. Empty array for degree=1 — the viewer is the predecessor
+   * but is excluded from the result per spec. The indexer returns these
+   * as `via: [String!]!`; we narrow the type here.
+   */
+  via: string[]
+}
+
+export interface EndorsementClosure {
+  accounts: EndorsementClosureAccount[]
+  /**
+   * True when the closure exceeded the indexer-side cap (default 3000).
+   * The in-flight ring is trimmed degrees-furthest-first; lower rings
+   * are intact. UI shows a "showing a subset of your trust graph" notice.
+   */
+  truncated: boolean
+}
+
+interface EndorsementClosureGraphQLResponse {
+  data?: {
+    endorsementClosure?: {
+      accounts: { did: string; degree: number; via: string[] }[]
+      truncated: boolean
+    }
+  }
+  errors?: { message: string; extensions?: { code?: string } }[]
+}
+
+/**
+ * Server-side endorsement-graph closure error surface. The indexer
+ * returns structured `extensions.code` SCREAMING_SNAKE_CASE codes so
+ * the UI can branch deterministically (warming vs. invalid input vs.
+ * disabled feature). Plain `Error` fallback when no code is present
+ * (network failure / non-GraphQL error).
+ */
+export class EndorsementClosureError extends Error {
+  /** SCREAMING_SNAKE_CASE per magic-indexer convention. */
+  readonly code: string | null
+  constructor(message: string, code: string | null) {
+    super(message)
+    this.name = "EndorsementClosureError"
+    this.code = code
+  }
+}
+
+/**
+ * Fetches the viewer's endorsement-graph closure at the given depth.
+ *
+ *   - `viewer`: viewer DID (excluded from the result).
+ *   - `degree`: ∈ {1, 2, 3}. Cumulative: degree=2 returns 1st ∪ 2nd.
+ *   - `signal`: optional AbortSignal threaded through to fetch.
+ *
+ * Throws `EndorsementClosureError` with a structured code on a 4xx-
+ * style failure (`INVALID_VIEWER_DID`, `INVALID_DEGREE`,
+ * `ENDORSEMENT_GRAPH_WARMING`, `ENDORSEMENT_GRAPH_DISABLED`). Callers
+ * (e.g. use-explore) typically downgrade `ENDORSEMENT_GRAPH_WARMING`
+ * to a loading state and surface the others to the user.
+ */
+export async function fetchEndorsementClosure(
+  viewer: string,
+  degree: 1 | 2 | 3,
+  signal?: AbortSignal,
+): Promise<EndorsementClosure> {
+  const res = await fetch(INDEXER_PROXY_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      operationName: "EndorsementClosure",
+      variables: { viewer, degree },
+    }),
+    signal,
+  })
+  if (!res.ok) {
+    throw new EndorsementClosureError(
+      `Indexer proxy returned ${res.status}`,
+      null,
+    )
+  }
+  const json = (await res.json()) as EndorsementClosureGraphQLResponse
+  if (json.errors?.length) {
+    const first = json.errors[0]
+    throw new EndorsementClosureError(
+      first.message,
+      first.extensions?.code ?? null,
+    )
+  }
+  if (!json.data?.endorsementClosure) {
+    throw new EndorsementClosureError(
+      "Indexer returned no closure payload",
+      null,
+    )
+  }
+  const c = json.data.endorsementClosure
+  return {
+    truncated: c.truncated,
+    // Narrow degree to 1 | 2 | 3. The indexer never returns anything
+    // outside that range (it's gated at the resolver), but cast
+    // defensively so a future degree-4 doesn't silently slip into
+    // consumers that switch on the literal type.
+    accounts: c.accounts.map((a) => ({
+      did: a.did,
+      degree: clampClosureDegree(a.degree),
+      via: a.via,
+    })),
+  }
+}
+
+function clampClosureDegree(d: number): 1 | 2 | 3 {
+  if (d === 1) return 1
+  if (d === 2) return 2
+  return 3
+}
+
 export async function fetchEndorsements(
   options: FetchEndorsementsOptions,
 ): Promise<IndexerEndorsementRecord[]> {

@@ -318,4 +318,77 @@ describe("/api/indexer trust boundary", () => {
       expect(body.errors).toBeDefined()
     })
   })
+
+  // ----- EndorsementClosure operation (issue #84 + magic-indexer #117) ------
+  //
+  // The proxy is the trust boundary for the new endorsement-graph
+  // closure operation: it validates `viewer` is a DID and `degree`
+  // is ∈ {1, 2, 3} before forwarding. Catching invalid input here
+  // means a malformed inbound query 400s at the proxy without
+  // burning a downstream round-trip — same shape as the existing
+  // EndorsementDefs / ReceivedEndorsements gates.
+
+  describe("EndorsementClosure validation", () => {
+    it("forwards a well-formed request", async () => {
+      mockFetch.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              endorsementClosure: { accounts: [], truncated: false },
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      const res = await postIndexer({
+        operationName: "EndorsementClosure",
+        variables: { viewer: "did:plc:alice", degree: 2 },
+      })
+      expect(res.status).toBe(200)
+      const body = JSON.parse(
+        (mockFetch.mock.calls[0][1] as RequestInit).body as string,
+      )
+      expect(body.variables).toEqual({ viewer: "did:plc:alice", degree: 2 })
+      expect(body.query).toContain("query EndorsementClosure")
+    })
+
+    it("400s when viewer is missing", async () => {
+      const res = await postIndexer({
+        operationName: "EndorsementClosure",
+        variables: { degree: 1 },
+      })
+      expect(res.status).toBe(400)
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+
+    it("400s when viewer is not a DID", async () => {
+      const res = await postIndexer({
+        operationName: "EndorsementClosure",
+        variables: { viewer: "not-a-did", degree: 1 },
+      })
+      expect(res.status).toBe(400)
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+
+    it("400s when degree is out of range", async () => {
+      for (const degree of [0, 4, -1, 99]) {
+        mockFetch.mockClear()
+        const res = await postIndexer({
+          operationName: "EndorsementClosure",
+          variables: { viewer: "did:plc:alice", degree },
+        })
+        expect(res.status).toBe(400)
+        expect(mockFetch).not.toHaveBeenCalled()
+      }
+    })
+
+    it("400s when degree is not an integer", async () => {
+      const res = await postIndexer({
+        operationName: "EndorsementClosure",
+        variables: { viewer: "did:plc:alice", degree: 2.5 },
+      })
+      expect(res.status).toBe(400)
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+  })
 })

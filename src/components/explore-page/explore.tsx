@@ -61,6 +61,23 @@ function parseView(v: string | null): ListGalleryView {
   return v === "gallery" ? "gallery" : "list"
 }
 
+function parseDegree(v: string | null): 1 | 2 | 3 {
+  if (v === "2") return 2
+  if (v === "3") return 3
+  return 1
+}
+
+/**
+ * The filter keys that consume the endorsement-graph closure
+ * (magic-indexer #117). When the active filter is in this set,
+ * the degree-selector renders above the results and the loader
+ * threads `degree` into `fetchEndorsementClosure`.
+ */
+function isEndorsementFilter(kind: ExploreKind, filter: string): boolean {
+  if (kind === "accounts") return filter === "endorsed"
+  return filter === "by-endorsed"
+}
+
 
 function isValidFilter(kind: ExploreKind, filter: string): boolean {
   return filtersForKind(kind).some((f) => f.key === filter)
@@ -80,6 +97,8 @@ export default function Explore() {
   const search = searchParams?.get("q") ?? ""
   const sort = parseSort(searchParams?.get("sort") ?? null)
   const view = parseView(searchParams?.get("view") ?? null)
+  const degree = parseDegree(searchParams?.get("degree") ?? null)
+  const showsDegreeControl = isEndorsementFilter(kind, filter)
   const { did: viewerDid } = useAuth()
 
   // Client-side filter chip(s) — kind-specific simple boolean attributes
@@ -155,7 +174,28 @@ export default function Explore() {
     [attrs, setUrl],
   )
 
-  const data = useExploreData({ kind, filter, sub, search })
+  const data = useExploreData({
+    kind,
+    filter,
+    sub,
+    search,
+    // Only pass degree when the active filter actually consumes it,
+    // so a stale `?degree=2` on a non-endorsement filter doesn't
+    // perturb caching keys / loader behaviour.
+    degree: showsDegreeControl ? degree : undefined,
+  })
+
+  const onDegreeButtonClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const key = e.currentTarget.dataset.degreeKey
+      if (!key) return
+      // Default (1st) — drop the param to keep the URL clean. Other
+      // values get serialised so `?filter=by-endorsed&degree=2`
+      // round-trips through bookmarks.
+      setUrl({ degree: key === "1" ? null : key })
+    },
+    [setUrl],
+  )
 
   // Local search debounce: keep typing snappy, hit indexer once typing stops.
   const [localQuery, setLocalQuery] = useState(search)
@@ -324,6 +364,13 @@ export default function Explore() {
             </div>
           </div>
 
+          {showsDegreeControl ? (
+            <EndorsementDegreeBar
+              degree={degree}
+              onSelect={onDegreeButtonClick}
+              meta={data.endorsementClosure}
+            />
+          ) : null}
           <ResultsArea
             kind={kind}
             data={data}
@@ -347,6 +394,80 @@ export default function Explore() {
  *  view (IntersectionObserver) and also renders an explicit "Load
  *  more" button so the affordance is keyboard-accessible and
  *  visually anchored at the end of the list. */
+
+// ----------------------- Endorsement-degree selector ------------------------
+
+const DEGREE_HINT: Record<1 | 2 | 3, string> = {
+  1: "Accounts you endorse",
+  2: "Accounts you endorse, plus everyone they endorse",
+  3: "…plus one more hop out",
+}
+
+/**
+ * Segmented control above the result list when the active filter is
+ * endorsement-based (Accounts/"endorsed", Projects|Certs/"by-endorsed").
+ *
+ * Renders three pills — 1st / 2nd / 3rd — plus a helper caption that
+ * updates per selection, and a "showing a subset" notice when the
+ * indexer reports `truncated: true`. Caption / truncation messaging
+ * matches the issue's product copy verbatim so the UI stays in lockstep
+ * with the original spec.
+ *
+ * Implementation note: data-degree-key on each button + a captured
+ * onSelect avoids the same SWC-minifier closure-capture hazard the
+ * filter / sub-option buttons solve via `data-filter-key` / `data-sub-key`.
+ */
+function EndorsementDegreeBar({
+  degree,
+  onSelect,
+  meta,
+}: {
+  degree: 1 | 2 | 3
+  onSelect: (e: React.MouseEvent<HTMLButtonElement>) => void
+  meta: ReturnType<typeof useExploreData>["endorsementClosure"]
+}) {
+  return (
+    <div className="explore__degree-bar" role="group" aria-label="Endorsement depth">
+      <div className="explore__degree-pills">
+        {([1, 2, 3] as const).map((d) => {
+          const active = d === degree
+          return (
+            <button
+              key={d}
+              type="button"
+              data-degree-key={String(d)}
+              onClick={onSelect}
+              className={`explore__degree-pill${active ? " explore__degree-pill--active" : ""}`}
+              aria-pressed={active}
+            >
+              {d === 1 ? "1st" : d === 2 ? "2nd" : "3rd"}
+            </button>
+          )
+        })}
+      </div>
+      <p className="explore__degree-caption">{DEGREE_HINT[degree]}</p>
+      {meta?.truncated ? (
+        <p
+          className="explore__degree-truncated"
+          role="status"
+          aria-live="polite"
+        >
+          Showing a subset of your trust graph (capped for performance).
+        </p>
+      ) : null}
+      {meta?.warming ? (
+        <p
+          className="explore__degree-truncated"
+          role="status"
+          aria-live="polite"
+        >
+          Building your endorsement graph — results in a moment.
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
 function LoadMoreSentinel({
   onLoadMore,
   isLoading,
