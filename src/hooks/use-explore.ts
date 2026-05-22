@@ -753,33 +753,106 @@ async function loadClosure(opts: {
       )
     }
     try {
-      const direct = await fetchGivenEndorsementDids(
+      const closureByDid = await clientSideClosureBfs(
         viewerDid,
-        signal ?? undefined,
+        degree,
+        signal,
       )
       if (signal?.aborted) return { meta: null }
-      const closureByDid = new Map<string, EndorsementClosureAccount>()
-      for (const did of direct) {
-        closureByDid.set(did, { did, degree: 1, via: [] })
-      }
       return {
         meta: {
           closureByDid,
           truncated: false,
-          // The fallback is degree-1-only by construction. Even if the
-          // caller asked for 2 or 3 we can't expand without the
-          // indexer endpoint, so we honestly report what we resolved.
-          degree: 1,
+          degree,
           warming: false,
         },
       }
     } catch (fallbackErr) {
       if (signal?.aborted) return { meta: null }
       console.warn(
-        "[explore] PDS degree-1 fallback also failed:",
+        "[explore] PDS endorsement-closure fallback failed:",
         fallbackErr,
       )
       return { meta: null }
     }
   }
+}
+
+/**
+ * Client-side bounded BFS over the endorsement graph, sourced from each
+ * frontier account's PDS. Each ring fans out one `listRecords` per
+ * frontier DID in parallel; the next frontier is just the DIDs
+ * discovered at the current degree. Drop-in equivalent of magic-indexer
+ * #117's `endorsementClosure` query at small scale — until that ships,
+ * this is how /explore's "Endorsed accounts" filter expands beyond
+ * degree 1.
+ *
+ * Bookkeeping per spec:
+ *   - viewer excluded from the result (loop-back skipped).
+ *   - minimum-degree assignment per account (we don't downgrade once
+ *     pinned).
+ *   - `via` collects every degree-(d−1) predecessor for accounts
+ *     pinned at degree d (so the row decorations can show "via @x +N").
+ *   - per-DID PDS fetch failures are isolated — one unreachable repo
+ *     doesn't poison the rest of the closure.
+ */
+async function clientSideClosureBfs(
+  viewerDid: string,
+  degree: 1 | 2 | 3,
+  signal: AbortSignal | null,
+): Promise<Map<string, EndorsementClosureAccount>> {
+  const closureByDid = new Map<string, EndorsementClosureAccount>()
+  let frontier: string[] = [viewerDid]
+
+  for (let d: 1 | 2 | 3 = 1; d <= degree; d = (d + 1) as 1 | 2 | 3) {
+    if (frontier.length === 0) break
+    // Fan out — failures per node degrade to "no outbound edges from
+    // this node", not a closure-wide bail.
+    const results = await Promise.all(
+      frontier.map(async (x) => {
+        try {
+          return await fetchGivenEndorsementDids(x, signal ?? undefined)
+        } catch (err) {
+          if (signal?.aborted) throw err
+          console.warn(
+            "[explore] PDS read failed for",
+            x,
+            "at degree",
+            d,
+            "—",
+            err instanceof Error ? err.message : err,
+          )
+          return new Set<string>()
+        }
+      }),
+    )
+    if (signal?.aborted)
+      return new Map<string, EndorsementClosureAccount>()
+
+    const next: string[] = []
+    for (let i = 0; i < frontier.length; i++) {
+      const x = frontier[i] // predecessor for accounts discovered this ring
+      for (const y of results[i]) {
+        if (y === viewerDid) continue
+        const existing = closureByDid.get(y)
+        if (!existing) {
+          // First time we see y → pin it to the current ring. Degree-1
+          // accounts have no `via` (the viewer is the implicit
+          // predecessor and is excluded from the surface).
+          closureByDid.set(y, {
+            did: y,
+            degree: d,
+            via: d === 1 ? [] : [x],
+          })
+          next.push(y)
+        } else if (existing.degree === d && d > 1) {
+          // Same ring → accumulate predecessor for the `+N` rendering.
+          if (!existing.via.includes(x)) existing.via.push(x)
+        }
+        // existing.degree < d → minimum-degree rule, skip silently.
+      }
+    }
+    frontier = next
+  }
+  return closureByDid
 }
