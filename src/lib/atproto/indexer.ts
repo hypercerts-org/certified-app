@@ -371,6 +371,17 @@ interface EndorsementGraphQLResponse {
 // (non-rejected, endorsement-typed) badge awards, plus per-DID
 // provenance.
 
+export interface EndorsementClosureIssuer {
+  did: string
+  handle: string | null
+  displayName: string | null
+  description: string | null
+  /** Content-addressed CID of the actor's avatar blob. Client builds
+   *  the avatar URL via /api/xrpc/com/atproto/sync/getBlob. */
+  avatarCid: string | null
+  pds: string | null
+}
+
 export interface EndorsementClosureAccount {
   did: string
   degree: 1 | 2 | 3
@@ -381,6 +392,13 @@ export interface EndorsementClosureAccount {
    * as `via: [String!]!`; we narrow the type here.
    */
   via: string[]
+  /**
+   * Denormalised actor profile populated server-side via a single bulk
+   * lookup on actor(did) (magic-indexer #117 perf follow-up). Always
+   * present in responses from the new indexer; legacy / fallback paths
+   * (PDS BFS) leave this as `{did}` only.
+   */
+  issuer: EndorsementClosureIssuer
 }
 
 export interface EndorsementClosure {
@@ -396,7 +414,19 @@ export interface EndorsementClosure {
 interface EndorsementClosureGraphQLResponse {
   data?: {
     endorsementClosure?: {
-      accounts: { did: string; degree: number; via: string[] }[]
+      accounts: {
+        did: string
+        degree: number
+        via: string[]
+        issuer?: {
+          did: string
+          handle: string | null
+          displayName: string | null
+          description: string | null
+          avatarCid: string | null
+          pds: string | null
+        } | null
+      }[]
       truncated: boolean
     }
   }
@@ -478,6 +508,7 @@ export async function fetchEndorsementClosure(
       did: a.did,
       degree: clampClosureDegree(a.degree),
       via: a.via,
+      issuer: a.issuer ?? { did: a.did, handle: null, displayName: null, description: null, avatarCid: null, pds: null },
     })),
   }
 }

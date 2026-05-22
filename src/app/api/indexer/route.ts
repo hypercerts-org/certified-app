@@ -488,6 +488,14 @@ ${ACTIVITY_NODE_SELECTION}
           did
           degree
           via
+          issuer {
+            did
+            handle
+            displayName
+            description
+            avatarCid
+            pds
+          }
         }
         truncated
       }

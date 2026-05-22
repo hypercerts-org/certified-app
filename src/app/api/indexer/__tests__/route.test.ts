@@ -350,6 +350,12 @@ describe("/api/indexer trust boundary", () => {
       )
       expect(body.variables).toEqual({ viewer: "did:plc:alice", degree: 2 })
       expect(body.query).toContain("query EndorsementClosure")
+      // Inline issuer block (magic-indexer #117 perf follow-up) —
+      // a single closure call carries every account's
+      // displayName / handle / avatarCid so the client doesn't
+      // need to paginate the appCertifiedActorProfile connection.
+      expect(body.query).toContain("issuer")
+      expect(body.query).toContain("avatarCid")
     })
 
     it("400s when viewer is missing", async () => {

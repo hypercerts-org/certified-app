@@ -429,10 +429,18 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
       const orgDids =
         sub !== "all" ? await getOrgDids() : new Set<string>()
       if (signal?.aborted) return EMPTY_PAGE
+      // Build the actor list directly from the closure's inline
+      // issuer block — magic-indexer #117 perf follow-up returns a
+      // denormalised actor profile per closure DID, so we do NOT
+      // need a second round-trip to fetchNetworkActors. (Previous
+      // version paginated up to 10×100 = 1000 actors sequentially
+      // and silently dropped any closure DID outside that window;
+      // degree-2/3 closures regularly exceeded it.)
       let scoped: NetworkActor[] = []
       if (closureMeta && closureMeta.closureByDid.size > 0) {
-        const targetDids = new Set(closureMeta.closureByDid.keys())
-        scoped = await fetchActorsCoveringDids(targetDids, signal ?? undefined)
+        scoped = Array.from(closureMeta.closureByDid.values())
+          .map(actorFromClosureAccount)
+          .filter((a): a is NetworkActor => a !== null)
       }
       if (sub === "people") scoped = scoped.filter((a) => !orgDids.has(a.did))
       else if (sub === "organizations")
@@ -697,43 +705,32 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
   }
 }
 
-// ---------------------------- Profile coverage -------------------------------
+// ---------------------------- Profile shaping -------------------------------
 
 /**
- * Paginate NetworkActors until every DID in `targetDids` has been
- * resolved to an actor profile, or no more pages exist, or we've
- * burned `cap` pages. Used by the /explore "endorsed" filter to
- * surface degree-2 / degree-3 closure members whose profiles aren't
- * in the indexer's most-recently-active first 100. Returns only the
- * actors whose DID was in the target set — the rest are discarded.
+ * Map a closure account (DID + degree + via + inline issuer block)
+ * to the NetworkActor shape the /explore Account rows consume.
+ * Returns null when the issuer has no resolvable identity at all
+ * (no handle AND no displayName) so the row can be hidden cleanly
+ * — same UX rule that fetchNetworkActors enforces by virtue of
+ * only returning DIDs that have profile records.
  *
- * Sequential because cursor-based pagination doesn't let us issue
- * pages in parallel. At cap=10 × first=100 we cover up to 1000
- * recently-active actors — enough headroom for typical closures
- * without making the page load painful when the indexer is cold.
+ * Avatar URL is built from (did, cid) via the certified-app's own
+ * /api/xrpc proxy — matches the shape avatarUrlFromUnion emits for
+ * the small-image variant in src/lib/atproto/workspace.ts.
  */
-async function fetchActorsCoveringDids(
-  targetDids: Set<string>,
-  signal: AbortSignal | undefined,
-  cap = 10,
-): Promise<NetworkActor[]> {
-  const found = new Map<string, NetworkActor>()
-  let cursor: string | null = null
-  for (let i = 0; i < cap; i++) {
-    const page = await fetchNetworkActors({
-      first: 100,
-      after: cursor,
-      signal,
-    })
-    if (signal?.aborted) break
-    for (const actor of page.actors) {
-      if (targetDids.has(actor.did)) found.set(actor.did, actor)
-    }
-    if (found.size === targetDids.size) break
-    if (!page.hasMore) break
-    cursor = page.endCursor
+function actorFromClosureAccount(account: EndorsementClosureAccount): NetworkActor | null {
+  const issuer = account.issuer
+  const hasIdentity = !!(issuer.handle ?? issuer.displayName ?? issuer.description)
+  if (!hasIdentity) return null
+  return {
+    did: account.did,
+    displayName: issuer.displayName,
+    description: issuer.description,
+    avatarUrl: issuer.avatarCid
+      ? `/api/xrpc/com/atproto/sync/getBlob?did=${encodeURIComponent(account.did)}&cid=${encodeURIComponent(issuer.avatarCid)}`
+      : null,
   }
-  return Array.from(found.values())
 }
 
 // ---------------------------- Endorsement closure ---------------------------
@@ -892,10 +889,16 @@ async function clientSideClosureBfs(
           // First time we see y → pin it to the current ring. Degree-1
           // accounts have no `via` (the viewer is the implicit
           // predecessor and is excluded from the surface).
+          //
+          // PDS fallback has no profile data; issuer is did-only so
+          // the row's actorFromClosureAccount() check will hide rows
+          // without resolvable identity. Indexer path overwrites
+          // this with denormalised profile data inline.
           closureByDid.set(y, {
             did: y,
             degree: d,
             via: d === 1 ? [] : [x],
+            issuer: { did: y, handle: null, displayName: null, description: null, avatarCid: null, pds: null },
           })
           next.push(y)
         } else if (existing.degree === d && d > 1) {
