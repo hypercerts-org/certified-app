@@ -47,10 +47,12 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  /* Flush-left to the viewport (the parent shell's left padding is
-     zeroed for /explore); inner padding gives the controls breathing
-     room without floating them away from the edge. */
-  padding: 0 16px 0 24px;
+  /* Align the rail's visible left edge with the navbar brandmark:
+     the brandmark sits ~32px from the viewport left, the rail outer
+     comes in at ~26px from .app-shell scaffold padding, so 6px of
+     local left padding lands the inner controls on the same vertical
+     line as the brandmark above. */
+  padding: 0 16px 0 6px;
 }
 
 .explore__kind-switch {
