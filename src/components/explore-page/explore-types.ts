@@ -1,6 +1,6 @@
-export type ExploreKind = "users" | "projects" | "certs"
+export type ExploreKind = "accounts" | "projects" | "certs"
 
-export type UserFilter =
+export type AccountFilter =
   | "recent"
   | "follows"
   | "endorsed"
@@ -33,12 +33,12 @@ export interface FilterOption {
   requiresAuth?: boolean
 }
 
-export const USER_FILTERS: FilterOption[] = [
+export const ACCOUNT_FILTERS: FilterOption[] = [
   { key: "recent", label: "Recently viewed" },
   { key: "follows", label: "My follows", requiresAuth: true },
   { key: "endorsed", label: "I endorsed", requiresAuth: true },
   { key: "new", label: "New on the network" },
-  { key: "all", label: "All users" },
+  { key: "all", label: "All accounts" },
 ]
 
 export const PROJECT_FILTERS: FilterOption[] = [
@@ -60,13 +60,13 @@ export const CERT_FILTERS: FilterOption[] = [
 ]
 
 export function filtersForKind(kind: ExploreKind): FilterOption[] {
-  if (kind === "users") return USER_FILTERS
+  if (kind === "accounts") return ACCOUNT_FILTERS
   if (kind === "projects") return PROJECT_FILTERS
   return CERT_FILTERS
 }
 
 export function defaultFilterForKind(kind: ExploreKind): string {
-  if (kind === "users") return "all"
+  if (kind === "accounts") return "all"
   if (kind === "projects") return "all"
   return "all"
 }
@@ -75,10 +75,10 @@ export function defaultFilterForKind(kind: ExploreKind): string {
 // Sub-category (second segmented row in the sidebar, under the kind switcher)
 // ---------------------------------------------------------------------------
 
-export type UserSub = "all" | "individuals" | "groups"
+export type AccountSub = "all" | "people" | "organizations"
 export type CertSub = "all" | "created" | "contributed"
 export type ProjectSub = "all"
-export type SubCategory = UserSub | CertSub | ProjectSub
+export type SubCategory = AccountSub | CertSub | ProjectSub
 
 /** Options shown in the sub-category row per kind. Empty array =
  *  don't render the row at all. */
@@ -86,10 +86,10 @@ export const SUB_OPTIONS: Record<
   ExploreKind,
   { key: string; label: string; requiresAuth?: boolean }[]
 > = {
-  users: [
+  accounts: [
     { key: "all", label: "All" },
-    { key: "individuals", label: "Individuals" },
-    { key: "groups", label: "Groups" },
+    { key: "people", label: "People" },
+    { key: "organizations", label: "Organizations" },
   ],
   projects: [],
   certs: [
@@ -109,4 +109,3 @@ export function parseSubForKind(kind: ExploreKind, v: string | null): string {
   if (opts.some((o) => o.key === v)) return v
   return defaultSubForKind(kind)
 }
-

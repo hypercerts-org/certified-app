@@ -205,141 +205,35 @@ html:has(.explore-page) .desktop-top-bar__row {
   padding: 0 24px;
 }
 
-/* ---------- Dev toggle: comparing the two sub-row locations ---------- */
+/* ---------- Sub-category dropdown prefix to the search bar ---------- */
 
-.explore__sublayout-pick {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  padding: 8px 10px;
-  background: var(--bg-subtle);
-  border-radius: 6px;
-  font-size: 0.75rem;
-  color: var(--fg-secondary);
-}
-
-.explore__sublayout-btn {
-  background: none;
-  border: 1px solid var(--border-subtle);
-  border-radius: 4px;
-  padding: 3px 8px;
-  font-size: 0.75rem;
-  color: var(--fg-secondary);
-  cursor: pointer;
-}
-
-.explore__sublayout-btn:hover {
-  border-color: var(--fg-secondary);
-  color: var(--fg-primary);
-}
-
-.explore__sublayout-btn--active {
-  background: var(--fg-primary);
-  color: var(--bg-primary, #fff);
-  border-color: var(--fg-primary);
-}
-
-/* ---------- A: sub controls as prefix to the search bar ---------- */
-
-.explore__sub-prefix {
+.explore__sub-dropdown-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px;
-  background: var(--bg-subtle);
+  gap: 6px;
+  padding: 7px 12px;
+  background: var(--bg-primary, transparent);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  flex-shrink: 0;
-}
-
-.explore__sub-prefix-btn {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  background: transparent;
-  border: 0;
-  border-radius: 6px;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 500;
-  color: var(--fg-secondary);
+  color: var(--fg-primary);
   cursor: pointer;
   white-space: nowrap;
-  transition: background var(--transition-fast), color var(--transition-fast);
+  flex-shrink: 0;
+  transition: background var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
-.explore__sub-prefix-btn:hover:not(:disabled) {
-  color: var(--fg-primary);
-}
-
-.explore__sub-prefix-btn--active {
-  background: var(--bg-primary, #fff);
-  color: var(--fg-primary);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-}
-
-.explore__sub-prefix-btn:disabled {
-  color: var(--fg-muted, #b7bdc6);
-  cursor: not-allowed;
-}
-
-/* ---------- B: sub controls as breadcrumb above the chrome row ---------- */
-
-.explore__sub-breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 14px;
-  font-size: 0.9rem;
-  color: var(--fg-secondary);
-  flex-wrap: wrap;
-}
-
-.explore__sub-breadcrumb-kind {
-  font-weight: 600;
-  color: var(--fg-primary);
-}
-
-.explore__sub-breadcrumb-sep {
-  color: var(--fg-secondary);
-}
-
-.explore__sub-breadcrumb-segment {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.explore__sub-breadcrumb-btn {
-  background: none;
-  border: 0;
-  padding: 2px 4px;
-  border-radius: 4px;
-  font-size: inherit;
-  color: var(--fg-secondary);
-  cursor: pointer;
-  transition: color var(--transition-fast), background var(--transition-fast);
-}
-
-.explore__sub-breadcrumb-btn:hover:not(:disabled) {
-  color: var(--fg-primary);
+.explore__sub-dropdown-trigger:hover {
   background: var(--bg-subtle);
+  border-color: var(--fg-secondary);
 }
 
-.explore__sub-breadcrumb-btn--active {
+.explore__sub-dropdown-label {
   color: var(--fg-primary);
-  font-weight: 600;
 }
 
-.explore__sub-breadcrumb-btn:disabled {
-  color: var(--fg-muted, #b7bdc6);
-  cursor: not-allowed;
-}
-
-.explore__sub-breadcrumb-divider {
-  color: var(--fg-muted, #b7bdc6);
-  font-size: 0.8em;
-}
 
 @media (max-width: 760px) {
   .explore__main {
@@ -414,19 +308,23 @@ html:has(.explore-page) .desktop-top-bar__row {
 
 .popover {
   position: relative;
+  /* Lift the dropdown's stacking context above the main-pane content
+     (cards, list rows) so the menu paints on top instead of being
+     covered by hovered cards / images. */
+  z-index: 50;
 }
 
 .popover__overlay {
   position: fixed;
   inset: 0;
-  z-index: 5;
+  z-index: 100;
 }
 
 .popover__menu {
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
-  z-index: 10;
+  z-index: 101;
   display: flex;
   flex-direction: column;
   min-width: 200px;

@@ -98,7 +98,7 @@ export function useExploreData(opts: {
     async function run() {
       setData((prev) => ({ ...prev, isLoading: true }))
       try {
-        if (kind === "users") {
+        if (kind === "accounts") {
           const next = await loadUsers({
             filter,
             sub,
@@ -182,10 +182,10 @@ async function loadUsers(args: {
     scoped = all.slice(0, 12)
   }
 
-  // Sub-category: split individuals vs groups via the org-DID set.
-  if (sub === "individuals") {
+  // Sub-category: split people vs organizations via the org-DID set.
+  if (sub === "people") {
     scoped = scoped.filter((a) => !orgDids.has(a.did))
-  } else if (sub === "groups") {
+  } else if (sub === "organizations") {
     scoped = scoped.filter((a) => orgDids.has(a.did))
   }
 

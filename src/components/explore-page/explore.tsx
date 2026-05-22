@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   Award,
+  ChevronDown,
   Filter as FilterIcon,
   FolderGit2,
   LayoutGrid,
@@ -19,10 +20,10 @@ import CertListRow from "./cert-list-row"
 import ExploreUserCard from "./explore-user-card"
 import ExploreProjectCard from "./explore-project-card"
 import {
+  ACCOUNT_FILTERS,
   CERT_FILTERS,
   PROJECT_FILTERS,
   SUB_OPTIONS,
-  USER_FILTERS,
   defaultFilterForKind,
   filtersForKind,
   parseSubForKind,
@@ -36,7 +37,7 @@ import { usePageTitle } from "@/lib/navbar-context"
 const KIND_TABS: { key: ExploreKind; label: string; icon: typeof Users }[] = [
   { key: "certs", label: "Certs", icon: Award },
   { key: "projects", label: "Projects", icon: FolderGit2 },
-  { key: "users", label: "Users", icon: Users },
+  { key: "accounts", label: "Accounts", icon: Users },
 ]
 
 const SORT_LABEL: Record<SortOrder, string> = {
@@ -46,7 +47,10 @@ const SORT_LABEL: Record<SortOrder, string> = {
 }
 
 function parseKind(v: string | null): ExploreKind {
-  if (v === "users" || v === "projects" || v === "certs") return v
+  if (v === "accounts" || v === "projects" || v === "certs") return v
+  // Migration shim — old URLs with ?kind=users or ?kind=profiles still
+  // resolve to accounts so external links keep working.
+  if (v === "users" || v === "profiles") return "accounts"
   return "certs"
 }
 
@@ -60,10 +64,6 @@ function parseView(v: string | null): CertView {
   return v === "gallery" ? "gallery" : "list"
 }
 
-type SubLayout = "prefix" | "breadcrumb"
-function parseSubLayout(v: string | null): SubLayout {
-  return v === "breadcrumb" ? "breadcrumb" : "prefix"
-}
 
 function isValidFilter(kind: ExploreKind, filter: string): boolean {
   return filtersForKind(kind).some((f) => f.key === filter)
@@ -83,7 +83,6 @@ export default function Explore() {
   const search = searchParams?.get("q") ?? ""
   const sort = parseSort(searchParams?.get("sort") ?? null)
   const certView = parseView(searchParams?.get("view") ?? null)
-  const subLayout = parseSubLayout(searchParams?.get("sublayout") ?? null)
   const { did: viewerDid } = useAuth()
 
   // Client-side filter chip(s) — kind-specific simple boolean attributes
@@ -122,6 +121,7 @@ export default function Explore() {
 
   const [sortOpen, setSortOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [subPrefixOpen, setSubPrefixOpen] = useState(false)
 
   // Register the page title in the top bar's title slot — the chrome
   // already pairs the brandmark with this. Mirrors the convention
@@ -179,48 +179,15 @@ export default function Explore() {
         </aside>
 
         <main className="explore__main">
-          {/* Tiny dev toggle for comparing the two sub-row locations.
-              Will be removed once one is picked. */}
-          {SUB_OPTIONS[kind].length > 0 ? (
-            <div className="explore__sublayout-pick">
-              <span>Sub layout:</span>
-              <button
-                type="button"
-                className={`explore__sublayout-btn${subLayout === "prefix" ? " explore__sublayout-btn--active" : ""}`}
-                onClick={() => setUrl({ sublayout: null })}
-              >
-                A — search-bar prefix
-              </button>
-              <button
-                type="button"
-                className={`explore__sublayout-btn${subLayout === "breadcrumb" ? " explore__sublayout-btn--active" : ""}`}
-                onClick={() => setUrl({ sublayout: "breadcrumb" })}
-              >
-                B — above chrome
-              </button>
-            </div>
-          ) : null}
-
-          {/* B — breadcrumb above the chrome row */}
-          {subLayout === "breadcrumb" && SUB_OPTIONS[kind].length > 0 ? (
-            <SubControls
-              kind={kind}
-              sub={sub}
-              viewerDid={viewerDid}
-              setUrl={setUrl}
-              variant="breadcrumb"
-            />
-          ) : null}
-
           <div className="explore__chrome">
-            {/* A — sub controls sit inline before the search input */}
-            {subLayout === "prefix" && SUB_OPTIONS[kind].length > 0 ? (
-              <SubControls
+            {SUB_OPTIONS[kind].length > 0 ? (
+              <SubPrefixDropdown
                 kind={kind}
                 sub={sub}
                 viewerDid={viewerDid}
                 setUrl={setUrl}
-                variant="prefix"
+                open={subPrefixOpen}
+                setOpen={setSubPrefixOpen}
               />
             ) : null}
 
@@ -354,77 +321,43 @@ export default function Explore() {
   )
 }
 
-/** Sub-category controls rendered in one of two locations the user
- *  is comparing:
- *
- *  - variant="prefix"      → inline pill cluster sitting before the
- *                            search input inside the chrome row.
- *  - variant="breadcrumb"  → standalone row above the chrome,
- *                            reading as a `Kind › Sub` breadcrumb.
- *
- *  Both render the same options + behavior; only the container
- *  styling differs. */
-function SubControls({
+/** Sub-category dropdown control — sits to the left of the search
+ *  input in the chrome row. Single button shows the active option,
+ *  click opens a Popover-style menu listing the rest. */
+function SubPrefixDropdown({
   kind,
   sub,
   viewerDid,
   setUrl,
-  variant,
+  open,
+  setOpen,
 }: {
   kind: ExploreKind
   sub: string
   viewerDid: string | null
   setUrl: (patch: Record<string, string | null>) => void
-  variant: "prefix" | "breadcrumb"
+  open: boolean
+  setOpen: (next: boolean) => void
 }) {
   const options = SUB_OPTIONS[kind]
   if (options.length === 0) return null
-
-  if (variant === "breadcrumb") {
-    return (
-      <nav
-        className="explore__sub-breadcrumb"
-        role="navigation"
-        aria-label="Sub-category"
-      >
-        <span className="explore__sub-breadcrumb-kind">
-          {kindLabel(kind)}
-        </span>
-        <span className="explore__sub-breadcrumb-sep" aria-hidden>
-          ›
-        </span>
-        {options.map((opt, i) => {
-          const disabled = opt.requiresAuth && !viewerDid
-          return (
-            <span key={opt.key} className="explore__sub-breadcrumb-segment">
-              <button
-                type="button"
-                disabled={disabled}
-                aria-pressed={sub === opt.key}
-                title={disabled ? "Sign in to filter by your role" : undefined}
-                className={`explore__sub-breadcrumb-btn${sub === opt.key ? " explore__sub-breadcrumb-btn--active" : ""}`}
-                onClick={() => setUrl({ sub: opt.key === "all" ? null : opt.key })}
-              >
-                {opt.label}
-              </button>
-              {i < options.length - 1 ? (
-                <span className="explore__sub-breadcrumb-divider" aria-hidden>
-                  /
-                </span>
-              ) : null}
-            </span>
-          )
-        })}
-      </nav>
-    )
-  }
-
-  // prefix variant
+  const active = options.find((o) => o.key === sub) ?? options[0]
   return (
-    <div
-      className="explore__sub-prefix"
-      role="group"
-      aria-label="Sub-category"
+    <Popover
+      open={open}
+      onClose={() => setOpen(false)}
+      trigger={
+        <button
+          type="button"
+          className="explore__sub-dropdown-trigger"
+          onClick={() => setOpen(!open)}
+          aria-expanded={open}
+          aria-haspopup="menu"
+        >
+          <span className="explore__sub-dropdown-label">{active.label}</span>
+          <ChevronDown size={13} strokeWidth={1.75} aria-hidden />
+        </button>
+      }
     >
       {options.map((opt) => {
         const disabled = opt.requiresAuth && !viewerDid
@@ -432,34 +365,31 @@ function SubControls({
           <button
             key={opt.key}
             type="button"
+            role="menuitem"
             disabled={disabled}
-            aria-pressed={sub === opt.key}
             title={disabled ? "Sign in to filter by your role" : undefined}
-            className={`explore__sub-prefix-btn${sub === opt.key ? " explore__sub-prefix-btn--active" : ""}`}
-            onClick={() => setUrl({ sub: opt.key === "all" ? null : opt.key })}
+            className={`popover__item${sub === opt.key ? " popover__item--active" : ""}`}
+            onClick={() => {
+              setUrl({ sub: opt.key === "all" ? null : opt.key })
+              setOpen(false)
+            }}
           >
             {opt.label}
           </button>
         )
       })}
-    </div>
+    </Popover>
   )
 }
 
-function kindLabel(k: ExploreKind): string {
-  if (k === "certs") return "Certs"
-  if (k === "projects") return "Projects"
-  return "Users"
-}
-
 function searchPlaceholder(kind: ExploreKind): string {
-  if (kind === "users") return "Search users by name…"
+  if (kind === "accounts") return "Search accounts by name…"
   if (kind === "projects") return "Search projects…"
   return "Search certs…"
 }
 
 function attrOptions(kind: ExploreKind): { key: string; label: string }[] {
-  if (kind === "users")
+  if (kind === "accounts")
     return [
       { key: "has-avatar", label: "Has avatar" },
       { key: "has-description", label: "Has description" },
@@ -528,7 +458,7 @@ function ResultsArea({
     )
   }
 
-  if (kind === "users") {
+  if (kind === "accounts") {
     let actors = data.users
     if (attrs.has("has-avatar"))
       actors = actors.filter((a) => !!a.avatarUrl)
@@ -613,10 +543,10 @@ function ResultsArea({
 
 function EmptyResults({ kind }: { kind: ExploreKind }) {
   const label =
-    kind === "users" ? "users" : kind === "projects" ? "projects" : "certs"
+    kind === "accounts" ? "accounts" : kind === "projects" ? "projects" : "certs"
   return (
     <EmptyState
-      icon={kind === "users" ? Users : kind === "projects" ? FolderGit2 : Award}
+      icon={kind === "accounts" ? Users : kind === "projects" ? FolderGit2 : Award}
       title={`No ${label} match`}
       description="Try a different filter, clear the search, or pick a broader scope."
     />
