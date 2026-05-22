@@ -264,7 +264,7 @@ ${ACTIVITY_NODE_SELECTION}
     query ProjectCount {
       orgHypercertsCollection(
         first: 1
-        where: { type: { eq: "project" } }
+        where: { type: { eqi: "project" } }
       ) {
         totalCount
         edges { node { uri } }
