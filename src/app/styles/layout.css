@@ -1962,16 +1962,30 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   border-bottom: 1px solid var(--border-medium);
 }
 
-/* Align the first tab's button left-edge with the hamburger above.
-   The hamburger sits at the row's 12px padding-left; the first
-   tab's button starts at the same x so the two rows share a clean
-   left gutter. The tab's own button padding takes care of the
-   internal text breathing room. Skipped when the row carries a
-   back button (cert / project detail pages) — the back button
-   already owns the left gutter there. */
+/* Align the first tab's TEXT with the hamburger icon above (not
+   just the button left-edges). The hamburger button sits at the
+   row's 12px padding-left and is 36px wide with an 18px icon
+   centered inside, so the icon's left edge lands at x=21 (= 12 +
+   9). With a 12px padding-left the tab text starts at x=24 — a
+   touch right of the icon's left edge, which reads cleaner than
+   pixel-matching the icon. Skipped when the row carries a back
+   button (cert / project detail pages) — the back button already
+   owns the left gutter there. */
 .desktop-top-bar__row--tabs:not(:has(.desktop-top-bar__back))
   .desktop-top-bar__tab:first-of-type {
-  padding-left: 0;
+  padding-left: 12px;
+}
+
+/* The active-tab underline reserves 18px of gutter at each end of
+   the button via `left: 18px; right: 18px` (see the .--active::after
+   rule below). When we shrink the first tab's left padding to 12px
+   the default 18px underline-left leaves the underline 6px short on
+   the left — so it doesn't extend under the start of "Certs".
+   Match the underline-left to the new padding so the bar tracks the
+   text width. */
+.desktop-top-bar__row--tabs:not(:has(.desktop-top-bar__back))
+  .desktop-top-bar__tab:first-of-type.desktop-top-bar__tab--active::after {
+  left: 12px;
 }
 
 .desktop-top-bar__left {
