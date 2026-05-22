@@ -13,18 +13,16 @@ import { parseAtUri } from "@/lib/atproto/activity-uri"
  *   The Magic Indexer doesn't yet expose a `where` filter that can
  *   look inside `items[].itemIdentifier.uri` on a project collection,
  *   so we can't do a cross-DID "which projects contain this cert"
- *   query server-side. The case-insensitive `eqi` operator that
- *   `useUserProjects` is waiting on (PR hb-agent/magic-indexer#81)
- *   also doesn't help here.
+ *   query server-side. Tracked on hypercerts-org/magic-indexer#110.
  *
  *   As a stopgap we list the cert author's most recent
  *   `org.hypercerts.collection` records on their own PDS via
  *   `com.atproto.repo.listRecords` and filter client-side. This
  *   matches the assumption used elsewhere in the app that a project
  *   is curated by the same actor that minted the certs it contains.
- *   When the indexer ships a `containsItemUri` filter, this hook can
- *   migrate to a single GraphQL call and pick up cross-DID projects
- *   for free.
+ *   When the indexer ships the `containsItemUri` filter, this hook
+ *   can migrate to a single GraphQL call and pick up cross-DID
+ *   projects for free.
  */
 export function useCertProjects(did: string | null, rkey: string | null) {
   const [projects, setProjects] = useState<CollectionRecord[]>([])
@@ -52,7 +50,7 @@ export function useCertProjects(did: string | null, rkey: string | null) {
         const filtered = data.records.filter((r) => {
           // Same case-insensitive match as `useUserProjects` — records
           // in the wild store the discriminator as "project", "Project",
-          // or "PROJECT". `eqi` would let the indexer do this for us.
+          // or "PROJECT".
           const isProject =
             typeof r.value?.type === "string" &&
             r.value.type.toLowerCase() === "project"

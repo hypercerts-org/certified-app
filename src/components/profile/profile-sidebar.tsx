@@ -163,9 +163,8 @@ export default function ProfileSidebar({
 
   // Follower / following counts for THIS profile (shown under the
   // action row). The Following count comes straight from the viewed
-  // user's PDS; the Followers count is best-effort via the indexer
-  // and will read 0 until the magic-indexer ships
-  // `appCertifiedGraphFollow` support.
+  // user's PDS; the Followers count comes from the indexer via the
+  // `appCertifiedGraphFollow` connection with `subject.eq`.
   const viewedFollowing = useFollowing(did)
   const viewedFollowers = useFollowers(did)
 

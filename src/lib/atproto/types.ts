@@ -8,12 +8,13 @@ import { BlobRef } from "@atproto/api";
  * supported; anything else falls back to `String(ref)` which yields the
  * CID's `toString()`.
  *
- * Workaround for a magic-indexer bug: when serialising `Blob.ref` to a
- * GraphQL `String!`, the resolver uses Go's default `fmt.Sprintf("%v", m)`
- * on the underlying map and emits `map[$link:<cid>]` instead of just
- * `<cid>`. We strip that wrapper here so downstream image URLs still work
- * on records that use the lexicon-canonical `smallImage` shape. Remove
- * once the indexer fixes its resolver.
+ * Workaround for a magic-indexer bug (hypercerts-org/magic-indexer#110):
+ * when serialising `Blob.ref` to a GraphQL `String!`, the resolver uses
+ * Go's default `fmt.Sprintf("%v", m)` on the underlying map and emits
+ * `map[$link:<cid>]` instead of just `<cid>`. We strip that wrapper here
+ * so downstream image URLs still work on records that use the
+ * lexicon-canonical `smallImage` / `largeImage` shape. Remove once the
+ * indexer fixes its resolver.
  */
 const INDEXER_MAP_LINK_RE = /^map\[\$link:([^\]]+)\]$/;
 

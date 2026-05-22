@@ -15,9 +15,8 @@
  *
  * "Following" (records the viewer has authored) is a PDS-only read —
  * see `useFollowing`. "Followers" (records targeting the viewer) is an
- * indexer read — see `useFollowers` — and depends on the magic-indexer
- * exposing `appCertifiedGraphFollow` with a `subject.eq` filter (issue
- * tracked on hb-agent/magic-indexer).
+ * indexer read — see `useFollowers` — served by the magic-indexer's
+ * `appCertifiedGraphFollow` connection with a `subject.eq` filter.
  */
 
 import { authFetch } from "@/lib/auth/fetch"

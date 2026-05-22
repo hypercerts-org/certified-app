@@ -29,10 +29,12 @@ export function useUserProjects(did: string | null) {
         // Filter to records that declare themselves as projects.
         // Match is case-insensitive — records in the wild store the
         // discriminator as "project", "Project", or "PROJECT". The
-        // indexer is gaining a server-side `eqi` operator for this in
-        // PR hb-agent/magic-indexer#81; once that ships callers that
-        // need cross-DID queries can move to the indexer instead of
-        // this per-DID listRecords path.
+        // indexer now supports `where: { type: { eqi: "project" } }`
+        // (hypercerts-org/magic-indexer#81) which would let this hook
+        // move to a single GraphQL call, but the indexer doesn't
+        // surface the legacy `value.name` / `value.image` fallbacks
+        // some records still use — so the PDS-scan + client-filter
+        // path is kept until those fallbacks are dead.
         const filtered = data.records.filter(
           (r) =>
             typeof r.value?.type === "string" &&
