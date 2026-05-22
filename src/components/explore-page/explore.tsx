@@ -132,7 +132,30 @@ export default function Explore() {
     <div className="explore">
       <div className="explore__layout">
         <aside className="explore__sidebar" aria-label="Explore filters">
-          <nav className="explore__kind-switch" role="tablist">
+          {/* Kind switcher used to live here but didn't fit in 220px
+              with three labels; promoted to the top of the main pane
+              (see below). Sidebar is now filter-list-only. */}
+          <ul className="explore__filter-list">
+            {filtersForKind(kind).map((f) => (
+              <li key={f.key}>
+                <button
+                  type="button"
+                  className={`explore__filter${filter === f.key ? " explore__filter--active" : ""}`}
+                  onClick={() => setUrl({ filter: f.key })}
+                >
+                  {f.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </aside>
+
+        <main className="explore__main">
+          <nav
+            className="explore__kind-switch explore__kind-switch--main"
+            role="tablist"
+            aria-label="Browse by kind"
+          >
             {KIND_TABS.map((t) => {
               const Icon = t.icon
               return (
@@ -158,27 +181,6 @@ export default function Explore() {
               )
             })}
           </nav>
-
-          {/* Sub-category controls were hoisted out of the sidebar so
-              we can A/B two new locations (prefix on the search bar
-              vs breadcrumb above the chrome row). See the chrome row
-              below for both variants. */}
-          <ul className="explore__filter-list">
-            {filtersForKind(kind).map((f) => (
-              <li key={f.key}>
-                <button
-                  type="button"
-                  className={`explore__filter${filter === f.key ? " explore__filter--active" : ""}`}
-                  onClick={() => setUrl({ filter: f.key })}
-                >
-                  {f.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </aside>
-
-        <main className="explore__main">
           <div className="explore__chrome">
             {SUB_OPTIONS[kind].length > 0 ? (
               <SubPrefixDropdown

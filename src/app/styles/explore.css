@@ -91,6 +91,8 @@ html:has(.explore-page) .desktop-top-bar__row {
    sidebar wrapper doesn't reserve any. */
 .explore__filter-list {
   padding-right: 16px;
+  list-style: none;
+  margin: 0;
 }
 
 /* ---- Primary row: underline tabs ---- */
@@ -101,6 +103,13 @@ html:has(.explore-page) .desktop-top-bar__row {
   border-bottom: 1px solid var(--border-subtle);
   padding: 0;
   background: transparent;
+}
+
+/* When the kind switcher sits at the top of the main pane (not in
+   the sidebar), give it a bit of room below itself so the chrome
+   row underneath has breathing space. */
+.explore__kind-switch--main {
+  margin-bottom: 16px;
 }
 
 .explore__kind-switch:not(.explore__sub-switch) .explore__kind {
