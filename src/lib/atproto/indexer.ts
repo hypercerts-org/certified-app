@@ -1,5 +1,7 @@
 import type { ActivityRecord } from "./activity-types"
 import type { LabelValue } from "./labeller"
+import type { CollectionRecord, CollectionValue } from "./collection"
+import { getBlobRefLink } from "./types"
 
 /**
  * Same-origin proxy in front of the Magic Indexer GraphQL endpoint.
@@ -524,4 +526,158 @@ export async function fetchNetworkCounts(): Promise<NetworkCounts> {
     out[key] = count
   }
   return out
+}
+
+// ============================================================================
+// User projects — org.hypercerts.collection records authored by one DID
+// whose type discriminator is "project" (case-insensitive via eqi).
+// ============================================================================
+
+interface UserProjectsNode {
+  uri: string
+  cid: string
+  did: string
+  createdAt: string | null
+  title: string | null
+  shortDescription: string | null
+  items: { itemIdentifier: { uri?: string; cid?: string } | null }[] | null
+  banner:
+    | { __typename: "OrgHypercertsDefsUri"; uri?: string | null }
+    | {
+        __typename: "OrgHypercertsDefsLargeImage"
+        image?: { ref?: string | null; mimeType?: string | null } | null
+      }
+    | null
+}
+
+interface UserProjectsGraphQLResponse {
+  data?: {
+    orgHypercertsCollection?: {
+      totalCount: number | null
+      edges: { cursor: string; node: UserProjectsNode | null }[]
+      pageInfo: { hasNextPage: boolean; endCursor: string | null }
+    } | null
+  } | null
+  errors?: { message: string }[]
+}
+
+function nodeToCollectionRecord(node: UserProjectsNode): CollectionRecord {
+  // Re-shape the indexer's typed banner union back into the loose
+  // `{ uri }` / `{ image: { ref, mimeType } }` blob that
+  // resolveActivityImageUrl already understands. The blob ref comes
+  // back wrapped as `map[$link:<cid>]` (magic-indexer#110) — strip it
+  // here so callers don't have to know about that quirk.
+  let banner: Record<string, unknown> | undefined
+  if (node.banner) {
+    if (node.banner.__typename === "OrgHypercertsDefsUri" && node.banner.uri) {
+      banner = { uri: node.banner.uri }
+    } else if (
+      node.banner.__typename === "OrgHypercertsDefsLargeImage" &&
+      node.banner.image?.ref
+    ) {
+      banner = {
+        image: {
+          ref: getBlobRefLink(node.banner.image.ref),
+          ...(node.banner.image.mimeType
+            ? { mimeType: node.banner.image.mimeType }
+            : {}),
+        },
+      }
+    }
+  }
+
+  const items =
+    node.items
+      ?.map((it) => it?.itemIdentifier)
+      .filter((id): id is { uri: string; cid: string } =>
+        !!id && typeof id.uri === "string" && typeof id.cid === "string",
+      )
+      .map((id) => ({ itemIdentifier: { uri: id.uri, cid: id.cid } })) ?? []
+
+  const value: CollectionValue = {
+    type: "project",
+    ...(node.title ? { title: node.title } : {}),
+    ...(node.shortDescription
+      ? { shortDescription: node.shortDescription }
+      : {}),
+    ...(node.createdAt ? { createdAt: node.createdAt } : {}),
+    ...(banner ? { banner } : {}),
+    items,
+  }
+
+  return { uri: node.uri, cid: node.cid, value }
+}
+
+export interface UserProjectsResult {
+  records: CollectionRecord[]
+  hasMore: boolean
+  endCursor: string | null
+  totalCount: number | null
+}
+
+/**
+ * Fetch `org.hypercerts.collection` records authored by `did` whose
+ * `type === "project"` (case-insensitive). Replaces the per-DID PDS
+ * listRecords scan with a single indexer call.
+ *
+ * Records that store the legacy `value.name` (title fallback) or
+ * `value.image` (banner fallback) fields will land here with neither
+ * surfaced — see the UserProjects op comment in route.ts for why. The
+ * Projects tab renders "Untitled project" / no banner for those so
+ * authors notice and republish on the canonical shape.
+ */
+export async function fetchUserProjects(
+  did: string,
+  options: { first?: number; after?: string; signal?: AbortSignal } = {},
+): Promise<UserProjectsResult> {
+  const { first = 50, after, signal } = options
+
+  if (!did.startsWith("did:")) {
+    throw new Error(`fetchUserProjects: 'did' must be a DID (got "${did}")`)
+  }
+
+  const res = await fetch(INDEXER_PROXY_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      operationName: "UserProjects",
+      variables: { did, first, after: after ?? null },
+    }),
+    signal,
+  })
+
+  const json = (await res.json()) as UserProjectsGraphQLResponse
+
+  const empty: UserProjectsResult = {
+    records: [],
+    hasMore: false,
+    endCursor: null,
+    totalCount: null,
+  }
+
+  if (!json.data?.orgHypercertsCollection) {
+    if (json.errors?.length) {
+      console.warn(
+        "[Indexer] UserProjects GraphQL error:",
+        json.errors[0].message,
+      )
+    } else if (!res.ok) {
+      throw new Error(`Indexer request failed: ${res.status}`)
+    }
+    return empty
+  }
+
+  const connection = json.data.orgHypercertsCollection
+  const records: CollectionRecord[] = []
+  for (const edge of connection.edges) {
+    if (!edge.node) continue
+    records.push(nodeToCollectionRecord(edge.node))
+  }
+
+  return {
+    records,
+    hasMore: connection.pageInfo.hasNextPage,
+    endCursor: connection.pageInfo.endCursor,
+    totalCount: connection.totalCount,
+  }
 }

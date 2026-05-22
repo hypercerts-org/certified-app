@@ -1,12 +1,22 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { fetchCollections, type CollectionRecord } from "@/lib/atproto/collection"
+import { fetchUserProjects } from "@/lib/atproto/indexer"
+import type { CollectionRecord } from "@/lib/atproto/collection"
 
 /**
- * Fetch `org.hypercerts.collection` records on a profile's PDS,
- * filtered to those whose `value.type === "project"`. Powers the
- * Projects tab on /profile/[handle].
+ * Fetch `org.hypercerts.collection` records authored by `did` whose
+ * `type === "project"` (case-insensitive). Powers the Projects tab on
+ * /profile/[handle] and the project count on the overview.
+ *
+ * Now served by the magic-indexer (`UserProjects` op) instead of a
+ * per-DID PDS listRecords scan: case-insensitive type matching happens
+ * server-side via `eqi` (magic-indexer#81), and the response is a
+ * single GraphQL call instead of paginating through every collection
+ * record on the user's PDS. Records using the legacy
+ * `value.name` / `value.image` field names (not in the indexer's
+ * lexicon-driven schema) will read "Untitled project" / no banner so
+ * authors can spot and republish them while the dataset is small.
  */
 export function useUserProjects(did: string | null) {
   const [projects, setProjects] = useState<CollectionRecord[]>([])
@@ -24,23 +34,9 @@ export function useUserProjects(did: string | null) {
       try {
         setIsLoading(true)
         setError(null)
-        const data = await fetchCollections(did, undefined, 50, signal)
+        const result = await fetchUserProjects(did, { signal })
         if (signal?.aborted) return
-        // Filter to records that declare themselves as projects.
-        // Match is case-insensitive — records in the wild store the
-        // discriminator as "project", "Project", or "PROJECT". The
-        // indexer now supports `where: { type: { eqi: "project" } }`
-        // (hypercerts-org/magic-indexer#81) which would let this hook
-        // move to a single GraphQL call, but the indexer doesn't
-        // surface the legacy `value.name` / `value.image` fallbacks
-        // some records still use — so the PDS-scan + client-filter
-        // path is kept until those fallbacks are dead.
-        const filtered = data.records.filter(
-          (r) =>
-            typeof r.value?.type === "string" &&
-            r.value.type.toLowerCase() === "project",
-        )
-        setProjects(filtered)
+        setProjects(result.records)
       } catch (err) {
         if (signal?.aborted) return
         console.error("Failed to fetch projects:", err)

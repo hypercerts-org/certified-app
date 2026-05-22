@@ -282,6 +282,52 @@ ${ACTIVITY_NODE_SELECTION}
     }
   `,
 
+  // Projects authored by a single DID. Replaces the per-DID PDS
+  // listRecords scan in useUserProjects: the indexer handles the
+  // case-insensitive "project" type filter server-side via eqi
+  // (magic-indexer#81), which means records storing the discriminator
+  // as "Project" / "PROJECT" surface here too.
+  //
+  // Selected fields cover what profile-projects renders: title,
+  // shortDescription, createdAt, banner, items[]. The indexer does NOT
+  // surface the legacy value.name / value.image fallback fields some
+  // older records use — that's intentional. Records on the older shape
+  // will read "Untitled project" / no banner here so authors notice
+  // and re-publish on the canonical shape while the dataset is small.
+  UserProjects: `
+    query UserProjects($did: String!, $first: Int!, $after: String) {
+      orgHypercertsCollection(
+        first: $first
+        after: $after
+        where: { did: { eq: $did }, type: { eqi: "project" } }
+      ) {
+        totalCount
+        edges {
+          cursor
+          node {
+            uri
+            cid
+            did
+            createdAt
+            title
+            shortDescription
+            items {
+              itemIdentifier {
+                ... on ComAtprotoRepoStrongRef { uri cid }
+              }
+            }
+            banner {
+              __typename
+              ... on OrgHypercertsDefsUri { uri }
+              ... on OrgHypercertsDefsLargeImage { image { ref mimeType } }
+            }
+          }
+        }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  `,
+
   // Legacy temp endorsement records — pre-badge-migration. Kept for
   // the read-side compatibility window. Drop when no longer referenced.
   LegacyEndorsements: `
@@ -438,6 +484,15 @@ function buildVariables(
       // empty object so the route's null-check passes and the
       // query is forwarded.
       return {}
+    }
+    case "UserProjects": {
+      const did = readDid(vars.did)
+      if (!did) return null
+      return {
+        did,
+        first: clampFirst(vars.first, MAX_FIRST, 50),
+        after: readString(vars.after, MAX_AFTER_LEN),
+      }
     }
     case "LegacyEndorsements": {
       const authors = readDidList(vars.authors, MAX_DID_LIST)
