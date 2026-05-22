@@ -919,19 +919,11 @@ html:has(.explore-page) .desktop-top-bar__row {
 }
 
 /* -----------------------------------------------------------------
- * Row-level endorsement decoration (certified-app #84). Renders the
- * degree label inline immediately before the row's handle, separated
- * by a middle dot. Degrees 2 / 3 render as a button — clicking opens
- * a popover with the via list. Degree 1 is non-interactive (no via).
+ * Row-level endorsement decoration (certified-app #84). Static degree
+ * pill — "1st" / "2nd" / "3rd" — rendered inline next to the row's
+ * primary text (display name on Project/Cert rows, handle on Account
+ * rows). No interactivity.
  * --------------------------------------------------------------- */
-
-.endorsement-row-badge {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  vertical-align: baseline;
-}
 
 .endorsement-row-badge__degree {
   display: inline-flex;
@@ -944,18 +936,6 @@ html:has(.explore-page) .desktop-top-bar__row {
   line-height: 1;
   letter-spacing: 0.02em;
   border: 1px solid transparent;
-  background: none;
-  cursor: default;
-  font-family: inherit;
-}
-
-button.endorsement-row-badge__degree {
-  cursor: pointer;
-}
-
-button.endorsement-row-badge__degree:hover,
-button.endorsement-row-badge__degree[aria-expanded="true"] {
-  filter: brightness(0.95);
 }
 
 /* Color tiers — densest for direct endorsements, lighter for the
@@ -980,44 +960,4 @@ button.endorsement-row-badge__degree[aria-expanded="true"] {
   color: var(--text-tertiary);
   font-size: 12px;
   line-height: 1;
-}
-
-.endorsement-row-badge__via-list {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  min-width: 180px;
-  list-style: none;
-  margin: 0;
-  padding: 6px 8px;
-  background: var(--surface-1);
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  font-size: 11px;
-  color: var(--text-secondary);
-  z-index: 10;
-}
-
-.endorsement-row-badge__via-list-header {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 2px 0 4px;
-  border-bottom: 1px solid var(--border-subtle);
-  margin-bottom: 4px;
-}
-
-.endorsement-row-badge__via-list li {
-  padding: 2px 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endorsement-row-badge__via-list-more {
-  color: var(--text-tertiary);
-  font-style: italic;
 }
