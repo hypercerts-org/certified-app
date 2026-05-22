@@ -68,61 +68,90 @@ html:has(.explore-page) .desktop-top-bar__row {
   padding: 0 16px 0 32px;
 }
 
+/* ---- Primary row: underline tabs ---- */
+
 .explore__kind-switch {
   display: flex;
-  gap: 2px;
-  padding: 3px;
-  background: var(--bg-subtle);
-  border-radius: 8px;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0;
+  background: transparent;
 }
 
-.explore__kind {
-  flex: 1;
+.explore__kind-switch:not(.explore__sub-switch) .explore__kind {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 6px 8px;
+  gap: 6px;
+  padding: 8px 8px 10px;
   background: transparent;
   border: 0;
-  border-radius: 6px;
-  font-size: 0.8rem;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  border-radius: 0;
+  font-size: 0.9rem;
   font-weight: 500;
   color: var(--fg-secondary);
   cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
+  transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 
-.explore__kind:hover {
+.explore__kind-switch:not(.explore__sub-switch) .explore__kind:hover {
   color: var(--fg-primary);
 }
 
-.explore__kind--active {
-  background: var(--bg-primary, #fff);
+.explore__kind-switch:not(.explore__sub-switch) .explore__kind--active {
   color: var(--fg-primary);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  border-bottom-color: var(--fg-primary);
+  background: transparent;
+  box-shadow: none;
 }
 
-.explore__kind:disabled {
-  color: var(--fg-muted, #b7bdc6);
-  cursor: not-allowed;
-}
+/* ---- Secondary row: chip pills ---- */
 
-.explore__kind:disabled:hover {
-  color: var(--fg-muted, #b7bdc6);
-}
-
-/* Second segmented control: same shape as the primary kind switcher
-   but a half-step smaller and lighter so the visual hierarchy
-   reads "kind first, sub-category second" without the sub row
-   competing for attention. */
 .explore__sub-switch {
-  padding: 2px;
+  border: 0;
+  background: transparent;
+  gap: 6px;
+  padding: 0;
+  flex-wrap: wrap;
 }
 
 .explore__sub-switch .explore__kind {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background: var(--bg-primary, transparent);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
   font-size: 0.75rem;
-  padding: 5px 8px;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.explore__sub-switch .explore__kind:hover {
+  border-color: var(--fg-secondary);
+  color: var(--fg-primary);
+}
+
+.explore__sub-switch .explore__kind--active {
+  background: var(--fg-primary);
+  color: var(--bg-primary, #fff);
+  border-color: var(--fg-primary);
+}
+
+.explore__sub-switch .explore__kind:disabled {
+  color: var(--fg-muted, #b7bdc6);
+  cursor: not-allowed;
+  border-color: var(--border-subtle);
+  background: var(--bg-primary, transparent);
+}
+
+.explore__sub-switch .explore__kind:disabled:hover {
+  color: var(--fg-muted, #b7bdc6);
+  border-color: var(--border-subtle);
 }
 
 .explore__filter-list {
