@@ -715,6 +715,8 @@ function ResultsArea({
               <AccountListRow
                 actor={a}
                 endorsementMeta={closure?.closureByDid.get(a.did)}
+                endorsementCorroboration={corroboration ?? undefined}
+                endorsementIdentities={identityMap}
               />
             </li>
           ))}

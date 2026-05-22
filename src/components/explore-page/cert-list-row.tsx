@@ -126,7 +126,6 @@ export default function CertListRow({
       ) : null}
 
       <div className="cert-list-row__author-col">
-        {did ? <ActivityAuthor did={did} /> : null}
         {endorsementMeta && endorsementCorroboration && endorsementIdentities ? (
           <EndorsementRowBadge
             meta={endorsementMeta}
@@ -134,6 +133,7 @@ export default function CertListRow({
             identityMap={endorsementIdentities}
           />
         ) : null}
+        {did ? <ActivityAuthor did={did} /> : null}
       </div>
       <time className="cert-list-row__time">
         {formatRelativeTime(value.createdAt)}

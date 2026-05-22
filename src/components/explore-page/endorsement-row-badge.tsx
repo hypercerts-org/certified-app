@@ -1,19 +1,13 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { CornerDownLeft } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import type { EndorsementClosureAccount } from "@/lib/atproto/indexer"
 
 /**
  * Compute a "corroboration count" for every DID that appears as a
  * predecessor anywhere in the closure result — how many times that DID
- * shows up across all `via` arrays. The count is the in-graph
- * endorsement frequency we use to pick a representative for the "via"
- * line per row.
- *
- * Returns the map by reference so the explore page can compute it once
- * per closure refresh and pass it into every row — O(N) work shared,
- * not O(N²) per-row.
+ * shows up across all `via` arrays. Used to rank the via list in the
+ * popover.
  */
 export function buildCorroborationCounts(
   closureByDid: Map<string, EndorsementClosureAccount>,
@@ -28,11 +22,9 @@ export function buildCorroborationCounts(
 }
 
 /**
- * Compact identity used by `EndorsementRowBadge` to render the "via"
- * line. Built from whatever the page already has loaded — typically
- * the `NetworkActor[]` for the Accounts kind, or denormalised author
- * blocks on Projects / Certs. We deliberately don't issue per-row PDS
- * fetches; an unresolved predecessor falls back to a shortened DID.
+ * Compact identity used to render via entries. Built by the page from
+ * whatever it has already loaded; unresolved DIDs fall back to a
+ * shortened DID label. No per-row PDS fetches.
  */
 export interface ViaIdentity {
   did: string
@@ -42,60 +34,18 @@ export interface ViaIdentity {
 
 export type ViaIdentityMap = Map<string, ViaIdentity>
 
-/**
- * Pick a representative predecessor DID from `via` per the issue #84
- * spec: "highest in-graph endorsement count, tie-break by lexicographic
- * order of DID for determinism." The original spec called for a
- * recency tie-break, but the closure response doesn't carry per-edge
- * timestamps — the materialised view collapses the issuer→subject
- * relationship without preserving the award's createdAt. Lexicographic
- * tie-break is what the closure server-side sort already gives us, so
- * "first element after corroboration-DESC sort" is deterministic.
- * Recency would need a follow-up exposing per-edge timestamps from
- * the indexer.
- */
-function pickRepresentative(
-  via: string[],
-  corroboration: Map<string, number>,
-): string | null {
-  if (via.length === 0) return null
-  let best = via[0]
-  let bestCount = corroboration.get(best) ?? 0
-  for (let i = 1; i < via.length; i++) {
-    const did = via[i]
-    const count = corroboration.get(did) ?? 0
-    // Strictly greater wins; tie keeps the earlier-encountered DID,
-    // and since `via` arrives already sorted lexicographically from
-    // the server (see internal/endorsement/closure.go), ties resolve
-    // deterministically without an explicit string compare.
-    if (count > bestCount) {
-      best = did
-      bestCount = count
-    }
-  }
-  return best
-}
-
-const DEGREE_BADGE_LABEL: Record<1 | 2 | 3, string> = {
+const DEGREE_LABEL: Record<1 | 2 | 3, string> = {
   1: "1st",
   2: "2nd",
   3: "3rd",
 }
 
 /**
- * Compact "degree + via" decoration rendered on an explore-result
- * row when the active filter is endorsement-based. Three flavours
- * depending on the account's degree:
- *
- *   - degree 1 → just the pill. No "via" line (the viewer IS the
- *     predecessor per spec — not attributed).
- *   - degree 2 / 3 → pill + `↩ via @{representative} +N` line.
- *     Click the +N to reveal the full predecessor list (cap-rendered
- *     to 10 with "and N more").
- *
- * Handle resolution reads from `identityMap` — typically built by
- * the explore page from the already-loaded NetworkActors. Unresolved
- * DIDs fall back to a shortened DID. No per-row PDS fetches.
+ * Inline degree label rendered immediately before the row's handle
+ * with a middle-dot separator. For degrees 2 / 3 the label is a button
+ * that toggles a popover listing the via predecessors (highest
+ * corroboration count first). Degree 1 has no via (the viewer is the
+ * predecessor) so it renders as a non-interactive pill.
  */
 export default function EndorsementRowBadge({
   meta,
@@ -106,67 +56,88 @@ export default function EndorsementRowBadge({
   corroboration: Map<string, number>
   identityMap: ViaIdentityMap
 }) {
-  const representative = useMemo(
-    () => pickRepresentative(meta.via, corroboration),
-    [meta.via, corroboration],
-  )
-
   const [open, setOpen] = useState(false)
-  const remaining = Math.max(0, meta.via.length - 1)
+  const containerRef = useRef<HTMLSpanElement>(null)
+  const hasVia = meta.degree > 1 && meta.via.length > 0
+
+  // Sort via DIDs by corroboration DESC, lexicographic ASC for ties.
+  // Done once on open so we don't pay it on every render.
+  const orderedVia = useMemo(() => {
+    if (!hasVia) return []
+    return [...meta.via].sort((a, b) => {
+      const ca = corroboration.get(a) ?? 0
+      const cb = corroboration.get(b) ?? 0
+      if (cb !== ca) return cb - ca
+      return a < b ? -1 : a > b ? 1 : 0
+    })
+  }, [meta.via, corroboration, hasVia])
+
+  useEffect(() => {
+    if (!open) return
+    function onDocClick(e: MouseEvent) {
+      if (!containerRef.current) return
+      if (!containerRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false)
+    }
+    document.addEventListener("mousedown", onDocClick)
+    document.addEventListener("keydown", onKey)
+    return () => {
+      document.removeEventListener("mousedown", onDocClick)
+      document.removeEventListener("keydown", onKey)
+    }
+  }, [open])
+
+  const pillClass = `endorsement-row-badge__degree endorsement-row-badge__degree--d${meta.degree}`
+  const title = hasVia
+    ? `Reachable at degree ${meta.degree}. Click to see who connects you.`
+    : `Reachable at degree ${meta.degree} through your endorsement graph.`
 
   return (
-    <div className="endorsement-row-badge">
-      <span
-        className={`endorsement-row-badge__degree endorsement-row-badge__degree--d${meta.degree}`}
-        title={`Reachable at degree ${meta.degree} through your endorsement graph`}
-      >
-        {DEGREE_BADGE_LABEL[meta.degree]}
+    <span className="endorsement-row-badge" ref={containerRef}>
+      {hasVia ? (
+        <button
+          type="button"
+          className={pillClass}
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-haspopup="true"
+          title={title}
+        >
+          {DEGREE_LABEL[meta.degree]}
+        </button>
+      ) : (
+        <span className={pillClass} title={title}>
+          {DEGREE_LABEL[meta.degree]}
+        </span>
+      )}
+      <span className="endorsement-row-badge__sep" aria-hidden>
+        ·
       </span>
-      {meta.degree > 1 && representative ? (
-        <div className="endorsement-row-badge__via">
-          <CornerDownLeft size={11} strokeWidth={1.75} aria-hidden />
-          <span className="endorsement-row-badge__via-rep">
-            via {identityLabel(identityMap.get(representative), representative)}
-          </span>
-          {remaining > 0 ? (
-            <button
-              type="button"
-              className="endorsement-row-badge__via-more"
-              onClick={() => setOpen((v) => !v)}
-              aria-expanded={open}
-              aria-controls="endorsement-via-list"
-            >
-              +{remaining}
-            </button>
+      {open && hasVia ? (
+        <ul className="endorsement-row-badge__via-list" role="menu">
+          <li className="endorsement-row-badge__via-list-header">
+            Connected via {orderedVia.length}
+            {orderedVia.length === 1 ? " person" : " people"}
+          </li>
+          {orderedVia.slice(0, 10).map((d) => (
+            <li key={d}>{identityLabel(identityMap.get(d), d)}</li>
+          ))}
+          {orderedVia.length > 10 ? (
+            <li className="endorsement-row-badge__via-list-more">
+              and {orderedVia.length - 10} more
+            </li>
           ) : null}
-          {open && remaining > 0 ? (
-            <ul
-              id="endorsement-via-list"
-              className="endorsement-row-badge__via-list"
-            >
-              {meta.via
-                .filter((d) => d !== representative)
-                .slice(0, 10)
-                .map((d) => (
-                  <li key={d}>{identityLabel(identityMap.get(d), d)}</li>
-                ))}
-              {meta.via.length > 11 ? (
-                <li className="endorsement-row-badge__via-list-more">
-                  and {meta.via.length - 11} more
-                </li>
-              ) : null}
-            </ul>
-          ) : null}
-        </div>
+        </ul>
       ) : null}
-    </div>
+    </span>
   )
 }
 
 function identityLabel(identity: ViaIdentity | undefined, did: string): string {
   if (identity?.handle) return `@${identity.handle}`
   if (identity?.displayName) return identity.displayName
-  // Fallback: shortened DID. Mirrors AccountListRow's truncation rule.
   return did.startsWith("did:plc:")
     ? `${did.slice(8, 14)}…${did.slice(-4)}`
     : did
