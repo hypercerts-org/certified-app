@@ -648,6 +648,35 @@ html:has(.explore-page) .desktop-top-bar__row {
   }
 }
 
+/* Account variant — accounts don't carry a relative-time column, so
+   the grid drops the third track. Thumb is circular (avatar) rather
+   than rounded-square (cert/project artwork). */
+.cert-list-row--account {
+  grid-template-columns: 1fr 200px;
+}
+
+.cert-list-row__thumb--avatar {
+  border-radius: 50%;
+}
+
+.cert-list-row__avatar-initial {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--fg-secondary);
+}
+
+.cert-list-row__handle {
+  font-family: var(--font-mono, ui-monospace), monospace;
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+}
+
+@media (max-width: 760px) {
+  .cert-list-row--account {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ---------- Result grids ---------- */
 
 .explore__grid {

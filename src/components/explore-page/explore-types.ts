@@ -42,18 +42,18 @@ export const ACCOUNT_FILTERS: FilterOption[] = [
 
 export const PROJECT_FILTERS: FilterOption[] = [
   { key: "recent", label: "Recently viewed" },
-  { key: "by-me", label: "By me", requiresAuth: true },
-  { key: "by-follows", label: "By my follows", requiresAuth: true },
-  { key: "by-endorsed", label: "By endorsed users", requiresAuth: true },
+  { key: "by-me", label: "My projects", requiresAuth: true },
+  { key: "by-follows", label: "Users I follow", requiresAuth: true },
+  { key: "by-endorsed", label: "Endorsed users", requiresAuth: true },
   { key: "trending", label: "Trending" },
   { key: "all", label: "All projects" },
 ]
 
 export const CERT_FILTERS: FilterOption[] = [
   { key: "recent", label: "Recently viewed" },
-  { key: "by-me", label: "By me", requiresAuth: true },
-  { key: "by-follows", label: "By my follows", requiresAuth: true },
-  { key: "by-endorsed", label: "By endorsed users", requiresAuth: true },
+  { key: "by-me", label: "My certs", requiresAuth: true },
+  { key: "by-follows", label: "Users I follow", requiresAuth: true },
+  { key: "by-endorsed", label: "Endorsed users", requiresAuth: true },
   { key: "all", label: "All certs" },
 ]
 

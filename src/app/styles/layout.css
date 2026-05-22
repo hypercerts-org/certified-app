@@ -1991,7 +1991,11 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 .desktop-top-bar__left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  /* Tight gap = hamburger sits flush next to the brandmark. The
+     title's larger separation comes from its own margin-left override
+     below (additive to this gap) so the brand→title space reads as
+     "breadcrumb-y" instead of "icon cluster". */
+  gap: 2px;
   min-width: 0;
 }
 
@@ -2025,6 +2029,11 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 }
 
 .desktop-top-bar__title {
+  /* Extra left margin on top of the row's 2px gap so the title
+     sits clearly separated from the brandmark, while the hamburger
+     stays flush against the brandmark. Total brand→title space
+     ≈ 14px. */
+  margin-left: 12px;
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 1rem;
   font-weight: 450;

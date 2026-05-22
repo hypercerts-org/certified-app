@@ -2,10 +2,11 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { FolderGit2 } from "lucide-react"
+import { FolderGit2, MapPin } from "lucide-react"
 import { resolveActivityImageUrl, formatRelativeTime } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import ActivityAuthor from "@/components/feed/activity-author"
+import { useLocation } from "@/hooks/use-location"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 
 /**
@@ -13,7 +14,7 @@ import type { CollectionRecord } from "@/lib/atproto/collection"
  * view. Mirrors <CertListRow>'s grid:
  *
  *   [thumb] [ title             ] [ author col ] [ date ]
- *           [ short desc · N certs ]
+ *           [ N certs · 📍 location ]
  */
 export default function ProjectListRow({
   project,
@@ -29,7 +30,6 @@ export default function ProjectListRow({
 
   const title =
     asString(value.title) || asString(value.name) || "Untitled project"
-  const shortDesc = asString(value.shortDescription)
   const createdAt = asString(value.createdAt)
 
   const rawImage = (value as Record<string, unknown>).banner ?? value.image
@@ -44,9 +44,22 @@ export default function ProjectListRow({
 
   const itemCount = countItems(value.items)
   const countLabel = `${itemCount} cert${itemCount === 1 ? "" : "s"}`
-  const metaParts = [shortDesc, countLabel].filter(
-    (s): s is string => !!s,
-  )
+  // `value.location` comes in two shapes on the wire:
+  //   - inline string (legacy / direct text), e.g. "Bern, CH"
+  //   - strongRef { uri, cid } pointing at an `app.certified.location`
+  //     record on the author's PDS (the canonical shape today)
+  // For the strongRef variant we resolve the LocationRecord via
+  // useLocation (module-cached so multiple rows pointing at the same
+  // place don't double-fetch) and surface its `.name`.
+  const rawLocation = (value as Record<string, unknown>).location as unknown
+  const inlineLocation = asString(rawLocation)
+  const locationRef =
+    rawLocation && typeof rawLocation === "object"
+      ? asString((rawLocation as Record<string, unknown>).uri as unknown)
+      : null
+  const { location: locationRecord } = useLocation(locationRef ?? "")
+  const locationName =
+    inlineLocation || (locationRef ? asString(locationRecord?.name) : null)
 
   return (
     <article className="cert-list-row">
@@ -73,23 +86,23 @@ export default function ProjectListRow({
           </div>
           <div className="cert-list-row__body">
             <h3 className="cert-list-row__title">{title}</h3>
-            {metaParts.length > 0 ? (
-              <p className="cert-list-row__meta">
-                {metaParts.map((m, i) => (
-                  <span key={i} className="cert-list-row__meta-item">
-                    {i > 0 ? (
-                      <span
-                        className="cert-list-row__meta-sep"
-                        aria-hidden
-                      >
-                        ·
-                      </span>
-                    ) : null}
-                    {m}
+            <p className="cert-list-row__meta">
+              <span className="cert-list-row__meta-item">{countLabel}</span>
+              {locationName ? (
+                <span className="cert-list-row__meta-item">
+                  <span className="cert-list-row__meta-sep" aria-hidden>
+                    ·
                   </span>
-                ))}
-              </p>
-            ) : null}
+                  <MapPin
+                    size={12}
+                    strokeWidth={1.75}
+                    aria-hidden
+                    className="cert-list-row__meta-icon"
+                  />
+                  {locationName}
+                </span>
+              ) : null}
+            </p>
           </div>
         </Link>
       ) : null}

@@ -14,6 +14,7 @@ import type { NetworkActor } from "@/lib/atproto/workspace"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useOrg } from "@/lib/groups/org-context"
 import { useFollowing } from "@/hooks/use-following"
 import {
   getRecentlyViewed,
@@ -113,7 +114,14 @@ export function useExploreData(opts: {
   search: string
 }): ExploreData {
   const { kind, filter, sub, search } = opts
-  const { did: viewerDid } = useAuth()
+  const { did: personalDid } = useAuth()
+  const { activeOrg } = useOrg()
+  // When the user is acting as a group, "by-me" + "by-follows" should
+  // operate on the group's identity, not the personal one — otherwise
+  // a group admin sees an empty "My projects" / "My certs" because
+  // the org's records live on the group DID. Same logic for follows:
+  // the group's own follow graph drives "Users I follow".
+  const viewerDid = activeOrg?.groupDid ?? personalDid
   const { subjects: followedDids } = useFollowing(viewerDid)
 
   const [state, setState] = useState<InternalState>(EMPTY)

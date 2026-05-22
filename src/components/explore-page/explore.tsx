@@ -20,6 +20,7 @@ import CertListRow from "./cert-list-row"
 import ExploreUserCard from "./explore-user-card"
 import ExploreProjectCard from "./explore-project-card"
 import ProjectListRow from "./project-list-row"
+import AccountListRow from "./account-list-row"
 import {
   ACCOUNT_FILTERS,
   CERT_FILTERS,
@@ -102,6 +103,58 @@ export default function Explore() {
     [pathname, searchParams, router],
   )
 
+  // Read the target's `data-*` attribute instead of capturing the
+  // iteration variable in a closure. The SWC minifier (Next 16's
+  // default prod-build pipeline) was hoisting `f` out of the per-
+  // iteration `.map()` scope and sharing it across every button's
+  // onClick — meaning every sidebar filter ended up calling
+  // setUrl({ filter: <last_filter_key> }), which on certs is "all"
+  // and produces no observable change. Reading from the DOM dataset
+  // is minifier-proof because there's no captured variable. Same
+  // pattern applied to the sub-category dropdown's option buttons
+  // below.
+  const onFilterButtonClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const key = e.currentTarget.dataset.filterKey
+      if (key) setUrl({ filter: key })
+    },
+    [setUrl],
+  )
+
+  const onSubOptionClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const key = e.currentTarget.dataset.subKey
+      if (key) {
+        setUrl({ sub: key === "all" ? null : key })
+        setSubPrefixOpen(false)
+      }
+    },
+    [setUrl],
+  )
+
+  const onSortOptionClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const key = e.currentTarget.dataset.sortKey
+      if (key) {
+        setUrl({ sort: key === "newest" ? null : key })
+        setSortOpen(false)
+      }
+    },
+    [setUrl],
+  )
+
+  const onAttrToggle = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const key = e.currentTarget.dataset.attrKey
+      if (!key) return
+      const next = new Set(attrs)
+      if (e.currentTarget.checked) next.add(key)
+      else next.delete(key)
+      setUrl({ attrs: next.size > 0 ? Array.from(next).join(",") : null })
+    },
+    [attrs, setUrl],
+  )
+
   const data = useExploreData({ kind, filter, sub, search })
 
   // Local search debounce: keep typing snappy, hit indexer once typing stops.
@@ -137,7 +190,8 @@ export default function Explore() {
                 <button
                   type="button"
                   className={`explore__filter${filter === f.key ? " explore__filter--active" : ""}`}
-                  onClick={() => setUrl({ filter: f.key })}
+                  data-filter-key={f.key}
+                  onClick={onFilterButtonClick}
                 >
                   {f.label}
                 </button>
@@ -157,7 +211,7 @@ export default function Explore() {
                 kind={kind}
                 sub={sub}
                 viewerDid={viewerDid}
-                setUrl={setUrl}
+                onSelect={onSubOptionClick}
                 open={subPrefixOpen}
                 setOpen={setSubPrefixOpen}
               />
@@ -176,32 +230,30 @@ export default function Explore() {
             </label>
 
             <div className="explore__chrome-actions">
-              {kind === "certs" || kind === "projects" ? (
-                <div
-                  className="explore__view-toggle"
-                  role="group"
-                  aria-label={`${kind === "certs" ? "Cert" : "Project"} view`}
+              <div
+                className="explore__view-toggle"
+                role="group"
+                aria-label={`${kind === "certs" ? "Cert" : kind === "projects" ? "Project" : "Account"} view`}
+              >
+                <button
+                  type="button"
+                  aria-label="List view"
+                  aria-pressed={view === "list"}
+                  className={`explore__view-btn${view === "list" ? " explore__view-btn--active" : ""}`}
+                  onClick={() => setUrl({ view: null })}
                 >
-                  <button
-                    type="button"
-                    aria-label="List view"
-                    aria-pressed={view === "list"}
-                    className={`explore__view-btn${view === "list" ? " explore__view-btn--active" : ""}`}
-                    onClick={() => setUrl({ view: null })}
-                  >
-                    <ListIcon size={14} strokeWidth={1.75} aria-hidden />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Gallery view"
-                    aria-pressed={view === "gallery"}
-                    className={`explore__view-btn${view === "gallery" ? " explore__view-btn--active" : ""}`}
-                    onClick={() => setUrl({ view: "gallery" })}
-                  >
-                    <LayoutGrid size={14} strokeWidth={1.75} aria-hidden />
-                  </button>
-                </div>
-              ) : null}
+                  <ListIcon size={14} strokeWidth={1.75} aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Gallery view"
+                  aria-pressed={view === "gallery"}
+                  className={`explore__view-btn${view === "gallery" ? " explore__view-btn--active" : ""}`}
+                  onClick={() => setUrl({ view: "gallery" })}
+                >
+                  <LayoutGrid size={14} strokeWidth={1.75} aria-hidden />
+                </button>
+              </div>
               <Popover
                 open={sortOpen}
                 onClose={() => setSortOpen(false)}
@@ -227,10 +279,8 @@ export default function Explore() {
                       key={s}
                       type="button"
                       className={`popover__item${sort === s ? " popover__item--active" : ""}`}
-                      onClick={() => {
-                        setUrl({ sort: s === "newest" ? null : s })
-                        setSortOpen(false)
-                      }}
+                      data-sort-key={s}
+                      onClick={onSortOptionClick}
                     >
                       {SORT_LABEL[s]}
                     </button>
@@ -263,14 +313,8 @@ export default function Explore() {
                       <input
                         type="checkbox"
                         checked={on}
-                        onChange={() => {
-                          const next = new Set(attrs)
-                          if (on) next.delete(opt.key)
-                          else next.add(opt.key)
-                          setUrl({
-                            attrs: next.size ? Array.from(next).join(",") : null,
-                          })
-                        }}
+                        data-attr-key={opt.key}
+                        onChange={onAttrToggle}
                       />
                       {opt.label}
                     </label>
@@ -353,14 +397,20 @@ function SubPrefixDropdown({
   kind,
   sub,
   viewerDid,
-  setUrl,
+  onSelect,
   open,
   setOpen,
 }: {
   kind: ExploreKind
   sub: string
   viewerDid: string | null
-  setUrl: (patch: Record<string, string | null>) => void
+  /** Click handler shared across all option buttons — reads the
+   *  selected key from `event.currentTarget.dataset.subKey` rather
+   *  than capturing the loop variable in a closure, so the SWC
+   *  minifier can't share a single hoisted variable across all
+   *  iterations (see comment on `onFilterButtonClick` in the parent
+   *  Explore component). */
+  onSelect: (e: React.MouseEvent<HTMLButtonElement>) => void
   open: boolean
   setOpen: (next: boolean) => void
 }) {
@@ -395,10 +445,8 @@ function SubPrefixDropdown({
             disabled={disabled}
             title={disabled ? "Sign in to filter by your role" : undefined}
             className={`popover__item${sub === opt.key ? " popover__item--active" : ""}`}
-            onClick={() => {
-              setUrl({ sub: opt.key === "all" ? null : opt.key })
-              setOpen(false)
-            }}
+            data-sub-key={opt.key}
+            onClick={onSelect}
           >
             {opt.label}
           </button>
@@ -502,6 +550,17 @@ function ResultsArea({
       actors = actors.filter((a) => !!a.description)
     actors = sortUsers(actors, sort)
     if (actors.length === 0) return <EmptyResults kind={kind} />
+    if (view === "list") {
+      return (
+        <ul className="explore__list explore__list--accounts">
+          {actors.map((a) => (
+            <li key={a.did}>
+              <AccountListRow actor={a} />
+            </li>
+          ))}
+        </ul>
+      )
+    }
     return (
       <ul className="explore__grid explore__grid--users">
         {actors.map((a) => (
