@@ -80,8 +80,17 @@ html:has(.explore-page) .desktop-top-bar__row {
   /* Flush-left to the viewport. The brandmark in the navbar sits
      ~32px in because of the top bar's own padding; the rail's
      32px left padding lands its inner controls on the same vertical
-     line as the brandmark above without adding any extra offset. */
-  padding: 0 16px 0 32px;
+     line as the brandmark above without adding any extra offset.
+     No right padding — children that need it set their own — so
+     the kind-switch's underline can extend to the vertical divider
+     at the sidebar's right edge. */
+  padding: 0 0 0 32px;
+}
+
+/* Filter list rows need their own right padding now that the
+   sidebar wrapper doesn't reserve any. */
+.explore__filter-list {
+  padding-right: 16px;
 }
 
 /* ---- Primary row: underline tabs ---- */
