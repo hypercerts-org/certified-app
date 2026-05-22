@@ -170,8 +170,10 @@ export default function ActivityDetail({
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const tabParam = searchParams?.get("tab") ?? "overview"
-  const activeTab: "overview" | "description" | "contributors" =
-    tabParam === "description" || tabParam === "contributors"
+  const activeTab: "overview" | "description" | "contributors" | "updates" =
+    tabParam === "description" ||
+    tabParam === "contributors" ||
+    tabParam === "updates"
       ? tabParam
       : "overview"
 
@@ -886,6 +888,8 @@ export default function ActivityDetail({
             {rkey ? (
               <ContextUpdates
                 subjectUri={`at://${did}/org.hypercerts.claim.activity/${rkey}`}
+                variant="overview"
+                seeAllHref={pathname ? `${pathname}?tab=updates` : null}
               />
             ) : null}
           </>
@@ -941,6 +945,13 @@ export default function ActivityDetail({
               <p className="cert-detail__short-desc">No contributors listed.</p>
             )}
           </section>
+        ) : activeTab === "updates" ? (
+          rkey ? (
+            <ContextUpdates
+              subjectUri={`at://${did}/org.hypercerts.claim.activity/${rkey}`}
+              variant="full"
+            />
+          ) : null
         ) : null}
       </div>
     </article>

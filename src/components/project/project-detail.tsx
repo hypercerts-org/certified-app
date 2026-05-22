@@ -245,15 +245,19 @@ export default function ProjectDetail({
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const tabParam = searchParams?.get("tab") ?? "overview"
-  const activeTab: "overview" | "description" | "certs" =
-    tabParam === "description" || tabParam === "certs" ? tabParam : "overview"
+  const activeTab: "overview" | "description" | "certs" | "updates" =
+    tabParam === "description" ||
+    tabParam === "certs" ||
+    tabParam === "updates"
+      ? tabParam
+      : "overview"
 
   /** Build a URL pointing at another subtab on this page —
    *  preserves any other query params the user might be carrying
    *  (rare today; future-proof). Returns null when pathname isn't
    *  resolved yet so callers can skip rendering the link. */
   const buildTabHref = useCallback(
-    (tab: "overview" | "description" | "certs"): string | null => {
+    (tab: "overview" | "description" | "certs" | "updates"): string | null => {
       if (!pathname) return null
       const params = new URLSearchParams(searchParams?.toString() ?? "")
       if (tab === "overview") params.delete("tab")
@@ -266,6 +270,7 @@ export default function ProjectDetail({
 
   const descriptionHref = buildTabHref("description")
   const certsHref = buildTabHref("certs")
+  const updatesHref = buildTabHref("updates")
 
   // Image resolution order:
   //   1. In-flight preview (object URL — atproto PDSes don't serve a
@@ -992,6 +997,8 @@ export default function ProjectDetail({
 
           <ContextUpdates
             subjectUri={`at://${did}/org.hypercerts.collection/${rkey}`}
+            variant="overview"
+            seeAllHref={updatesHref}
           />
         </>
         ) : null}
@@ -1171,6 +1178,13 @@ export default function ProjectDetail({
             />
           )}
         </section>
+        ) : null}
+
+        {activeTab === "updates" ? (
+          <ContextUpdates
+            subjectUri={`at://${did}/org.hypercerts.collection/${rkey}`}
+            variant="full"
+          />
         ) : null}
       </article>
     </>

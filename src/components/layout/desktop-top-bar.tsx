@@ -63,6 +63,7 @@ const CERT_DETAIL_TABS: { key: string; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "description", label: "Description" },
   { key: "contributors", label: "Contributors" },
+  { key: "updates", label: "Updates" },
 ];
 
 /** Project detail page subtabs. Same `?tab=` URL contract as the
@@ -72,6 +73,7 @@ const PROJECT_DETAIL_TABS: { key: string; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "description", label: "Description" },
   { key: "certs", label: "Certs" },
+  { key: "updates", label: "Updates" },
 ];
 
 /**
