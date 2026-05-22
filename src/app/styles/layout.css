@@ -1962,6 +1962,18 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   border-bottom: 1px solid var(--border-medium);
 }
 
+/* Align the first tab's text with the page title text in row-1.
+   The row's default 12px left padding + the first tab's 18px
+   button padding-left puts tab text at x=30; the page title sits
+   at x=116 (after hamburger + brandmark + gaps). Adding 86px here
+   lines them up so row-2 reads as "content column" with the same
+   left edge as row-1's title. Skipped when the row carries a back
+   button (cert / project detail pages) — the back button owns the
+   left gutter there. */
+.desktop-top-bar__row--tabs:not(:has(.desktop-top-bar__back)) {
+  padding-left: 98px;
+}
+
 .desktop-top-bar__left {
   display: flex;
   align-items: center;

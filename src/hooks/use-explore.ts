@@ -220,7 +220,7 @@ async function loadProjects(args: {
     const r = await fetchProjects({
       authors: [viewerDid],
       search: search || undefined,
-      first: 50,
+      first: 100,
       signal,
     })
     return { projects: r.records, certDids }
@@ -230,7 +230,7 @@ async function loadProjects(args: {
     const r = await fetchProjects({
       authors: Array.from(followedDids),
       search: search || undefined,
-      first: 50,
+      first: 100,
       signal,
     })
     return { projects: r.records, certDids }
@@ -250,7 +250,7 @@ async function loadProjects(args: {
   }
   const r = await fetchProjects({
     search: search || undefined,
-    first: 50,
+    first: 100,
     signal,
   })
   return { projects: r.records, certDids }
@@ -279,7 +279,7 @@ async function loadCerts(args: {
     const r = await fetchUserIndexerActivities(viewerDid, {
       mode: "authored",
       search: search || undefined,
-      first: 50,
+      first: 100,
       signal,
     })
     return { certs: r.records, certDids: r.dids }
@@ -288,7 +288,7 @@ async function loadCerts(args: {
     const r = await fetchUserIndexerActivities(viewerDid, {
       mode: "contributed",
       search: search || undefined,
-      first: 50,
+      first: 100,
       signal,
     })
     return { certs: r.records, certDids: r.dids }
@@ -300,7 +300,7 @@ async function loadCerts(args: {
     const r = await fetchIndexerActivities({
       authors: [viewerDid],
       search: search || undefined,
-      first: 50,
+      first: 100,
       signal,
     })
     return { certs: r.records, certDids: r.dids }
@@ -311,7 +311,7 @@ async function loadCerts(args: {
     const r = await fetchIndexerActivities({
       authors: Array.from(followedDids),
       search: search || undefined,
-      first: 50,
+      first: 100,
       signal,
     })
     return { certs: r.records, certDids: r.dids }
@@ -336,7 +336,7 @@ async function loadCerts(args: {
   }
   const r = await fetchIndexerActivities({
     search: search || undefined,
-    first: 50,
+    first: 100,
     signal,
   })
   return { certs: r.records, certDids: r.dids }

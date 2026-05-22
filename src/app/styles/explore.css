@@ -505,7 +505,10 @@ html:has(.explore-page) .desktop-top-bar__row {
 }
 
 .cert-list-row:hover {
-  background: var(--bg-subtle);
+  /* --bg-subtle doesn't exist in the token set; fell through to
+     no background. Use --bg-sunken for a clearly-visible hover
+     wash that highlights the whole row, not just the title link. */
+  background: var(--bg-sunken);
 }
 
 .cert-list-row__link {
