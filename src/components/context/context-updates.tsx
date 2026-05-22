@@ -2,13 +2,23 @@
 
 import { useLayoutEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { ChevronDown, ChevronUp, MessageSquareText } from "lucide-react"
+import {
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  File,
+  MessageSquareText,
+} from "lucide-react"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
 import { useContextUpdates } from "@/hooks/use-context-updates"
 import {
-  extractContentBlobCid,
+  formatAttachmentSize,
+  mimeTypeLabel,
+  resolveAttachment,
+  uriHost,
   type ContextAttachmentRecord,
+  type ResolvedAttachment,
 } from "@/lib/atproto/context-attachment"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
@@ -67,8 +77,6 @@ export default function ContextUpdates({
   }
 
   if (error) {
-    // Swallow non-fatal errors — the rest of the detail page is
-    // useful even when the updates list fails to load.
     return null
   }
 
@@ -145,7 +153,6 @@ interface UpdateCardProps {
 }
 
 function UpdateCard({ record, clamp }: UpdateCardProps) {
-  const [imageFailed, setImageFailed] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [isTruncated, setIsTruncated] = useState(false)
   const docWrapRef = useRef<HTMLDivElement | null>(null)
@@ -162,18 +169,16 @@ function UpdateCard({ record, clamp }: UpdateCardProps) {
     typeof value.createdAt === "string" ? value.createdAt : null
   const createdLabel = createdAt ? formatShortDate(createdAt) : null
 
-  const firstImage = (value.content ?? [])
-    .map((entry) => extractContentBlobCid(entry))
-    .find((cid): cid is string => !!cid)
-  const imageUrl =
-    firstImage && authorDid
-      ? buildAvatarUrlFromCid(authorDid, firstImage)
-      : null
+  // Normalize the heterogeneous content[] union into render-ready
+  // attachment shapes. Filters out malformed entries silently —
+  // partial breakage shouldn't take the whole card down.
+  const attachments: ResolvedAttachment[] = (value.content ?? [])
+    .map((entry) => resolveAttachment(entry))
+    .filter((a): a is ResolvedAttachment => a !== null)
 
-  // After render: if we're in clamp mode and the description's
-  // scroll height exceeds the visible (clamped) height, surface the
-  // "Read more" toggle. Re-measure when the record itself changes —
-  // the description content reference identity captures the swap.
+  // After render: if clamped and the description's scroll height
+  // exceeds the visible (clamped) height, surface the "Read more"
+  // toggle. Re-measure when the content reference identity changes.
   useLayoutEffect(() => {
     if (!clamp || expanded) {
       setIsTruncated(false)
@@ -181,7 +186,6 @@ function UpdateCard({ record, clamp }: UpdateCardProps) {
     }
     const el = docWrapRef.current
     if (!el) return
-    // 2px tolerance for sub-pixel rounding.
     setIsTruncated(el.scrollHeight - el.clientHeight > 2)
   }, [clamp, expanded, value.description])
 
@@ -191,65 +195,163 @@ function UpdateCard({ record, clamp }: UpdateCardProps) {
 
   return (
     <li className="context-updates__item">
-      {imageUrl && !imageFailed ? (
-        <div className="context-updates__image-wrap">
+      <header className="context-updates__item-head">
+        {title ? (
+          <h3 className="context-updates__title">{title}</h3>
+        ) : null}
+        {createdLabel ? (
+          <time
+            className="context-updates__when"
+            dateTime={createdAt ?? undefined}
+          >
+            {createdLabel}
+          </time>
+        ) : null}
+      </header>
+
+      {value.description ? (
+        <>
+          <div ref={docWrapRef} className={docClass}>
+            <LeafletDocument
+              value={value.description}
+              did={authorDid ?? undefined}
+              className="context-updates__doc"
+              minHeadingLevel={3}
+            />
+          </div>
+          {clamp && (isTruncated || expanded) ? (
+            <button
+              type="button"
+              className="context-updates__expand"
+              onClick={() => setExpanded((v) => !v)}
+              aria-expanded={expanded}
+            >
+              {expanded ? (
+                <>
+                  Show less
+                  <ChevronUp size={14} strokeWidth={1.75} aria-hidden />
+                </>
+              ) : (
+                <>
+                  Read more
+                  <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
+                </>
+              )}
+            </button>
+          ) : null}
+        </>
+      ) : null}
+
+      {attachments.length > 0 && authorDid ? (
+        <ul
+          className="context-updates__attachments"
+          aria-label={`${attachments.length} attachment${attachments.length === 1 ? "" : "s"}`}
+        >
+          {attachments.map((a, i) => (
+            <AttachmentTile key={`${i}-${attachmentKey(a)}`} attachment={a} did={authorDid} />
+          ))}
+        </ul>
+      ) : null}
+    </li>
+  )
+}
+
+function attachmentKey(a: ResolvedAttachment): string {
+  if (a.kind === "uri") return a.uri
+  return a.cid
+}
+
+function AttachmentTile({
+  attachment,
+  did,
+}: {
+  attachment: ResolvedAttachment
+  did: string
+}) {
+  if (attachment.kind === "image") {
+    const url = buildAvatarUrlFromCid(did, attachment.cid)
+    if (!url) return null
+    return (
+      <li className="context-updates__attachment context-updates__attachment--image">
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="context-updates__attachment-link"
+          aria-label="Open image in new tab"
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={imageUrl}
+            src={url}
             alt=""
-            className="context-updates__image"
             loading="lazy"
-            onError={() => setImageFailed(true)}
+            className="context-updates__attachment-img"
           />
-        </div>
-      ) : null}
-      <div className="context-updates__body">
-        <header className="context-updates__item-head">
-          {title ? (
-            <h3 className="context-updates__title">{title}</h3>
-          ) : null}
-          {createdLabel ? (
-            <time
-              className="context-updates__when"
-              dateTime={createdAt ?? undefined}
-            >
-              {createdLabel}
-            </time>
-          ) : null}
-        </header>
-        {value.description ? (
-          <>
-            <div ref={docWrapRef} className={docClass}>
-              <LeafletDocument
-                value={value.description}
-                did={authorDid ?? undefined}
-                className="context-updates__doc"
-                minHeadingLevel={3}
-              />
-            </div>
-            {clamp && (isTruncated || expanded) ? (
-              <button
-                type="button"
-                className="context-updates__expand"
-                onClick={() => setExpanded((v) => !v)}
-                aria-expanded={expanded}
-              >
-                {expanded ? (
-                  <>
-                    Show less
-                    <ChevronUp size={14} strokeWidth={1.75} aria-hidden />
-                  </>
-                ) : (
-                  <>
-                    Read more
-                    <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
-                  </>
-                )}
-              </button>
+        </a>
+      </li>
+    )
+  }
+
+  if (attachment.kind === "file") {
+    const url = buildAvatarUrlFromCid(did, attachment.cid)
+    if (!url) return null
+    const label = mimeTypeLabel(attachment.mimeType)
+    const sizeLabel = formatAttachmentSize(attachment.size)
+    return (
+      <li className="context-updates__attachment context-updates__attachment--file">
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="context-updates__attachment-link"
+          aria-label={`Open ${label} attachment in new tab`}
+          download
+        >
+          <File
+            size={20}
+            strokeWidth={1.5}
+            aria-hidden
+            className="context-updates__attachment-icon"
+          />
+          <span className="context-updates__attachment-meta">
+            <span className="context-updates__attachment-label">{label}</span>
+            {sizeLabel ? (
+              <span className="context-updates__attachment-size">
+                {sizeLabel}
+              </span>
             ) : null}
-          </>
-        ) : null}
-      </div>
+          </span>
+        </a>
+      </li>
+    )
+  }
+
+  // attachment.kind === "uri"
+  const host = uriHost(attachment.uri)
+  return (
+    <li className="context-updates__attachment context-updates__attachment--uri">
+      <a
+        href={attachment.uri}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="context-updates__attachment-link"
+      >
+        <ExternalLink
+          size={20}
+          strokeWidth={1.5}
+          aria-hidden
+          className="context-updates__attachment-icon"
+        />
+        <span className="context-updates__attachment-meta">
+          <span className="context-updates__attachment-label">{host}</span>
+          <span
+            className="context-updates__attachment-uri"
+            title={attachment.uri}
+          >
+            {attachment.uri}
+          </span>
+        </span>
+      </a>
     </li>
   )
 }

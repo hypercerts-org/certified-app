@@ -53,44 +53,13 @@
 }
 
 .context-updates__item {
-  display: grid;
-  grid-template-columns: 96px 1fr;
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   padding: 14px;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: var(--bg-primary, transparent);
-}
-
-.context-updates__item:has(.context-updates__image-wrap):not(:has(.context-updates__image-wrap *)) {
-  grid-template-columns: 1fr;
-}
-
-.context-updates__item:not(:has(.context-updates__image-wrap)) {
-  grid-template-columns: 1fr;
-}
-
-.context-updates__image-wrap {
-  position: relative;
-  width: 96px;
-  height: 96px;
-  border-radius: 6px;
-  overflow: hidden;
-  background: var(--bg-subtle);
-}
-
-.context-updates__image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.context-updates__body {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
 }
 
 .context-updates__item-head {
@@ -191,14 +160,105 @@
   margin: 0;
 }
 
+/* ---- Attachments strip below the description ---- */
+
+.context-updates__attachments {
+  list-style: none;
+  margin: 4px 0 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.context-updates__attachment {
+  display: flex;
+}
+
+.context-updates__attachment-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 6px;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+/* Image: square thumbnail. `display: block` (not flex) so the inner
+   img's object-fit: cover correctly crops the bitmap to fill. */
+.context-updates__attachment--image .context-updates__attachment-link {
+  display: block;
+  width: 88px;
+  height: 88px;
+  background: var(--bg-subtle);
+  overflow: hidden;
+  padding: 0;
+}
+
+.context-updates__attachment-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.context-updates__attachment--image .context-updates__attachment-link:hover {
+  outline: 2px solid var(--border-strong, var(--fg-secondary));
+  outline-offset: -2px;
+}
+
+/* File + URI: pill-shaped link card with icon + meta. */
+.context-updates__attachment--file .context-updates__attachment-link,
+.context-updates__attachment--uri .context-updates__attachment-link {
+  padding: 8px 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-primary, transparent);
+  max-width: 260px;
+}
+
+.context-updates__attachment--file .context-updates__attachment-link:hover,
+.context-updates__attachment--uri .context-updates__attachment-link:hover {
+  border-color: var(--border-strong, var(--fg-secondary));
+  background: var(--bg-subtle, transparent);
+}
+
+.context-updates__attachment-icon {
+  color: var(--fg-secondary);
+  flex-shrink: 0;
+}
+
+.context-updates__attachment-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.context-updates__attachment-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  line-height: 1.3;
+}
+
+.context-updates__attachment-size,
+.context-updates__attachment-uri {
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (max-width: 600px) {
   .context-updates__item {
-    grid-template-columns: 64px 1fr;
-    gap: 12px;
     padding: 12px;
   }
-  .context-updates__image-wrap {
-    width: 64px;
-    height: 64px;
+  .context-updates__attachment--image .context-updates__attachment-link {
+    width: 72px;
+    height: 72px;
   }
 }

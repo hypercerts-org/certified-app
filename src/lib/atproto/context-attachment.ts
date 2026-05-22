@@ -24,6 +24,17 @@ export interface ContextAttachmentSubject {
   cid: string
 }
 
+/**
+ * An entry in `value.content[]`. The lexicon uses a union with two
+ * known variants today:
+ *
+ *   - `org.hypercerts.defs#smallBlob` — a file blob (image, PDF, …)
+ *     wrapped in a strong-typed envelope with mimeType + size.
+ *   - `org.hypercerts.defs#uri` — an external link string.
+ *
+ * Renderers should branch on `$type` and only fall back to the legacy
+ * "first blob is the hero" pattern when the `$type` is missing.
+ */
 export interface ContextAttachmentContentBlob {
   $type?: string
   blob?: {
@@ -32,6 +43,8 @@ export interface ContextAttachmentContentBlob {
     mimeType?: string
     size?: number
   }
+  /** Present when `$type === "org.hypercerts.defs#uri"`. */
+  uri?: string
 }
 
 export interface ContextAttachmentValue {
@@ -160,4 +173,94 @@ export function extractContentBlobCid(
     return ref.$link
   }
   return null
+}
+
+export type ResolvedAttachment =
+  | {
+      kind: "image"
+      cid: string
+      mimeType: string
+      size: number | null
+    }
+  | {
+      kind: "file"
+      cid: string
+      mimeType: string
+      size: number | null
+    }
+  | {
+      kind: "uri"
+      uri: string
+    }
+
+/**
+ * Normalize the heterogeneous `content[]` union into one of three
+ * render-friendly shapes:
+ *
+ *   - `image` — a blob whose mimeType starts with `image/`. Renderers
+ *     show it as a thumbnail.
+ *   - `file`  — any other blob (PDFs, audio, generic binaries). Show
+ *     as a downloadable file tile.
+ *   - `uri`   — an external link (`org.hypercerts.defs#uri`). Show as
+ *     a link card.
+ *
+ * Returns null when the entry is too malformed to render (e.g. blob
+ * variant with no resolvable CID).
+ */
+export function resolveAttachment(
+  entry: ContextAttachmentContentBlob,
+): ResolvedAttachment | null {
+  if (entry.$type === "org.hypercerts.defs#uri") {
+    if (typeof entry.uri !== "string" || entry.uri.length === 0) return null
+    return { kind: "uri", uri: entry.uri }
+  }
+
+  // Treat anything else with a resolvable blob as a blob attachment.
+  // The lexicon-canonical variant is `org.hypercerts.defs#smallBlob`,
+  // but older / unknown blob $types still surface as files if the
+  // CID resolves.
+  const cid = extractContentBlobCid(entry)
+  if (!cid) return null
+  const mimeType =
+    typeof entry.blob?.mimeType === "string" ? entry.blob.mimeType : ""
+  const size = typeof entry.blob?.size === "number" ? entry.blob.size : null
+  if (mimeType.startsWith("image/")) {
+    return { kind: "image", cid, mimeType, size }
+  }
+  return { kind: "file", cid, mimeType, size }
+}
+
+/** Human-friendly file size — bytes → "12.4 KB" / "3.1 MB". Returns
+ *  null when size is missing so the renderer can skip the line. */
+export function formatAttachmentSize(bytes: number | null): string | null {
+  if (bytes === null || !Number.isFinite(bytes) || bytes < 0) return null
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+}
+
+/** Short label for a file's mimeType — falls back to "File" when the
+ *  mimeType is missing or unrecognised. Used as the headline on file
+ *  tiles ("PDF", "ZIP", …). */
+export function mimeTypeLabel(mimeType: string): string {
+  if (!mimeType) return "File"
+  const sub = mimeType.split("/")[1] ?? ""
+  if (!sub) return "File"
+  // `application/pdf` → "PDF", `application/zip` → "ZIP",
+  // `audio/mpeg` → "MPEG", etc. Strip trailing parameters /
+  // codec suffixes after `+` (e.g. `image/svg+xml` → "SVG").
+  const stripped = sub.split("+")[0].split(";")[0].toUpperCase()
+  return stripped || "File"
+}
+
+/** Best-effort hostname for a URI attachment — strips protocol,
+ *  drops `www.`, keeps the path host. Used as the tile headline. */
+export function uriHost(uri: string): string {
+  try {
+    const u = new URL(uri)
+    return u.hostname.replace(/^www\./, "")
+  } catch {
+    return uri
+  }
 }
