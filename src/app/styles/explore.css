@@ -30,19 +30,33 @@ html:has(.explore-page) .desktop-top-bar__row {
   }
   .app-shell:has(.explore-page) .app-shell__content {
     max-width: none;
-    /* Hug the navbar's row-2 bottom border so the page-frame
-       borders (vertical divider, sidebar filters) connect to it
-       without a vertical gap. The navbar offset still applies but
-       the extra 16px of breathing room is removed. */
+    /* Zero out every edge padding so the page-frame borders
+       (navbar row-2 bottom border, sidebar/main divider, footer
+       top border) all meet without a gap. Inner content gets its
+       own padding so the body still breathes. */
     padding-top: var(--navbar-height);
+    padding-bottom: 0;
     padding-left: 0;
     padding-right: 0;
   }
   .explore-page {
     padding-top: 0;
+    padding-bottom: 0;
     padding-left: 0;
     padding-right: 0;
   }
+
+  /* Footer normally carries margin-top: 48px for airy spacing on
+     other pages; on /explore the sidebar/main divider needs to
+     meet the footer top border without a gap. The inner pane
+     padding-bottom takes over the breathing-room job. */
+  html:has(.explore-page) .site-footer {
+    margin-top: 0;
+  }
+}
+
+.explore-page {
+  position: relative;
 }
 
 .explore__layout {
@@ -50,17 +64,15 @@ html:has(.explore-page) .desktop-top-bar__row {
   grid-template-columns: 220px 1fr;
   gap: 0;
   align-items: start;
-  position: relative;
 }
 
 /* Vertical divider between the sidebar and the main pane,
-   matching GitHub's repo-list layout. A pseudo-element so the
-   line extends the full content height regardless of which column
-   is taller (sidebar is sticky; main can be arbitrarily long).
-   Uses --border-medium (~10% opacity black) for a stronger weight
-   than the default --border-subtle — the divider does load-
-   bearing visual work separating the two panes. */
-.explore__layout::before {
+   matching GitHub's repo-list layout. Anchored on .explore-page
+   (not .explore__layout) so it spans every bit of the page
+   including the bottom padding — the divider meets the
+   .site-footer border-top flush instead of stopping where the
+   main column's last card ends. */
+.explore-page::before {
   content: "";
   position: absolute;
   top: 0;
@@ -81,27 +93,23 @@ html:has(.explore-page) .desktop-top-bar__row {
 /* ---------- Sidebar ---------- */
 
 .explore__sidebar {
-  position: sticky;
-  top: 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  /* Flush-left to the viewport, with breathing room at the top so
-     the filter list doesn't kiss the navbar's bottom border. The
-     vertical divider (drawn on .explore__layout::before) still
-     extends from y=0 to meet that border without a gap — only the
-     content inside the rail is pushed down. Left padding matches
-     the navbar's 12px so the rail content lines up under the
-     hamburger / brandmark above. */
-  padding: 20px 0 0 12px;
+  /* Scrolls with the page (matches the top bar's no-sticky
+     behavior). Flush-left to the viewport, with breathing room at
+     the top + right so the active filter pill doesn't touch the
+     vertical divider. Bottom padding gives the rail air above the
+     footer's border. */
+  padding: 20px 12px 32px 12px;
 }
 
 /* Filter list rows need their own right padding now that the
    sidebar wrapper doesn't reserve any. */
 .explore__filter-list {
-  padding-right: 16px;
   list-style: none;
   margin: 0;
+  padding: 0;
 }
 
 /* ---- Primary row: underline tabs ---- */
@@ -227,12 +235,17 @@ html:has(.explore-page) .desktop-top-bar__row {
 }
 
 .explore__filter:hover {
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
-.explore__filter--active {
+.explore__filter--active,
+.explore__filter--active:hover {
+  /* The hover style on the generic filter dimmed the background
+     to bg-sunken while the active style flips text to white —
+     producing unreadable white-on-light text mid-hover. Keep the
+     fg-primary fill on hover when the filter is already active. */
   background: var(--fg-primary);
-  color: var(--bg-primary, #fff);
+  color: #ffffff;
 }
 
 /* ---------- Main pane ---------- */
@@ -242,12 +255,13 @@ html:has(.explore-page) .desktop-top-bar__row {
   /* Center the content in the space right of the sidebar. The grid
      cell takes the full remaining width; the inner content is
      bounded + auto-margined so it sits in the middle of the cell.
-     Top padding matches the sidebar so both panes' content starts
-     at the same y, with the navbar border still flush at y=0. */
+     Vertical padding gives the body air; the surrounding panes
+     (.app-shell__content, .explore-page) carry no padding so the
+     page-frame borders meet the navbar + footer borders flush. */
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 20px 24px 0;
+  padding: 20px 24px 32px;
 }
 
 /* ---------- Sub-category dropdown prefix to the search bar ---------- */
@@ -370,7 +384,6 @@ html:has(.explore-page) .desktop-top-bar__row {
 .popover__menu {
   position: absolute;
   top: calc(100% + 4px);
-  right: 0;
   z-index: 101;
   display: flex;
   flex-direction: column;
@@ -380,6 +393,14 @@ html:has(.explore-page) .desktop-top-bar__row {
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.popover__menu--right {
+  right: 0;
+}
+
+.popover__menu--left {
+  left: 0;
 }
 
 .popover__item {

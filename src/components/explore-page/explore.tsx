@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
+  ArrowUpDown,
   Award,
   ChevronDown,
   Filter as FilterIcon,
@@ -10,7 +11,6 @@ import {
   LayoutGrid,
   List as ListIcon,
   Search,
-  SlidersHorizontal,
   Users,
 } from "lucide-react"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -211,7 +211,7 @@ export default function Explore() {
                     onClick={() => setSortOpen((v) => !v)}
                     aria-expanded={sortOpen}
                   >
-                    <SlidersHorizontal
+                    <ArrowUpDown
                       size={13}
                       strokeWidth={1.75}
                       aria-hidden
@@ -317,6 +317,7 @@ function SubPrefixDropdown({
     <Popover
       open={open}
       onClose={() => setOpen(false)}
+      align="left"
       trigger={
         <button
           type="button"
@@ -381,11 +382,18 @@ function Popover({
   onClose,
   trigger,
   children,
+  align = "right",
 }: {
   open: boolean
   onClose: () => void
   trigger: React.ReactNode
   children: React.ReactNode
+  /** Which edge of the menu aligns with the trigger.
+   *  "right" (default) — menu's right edge under trigger's right (good
+   *  for trailing controls like sort/filter).
+   *  "left" — menu's left edge under trigger's left (good for leading
+   *  controls like the sub-category dropdown at the start of the chrome). */
+  align?: "left" | "right"
 }) {
   return (
     <div className="popover">
@@ -397,7 +405,10 @@ function Popover({
             onClick={onClose}
             aria-hidden
           />
-          <div className="popover__menu" role="menu">
+          <div
+            className={`popover__menu popover__menu--${align}`}
+            role="menu"
+          >
             {children}
           </div>
         </>
