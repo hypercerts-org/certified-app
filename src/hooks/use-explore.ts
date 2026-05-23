@@ -459,7 +459,6 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
       sub !== "all" ? getOrgDids() : Promise.resolve(new Set<string>()),
     ])
     let scoped = page.actors
-    const closureMeta: EndorsementClosureMeta | null = null
     if (filter === "follows") {
       if (!viewerDid) return EMPTY_PAGE
       scoped = scoped.filter((a) => followedDids.has(a.did))
@@ -485,7 +484,7 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
           a.did.includes(q),
       )
     }
-    return { ...EMPTY_PAGE, users: scoped, endorsementClosure: closureMeta }
+    return { ...EMPTY_PAGE, users: scoped }
   }
 
   // "all" / "new" — server-backed; paginate via NetworkActors.

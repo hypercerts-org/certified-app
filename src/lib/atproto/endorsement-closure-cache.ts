@@ -45,16 +45,10 @@ export function invalidateEndorsementClosure(): void {
   for (const s of subscribers) s()
 }
 
-/** For tests: snapshot the current version. */
-export function _peekClosureCacheVersion(): number {
-  return version
-}
-
 /**
- * Subscribe-style API consumed by the React hook. Exposed for
- * `useEndorsementClosureCacheVersion` in `use-explore.ts`. Don't
- * call from non-React code — use `invalidateEndorsementClosure`
- * to signal a mutation instead.
+ * Subscribe-style API consumed by the React hook. Don't call from
+ * non-React code — use `invalidateEndorsementClosure` to signal a
+ * mutation instead.
  */
 export function subscribeClosureCacheVersion(cb: () => void): () => void {
   subscribers.add(cb)
