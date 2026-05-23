@@ -551,18 +551,6 @@
   flex-shrink: 0;
 }
 
-.feed-card__badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  color: var(--fg-secondary);
-  background: var(--bg-sunken);
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
 .feed-card__label {
   display: inline-flex;
   align-items: center;
@@ -591,21 +579,6 @@
 .feed-card__label--test {
   color: var(--fg-muted);
   background: var(--bg-raised);
-}
-
-.feed-card__scope {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  color: var(--color-accent);
-  background: var(--bg-raised);
-  padding: 2px 8px;
-  border-radius: 999px;
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* ---- Load More ---- */
