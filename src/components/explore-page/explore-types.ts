@@ -1,29 +1,8 @@
 export type ExploreKind = "accounts" | "projects" | "certs"
 
-export type AccountFilter =
-  | "recent"
-  | "my-groups"
-  | "follows"
-  | "endorsed"
-  | "all"
-
-export type ProjectFilter =
-  | "recent"
-  | "by-me"
-  | "by-follows"
-  | "by-endorsed"
-  | "all"
-
-export type CertFilter =
-  | "recent"
-  | "by-me"
-  | "by-follows"
-  | "by-endorsed"
-  | "all"
-
 export type SortOrder = "newest" | "oldest" | "alphabetical"
 
-export interface FilterOption {
+interface FilterOption {
   key: string
   label: string
   /** Whether the filter requires the viewer to be signed in. Used to
@@ -31,7 +10,7 @@ export interface FilterOption {
   requiresAuth?: boolean
 }
 
-export const ACCOUNT_FILTERS: FilterOption[] = [
+const ACCOUNT_FILTERS: FilterOption[] = [
   { key: "recent", label: "Recently viewed" },
   { key: "my-groups", label: "My organizations", requiresAuth: true },
   { key: "follows", label: "Accounts I follow", requiresAuth: true },
@@ -39,7 +18,7 @@ export const ACCOUNT_FILTERS: FilterOption[] = [
   { key: "all", label: "All accounts" },
 ]
 
-export const PROJECT_FILTERS: FilterOption[] = [
+const PROJECT_FILTERS: FilterOption[] = [
   { key: "recent", label: "Recently viewed" },
   { key: "by-me", label: "My projects", requiresAuth: true },
   { key: "by-follows", label: "Accounts I follow", requiresAuth: true },
@@ -47,7 +26,7 @@ export const PROJECT_FILTERS: FilterOption[] = [
   { key: "all", label: "All projects" },
 ]
 
-export const CERT_FILTERS: FilterOption[] = [
+const CERT_FILTERS: FilterOption[] = [
   { key: "recent", label: "Recently viewed" },
   { key: "by-me", label: "My certs", requiresAuth: true },
   { key: "by-follows", label: "Accounts I follow", requiresAuth: true },
@@ -71,11 +50,6 @@ export function defaultFilterForKind(kind: ExploreKind): string {
 // Sub-category (second segmented row in the sidebar, under the kind switcher)
 // ---------------------------------------------------------------------------
 
-export type AccountSub = "all" | "people" | "organizations"
-export type CertSub = "all" | "created" | "contributed"
-export type ProjectSub = "all"
-export type SubCategory = AccountSub | CertSub | ProjectSub
-
 /** Options shown in the sub-category row per kind. Empty array =
  *  don't render the row at all. */
 export const SUB_OPTIONS: Record<
@@ -95,13 +69,13 @@ export const SUB_OPTIONS: Record<
   ],
 }
 
-export function defaultSubForKind(kind: ExploreKind): string {
+function defaultSubForKind(): string {
   return "all"
 }
 
 export function parseSubForKind(kind: ExploreKind, v: string | null): string {
-  if (!v) return defaultSubForKind(kind)
+  if (!v) return defaultSubForKind()
   const opts = SUB_OPTIONS[kind]
   if (opts.some((o) => o.key === v)) return v
-  return defaultSubForKind(kind)
+  return defaultSubForKind()
 }

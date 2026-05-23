@@ -22,9 +22,6 @@ import ExploreProjectCard from "./explore-project-card"
 import ProjectListRow from "./project-list-row"
 import AccountListRow from "./account-list-row"
 import {
-  ACCOUNT_FILTERS,
-  CERT_FILTERS,
-  PROJECT_FILTERS,
   SUB_OPTIONS,
   defaultFilterForKind,
   filtersForKind,
