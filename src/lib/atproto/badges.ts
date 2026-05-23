@@ -500,16 +500,16 @@ export async function fetchGivenEndorsementDids(
   return out
 }
 
-/**
- * Write a badge award on `ownDid`'s repo against the supplied badge
- * strongRef. Lower-level helper consumed by `createEndorsementAward`,
- * which wraps it with the lazy ensure-default-def step.
- */
 /** Max byte length we'll allow on `note` from the client. Mirrors
  *  what the UI's character counter caps at, so writes never get
  *  rejected at the PDS for going over. */
 const BADGE_AWARD_NOTE_MAX = 500
 
+/**
+ * Write a badge award on `ownDid`'s repo against the supplied badge
+ * strongRef. Lower-level helper consumed by `createEndorsementAward`,
+ * which wraps it with the lazy ensure-default-def step.
+ */
 async function writeBadgeAward(
   ownDid: string,
   subjectDid: string,

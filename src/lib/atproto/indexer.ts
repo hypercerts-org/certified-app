@@ -228,12 +228,6 @@ export async function fetchIndexerActivities(
  * including the per-URI `dids` map — callers split authored vs contributed
  * by comparing each record's DID to the queried user.
  */
-/** Two separate operations (server-held) — one for each side of the
- *  `_or { did | contributor }` split. The hook below calls both in
- *  parallel so a record where the user is BOTH author and
- *  contributor lands in both result lists. */
-
-
 export interface FetchUserActivitiesOptions
   extends Omit<FetchIndexerOptions, "authors"> {
   /** Which side of the user's activity to fetch — defaults to
@@ -356,13 +350,6 @@ interface EndorsementGraphQLResponse {
   errors?: { message: string }[]
 }
 
-/**
- * Fetch all endorsement records authored by the given evaluator DIDs,
- * paginating through the indexer until the connection is exhausted or
- * the safety cap is hit.
- *
- * Returns [] if authors is empty (short-circuits without a network call).
- */
 // ----------------------------- Endorsement closure (BFS) ---------------------
 //
 // Viewer-centric endorsement-graph closure (magic-indexer issue #117).
@@ -371,7 +358,7 @@ interface EndorsementGraphQLResponse {
 // (non-rejected, endorsement-typed) badge awards, plus per-DID
 // provenance.
 
-export interface EndorsementClosureIssuer {
+interface EndorsementClosureIssuer {
   did: string
   handle: string | null
   displayName: string | null
@@ -519,6 +506,13 @@ function clampClosureDegree(d: number): 1 | 2 | 3 {
   return 3
 }
 
+/**
+ * Fetch all endorsement records authored by the given evaluator DIDs,
+ * paginating through the indexer until the connection is exhausted or
+ * the safety cap is hit.
+ *
+ * Returns [] if authors is empty (short-circuits without a network call).
+ */
 export async function fetchEndorsements(
   options: FetchEndorsementsOptions,
 ): Promise<IndexerEndorsementRecord[]> {
@@ -772,17 +766,6 @@ export interface UserProjectsResult {
 }
 
 /**
- * Fetch `org.hypercerts.collection` records authored by `did` whose
- * `type === "project"` (case-insensitive). Replaces the per-DID PDS
- * listRecords scan with a single indexer call.
- *
- * Records that store the legacy `value.name` (title fallback) or
- * `value.image` (banner fallback) fields will land here with neither
- * surfaced — see the UserProjects op comment in route.ts for why. The
- * Projects tab renders "Untitled project" / no banner for those so
- * authors notice and republish on the canonical shape.
- */
-/**
  * Generic project listing — same node shape as fetchUserProjects but
  * not scoped to a single DID. `authors === undefined` means "no
  * scope" (network-wide); `authors: []` means "match nothing";
@@ -849,6 +832,17 @@ export async function fetchProjects(
   }
 }
 
+/**
+ * Fetch `org.hypercerts.collection` records authored by `did` whose
+ * `type === "project"` (case-insensitive). Replaces the per-DID PDS
+ * listRecords scan with a single indexer call.
+ *
+ * Records that store the legacy `value.name` (title fallback) or
+ * `value.image` (banner fallback) fields will land here with neither
+ * surfaced — see the UserProjects op comment in route.ts for why. The
+ * Projects tab renders "Untitled project" / no banner for those so
+ * authors notice and republish on the canonical shape.
+ */
 export async function fetchUserProjects(
   did: string,
   options: { first?: number; after?: string; signal?: AbortSignal } = {},
