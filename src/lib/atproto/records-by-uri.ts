@@ -52,7 +52,7 @@ async function fetchOne(
   }
 }
 
-export interface FetchByUriResult<T> {
+interface FetchByUriResult<T> {
   /** Records that resolved, in the same order as the input URIs. */
   records: T[]
   /** URIs that returned 404 — caller should prune the cache. */

@@ -59,14 +59,14 @@ import type { ExploreKind } from "@/components/explore-page/explore-types"
  *     pass. Surface as a transient loading state (don't crash, don't
  *     show empty-state copy). Cleared on the next successful fetch.
  */
-export interface EndorsementClosureMeta {
+interface EndorsementClosureMeta {
   closureByDid: Map<string, EndorsementClosureAccount>
   truncated: boolean
   degree: 1 | 2 | 3
   warming: boolean
 }
 
-export interface ExploreData {
+interface ExploreData {
   users: NetworkActor[]
   projects: CollectionRecord[]
   certs: ActivityRecord[]
