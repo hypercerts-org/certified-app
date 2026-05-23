@@ -17,10 +17,6 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import ActivityCard from "@/components/feed/activity-card"
 import CertListRow from "./cert-list-row"
-import {
-  buildCorroborationCounts,
-  type ViaIdentityMap,
-} from "./endorsement-row-badge"
 import ExploreUserCard from "./explore-user-card"
 import ExploreProjectCard from "./explore-project-card"
 import ProjectListRow from "./project-list-row"
@@ -659,37 +655,7 @@ function ResultsArea({
   attrs: Set<string>
   view: ListGalleryView
 }) {
-  // Compute closure-decoration helpers once per render — O(N) on the
-  // closure result size, shared across every row instead of
-  // recomputed per-row. (certified-app #84.)
-  //   - corroboration: how many times each predecessor DID appears as
-  //     a `via` entry across the closure; drives "most-corroborated"
-  //     representative selection.
-  //   - identityMap: { did → {handle, displayName} } drawn from the
-  //     already-loaded NetworkActors. Unresolved DIDs fall back to a
-  //     shortened DID — no per-row PDS fetches.
   const closure = data.endorsementClosure
-  const corroboration = useMemo<Map<string, number> | null>(() => {
-    if (!closure) return null
-    return buildCorroborationCounts(closure.closureByDid)
-  }, [closure])
-  const identityMap = useMemo<ViaIdentityMap>(() => {
-    // NetworkActor doesn't carry a handle today — only displayName.
-    // EndorsementRowBadge prefers handle when present, else
-    // displayName, else falls back to a shortened DID. Wire what we
-    // have; resolving handles for predecessor DIDs that aren't in
-    // the actor cache is a follow-up (issue #84 "Provenance handle
-    // resolution" item).
-    const m: ViaIdentityMap = new Map()
-    for (const actor of data.users) {
-      m.set(actor.did, {
-        did: actor.did,
-        handle: null,
-        displayName: actor.displayName ?? null,
-      })
-    }
-    return m
-  }, [data.users])
 
   if (data.isLoading && data.users.length === 0 && data.projects.length === 0 && data.certs.length === 0) {
     return (
@@ -715,8 +681,6 @@ function ResultsArea({
               <AccountListRow
                 actor={a}
                 endorsementMeta={closure?.closureByDid.get(a.did)}
-                endorsementCorroboration={corroboration ?? undefined}
-                endorsementIdentities={identityMap}
               />
             </li>
           ))}
@@ -759,10 +723,6 @@ function ResultsArea({
                 <ProjectListRow
                   project={p}
                   endorsementMeta={meta}
-                  endorsementCorroboration={
-                    corroboration ?? undefined
-                  }
-                  endorsementIdentities={identityMap}
                 />
               </li>
             )
@@ -807,8 +767,6 @@ function ResultsArea({
                 record={rec}
                 did={did}
                 endorsementMeta={meta}
-                endorsementCorroboration={corroboration ?? undefined}
-                endorsementIdentities={identityMap}
               />
             </li>
           )

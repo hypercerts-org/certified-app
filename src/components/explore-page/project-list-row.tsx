@@ -9,9 +9,7 @@ import ActivityAuthor from "@/components/feed/activity-author"
 import { useLocation } from "@/hooks/use-location"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 import type { EndorsementClosureAccount } from "@/lib/atproto/indexer"
-import EndorsementRowBadge, {
-  type ViaIdentityMap,
-} from "./endorsement-row-badge"
+import EndorsementRowBadge from "./endorsement-row-badge"
 
 /**
  * Dense single-row representation of a project for the /explore list
@@ -23,15 +21,11 @@ import EndorsementRowBadge, {
 export default function ProjectListRow({
   project,
   endorsementMeta,
-  endorsementCorroboration,
-  endorsementIdentities,
 }: {
   project: CollectionRecord
   /** Closure-graph metadata for the project AUTHOR's DID, when the
    *  active explore filter is endorsement-based. */
   endorsementMeta?: EndorsementClosureAccount
-  endorsementCorroboration?: Map<string, number>
-  endorsementIdentities?: ViaIdentityMap
 }) {
   const { value, uri } = project
   const parsed = parseAtUri(uri)
@@ -124,14 +118,8 @@ export default function ProjectListRow({
           <ActivityAuthor
             did={did}
             nameSuffix={
-              endorsementMeta &&
-              endorsementCorroboration &&
-              endorsementIdentities ? (
-                <EndorsementRowBadge
-                  meta={endorsementMeta}
-                  corroboration={endorsementCorroboration}
-                  identityMap={endorsementIdentities}
-                />
+              endorsementMeta ? (
+                <EndorsementRowBadge meta={endorsementMeta} />
               ) : null
             }
           />

@@ -4,9 +4,7 @@ import Link from "next/link"
 import { User } from "lucide-react"
 import type { NetworkActor } from "@/lib/atproto/workspace"
 import type { EndorsementClosureAccount } from "@/lib/atproto/indexer"
-import EndorsementRowBadge, {
-  type ViaIdentityMap,
-} from "./endorsement-row-badge"
+import EndorsementRowBadge from "./endorsement-row-badge"
 
 /**
  * Dense single-row representation of an account for the /explore list
@@ -18,19 +16,14 @@ import EndorsementRowBadge, {
  *
  * When `endorsementMeta` is present (certified-app #84), the degree
  * label renders inline right before the handle, separated by a middle
- * dot. Clicking the degree (degrees 2 / 3 only) reveals the via list
- * in a popover.
+ * dot.
  */
 export default function AccountListRow({
   actor,
   endorsementMeta,
-  endorsementCorroboration,
-  endorsementIdentities,
 }: {
   actor: NetworkActor
   endorsementMeta?: EndorsementClosureAccount
-  endorsementCorroboration?: Map<string, number>
-  endorsementIdentities?: ViaIdentityMap
 }) {
   const handle = actor.did.startsWith("did:plc:")
     ? `${actor.did.slice(8, 14)}…${actor.did.slice(-4)}`
@@ -80,13 +73,9 @@ export default function AccountListRow({
 
       <div className="cert-list-row__author-col">
         <span className="cert-list-row__handle">
-          {endorsementMeta && endorsementCorroboration && endorsementIdentities ? (
+          {endorsementMeta ? (
             <>
-              <EndorsementRowBadge
-                meta={endorsementMeta}
-                corroboration={endorsementCorroboration}
-                identityMap={endorsementIdentities}
-              />
+              <EndorsementRowBadge meta={endorsementMeta} />
               <span className="endorsement-row-badge__sep" aria-hidden>
                 {" · "}
               </span>

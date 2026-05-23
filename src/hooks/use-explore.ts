@@ -404,16 +404,14 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
   } = args
 
   // Filters that aren't server-backed: short-circuit pagination.
-  // All operate by fetching a NetworkActors window and intersecting
-  // client-side. The window is bounded by the indexer's MAX_FIRST
-  // (100), so accounts outside the most-recently-active top-N drop
-  // out — known limitation, blocked on
-  // https://github.com/hypercerts-org/magic-indexer/issues/118 which
-  // would let us pull actor profiles by an explicit DID list.
-  // For the endorsed filter the closure-DID set is known up-front,
-  // so we paginate NetworkActors until every closure DID is covered
-  // (capped at 10 pages = 1000 actors) instead of relying on the
-  // first 100 alone. Degree-2 / -3 closures routinely exceed 100.
+  // The follows / recent / my-groups filters fetch a NetworkActors
+  // window (bounded by the indexer's MAX_FIRST = 100) and intersect
+  // client-side — accounts outside the most-recently-active top-N
+  // drop out (known limitation).
+  // The endorsed filter sources its actors directly from the closure
+  // response's inline issuer block (magic-indexer #117 returns the
+  // denormalised actor profile per closure DID), so it doesn't share
+  // the 100-actor cap.
   if (
     filter === "follows" ||
     filter === "endorsed" ||
@@ -785,12 +783,11 @@ async function loadClosure(opts: {
         },
       }
     }
-    // Any other failure (notably "Cannot query field endorsementClosure"
-    // — magic-indexer #117 is still open as of this writing) falls
-    // through to a client-side degree-1 fallback: read the viewer's
-    // own badge.award records from their PDS and surface those DIDs.
-    // Degree-2/3 expansion still needs the server endpoint; until #117
-    // ships, "Endorsed accounts" effectively means "degree-1 only".
+    // Any other failure (notably an older indexer deployment that
+    // doesn't yet expose the endorsementClosure field) falls through
+    // to a client-side BFS fallback below — reads each frontier
+    // account's badge.award records straight from their PDS and
+    // expands ring-by-ring up to `degree`.
     if (err instanceof EndorsementClosureError) {
       console.warn(
         "[explore] endorsement closure unavailable, falling back to PDS degree-1:",
@@ -832,17 +829,16 @@ async function loadClosure(opts: {
  * Client-side bounded BFS over the endorsement graph, sourced from each
  * frontier account's PDS. Each ring fans out one `listRecords` per
  * frontier DID in parallel; the next frontier is just the DIDs
- * discovered at the current degree. Drop-in equivalent of magic-indexer
- * #117's `endorsementClosure` query at small scale — until that ships,
- * this is how /explore's "Endorsed accounts" filter expands beyond
- * degree 1.
+ * discovered at the current degree. Drop-in equivalent of the indexer's
+ * `endorsementClosure` query at small scale, used as a fallback when
+ * the indexer doesn't expose that field (older deployments).
  *
  * Bookkeeping per spec:
  *   - viewer excluded from the result (loop-back skipped).
  *   - minimum-degree assignment per account (we don't downgrade once
  *     pinned).
  *   - `via` collects every degree-(d−1) predecessor for accounts
- *     pinned at degree d (so the row decorations can show "via @x +N").
+ *     pinned at degree d.
  *   - per-DID PDS fetch failures are isolated — one unreachable repo
  *     doesn't poison the rest of the closure.
  */
@@ -902,7 +898,9 @@ async function clientSideClosureBfs(
           })
           next.push(y)
         } else if (existing.degree === d && d > 1) {
-          // Same ring → accumulate predecessor for the `+N` rendering.
+          // Same ring → accumulate predecessor in `via`. Not surfaced
+          // in the UI today; kept for parity with the indexer payload
+          // so consumers reading `via` see the same shape either way.
           if (!existing.via.includes(x)) existing.via.push(x)
         }
         // existing.degree < d → minimum-degree rule, skip silently.
