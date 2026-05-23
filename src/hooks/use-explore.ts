@@ -436,9 +436,9 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
       // degree-2/3 closures regularly exceeded it.)
       let scoped: NetworkActor[] = []
       if (closureMeta && closureMeta.closureByDid.size > 0) {
-        scoped = Array.from(closureMeta.closureByDid.values())
-          .map(actorFromClosureAccount)
-          .filter((a): a is NetworkActor => a !== null)
+        scoped = Array.from(closureMeta.closureByDid.values()).map(
+          actorFromClosureAccount,
+        )
       }
       if (sub === "people") scoped = scoped.filter((a) => !orgDids.has(a.did))
       else if (sub === "organizations")
@@ -707,19 +707,18 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
 /**
  * Map a closure account (DID + degree + via + inline issuer block)
  * to the NetworkActor shape the /explore Account rows consume.
- * Returns null when the issuer has no resolvable identity at all
- * (no handle AND no displayName) so the row can be hidden cleanly
- * — same UX rule that fetchNetworkActors enforces by virtue of
- * only returning DIDs that have profile records.
+ * Always returns a NetworkActor — when the indexer hasn't yet
+ * ingested a profile for the DID (or we're on the PDS BFS fallback,
+ * which never has profile data) we hand back a row with null
+ * displayName/description/avatar so AccountListRow renders the
+ * shortened-DID fallback rather than dropping the row silently.
  *
  * Avatar URL is built from (did, cid) via the certified-app's own
  * /api/xrpc proxy — matches the shape avatarUrlFromUnion emits for
  * the small-image variant in src/lib/atproto/workspace.ts.
  */
-function actorFromClosureAccount(account: EndorsementClosureAccount): NetworkActor | null {
+function actorFromClosureAccount(account: EndorsementClosureAccount): NetworkActor {
   const issuer = account.issuer
-  const hasIdentity = !!(issuer.handle ?? issuer.displayName ?? issuer.description)
-  if (!hasIdentity) return null
   return {
     did: account.did,
     displayName: issuer.displayName,
@@ -885,10 +884,11 @@ async function clientSideClosureBfs(
           // accounts have no `via` (the viewer is the implicit
           // predecessor and is excluded from the surface).
           //
-          // PDS fallback has no profile data; issuer is did-only so
-          // the row's actorFromClosureAccount() check will hide rows
-          // without resolvable identity. Indexer path overwrites
-          // this with denormalised profile data inline.
+          // PDS fallback has no profile data; issuer is did-only.
+          // actorFromClosureAccount returns a NetworkActor with null
+          // profile fields and AccountListRow renders the
+          // shortened-DID fallback. Indexer path returns denormalised
+          // profile data inline so handles + display names show.
           closureByDid.set(y, {
             did: y,
             degree: d,
