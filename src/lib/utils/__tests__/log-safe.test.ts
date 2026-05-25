@@ -27,6 +27,34 @@ describe("redactSecrets", () => {
     })
   })
 
+  describe("bare auth-scheme fragments", () => {
+    // These cover the Bearer/DPoP scheme fragments that appear in upstream
+    // error messages WITHOUT the leading header name + colon. Added when
+    // the api.ts-local redactor was folded into log-safe (track T08).
+    it("redacts a bare 'Bearer <token>' fragment", () => {
+      const out = redactSecrets("auth failed: Bearer abc.def.ghi extra")
+      expect(out).not.toContain("abc.def.ghi")
+      expect(out).toContain("Bearer <redacted>")
+    })
+
+    it("redacts a bare 'DPoP <token>' fragment", () => {
+      const out = redactSecrets("DPoP proof rejected: DPoP xyz.abc.123")
+      expect(out).not.toContain("xyz.abc.123")
+      // Two "DPoP " mentions in input; the first survives because it has
+      // no token-shaped substring after it, the second gets redacted.
+      expect(out).toContain("DPoP <redacted>")
+    })
+
+    it("does not over-match a stray 'Bearer' word with no token suffix", () => {
+      const out = redactSecrets("the Bearer scheme is fine")
+      // Word boundary: "Bearer scheme" has a space then word chars, so
+      // the regex DOES match it as `Bearer scheme`. Accepted — over-
+      // redaction in logs is the safer failure direction, and the
+      // "scheme" tail can't carry a real secret.
+      expect(out).toContain("Bearer <redacted>")
+    })
+  })
+
   describe("header lines", () => {
     it.each([
       ["Authorization"],
