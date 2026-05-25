@@ -48,9 +48,17 @@ const SIDEBAR_PREVIEW_LIMIT = 5
  */
 export default function Home() {
   usePageTitle("Home")
-  const { isAuthenticated, did: viewerDid } = useAuth()
+  const { isAuthenticated, did: personalDid } = useAuth()
+  const { activeOrg } = useOrg()
 
-  if (!isAuthenticated || !viewerDid) {
+  // "Acting-as" DID — when the viewer has switched into a group, the
+  // home page surfaces the group's projects, certs, and follow feed
+  // instead of the personal account's. The sidebar's Groups section
+  // still lists the personal-account memberships (it's scoped via
+  // useOrg() further down, which always reflects the signed-in user).
+  const activeDid = activeOrg?.groupDid || personalDid
+
+  if (!isAuthenticated || !activeDid) {
     return (
       <div className="home-page">
         <div className="home__signed-out">
@@ -68,14 +76,14 @@ export default function Home() {
     <div className="home-page">
       <div className="home__layout">
         <aside className="home__sidebar" aria-label="Your library">
-          <HomeSidebar viewerDid={viewerDid} />
+          <HomeSidebar activeDid={activeDid} />
         </aside>
         <main className="home__main">
           <div className="home__split">
             <div className="home__feed">
-              <FollowingFeed viewerDid={viewerDid} />
+              <FollowingFeed activeDid={activeDid} />
             </div>
-            <aside className="home__news right-rail" aria-label="Our news">
+            <aside className="home__news" aria-label="Our news">
               <NewsSection actor={NEWS_ACTOR_DID} heading="Our news" />
             </aside>
           </div>
@@ -87,11 +95,11 @@ export default function Home() {
 
 // ---------------------------- Sidebar ---------------------------------------
 
-function HomeSidebar({ viewerDid }: { viewerDid: string }) {
+function HomeSidebar({ activeDid }: { activeDid: string }) {
   const { groups, isLoading: groupsLoading } = useOrg()
-  const { projects, isLoading: projectsLoading } = useUserProjects(viewerDid)
+  const { projects, isLoading: projectsLoading } = useUserProjects(activeDid)
   const { activities: certs, isLoading: certsLoading } =
-    useUserActivities(viewerDid)
+    useUserActivities(activeDid)
 
   const previewGroups = groups.slice(0, SIDEBAR_PREVIEW_LIMIT)
   const previewProjects = projects.slice(0, SIDEBAR_PREVIEW_LIMIT)
@@ -99,7 +107,7 @@ function HomeSidebar({ viewerDid }: { viewerDid: string }) {
 
   // Profile detail accepts the DID under the [handle] slot, so
   // "Show more" stays correct even before we've resolved the handle.
-  const profileBase = `/profile/${encodeURIComponent(viewerDid)}`
+  const profileBase = `/profile/${encodeURIComponent(activeDid)}`
 
   return (
     <>
@@ -129,7 +137,7 @@ function HomeSidebar({ viewerDid }: { viewerDid: string }) {
         isLoading={certsLoading && previewCerts.length === 0}
         items={previewCerts}
         total={certs.length}
-        renderItem={(c) => <CertRow key={c.uri} record={c} viewerDid={viewerDid} />}
+        renderItem={(c) => <CertRow key={c.uri} record={c} fallbackDid={activeDid} />}
         moreHref={`${profileBase}?tab=certs`}
         emptyLabel="No certs yet."
       />
@@ -258,16 +266,16 @@ function ProjectRow({ project }: { project: CollectionRecord }) {
 
 function CertRow({
   record,
-  viewerDid,
+  fallbackDid,
 }: {
   record: ActivityRecord
-  viewerDid: string
+  fallbackDid: string
 }) {
   const parsed = parseAtUri(record.uri)
   const href = parsed
     ? `/activity/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
     : "#"
-  const did = parsed?.did ?? viewerDid
+  const did = parsed?.did ?? fallbackDid
 
   const imageUrl = record.value.image
     ? resolveActivityImageUrl(record.value.image, did)
@@ -299,12 +307,12 @@ function CertRow({
 
 // ------------------------------ Feed ----------------------------------------
 
-function FollowingFeed({ viewerDid }: { viewerDid: string }) {
+function FollowingFeed({ activeDid }: { activeDid: string }) {
   const {
     followedDids,
     isLoading: followsLoading,
     error: followsError,
-  } = useFollowedDids(viewerDid)
+  } = useFollowedDids(activeDid)
 
   const {
     activities,
