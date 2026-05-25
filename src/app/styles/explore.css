@@ -16,14 +16,6 @@
   max-width: none;
 }
 
-/* Let the top bar stretch edge-to-edge too — same intent as the
-   .app-shell__grid override. `.desktop-top-bar` is a sibling of
-   `.app-shell` so we anchor on `html:has(.explore-page)` to reach
-   it from this stylesheet without touching layout.css. */
-html:has(.explore-page) .desktop-top-bar__row {
-  max-width: none;
-}
-
 @media (min-width: 800px) {
   .app-shell:has(.explore-page) .app-shell__grid {
     grid-template-columns: 1fr;

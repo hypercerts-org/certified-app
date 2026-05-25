@@ -4,9 +4,12 @@ import Brandmark from "@/components/ui/brandmark"
 /**
  * Minimal site footer — GitHub-flavour. Single horizontal row at
  * desktop: small brandmark + copyright on the left, link list on
- * the right. Wraps to two stacked rows on narrow viewports. The
- * row sits inside the `.app-shell__center` column so the gutter
- * matches the rest of the page chrome.
+ * the right. Wraps to two stacked rows on narrow viewports.
+ *
+ * Rendered as a sibling of `.app-shell__grid` (NOT inside it) so
+ * the footer spans the full viewport width on every page — its
+ * border-top reads as a page-frame divider that matches the
+ * navbar's border-bottom edge-to-edge.
  *
  * Kept intentionally short — no marketing copy, no newsletter
  * signup, no social rail. Just identity + a handful of links the
