@@ -2,18 +2,15 @@
 
 import Link from "next/link"
 import { ArrowRight, Award, FolderGit2, LogIn, Users } from "lucide-react"
-import { useMemo } from "react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useUserProjects } from "@/hooks/use-user-projects"
 import { useUserActivities } from "@/hooks/use-user-activities"
-import { useFollowedDids } from "@/hooks/use-followed-dids"
-import { useGlobalFeed } from "@/hooks/use-global-feed"
 import { usePageTitle } from "@/lib/navbar-context"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Avatar from "@/components/ui/avatar"
-import FeedLayout from "@/components/feed/feed-layout"
+import HomeFeed from "@/components/home/home-feed"
 import NewsSection from "@/components/right-rail/news-section"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
@@ -81,7 +78,7 @@ export default function Home() {
         <main className="home__main">
           <div className="home__split">
             <div className="home__feed">
-              <FollowingFeed activeDid={activeDid} />
+              <HomeFeed activeDid={activeDid} />
             </div>
             <aside className="home__news" aria-label="News from Certified">
               <NewsSection actor={NEWS_ACTOR_DID} heading="News from Certified" />
@@ -302,71 +299,6 @@ function CertRow({
         </span>
       </Link>
     </li>
-  )
-}
-
-// ------------------------------ Feed ----------------------------------------
-
-function FollowingFeed({ activeDid }: { activeDid: string }) {
-  const {
-    followedDids,
-    isLoading: followsLoading,
-    error: followsError,
-  } = useFollowedDids(activeDid)
-
-  const {
-    activities,
-    dids,
-    labels,
-    isLoading,
-    isLoadingMore,
-    error,
-    hasMore,
-    loadMore,
-  } = useGlobalFeed({ endorsedDids: followedDids })
-
-  const emptyState = useMemo(() => {
-    if (isLoading || followsLoading) return undefined
-    if (followedDids.size === 0) {
-      return (
-        <EmptyState
-          icon={Users}
-          title="You're not following anyone yet"
-          description="Follow people to see their activity here."
-        />
-      )
-    }
-    if (activities.length === 0) {
-      return (
-        <EmptyState
-          icon={Users}
-          title="No activity yet"
-          description="People you follow haven't posted any activity yet."
-        />
-      )
-    }
-    return undefined
-  }, [isLoading, followsLoading, followedDids.size, activities.length])
-
-  return (
-    <>
-      {followsError ? (
-        <div className="feed__warning" role="alert">
-          Could not load your follow list. Please try again later.
-        </div>
-      ) : null}
-      <FeedLayout
-        activities={activities}
-        getDid={(uri) => dids.get(uri) ?? ""}
-        labels={labels}
-        isLoading={isLoading || followsLoading}
-        isLoadingMore={isLoadingMore}
-        error={error}
-        hasMore={hasMore}
-        loadMore={loadMore}
-        emptyState={followsError ? undefined : emptyState}
-      />
-    </>
   )
 }
 

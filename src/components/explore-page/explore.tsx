@@ -470,8 +470,8 @@ const DEGREE_LABEL: Record<Degree, string> = {
  *  so the abbreviated "1st / 2nd / 3rd" labels don't have to. */
 const DEGREE_TITLE: Record<Degree, string> = {
   1: "1st-degree — accounts you endorse directly.",
-  2: "2nd-degree — accounts endorsed by the people you endorse (friends of friends).",
-  3: "3rd-degree — accounts endorsed by your 2nd-degree connections (one more hop out).",
+  2: "2nd-degree — accounts endorsed by the people you endorse.",
+  3: "3rd-degree — accounts endorsed by your 2nd-degree connections.",
 }
 
 /**
