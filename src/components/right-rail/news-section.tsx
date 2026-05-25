@@ -1,26 +1,41 @@
 "use client"
 
-import React from "react"
+import React, { useId } from "react"
 import { useBskyPosts, type BskyPost } from "@/hooks/use-bsky-posts"
 import { formatRelativeTime } from "@/lib/atproto/activity"
 import RichText from "./rich-text"
 
-const HANDLE = "certified.app"
+const DEFAULT_ACTOR = "certified.app"
+
+interface NewsSectionProps {
+  /** Bluesky actor identifier (handle OR did:plc) — passed straight
+   *  to `app.bsky.feed.getAuthorFeed`. Defaults to the official
+   *  @certified.app handle. */
+  actor?: string
+  /** Section heading. Defaults to "News". */
+  heading?: string
+}
 
 /**
- * Right-rail "News" section: shows the latest public Bluesky post from
- * @certified.app, with a "More" button that pages three older posts at
- * a time. The button hides itself once the timeline is exhausted (see
- * `useBskyPosts.hasMore`).
+ * "News" section: shows the latest public Bluesky post from the
+ * configured actor with a "More" button that pages three older posts
+ * at a time. The button hides itself once the timeline is exhausted
+ * (see `useBskyPosts.hasMore`).
+ *
+ * The actor can be a handle or a DID — Bluesky's appView accepts both.
  */
-export default function NewsSection() {
+export default function NewsSection({
+  actor = DEFAULT_ACTOR,
+  heading = "News",
+}: NewsSectionProps = {}) {
   const { posts, hasMore, isLoading, isLoadingMore, error, loadMore } =
-    useBskyPosts(HANDLE)
+    useBskyPosts(actor)
+  const headingId = useId()
 
   return (
-    <section className="right-rail__section" aria-labelledby="rr-news">
-      <h2 id="rr-news" className="right-rail__heading">
-        News
+    <section className="right-rail__section" aria-labelledby={headingId}>
+      <h2 id={headingId} className="right-rail__heading">
+        {heading}
       </h2>
 
       {isLoading && posts.length === 0 ? (
