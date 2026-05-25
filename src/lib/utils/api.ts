@@ -133,3 +133,32 @@ export async function extractError(
     return fallback
   }
 }
+
+/**
+ * Validate the `{ data: { uri, cid } }` shape that AT Protocol mutation
+ * XRPC methods (createRecord / putRecord etc.) return through the
+ * AtpAgent. Returns `{ uri, cid }` when both strings are present, or
+ * `null` to signal the upstream response was malformed — the caller
+ * typically maps that to a 502.
+ *
+ * The previous pattern, repeated verbatim in four group route handlers,
+ * was:
+ *
+ *     const data = (upstream as unknown as {
+ *       data?: { uri?: string; cid?: string }
+ *     }).data
+ *     const uri = typeof data?.uri === "string" ? data.uri : null
+ *     const cid = typeof data?.cid === "string" ? data.cid : null
+ *     if (!uri || !cid) return 502
+ *
+ * This collapses to a single call.
+ */
+export function extractRecordRef(
+  upstream: unknown,
+): { uri: string; cid: string } | null {
+  const data = (upstream as { data?: { uri?: unknown; cid?: unknown } } | null)
+    ?.data
+  if (!data) return null
+  if (typeof data.uri !== "string" || typeof data.cid !== "string") return null
+  return { uri: data.uri, cid: data.cid }
+}
