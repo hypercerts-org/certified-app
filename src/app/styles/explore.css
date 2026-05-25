@@ -532,35 +532,6 @@
   }
 }
 
-/* Account variant — accounts don't carry a relative-time column, so
-   the grid drops the third track. Thumb is circular (avatar) rather
-   than rounded-square (cert/project artwork). */
-.cert-list-row--account {
-  grid-template-columns: 1fr 200px;
-}
-
-.cert-list-row__thumb--avatar {
-  border-radius: 50%;
-}
-
-.cert-list-row__avatar-initial {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--fg-secondary);
-}
-
-.cert-list-row__handle {
-  font-family: var(--font-mono, ui-monospace), monospace;
-  font-size: 0.75rem;
-  color: var(--fg-secondary);
-}
-
-@media (max-width: 760px) {
-  .cert-list-row--account {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* ---------- Result grids ---------- */
 
 .explore__grid {
@@ -572,7 +543,7 @@
 }
 
 .explore__grid--users {
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
 }
 
 .explore__grid--projects {
@@ -583,52 +554,46 @@
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
 }
 
-/* ---------- User card ---------- */
+/* ---------- Account gallery card ---------- */
 
+/* Vertical card: identity row (avatar + name + @handle) on top, then
+   the description block. Reads as one structured entity rather than
+   "avatar + line of text" — distinct from the cert/project cards. */
 .explore-user-card {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 12px;
-  padding: 12px;
+  padding: 16px;
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--bg-elevated);
   text-decoration: none;
   color: inherit;
-  transition: border-color var(--transition-fast), background var(--transition-fast);
+  transition: border-color var(--transition-fast), background var(--transition-fast),
+    box-shadow var(--transition-fast);
   min-width: 0;
 }
 
 .explore-user-card:hover {
   border-color: var(--fg-secondary);
   background: var(--bg-subtle);
+  /* Subtle lift on hover — distinguishes the account cards from the
+     flat cert/project cards so the kind switch is visually felt. */
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--fg-primary) 6%, transparent);
 }
 
-.explore-user-card__avatar-wrap {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: var(--bg-subtle);
+.explore-user-card__head {
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  gap: 12px;
+  min-width: 0;
 }
 
 .explore-user-card__avatar {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  flex-shrink: 0;
 }
 
-.explore-user-card__initial {
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--fg-secondary);
-}
-
-.explore-user-card__body {
+.explore-user-card__id {
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -636,23 +601,146 @@
 }
 
 .explore-user-card__name {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.explore-user-card__handle {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.explore-user-card__handle--did {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  color: var(--fg-muted);
+}
+
+.explore-user-card__desc {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--fg-secondary);
+  line-height: 1.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+/* ---------- Account list row ---------- */
+
+.account-list-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  transition: background var(--transition-fast);
+}
+
+.explore__list > li + li .account-list-row {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.account-list-row:hover {
+  background: var(--bg-sunken);
+}
+
+.account-list-row__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.account-list-row__avatar {
+  flex-shrink: 0;
+}
+
+.account-list-row__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.account-list-row__id {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.account-list-row__name {
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--fg-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1.25;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
-.explore-user-card__desc {
-  font-size: 0.8rem;
+.account-list-row__handle {
+  font-size: 0.78rem;
   color: var(--fg-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.account-list-row__handle--did {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  color: var(--fg-muted);
+}
+
+.account-list-row__desc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--fg-secondary);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
   -webkit-box-orient: vertical;
+}
+
+.account-list-row__badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+@media (max-width: 600px) {
+  .account-list-row__id {
+    flex-wrap: wrap;
+    gap: 2px 8px;
+  }
 }
 
 /* ---------- Project card ---------- */

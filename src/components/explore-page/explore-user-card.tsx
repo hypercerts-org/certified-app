@@ -1,49 +1,73 @@
 "use client"
 
 import Link from "next/link"
+import { User } from "lucide-react"
+import Avatar from "@/components/ui/avatar"
+import { useAuthorInfo } from "@/hooks/use-author-info"
+import { getInitials } from "@/lib/utils/initials"
 import type { NetworkActor } from "@/lib/atproto/workspace"
 
 /**
- * Compact actor card for the /explore Users grid.
+ * Gallery-view actor card for the /explore Accounts tab.
  *
- * Mirrors the visual density of the existing ActivityCard (used in
- * the certs grid) so the three explore kinds read as one family of
- * cards. Click takes the viewer to the actor's profile.
+ * Layout (top-aligned, vertical):
+ *
+ *   ┌──────────────────────────────┐
+ *   │  [avatar] Display name       │
+ *   │           @handle            │
+ *   │                              │
+ *   │  Description text, clamped   │
+ *   │  to three lines when long.   │
+ *   └──────────────────────────────┘
+ *
+ * The card uses `useAuthorInfo` to resolve the real Bluesky handle
+ * (the `NetworkActor` carries only the DID + a display name from the
+ * Certified actor record, which is sparse).
  */
 export default function ExploreUserCard({
   actor,
 }: {
   actor: NetworkActor
 }) {
-  const initial = (actor.displayName ?? actor.did.slice(8))
-    .charAt(0)
-    .toUpperCase()
+  const { info } = useAuthorInfo(actor.did)
+  // Prefer the Certified-record display name, fall back to the
+  // Bluesky profile name, fall back to the handle, fall back to a
+  // truncated DID.
+  const displayName =
+    actor.displayName || info?.displayName || info?.handle || truncateDid(actor.did)
+  const handle = info?.handle ?? null
+  const avatarUrl = actor.avatarUrl || info?.avatarUrl || null
+  const description = actor.description ?? null
+  const initials = getInitials(displayName, actor.did)
+  // Profile route accepts either a handle or a DID in the [handle]
+  // slot — prefer the handle so the URL is readable.
+  const profileHref = `/profile/${encodeURIComponent(handle || actor.did)}`
+
   return (
-    <Link
-      href={`/profile/${encodeURIComponent(actor.did)}`}
-      className="explore-user-card"
-    >
-      <div className="explore-user-card__avatar-wrap">
-        {actor.avatarUrl ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={actor.avatarUrl}
-            alt=""
-            className="explore-user-card__avatar"
-            loading="lazy"
-          />
-        ) : (
-          <span className="explore-user-card__initial">{initial}</span>
-        )}
-      </div>
-      <div className="explore-user-card__body">
-        <span className="explore-user-card__name">
-          {actor.displayName ?? truncateDid(actor.did)}
-        </span>
-        {actor.description ? (
-          <span className="explore-user-card__desc">{actor.description}</span>
-        ) : null}
-      </div>
+    <Link href={profileHref} className="explore-user-card">
+      <header className="explore-user-card__head">
+        <Avatar
+          size="lg"
+          src={avatarUrl ?? undefined}
+          alt=""
+          fallbackInitials={initials}
+          className="explore-user-card__avatar"
+        />
+        <div className="explore-user-card__id">
+          <h3 className="explore-user-card__name">{displayName}</h3>
+          {handle ? (
+            <p className="explore-user-card__handle">@{handle}</p>
+          ) : (
+            <p className="explore-user-card__handle explore-user-card__handle--did">
+              <User size={11} strokeWidth={1.75} aria-hidden />
+              {truncateDid(actor.did)}
+            </p>
+          )}
+        </div>
+      </header>
+      {description ? (
+        <p className="explore-user-card__desc">{description}</p>
+      ) : null}
     </Link>
   )
 }

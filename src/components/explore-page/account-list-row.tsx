@@ -2,21 +2,24 @@
 
 import Link from "next/link"
 import { User } from "lucide-react"
+import Avatar from "@/components/ui/avatar"
+import { useAuthorInfo } from "@/hooks/use-author-info"
+import { getInitials } from "@/lib/utils/initials"
 import type { NetworkActor } from "@/lib/atproto/workspace"
 import type { EndorsementClosureAccount } from "@/lib/atproto/indexer"
 import EndorsementRowBadge from "./endorsement-row-badge"
 
 /**
  * Dense single-row representation of an account for the /explore list
- * view. Reuses the `.cert-list-row` visual chrome (hover, padding,
- * thumb size, body typography) but skips the time column — accounts
- * don't carry a relative-time signal in this listing. The
- * `cert-list-row--account` modifier widens the grid into 2 columns
- * (link block · handle column).
+ * view. Uses its own `.account-list-row` chrome — separate from the
+ * cert/project list rows because the columnar shape is different: the
+ * identity block (avatar + display name + @handle) leads, with the
+ * description occupying the wide middle, and the endorsement-degree
+ * pill (when present) anchored right.
  *
- * When `endorsementMeta` is present (certified-app #84), the degree
- * label renders inline right before the handle, separated by a middle
- * dot.
+ *   ┌─────────────────────────────────────────────────────────┐
+ *   │ [AV] Display name @handle    Description text…    [1st] │
+ *   └─────────────────────────────────────────────────────────┘
  */
 export default function AccountListRow({
   actor,
@@ -25,65 +28,54 @@ export default function AccountListRow({
   actor: NetworkActor
   endorsementMeta?: EndorsementClosureAccount
 }) {
-  const handle = actor.did.startsWith("did:plc:")
-    ? `${actor.did.slice(8, 14)}…${actor.did.slice(-4)}`
-    : actor.did
-  const initial = (actor.displayName ?? actor.did.slice(8))
-    .charAt(0)
-    .toUpperCase()
+  const { info } = useAuthorInfo(actor.did)
+  const displayName =
+    actor.displayName ||
+    info?.displayName ||
+    info?.handle ||
+    truncateDid(actor.did)
+  const handle = info?.handle ?? null
+  const avatarUrl = actor.avatarUrl || info?.avatarUrl || null
+  const description = actor.description ?? null
+  const initials = getInitials(displayName, actor.did)
+  const profileHref = `/profile/${encodeURIComponent(handle || actor.did)}`
+
   return (
-    <article className="cert-list-row cert-list-row--account">
-      <Link
-        href={`/profile/${encodeURIComponent(actor.did)}`}
-        className="cert-list-row__link"
-      >
-        <div className="cert-list-row__thumb cert-list-row__thumb--avatar">
-          {actor.avatarUrl ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={actor.avatarUrl}
-              alt=""
-              className="cert-list-row__img"
-              loading="lazy"
-            />
-          ) : actor.displayName ? (
-            <span className="cert-list-row__avatar-initial">{initial}</span>
-          ) : (
-            <User
-              size={18}
-              strokeWidth={1.25}
-              aria-hidden
-              className="cert-list-row__img-fallback"
-            />
-          )}
-        </div>
-        <div className="cert-list-row__body">
-          <h3 className="cert-list-row__title">
-            {actor.displayName ?? handle}
-          </h3>
-          {actor.description ? (
-            <p className="cert-list-row__meta">
-              <span className="cert-list-row__meta-item">
-                {actor.description}
+    <article className="account-list-row">
+      <Link href={profileHref} className="account-list-row__link">
+        <Avatar
+          size="md"
+          src={avatarUrl ?? undefined}
+          alt=""
+          fallbackInitials={initials}
+          className="account-list-row__avatar"
+        />
+        <div className="account-list-row__body">
+          <div className="account-list-row__id">
+            <span className="account-list-row__name">{displayName}</span>
+            {handle ? (
+              <span className="account-list-row__handle">@{handle}</span>
+            ) : (
+              <span className="account-list-row__handle account-list-row__handle--did">
+                <User size={11} strokeWidth={1.75} aria-hidden />
+                {truncateDid(actor.did)}
               </span>
-            </p>
+            )}
+          </div>
+          {description ? (
+            <p className="account-list-row__desc">{description}</p>
           ) : null}
         </div>
       </Link>
-
-      <div className="cert-list-row__author-col">
-        <span className="cert-list-row__handle">
-          {endorsementMeta ? (
-            <>
-              <EndorsementRowBadge meta={endorsementMeta} />
-              <span className="endorsement-row-badge__sep" aria-hidden>
-                {" · "}
-              </span>
-            </>
-          ) : null}
-          {handle}
-        </span>
-      </div>
+      {endorsementMeta ? (
+        <div className="account-list-row__badge">
+          <EndorsementRowBadge meta={endorsementMeta} />
+        </div>
+      ) : null}
     </article>
   )
+}
+
+function truncateDid(did: string): string {
+  return did.length > 24 ? `${did.slice(0, 16)}…${did.slice(-6)}` : did
 }
