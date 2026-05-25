@@ -58,9 +58,52 @@ function parseView(v: string | null): ListGalleryView {
   return v === "gallery" ? "gallery" : "list"
 }
 
-function parseDegree(v: string | null): 1 | 2 | 3 {
-  if (v === "2") return 2
-  if (v === "3") return 3
+type Degree = 1 | 2 | 3
+
+const ALL_DEGREES: readonly Degree[] = [1, 2, 3] as const
+
+/**
+ * Parse the URL into a non-empty `Set<Degree>` of selected endorsement
+ * rings. The control is a multi-select of three tags — direct, 2nd-hop,
+ * 3rd-hop — and the URL serialises the active subset as a sorted
+ * comma-separated list (`?degrees=1,3`).
+ *
+ * Migration shim: a legacy `?degree=N` (single integer, cumulative
+ * up to N — the old segmented-control semantics) is read as
+ * `{1, …, N}`. Preferred form is `degrees=...`; the migration keeps
+ * existing bookmarks meaningful.
+ *
+ * Returns `{1}` (default — direct endorsements only) when neither
+ * param is present, matching the old default-degree behaviour.
+ */
+function parseDegrees(
+  rawDegrees: string | null,
+  legacyDegree: string | null,
+): Set<Degree> {
+  if (rawDegrees) {
+    const out = new Set<Degree>()
+    for (const part of rawDegrees.split(",")) {
+      if (part === "1") out.add(1)
+      else if (part === "2") out.add(2)
+      else if (part === "3") out.add(3)
+    }
+    if (out.size > 0) return out
+  }
+  if (legacyDegree === "2") return new Set<Degree>([1, 2])
+  if (legacyDegree === "3") return new Set<Degree>([1, 2, 3])
+  return new Set<Degree>([1])
+}
+
+/** Serialise a degree set for URL storage — sorted, comma-joined.
+ *  Returns null for the `{1}` default so the URL stays clean. */
+function serializeDegrees(degrees: Set<Degree>): string | null {
+  if (degrees.size === 1 && degrees.has(1)) return null
+  return ALL_DEGREES.filter((d) => degrees.has(d)).join(",")
+}
+
+function maxDegree(degrees: Set<Degree>): Degree {
+  if (degrees.has(3)) return 3
+  if (degrees.has(2)) return 2
   return 1
 }
 
@@ -94,7 +137,16 @@ export default function Explore() {
   const search = searchParams?.get("q") ?? ""
   const sort = parseSort(searchParams?.get("sort") ?? null)
   const view = parseView(searchParams?.get("view") ?? null)
-  const degree = parseDegree(searchParams?.get("degree") ?? null)
+  // Endorsement-graph ring tags — multi-select of {1, 2, 3}. The URL
+  // stores the active subset under `?degrees=` (sorted); legacy
+  // `?degree=N` is read as the cumulative set {1..N} so old bookmarks
+  // keep working.
+  const degreesParam = searchParams?.get("degrees") ?? null
+  const legacyDegreeParam = searchParams?.get("degree") ?? null
+  const degrees = useMemo(
+    () => parseDegrees(degreesParam, legacyDegreeParam),
+    [degreesParam, legacyDegreeParam],
+  )
   const showsDegreeControl = isEndorsementFilter(kind, filter)
   const { did: viewerDid } = useAuth()
 
@@ -176,22 +228,35 @@ export default function Explore() {
     filter,
     sub,
     search,
-    // Only pass degree when the active filter actually consumes it,
-    // so a stale `?degree=2` on a non-endorsement filter doesn't
-    // perturb caching keys / loader behaviour.
-    degree: showsDegreeControl ? degree : undefined,
+    // Fetch the closure deep enough to include every selected ring.
+    // Only pass when the active filter actually consumes it, so a
+    // stale `?degrees=…` on a non-endorsement filter doesn't perturb
+    // caching keys / loader behaviour.
+    degree: showsDegreeControl ? maxDegree(degrees) : undefined,
   })
 
   const onDegreeButtonClick = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
-      const key = e.currentTarget.dataset.degreeKey
+      const raw = e.currentTarget.dataset.degreeKey
+      const key =
+        raw === "1" ? 1 : raw === "2" ? 2 : raw === "3" ? 3 : null
       if (!key) return
-      // Default (1st) — drop the param to keep the URL clean. Other
-      // values get serialised so `?filter=by-endorsed&degree=2`
-      // round-trips through bookmarks.
-      setUrl({ degree: key === "1" ? null : key })
+      // Toggle: deselect if already active, select otherwise. Block
+      // the move that would leave the set empty — at least one ring
+      // must stay active so the result list isn't filtered to zero.
+      const next = new Set<Degree>(degrees)
+      if (next.has(key)) {
+        if (next.size === 1) return
+        next.delete(key)
+      } else {
+        next.add(key)
+      }
+      // Clear the legacy `degree=` param while we're patching so it
+      // doesn't outlive a multi-select edit and re-take precedence
+      // on the next read.
+      setUrl({ degrees: serializeDegrees(next), degree: null })
     },
-    [setUrl],
+    [degrees, setUrl],
   )
 
   // Local search debounce: keep typing snappy, hit indexer once typing stops.
@@ -363,7 +428,7 @@ export default function Explore() {
 
           {showsDegreeControl ? (
             <EndorsementDegreeBar
-              degree={degree}
+              degrees={degrees}
               onSelect={onDegreeButtonClick}
               meta={data.endorsementClosure}
             />
@@ -374,6 +439,7 @@ export default function Explore() {
             sort={sort}
             attrs={attrs}
             view={view}
+            degrees={showsDegreeControl ? degrees : null}
           />
           {data.hasMore || data.isLoadingMore ? (
             <LoadMoreSentinel
@@ -394,40 +460,63 @@ export default function Explore() {
 
 // ----------------------- Endorsement-degree selector ------------------------
 
-const DEGREE_HINT: Record<1 | 2 | 3, string> = {
-  1: "Accounts you endorse",
-  2: "Accounts you endorse, plus everyone they endorse",
-  3: "…plus one more hop out",
+const DEGREE_LABEL: Record<Degree, string> = {
+  1: "1st",
+  2: "2nd",
+  3: "3rd",
+}
+
+const DEGREE_FRAGMENT: Record<Degree, string> = {
+  1: "accounts you endorse",
+  2: "accounts they endorse",
+  3: "one more hop out",
+}
+
+/** Build a human-readable summary of the active ring set
+ *  ("Showing accounts you endorse + accounts they endorse"). Joining
+ *  inline keeps the caption useful when the user composes a non-
+ *  contiguous subset like {1, 3}. */
+function describeDegrees(degrees: Set<Degree>): string {
+  const parts = ALL_DEGREES.filter((d) => degrees.has(d)).map(
+    (d) => DEGREE_FRAGMENT[d],
+  )
+  if (parts.length === 0) return ""
+  if (parts.length === 1) return `Showing ${parts[0]}.`
+  if (parts.length === 2) return `Showing ${parts[0]} + ${parts[1]}.`
+  return `Showing ${parts[0]}, ${parts[1]}, and ${parts[2]}.`
 }
 
 /**
- * Segmented control above the result list when the active filter is
- * endorsement-based (Accounts/"endorsed", Projects|Certs/"by-endorsed").
+ * Multi-select pill row above the result list when the active filter
+ * is endorsement-based (Accounts/"endorsed", Projects|Certs/"by-endorsed").
  *
- * Renders three pills — 1st / 2nd / 3rd — plus a helper caption that
- * updates per selection, and a "showing a subset" notice when the
- * indexer reports `truncated: true`. Caption / truncation messaging
- * matches the issue's product copy verbatim so the UI stays in lockstep
- * with the original spec.
+ * Each pill — 1st / 2nd / 3rd — toggles independently so the user can
+ * compose any non-empty subset of rings (e.g. show only direct
+ * endorsements, or only 3rd-degree connections, or skip the 2nd ring
+ * entirely). The caption tracks the current selection.
  *
  * Implementation note: data-degree-key on each button + a captured
  * onSelect avoids the same SWC-minifier closure-capture hazard the
  * filter / sub-option buttons solve via `data-filter-key` / `data-sub-key`.
  */
 function EndorsementDegreeBar({
-  degree,
+  degrees,
   onSelect,
   meta,
 }: {
-  degree: 1 | 2 | 3
+  degrees: Set<Degree>
   onSelect: (e: React.MouseEvent<HTMLButtonElement>) => void
   meta: ReturnType<typeof useExploreData>["endorsementClosure"]
 }) {
   return (
-    <div className="explore__degree-bar" role="group" aria-label="Endorsement depth">
+    <div
+      className="explore__degree-bar"
+      role="group"
+      aria-label="Endorsement rings — mark one or more"
+    >
       <div className="explore__degree-pills">
-        {([1, 2, 3] as const).map((d) => {
-          const active = d === degree
+        {ALL_DEGREES.map((d) => {
+          const active = degrees.has(d)
           return (
             <button
               key={d}
@@ -437,12 +526,12 @@ function EndorsementDegreeBar({
               className={`explore__degree-pill${active ? " explore__degree-pill--active" : ""}`}
               aria-pressed={active}
             >
-              {d === 1 ? "1st" : d === 2 ? "2nd" : "3rd"}
+              {DEGREE_LABEL[d]}
             </button>
           )
         })}
       </div>
-      <p className="explore__degree-caption">{DEGREE_HINT[degree]}</p>
+      <p className="explore__degree-caption">{describeDegrees(degrees)}</p>
       {meta?.truncated ? (
         <p
           className="explore__degree-truncated"
@@ -645,14 +734,28 @@ function ResultsArea({
   sort,
   attrs,
   view,
+  degrees,
 }: {
   kind: ExploreKind
   data: ReturnType<typeof useExploreData>
   sort: SortOrder
   attrs: Set<string>
   view: ListGalleryView
+  /** Non-null only when the active filter is endorsement-based.
+   *  When present, rows whose author's degree isn't in the set are
+   *  filtered out — the loader fetched the full closure up to
+   *  `max(degrees)`, this trims the subset the user actually wants
+   *  to see. */
+  degrees: Set<Degree> | null
 }) {
   const closure = data.endorsementClosure
+  const degreeMatches = (did: string | null | undefined): boolean => {
+    if (!degrees || !closure) return true
+    if (!did) return false
+    const meta = closure.closureByDid.get(did)
+    if (!meta) return false
+    return degrees.has(meta.degree)
+  }
 
   if (data.isLoading && data.users.length === 0 && data.projects.length === 0 && data.certs.length === 0) {
     return (
@@ -664,6 +767,7 @@ function ResultsArea({
 
   if (kind === "accounts") {
     let actors = data.users
+    if (degrees) actors = actors.filter((a) => degreeMatches(a.did))
     if (attrs.has("has-avatar"))
       actors = actors.filter((a) => !!a.avatarUrl)
     if (attrs.has("has-description"))
@@ -697,6 +801,8 @@ function ResultsArea({
 
   if (kind === "projects") {
     let projects = data.projects
+    if (degrees)
+      projects = projects.filter((p) => degreeMatches(projectAuthorDid(p)))
     if (attrs.has("has-banner"))
       projects = projects.filter((p) => !!p.value.banner || !!p.value.image)
     if (attrs.has("has-items"))
@@ -741,6 +847,8 @@ function ResultsArea({
   // certs
   let certs = data.certs
   const certDids = data.certDids
+  if (degrees)
+    certs = certs.filter((c) => degreeMatches(certDids.get(c.uri) ?? null))
   if (attrs.has("has-image"))
     certs = certs.filter((c) => !!c.value.image)
   if (attrs.has("has-shortDescription"))
