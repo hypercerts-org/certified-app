@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -16,6 +16,7 @@ import { useFeedback } from "@/lib/feedback-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
+import { useMounted } from "@/hooks/use-mounted";
 import Avatar from "@/components/ui/avatar";
 import ThemeToggle from "@/components/ui/theme-toggle";
 import { getInitials } from "@/lib/utils/initials";
@@ -71,8 +72,7 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   }, [pathname]);
 
   // Portal mount
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  const mounted = useMounted();
 
   // When acting as a group, the entire sidebar identity row (avatar,
   // name, handle) and the profile link should reflect the group the
