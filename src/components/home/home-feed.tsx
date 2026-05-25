@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Award, FolderGit2, Inbox, Star, Users } from "lucide-react"
+import { Award, FolderGit2, Inbox, MapPin, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -10,17 +10,19 @@ import { useHomeFeed, type HomeFeedEvent } from "@/hooks/use-home-feed"
 import { useFollowedDids } from "@/hooks/use-followed-dids"
 import { formatRelativeTime, resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
+import { formatShortDate } from "@/lib/utils/format-date"
 import { getInitials } from "@/lib/utils/initials"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 
 /**
- * GitHub-style activity timeline for the home page. Each row is a
- * compact single-line entry: actor avatar, verb sentence, action
- * icon, and relative time. Multiple event kinds (cert creates,
- * project creates, endorsements) render through one row template so
- * the timeline reads as a unified history rather than a stack of
- * cards.
+ * GitHub-style activity timeline for the home page. Each entry is
+ * an actor byline + verb sentence on top; cert and project creates
+ * also render a compact preview card underneath with the record's
+ * thumbnail, description, and key meta (period + location count for
+ * certs, item count for projects). Endorsement events keep to the
+ * single-line treatment since the sentence already names both ends
+ * of the action.
  *
  * Pagination intentionally absent in this first cut — see
  * `useHomeFeed` for the rationale (no unified indexer events op
@@ -102,9 +104,6 @@ function HomeFeedRow({ event }: { event: HomeFeedEvent }) {
 
   return (
     <article className="home-feed__row">
-      <span className={`home-feed__icon home-feed__icon--${event.kind.split(".")[0]}`}>
-        <EventIcon kind={event.kind} />
-      </span>
       <Link
         href={profileHref}
         className="home-feed__avatar"
@@ -117,12 +116,20 @@ function HomeFeedRow({ event }: { event: HomeFeedEvent }) {
           fallbackInitials={actorInitials}
         />
       </Link>
-      <p className="home-feed__sentence">
-        <Link href={profileHref} className="home-feed__actor">
-          {actorName}
-        </Link>{" "}
-        <EventSentence event={event} />
-      </p>
+      <div className="home-feed__content">
+        <p className="home-feed__sentence">
+          <Link href={profileHref} className="home-feed__actor">
+            {actorName}
+          </Link>{" "}
+          <EventSentence event={event} />
+        </p>
+        {event.kind === "cert.create" ? (
+          <CertPreview record={event.record} uri={event.uri} />
+        ) : null}
+        {event.kind === "project.create" ? (
+          <ProjectPreview record={event.record} uri={event.uri} />
+        ) : null}
+      </div>
       <time
         className="home-feed__time"
         dateTime={event.createdAt}
@@ -134,52 +141,12 @@ function HomeFeedRow({ event }: { event: HomeFeedEvent }) {
   )
 }
 
-function EventIcon({ kind }: { kind: HomeFeedEvent["kind"] }) {
-  const props = { size: 12, strokeWidth: 1.75, "aria-hidden": true } as const
-  if (kind === "cert.create") return <Award {...props} />
-  if (kind === "project.create") return <FolderGit2 {...props} />
-  return <Star {...props} />
-}
-
 function EventSentence({ event }: { event: HomeFeedEvent }) {
   if (event.kind === "cert.create") {
-    const title = certTitle(event.record) ?? "a cert"
-    const parsed = parseAtUri(event.uri)
-    const href = parsed
-      ? `/activity/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
-      : null
-    return (
-      <>
-        created a cert{" "}
-        {href ? (
-          <Link href={href} className="home-feed__target">
-            {title}
-          </Link>
-        ) : (
-          <span className="home-feed__target">{title}</span>
-        )}
-        <CertThumb record={event.record} />
-      </>
-    )
+    return <>created a cert</>
   }
   if (event.kind === "project.create") {
-    const title = projectTitle(event.record) ?? "a project"
-    const parsed = parseAtUri(event.uri)
-    const href = parsed
-      ? `/project/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
-      : null
-    return (
-      <>
-        created a project{" "}
-        {href ? (
-          <Link href={href} className="home-feed__target">
-            {title}
-          </Link>
-        ) : (
-          <span className="home-feed__target">{title}</span>
-        )}
-      </>
-    )
+    return <>created a project</>
   }
   return <EndorsementSentence subjectDid={event.subjectDid} />
 }
@@ -198,30 +165,169 @@ function EndorsementSentence({ subjectDid }: { subjectDid: string }) {
   )
 }
 
-/** Compact 18px square thumbnail tucked inline after a cert title —
- *  same affordance GitHub uses to preview avatars in event rows. */
-function CertThumb({ record }: { record: ActivityRecord }) {
-  const parsed = parseAtUri(record.uri)
-  if (!parsed) return null
-  if (!record.value.image) return null
-  const url = resolveActivityImageUrl(record.value.image, parsed.did)
-  if (!url) return null
+// ---------------------------------- Cert preview ----------------------------
+
+function CertPreview({ record, uri }: { record: ActivityRecord; uri: string }) {
+  const parsed = parseAtUri(uri)
+  const href = parsed
+    ? `/activity/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
+    : null
+  const title =
+    typeof record.value.title === "string" && record.value.title.length > 0
+      ? record.value.title
+      : "Untitled cert"
+  const description =
+    typeof record.value.shortDescription === "string" &&
+    record.value.shortDescription.length > 0
+      ? record.value.shortDescription
+      : null
+  const imageUrl =
+    record.value.image && parsed
+      ? resolveActivityImageUrl(record.value.image, parsed.did)
+      : null
+  const period = formatPeriod(
+    typeof record.value.startDate === "string" ? record.value.startDate : null,
+    typeof record.value.endDate === "string" ? record.value.endDate : null,
+  )
+  const locationCount = Array.isArray(record.value.locations)
+    ? record.value.locations.length
+    : 0
+
   return (
-    /* eslint-disable-next-line @next/next/no-img-element */
-    <img className="home-feed__thumb" src={url} alt="" loading="lazy" />
+    <PreviewCard
+      href={href}
+      title={title}
+      titleIcon={<Award size={12} strokeWidth={1.75} aria-hidden />}
+      imageUrl={imageUrl}
+      description={description}
+      meta={[
+        period,
+        locationCount > 0
+          ? `${locationCount} location${locationCount === 1 ? "" : "s"}`
+          : null,
+      ].filter((s): s is string => !!s)}
+      withLocationIcon={locationCount > 0}
+    />
   )
 }
 
-function certTitle(record: ActivityRecord): string | null {
-  return typeof record.value.title === "string" && record.value.title.length > 0
-    ? record.value.title
+// -------------------------------- Project preview ---------------------------
+
+function ProjectPreview({
+  record,
+  uri,
+}: {
+  record: CollectionRecord
+  uri: string
+}) {
+  const parsed = parseAtUri(uri)
+  const href = parsed
+    ? `/project/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
     : null
+  const v = record.value as Record<string, unknown>
+  const title =
+    (typeof v.title === "string" && v.title.length > 0 ? v.title : null) ||
+    (typeof v.name === "string" && v.name.length > 0 ? v.name : null) ||
+    "Untitled project"
+  const description =
+    typeof v.shortDescription === "string" && v.shortDescription.length > 0
+      ? v.shortDescription
+      : null
+  const rawImage = v.banner ?? v.image
+  const imageUrl =
+    rawImage && parsed
+      ? resolveActivityImageUrl(
+          rawImage as Parameters<typeof resolveActivityImageUrl>[0],
+          parsed.did,
+        )
+      : null
+  const itemCount = Array.isArray(v.items) ? v.items.length : 0
+
+  return (
+    <PreviewCard
+      href={href}
+      title={title}
+      titleIcon={<FolderGit2 size={12} strokeWidth={1.75} aria-hidden />}
+      imageUrl={imageUrl}
+      description={description}
+      meta={[
+        itemCount > 0 ? `${itemCount} cert${itemCount === 1 ? "" : "s"}` : null,
+      ].filter((s): s is string => !!s)}
+    />
+  )
 }
 
-function projectTitle(record: CollectionRecord): string | null {
-  const v = record.value as Record<string, unknown>
-  const title = typeof v.title === "string" ? v.title : null
-  if (title) return title
-  const name = typeof v.name === "string" ? v.name : null
-  return name && name.length > 0 ? name : null
+// ---------------------------------- Card shell ------------------------------
+
+function PreviewCard({
+  href,
+  title,
+  titleIcon,
+  imageUrl,
+  description,
+  meta,
+  withLocationIcon = false,
+}: {
+  href: string | null
+  title: string
+  titleIcon: React.ReactNode
+  imageUrl: string | null
+  description: string | null
+  meta: string[]
+  withLocationIcon?: boolean
+}) {
+  const body = (
+    <>
+      {imageUrl ? (
+        <span className="home-feed__preview-thumb">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={imageUrl} alt="" loading="lazy" />
+        </span>
+      ) : (
+        <span className="home-feed__preview-thumb home-feed__preview-thumb--placeholder">
+          {titleIcon}
+        </span>
+      )}
+      <span className="home-feed__preview-body">
+        <span className="home-feed__preview-title">{title}</span>
+        {description ? (
+          <span className="home-feed__preview-desc">{description}</span>
+        ) : null}
+        {meta.length > 0 ? (
+          <span className="home-feed__preview-meta">
+            {meta.map((m, i) => (
+              <span key={i} className="home-feed__preview-meta-item">
+                {i === 0 && withLocationIcon && i === meta.length - 1 ? (
+                  <MapPin size={11} strokeWidth={1.75} aria-hidden />
+                ) : null}
+                {m}
+              </span>
+            ))}
+          </span>
+        ) : null}
+      </span>
+    </>
+  )
+
+  if (href) {
+    return (
+      <Link href={href} className="home-feed__preview">
+        {body}
+      </Link>
+    )
+  }
+  return <div className="home-feed__preview">{body}</div>
+}
+
+function formatPeriod(
+  start: string | null,
+  end: string | null,
+): string | null {
+  if (!start && !end) return null
+  const s = start ? formatShortDate(start) : null
+  const e = end ? formatShortDate(end) : null
+  if (s && e) return `${s} – ${e}`
+  if (s) return `${s} (ongoing)`
+  if (e) return `Until ${e}`
+  return null
 }

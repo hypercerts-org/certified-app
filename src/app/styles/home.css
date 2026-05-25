@@ -276,8 +276,6 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  /* Subtle separator between rows — keeps the timeline reading
-     vertically without heavy card chrome around each entry. */
   border-top: 1px solid var(--border-subtle);
 }
 
@@ -285,12 +283,17 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
+/* Three columns: 32px avatar gutter · flexible content · right-anchored
+   relative time. The avatar column is sized to the Avatar component's
+   "sm" intrinsic (32px) so the actor icon renders at the same diameter
+   on every row regardless of whether the upstream profile lookup has
+   resolved yet. */
 .home-feed__row {
   display: grid;
-  grid-template-columns: 22px 28px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 4px;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 12px 6px;
   font-size: 0.875rem;
   color: var(--fg-primary);
 }
@@ -299,39 +302,23 @@
   background: var(--bg-sunken);
 }
 
-.home-feed__icon {
-  width: 22px;
-  height: 22px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--bg-subtle);
-  color: var(--fg-secondary);
-  flex-shrink: 0;
-}
-
-.home-feed__icon--cert {
-  background: color-mix(in srgb, var(--accent-strong, #2563eb) 10%, var(--bg-subtle));
-  color: var(--accent-strong, #2563eb);
-}
-
-.home-feed__icon--project {
-  background: color-mix(in srgb, #16a34a 10%, var(--bg-subtle));
-  color: #16a34a;
-}
-
-.home-feed__icon--endorsement {
-  background: color-mix(in srgb, #eab308 14%, var(--bg-subtle));
-  color: #a16207;
-}
-
 .home-feed__avatar {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: inline-flex;
   text-decoration: none;
   flex-shrink: 0;
+  /* Vertically align the avatar with the first line of the sentence
+     (which starts at the row's top after the 12px row padding). */
+  margin-top: 1px;
+}
+
+.home-feed__content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 1px;
 }
 
 .home-feed__sentence {
@@ -340,9 +327,6 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  /* Allow wrapping when the sentence is long, but keep the row
-     visually contained — GitHub-feed entries occasionally wrap onto
-     a second line and that reads fine. */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -370,21 +354,12 @@
   border-bottom-color: var(--fg-primary);
 }
 
-.home-feed__thumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 3px;
-  object-fit: cover;
-  display: inline-block;
-  vertical-align: -3px;
-  margin-left: 6px;
-}
-
 .home-feed__time {
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
   color: var(--fg-secondary);
   white-space: nowrap;
+  padding-top: 2px;
 }
 
 .home-feed__loading {
@@ -393,19 +368,122 @@
   padding: 48px 0;
 }
 
+/* ---- Preview card (cert + project creates) ---- */
+
+.home-feed__preview {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+a.home-feed__preview:hover {
+  border-color: var(--fg-secondary);
+  background: var(--bg-subtle);
+}
+
+.home-feed__preview-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-secondary);
+  flex-shrink: 0;
+}
+
+.home-feed__preview-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.home-feed__preview-thumb--placeholder {
+  /* Center the lucide icon in the placeholder thumb when the record
+     has no image yet. */
+  color: var(--fg-secondary);
+}
+
+.home-feed__preview-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.home-feed__preview-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.home-feed__preview-desc {
+  font-size: 0.8rem;
+  color: var(--fg-secondary);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.home-feed__preview-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin-top: 2px;
+  font-size: 0.72rem;
+  color: var(--fg-muted);
+}
+
+.home-feed__preview-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
 @media (max-width: 760px) {
   .home-feed__row {
-    grid-template-columns: 22px 28px minmax(0, 1fr);
-    gap: 8px;
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 10px;
   }
   .home-feed__time {
-    grid-column: 3 / 4;
-    padding-top: 2px;
+    grid-column: 2 / 3;
+    padding-top: 0;
     align-self: start;
   }
   .home-feed__sentence {
     -webkit-line-clamp: 3;
     line-clamp: 3;
+  }
+  .home-feed__preview {
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 10px;
+  }
+  .home-feed__preview-thumb {
+    width: 44px;
+    height: 44px;
   }
 }
 
