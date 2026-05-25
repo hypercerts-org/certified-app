@@ -111,8 +111,13 @@ async function getCertsProfile(did: string): Promise<{
 
 /** Fetch a user's Bluesky profile view from the public appView. Works
  *  without authentication, so signed-out visitors to the profile page
- *  still get full author info + avatar + banner. */
-async function getBlueskyProfile(did: string): Promise<{
+ *  still get full author info + avatar + banner.
+ *
+ *  Named `fetchBskyAppViewProfile` (not `getBlueskyProfile`) to avoid
+ *  shadowing the exported `getBlueskyProfile` in `lib/atproto/profile.ts`,
+ *  which reads `app.bsky.actor.profile` from the user's OWN PDS — a
+ *  different operation with the same name. */
+async function fetchBskyAppViewProfile(did: string): Promise<{
   displayName?: string
   description?: string
   avatar?: string
@@ -185,7 +190,7 @@ export async function GET(request: NextRequest) {
     const [handleResult, certsResult, bskyResult] = await Promise.allSettled([
       resolveHandle(did),
       getCertsProfile(did),
-      getBlueskyProfile(did),
+      fetchBskyAppViewProfile(did),
     ])
 
     const handle =
