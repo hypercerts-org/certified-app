@@ -190,9 +190,7 @@
   display: flex;
   gap: 8px;
   align-items: center;
-  padding-bottom: 16px;
   margin-bottom: 16px;
-  border-bottom: 1px solid var(--border-subtle);
   flex-wrap: wrap;
 }
 
@@ -759,13 +757,18 @@
   flex-direction: column;
   gap: 6px;
   padding: 12px 0 6px;
-  border-bottom: 1px solid var(--border-subtle);
   margin-bottom: 12px;
 }
 
 .explore__degree-pills {
   display: inline-flex;
   gap: 4px;
+}
+
+.explore__degree-label {
+  font-size: 12px;
+  color: var(--fg-secondary);
+  margin: 0;
 }
 
 .explore__degree-pill {
@@ -789,12 +792,6 @@
   background: var(--accent-soft);
   color: var(--accent-strong);
   border-color: var(--accent-strong);
-}
-
-.explore__degree-caption {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin: 0;
 }
 
 .explore__degree-truncated {

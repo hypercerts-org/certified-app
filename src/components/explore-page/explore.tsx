@@ -466,26 +466,6 @@ const DEGREE_LABEL: Record<Degree, string> = {
   3: "3rd",
 }
 
-const DEGREE_FRAGMENT: Record<Degree, string> = {
-  1: "accounts you endorse",
-  2: "accounts they endorse",
-  3: "one more hop out",
-}
-
-/** Build a human-readable summary of the active ring set
- *  ("Showing accounts you endorse + accounts they endorse"). Joining
- *  inline keeps the caption useful when the user composes a non-
- *  contiguous subset like {1, 3}. */
-function describeDegrees(degrees: Set<Degree>): string {
-  const parts = ALL_DEGREES.filter((d) => degrees.has(d)).map(
-    (d) => DEGREE_FRAGMENT[d],
-  )
-  if (parts.length === 0) return ""
-  if (parts.length === 1) return `Showing ${parts[0]}.`
-  if (parts.length === 2) return `Showing ${parts[0]} + ${parts[1]}.`
-  return `Showing ${parts[0]}, ${parts[1]}, and ${parts[2]}.`
-}
-
 /**
  * Multi-select pill row above the result list when the active filter
  * is endorsement-based (Accounts/"endorsed", Projects|Certs/"by-endorsed").
@@ -531,7 +511,7 @@ function EndorsementDegreeBar({
           )
         })}
       </div>
-      <p className="explore__degree-caption">{describeDegrees(degrees)}</p>
+      <p className="explore__degree-label">Endorsement degree:</p>
       {meta?.truncated ? (
         <p
           className="explore__degree-truncated"
