@@ -135,6 +135,29 @@ export async function extractError(
 }
 
 /**
+ * Build the query-string for `com.atproto.repo.getRecord` consumed via the
+ * BFF's XRPC proxy. Centralizes the `encodeURIComponent` triple-call so
+ * callers don't reproduce it.
+ *
+ * Use only for client-side reads through `/api/xrpc/...`. Server-side
+ * routes that hit a foreign PDS directly construct their own URL because
+ * the path shape differs (`/xrpc/com.atproto.repo.getRecord` with dots
+ * vs. the BFF's `/api/xrpc/com/atproto/repo/getRecord` with slashes).
+ */
+export function xrpcGetRecordPath(args: {
+  repo: string
+  collection: string
+  rkey: string
+}): string {
+  return (
+    "/api/xrpc/com/atproto/repo/getRecord" +
+    `?repo=${encodeURIComponent(args.repo)}` +
+    `&collection=${encodeURIComponent(args.collection)}` +
+    `&rkey=${encodeURIComponent(args.rkey)}`
+  )
+}
+
+/**
  * Validate the `{ data: { uri, cid } }` shape that AT Protocol mutation
  * XRPC methods (createRecord / putRecord etc.) return through the
  * AtpAgent. Returns `{ uri, cid }` when both strings are present, or
