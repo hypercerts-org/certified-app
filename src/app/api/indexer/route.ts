@@ -241,6 +241,7 @@ ${ACTIVITY_NODE_SELECTION}
             did
             displayName
             description
+            createdAt
             avatar {
               __typename
               ... on OrgHypercertsDefsUri { uri }

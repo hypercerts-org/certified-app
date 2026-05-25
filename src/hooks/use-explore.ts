@@ -726,6 +726,10 @@ function actorFromClosureAccount(account: EndorsementClosureAccount): NetworkAct
     avatarUrl: issuer.avatarCid
       ? `/api/xrpc/com/atproto/sync/getBlob?did=${encodeURIComponent(account.did)}&cid=${encodeURIComponent(issuer.avatarCid)}`
       : null,
+    // The closure-graph endpoint doesn't expose profile createdAt
+    // (it only carries the issuer identity block). Leave null — the
+    // row renderer falls back gracefully.
+    createdAt: null,
   }
 }
 

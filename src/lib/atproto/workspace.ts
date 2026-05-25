@@ -11,6 +11,10 @@ export interface NetworkActor {
   /** Resolved through the local xrpc proxy — null when the actor has
    *  no avatar set. */
   avatarUrl: string | null
+  /** ISO datetime from the `app.certified.actor.profile` record's
+   *  `createdAt` field — when the user joined Certified. Null for
+   *  legacy profiles indexed before the field was emitted. */
+  createdAt: string | null
 }
 
 interface NetworkActorsGraphQLResponse {
@@ -23,6 +27,7 @@ interface NetworkActorsGraphQLResponse {
           did: string
           displayName: string | null
           description: string | null
+          createdAt: string | null
           avatar:
             | { __typename: "OrgHypercertsDefsUri"; uri?: string | null }
             | {
@@ -121,6 +126,7 @@ export async function fetchNetworkActors(
       displayName: n.displayName,
       description: n.description,
       avatarUrl: avatarUrlFromUnion(n.did, n.avatar),
+      createdAt: typeof n.createdAt === "string" ? n.createdAt : null,
     })
   }
   return {

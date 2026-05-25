@@ -644,11 +644,16 @@
 
 /* ---------- Account list row ---------- */
 
+/* Three tracks: identity block (avatar + name + @handle stacked),
+   optional endorsement badge, and a right-anchored "Joined …" date.
+   The middle and right tracks use `auto` so they collapse when the
+   data is missing — endorsement-filter mode adds the badge; older
+   profiles without a recorded createdAt drop the date silently. */
 .account-list-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   padding: 12px 14px;
   transition: background var(--transition-fast);
 }
@@ -678,14 +683,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  gap: 2px;
-}
-
-.account-list-row__id {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  min-width: 0;
+  gap: 1px;
 }
 
 .account-list-row__name {
@@ -695,9 +693,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  line-height: 1.25;
-  flex-shrink: 1;
-  min-width: 0;
+  line-height: 1.3;
 }
 
 .account-list-row__handle {
@@ -707,6 +703,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  line-height: 1.3;
 }
 
 .account-list-row__handle--did {
@@ -717,29 +714,29 @@
   color: var(--fg-muted);
 }
 
-.account-list-row__desc {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--fg-secondary);
-  line-height: 1.4;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-  -webkit-box-orient: vertical;
-}
-
 .account-list-row__badge {
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
 }
 
+.account-list-row__joined {
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  flex-shrink: 0;
+}
+
 @media (max-width: 600px) {
-  .account-list-row__id {
-    flex-wrap: wrap;
-    gap: 2px 8px;
+  .account-list-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+  .account-list-row__badge,
+  .account-list-row__joined {
+    justify-self: start;
   }
 }
 
