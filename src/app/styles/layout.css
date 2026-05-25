@@ -1945,7 +1945,11 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   display: flex;
   align-items: center;
   width: 100%;
-  max-width: 1536px;
+  /* No max-width cap — the chrome stretches viewport-wide on every
+     page so the navbar border-bottom and footer border-top run
+     edge-to-edge in lockstep (matches the framing on /explore and
+     /settings). Inner content keeps its 12px gutter via the padding
+     below. */
   margin: 0 auto;
   padding: 0 12px;
 }
@@ -3520,9 +3524,12 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 
    One horizontal row at desktop (small brandmark + copyright on the
    left, link list on the right); wraps to two stacked rows on
-   narrow viewports. Sits inside `.app-shell__center` so the
-   gutters / max-width come from the existing grid. Top border
-   keeps the line between content and footer subtle.
+   narrow viewports. Sits as a sibling of `.app-shell__grid` (NOT
+   inside it) so the footer spans the full viewport width on every
+   page — the border-top reads as a page-frame divider that matches
+   the navbar's border-bottom edge-to-edge. Interior padding
+   (16px 32px 24px) gives the brandmark + link list breathing room
+   inset from the viewport edges.
    ============================================================ */
 
 .site-footer {

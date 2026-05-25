@@ -12,6 +12,11 @@ import SiteFooter from "@/components/layout/site-footer";
  *     .app-shell__grid                max-width 1320; margin 0 auto
  *       .app-shell__center            grid cell (center column)
  *         .app-shell__content         reading-width container
+ *     SiteFooter                      sibling of the grid — sits at
+ *                                     viewport width so the footer
+ *                                     border-top runs edge-to-edge
+ *                                     on every page (matches the
+ *                                     full-bleed navbar).
  *
  * The desktop top bar is mounted in the root layout (sibling to <main>),
  * NOT inside this grid. The left rail and right rail were both retired
@@ -43,9 +48,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <div className="app-shell__content">
             {children}
           </div>
-          <SiteFooter />
         </div>
       </div>
+      <SiteFooter />
     </div>
   );
 }
