@@ -34,7 +34,7 @@ describe("extractRouteError", () => {
         message: "auth failed: Bearer abc.def.ghi",
       })
       expect(message).not.toContain("abc.def.ghi")
-      expect(message).toContain("Bearer [redacted]")
+      expect(message).toContain("Bearer <redacted>")
     })
 
     it("redacts JWT-shaped tokens in echoed 4xx messages", () => {
@@ -43,7 +43,7 @@ describe("extractRouteError", () => {
         message: "decode failed for eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.sig",
       })
       expect(message).not.toContain("eyJhbGciOiJIUzI1NiJ9")
-      expect(message).toContain("[jwt-redacted]")
+      expect(message).toContain("<jwt>")
     })
 
     it("falls back to a generic message when 4xx error has no message string", () => {

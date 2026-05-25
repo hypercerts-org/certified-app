@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { logSafe } from "./log-safe"
+import { logSafe, redactSecrets } from "./log-safe"
 
 /**
  * Extract a usable HTTP status from an unknown caught error and emit a
@@ -47,20 +47,14 @@ function messageFor4xx(err: unknown, status: number): string {
   if (err && typeof err === "object") {
     const e = err as Record<string, unknown>
     if (typeof e.message === "string" && e.message.trim().length > 0) {
+      // redactSecrets from log-safe is a strict superset of the prior
+      // local redactor (JWT + Authorization/DPoP/Cookie header lines +
+      // OAuth grants + JWK material + email). Strict superset is the
+      // safer direction here — over-redacting a 4xx body never leaks.
       return redactSecrets(e.message).trim()
     }
   }
   return genericMessageFor(status)
-}
-
-// Mirror of the redaction shape in logSafe — strip anything that looks
-// like a token / authorization header / DPoP material that the atproto
-// SDK sometimes embeds in error messages.
-function redactSecrets(s: string): string {
-  return s
-    .replace(/Bearer\s+[A-Za-z0-9._\-]+/g, "Bearer [redacted]")
-    .replace(/DPoP\s+[A-Za-z0-9._\-]+/g, "DPoP [redacted]")
-    .replace(/eyJ[A-Za-z0-9._\-]+/g, "[jwt-redacted]")
 }
 
 function genericMessageFor(status: number): string {
