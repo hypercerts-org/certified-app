@@ -83,8 +83,8 @@ export default function Home() {
             <div className="home__feed">
               <FollowingFeed activeDid={activeDid} />
             </div>
-            <aside className="home__news" aria-label="Our news">
-              <NewsSection actor={NEWS_ACTOR_DID} heading="Our news" />
+            <aside className="home__news" aria-label="News from Certified">
+              <NewsSection actor={NEWS_ACTOR_DID} heading="News from Certified" />
             </aside>
           </div>
         </main>

@@ -136,10 +136,17 @@ export function useBskyPosts(handle: string) {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Guard against state updates after unmount (the hook is rendered
-  // in the right rail which itself can unmount on viewport changes).
+  // Guard against state updates after unmount. Importantly, the setup
+  // re-asserts `current = true` — React Strict Mode (dev) runs the
+  // cleanup once between the two mounted passes, and without re-
+  // assertion the ref would stay `false` forever and every state
+  // setter inside the fetch promise would no-op, leaving the consumer
+  // stuck on the initial loading state.
   const aliveRef = useRef(true)
-  useEffect(() => () => { aliveRef.current = false }, [])
+  useEffect(() => {
+    aliveRef.current = true
+    return () => { aliveRef.current = false }
+  }, [])
 
   // Singleflight token for the in-flight request. If a second fetch
   // kicks off (e.g. handle changes) we ignore the older one's result.
