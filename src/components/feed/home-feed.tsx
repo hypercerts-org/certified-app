@@ -9,14 +9,20 @@ import FeedEventCard from "@/components/feed/feed-event-card"
 import type { UseHomeFeedResult } from "@/hooks/use-home-feed"
 
 /**
- * Home-timeline feed shell. Renders states (empty / loading / error)
- * around the actual event list. Mirrors the visual rhythm of
- * `feed-layout.tsx` (the for-you / following feed shell) without
- * inheriting its `ActivityRecord[]`-only contract.
+ * Home-timeline feed shell. Three distinct empty-state variants per
+ * issue #88's plan-v2:
+ *   - signed-out: "Sign in to see your feed."
+ *   - signed-in + 0 follows: "Follow people to see their activity here."
+ *   - signed-in + follows but 0 events: "No activity yet."
+ *
+ * The variants are mutually exclusive — the branch logic checks
+ * `authorsCount` from the hook (signed-in + follows = authorsCount > 0
+ * after the cap-aware dedupe).
  */
 export default function HomeFeed(props: UseHomeFeedResult) {
   const {
     events,
+    authorsCount,
     isLoading,
     isLoadingMore,
     error,
@@ -48,8 +54,8 @@ export default function HomeFeed(props: UseHomeFeedResult) {
     return () => observer.disconnect()
   }, [hasMore, isLoadingMore, isLoading, loadMore])
 
-  // 1. Auth loading → skeletons (we don't know yet whether to show
-  // signed-out vs signed-in empty state).
+  // Auth resolving — defer the empty-state choice until we know
+  // whether the user is signed in.
   if (authLoading) {
     return (
       <div className="feed">
@@ -58,7 +64,7 @@ export default function HomeFeed(props: UseHomeFeedResult) {
     )
   }
 
-  // 2. Signed out → sign-in empty state.
+  // Signed out.
   if (!isAuthenticated || !did) {
     return (
       <div className="feed">
@@ -71,18 +77,20 @@ export default function HomeFeed(props: UseHomeFeedResult) {
     )
   }
 
-  return (
-    <div className="feed">
-      {(isOversized || truncatedBySource) && (
-        <div className="feed__warning" role="status">
-          {isOversized
-            ? "You follow more than 500 people. Showing activity from a subset."
-            : "Your follow list is too large to fully sync. Some activity may be missing."}
-        </div>
-      )}
+  const warningBanner =
+    isOversized || truncatedBySource ? (
+      <div className="feed__warning" role="status">
+        {isOversized
+          ? "You follow more than 500 people. Showing activity from a subset."
+          : "Your follow list is too large to fully sync. Some activity may be missing."}
+      </div>
+    ) : null
 
-      {/* 3. Error — but show events too if we already loaded some. */}
-      {error && events.length === 0 ? (
+  // Error with no events on screen — primary state.
+  if (error && events.length === 0) {
+    return (
+      <div className="feed">
+        {warningBanner}
         <EmptyState
           icon={AlertCircle}
           title={
@@ -92,41 +100,60 @@ export default function HomeFeed(props: UseHomeFeedResult) {
           }
           description={error}
         />
-      ) : null}
+      </div>
+    )
+  }
 
-      {/* 4. Loading + no events yet. */}
-      {isLoading && events.length === 0 && !error ? <SkeletonRows /> : null}
+  // Loading the first page — show skeletons.
+  if (isLoading && events.length === 0) {
+    return (
+      <div className="feed">
+        {warningBanner}
+        <SkeletonRows />
+      </div>
+    )
+  }
 
-      {/* 5. Signed in + no error + done loading + zero events. */}
-      {!isLoading && !error && events.length === 0 ? (
+  // Empty — three variants. authorsCount === 0 covers the "no follows
+  // yet" case explicitly; otherwise it's "follows haven't been active."
+  if (events.length === 0) {
+    if (authorsCount === 0) {
+      return (
+        <div className="feed">
+          {warningBanner}
+          <EmptyState
+            icon={Users}
+            title="You're not following anyone yet"
+            description="Follow people to see their activity in your feed."
+          />
+        </div>
+      )
+    }
+    return (
+      <div className="feed">
+        {warningBanner}
         <EmptyState
           icon={Inbox}
           title="No activity yet"
           description="When people you follow create certs or endorse others, you'll see it here."
         />
-      ) : null}
+      </div>
+    )
+  }
 
-      {/* 6. Events. */}
-      {events.length > 0 ? (
-        <>
-          {events.map((hydrated) => (
-            <FeedEventCard
-              key={hydrated.event.id}
-              event={hydrated.event}
-              payload={hydrated.payload}
-            />
-          ))}
-          {isLoadingMore ? <ActivityCardSkeleton /> : null}
-          {hasMore ? (
-            <div ref={sentinelRef} className="feed__sentinel" aria-hidden="true" />
-          ) : null}
-        </>
-      ) : null}
-
-      {/* 7. Edge case: no events but no follows. Override the generic
-          "no activity" with the follow-people-first prompt. */}
-      {!isLoading && !error && events.length === 0 && !isOversized && !truncatedBySource ? (
-        <NoFollowsHint />
+  return (
+    <div className="feed">
+      {warningBanner}
+      {events.map((hydrated) => (
+        <FeedEventCard
+          key={hydrated.event.id}
+          event={hydrated.event}
+          payload={hydrated.payload}
+        />
+      ))}
+      {isLoadingMore ? <ActivityCardSkeleton /> : null}
+      {hasMore ? (
+        <div ref={sentinelRef} className="feed__sentinel" aria-hidden="true" />
       ) : null}
     </div>
   )
@@ -139,21 +166,5 @@ function SkeletonRows() {
       <ActivityCardSkeleton />
       <ActivityCardSkeleton />
     </>
-  )
-}
-
-/**
- * Inline secondary empty state — rendered alongside the primary "no
- * activity" message when the underlying cause is "user follows
- * nobody yet" rather than "follows haven't been active."
- * Visually subordinate so the user only reads it if they're confused
- * by the primary message.
- */
-function NoFollowsHint() {
-  return (
-    <div className="feed__hint">
-      <Users size={20} strokeWidth={1.5} aria-hidden="true" />
-      <p>Not following anyone yet? Find people to follow on the Explore page.</p>
-    </div>
   )
 }

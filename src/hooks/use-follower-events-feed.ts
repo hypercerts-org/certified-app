@@ -21,6 +21,8 @@ export interface UseFollowerEventsFeedOptions {
 
 export interface UseFollowerEventsFeedResult {
   events: HydratedFeedEvent[]
+  /** Size of the (truncated, deduped) author union currently in use. */
+  authorsCount: number
   isLoading: boolean
   isLoadingMore: boolean
   error: string | null
@@ -100,12 +102,26 @@ export function useFollowerEventsFeed(
   const kindsRef = useRef(kinds)
   kindsRef.current = kinds
 
+  // Filter key snapshot. loadMore and refresh capture this at call
+  // time and skip their setState if the key has rolled (a key change
+  // would otherwise splice stale page-N events into a fresh page-1).
+  const filterKeyRef = useRef(filterKey)
+  filterKeyRef.current = filterKey
+
   const loadInitial = useCallback(
     async (signal?: AbortSignal) => {
       try {
         setIsLoading(true)
         setError(null)
         setErrorCode(null)
+        // No signed-in user, or signed-in user follows nobody — skip
+        // the round-trip. The UI shows the appropriate empty state.
+        if (authorsRef.current.length === 0) {
+          setEvents([])
+          endCursorRef.current = null
+          setHasMore(false)
+          return
+        }
         const page = await fetchFollowerEvents({
           authors: authorsRef.current,
           first: DEFAULT_FEED_PAGE_SIZE,
@@ -134,11 +150,17 @@ export function useFollowerEventsFeed(
     [],
   )
 
-  // Initial load + reload on filter-key change.
+  // Initial load + reload on filter-key change. Cleanup aborts the
+  // in-flight initial fetch AND resets the pagination cursor so a
+  // late loadMore from the old key can't reuse a stale cursor against
+  // the new author set.
   useEffect(() => {
     const controller = new AbortController()
     loadInitial(controller.signal)
-    return () => controller.abort()
+    return () => {
+      controller.abort()
+      endCursorRef.current = null
+    }
   }, [filterKey, loadInitial])
 
   const loadMore = useCallback(() => {
@@ -146,6 +168,10 @@ export function useFollowerEventsFeed(
     if (authorsRef.current.length === 0) return
     isLoadingMoreRef.current = true
     setIsLoadingMore(true)
+    // Snapshot the key at call time. If the user's follow set changes
+    // mid-request, we drop the result rather than splicing it onto a
+    // fresh page-1 from the new author set.
+    const dispatchedKey = filterKeyRef.current
     ;(async () => {
       try {
         const page = await fetchFollowerEvents({
@@ -154,7 +180,9 @@ export function useFollowerEventsFeed(
           after: endCursorRef.current ?? undefined,
           kinds: kindsRef.current,
         })
+        if (dispatchedKey !== filterKeyRef.current) return
         const hydrated = await hydrateFeedEvents(page.events)
+        if (dispatchedKey !== filterKeyRef.current) return
         setEvents((prev) => {
           // Dedupe by event.id in case the server returns an overlapping
           // page (race between concurrent refresh + loadMore).
@@ -165,6 +193,7 @@ export function useFollowerEventsFeed(
         endCursorRef.current = page.endCursor
         setHasMore(page.hasNextPage)
       } catch (err) {
+        if (dispatchedKey !== filterKeyRef.current) return
         // Loading-more errors stop pagination but don't replace the
         // existing list — the visible page stays valid.
         console.warn("[useFollowerEventsFeed] loadMore failed:", err)
@@ -178,13 +207,16 @@ export function useFollowerEventsFeed(
 
   const refresh = useCallback(async () => {
     if (authorsRef.current.length === 0) return
+    const dispatchedKey = filterKeyRef.current
     try {
       const page = await fetchFollowerEvents({
         authors: authorsRef.current,
         first: DEFAULT_FEED_PAGE_SIZE,
         kinds: kindsRef.current,
       })
+      if (dispatchedKey !== filterKeyRef.current) return
       const hydrated = await hydrateFeedEvents(page.events)
+      if (dispatchedKey !== filterKeyRef.current) return
       setEvents((prev) => {
         // Merge by event.id: prepend new events that aren't already
         // in the list. Existing events keep their position so the
@@ -257,6 +289,7 @@ export function useFollowerEventsFeed(
 
   return {
     events,
+    authorsCount: authors.length,
     isLoading: combinedIsLoading,
     isLoadingMore,
     error: combinedError,

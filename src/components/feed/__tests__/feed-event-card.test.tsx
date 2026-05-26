@@ -23,7 +23,6 @@ const actor: FeedEvent["actor"] = {
   handle: "author.test",
   displayName: "Author Person",
   avatarCid: null,
-  pds: null,
 }
 
 function makeEvent(kind: string, subjectUri = "at://did:plc:x/y/z"): FeedEvent {
@@ -140,12 +139,13 @@ describe("FeedEventCard", () => {
     expect(screen.getByText(subjectUri)).toBeTruthy()
   })
 
-  it("renders the fallback card when payload is null (404 hydration)", () => {
+  it("shows the degraded action line when payload is null on a known kind (404 hydration)", () => {
     render(
       <FeedEventCard event={makeEvent("cert.create")} payload={null} />,
     )
-    // Without a payload we can't show the title, so the fallback's
-    // "did something" label is what's left.
-    expect(screen.getByText("did something")).toBeTruthy()
+    // We know the kind (cert.create) even though hydration failed, so
+    // we keep the verb rather than falling through to "did something".
+    expect(screen.getByText("created a cert")).toBeTruthy()
+    expect(screen.queryByText("did something")).toBeNull()
   })
 })

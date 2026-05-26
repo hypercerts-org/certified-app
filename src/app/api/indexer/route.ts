@@ -555,7 +555,6 @@ ${ACTIVITY_NODE_SELECTION}
               handle
               displayName
               avatarCid
-              pds
             }
           }
         }

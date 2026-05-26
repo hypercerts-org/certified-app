@@ -2275,7 +2275,7 @@
 }
 
 .feed-card__action-subject {
-  color: var(--fg-default);
+  color: var(--fg-primary);
   text-decoration: none;
   font-weight: 500;
 }
@@ -2287,10 +2287,10 @@
 .feed-card__note {
   margin: 12px 0 0;
   padding: 12px;
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
   border-radius: 8px;
   font-size: 0.875rem;
-  color: var(--fg-default);
+  color: var(--fg-primary);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -2305,11 +2305,11 @@
 .feed__warning {
   margin: 12px 0;
   padding: 10px 14px;
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
   border-left: 3px solid var(--fg-muted);
   border-radius: 4px;
   font-size: 0.875rem;
-  color: var(--fg-default);
+  color: var(--fg-primary);
 }
 
 .feed__sentinel {
@@ -2323,7 +2323,7 @@
   gap: 8px;
   margin: 24px 0;
   padding: 14px 16px;
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
   border-radius: 8px;
   font-size: 0.875rem;
   color: var(--fg-muted);

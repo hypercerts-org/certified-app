@@ -65,7 +65,6 @@ function makeEvent(id: string, sortAt = "2026-05-26T00:00:00.000Z") {
         handle: "x.test",
         displayName: "X",
         avatarCid: null,
-        pds: null,
       },
     },
     payload: null,

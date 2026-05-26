@@ -37,7 +37,6 @@ const sampleNode = {
     handle: "alice.test",
     displayName: "Alice",
     avatarCid: null,
-    pds: null,
   },
 }
 
@@ -152,7 +151,6 @@ describe("hydrateFeedEvents", () => {
         handle: "x.test",
         displayName: "X",
         avatarCid: null,
-        pds: null,
       },
     }
   }

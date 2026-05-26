@@ -98,7 +98,6 @@ function FeedEventBody({ event, payload }: FeedEventCardProps) {
   if (payload?.kind === "badge.award") {
     return (
       <SubjectActionBody
-        event={event}
         subjectDid={payload.subjectDid}
         action="awarded a badge to"
         note={payload.note}
@@ -109,7 +108,6 @@ function FeedEventBody({ event, payload }: FeedEventCardProps) {
   if (payload?.kind === "legacy.endorsement") {
     return (
       <SubjectActionBody
-        event={event}
         subjectDid={payload.subjectDid}
         action="endorsed"
         note={null}
@@ -117,7 +115,41 @@ function FeedEventBody({ event, payload }: FeedEventCardProps) {
       />
     )
   }
+  // Hydration missed (404) on a known kind — show the action line we
+  // can derive from event.kind alone, with no body content. Beats
+  // falling through to the generic "did something" card when we
+  // actually know what the actor did.
+  const knownAction = actionLabelForKnownKind(event.kind)
+  if (knownAction) {
+    return <DegradedKnownKindBody label={knownAction} />
+  }
   return <UnknownKindBody event={event} />
+}
+
+function actionLabelForKnownKind(kind: string): string | null {
+  switch (kind) {
+    case "cert.create":
+      return "created a cert"
+    case "collection.create":
+      return "created a project"
+    case "badge.award":
+      return "awarded a badge"
+    case "legacy.endorsement":
+      return "endorsed someone"
+    default:
+      return null
+  }
+}
+
+function DegradedKnownKindBody({ label }: { label: string }) {
+  return (
+    <div className="feed-card__body">
+      <div className="feed-card__action">
+        <Sparkles size={16} strokeWidth={1.75} aria-hidden="true" />
+        <span>{label}</span>
+      </div>
+    </div>
+  )
 }
 
 // ----------------------------------------------------------------------
@@ -235,13 +267,11 @@ function CollectionCreateBody({
 // ----------------------------------------------------------------------
 
 function SubjectActionBody({
-  event: _event,
   subjectDid,
   action,
   note,
   icon,
 }: {
-  event: FeedEvent
   subjectDid: string
   action: string
   note: string | null

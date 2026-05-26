@@ -75,7 +75,6 @@ export interface FeedActor {
   handle: string | null
   displayName: string | null
   avatarCid: string | null
-  pds: string | null
 }
 
 export interface FeedEvent {
@@ -385,8 +384,16 @@ export async function hydrateFeedEvents(
   for (const edge of json.data?.collections?.edges ?? []) {
     if (!edge.node) continue
     const record = nodeToCollectionRecord(edge.node)
-    if (edge.node.type) {
+    // nodeToCollectionRecord hardcodes `type: "project"` because the
+    // existing UserProjects op pre-filters by type. HydrateFeedPage
+    // queries by URI and returns any collection type, so override —
+    // but only when the indexer actually returned a non-empty string.
+    // For null / undefined / empty-string, strip the default rather
+    // than letting renderers silently mislabel a typeless collection.
+    if (typeof edge.node.type === "string" && edge.node.type.length > 0) {
       record.value.type = edge.node.type
+    } else {
+      delete record.value.type
     }
     payloadByUri.set(edge.node.uri, {
       kind: "collection.create",
