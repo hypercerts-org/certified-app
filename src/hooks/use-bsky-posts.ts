@@ -19,9 +19,22 @@ export interface BskyFacet {
 }
 
 /**
+ * One image from a post's `app.bsky.embed.images#view` embed.
+ * `thumb` is the feed-sized CDN URL; `fullsize` is the click-through
+ * target. Bluesky's appView populates both — we use thumb in the rail
+ * and link to the original bsky.app post for the full view.
+ */
+export interface BskyImage {
+  thumb: string
+  fullsize: string
+  alt: string
+  aspectRatio?: { width: number; height: number }
+}
+
+/**
  * Minimal shape we care about from `app.bsky.feed.getAuthorFeed`. The
  * full response includes embeds, counts, etc. — we only render text +
- * facets + date + a deep link, so we keep the type small.
+ * facets + date + image embed + a deep link, so we keep the type small.
  */
 export interface BskyPost {
   uri: string
@@ -34,6 +47,9 @@ export interface BskyPost {
   author: {
     handle: string
   }
+  /** Image embed view, if the post has one (also covers the
+   *  recordWithMedia variant whose media is images). */
+  images?: BskyImage[]
 }
 
 interface RawFeedItem {
@@ -47,6 +63,7 @@ interface RawFeedItem {
       facets?: unknown
     }
     author?: { handle?: unknown }
+    embed?: unknown
   }
 }
 
@@ -100,6 +117,43 @@ function normalizeFacets(raw: unknown): BskyFacet[] | undefined {
   return out.length > 0 ? out : undefined
 }
 
+/**
+ * Pull the images array out of a post `embed` view. Handles both the
+ * direct `app.bsky.embed.images#view` shape and the wrapped
+ * `app.bsky.embed.recordWithMedia#view` shape (media is images).
+ * Everything else (external link cards, videos, quoted records
+ * without media) returns undefined.
+ */
+function normalizeImages(rawEmbed: unknown): BskyImage[] | undefined {
+  if (!rawEmbed || typeof rawEmbed !== "object") return undefined
+  const e = rawEmbed as Record<string, unknown>
+  const target =
+    e.$type === "app.bsky.embed.images#view"
+      ? e
+      : e.$type === "app.bsky.embed.recordWithMedia#view" &&
+          (e.media as Record<string, unknown> | undefined)?.$type ===
+            "app.bsky.embed.images#view"
+        ? (e.media as Record<string, unknown>)
+        : null
+  if (!target) return undefined
+  const rawImages = target.images
+  if (!Array.isArray(rawImages)) return undefined
+  const out: BskyImage[] = []
+  for (const img of rawImages) {
+    if (!img || typeof img !== "object") continue
+    const i = img as Record<string, unknown>
+    if (typeof i.thumb !== "string" || typeof i.fullsize !== "string") continue
+    const alt = typeof i.alt === "string" ? i.alt : ""
+    const ratio = i.aspectRatio as { width?: unknown; height?: unknown } | undefined
+    const aspectRatio =
+      ratio && typeof ratio.width === "number" && typeof ratio.height === "number"
+        ? { width: ratio.width, height: ratio.height }
+        : undefined
+    out.push({ thumb: i.thumb, fullsize: i.fullsize, alt, aspectRatio })
+  }
+  return out.length > 0 ? out : undefined
+}
+
 function normalize(raw: RawFeedResponse): { posts: BskyPost[]; cursor: string | null } {
   const posts: BskyPost[] = []
   for (const item of raw.feed ?? []) {
@@ -114,6 +168,7 @@ function normalize(raw: RawFeedResponse): { posts: BskyPost[]; cursor: string | 
         facets: normalizeFacets(record.facets),
       },
       author: { handle: (item.post.author as { handle: string }).handle },
+      images: normalizeImages(item.post.embed),
     })
   }
   const cursor = typeof raw.cursor === "string" && raw.cursor.length > 0 ? raw.cursor : null

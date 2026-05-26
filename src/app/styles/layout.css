@@ -1493,6 +1493,39 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   color: inherit;
 }
 
+.news__images {
+  display: grid;
+  gap: 2px;
+  margin: 8px 0 6px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-sunken);
+}
+
+.news__images--n1 { grid-template-columns: 1fr; }
+.news__images--n2 { grid-template-columns: 1fr 1fr; }
+.news__images--n3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.news__images--n3 .news__image:first-child { grid-row: span 2; }
+.news__images--n4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+
+.news__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Default crop for multi-image grids; single-image override sets
+     the natural aspectRatio inline so portrait shots don't get
+     squished. */
+  aspect-ratio: 16 / 10;
+}
+
+.news__images--n1 .news__image {
+  /* Cap very tall portrait shots so a single image can't blow out
+     the rail's vertical rhythm. */
+  max-height: 360px;
+  aspect-ratio: auto;
+}
+
 .news__text {
   font-size: 0.875rem;
   line-height: 1.45;

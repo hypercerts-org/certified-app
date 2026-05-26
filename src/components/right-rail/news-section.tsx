@@ -82,11 +82,43 @@ function NewsPost({ post }: { post: BskyPost }) {
   // inside an outer <a>, which is invalid HTML and breaks click
   // routing. Instead the relative time is the explicit "view post"
   // affordance, Twitter-style.
+  const images = post.images
+  const gridClass =
+    images && images.length > 0
+      ? `news__images news__images--n${Math.min(images.length, 4)}`
+      : null
+
   return (
     <article className="news__article">
       <p className="news__text">
         <RichText text={post.record.text} facets={post.record.facets} />
       </p>
+      {images && gridClass ? (
+        <a
+          href={permalink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={gridClass}
+          aria-label="View post on Bluesky"
+        >
+          {images.slice(0, 4).map((img, i) => {
+            const ratio = img.aspectRatio
+              ? `${img.aspectRatio.width} / ${img.aspectRatio.height}`
+              : undefined
+            return (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                key={i}
+                src={img.thumb}
+                alt={img.alt}
+                loading="lazy"
+                className="news__image"
+                style={images.length === 1 && ratio ? { aspectRatio: ratio } : undefined}
+              />
+            )
+          })}
+        </a>
+      ) : null}
       <a
         href={permalink}
         target="_blank"
