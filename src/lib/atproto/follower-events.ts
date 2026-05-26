@@ -142,6 +142,22 @@ function parseErrorCode(raw: string | undefined | null): FollowerEventsErrorCode
 // fetchFollowerEvents
 // ============================================================================
 
+/**
+ * Server-side pagination order for `followerEvents` (magic-indexer
+ * #136 / PR #137).
+ *
+ *   - `SORT_AT` (default) — paginates by the indexer's
+ *     clock-skew-clamped `sort_at`. Stable post-indexing.
+ *   - `CREATED_AT` — paginates by the record's own `createdAt`.
+ *     Matches the "X ago" timestamp the home feed renders, so cross-
+ *     page scrolling stays visually-stable for backfilled records
+ *     whose `sort_at` differs from `createdAt`.
+ *
+ * The cursor encodes the sort mode internally; mixing modes on the
+ * same paginated stream surfaces as `INVALID_CURSOR` from the indexer.
+ */
+export type FollowerEventsSort = "SORT_AT" | "CREATED_AT"
+
 export interface FetchFollowerEventsOptions {
   /**
    * Deduped, client-pre-truncated to MAX_AUTHORS_FILTER_SIZE. Empty
@@ -152,6 +168,7 @@ export interface FetchFollowerEventsOptions {
   first?: number
   after?: string
   kinds?: string[]
+  sortBy?: FollowerEventsSort
   signal?: AbortSignal
 }
 
@@ -177,7 +194,7 @@ interface FollowerEventsResponse {
 export async function fetchFollowerEvents(
   options: FetchFollowerEventsOptions,
 ): Promise<FeedEventPage> {
-  const { authors, first = DEFAULT_FEED_PAGE_SIZE, after, kinds, signal } = options
+  const { authors, first = DEFAULT_FEED_PAGE_SIZE, after, kinds, sortBy, signal } = options
 
   const res = await fetch(INDEXER_PROXY_URL, {
     method: "POST",
@@ -189,6 +206,7 @@ export async function fetchFollowerEvents(
         first,
         after: after ?? null,
         kinds: kinds && kinds.length > 0 ? kinds : null,
+        sortBy: sortBy ?? null,
       },
     }),
     signal,

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   fetchFollowerEvents,
+  FollowerEventsError,
   hydrateFeedEvents,
   type FeedActor,
   type HydratedFeedEvent,
@@ -114,7 +115,9 @@ const EMPTY_STATE: State = {
  *
  * Internally:
  *   - One round-trip to `followerEvents` (the union of CREATE
- *     events across the follow set, sorted server-side by sortAt).
+ *     events across the follow set, sorted server-side by createdAt
+ *     — see magic-indexer#136 for why this matches the rendered
+ *     "X ago" order).
  *   - One follow-up round-trip to `HydrateFeedPage` to pull the
  *     headline payload (title, image, banner, subject DID, etc.)
  *     for each event whose kind needs more than the actor + verb.
@@ -170,6 +173,7 @@ export function useHomeFeed(
       const page = await fetchFollowerEvents({
         authors,
         first: PAGE_SIZE,
+        sortBy: "CREATED_AT",
         signal,
       })
       if (signal.aborted) return
@@ -218,6 +222,7 @@ export function useHomeFeed(
           authors,
           first: PAGE_SIZE,
           after: snap.cursor ?? undefined,
+          sortBy: "CREATED_AT",
         })
         const hydrated = await hydrateFeedEvents(page.events, {
           excludeCertLabels: excludeCertLabelsRef.current,
@@ -239,12 +244,25 @@ export function useHomeFeed(
           }
         })
       } catch (err) {
+        // INVALID_CURSOR: stream's sort mode changed (or the cursor
+        // is otherwise stale). Drop the cursor and refetch from the
+        // head — per the magic-indexer #136 / #137 contract. Keep
+        // the existing list visible so the user doesn't see a flash
+        // of empty state; the next page will replace it once load()
+        // completes.
+        if (err instanceof FollowerEventsError && err.code === "INVALID_CURSOR") {
+          console.warn("[home-feed] cursor invalidated; refetching from head")
+          setState((prev) => ({ ...prev, isLoadingMore: false, cursor: null }))
+          const controller = new AbortController()
+          void load(controller.signal)
+          return
+        }
         console.warn("[home-feed] loadMore failed:", err)
-        // Stop offering pagination on error — keep the visible list.
+        // Stop offering pagination on other errors — keep the visible list.
         setState((prev) => ({ ...prev, isLoadingMore: false, hasMore: false }))
       }
     })()
-  }, [])
+  }, [load])
 
   useEffect(() => {
     const controller = new AbortController()

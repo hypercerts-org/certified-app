@@ -539,12 +539,14 @@ ${ACTIVITY_NODE_SELECTION}
       $first: Int!
       $after: String
       $kinds: [String!]
+      $sortBy: FollowerEventsSort
     ) {
       followerEvents(
         authors: $authors
         first: $first
         after: $after
         kinds: $kinds
+        sortBy: $sortBy
       ) {
         edges {
           cursor
@@ -850,6 +852,18 @@ function readKindList(value: unknown): string[] | null | undefined {
 }
 
 /**
+ * Reads the optional `sortBy` enum for `FollowerEvents`. The indexer
+ * accepts `SORT_AT` (default) or `CREATED_AT` (matches the rendered
+ * "X ago" order — see magic-indexer#136). Anything else is dropped to
+ * null so a manipulated request can't push an unknown enum literal
+ * downstream; the indexer then falls back to its server default.
+ */
+function readFollowerEventsSort(value: unknown): "SORT_AT" | "CREATED_AT" | null {
+  if (value === "SORT_AT" || value === "CREATED_AT") return value
+  return null
+}
+
+/**
  * Reads one of the `*Uris` array variables for `HydrateFeedPage`.
  * Length 0..MAX_URI_LIST_PER_KIND inclusive — empty arrays pass
  * through because a typical page has events of only a few kinds and
@@ -990,11 +1004,16 @@ function buildVariables(
       if (authors === null) return null
       const kinds = readKindList(vars.kinds)
       if (kinds === null) return null
+      // Allowlisted enum — anything else gets stripped to null so the
+      // indexer falls back to its default (SORT_AT). Strict on shape:
+      // a malformed value is suspicious enough to drop, not coerce.
+      const sortBy = readFollowerEventsSort(vars.sortBy)
       return {
         authors,
         first: clampFirst(vars.first, MAX_FEED_PAGE_SIZE, 20),
         after: readString(vars.after, MAX_AFTER_LEN),
         kinds: kinds ?? null,
+        sortBy,
       }
     }
     case "HydrateFeedPage": {
