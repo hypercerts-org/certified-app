@@ -526,7 +526,14 @@ a.home-feed__preview:hover {
   }
 }
 
-/* ---------- Signed-out empty state ---------- */
+/* ---------- Auth-loading + signed-out states ---------- */
+
+.home__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+}
 
 .home__signed-out {
   max-width: 480px;

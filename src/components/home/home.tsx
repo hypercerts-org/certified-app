@@ -46,7 +46,7 @@ const SIDEBAR_PREVIEW_LIMIT = 5
  */
 export default function Home() {
   usePageTitle("Home")
-  const { isAuthenticated, did: personalDid } = useAuth()
+  const { isLoading: authLoading, isAuthenticated, did: personalDid } = useAuth()
   const { activeOrg } = useOrg()
 
   // "Acting-as" DID — when the viewer has switched into a group, the
@@ -55,6 +55,20 @@ export default function Home() {
   // still lists the personal-account memberships (it's scoped via
   // useOrg() further down, which always reflects the signed-in user).
   const activeDid = activeOrg?.groupDid || personalDid
+
+  // While the auth check is in flight `isAuthenticated` is still
+  // false. Show a spinner instead of the sign-in CTA so the page
+  // doesn't flash a "sign in" message every reload before the auth
+  // state resolves.
+  if (authLoading) {
+    return (
+      <div className="home-page">
+        <div className="home__loading">
+          <LoadingSpinner size="md" />
+        </div>
+      </div>
+    )
+  }
 
   if (!isAuthenticated || !activeDid) {
     return (
