@@ -27,7 +27,6 @@ export default function PartnerApps() {
             </div>
           ))}
         </div>
-        <p className="landing-footnote landing-footnote--center">More apps coming soon.</p>
       </div>
     </section>
   );

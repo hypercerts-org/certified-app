@@ -62,8 +62,6 @@ export default function AppsPage() {
           )
         })}
       </ul>
-
-      <p className="apps-store__footnote">More apps coming soon.</p>
     </div>
   )
 }

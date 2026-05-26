@@ -43,89 +43,12 @@
   border: 0;
 }
 
-/* Full-viewport frame: the rail hugs the actual left edge of the
-   screen, and the main pane centers its content in whatever
-   horizontal space is left. We undo every ancestor width cap —
-   .app-shell__grid (1300px max-width + minmax grid track),
-   .app-shell__content (720/600px max-width + 32px horizontal
-   padding), and .sx's own padding — so the layout spans the
-   entire viewport. Per-pane padding is then put back inside the
-   rail/main so their contents breathe correctly. */
-.app-shell:has(.sx) .app-shell__grid {
-  max-width: none;
-}
-
-@media (min-width: 800px) {
-  .app-shell:has(.sx) .app-shell__grid {
-    grid-template-columns: 1fr;
-  }
-  .app-shell:has(.sx) .app-shell__content {
-    max-width: none;
-    /* Zero out every edge padding so the page-frame borders
-       (navbar bottom border, sidebar/main divider, footer top
-       border) all meet without a gap. Inner pane padding takes
-       over the breathing-room job. */
-    padding-top: var(--navbar-height);
-    padding-bottom: 0;
-    padding-left: 0;
-    padding-right: 0;
-  }
-  .sx {
-    padding-top: 0;
-    padding-bottom: 0;
-    padding-left: 0;
-    padding-right: 0;
-  }
-
-  /* Footer normally carries margin-top: 48px for airy spacing on
-     other pages; on /settings the sidebar/main divider needs to
-     meet the footer top border without a gap. The inner pane
-     padding-bottom takes over the breathing-room job. */
-  html:has(.sx) .site-footer {
-    margin-top: 0;
-  }
-}
-
-.sx {
-  position: relative;
-}
-
-/* Vertical divider between the sidebar and the main pane,
-   matching the /explore page. Anchored on .sx (not .sx__layout) so
-   it spans every bit of the page including the bottom padding — the
-   divider meets the .site-footer border-top flush instead of
-   stopping where the main column's last section ends. */
-.sx::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 335px;
-  width: 1px;
-  background: var(--border-medium);
-  pointer-events: none;
-}
-
-/* ------------------------------------------------------------------------
-   Two-pane grid. Single column under 760px (menu on top, then panel —
-   same responsive pattern as explore).
-   ------------------------------------------------------------------------ */
-.sx__layout {
-  display: grid;
-  grid-template-columns: 335px 1fr;
-  gap: 0;
-  align-items: start;
-}
-
-@media (max-width: 760px) {
-  .sx::before {
-    display: none;
-  }
-  .sx__layout {
-    grid-template-columns: 1fr;
-    padding: 0 16px;
-  }
-}
+/* Settings page now sits inside the standard .app-shell width
+   constraint and uses the shared .page-layout grid (296px sidebar
+   + flexible main pane) — same base layout as the profile page.
+   The full-viewport hack + custom vertical divider that used to
+   live here were removed when the page was aligned with the
+   profile shell. */
 
 /* ------------------------------------------------------------------------
    Left pane — scroll-spy nav.

@@ -173,10 +173,10 @@ export default function SettingsPanel() {
   }
 
   return (
-    <div className="sx sx--wide">
+    <div className="sx">
       <h1 className="sx__heading sr-only">Settings</h1>
 
-      <div className="sx__layout">
+      <div className="page-layout">
         <aside className="sx__menu">
           <nav aria-label="Settings sections">
             <ul className="sx-menu">
@@ -203,7 +203,7 @@ export default function SettingsPanel() {
           </nav>
         </aside>
 
-        <div className="sx__panel">
+        <div className="page-layout__main sx__panel">
           {CATEGORIES.map((cat) => (
             <section
               key={cat.key}
