@@ -341,10 +341,9 @@ function EvaluatorFilter({
         <UserCheck size={14} strokeWidth={1.75} aria-hidden />
       </button>
       {open ? (
-        <div className="home-feed__filter-pop" role="dialog" aria-label="Trusted evaluators">
-          <p className="home-feed__filter-title">Trusted evaluators</p>
+        <div className="home-feed__filter-pop home-feed__filter-pop--evaluators" role="dialog" aria-label="Trusted evaluators">
           <p className="home-feed__filter-help">
-            Show activity from people these evaluators have endorsed.
+            Show activities from accounts that are endorsed by:
           </p>
           <ul className="home-feed__filter-list">
             {TRUSTED_EVALUATOR_DIDS.map((did) => (
@@ -374,11 +373,28 @@ function EvaluatorOption({
 }) {
   const { info } = useAuthorInfo(did)
   const label = info?.displayName || (info?.handle ? `@${info.handle}` : did.slice(0, 14) + "…")
+  const initials = getInitials(info?.displayName, did)
+  const profileHref = `/profile/${encodeURIComponent(info?.handle || did)}`
   return (
-    <label className="home-feed__filter-item">
-      <input type="checkbox" checked={checked} onChange={onToggle} />
-      <span>{label}</span>
-    </label>
+    <div className="home-feed__evaluator-row">
+      <input
+        id={`eval-${did}`}
+        type="checkbox"
+        className="home-feed__evaluator-check"
+        checked={checked}
+        onChange={onToggle}
+        aria-label={`Include endorsements by ${label}`}
+      />
+      <Link href={profileHref} className="home-feed__evaluator-link">
+        <Avatar
+          size="sm"
+          src={info?.avatarUrl ?? undefined}
+          alt=""
+          fallbackInitials={initials}
+        />
+        <span className="home-feed__evaluator-name">{label}</span>
+      </Link>
+    </div>
   )
 }
 

@@ -701,6 +701,59 @@ a.home-feed__preview:hover {
   flex-shrink: 0;
 }
 
+/* ---------- Trusted-evaluator popover overrides ---------- */
+
+.home-feed__filter-pop--evaluators {
+  min-width: 248px;
+}
+
+.home-feed__evaluator-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 4px 8px;
+  border-radius: 6px;
+}
+
+.home-feed__evaluator-check {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--fg-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.home-feed__evaluator-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  border-radius: 6px;
+  color: var(--fg-primary);
+  text-decoration: none;
+  transition: background var(--transition-fast);
+}
+
+.home-feed__evaluator-link:hover {
+  background: var(--bg-sunken);
+}
+
+.home-feed__evaluator-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring, var(--fg-primary));
+}
+
+.home-feed__evaluator-name {
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
 /* ---------- Activity timeline load-more sentinel ---------- */
 
 .home-feed__load-more {
