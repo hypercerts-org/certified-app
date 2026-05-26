@@ -9,6 +9,7 @@ import {
   ClipboardPaste,
   Inbox,
   ListIcon,
+  Pencil,
   Plus,
   Search,
   Trash2,
@@ -52,8 +53,16 @@ interface ProfileListsProps {
 }
 
 export default function ProfileLists({ did, viewerIsOwner }: ProfileListsProps) {
-  const { byType, isLoading, error, createList, deleteList, addItem, removeItem } =
-    useTypedLists(did)
+  const {
+    byType,
+    isLoading,
+    error,
+    createList,
+    updateList,
+    deleteList,
+    addItem,
+    removeItem,
+  } = useTypedLists(did)
   // Selection lives in `?list=<rkey>` so a) refreshing keeps you on
   // the same list, b) clicking through to an item and pressing back
   // returns to the detail view rather than the section list, and
@@ -122,6 +131,9 @@ export default function ProfileLists({ did, viewerIsOwner }: ProfileListsProps) 
           // detail-view history entry shouldn't be reachable.
           setSelectedRkey(null, "replace")
         }}
+        onEdit={async (title, description) =>
+          updateList(selected.rkey, selected.type, title, description)
+        }
         onAdd={async (item) => addItem(selected.rkey, selected.type, item)}
         onRemove={async (uri) => removeItem(selected.rkey, uri)}
       />
@@ -145,7 +157,7 @@ export default function ProfileLists({ did, viewerIsOwner }: ProfileListsProps) 
         <CreateListModal
           type={creating}
           onCancel={() => setCreating(null)}
-          onCreate={async (title, description) => {
+          onSubmit={async (title, description) => {
             const ref = await createList(creating, title, description)
             setCreating(null)
             const rkey = ref.uri.split("/").pop() ?? null
@@ -229,6 +241,7 @@ function ListDetail({
   viewerIsOwner,
   onBack,
   onDelete,
+  onEdit,
   onAdd,
   onRemove,
 }: {
@@ -236,6 +249,7 @@ function ListDetail({
   viewerIsOwner: boolean
   onBack: () => void
   onDelete: () => Promise<void>
+  onEdit: (title: string, description?: string) => Promise<unknown>
   onAdd: (item: { uri: string; cid: string }) => Promise<unknown>
   onRemove: (uri: string) => Promise<unknown>
 }) {
@@ -243,6 +257,7 @@ function ListDetail({
   const [isDeleting, setIsDeleting] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [pasteOpen, setPasteOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
 
   const handleDelete = async () => {
     setIsDeleting(true)
@@ -289,6 +304,15 @@ function ListDetail({
               title="Bulk add by at-URI"
             >
               <ClipboardPaste size={16} strokeWidth={1.75} aria-hidden />
+            </button>
+            <button
+              type="button"
+              className="profile-lists__create-btn"
+              onClick={() => setEditOpen(true)}
+              aria-label="Edit list title and description"
+              title="Edit list"
+            >
+              <Pencil size={16} strokeWidth={1.75} aria-hidden />
             </button>
             <Button
               variant="destructive"
@@ -355,6 +379,19 @@ function ListDetail({
           alreadyIn={new Set(list.items.map((it) => it.itemIdentifier.uri))}
           onAdd={onAdd}
           onClose={() => setPasteOpen(false)}
+        />
+      ) : null}
+      {editOpen ? (
+        <CreateListModal
+          mode="edit"
+          type={list.type}
+          initialTitle={list.title}
+          initialDescription={list.description ?? ""}
+          onCancel={() => setEditOpen(false)}
+          onSubmit={async (title, description) => {
+            await onEdit(title, description)
+            setEditOpen(false)
+          }}
         />
       ) : null}
     </section>
@@ -585,25 +622,36 @@ function ItemRowShell({
   )
 }
 
-// ----------------------------- Create modal -----------------------------
+// ----------------------------- Create / edit modal -----------------------------
 
 function CreateListModal({
+  mode = "create",
   type,
-  onCreate,
+  initialTitle = "",
+  initialDescription = "",
+  onSubmit,
   onCancel,
 }: {
+  /** `"create"` (default) shows the Create wording; `"edit"` swaps in
+   *  the Save wording and pre-fills the title + description. The
+   *  underlying form chrome is identical so both modes read as the
+   *  same UI surface. */
+  mode?: "create" | "edit"
   type: TypedListType
-  onCreate: (title: string, description?: string) => Promise<void>
+  initialTitle?: string
+  initialDescription?: string
+  onSubmit: (title: string, description?: string) => Promise<void>
   onCancel: () => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
+  const [title, setTitle] = useState(initialTitle)
+  const [description, setDescription] = useState(initialDescription)
   const [isWriting, setIsWriting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     inputRef.current?.focus()
+    inputRef.current?.select()
   }, [])
 
   const submit = async (e: React.FormEvent) => {
@@ -612,22 +660,31 @@ function CreateListModal({
     setIsWriting(true)
     setError(null)
     try {
-      await onCreate(title.trim(), description.trim() || undefined)
+      await onSubmit(title.trim(), description.trim() || undefined)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create list")
+      setError(
+        err instanceof Error
+          ? err.message
+          : mode === "edit"
+            ? "Failed to save list"
+            : "Failed to create list",
+      )
       setIsWriting(false)
     }
   }
 
+  const titleCopy = mode === "edit" ? `Edit ${LABELS[type]} list` : `Create ${LABELS[type]} list`
+  const submitCopy = mode === "edit" ? "Save" : "Create list"
+
   return (
     <AppDialog
-      ariaLabel={`Create ${LABELS[type]} list`}
+      ariaLabel={titleCopy}
       maxWidth={460}
       onClose={() => !isWriting && onCancel()}
       disableBackdropClose={isWriting}
     >
       <div className="signin-modal__header">
-        <span className="signin-modal__title">Create {LABELS[type]} list</span>
+        <span className="signin-modal__title">{titleCopy}</span>
         <button
           type="button"
           className="signin-modal__close"
@@ -673,7 +730,7 @@ function CreateListModal({
             Cancel
           </Button>
           <Button type="submit" variant="primary" loading={isWriting} disabled={isWriting || !title.trim()}>
-            Create list
+            {submitCopy}
           </Button>
         </div>
       </form>

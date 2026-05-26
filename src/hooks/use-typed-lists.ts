@@ -7,6 +7,7 @@ import {
   deleteTypedList,
   fetchTypedLists,
   removeFromTypedList,
+  updateTypedList,
   type TypedListRecord,
   type TypedListType,
 } from "@/lib/atproto/typed-lists"
@@ -91,6 +92,20 @@ export function useTypedLists(did: string | null) {
     await deleteTypedList(ownDid, rkey)
   }, [])
 
+  const updateList = useCallback(
+    async (
+      rkey: string,
+      type: TypedListType,
+      title: string,
+      description?: string,
+    ) => {
+      const ownDid = didRef.current
+      if (!ownDid) throw new Error("No active DID")
+      return updateTypedList(ownDid, rkey, type, title, description)
+    },
+    [],
+  )
+
   const addItem = useCallback(
     async (rkey: string, type: TypedListType, item: ItemIdentifier) => {
       const ownDid = didRef.current
@@ -112,6 +127,7 @@ export function useTypedLists(did: string | null) {
     isLoading,
     error,
     createList,
+    updateList,
     deleteList,
     addItem,
     removeItem,

@@ -236,6 +236,40 @@ export async function createTypedList(
   return { uri: data.uri, cid: data.cid }
 }
 
+/**
+ * Overwrite the title / description on an existing typed list.
+ * Read-modify-write so `type`, `createdAt`, and `items[]` round-
+ * trip intact regardless of what the caller supplies. Throws if
+ * the record doesn't exist or carries a different list type than
+ * the caller expects (defensive — refuses to rewrite a list:certs
+ * record as a list:projects record by accident).
+ */
+export async function updateTypedList(
+  ownDid: string,
+  rkey: string,
+  expectedType: TypedListType,
+  title: string,
+  description?: string,
+): Promise<WriteResult> {
+  const trimmedTitle = title.trim()
+  if (!trimmedTitle) throw new Error("List title is required")
+  const existing = await getRecord(ownDid, rkey)
+  if (!existing) throw new Error("List not found")
+  if (existing.value.type !== expectedType) {
+    throw new Error("List type mismatch")
+  }
+  const trimmedDescription = description?.trim()
+  const next: TypedListValue = {
+    ...existing.value,
+    $type: COLLECTION,
+    title: trimmedTitle,
+    description: trimmedDescription || undefined,
+  }
+  const result = await putRecord(ownDid, rkey, next, existing.cid)
+  invalidateEndorsementLists()
+  return result
+}
+
 export async function deleteTypedList(ownDid: string, rkey: string): Promise<void> {
   const res = await authFetch("/api/xrpc/com/atproto/repo/deleteRecord", {
     method: "POST",
