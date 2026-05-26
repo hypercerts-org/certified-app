@@ -869,7 +869,7 @@ function RevokeListItemButton({
           ariaLabel="Remove or revoke endorsement"
           role="alertdialog"
           className="endorsement-lists__revoke-dialog"
-          maxWidth={460}
+          maxWidth={560}
           onClose={() => !busy && setConfirmOpen(false)}
           disableBackdropClose={!!busy}
         >

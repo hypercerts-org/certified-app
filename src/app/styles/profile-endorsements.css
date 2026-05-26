@@ -971,9 +971,18 @@
 
 .endorsement-lists__revoke-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   gap: 8px;
+}
+
+/* The 3-button revoke row needs to stay on a single line — bump
+   the dialog's content max-width so the longest pair of labels
+   (Remove from list + Revoke endorsement) plus Cancel fit without
+   overflowing the modal chrome. AppDialog's `maxWidth` prop sets
+   the inline cap, this class supplies the breathing room. */
+.endorsement-lists__revoke-dialog {
+  width: min(560px, calc(100vw - 32px));
 }
 
 /* ----- Create modal ----- */
