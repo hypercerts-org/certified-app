@@ -161,6 +161,32 @@ function EventSentence({ event }: { event: HomeFeedEvent }) {
     case "update.create":
       return <>posted an update</>
     case "unknown":
+      // The wire kind was known but hydration didn't return a
+      // payload (or it was genuinely unknown). Recover the verb
+      // sentence from the wire kind when we recognise it — losing
+      // the body content is OK; losing the action label isn't.
+      return <UnhydratedSentence rawKind={event.rawKind} />
+  }
+}
+
+function UnhydratedSentence({ rawKind }: { rawKind: string }) {
+  switch (rawKind) {
+    case "cert.create":
+      return <>created a cert</>
+    case "collection.create":
+      return <>created a project</>
+    case "evaluation.create":
+      return <>added an evaluation</>
+    case "measurement.create":
+      return <>added a measurement</>
+    case "hyperboard.create":
+      return <>created a hyperboard</>
+    case "update.create":
+      return <>posted an update</>
+    case "endorsement.award":
+    case "legacy.endorsement":
+      return <>endorsed someone</>
+    default:
       return <>did something</>
   }
 }

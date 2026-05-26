@@ -217,14 +217,39 @@ function CardBody({ event }: { event: HomeFeedEvent }) {
         />
       )
     case "unknown":
+      // Wire kind known but hydration produced no payload (or kind
+      // genuinely unknown). Recover the verb from the wire kind so
+      // we don't render "did something" for events we recognise.
       return (
         <SimpleCardBody
           icon={<Sparkles size={14} strokeWidth={1.75} aria-hidden />}
-          action="did something"
+          action={actionLabelForRawKind(event.rawKind)}
           title={null}
           subjectUri={event.subjectUri}
         />
       )
+  }
+}
+
+function actionLabelForRawKind(kind: string): string {
+  switch (kind) {
+    case "cert.create":
+      return "created a cert"
+    case "collection.create":
+      return "created a project"
+    case "evaluation.create":
+      return "added an evaluation"
+    case "measurement.create":
+      return "added a measurement"
+    case "hyperboard.create":
+      return "created a hyperboard"
+    case "update.create":
+      return "posted an update"
+    case "endorsement.award":
+    case "legacy.endorsement":
+      return "endorsed someone"
+    default:
+      return "did something"
   }
 }
 

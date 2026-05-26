@@ -653,7 +653,10 @@ ${ACTIVITY_NODE_SELECTION}
             did
             createdAt
             note
-            subject { did }
+            subject {
+              __typename
+              ... on AppCertifiedDefsDid { did }
+            }
           }
         }
       }
@@ -666,7 +669,10 @@ ${ACTIVITY_NODE_SELECTION}
             uri
             did
             createdAt
-            subject { did }
+            subject {
+              __typename
+              ... on AppCertifiedDefsDid { did }
+            }
           }
         }
       }
