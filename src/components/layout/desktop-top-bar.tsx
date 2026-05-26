@@ -270,18 +270,11 @@ export default function DesktopTopBar() {
     return qs ? `${pathname}?${qs}` : pathname;
   };
 
-  // Brandmark navigates to the active identity's profile overview
-  // when the user is signed in (falls through to the home page for
-  // signed-out visitors). When acting as a group, `identity.handle`
-  // is the group's handle, so the brandmark takes the user to the
-  // group's profile rather than their personal one — matches the
-  // mental model of "go home for this account".
-  const brandHref = identity.handle
-    ? `/profile/${encodeURIComponent(identity.handle)}`
-    : "/"
-  const brandAriaLabel = identity.handle
-    ? `Go to ${identity.name || identity.handle}'s profile`
-    : "Certified home"
+  // Brandmark always navigates to /home, regardless of auth or
+  // active identity. The /home page itself handles the signed-out
+  // empty state. Mirrors the navbar + left-rail brand link.
+  const brandHref = "/home"
+  const brandAriaLabel = "Certified home"
 
   return (
     <header className="desktop-top-bar" aria-label="App chrome">
