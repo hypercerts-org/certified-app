@@ -127,7 +127,7 @@
    weight; the muted color + medium weight still carries the
    label/target hierarchy. */
 .explore__filter-heading {
-  margin: 0 0 2px;
+  margin: 0;
   padding: 0 10px;
   font-size: 0.85rem;
   font-weight: 500;
@@ -142,12 +142,13 @@
   border-top: 1px solid var(--border-subtle);
 }
 
-/* Featured-group pills sit slightly indented from the section
-   heading so they read as nested children of it instead of a
-   parallel list. The pill's hover background still spans the
-   whole row (we shift the inner padding, not the row width). */
-.explore__filter-list--indented .explore__filter {
-  padding-left: 22px;
+/* Featured-group pills sit indented from the section heading so
+   they read as nested children of it. The indent is applied to
+   the surrounding list (not the inner pill padding) so the pill's
+   hover + active background also shifts right by the same amount —
+   the highlight ends up tabbed in, matching the text. */
+.explore__filter-list--indented {
+  padding-left: 18px;
 }
 
 .explore__filter {

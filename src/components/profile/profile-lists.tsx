@@ -909,17 +909,20 @@ function PasteUrisModal({
           disabled={running}
         />
         {rows.length > 0 ? (
-          <ul className="profile-lists__paste-results" aria-live="polite">
-            {rows.map((r) => (
-              <li key={r.uri} className={`profile-lists__paste-row profile-lists__paste-row--${r.status}`}>
-                <span className="profile-lists__paste-status">{statusLabel(r.status)}</span>
-                <code className="profile-lists__paste-uri">{r.uri}</code>
-                {r.message ? (
-                  <span className="profile-lists__paste-message">{r.message}</span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+          <>
+            <PasteProgress rows={rows} running={running} />
+            <ul className="profile-lists__paste-results" aria-live="polite">
+              {rows.map((r) => (
+                <li key={r.uri} className={`profile-lists__paste-row profile-lists__paste-row--${r.status}`}>
+                  <span className="profile-lists__paste-status">{statusLabel(r.status)}</span>
+                  <code className="profile-lists__paste-uri">{r.uri}</code>
+                  {r.message ? (
+                    <span className="profile-lists__paste-message">{r.message}</span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </>
         ) : null}
         <div className="profile-lists__paste-actions">
           <Button type="button" variant="ghost" onClick={onClose} disabled={running}>
@@ -957,6 +960,60 @@ function statusLabel(s: ParseRow["status"]): string {
     case "error":
       return "Error"
   }
+}
+
+/**
+ * Overall progress strip above the per-row results list. Shows a
+ * spinner + "N of M done" while the run is in flight, and a filled
+ * progress bar that animates from 0% → 100%. After the loop ends
+ * the spinner drops; the counter stays so the viewer has a record
+ * of what landed. `aria-live="polite"` so screen readers get
+ * progress updates without the page yanking focus around.
+ */
+function PasteProgress({
+  rows,
+  running,
+}: {
+  rows: ParseRow[]
+  running: boolean
+}) {
+  const total = rows.length
+  // "Resolved" = anything that's no longer pending / writing. Counts
+  // every terminal state (added / already / wrong-type / missing /
+  // error) so the bar fills as the loop progresses regardless of
+  // whether each row succeeded.
+  const resolved = rows.filter(
+    (r) => r.status !== "pending" && r.status !== "writing",
+  ).length
+  const added = rows.filter((r) => r.status === "added").length
+  const percent = total === 0 ? 0 : Math.round((resolved / total) * 100)
+  return (
+    <div className="profile-lists__paste-progress" aria-live="polite">
+      <div className="profile-lists__paste-progress-row">
+        {running ? (
+          <LoadingSpinner size="sm" />
+        ) : null}
+        <span className="profile-lists__paste-progress-label">
+          {running
+            ? `Adding ${resolved} of ${total}…`
+            : `${added} of ${total} added`}
+        </span>
+        <span className="profile-lists__paste-progress-percent">{percent}%</span>
+      </div>
+      <div
+        className="profile-lists__paste-progress-bar"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={total}
+        aria-valuenow={resolved}
+      >
+        <div
+          className="profile-lists__paste-progress-bar-fill"
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+    </div>
+  )
 }
 
 function AddItemsModal({

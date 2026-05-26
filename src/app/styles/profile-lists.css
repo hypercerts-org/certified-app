@@ -639,6 +639,50 @@
   box-shadow: 0 0 0 2px var(--overlay-weak);
 }
 
+/* Overall progress strip — sits above the per-row results list and
+   gives the viewer one-glance feedback while a long paste run is
+   underway. Spinner + counter on top of a thin progress bar. */
+.profile-lists__paste-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.profile-lists__paste-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8125rem;
+}
+
+.profile-lists__paste-progress-label {
+  flex: 1;
+  color: var(--fg-primary);
+}
+
+.profile-lists__paste-progress-percent {
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-secondary);
+}
+
+.profile-lists__paste-progress-bar {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  background: var(--bg-sunken);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.profile-lists__paste-progress-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--fg-primary);
+  border-radius: 999px;
+  transition: width 200ms ease-out;
+}
+
 .profile-lists__paste-results {
   list-style: none;
   margin: 0;
