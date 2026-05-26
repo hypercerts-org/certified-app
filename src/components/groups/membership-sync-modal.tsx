@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useCallback } from "react"
-import { X } from "lucide-react"
+import { AppDialogHeader } from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
 import { useFocusTrap } from "@/hooks/use-focus-trap"
 
@@ -44,12 +44,7 @@ export default function MembershipSyncModal({
         onKeyDown={handleKeyDown}
         style={{ maxWidth: 500 }}
       >
-        <div className="signin-modal__header">
-          <span className="signin-modal__title">Membership Changes Detected</span>
-          <button className="signin-modal__close" onClick={onClose} aria-label="Close">
-            <X size={18} />
-          </button>
-        </div>
+        <AppDialogHeader title="Membership Changes Detected" onClose={onClose} />
 
         <div className="signin-modal__body">
           <p className="dash-card__desc" style={{ marginBottom: 16 }}>

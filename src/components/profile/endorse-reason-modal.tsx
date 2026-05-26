@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ThumbsUp, X } from "lucide-react"
 import Button from "@/components/ui/button"
-import AppDialog from "@/components/ui/app-dialog"
+import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 
 /** Shape of one selectable list — kept structurally compatible with
  *  `useEndorsementLists`'s `EndorsementList` so the caller can pass
@@ -98,18 +98,11 @@ export default function EndorseReasonModal({
       onClose={onClose}
       disableBackdropClose={isWriting}
     >
-      <div className="signin-modal__header">
-          <span className="signin-modal__title">Endorse {subjectLabel}</span>
-          <button
-            type="button"
-            className="signin-modal__close"
-            onClick={onClose}
-            aria-label="Close"
-            disabled={isWriting}
-          >
-            <X size={18} />
-          </button>
-        </div>
+      <AppDialogHeader
+        title={`Endorse ${subjectLabel}`}
+        onClose={onClose}
+        disabled={isWriting}
+      />
 
         <form className="signin-modal__body endorse-reason-modal__body" onSubmit={handleSubmit}>
           <label className="endorse-reason-modal__field">

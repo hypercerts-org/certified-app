@@ -11,7 +11,7 @@ import { Check, Search, UserPlus, X } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import AppDialog from "@/components/ui/app-dialog"
+import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import { getInitials } from "@/lib/utils/initials"
 
 interface Actor {
@@ -238,18 +238,7 @@ export default function EndorsePeopleModal({
       onClose={onClose}
       disableBackdropClose={isWriting}
     >
-      <div className="signin-modal__header">
-          <span className="signin-modal__title">{title}</span>
-          <button
-            type="button"
-            className="signin-modal__close"
-            onClick={onClose}
-            aria-label="Close"
-            disabled={isWriting}
-          >
-            <X size={18} />
-          </button>
-        </div>
+      <AppDialogHeader title={title} onClose={onClose} disabled={isWriting} />
 
         <div className="signin-modal__body endorse-people-modal__body">
           {subtitle ? (

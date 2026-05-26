@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
-import { X } from "lucide-react"
+import { AppDialogHeader } from "@/components/ui/app-dialog"
 import { useFocusTrap } from "@/hooks/use-focus-trap"
 import { putMembership, listOrgMembers } from "@/lib/groups/api"
 import { authFetch } from "@/lib/auth/fetch"
@@ -128,12 +128,7 @@ export default function AddOrgModal({ did, onClose, onAdded }: AddOrgModalProps)
         onKeyDown={handleKeyDown}
         style={{ maxWidth: 480 }}
       >
-        <div className="signin-modal__header">
-          <span className="signin-modal__title">Add Existing Group</span>
-          <button className="signin-modal__close" onClick={onClose} aria-label="Close">
-            <X size={18} />
-          </button>
-        </div>
+        <AppDialogHeader title="Add Existing Group" onClose={onClose} />
 
         <div className="signin-modal__body">
           <p className="dash-card__desc" style={{ marginBottom: 16 }}>

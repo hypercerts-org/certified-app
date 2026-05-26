@@ -15,7 +15,7 @@ import {
   Trash2,
   X,
 } from "lucide-react"
-import AppDialog from "@/components/ui/app-dialog"
+import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
@@ -797,18 +797,11 @@ function CreateListModal({
       onClose={() => !isWriting && onCancel()}
       disableBackdropClose={isWriting}
     >
-      <div className="signin-modal__header">
-        <span className="signin-modal__title">{titleCopy}</span>
-        <button
-          type="button"
-          className="signin-modal__close"
-          onClick={() => !isWriting && onCancel()}
-          aria-label="Close"
-          disabled={isWriting}
-        >
-          <X size={18} />
-        </button>
-      </div>
+      <AppDialogHeader
+        title={titleCopy}
+        onClose={() => !isWriting && onCancel()}
+        disabled={isWriting}
+      />
       <form className="signin-modal__body profile-lists__create-form" onSubmit={submit}>
         <label className="profile-lists__create-field">
           <span className="profile-lists__create-label">Name</span>
@@ -1023,18 +1016,11 @@ function PasteUrisModal({
       onClose={() => !running && onClose()}
       disableBackdropClose={running}
     >
-      <div className="signin-modal__header">
-        <span className="signin-modal__title">Bulk add by at-URI</span>
-        <button
-          type="button"
-          className="signin-modal__close"
-          onClick={() => !running && onClose()}
-          aria-label="Close"
-          disabled={running}
-        >
-          <X size={18} />
-        </button>
-      </div>
+      <AppDialogHeader
+        title="Bulk add by at-URI"
+        onClose={() => !running && onClose()}
+        disabled={running}
+      />
       <div className="signin-modal__body profile-lists__paste-body">
         <p className="profile-lists__paste-help">
           Paste at-URIs separated by commas, newlines, or spaces.
@@ -1245,17 +1231,10 @@ function AddItemsModal({
       maxWidth={520}
       onClose={onClose}
     >
-      <div className="signin-modal__header">
-        <span className="signin-modal__title">Add {LABELS[type]} to list</span>
-        <button
-          type="button"
-          className="signin-modal__close"
-          onClick={onClose}
-          aria-label="Close"
-        >
-          <X size={18} />
-        </button>
-      </div>
+      <AppDialogHeader
+        title={`Add ${LABELS[type]} to list`}
+        onClose={onClose}
+      />
       <div className="signin-modal__body profile-lists__add-body">
         <label className="profile-lists__add-search">
           <Search size={14} strokeWidth={1.75} aria-hidden />

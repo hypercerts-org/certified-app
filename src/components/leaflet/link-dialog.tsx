@@ -1,9 +1,8 @@
 "use client"
 
 import { useEffect, useRef, useState, useCallback } from "react"
-import { X } from "lucide-react"
 import Button from "@/components/ui/button"
-import AppDialog from "@/components/ui/app-dialog"
+import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import { safeHttpUrl } from "@/lib/utils/safe-url"
 
 export interface LinkDialogResult {
@@ -85,17 +84,7 @@ export default function LinkDialog({
 
   return (
     <AppDialog ariaLabel={resolvedTitle} maxWidth={440} onClose={onCancel}>
-      <div className="signin-modal__header">
-        <span className="signin-modal__title">{resolvedTitle}</span>
-        <button
-          type="button"
-          className="signin-modal__close"
-          onClick={onCancel}
-          aria-label="Close"
-        >
-          <X size={18} />
-        </button>
-      </div>
+      <AppDialogHeader title={resolvedTitle} onClose={onCancel} />
       <form className="signin-modal__body" onSubmit={handleSubmit}>
         <label className="link-dialog__field">
           <span className="link-dialog__label">URL</span>

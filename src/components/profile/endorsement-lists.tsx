@@ -18,7 +18,7 @@ import {
   Trash2,
   X,
 } from "lucide-react"
-import AppDialog from "@/components/ui/app-dialog"
+import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
@@ -719,18 +719,7 @@ function CreateListModal({
       onClose={onClose}
       disableBackdropClose={isSaving}
     >
-      <div className="signin-modal__header">
-        <span className="signin-modal__title">{headerLabel}</span>
-        <button
-          type="button"
-          className="signin-modal__close"
-          onClick={onClose}
-          aria-label="Close"
-          disabled={isSaving}
-        >
-          <X size={18} />
-        </button>
-      </div>
+      <AppDialogHeader title={headerLabel} onClose={onClose} disabled={isSaving} />
 
       <form className="signin-modal__body" onSubmit={handleSubmit}>
         <label className="endorsement-lists__create-field">
@@ -873,11 +862,9 @@ function RevokeListItemButton({
           onClose={() => !busy && setConfirmOpen(false)}
           disableBackdropClose={!!busy}
         >
-          <div className="signin-modal__header">
-            <span className="signin-modal__title">
-              Remove {subjectDisplay} from &ldquo;{listTitle}&rdquo;?
-            </span>
-          </div>
+          <AppDialogHeader
+            title={`Remove ${subjectDisplay} from "${listTitle}"?`}
+          />
           <div className="signin-modal__body endorsement-lists__revoke-body">
             <p className="endorsement-lists__revoke-copy">
               You can drop them from this list and keep your

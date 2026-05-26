@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useCallback, type RefObject, type ReactNode, type MouseEvent } from "react"
+import { X } from "lucide-react"
 
 /**
  * Shared chrome around `<dialog>` for every modal in the app.
@@ -48,6 +49,45 @@ export interface AppDialogProps {
   /** Optional ref for the inner content wrapper. */
   contentRef?: RefObject<HTMLDivElement | null>
   children: ReactNode
+}
+
+/**
+ * Standard modal header — title on the left, close X on the right.
+ * Drop-in replacement for the open-coded
+ * `<div className="signin-modal__header">…<button signin-modal__close>…</button></div>`
+ * pattern repeated across ~14 modals in `src/components/**`.
+ *
+ * Pass `onClose` — usually the same handler the parent passes to
+ * `AppDialog`'s `onClose` prop — and `disabled` to gate the X
+ * during in-flight operations.
+ */
+export function AppDialogHeader({
+  title,
+  onClose,
+  disabled = false,
+}: {
+  title: ReactNode
+  /** When omitted the X button is hidden. Use for alertdialog
+   *  modals where the only exits are explicit footer buttons. */
+  onClose?: () => void
+  disabled?: boolean
+}) {
+  return (
+    <div className="signin-modal__header">
+      <span className="signin-modal__title">{title}</span>
+      {onClose ? (
+        <button
+          type="button"
+          className="signin-modal__close"
+          onClick={onClose}
+          aria-label="Close"
+          disabled={disabled}
+        >
+          <X size={18} />
+        </button>
+      ) : null}
+    </div>
+  )
 }
 
 export default function AppDialog({

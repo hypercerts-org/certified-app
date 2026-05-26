@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Copy, ListPlus, MoreVertical, X } from "lucide-react"
-import AppDialog from "@/components/ui/app-dialog"
+import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -262,18 +262,11 @@ function AddToListModal({
       onClose={() => !busyRkey && onClose()}
       disableBackdropClose={!!busyRkey}
     >
-      <div className="signin-modal__header">
-        <span className="signin-modal__title">Add {TYPE_LABEL[targetType]} to a list</span>
-        <button
-          type="button"
-          className="signin-modal__close"
-          onClick={() => !busyRkey && onClose()}
-          aria-label="Close"
-          disabled={!!busyRkey}
-        >
-          <X size={18} />
-        </button>
-      </div>
+      <AppDialogHeader
+        title={`Add ${TYPE_LABEL[targetType]} to a list`}
+        onClose={() => !busyRkey && onClose()}
+        disabled={!!busyRkey}
+      />
       <div className="signin-modal__body add-to-list__body">
         {isLoading ? (
           <div className="add-to-list__loading">

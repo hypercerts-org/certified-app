@@ -1,8 +1,7 @@
 "use client"
 
-import { X } from "lucide-react"
 import Button from "@/components/ui/button"
-import AppDialog from "@/components/ui/app-dialog"
+import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 
 interface ConfirmDialogProps {
   readonly title: string
@@ -39,17 +38,7 @@ export default function ConfirmDialog({
       onClose={onCancel}
       disableBackdropClose={isConfirming}
     >
-      <div className="signin-modal__header">
-        <span className="signin-modal__title">{title}</span>
-        <button
-          className="signin-modal__close"
-          onClick={onCancel}
-          aria-label="Close"
-          disabled={isConfirming}
-        >
-          <X size={18} />
-        </button>
-      </div>
+      <AppDialogHeader title={title} onClose={onCancel} disabled={isConfirming} />
       <div className="signin-modal__body">
         <p className="dash-card__desc" style={{ marginBottom: 20 }}>
           {message}

@@ -1,7 +1,6 @@
 "use client"
 
-import { X } from "lucide-react"
-import AppDialog from "@/components/ui/app-dialog"
+import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import LeafletDocument from "./leaflet-document"
 
 export interface LongDescriptionModalProps {
@@ -37,24 +36,19 @@ export default function LongDescriptionModal({
       className="long-description-modal"
       onClose={onClose}
     >
-      <div className="signin-modal__header">
-        <div className="long-description-modal__title-block">
-          <span className="signin-modal__title">{title ?? "About"}</span>
-          {subtitle ? (
-            <span className="long-description-modal__subtitle">
-              {subtitle}
-            </span>
-          ) : null}
-        </div>
-        <button
-          type="button"
-          className="signin-modal__close"
-          onClick={onClose}
-          aria-label="Close"
-        >
-          <X size={18} />
-        </button>
-      </div>
+      <AppDialogHeader
+        title={
+          <span className="long-description-modal__title-block">
+            <span>{title ?? "About"}</span>
+            {subtitle ? (
+              <span className="long-description-modal__subtitle">
+                {subtitle}
+              </span>
+            ) : null}
+          </span>
+        }
+        onClose={onClose}
+      />
       <div className="signin-modal__body long-description-modal__body">
         <LeafletDocument
           value={value}
