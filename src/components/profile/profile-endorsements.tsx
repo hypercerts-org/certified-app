@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowUpDown,
   Check,
@@ -102,7 +103,29 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
   // Toolbar state — default to Received per spec. Declared up here
   // (above the data memos) because `filteredReceived` reads
   // `responseFilter` and `dids` reads `tab`.
-  const [tab, setTab] = useState<SubTab>("received")
+  //
+  // Sub-tab is URL-driven via `?sub=received|given` (matches the
+  // existing `profile-followers` convention) so a refresh keeps
+  // the viewer on the same Given/Received view, and a direct link
+  // can deep-link straight into it. Default "received" stays
+  // implicit — no `sub=received` in the URL.
+  const pathname = usePathname()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const subParam = searchParams?.get("sub")
+  const tab: SubTab = subParam === "given" ? "given" : "received"
+  const setTab = useCallback(
+    (next: SubTab) => {
+      const params = new URLSearchParams(searchParams?.toString() ?? "")
+      if (next === "received") params.delete("sub")
+      else params.set("sub", next)
+      const qs = params.toString()
+      router.replace(qs ? `${pathname}?${qs}` : (pathname ?? ""), {
+        scroll: false,
+      })
+    },
+    [pathname, router, searchParams],
+  )
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState<SortKey>("created-desc")
   const [sortOpen, setSortOpen] = useState(false)
