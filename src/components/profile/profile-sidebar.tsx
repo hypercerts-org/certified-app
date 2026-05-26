@@ -31,6 +31,7 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { useFollowing } from "@/hooks/use-following"
 import { useFollowers } from "@/hooks/use-followers"
 import { useGivenEndorsements } from "@/hooks/use-endorsements"
+import { useEndorsementLists } from "@/hooks/use-endorsement-lists"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import EndorseReasonModal from "@/components/profile/endorse-reason-modal"
 import { createFollow, deleteFollow, listFollowing } from "@/lib/atproto/follow"
@@ -38,6 +39,7 @@ import {
   createEndorsementAward,
   deleteEndorsementAward,
 } from "@/lib/atproto/badges"
+import { appendItemToList } from "@/lib/atproto/collection"
 import type { CertifiedProfile } from "@/lib/atproto/types"
 import {
   newDraftUrlRow,
@@ -816,6 +818,7 @@ interface EndorseButtonProps {
 
 function EndorseButton({ viewerDid, subjectDid }: EndorseButtonProps) {
   const ownGiven = useGivenEndorsements(viewerDid)
+  const ownLists = useEndorsementLists(viewerDid)
   const { info: subjectInfo } = useAuthorInfo(subjectDid)
   const subjectLabel =
     subjectInfo?.displayName || subjectInfo?.handle || subjectDid
@@ -852,11 +855,23 @@ function EndorseButton({ viewerDid, subjectDid }: EndorseButtonProps) {
     setReasonOpen(true)
   }
 
-  const handleReasonConfirm = async (note: string) => {
+  const handleReasonConfirm = async (note: string, listRkey: string | null) => {
     setOptimistic(true)
     setIsWriting(true)
     try {
-      await createEndorsementAward(viewerDid, subjectDid, note)
+      const award = await createEndorsementAward(viewerDid, subjectDid, note)
+      if (listRkey) {
+        // Best-effort: the endorsement itself already succeeded. If the
+        // list append fails (network blip, PDS conflict on a concurrent
+        // edit, …) we'd rather let the user know than silently lose the
+        // attribution to the list — surface and let them retry from the
+        // list page.
+        await appendItemToList(viewerDid, listRkey, {
+          uri: award.uri,
+          cid: award.cid,
+        })
+        await ownLists.refetch()
+      }
       await ownGiven.refetch()
       setReasonOpen(false)
     } catch (err) {
@@ -903,6 +918,7 @@ function EndorseButton({ viewerDid, subjectDid }: EndorseButtonProps) {
       {reasonOpen ? (
         <EndorseReasonModal
           subjectLabel={subjectLabel}
+          lists={ownLists.lists.map((l) => ({ rkey: l.rkey, title: l.title }))}
           onConfirm={handleReasonConfirm}
           onClose={() => setReasonOpen(false)}
         />

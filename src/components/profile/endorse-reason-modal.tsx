@@ -5,16 +5,30 @@ import { ThumbsUp, X } from "lucide-react"
 import Button from "@/components/ui/button"
 import AppDialog from "@/components/ui/app-dialog"
 
+/** Shape of one selectable list — kept structurally compatible with
+ *  `useEndorsementLists`'s `EndorsementList` so the caller can pass
+ *  its lists in directly without remapping. */
+export interface EndorseReasonListOption {
+  rkey: string
+  title: string
+}
+
 interface EndorseReasonModalProps {
   /** Display name / handle of the person being endorsed, surfaced in
    *  the subtitle so the issuer is reminded who they're writing
    *  about. */
   readonly subjectLabel: string
-  /** Called with the trimmed note (may be empty) when the issuer
-   *  confirms. Caller does the write + optimistic flip; this modal
-   *  just captures input. Throw to keep the modal open with the
-   *  error text shown. */
-  readonly onConfirm: (note: string) => Promise<unknown>
+  /** Optional viewer-owned endorsement lists. When non-empty the
+   *  modal surfaces an "Add to list" picker; selecting one appends
+   *  the new award to that list after creation. Empty / undefined
+   *  hides the picker entirely. */
+  readonly lists?: readonly EndorseReasonListOption[]
+  /** Called with the trimmed note (may be empty) and the chosen list
+   *  rkey (null when "None" is selected or no lists were passed)
+   *  when the issuer confirms. Caller does the write + optimistic
+   *  flip; this modal just captures input. Throw to keep the modal
+   *  open with the error text shown. */
+  readonly onConfirm: (note: string, listRkey: string | null) => Promise<unknown>
   readonly onClose: () => void
 }
 
@@ -37,11 +51,13 @@ const NOTE_MAX = 500
  */
 export default function EndorseReasonModal({
   subjectLabel,
+  lists,
   onConfirm,
   onClose,
 }: EndorseReasonModalProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [note, setNote] = useState("")
+  const [selectedListRkey, setSelectedListRkey] = useState<string>("")
   const [isWriting, setIsWriting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -58,14 +74,19 @@ export default function EndorseReasonModal({
       setIsWriting(true)
       setError(null)
       try {
-        await onConfirm(note.slice(0, NOTE_MAX))
+        await onConfirm(
+          note.slice(0, NOTE_MAX),
+          selectedListRkey === "" ? null : selectedListRkey,
+        )
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to endorse")
         setIsWriting(false)
       }
     },
-    [isWriting, note, onConfirm],
+    [isWriting, note, selectedListRkey, onConfirm],
   )
+
+  const showListPicker = !!lists && lists.length > 0
 
   const remaining = NOTE_MAX - note.length
 
@@ -115,6 +136,27 @@ export default function EndorseReasonModal({
               {remaining} character{remaining === 1 ? "" : "s"} left
             </span>
           </label>
+
+          {showListPicker ? (
+            <label className="endorse-reason-modal__field">
+              <span className="endorse-reason-modal__prompt">
+                Add to a list (optional)
+              </span>
+              <select
+                className="endorse-reason-modal__select"
+                value={selectedListRkey}
+                onChange={(e) => setSelectedListRkey(e.target.value)}
+                disabled={isWriting}
+              >
+                <option value="">None</option>
+                {lists!.map((l) => (
+                  <option key={l.rkey} value={l.rkey}>
+                    {l.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
 
           {error ? (
             <p className="endorse-reason-modal__error" role="alert">
