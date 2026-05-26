@@ -26,7 +26,11 @@
    ======================================================================== */
 
 .sx {
-  padding: 24px 16px 64px;
+  /* No outer padding — `.page-layout` (the profile-page grid we
+     reuse) carries its own 24px of padding on desktop and 24px /
+     16px on mobile. Stacking another layer here would push the
+     sidebar away from the page-frame border. */
+  padding: 0 0 64px;
 }
 
 /* Visually-hidden heading. The navbar breadcrumb already carries the
@@ -43,12 +47,25 @@
   border: 0;
 }
 
-/* Settings page now sits inside the standard .app-shell width
-   constraint and uses the shared .page-layout grid (296px sidebar
-   + flexible main pane) — same base layout as the profile page.
-   The full-viewport hack + custom vertical divider that used to
-   live here were removed when the page was aligned with the
-   profile shell. */
+/* Widen the app-shell content slot to the profile/cert-detail max
+   (1280px) and drop its 600/720px reading cap + 32px lateral
+   padding. The settings page is a two-pane editor surface, not a
+   reading column, and it should land at the same width as the
+   profile page so navigating between the two doesn't visibly
+   resize the canvas. Mirrors the `.app-shell:has(.cert-detail--wide)`
+   pattern in cert-detail.css. */
+.app-shell:has(.sx) .app-shell__content {
+  /* Zero ALL `.app-shell__content` padding so the page-frame
+     borders meet flush. Top spacing comes from `.page-layout`'s
+     own 24px padding on desktop. */
+  padding: 0;
+}
+
+@media (min-width: 800px) {
+  .app-shell:has(.sx) .app-shell__content {
+    max-width: 1280px;
+  }
+}
 
 /* ------------------------------------------------------------------------
    Left pane — scroll-spy nav.
@@ -58,13 +75,11 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  /* Scrolls with the page (matches the top bar's no-sticky
-     behaviour). Flush-left to the viewport, with breathing room at
-     the top + right so the active filter pill doesn't touch the
-     vertical divider. Top padding shared with /home and /explore
-     so first-line-of-text sits at the same vertical position on
-     every page-frame route. */
-  padding: 32px 12px 32px 12px;
+  /* No own top padding — `.page-layout` (the parent grid) handles
+     it with 24px on desktop, matching the profile sidebar's
+     starting offset. The filter pills hug the sidebar column's
+     left edge so the rounded background flows from the grid track. */
+  padding: 0;
 }
 
 .sx-menu {
@@ -152,24 +167,11 @@
    bar.
    ------------------------------------------------------------------------ */
 .sx__panel {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
+  /* `.page-layout__main` already supplies min-width:0 +
+     flex-direction:column. Layered class. We only bump the section
+     gap (default page-layout__main gap is 24px; settings sections
+     need more air to read as distinct units). */
   gap: 48px;
-  /* Center the content in the space right of the sidebar. The grid
-     cell takes the full remaining width; the inner content is
-     bounded + auto-margined so it sits in the middle of the cell.
-     Matches .explore__main exactly. */
-  width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 20px 24px 32px;
-}
-
-@media (max-width: 760px) {
-  .sx__panel {
-    padding: 0;
-  }
 }
 
 .sx-section {
@@ -255,14 +257,11 @@
 }
 
 /* ------------------------------------------------------------------------
-   Mobile tweaks. Match the explore page's breakpoint (760px) — under
-   that, menu and panel stack vertically.
+   Mobile tweaks. Match the profile-page breakpoint (800px) — under
+   that, .page-layout collapses to a single stack and the sidebar
+   sits on top of the panel.
    ------------------------------------------------------------------------ */
-@media (max-width: 760px) {
-  .sx {
-    padding: 16px 0 48px;
-  }
-
+@media (max-width: 799px) {
   .sx-panel__title {
     font-size: 1.25rem;
   }
