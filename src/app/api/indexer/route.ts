@@ -633,6 +633,11 @@ ${ACTIVITY_NODE_SELECTION}
                 ... on ComAtprotoRepoStrongRef { uri cid }
               }
             }
+            avatar {
+              __typename
+              ... on OrgHypercertsDefsUri { uri }
+              ... on OrgHypercertsDefsSmallImage { image { ref mimeType } }
+            }
             banner {
               __typename
               ... on OrgHypercertsDefsUri { uri }

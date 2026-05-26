@@ -404,9 +404,11 @@ function CollectionCardBody({
     typeof v.shortDescription === "string" && v.shortDescription.length > 0
       ? v.shortDescription
       : null
-  // Avatar (project image) preferred over banner. Falls back to
-  // banner when the project has no avatar set.
-  const rawImage = v.image ?? v.banner
+  // Priority: avatar (the collection's primary image) → image
+  // (legacy field on older records) → banner (decorative). Avatar
+  // is the identity image; banner is the wide hero. For a feed
+  // card the avatar reads as the project, not the banner.
+  const rawImage = v.avatar ?? v.image ?? v.banner
   const imageUrl =
     rawImage && parsed
       ? resolveActivityImageUrl(

@@ -691,6 +691,22 @@ export interface CollectionGraphQLNode {
   title: string | null
   shortDescription: string | null
   items: { itemIdentifier: { uri?: string; cid?: string } | null }[] | null
+  /**
+   * The collection's avatar — distinct from the banner. Optional in
+   * the GraphQL query; the legacy fetchers (`fetchUserProjects`,
+   * `fetchProjects`) don't select it so node.avatar is undefined for
+   * those code paths. `HydrateFeedPage` does select it.
+   *
+   * Note: the schema union is `OrgHypercertsDefsSmallImage`, not the
+   * `LargeImage` variant the banner uses.
+   */
+  avatar?:
+    | { __typename: "OrgHypercertsDefsUri"; uri?: string | null }
+    | {
+        __typename: "OrgHypercertsDefsSmallImage"
+        image?: { ref?: string | null; mimeType?: string | null } | null
+      }
+    | null
   banner:
     | { __typename: "OrgHypercertsDefsUri"; uri?: string | null }
     | {
@@ -736,6 +752,28 @@ export function nodeToCollectionRecord(node: CollectionGraphQLNode): CollectionR
     }
   }
 
+  // Avatar — same normalised shape as banner so renderers can apply
+  // resolveActivityImageUrl uniformly. SmallImage instead of LargeImage
+  // is the schema-side distinction; on the value side they collapse.
+  let avatar: Record<string, unknown> | undefined
+  if (node.avatar) {
+    if (node.avatar.__typename === "OrgHypercertsDefsUri" && node.avatar.uri) {
+      avatar = { uri: node.avatar.uri }
+    } else if (
+      node.avatar.__typename === "OrgHypercertsDefsSmallImage" &&
+      node.avatar.image?.ref
+    ) {
+      avatar = {
+        image: {
+          ref: getBlobRefLink(node.avatar.image.ref),
+          ...(node.avatar.image.mimeType
+            ? { mimeType: node.avatar.image.mimeType }
+            : {}),
+        },
+      }
+    }
+  }
+
   const items =
     node.items
       ?.map((it) => it?.itemIdentifier)
@@ -751,6 +789,7 @@ export function nodeToCollectionRecord(node: CollectionGraphQLNode): CollectionR
       ? { shortDescription: node.shortDescription }
       : {}),
     ...(node.createdAt ? { createdAt: node.createdAt } : {}),
+    ...(avatar ? { avatar } : {}),
     ...(banner ? { banner } : {}),
     items,
   }
