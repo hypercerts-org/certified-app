@@ -272,12 +272,13 @@
   margin: 0 auto;
 }
 
-/* News rail is only shown at the wide-desktop band
-   (--bp-gt-desktop: 1300px), where the left rail also expands to
-   icon+wordmark. Below that, the layout collapses to a single
-   column and the rail is hidden entirely — never stacked under the
-   feed (it's a side panel, not feed content). */
-@media (max-width: 1299.98px) {
+/* News rail shows at >=1200px. Decoupled from the sidebar-width
+   breakpoint (1300px / --bp-gt-desktop) so the news appears one
+   step earlier than the sidebar widens — the 1200–1299px band
+   gets the news rail alongside the trimmed 260px sidebar. Below
+   1200px the layout collapses to a single column and the rail
+   is hidden entirely (never stacked under the feed). */
+@media (max-width: 1199.98px) {
   .home__split {
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
