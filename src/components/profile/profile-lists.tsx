@@ -789,12 +789,24 @@ function PasteUrisModal({
     // Accept commas, newlines, and whitespace as separators so users
     // can paste a list of URIs from any reasonable source without
     // hand-formatting it. Dedupe within the input.
+    // Accept bare actor URIs (`at://did:plc:…`) in the accounts list:
+    // the profile record is conventionally `app.certified.actor.profile/self`,
+    // so any URI that ends at the DID gets normalized to the full
+    // record path before validation. For certs / projects the rkey
+    // is record-specific so we leave those URIs untouched.
+    const normalize = (uri: string): string => {
+      if (type !== LIST_ACCOUNTS_TYPE) return uri
+      const m = uri.match(/^at:\/\/(did:[a-z0-9]+:[a-z0-9-]+)\/?$/)
+      return m ? `at://${m[1]}/${ITEM_NSID[LIST_ACCOUNTS_TYPE]}/self` : uri
+    }
+
     const parsed = Array.from(
       new Set(
         raw
           .split(/[\s,]+/)
           .map((s) => s.trim())
-          .filter(Boolean),
+          .filter(Boolean)
+          .map(normalize),
       ),
     )
     if (parsed.length === 0) return
@@ -879,6 +891,13 @@ function PasteUrisModal({
           Only items matching{" "}
           <code className="profile-lists__paste-nsid">{ITEM_NSID[type]}</code>{" "}
           will be added.
+          {type === LIST_ACCOUNTS_TYPE ? (
+            <>
+              {" "}For accounts a bare{" "}
+              <code className="profile-lists__paste-nsid">at://did:plc:…</code>{" "}
+              is also accepted — we&rsquo;ll expand it to the profile record.
+            </>
+          ) : null}
         </p>
         <textarea
           ref={textareaRef}
