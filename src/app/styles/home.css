@@ -253,19 +253,15 @@
   min-width: 0;
   /* Match the .right-rail surface used elsewhere — light card on
      a darker canvas, with a thin border that reads as a panel
-     edge rather than competing with the page-frame dividers. */
+     edge rather than competing with the page-frame dividers.
+     Scrolls with the page rather than sticking — the rail is a
+     side panel, not a persistent control surface, and pinning it
+     produced an awkward dead zone once the user had scrolled past
+     the news content. */
   padding: 16px 18px 18px;
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
   background: var(--bg-elevated);
-  position: sticky;
-  top: calc(var(--navbar-height) + 20px);
-}
-
-@media (max-width: 1100px) {
-  .home__news {
-    position: static;
-  }
 }
 
 /* ---------- Activity timeline (GitHub-style) ---------- */
@@ -494,3 +490,4 @@ a.home-feed__preview:hover {
   margin: 64px auto;
   padding: 0 16px;
 }
+
