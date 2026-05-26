@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Copy, MoreVertical, X } from "lucide-react"
+import { Copy, ListPlus, MoreVertical, X } from "lucide-react"
 import AppDialog from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -117,6 +117,7 @@ export default function AddToListMenu({
                 setModalOpen(true)
               }}
             >
+              <ListPlus size={13} strokeWidth={1.75} aria-hidden />
               Add to list
             </button>
             <button
