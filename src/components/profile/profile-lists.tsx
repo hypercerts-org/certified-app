@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowLeft,
   ChevronRight,
+  ClipboardPaste,
   Inbox,
   ListIcon,
   Plus,
@@ -31,6 +32,7 @@ import {
   LIST_ACCOUNTS_TYPE,
   LIST_CERTS_TYPE,
   LIST_PROJECTS_TYPE,
+  itemUriMatchesType,
   type TypedListRecord,
   type TypedListType,
 } from "@/lib/atproto/typed-lists"
@@ -240,6 +242,7 @@ function ListDetail({
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
+  const [pasteOpen, setPasteOpen] = useState(false)
 
   const handleDelete = async () => {
     setIsDeleting(true)
@@ -277,6 +280,15 @@ function ListDetail({
               title="Add items"
             >
               <Plus size={16} strokeWidth={1.75} aria-hidden />
+            </button>
+            <button
+              type="button"
+              className="profile-lists__create-btn"
+              onClick={() => setPasteOpen(true)}
+              aria-label="Bulk add by at-URI"
+              title="Bulk add by at-URI"
+            >
+              <ClipboardPaste size={16} strokeWidth={1.75} aria-hidden />
             </button>
             <Button
               variant="destructive"
@@ -335,6 +347,14 @@ function ListDetail({
           alreadyIn={new Set(list.items.map((it) => it.itemIdentifier.uri))}
           onAdd={onAdd}
           onClose={() => setAddOpen(false)}
+        />
+      ) : null}
+      {pasteOpen ? (
+        <PasteUrisModal
+          type={list.type}
+          alreadyIn={new Set(list.items.map((it) => it.itemIdentifier.uri))}
+          onAdd={onAdd}
+          onClose={() => setPasteOpen(false)}
         />
       ) : null}
     </section>
@@ -677,6 +697,190 @@ interface SearchResult {
   imageUrl?: string | null
   avatarUrl?: string | null
   initials?: string | null
+}
+
+// ----------------------------- Bulk-paste modal -----------------------------
+
+interface ParseRow {
+  uri: string
+  status: "pending" | "writing" | "added" | "already" | "wrong-type" | "missing" | "error"
+  message?: string
+}
+
+function PasteUrisModal({
+  type,
+  alreadyIn,
+  onAdd,
+  onClose,
+}: {
+  type: TypedListType
+  alreadyIn: Set<string>
+  onAdd: (item: { uri: string; cid: string }) => Promise<unknown>
+  onClose: () => void
+}) {
+  const [raw, setRaw] = useState("")
+  const [rows, setRows] = useState<ParseRow[]>([])
+  const [running, setRunning] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    textareaRef.current?.focus()
+  }, [])
+
+  const handleRun = useCallback(async () => {
+    if (running) return
+    // Accept commas, newlines, and whitespace as separators so users
+    // can paste a list of URIs from any reasonable source without
+    // hand-formatting it. Dedupe within the input.
+    const parsed = Array.from(
+      new Set(
+        raw
+          .split(/[\s,]+/)
+          .map((s) => s.trim())
+          .filter(Boolean),
+      ),
+    )
+    if (parsed.length === 0) return
+
+    const initial: ParseRow[] = parsed.map((uri) => {
+      if (!uri.startsWith("at://")) {
+        return { uri, status: "error", message: "Not an at:// URI" }
+      }
+      if (!itemUriMatchesType(uri, type)) {
+        return { uri, status: "wrong-type", message: `Doesn't match ${ITEM_NSID[type]}` }
+      }
+      if (alreadyIn.has(uri)) {
+        return { uri, status: "already", message: "Already in list" }
+      }
+      return { uri, status: "pending" }
+    })
+    setRows(initial)
+    setRunning(true)
+
+    const writable = initial.filter((r) => r.status === "pending")
+    for (const row of writable) {
+      setRows((prev) =>
+        prev.map((r) => (r.uri === row.uri ? { ...r, status: "writing" } : r)),
+      )
+      try {
+        const cid = await resolveRecordCid(row.uri)
+        if (!cid) {
+          setRows((prev) =>
+            prev.map((r) =>
+              r.uri === row.uri
+                ? { ...r, status: "missing", message: "Record not found on PDS" }
+                : r,
+            ),
+          )
+          continue
+        }
+        await onAdd({ uri: row.uri, cid })
+        setRows((prev) =>
+          prev.map((r) =>
+            r.uri === row.uri ? { ...r, status: "added", message: undefined } : r,
+          ),
+        )
+      } catch (err) {
+        setRows((prev) =>
+          prev.map((r) =>
+            r.uri === row.uri
+              ? {
+                  ...r,
+                  status: "error",
+                  message: err instanceof Error ? err.message : "Add failed",
+                }
+              : r,
+          ),
+        )
+      }
+    }
+    setRunning(false)
+  }, [alreadyIn, onAdd, raw, running, type])
+
+  return (
+    <AppDialog
+      ariaLabel="Bulk add by at-URI"
+      maxWidth={600}
+      onClose={() => !running && onClose()}
+      disableBackdropClose={running}
+    >
+      <div className="signin-modal__header">
+        <span className="signin-modal__title">Bulk add by at-URI</span>
+        <button
+          type="button"
+          className="signin-modal__close"
+          onClick={() => !running && onClose()}
+          aria-label="Close"
+          disabled={running}
+        >
+          <X size={18} />
+        </button>
+      </div>
+      <div className="signin-modal__body profile-lists__paste-body">
+        <p className="profile-lists__paste-help">
+          Paste at-URIs separated by commas, newlines, or spaces.
+          Only items matching{" "}
+          <code className="profile-lists__paste-nsid">{ITEM_NSID[type]}</code>{" "}
+          will be added.
+        </p>
+        <textarea
+          ref={textareaRef}
+          className="profile-lists__paste-textarea"
+          value={raw}
+          onChange={(e) => setRaw(e.target.value)}
+          rows={6}
+          placeholder="at://did:plc:…/…/abc123, at://did:plc:…/…/def456, …"
+          disabled={running}
+        />
+        {rows.length > 0 ? (
+          <ul className="profile-lists__paste-results" aria-live="polite">
+            {rows.map((r) => (
+              <li key={r.uri} className={`profile-lists__paste-row profile-lists__paste-row--${r.status}`}>
+                <span className="profile-lists__paste-status">{statusLabel(r.status)}</span>
+                <code className="profile-lists__paste-uri">{r.uri}</code>
+                {r.message ? (
+                  <span className="profile-lists__paste-message">{r.message}</span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <div className="profile-lists__paste-actions">
+          <Button type="button" variant="ghost" onClick={onClose} disabled={running}>
+            {rows.some((r) => r.status === "added") ? "Done" : "Cancel"}
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            onClick={handleRun}
+            loading={running}
+            disabled={running || raw.trim().length === 0}
+          >
+            Add
+          </Button>
+        </div>
+      </div>
+    </AppDialog>
+  )
+}
+
+function statusLabel(s: ParseRow["status"]): string {
+  switch (s) {
+    case "pending":
+      return "Pending"
+    case "writing":
+      return "Writing…"
+    case "added":
+      return "Added"
+    case "already":
+      return "Already in"
+    case "wrong-type":
+      return "Wrong type"
+    case "missing":
+      return "Not found"
+    case "error":
+      return "Error"
+  }
 }
 
 function AddItemsModal({

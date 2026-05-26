@@ -594,6 +594,119 @@
   gap: 8px;
 }
 
+/* ---------- Bulk-paste modal ---------- */
+
+.profile-lists__paste-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-lists__paste-help {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--fg-secondary);
+}
+
+.profile-lists__paste-nsid {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
+.profile-lists__paste-textarea {
+  width: 100%;
+  font: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+  color: var(--fg-primary);
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  resize: vertical;
+  min-height: 96px;
+  line-height: 1.5;
+}
+
+.profile-lists__paste-textarea:focus {
+  outline: none;
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+.profile-lists__paste-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 240px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.profile-lists__paste-row {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  align-items: baseline;
+  column-gap: 10px;
+  row-gap: 2px;
+  padding: 6px 4px;
+  font-size: 0.8125rem;
+}
+
+.profile-lists__paste-status {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.profile-lists__paste-row--added .profile-lists__paste-status {
+  color: var(--color-success, #16a34a);
+}
+
+.profile-lists__paste-row--already .profile-lists__paste-status,
+.profile-lists__paste-row--wrong-type .profile-lists__paste-status,
+.profile-lists__paste-row--missing .profile-lists__paste-status,
+.profile-lists__paste-row--error .profile-lists__paste-status {
+  color: var(--color-error);
+}
+
+.profile-lists__paste-row--writing .profile-lists__paste-status {
+  color: var(--fg-primary);
+}
+
+.profile-lists__paste-uri {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.profile-lists__paste-message {
+  grid-column: 2;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.profile-lists__paste-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 /* ---------- Add-items modal ---------- */
 
 .profile-lists__add-body {
