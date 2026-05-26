@@ -258,6 +258,24 @@
   background: var(--bg-subtle);
 }
 
+/* Icon-only chrome variant — square 32×32, drops the horizontal
+   padding the label-bearing buttons need. Used by the certs-tab
+   Quality popover trigger, where the icon alone communicates
+   "filter" and a textual label is redundant. */
+.explore__chrome-btn--icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  justify-content: center;
+}
+
+/* Active state (non-default selection) — same fill-on-accent
+   pattern other "currently applied" filter buttons use. */
+.explore__chrome-btn--active {
+  border-color: var(--fg-primary);
+  background: var(--bg-sunken);
+}
+
 .explore__loading {
   display: flex;
   justify-content: center;

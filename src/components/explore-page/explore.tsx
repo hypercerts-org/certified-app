@@ -10,7 +10,6 @@ import {
   LayoutGrid,
   List as ListIcon,
   Search,
-  SlidersHorizontal,
   Users,
 } from "lucide-react"
 import {
@@ -479,39 +478,45 @@ export default function Explore() {
                 )}
               </Popover>
 
-              <Popover
-                open={filtersOpen}
-                onClose={() => setFiltersOpen(false)}
-                trigger={
-                  <button
-                    type="button"
-                    className="explore__chrome-btn"
-                    onClick={() => setFiltersOpen((v) => !v)}
-                    aria-expanded={filtersOpen}
-                  >
-                    <FilterIcon size={13} strokeWidth={1.75} aria-hidden />
-                    Filter{attrs.size ? ` (${attrs.size})` : ""}
-                  </button>
-                }
-              >
-                {attrOptions(kind).map((opt) => {
-                  const on = attrs.has(opt.key)
-                  return (
-                    <label
-                      key={opt.key}
-                      className="popover__item popover__item--check"
+              {/* The generic attr-based Filter popover stays for
+                  accounts + projects; on the certs tab it's
+                  replaced by the Hyperlabel-tier Quality popover
+                  below (and its icon takes over the Filter slot). */}
+              {kind !== "certs" ? (
+                <Popover
+                  open={filtersOpen}
+                  onClose={() => setFiltersOpen(false)}
+                  trigger={
+                    <button
+                      type="button"
+                      className="explore__chrome-btn"
+                      onClick={() => setFiltersOpen((v) => !v)}
+                      aria-expanded={filtersOpen}
                     >
-                      <input
-                        type="checkbox"
-                        checked={on}
-                        data-attr-key={opt.key}
-                        onChange={onAttrToggle}
-                      />
-                      {opt.label}
-                    </label>
-                  )
-                })}
-              </Popover>
+                      <FilterIcon size={13} strokeWidth={1.75} aria-hidden />
+                      Filter{attrs.size ? ` (${attrs.size})` : ""}
+                    </button>
+                  }
+                >
+                  {attrOptions(kind).map((opt) => {
+                    const on = attrs.has(opt.key)
+                    return (
+                      <label
+                        key={opt.key}
+                        className="popover__item popover__item--check"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          data-attr-key={opt.key}
+                          onChange={onAttrToggle}
+                        />
+                        {opt.label}
+                      </label>
+                    )
+                  })}
+                </Popover>
+              ) : null}
 
               {kind === "certs" ? (
                 <Popover
@@ -520,12 +525,13 @@ export default function Explore() {
                   trigger={
                     <button
                       type="button"
-                      className={`explore__chrome-btn${qualityIsDefault ? "" : " explore__chrome-btn--active"}`}
+                      className={`explore__chrome-btn explore__chrome-btn--icon${qualityIsDefault ? "" : " explore__chrome-btn--active"}`}
                       onClick={() => setQualityOpen((v) => !v)}
                       aria-expanded={qualityOpen}
+                      aria-label={`Filter certs by quality${qualityIsDefault ? "" : ` (${qualityIncluded.size} selected)`}`}
+                      title="Filter by quality"
                     >
-                      <SlidersHorizontal size={13} strokeWidth={1.75} aria-hidden />
-                      Quality{qualityIsDefault ? "" : ` (${qualityIncluded.size})`}
+                      <FilterIcon size={13} strokeWidth={1.75} aria-hidden />
                     </button>
                   }
                 >
