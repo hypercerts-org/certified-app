@@ -611,44 +611,13 @@
   margin-top: 16px;
 }
 
-.feedback-modal__textarea {
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 120px;
-  padding: 12px;
-  border: 1px solid var(--color-light-gray);
-  border-radius: var(--radius);
-  font-size: 0.875rem;
-  font-family: var(--font-inter);
-  color: var(--color-primary);
-  background: var(--color-white);
-  resize: vertical;
-  transition: border-color var(--transition-fast);
-}
-
-.feedback-modal__textarea:focus {
-  outline: none;
-  border-color: var(--color-accent);
-}
-
-.feedback-modal__input {
-  box-sizing: border-box;
-  width: 100%;
-  height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--color-light-gray);
-  border-radius: var(--radius);
-  font-size: 0.875rem;
-  font-family: var(--font-inter);
-  color: var(--color-primary);
-  background: var(--color-white);
-  transition: border-color var(--transition-fast);
-}
-
-.feedback-modal__input:focus {
-  outline: none;
-  border-color: var(--color-accent);
-}
+/* `.feedback-modal__textarea` / `.feedback-modal__input` are styled
+   in components.css with semantic tokens (--border-medium,
+   --fg-primary, --bg-elevated) so they adapt to dark mode. The
+   previous duplicate rules here referenced an undefined
+   `--color-light-gray`, which made the `border` shorthand resolve
+   to its invalid-fallback initial value (border-style: none) and
+   removed the visible border entirely. */
 
 .feedback-modal__error {
   font-size: 0.75rem;
