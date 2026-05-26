@@ -315,6 +315,71 @@ export async function appendToTypedList(
   return { added: true }
 }
 
+/**
+ * Bulk-append items to a typed list in a single read-modify-write.
+ * Items that don't match the list type or are already present are
+ * silently dropped (and counted in the return value) — the loop
+ * never throws for individual mismatches so a single bad URI in a
+ * paste doesn't tank the whole batch. The PDS write itself can
+ * still throw on swap conflict or quota; that's surfaced to the
+ * caller as-is.
+ *
+ * Pairs with `removeManyFromTypedList` — together they collapse
+ * the previous per-item RMW loops in the bulk flows into a single
+ * round-trip each.
+ */
+export async function appendManyToTypedList(
+  ownDid: string,
+  rkey: string,
+  items: readonly ItemIdentifier[],
+  expectedType: TypedListType,
+): Promise<{ added: string[]; skippedAlreadyIn: string[]; skippedWrongType: string[] }> {
+  const added: string[] = []
+  const skippedAlreadyIn: string[] = []
+  const skippedWrongType: string[] = []
+  if (items.length === 0) return { added, skippedAlreadyIn, skippedWrongType }
+
+  const existing = await getRecord(ownDid, rkey)
+  if (!existing) throw new Error("List not found")
+  if (existing.value.type !== expectedType) {
+    throw new Error("List type mismatch")
+  }
+  const currentItems = Array.isArray(existing.value.items) ? existing.value.items : []
+  const present = new Set(currentItems.map((it) => it.itemIdentifier?.uri).filter(Boolean) as string[])
+
+  const now = new Date().toISOString()
+  const additions: { itemIdentifier: ItemIdentifier; addedAt: string }[] = []
+  const seenInBatch = new Set<string>()
+  for (const item of items) {
+    if (!itemUriMatchesType(item.uri, expectedType)) {
+      skippedWrongType.push(item.uri)
+      continue
+    }
+    if (present.has(item.uri) || seenInBatch.has(item.uri)) {
+      skippedAlreadyIn.push(item.uri)
+      continue
+    }
+    seenInBatch.add(item.uri)
+    additions.push({
+      itemIdentifier: { uri: item.uri, cid: item.cid },
+      addedAt: now,
+    })
+    added.push(item.uri)
+  }
+
+  if (additions.length === 0) {
+    return { added, skippedAlreadyIn, skippedWrongType }
+  }
+
+  const next: TypedListValue = {
+    ...existing.value,
+    items: [...currentItems, ...additions],
+  }
+  await putRecord(ownDid, rkey, next, existing.cid)
+  invalidateEndorsementLists()
+  return { added, skippedAlreadyIn, skippedWrongType }
+}
+
 export async function removeFromTypedList(
   ownDid: string,
   rkey: string,

@@ -61,6 +61,7 @@ export default function ProfileLists({ did, viewerIsOwner }: ProfileListsProps) 
     updateList,
     deleteList,
     addItem,
+    addManyItems,
     removeItem,
     removeManyItems,
   } = useTypedLists(did)
@@ -136,6 +137,7 @@ export default function ProfileLists({ did, viewerIsOwner }: ProfileListsProps) 
           updateList(selected.rkey, selected.type, title, description)
         }
         onAdd={async (item) => addItem(selected.rkey, selected.type, item)}
+        onAddMany={async (items) => addManyItems(selected.rkey, selected.type, items)}
         onRemove={async (uri) => removeItem(selected.rkey, uri)}
         onRemoveMany={async (uris) => removeManyItems(selected.rkey, uris)}
       />
@@ -245,6 +247,7 @@ function ListDetail({
   onDelete,
   onEdit,
   onAdd,
+  onAddMany,
   onRemove,
   onRemoveMany,
 }: {
@@ -254,6 +257,9 @@ function ListDetail({
   onDelete: () => Promise<void>
   onEdit: (title: string, description?: string) => Promise<unknown>
   onAdd: (item: { uri: string; cid: string }) => Promise<unknown>
+  onAddMany: (
+    items: readonly { uri: string; cid: string }[],
+  ) => Promise<unknown>
   onRemove: (uri: string) => Promise<unknown>
   onRemoveMany: (uris: readonly string[]) => Promise<unknown>
 }) {
@@ -494,7 +500,7 @@ function ListDetail({
         <PasteUrisModal
           type={list.type}
           alreadyIn={new Set(list.items.map((it) => it.itemIdentifier.uri))}
-          onAdd={onAdd}
+          onAddMany={onAddMany}
           onClose={() => setPasteOpen(false)}
         />
       ) : null}
@@ -884,12 +890,14 @@ interface ParseRow {
 function PasteUrisModal({
   type,
   alreadyIn,
-  onAdd,
+  onAddMany,
   onClose,
 }: {
   type: TypedListType
   alreadyIn: Set<string>
-  onAdd: (item: { uri: string; cid: string }) => Promise<unknown>
+  onAddMany: (
+    items: readonly { uri: string; cid: string }[],
+  ) => Promise<unknown>
   onClose: () => void
 }) {
   const [raw, setRaw] = useState("")
@@ -943,45 +951,79 @@ function PasteUrisModal({
     setRows(initial)
     setRunning(true)
 
+    // Phase 1: parallel CID resolution. Each row flips to "writing"
+    // as its lookup starts, then either "missing" (no record) or
+    // stays writeable. This is the long pole — CID resolution is
+    // a PDS round-trip per URI but the requests fan out in parallel.
     const writable = initial.filter((r) => r.status === "pending")
-    for (const row of writable) {
-      setRows((prev) =>
-        prev.map((r) => (r.uri === row.uri ? { ...r, status: "writing" } : r)),
-      )
-      try {
-        const cid = await resolveRecordCid(row.uri)
-        if (!cid) {
+    const resolved = await Promise.all(
+      writable.map(async (row) => {
+        setRows((prev) =>
+          prev.map((r) =>
+            r.uri === row.uri ? { ...r, status: "writing" } : r,
+          ),
+        )
+        try {
+          const cid = await resolveRecordCid(row.uri)
+          if (!cid) {
+            setRows((prev) =>
+              prev.map((r) =>
+                r.uri === row.uri
+                  ? { ...r, status: "missing", message: "Record not found on PDS" }
+                  : r,
+              ),
+            )
+            return null
+          }
+          return { uri: row.uri, cid }
+        } catch (err) {
           setRows((prev) =>
             prev.map((r) =>
               r.uri === row.uri
-                ? { ...r, status: "missing", message: "Record not found on PDS" }
+                ? {
+                    ...r,
+                    status: "error",
+                    message: err instanceof Error ? err.message : "Lookup failed",
+                  }
                 : r,
             ),
           )
-          continue
+          return null
         }
-        await onAdd({ uri: row.uri, cid })
+      }),
+    )
+
+    // Phase 2: single bulk append. One getRecord + one putRecord on
+    // the list, regardless of how many items got resolved — much
+    // cheaper than the prior per-item RMW loop. If the swap fails
+    // (concurrent edit), every row that would've been added is
+    // marked error so the viewer can retry.
+    const validItems = resolved.filter(
+      (r): r is { uri: string; cid: string } => r !== null,
+    )
+    if (validItems.length > 0) {
+      try {
+        await onAddMany(validItems)
+        const validUris = new Set(validItems.map((it) => it.uri))
         setRows((prev) =>
           prev.map((r) =>
-            r.uri === row.uri ? { ...r, status: "added", message: undefined } : r,
+            validUris.has(r.uri)
+              ? { ...r, status: "added", message: undefined }
+              : r,
           ),
         )
       } catch (err) {
+        const message = err instanceof Error ? err.message : "Add failed"
+        const validUris = new Set(validItems.map((it) => it.uri))
         setRows((prev) =>
           prev.map((r) =>
-            r.uri === row.uri
-              ? {
-                  ...r,
-                  status: "error",
-                  message: err instanceof Error ? err.message : "Add failed",
-                }
-              : r,
+            validUris.has(r.uri) ? { ...r, status: "error", message } : r,
           ),
         )
       }
     }
     setRunning(false)
-  }, [alreadyIn, onAdd, raw, running, type])
+  }, [alreadyIn, onAddMany, raw, running, type])
 
   return (
     <AppDialog

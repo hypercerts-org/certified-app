@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import {
+  appendManyToTypedList,
   appendToTypedList,
   createTypedList,
   deleteTypedList,
@@ -116,6 +117,19 @@ export function useTypedLists(did: string | null) {
     [],
   )
 
+  const addManyItems = useCallback(
+    async (
+      rkey: string,
+      type: TypedListType,
+      items: readonly ItemIdentifier[],
+    ) => {
+      const ownDid = didRef.current
+      if (!ownDid) throw new Error("No active DID")
+      return appendManyToTypedList(ownDid, rkey, items, type)
+    },
+    [],
+  )
+
   const removeItem = useCallback(async (rkey: string, itemUri: string) => {
     const ownDid = didRef.current
     if (!ownDid) throw new Error("No active DID")
@@ -140,6 +154,7 @@ export function useTypedLists(did: string | null) {
     updateList,
     deleteList,
     addItem,
+    addManyItems,
     removeItem,
     removeManyItems,
   }
