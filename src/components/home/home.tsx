@@ -93,6 +93,7 @@ export default function Home() {
         <main className="home__main">
           <div className="home__split">
             <div className="home__feed">
+              <h2 className="home__feed-heading">Feed</h2>
               <HomeFeed activeDid={activeDid} />
             </div>
             <aside className="home__news" aria-label="News from Certified">

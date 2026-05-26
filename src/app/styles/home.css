@@ -290,6 +290,15 @@
   min-width: 0;
 }
 
+.home__feed-heading {
+  margin: 0 0 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-secondary);
+}
+
 .home__news {
   min-width: 0;
   /* Match the .right-rail surface used elsewhere — light card on
