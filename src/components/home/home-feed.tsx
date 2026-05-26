@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { Inbox, MapPin, SlidersHorizontal, Users } from "lucide-react"
+import { Inbox, MapPin, SlidersHorizontal, UserCheck, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import LoadMoreSentinel from "@/components/ui/load-more-sentinel"
 import { useActivity } from "@/hooks/use-activity"
 import { useAuthorInfo } from "@/hooks/use-author-info"
+import { useEvaluatorEndorsements } from "@/hooks/use-evaluator-endorsements"
 import { useHomeFeed, type HomeFeedEvent } from "@/hooks/use-home-feed"
 import { useFollowedDids } from "@/hooks/use-followed-dids"
 import { formatRelativeTime, resolveActivityImageUrl } from "@/lib/atproto/activity"
@@ -21,6 +22,7 @@ import {
   HYPERLABEL_TIERS,
   type HyperlabelTier,
 } from "@/lib/atproto/labels"
+import { TRUSTED_EVALUATOR_DIDS } from "@/lib/atproto/trusted-evaluators"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 
@@ -72,26 +74,47 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
   const [includedTiers, setIncludedTiers] = useState<Set<HyperlabelTier>>(
     () => new Set(DEFAULT_INCLUDED_TIERS),
   )
+  const [selectedEvaluators, setSelectedEvaluators] = useState<Set<string>>(
+    () => new Set(TRUSTED_EVALUATOR_DIDS),
+  )
   const excludeCertLabels = useMemo(
     () => HYPERLABEL_TIERS.filter((t) => !includedTiers.has(t)),
     [includedTiers],
   )
+  const { endorsedDids } = useEvaluatorEndorsements(selectedEvaluators)
+  // Direct follows ∪ DIDs endorsed by any selected trusted evaluator.
+  // The viewer's own DID is excluded so the feed doesn't show the
+  // viewer's own activity (matches the prior behaviour — direct
+  // follows never include self).
+  const effectiveFollows = useMemo(() => {
+    const out = new Set<string>(followedDids)
+    for (const did of endorsedDids) {
+      if (did !== activeDid) out.add(did)
+    }
+    return out
+  }, [followedDids, endorsedDids, activeDid])
   const { events, isLoading, isLoadingMore, hasMore, loadMore, error } =
-    useHomeFeed(followedDids, { excludeCertLabels })
+    useHomeFeed(effectiveFollows, { excludeCertLabels })
 
   return (
     <>
       <header className="home-feed__header">
         <h2 className="home-feed__heading">Feed</h2>
-        <QualityFilter
-          included={includedTiers}
-          onChange={setIncludedTiers}
-        />
+        <div className="home-feed__header-actions">
+          <EvaluatorFilter
+            selected={selectedEvaluators}
+            onChange={setSelectedEvaluators}
+          />
+          <QualityFilter
+            included={includedTiers}
+            onChange={setIncludedTiers}
+          />
+        </div>
       </header>
       <HomeFeedBody
         followsLoading={followsLoading}
         followsError={!!followsError}
-        followedCount={followedDids.size}
+        followedCount={effectiveFollows.size}
         isLoading={isLoading}
         error={error}
         events={events}
@@ -258,6 +281,104 @@ function QualityFilter({
         </div>
       ) : null}
     </div>
+  )
+}
+
+/**
+ * Trusted-evaluator settings popover (left of the quality filter).
+ * Each checkbox represents one curated evaluator account; selecting
+ * an evaluator pulls every DID they've endorsed into the effective
+ * follow set, so the feed shows transitively-vouched activity. The
+ * popover lists evaluators by display name / handle resolved via
+ * `useAuthorInfo` — the underlying DID is hidden behind the friendly
+ * label.
+ */
+function EvaluatorFilter({
+  selected,
+  onChange,
+}: {
+  selected: Set<string>
+  onChange: (next: Set<string>) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const wrapRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handleDown = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false)
+    }
+    document.addEventListener("mousedown", handleDown)
+    document.addEventListener("keydown", handleKey)
+    return () => {
+      document.removeEventListener("mousedown", handleDown)
+      document.removeEventListener("keydown", handleKey)
+    }
+  }, [open])
+
+  const toggle = (did: string) => {
+    const next = new Set(selected)
+    if (next.has(did)) next.delete(did)
+    else next.add(did)
+    onChange(next)
+  }
+
+  const partial = selected.size !== TRUSTED_EVALUATOR_DIDS.length
+
+  return (
+    <div className="home-feed__filter" ref={wrapRef}>
+      <button
+        type="button"
+        className={`home-feed__filter-btn${partial ? " home-feed__filter-btn--active" : ""}`}
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="true"
+        aria-expanded={open}
+        aria-label="Trusted-evaluator settings"
+      >
+        <UserCheck size={14} strokeWidth={1.75} aria-hidden />
+      </button>
+      {open ? (
+        <div className="home-feed__filter-pop" role="dialog" aria-label="Trusted evaluators">
+          <p className="home-feed__filter-title">Trusted evaluators</p>
+          <p className="home-feed__filter-help">
+            Show activity from people these evaluators have endorsed.
+          </p>
+          <ul className="home-feed__filter-list">
+            {TRUSTED_EVALUATOR_DIDS.map((did) => (
+              <li key={did}>
+                <EvaluatorOption
+                  did={did}
+                  checked={selected.has(did)}
+                  onToggle={() => toggle(did)}
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function EvaluatorOption({
+  did,
+  checked,
+  onToggle,
+}: {
+  did: string
+  checked: boolean
+  onToggle: () => void
+}) {
+  const { info } = useAuthorInfo(did)
+  const label = info?.displayName || (info?.handle ? `@${info.handle}` : did.slice(0, 14) + "…")
+  return (
+    <label className="home-feed__filter-item">
+      <input type="checkbox" checked={checked} onChange={onToggle} />
+      <span>{label}</span>
+    </label>
   )
 }
 

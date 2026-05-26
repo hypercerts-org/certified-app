@@ -298,6 +298,12 @@
   margin: 0 0 12px;
 }
 
+.home-feed__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .home-feed__heading {
   margin: 0;
   font-size: 0.7rem;
@@ -651,6 +657,13 @@ a.home-feed__preview:hover {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  color: var(--fg-secondary);
+}
+
+.home-feed__filter-help {
+  margin: 0 4px 8px;
+  font-size: 0.75rem;
+  line-height: 1.4;
   color: var(--fg-secondary);
 }
 

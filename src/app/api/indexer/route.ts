@@ -230,6 +230,33 @@ ${ACTIVITY_NODE_SELECTION}
     }
   `,
 
+  // Subject DIDs endorsed by any of a set of evaluator DIDs. Backs
+  // the home feed's "trusted evaluators" expansion — selecting an
+  // evaluator pulls in the activity of everyone they've endorsed.
+  // Paginated because a single prolific evaluator can issue
+  // hundreds of awards; client unions pages into a Set.
+  EvaluatorEndorsements: `
+    query EvaluatorEndorsements($evaluators: [String!]!, $first: Int!, $after: String) {
+      appCertifiedBadgeAward(
+        where: { did: { in: $evaluators }, badgeType: { eq: "endorsement" } }
+        first: $first
+        after: $after
+      ) {
+        edges {
+          cursor
+          node {
+            did
+            subject {
+              __typename
+              ... on AppCertifiedDefsDid { did }
+            }
+          }
+        }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  `,
+
   // Endorsement-typed badge definitions for a batch of issuer DIDs.
   EndorsementDefs: `
     query EndorsementDefs($dids: [String!]!, $first: Int!) {
@@ -998,6 +1025,18 @@ function buildVariables(
       if (typeof rawDegree !== "number" || !Number.isInteger(rawDegree)) return null
       if (rawDegree < 1 || rawDegree > 3) return null
       return { viewer, degree: rawDegree }
+    }
+    case "EvaluatorEndorsements": {
+      // Same cap as `authors` on FollowerEvents — defensive, in practice
+      // the client passes single-digit lengths from a fixed evaluator list.
+      const evaluators = readAuthorList(vars.evaluators)
+      if (evaluators === null) return null
+      if (evaluators.length === 0) return null
+      return {
+        evaluators,
+        first: clampFirst(vars.first, 100, 50),
+        after: readString(vars.after, MAX_AFTER_LEN),
+      }
     }
     case "FollowerEvents": {
       const authors = readAuthorList(vars.authors)
