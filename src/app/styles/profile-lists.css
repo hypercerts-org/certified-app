@@ -294,13 +294,25 @@
    so we just keep it inside a horizontal flex with the × button. */
 .profile-lists__project {
   display: flex;
-  align-items: stretch;
+  /* Center on the cross-axis so the 26px × button sits at the
+     vertical midline of the (taller) cert-list-row rather than
+     pinning to the top. */
+  align-items: center;
   gap: 0;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   overflow: hidden;
   background: transparent;
   transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+/* The reused ActivityAuthor byline carries a 12px margin-bottom from
+   the feed-card surface it was first designed for, which visually
+   tops-anchors the avatar+name pair inside a row that's otherwise
+   centered. Strip that margin in the lists-tab context so the
+   byline aligns with the title + remove button on the same line. */
+.profile-lists__project .feed-card__author {
+  margin-bottom: 0;
 }
 
 .profile-lists__project:hover {

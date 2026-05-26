@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowLeft,
   ChevronRight,
@@ -51,7 +52,27 @@ interface ProfileListsProps {
 export default function ProfileLists({ did, viewerIsOwner }: ProfileListsProps) {
   const { byType, isLoading, error, createList, deleteList, addItem, removeItem } =
     useTypedLists(did)
-  const [selectedRkey, setSelectedRkey] = useState<string | null>(null)
+  // Selection lives in `?list=<rkey>` so a) refreshing keeps you on
+  // the same list, b) clicking through to an item and pressing back
+  // returns to the detail view rather than the section list, and
+  // c) deep-links work. Mirrors the existing `?sub=` pattern on the
+  // endorsements + followers tabs.
+  const pathname = usePathname()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const selectedRkey = searchParams?.get("list") ?? null
+  const setSelectedRkey = useCallback(
+    (next: string | null, mode: "push" | "replace" = "push") => {
+      const params = new URLSearchParams(searchParams?.toString() ?? "")
+      if (next) params.set("list", next)
+      else params.delete("list")
+      const qs = params.toString()
+      const target = qs ? `${pathname}?${qs}` : (pathname ?? "")
+      if (mode === "push") router.push(target, { scroll: false })
+      else router.replace(target, { scroll: false })
+    },
+    [pathname, router, searchParams],
+  )
   const [creating, setCreating] = useState<TypedListType | null>(null)
 
   // Drop selection if the selected list disappears (deletion, refetch
@@ -66,8 +87,11 @@ export default function ProfileLists({ did, viewerIsOwner }: ProfileListsProps) 
   }, [byType, selectedRkey])
 
   useEffect(() => {
-    if (selectedRkey && !selected) setSelectedRkey(null)
-  }, [selectedRkey, selected])
+    // Lists finished loading and the selected rkey doesn't resolve →
+    // clear the param (using replace, since the entry no longer
+    // matches anything navigable).
+    if (selectedRkey && !selected && !isLoading) setSelectedRkey(null, "replace")
+  }, [selectedRkey, selected, isLoading, setSelectedRkey])
 
   if (isLoading) {
     return (
@@ -89,10 +113,12 @@ export default function ProfileLists({ did, viewerIsOwner }: ProfileListsProps) 
       <ListDetail
         list={selected}
         viewerIsOwner={viewerIsOwner}
-        onBack={() => setSelectedRkey(null)}
+        onBack={() => router.back()}
         onDelete={async () => {
           await deleteList(selected.rkey)
-          setSelectedRkey(null)
+          // Use replace here — the list no longer exists, so the
+          // detail-view history entry shouldn't be reachable.
+          setSelectedRkey(null, "replace")
         }}
         onAdd={async (item) => addItem(selected.rkey, selected.type, item)}
         onRemove={async (uri) => removeItem(selected.rkey, uri)}
@@ -120,7 +146,10 @@ export default function ProfileLists({ did, viewerIsOwner }: ProfileListsProps) 
           onCreate={async (title, description) => {
             const ref = await createList(creating, title, description)
             setCreating(null)
-            setSelectedRkey(ref.uri.split("/").pop() ?? null)
+            const rkey = ref.uri.split("/").pop() ?? null
+            // push: entering the new list creates a back-able history
+            // entry. The same gesture as clicking an existing row.
+            if (rkey) setSelectedRkey(rkey)
           }}
         />
       ) : null}
