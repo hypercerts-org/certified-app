@@ -263,6 +263,8 @@ export async function fetchFollowerEvents(
 export interface HydratedPayloadActivity {
   kind: "cert.create"
   record: ActivityRecord
+  /** Hyperlabel tier labels active on the cert, or [] if none. */
+  labels: string[]
 }
 
 export interface HydratedPayloadCollection {
@@ -520,6 +522,7 @@ export async function hydrateFeedEvents(
     payloadByUri.set(edge.node.uri, {
       kind: "cert.create",
       record: nodeToActivityRecord(edge.node),
+      labels: edge.node.labels ?? [],
     })
   }
   for (const edge of json.data?.collections?.edges ?? []) {

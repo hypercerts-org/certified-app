@@ -55,6 +55,8 @@ export type HomeFeedEvent =
   | (HomeFeedEventBase & {
       kind: "cert.create"
       record: ActivityRecord
+      /** Hyperlabel tier labels currently active on the cert. */
+      labels: string[]
     })
   | (HomeFeedEventBase & {
       kind: "collection.create"
@@ -319,7 +321,7 @@ function hydratedToHomeFeedEvent(h: HydratedFeedEvent): HomeFeedEvent {
 
   const payload = h.payload
   if (payload?.kind === "cert.create") {
-    return { ...base, kind: "cert.create", record: payload.record }
+    return { ...base, kind: "cert.create", record: payload.record, labels: payload.labels }
   }
   if (payload?.kind === "collection.create") {
     return { ...base, kind: "collection.create", record: payload.record }

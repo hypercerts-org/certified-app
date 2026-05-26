@@ -306,7 +306,7 @@ function HomeFeedRow({ event }: { event: HomeFeedEvent }) {
           <EventSentence event={event} />
         </p>
         {event.kind === "cert.create" ? (
-          <CertPreview record={event.record} uri={event.uri} />
+          <CertPreview record={event.record} uri={event.uri} labels={event.labels} />
         ) : null}
         {event.kind === "collection.create" ? (
           <CollectionPreview record={event.record} uri={event.uri} />
@@ -442,7 +442,26 @@ function EndorsementSentence({ subjectDid }: { subjectDid: string }) {
 
 // ---------------------------------- Cert preview ----------------------------
 
-function CertPreview({ record, uri }: { record: ActivityRecord; uri: string }) {
+const QUALITY_TAGS: Record<string, { label: string; tone: "neutral" | "warn" }> = {
+  draft: { label: "Draft", tone: "neutral" },
+  "likely-test": { label: "Likely test", tone: "warn" },
+}
+
+function certQualityTags(labels: readonly string[]): { key: string; label: string; tone: string }[] {
+  return labels
+    .map((l) => (QUALITY_TAGS[l] ? { key: l, ...QUALITY_TAGS[l] } : null))
+    .filter((x): x is { key: string; label: string; tone: "neutral" | "warn" } => !!x)
+}
+
+function CertPreview({
+  record,
+  uri,
+  labels,
+}: {
+  record: ActivityRecord
+  uri: string
+  labels: readonly string[]
+}) {
   const parsed = parseAtUri(uri)
   const href = parsed
     ? `/activity/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
@@ -472,6 +491,7 @@ function CertPreview({ record, uri }: { record: ActivityRecord; uri: string }) {
     <PreviewCard
       href={href}
       title={title}
+      tags={certQualityTags(labels)}
       imageUrl={imageUrl}
       description={description}
       meta={[
@@ -550,6 +570,7 @@ function CollectionPreview({
 function PreviewCard({
   href,
   title,
+  tags,
   imageUrl,
   description,
   meta,
@@ -557,6 +578,7 @@ function PreviewCard({
 }: {
   href: string | null
   title: string
+  tags?: { key: string; label: string; tone: string }[]
   imageUrl: string | null
   description: string | null
   meta: string[]
@@ -571,7 +593,17 @@ function PreviewCard({
         </span>
       ) : null}
       <span className="home-feed__preview-body">
-        <span className="home-feed__preview-title">{title}</span>
+        <span className="home-feed__preview-title-row">
+          <span className="home-feed__preview-title">{title}</span>
+          {tags?.map((t) => (
+            <span
+              key={t.key}
+              className={`home-feed__preview-tag home-feed__preview-tag--${t.tone}`}
+            >
+              {t.label}
+            </span>
+          ))}
+        </span>
         {description ? (
           <span className="home-feed__preview-desc">{description}</span>
         ) : null}
