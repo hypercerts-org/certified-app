@@ -429,6 +429,12 @@
   transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
+/* Image missing — drop the thumb track entirely so the body left-
+   aligns with the card's left padding (no ghost gutter). */
+.home-feed__preview--no-image {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 a.home-feed__preview:hover {
   border-color: var(--fg-secondary);
   background: var(--bg-subtle);

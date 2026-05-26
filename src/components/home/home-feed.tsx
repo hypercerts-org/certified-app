@@ -1,8 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { FolderGit2, Inbox, MapPin, Users } from "lucide-react"
-import CertIcon from "@/components/ui/cert-icon"
+import { Inbox, MapPin, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -319,7 +318,6 @@ function CertPreview({ record, uri }: { record: ActivityRecord; uri: string }) {
     <PreviewCard
       href={href}
       title={title}
-      titleIcon={<CertIcon size={12} strokeWidth={1.75} aria-hidden />}
       imageUrl={imageUrl}
       description={description}
       meta={[
@@ -382,7 +380,6 @@ function CollectionPreview({
     <PreviewCard
       href={href}
       title={title}
-      titleIcon={<FolderGit2 size={12} strokeWidth={1.75} aria-hidden />}
       imageUrl={imageUrl}
       description={description}
       meta={[
@@ -399,7 +396,6 @@ function CollectionPreview({
 function PreviewCard({
   href,
   title,
-  titleIcon,
   imageUrl,
   description,
   meta,
@@ -407,7 +403,6 @@ function PreviewCard({
 }: {
   href: string | null
   title: string
-  titleIcon: React.ReactNode
   imageUrl: string | null
   description: string | null
   meta: string[]
@@ -420,11 +415,7 @@ function PreviewCard({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={imageUrl} alt="" loading="lazy" />
         </span>
-      ) : (
-        <span className="home-feed__preview-thumb home-feed__preview-thumb--placeholder">
-          {titleIcon}
-        </span>
-      )}
+      ) : null}
       <span className="home-feed__preview-body">
         <span className="home-feed__preview-title">{title}</span>
         {description ? (
@@ -446,14 +437,21 @@ function PreviewCard({
     </>
   )
 
+  // When there's no image, drop the 56px thumb column entirely so
+  // the body flows to the card's left edge instead of sitting in a
+  // ghosted gutter next to an empty placeholder.
+  const cardClass = imageUrl
+    ? "home-feed__preview"
+    : "home-feed__preview home-feed__preview--no-image"
+
   if (href) {
     return (
-      <Link href={href} className="home-feed__preview">
+      <Link href={href} className={cardClass}>
         {body}
       </Link>
     )
   }
-  return <div className="home-feed__preview">{body}</div>
+  return <div className={cardClass}>{body}</div>
 }
 
 function formatPeriod(
