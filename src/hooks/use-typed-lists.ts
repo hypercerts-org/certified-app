@@ -26,8 +26,25 @@ import type { ItemIdentifier } from "@/lib/atproto/collection"
 // navigation session. Keyed by `${did}:${version}` so the
 // invalidation bus (`endorsement-lists-cache`) naturally invalidates
 // stale entries on mutation.
+//
+// LRU eviction caps the cache at MAX_CACHE_ENTRIES so a long
+// session that mutates lists many times (each bumping the version
+// → new cache key) doesn't leak entries forever. Eviction is
+// insertion-order — the oldest entry drops when the cap is hit.
+const MAX_CACHE_ENTRIES = 16
 const cache = new Map<string, TypedListRecord[]>()
 const inflight = new Map<string, Promise<TypedListRecord[]>>()
+
+function setCacheEntry(key: string, value: TypedListRecord[]): void {
+  // Refresh insertion order on re-set.
+  if (cache.has(key)) cache.delete(key)
+  cache.set(key, value)
+  while (cache.size > MAX_CACHE_ENTRIES) {
+    const oldest = cache.keys().next().value
+    if (oldest === undefined) break
+    cache.delete(oldest)
+  }
+}
 
 interface UseTypedListsOptions {
   /** When false the hook skips the initial fetch and returns the
@@ -86,11 +103,20 @@ export function useTypedLists(
       try {
         // Dedupe concurrent fetches across instances by sharing the
         // in-flight promise — common when multiple AddToListMenu's
-        // mount the hook on the same overview render.
+        // mount the hook on the same overview render. Atomic
+        // has/set so two callers racing into the same key don't
+        // each create their own promise (the loser would leak
+        // because only one wins the Map slot).
         let promise = inflight.get(cacheKey)
         if (!promise) {
-          promise = fetchTypedLists(targetDid, signal).then((records) => {
-            cache.set(cacheKey, records)
+          // IMPORTANT: don't pass `signal` to the shared fetch —
+          // if THIS caller aborts, every sibling waiting on the
+          // same promise would also fail. The hook's outer
+          // `signal?.aborted` check below short-circuits the
+          // setLists path; the fetch itself runs to completion
+          // so the cache + other waiters stay healthy.
+          promise = fetchTypedLists(targetDid).then((records) => {
+            setCacheEntry(cacheKey, records)
             return records
           })
           inflight.set(cacheKey, promise)

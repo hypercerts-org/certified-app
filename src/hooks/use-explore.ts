@@ -483,8 +483,19 @@ async function loadPage(args: LoadArgs): Promise<LoadedPage> {
  * loadMore on the Ma Earth filter — the cache prevents redundant
  * fan-outs to the PDS for the same URI list across navigations.
  */
+const MAX_FEATURED_CACHE_ENTRIES = 8
 const featuredItemUrisCache = new Map<string, string[]>()
 const featuredItemUrisInflight = new Map<string, Promise<string[]>>()
+
+function setFeaturedCacheEntry(key: string, value: string[]): void {
+  if (featuredItemUrisCache.has(key)) featuredItemUrisCache.delete(key)
+  featuredItemUrisCache.set(key, value)
+  while (featuredItemUrisCache.size > MAX_FEATURED_CACHE_ENTRIES) {
+    const oldest = featuredItemUrisCache.keys().next().value
+    if (oldest === undefined) break
+    featuredItemUrisCache.delete(oldest)
+  }
+}
 
 async function loadFeaturedItemUris(
   collectionUris: readonly string[],
@@ -494,20 +505,22 @@ async function loadFeaturedItemUris(
   const key = [...collectionUris].sort().join("|")
   const cached = featuredItemUrisCache.get(key)
   if (cached) return cached
-  const existingInflight = featuredItemUrisInflight.get(key)
-  if (existingInflight) return existingInflight
-  const promise = (async () => {
-    const fetched = await loadFeaturedItemUrisUncached(collectionUris, signal)
-    if (!signal?.aborted) featuredItemUrisCache.set(key, fetched)
-    return fetched
-  })()
-  featuredItemUrisInflight.set(key, promise)
-  promise.finally(() => {
-    if (featuredItemUrisInflight.get(key) === promise) {
-      featuredItemUrisInflight.delete(key)
-    }
-  })
-  return promise
+  // Atomic has/set so racing callers don't each build a promise
+  // and leak the loser.
+  if (!featuredItemUrisInflight.has(key)) {
+    const promise = (async () => {
+      const fetched = await loadFeaturedItemUrisUncached(collectionUris, signal)
+      if (!signal?.aborted) setFeaturedCacheEntry(key, fetched)
+      return fetched
+    })()
+    featuredItemUrisInflight.set(key, promise)
+    promise.finally(() => {
+      if (featuredItemUrisInflight.get(key) === promise) {
+        featuredItemUrisInflight.delete(key)
+      }
+    })
+  }
+  return featuredItemUrisInflight.get(key)!
 }
 
 async function loadFeaturedItemUrisUncached(

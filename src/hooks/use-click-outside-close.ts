@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, type RefObject } from "react"
+import { useEffect, useRef, type RefObject } from "react"
 
 /**
  * Close a popover / menu when the user clicks outside its container
@@ -25,13 +25,22 @@ export function useClickOutsideClose(
   ref: RefObject<HTMLElement | null>,
   onClose: () => void,
 ): void {
+  // Stash onClose in a ref so the effect's listeners always call
+  // the latest value without having to re-attach on every render
+  // (callers commonly pass a fresh `() => setOpen(false)` arrow).
+  // Listener thrash without this ref means closed-then-reopened
+  // popovers spin up + tear down listeners every time state
+  // upstream changes.
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+
   useEffect(() => {
     if (!open) return
     const handleDown = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) onClose()
+      if (!ref.current?.contains(e.target as Node)) onCloseRef.current()
     }
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose()
+      if (e.key === "Escape") onCloseRef.current()
     }
     document.addEventListener("mousedown", handleDown)
     document.addEventListener("keydown", handleKey)
@@ -39,5 +48,5 @@ export function useClickOutsideClose(
       document.removeEventListener("mousedown", handleDown)
       document.removeEventListener("keydown", handleKey)
     }
-  }, [open, ref, onClose])
+  }, [open, ref])
 }

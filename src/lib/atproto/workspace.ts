@@ -151,15 +151,30 @@ export async function fetchNetworkActors(
  * on every paginated page; the cache prevents the same call from
  * firing on every loadMore.
  */
+const MAX_ORG_DIDS_BY_LABEL_CACHE = 16
 const orgDidsByLabelCache = new Map<string, Set<string>>()
 const orgDidsByLabelInflight = new Map<string, Promise<Set<string>>>()
+
 function cacheKeyForOrgLabels(
   labels: readonly string[] | undefined,
   excludeLabels: readonly string[] | undefined,
 ): string {
+  // Polarity-explicit key — `inc=...&exc=...` always, even when
+  // a side is empty — so `{labels: [], excludeLabels: ["x"]}` can
+  // never collide with `{labels: ["x"], excludeLabels: []}`.
   const inc = labels ? [...labels].sort().join(",") : ""
   const exc = excludeLabels ? [...excludeLabels].sort().join(",") : ""
-  return `${inc}|${exc}`
+  return `inc=${inc}&exc=${exc}`
+}
+
+function setOrgDidsByLabelCacheEntry(key: string, value: Set<string>): void {
+  if (orgDidsByLabelCache.has(key)) orgDidsByLabelCache.delete(key)
+  orgDidsByLabelCache.set(key, value)
+  while (orgDidsByLabelCache.size > MAX_ORG_DIDS_BY_LABEL_CACHE) {
+    const oldest = orgDidsByLabelCache.keys().next().value
+    if (oldest === undefined) break
+    orgDidsByLabelCache.delete(oldest)
+  }
 }
 
 export async function fetchOrgDidsByLabel(opts: {
@@ -177,20 +192,27 @@ export async function fetchOrgDidsByLabel(opts: {
   const key = cacheKeyForOrgLabels(labels, excludeLabels)
   const cached = orgDidsByLabelCache.get(key)
   if (cached) return cached
-  let inflight = orgDidsByLabelInflight.get(key)
-  if (inflight) return inflight
-  inflight = (async () => {
-    const fetched = await fetchOrgDidsByLabelUncached({ labels, excludeLabels, signal })
-    orgDidsByLabelCache.set(key, fetched)
-    return fetched
-  })()
-  orgDidsByLabelInflight.set(key, inflight)
-  inflight.finally(() => {
-    if (orgDidsByLabelInflight.get(key) === inflight) {
-      orgDidsByLabelInflight.delete(key)
-    }
-  })
-  return inflight
+  // Atomic has/set so two callers racing don't each build a promise.
+  if (!orgDidsByLabelInflight.has(key)) {
+    const promise = (async () => {
+      const fetched = await fetchOrgDidsByLabelUncached({
+        labels,
+        excludeLabels,
+        signal,
+      })
+      // Only cache when the original signal didn't abort, to avoid
+      // poisoning the cache with a partially-fetched result.
+      if (!signal?.aborted) setOrgDidsByLabelCacheEntry(key, fetched)
+      return fetched
+    })()
+    orgDidsByLabelInflight.set(key, promise)
+    promise.finally(() => {
+      if (orgDidsByLabelInflight.get(key) === promise) {
+        orgDidsByLabelInflight.delete(key)
+      }
+    })
+  }
+  return orgDidsByLabelInflight.get(key)!
 }
 
 async function fetchOrgDidsByLabelUncached(opts: {

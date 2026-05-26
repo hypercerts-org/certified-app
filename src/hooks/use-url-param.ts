@@ -57,9 +57,19 @@ export function useUrlParam(
   const setValue = useCallback(
     (next: string | null, modeOverride?: "push" | "replace") => {
       const params = new URLSearchParams(searchParams?.toString() ?? "")
-      // Drop the param when the new value equals the default — keeps
-      // shared URLs short and the back-button history clean.
-      if (next === null || next === "" || next === defaultValue) {
+      // Drop the param when the new value equals the default —
+      // keeps shared URLs short and the back-button history clean.
+      // `null` always drops. Empty string is only treated as "drop"
+      // when the default is also nullish; otherwise `""` is a
+      // meaningful "show nothing" sentinel (e.g. `?quality=` on
+      // the explore page intentionally serializes the empty set
+      // distinctly from missing-param).
+      const treatEmptyAsDrop = defaultValue === null || defaultValue === undefined
+      if (
+        next === null ||
+        (next === "" && treatEmptyAsDrop) ||
+        next === defaultValue
+      ) {
         params.delete(key)
       } else {
         params.set(key, next)
