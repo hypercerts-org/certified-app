@@ -127,7 +127,7 @@ function HomeSidebar({ activeDid }: { activeDid: string }) {
         <header className="home-section__head">
           <User size={14} strokeWidth={1.75} aria-hidden />
           <Link href={profileBase} className="home-section__title-link">
-            <h2 className="home-section__title">Go to my profile</h2>
+            <h2 className="home-section__title">My profile</h2>
           </Link>
         </header>
       </section>
@@ -138,7 +138,7 @@ function HomeSidebar({ activeDid }: { activeDid: string }) {
         items={previewGroups}
         total={groups.length}
         renderItem={(g) => <GroupRow key={g.groupDid} group={g} />}
-        moreHref="/groups"
+        moreHref={`${profileBase}?tab=groups`}
         emptyLabel="No groups yet."
       />
       <SidebarSection
