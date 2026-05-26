@@ -1,22 +1,19 @@
 "use client"
 
-import { useState } from "react"
-import Link from "next/link"
 import { FolderGit2, MapPin } from "lucide-react"
-import { resolveActivityImageUrl, formatRelativeTime } from "@/lib/atproto/activity"
+import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
-import ActivityAuthor from "@/components/feed/activity-author"
 import { useLocation } from "@/hooks/use-location"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 import type { EndorsementClosureAccount } from "@/lib/atproto/indexer"
-import EndorsementRowBadge from "./endorsement-row-badge"
+import ExploreListRow from "./explore-list-row"
 
 /**
  * Dense single-row representation of a project for the /explore list
- * view. Mirrors <CertListRow>'s grid:
- *
- *   [thumb] [ title             ] [ author col ] [ date ]
- *           [ N certs · 📍 location ]
+ * view. Resolves project-shaped fields (title fallback chain, image
+ * precedence, item count, location strongRef) and hands them to
+ * `<ExploreListRow>`, which owns the JSX scaffolding shared with
+ * `<CertListRow>`.
  */
 export default function ProjectListRow({
   project,
@@ -51,7 +48,6 @@ export default function ProjectListRow({
           did,
         )
       : null
-  const [imageFailed, setImageFailed] = useState(false)
 
   const itemCount = countItems(value.items)
   const countLabel = `${itemCount} cert${itemCount === 1 ? "" : "s"}`
@@ -72,68 +68,39 @@ export default function ProjectListRow({
   const locationName =
     inlineLocation || (locationRef ? asString(locationRecord?.name) : null)
 
-  return (
-    <article className="cert-list-row">
-      {detailHref ? (
-        <Link href={detailHref} className="cert-list-row__link">
-          <div className="cert-list-row__thumb">
-            {imageUrl && !imageFailed ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                className="cert-list-row__img"
-                src={imageUrl}
-                alt=""
-                loading="lazy"
-                onError={() => setImageFailed(true)}
-              />
-            ) : (
-              <FolderGit2
-                size={20}
-                strokeWidth={1.25}
-                aria-hidden
-                className="cert-list-row__img-fallback"
-              />
-            )}
-          </div>
-          <div className="cert-list-row__body">
-            <h3 className="cert-list-row__title">{title}</h3>
-            <p className="cert-list-row__meta">
-              <span className="cert-list-row__meta-item">{countLabel}</span>
-              {locationName ? (
-                <span className="cert-list-row__meta-item">
-                  <span className="cert-list-row__meta-sep" aria-hidden>
-                    ·
-                  </span>
-                  <MapPin
-                    size={12}
-                    strokeWidth={1.75}
-                    aria-hidden
-                    className="cert-list-row__meta-icon"
-                  />
-                  {locationName}
-                </span>
-              ) : null}
-            </p>
-          </div>
-        </Link>
-      ) : null}
+  const metaItems = [
+    countLabel,
+    locationName ? (
+      <>
+        <MapPin
+          size={12}
+          strokeWidth={1.75}
+          aria-hidden
+          className="cert-list-row__meta-icon"
+        />
+        {locationName}
+      </>
+    ) : null,
+  ].filter((m): m is NonNullable<typeof m> => m !== null && m !== undefined)
 
-      <div className="cert-list-row__author-col">
-        {did ? (
-          <ActivityAuthor
-            did={did}
-            nameSuffix={
-              endorsementMeta ? (
-                <EndorsementRowBadge meta={endorsementMeta} />
-              ) : null
-            }
-          />
-        ) : null}
-      </div>
-      <time className="cert-list-row__time">
-        {createdAt ? formatRelativeTime(createdAt) : ""}
-      </time>
-    </article>
+  return (
+    <ExploreListRow
+      href={detailHref}
+      thumbUrl={imageUrl}
+      fallbackIcon={
+        <FolderGit2
+          size={20}
+          strokeWidth={1.25}
+          aria-hidden
+          className="cert-list-row__img-fallback"
+        />
+      }
+      title={title}
+      metaItems={metaItems}
+      authorDid={did || null}
+      endorsementMeta={endorsementMeta}
+      timestampIso={createdAt}
+    />
   )
 }
 
