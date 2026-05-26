@@ -110,7 +110,7 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   const showEndorsements = isRouteVisibleToActor("endorsements", isActingAsOrg);
   const navLinks = [
     { href: profileHref, label: "Profile", icon: User },
-    { href: "/feed", label: "Feed", icon: Newspaper },
+    { href: "/home", label: "Home", icon: Newspaper },
     { href: "/search", label: "Explore", icon: Search },
     ...(showCreate ? [{ href: "/create", label: "Create", icon: PlusCircle }] : []),
     ...(showGroups ? [{ href: "/groups", label: "Groups", icon: Building2 }] : []),
