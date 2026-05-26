@@ -42,19 +42,22 @@
   }
 }
 
-/* Left pane width scales with viewport: 335px at full width, 260px
-   at mid-widths, then drops entirely below 760px (mobile, where the
-   layout collapses to a single column).
+/* Left pane width: 335px only at the wide-desktop band
+   (--bp-gt-desktop: 1300px), 260px between mobile-cutoff and that
+   threshold, then drops entirely below 760px (mobile, where the
+   layout collapses to a single column). Matches the news-rail and
+   left-rail-expand breakpoints so the three responsive transitions
+   happen together at 1300px.
    Variable lives on `.home-page` (not `.home__layout`) so the
    page-frame `::before` divider can read it too — custom properties
    only cascade DOWN, and the divider is on the parent. */
 .home-page {
-  --home-sidebar-width: 335px;
+  --home-sidebar-width: 260px;
 }
 
-@media (max-width: 1100px) {
+@media (min-width: 1300px) {
   .home-page {
-    --home-sidebar-width: 260px;
+    --home-sidebar-width: 335px;
   }
 }
 
