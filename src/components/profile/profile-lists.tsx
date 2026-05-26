@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useUrlParam } from "@/hooks/use-url-param"
+import { useRemoveAction } from "@/hooks/use-remove-action"
 import {
   ArrowLeft,
   ChevronRight,
@@ -620,18 +621,7 @@ function ProjectItemRow({
 }) {
   const parsed = parseAtUri(uri)
   const { project, isLoading } = useProject(parsed?.did ?? null, parsed?.rkey ?? null)
-  const [removing, setRemoving] = useState(false)
-
-  const handleRemove = async () => {
-    if (removing) return
-    setRemoving(true)
-    try {
-      await onRemove()
-    } catch (err) {
-      console.error("Failed to remove item:", err)
-      setRemoving(false)
-    }
-  }
+  const { removing, handleRemove } = useRemoveAction(onRemove)
 
   // While the project record is still loading, render a slim
   // placeholder shell so the row doesn't collapse and shift the
@@ -690,17 +680,7 @@ function ItemRowShell({
   canRemove: boolean
   onRemove: () => Promise<unknown>
 }) {
-  const [removing, setRemoving] = useState(false)
-  const handleRemove = async () => {
-    if (removing) return
-    setRemoving(true)
-    try {
-      await onRemove()
-    } catch (err) {
-      console.error("Failed to remove item:", err)
-      setRemoving(false)
-    }
-  }
+  const { removing, handleRemove } = useRemoveAction(onRemove)
   const body = (
     <>
       {avatar}
