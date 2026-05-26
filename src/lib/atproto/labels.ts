@@ -19,8 +19,24 @@
  * include the hidden tiers.
  */
 
-/** Hyperlabel's DID — scores cert quality. */
-export const HYPERLABEL_DID = "did:plc:5rw6of6lry7ihmyhm323ycwn"
+/**
+ * Hyperlabel signing DIDs. The labeler service at
+ * `hyperlabel-production.up.railway.app` currently signs labels with
+ * the `heisenberg.climateai.org` DID, while the canonical
+ * `did:plc:5rw6of6...` (aka `einstein.climateai.org`) is registered
+ * at the same endpoint but dormant. The indexer must subscribe to
+ * BOTH via `LABELER_DIDS`, or the actively-signed labels never get
+ * ingested and `excludeLabels: ["likely-test"]` is a no-op. See
+ * hypercerts-org/magic-indexer config for the env var.
+ *
+ * `HYPERLABEL_DID` is kept as the canonical alias for downstream
+ * code that needs a single identity.
+ */
+export const HYPERLABEL_DIDS = [
+  "did:plc:5rw6of6lry7ihmyhm323ycwn", // canonical (einstein.climateai.org) — dormant
+  "did:plc:edod7rboajioq3jbyxsgeicc", // active signer (heisenberg.climateai.org)
+] as const
+export const HYPERLABEL_DID = HYPERLABEL_DIDS[0]
 
 /** Orglabeler's DID — scores org-record quality. */
 export const ORGLABELER_DID = "did:plc:pswneepkd5lesumj7ejmkbal"
