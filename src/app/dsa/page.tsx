@@ -17,8 +17,8 @@ export const metadata: Metadata = {
 
 export default function DsaPage() {
   return (
-    <div className="app-page">
-      <div className="app-page__inner max-w-3xl">
+    <div className="app-page legal-page">
+      <div className="app-page__inner">
         <h1 className="font-headline text-h1 text-[var(--fg-primary)] tracking-tight mb-8">
           Digital Services Act — Compliance Information
         </h1>

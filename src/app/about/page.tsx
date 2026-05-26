@@ -19,9 +19,9 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <div className="app-page">
+    <div className="app-page legal-page">
       <PageTitle title="About" />
-      <div className="app-page__inner max-w-3xl">
+      <div className="app-page__inner">
         <div className="prose prose-navy max-w-none space-y-8">
           <section>
             <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">What is Certified?</h2>

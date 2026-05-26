@@ -1,10 +1,10 @@
 import Link from "next/link"
-import Brandmark from "@/components/ui/brandmark"
+import FeedbackFooterLink from "@/components/layout/feedback-footer-link"
 
 /**
  * Minimal site footer — GitHub-flavour. Single horizontal row at
- * desktop: small brandmark + copyright on the left, link list on
- * the right. Wraps to two stacked rows on narrow viewports.
+ * desktop: wordmark + copyright on the left, link list on the
+ * right. Wraps to two stacked rows on narrow viewports.
  *
  * Rendered as a sibling of `.app-shell__grid` (NOT inside it) so
  * the footer spans the full viewport width on every page — its
@@ -21,7 +21,12 @@ export default function SiteFooter() {
     <footer className="site-footer" aria-label="Site footer">
       <div className="site-footer__row">
         <div className="site-footer__left">
-          <Brandmark size={16} className="site-footer__brand" aria-hidden />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/brand/wordmark/certified_wordmark_black.svg"
+            alt="Certified"
+            className="site-footer__wordmark"
+          />
           <span className="site-footer__copy">
             © {year} Hypercerts Foundation
           </span>
@@ -39,6 +44,7 @@ export default function SiteFooter() {
           <Link href="/imprint" className="site-footer__link">
             Imprint
           </Link>
+          <FeedbackFooterLink />
         </nav>
       </div>
     </footer>
