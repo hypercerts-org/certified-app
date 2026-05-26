@@ -554,6 +554,35 @@ a.home-feed__preview:hover {
   padding: 0 16px;
 }
 
+/* ---------- Quality filter toggle (above the timeline) ---------- */
+
+.home-feed__quality-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 4px 6px;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  user-select: none;
+  border-radius: 6px;
+  transition: color var(--transition-fast);
+}
+
+.home-feed__quality-filter:hover {
+  color: var(--fg-primary);
+}
+
+.home-feed__quality-filter input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--fg-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 /* ---------- Activity timeline load-more sentinel ---------- */
 
 .home-feed__load-more {

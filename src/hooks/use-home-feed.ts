@@ -7,8 +7,18 @@ import {
   type FeedActor,
   type HydratedFeedEvent,
 } from "@/lib/atproto/follower-events"
+import { DEFAULT_HIDDEN_CERT_LABELS } from "@/lib/atproto/labels"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { CollectionRecord } from "@/lib/atproto/collection"
+
+export interface UseHomeFeedOptions {
+  /**
+   * When false (default), cert.create events whose subject carries
+   * a `draft` or `likely-test` label are dropped from the visible
+   * feed. Set to true to show them anyway — backs a UI toggle.
+   */
+  includeLowQuality?: boolean
+}
 
 /**
  * Discriminated union of the timeline event kinds the home feed
@@ -115,8 +125,12 @@ const EMPTY_STATE: State = {
  * once the surface needs it — see `useFollowerEventsFeed` for the
  * shape.
  */
-export function useHomeFeed(followedDids: Set<string>) {
+export function useHomeFeed(
+  followedDids: Set<string>,
+  options: UseHomeFeedOptions = {},
+) {
   const [state, setState] = useState<State>(EMPTY_STATE)
+  const { includeLowQuality = false } = options
 
   // Stable string key — parent useMemo of `followedDids` recomputes
   // a new Set instance whenever the union recomputes; we don't want
@@ -135,6 +149,16 @@ export function useHomeFeed(followedDids: Set<string>) {
   const stateRef = useRef(state)
   stateRef.current = state
 
+  // Snapshot the filter so the existing load() / loadMore() callbacks
+  // (which deliberately have empty deps for stability) can read the
+  // latest value without re-binding.
+  const excludeCertLabelsRef = useRef<readonly string[]>(
+    includeLowQuality ? [] : DEFAULT_HIDDEN_CERT_LABELS,
+  )
+  excludeCertLabelsRef.current = includeLowQuality
+    ? []
+    : DEFAULT_HIDDEN_CERT_LABELS
+
   const load = useCallback(async (signal: AbortSignal) => {
     setState((prev) => ({ ...prev, ...EMPTY_STATE, isLoading: true }))
     const authors = Array.from(followedRef.current)
@@ -150,10 +174,15 @@ export function useHomeFeed(followedDids: Set<string>) {
       })
       if (signal.aborted) return
 
-      const hydrated = await hydrateFeedEvents(page.events, signal)
+      const hydrated = await hydrateFeedEvents(page.events, {
+        signal,
+        excludeCertLabels: excludeCertLabelsRef.current,
+      })
       if (signal.aborted) return
 
-      const events = hydrated.map(hydratedToHomeFeedEvent)
+      const events = hydrated
+        .map(hydratedToHomeFeedEvent)
+        .filter(passesLabelFilter)
 
       setState({
         events,
@@ -190,8 +219,12 @@ export function useHomeFeed(followedDids: Set<string>) {
           first: PAGE_SIZE,
           after: snap.cursor ?? undefined,
         })
-        const hydrated = await hydrateFeedEvents(page.events)
-        const fresh = hydrated.map(hydratedToHomeFeedEvent)
+        const hydrated = await hydrateFeedEvents(page.events, {
+          excludeCertLabels: excludeCertLabelsRef.current,
+        })
+        const fresh = hydrated
+          .map(hydratedToHomeFeedEvent)
+          .filter(passesLabelFilter)
         setState((prev) => {
           // Dedupe by URI in case the server returns overlapping
           // edges across a cursor boundary.
@@ -222,6 +255,20 @@ export function useHomeFeed(followedDids: Set<string>) {
   }, [followedKey])
 
   return { ...state, loadMore }
+}
+
+/**
+ * Drop events that came back as the `unknown` variant because their
+ * cert was filtered out by the hydration round-trip's
+ * `excludeLabels`. Without this, low-quality certs would still
+ * render as a generic "X created a cert" row even though hydration
+ * deliberately skipped them. Other reasons for the unknown variant
+ * (404, genuinely unrecognised wire kind) still render — only the
+ * specific cert.create-without-payload combination is excised.
+ */
+function passesLabelFilter(event: HomeFeedEvent): boolean {
+  if (event.kind !== "unknown") return true
+  return event.rawKind !== "cert.create"
 }
 
 /**

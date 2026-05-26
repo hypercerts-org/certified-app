@@ -370,15 +370,39 @@ interface HydrateFeedPageResponse {
   errors?: { message: string }[]
 }
 
+export interface HydrateFeedEventsOptions {
+  signal?: AbortSignal
+  /**
+   * Cert-quality labels to exclude on the hydration round-trip
+   * (passed through to the `activities` connection's
+   * `excludeLabels` arg). Default behaviour at the caller's
+   * discretion — see `DEFAULT_HIDDEN_CERT_LABELS` in
+   * `src/lib/atproto/labels.ts` for the recommended set.
+   * Events whose subject is filtered out get `payload: null` in
+   * the result; the dispatch site decides whether to drop or
+   * render them as a degraded card.
+   */
+  excludeCertLabels?: readonly string[]
+}
+
 /**
  * One request hydrates one page. Events with unknown `kind` are
  * preserved in the output with `payload: null` so the dispatch site
  * can render the fallback card.
+ *
+ * Accepts either an `AbortSignal` (legacy positional) or an options
+ * object so callers can pass the cert-label exclusion without
+ * threading an `excludeCertLabels` arg through every call site.
  */
 export async function hydrateFeedEvents(
   events: FeedEvent[],
-  signal?: AbortSignal,
+  signalOrOptions?: AbortSignal | HydrateFeedEventsOptions,
 ): Promise<HydratedFeedEvent[]> {
+  const opts: HydrateFeedEventsOptions =
+    signalOrOptions instanceof AbortSignal
+      ? { signal: signalOrOptions }
+      : (signalOrOptions ?? {})
+  const { signal, excludeCertLabels } = opts
   if (events.length === 0) return []
 
   const activityUris: string[] = []
@@ -446,6 +470,10 @@ export async function hydrateFeedEvents(
         measurementUris,
         hyperboardUris,
         attachmentUris,
+        activityExcludeLabels:
+          excludeCertLabels && excludeCertLabels.length > 0
+            ? [...excludeCertLabels]
+            : null,
       },
     }),
     signal,

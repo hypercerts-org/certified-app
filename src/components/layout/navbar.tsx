@@ -338,10 +338,10 @@ const Navbar: React.FC = () => {
           )}
         </div>
 
-        {/* Center: brandmark — sends authenticated viewers to /home
-            (the activity feed) and unauthenticated to / (the welcome
-            redirector). The router does the right thing in both cases. */}
-        <Link href={isAuthenticated ? "/home" : "/"} className="navbar__logo">
+        {/* Center: brandmark — always links to /home. The /home page
+            handles the unauthenticated state itself (sign-in empty
+            state) so we don't need to branch the href here. */}
+        <Link href="/home" className="navbar__logo">
           <Brandmark className="navbar__logo-img" title="Certified" />
         </Link>
 

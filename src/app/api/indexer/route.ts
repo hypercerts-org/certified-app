@@ -588,10 +588,12 @@ ${ACTIVITY_NODE_SELECTION}
       $measurementUris: [String!]!
       $hyperboardUris: [String!]!
       $attachmentUris: [String!]!
+      $activityExcludeLabels: [String!]
     ) {
       activities: orgHypercertsClaimActivity(
         first: ${MAX_URI_LIST_PER_KIND}
         where: { uri: { in: $activityUris } }
+        excludeLabels: $activityExcludeLabels
       ) {
         edges {
           node {
@@ -1014,6 +1016,11 @@ function buildVariables(
       ) {
         return null
       }
+      // Optional inclusion / exclusion filter for the hyperlabel-style
+      // cert labels (`high-quality` / `standard` / `draft` /
+      // `likely-test`). Permissive reader — null when omitted or
+      // invalid; the GraphQL query treats null as "no exclusion".
+      const activityExcludeLabels = readLabelList(vars.activityExcludeLabels)
       return {
         activityUris,
         collectionUris,
@@ -1022,6 +1029,7 @@ function buildVariables(
         measurementUris,
         hyperboardUris,
         attachmentUris,
+        activityExcludeLabels,
       }
     }
     default:

@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { Inbox, MapPin, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
@@ -37,8 +38,9 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
     isLoading: followsLoading,
     error: followsError,
   } = useFollowedDids(activeDid)
+  const [includeLowQuality, setIncludeLowQuality] = useState(false)
   const { events, isLoading, isLoadingMore, hasMore, loadMore, error } =
-    useHomeFeed(followedDids)
+    useHomeFeed(followedDids, { includeLowQuality })
 
   if (followsLoading || isLoading) {
     return (
@@ -86,6 +88,10 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
 
   return (
     <>
+      <QualityFilter
+        includeLowQuality={includeLowQuality}
+        onChange={setIncludeLowQuality}
+      />
       <ol className="home-feed">
         {events.map((event) => (
           <li key={event.uri} className="home-feed__item">
@@ -102,6 +108,31 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
         />
       ) : null}
     </>
+  )
+}
+
+/**
+ * Small inline toggle above the feed. When checked, the feed
+ * includes cert.create events tagged `draft` or `likely-test` by
+ * the hyperlabel — otherwise (default) they're filtered out at the
+ * hydration round-trip and the matching rows never render.
+ */
+function QualityFilter({
+  includeLowQuality,
+  onChange,
+}: {
+  includeLowQuality: boolean
+  onChange: (next: boolean) => void
+}) {
+  return (
+    <label className="home-feed__quality-filter">
+      <input
+        type="checkbox"
+        checked={includeLowQuality}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <span>Include drafts and test data</span>
+    </label>
   )
 }
 

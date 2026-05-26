@@ -196,11 +196,11 @@ export default function DesktopLeftRail() {
   // personal-handle path uses `handle` (from useSession) rather than
   // `identity.handle`, which is the *group* handle when activeOrg is
   // set and would otherwise send us to /profile/<group-handle>.
-  // Brand mark sends authed viewers to /home (the activity feed) and
-  // unauthed to / (welcome redirector). Org-switch acting-as state
-  // is no longer load-bearing here — the user's mental model is
-  // "brand = home", not "brand = my current profile".
-  const brandHref = isAuthenticated ? "/home" : "/";
+  // Brand mark always links to /home. The /home page handles its
+  // own unauth state (sign-in empty state). Org-switch acting-as
+  // state is no longer load-bearing here — the user's mental model
+  // is "brand = home", not "brand = my current profile".
+  const brandHref = "/home";
 
   // Personal-only visibility (Create, Endorsements, Groups) is decided
   // by lib/groups/personal-only.ts — same source of truth used by the
