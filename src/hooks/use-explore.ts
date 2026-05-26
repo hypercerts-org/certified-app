@@ -160,9 +160,20 @@ export function useExploreData(opts: {
    *  active filter is endorsement-based (Accounts/"endorsed",
    *  Projects/"by-endorsed", Certs/"by-endorsed"). Defaults to 1. */
   degree?: 1 | 2 | 3
+  /** Hyperlabel tier labels to exclude on the certs query. Only
+   *  consulted when `kind === "certs"`. Passed straight through to
+   *  `fetchIndexerActivities`'s `excludeLabels`. */
+  excludeCertLabels?: readonly string[]
 }): ExploreData {
-  const { kind, filter, sub, search } = opts
+  const { kind, filter, sub, search, excludeCertLabels } = opts
   const degree: 1 | 2 | 3 = opts.degree ?? 1
+  // Stable key so the load effect can refetch when the exclude list
+  // changes without retriggering when an identical-content array
+  // arrives by reference.
+  const excludeKey = useMemo(
+    () => (excludeCertLabels ? [...excludeCertLabels].sort().join(",") : ""),
+    [excludeCertLabels],
+  )
   const { did: personalDid } = useAuth()
   const { activeOrg, groups } = useOrg()
   // "My X" — records OWNED by the current identity. Switches with the
@@ -221,6 +232,7 @@ export function useExploreData(opts: {
           cursor: null,
           signal: controller.signal,
           degree,
+          excludeCertLabels: excludeCertLabels ?? null,
         })
         if (controller.signal.aborted) return
         if (generation !== generationRef.current) return
@@ -248,6 +260,7 @@ export function useExploreData(opts: {
     myGroupDids,
     degree,
     closureVersion,
+    excludeKey,
   ])
 
   const loadMore = useCallback(() => {
@@ -270,6 +283,7 @@ export function useExploreData(opts: {
             cursor,
             signal: null,
             degree,
+            excludeCertLabels: excludeCertLabels ?? null,
           })
           if (generation !== generationRef.current) return
           setState((current) => {
@@ -326,6 +340,7 @@ export function useExploreData(opts: {
     myGroupDids,
     degree,
     closureVersion,
+    excludeKey,
   ])
 
   return {
@@ -380,6 +395,9 @@ interface LoadArgs {
   cursor: string | null
   signal: AbortSignal | null
   degree: 1 | 2 | 3
+  /** Forwarded to `fetchIndexerActivities` when loading the certs
+   *  page; null on other kinds. */
+  excludeCertLabels: readonly string[] | null
 }
 
 async function loadPage(args: LoadArgs): Promise<LoadedPage> {
@@ -600,6 +618,7 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
       first: PAGE_SIZE,
       after: cursor ?? undefined,
       search: search || undefined,
+      excludeLabels: args.excludeCertLabels?.length ? [...args.excludeCertLabels] : undefined,
       signal: signal ?? undefined,
     })
     return {
@@ -616,6 +635,7 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
       first: PAGE_SIZE,
       after: cursor ?? undefined,
       search: search || undefined,
+      excludeLabels: args.excludeCertLabels?.length ? [...args.excludeCertLabels] : undefined,
       signal: signal ?? undefined,
     })
     return {
@@ -646,6 +666,7 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
       after: cursor ?? undefined,
       authors,
       search: search || undefined,
+      excludeLabels: args.excludeCertLabels?.length ? [...args.excludeCertLabels] : undefined,
       signal: signal ?? undefined,
     })
     return {
@@ -691,6 +712,7 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
     after: cursor ?? undefined,
     authors,
     search: search || undefined,
+    excludeLabels: args.excludeCertLabels?.length ? [...args.excludeCertLabels] : undefined,
     signal: signal ?? undefined,
   })
   return {

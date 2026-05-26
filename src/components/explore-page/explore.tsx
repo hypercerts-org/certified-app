@@ -10,8 +10,14 @@ import {
   LayoutGrid,
   List as ListIcon,
   Search,
+  SlidersHorizontal,
   Users,
 } from "lucide-react"
+import {
+  DEFAULT_HIDDEN_CERT_LABELS,
+  HYPERLABEL_TIERS,
+  type HyperlabelTier,
+} from "@/lib/atproto/labels"
 import CertIcon from "@/components/ui/cert-icon"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
@@ -39,6 +45,23 @@ const SORT_LABEL: Record<SortOrder, string> = {
   newest: "Newest first",
   oldest: "Oldest first",
   alphabetical: "Alphabetical",
+}
+
+/** Display order for the certs-quality popover — best to worst. The
+ *  raw tier list in `labels.ts` is sorted worst → best for indexer
+ *  comparisons. */
+const QUALITY_TIER_DISPLAY: readonly HyperlabelTier[] = [
+  "high-quality",
+  "standard",
+  "draft",
+  "likely-test",
+]
+
+const QUALITY_TIER_LABEL: Record<HyperlabelTier, string> = {
+  "high-quality": "High quality",
+  standard: "Standard",
+  draft: "Draft",
+  "likely-test": "Likely test",
 }
 
 function parseKind(v: string | null): ExploreKind {
@@ -159,6 +182,45 @@ export default function Explore() {
     [attrsParam],
   )
 
+  // Cert-quality filter — URL-backed `Set<HyperlabelTier>` of
+  // INCLUDED tiers. Missing param falls back to the same default as
+  // the home feed (`high-quality` + `standard`), so first-load on
+  // /explore?kind=certs hides `draft` + `likely-test` rows out of
+  // the box. An explicit empty string is treated as "show nothing"
+  // (every tier excluded) so toggling all four off is a legible
+  // state rather than a coincidental no-op.
+  const qualityParam = searchParams?.get("quality")
+  const qualityIncluded = useMemo<Set<HyperlabelTier>>(() => {
+    if (qualityParam == null) {
+      return new Set(
+        HYPERLABEL_TIERS.filter(
+          (t) => !DEFAULT_HIDDEN_CERT_LABELS.includes(t),
+        ),
+      )
+    }
+    return new Set(
+      qualityParam
+        .split(",")
+        .filter((v): v is HyperlabelTier =>
+          (HYPERLABEL_TIERS as readonly string[]).includes(v),
+        ),
+    )
+  }, [qualityParam])
+  const excludeCertLabels = useMemo(
+    () => HYPERLABEL_TIERS.filter((t) => !qualityIncluded.has(t)),
+    [qualityIncluded],
+  )
+  const qualityIsDefault = useMemo(() => {
+    if (qualityIncluded.size !== HYPERLABEL_TIERS.length - DEFAULT_HIDDEN_CERT_LABELS.length) {
+      return false
+    }
+    for (const t of HYPERLABEL_TIERS) {
+      const shouldBeIncluded = !DEFAULT_HIDDEN_CERT_LABELS.includes(t)
+      if (qualityIncluded.has(t) !== shouldBeIncluded) return false
+    }
+    return true
+  }, [qualityIncluded])
+
   const setUrl = useCallback(
     (patch: Record<string, string | null>) => {
       const params = new URLSearchParams(searchParams?.toString() ?? "")
@@ -224,6 +286,28 @@ export default function Explore() {
     [attrs, setUrl],
   )
 
+  const onQualityToggle = useCallback(
+    (tier: HyperlabelTier) => {
+      const next = new Set(qualityIncluded)
+      if (next.has(tier)) next.delete(tier)
+      else next.add(tier)
+      // Drop the param when the selection equals the default so the
+      // URL stays short for the common case.
+      const isDefault =
+        next.size === HYPERLABEL_TIERS.length - DEFAULT_HIDDEN_CERT_LABELS.length &&
+        HYPERLABEL_TIERS.every((t) => {
+          const shouldBeIncluded = !DEFAULT_HIDDEN_CERT_LABELS.includes(t)
+          return next.has(t) === shouldBeIncluded
+        })
+      setUrl({
+        quality: isDefault
+          ? null
+          : HYPERLABEL_TIERS.filter((t) => next.has(t)).join(","),
+      })
+    },
+    [qualityIncluded, setUrl],
+  )
+
   const data = useExploreData({
     kind,
     filter,
@@ -234,6 +318,9 @@ export default function Explore() {
     // stale `?degrees=…` on a non-endorsement filter doesn't perturb
     // caching keys / loader behaviour.
     degree: showsDegreeControl ? maxDegree(degrees) : undefined,
+    // Cert-quality filter — only meaningful for the certs kind, but
+    // passing it for other kinds is a no-op at the load-page level.
+    excludeCertLabels: kind === "certs" ? excludeCertLabels : undefined,
   })
 
   const onDegreeButtonClick = useCallback(
@@ -273,6 +360,7 @@ export default function Explore() {
 
   const [sortOpen, setSortOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [qualityOpen, setQualityOpen] = useState(false)
   const [subPrefixOpen, setSubPrefixOpen] = useState(false)
 
   // Register the page title in the top bar's title slot — the chrome
@@ -424,6 +512,38 @@ export default function Explore() {
                   )
                 })}
               </Popover>
+
+              {kind === "certs" ? (
+                <Popover
+                  open={qualityOpen}
+                  onClose={() => setQualityOpen(false)}
+                  trigger={
+                    <button
+                      type="button"
+                      className={`explore__chrome-btn${qualityIsDefault ? "" : " explore__chrome-btn--active"}`}
+                      onClick={() => setQualityOpen((v) => !v)}
+                      aria-expanded={qualityOpen}
+                    >
+                      <SlidersHorizontal size={13} strokeWidth={1.75} aria-hidden />
+                      Quality{qualityIsDefault ? "" : ` (${qualityIncluded.size})`}
+                    </button>
+                  }
+                >
+                  {QUALITY_TIER_DISPLAY.map((tier) => (
+                    <label
+                      key={tier}
+                      className="popover__item popover__item--check"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={qualityIncluded.has(tier)}
+                        onChange={() => onQualityToggle(tier)}
+                      />
+                      {QUALITY_TIER_LABEL[tier]}
+                    </label>
+                  ))}
+                </Popover>
+              ) : null}
             </div>
           </div>
 
