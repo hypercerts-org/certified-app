@@ -381,10 +381,8 @@
 }
 
 .profile-lists__create-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 0.8125rem;
+  font-weight: 500;
   color: var(--fg-secondary);
 }
 
@@ -665,10 +663,8 @@
 }
 
 .profile-lists__paste-status {
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 500;
   color: var(--fg-muted);
 }
 
