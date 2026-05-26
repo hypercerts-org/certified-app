@@ -63,6 +63,16 @@ export type HomeFeedEvent =
       record: CollectionRecord
     })
   | (HomeFeedEventBase & {
+      /**
+       * Folded-pair event from magic-indexer (project + cert created
+       * in the same batch). Renders as a single project card with a
+       * "created a project with a cert" sentence — the cert URI(s)
+       * are inside `record.value.items[]` for follow-up dispatch.
+       */
+      kind: "project.created_with_cert"
+      record: CollectionRecord
+    })
+  | (HomeFeedEventBase & {
       kind: "endorsement.award"
       subjectDid: string
       note: string | null
@@ -323,6 +333,13 @@ function hydratedToHomeFeedEvent(h: HydratedFeedEvent): HomeFeedEvent {
     return { ...base, kind: "cert.create", record: payload.record, labels: payload.labels }
   }
   if (payload?.kind === "collection.create") {
+    // Same collection payload backs both kinds — discriminator carries
+    // through from the wire `event.kind` so the renderer can pick the
+    // right sentence ("created a project" vs. "created a project with
+    // a cert"). Unknown wire kinds fall through to the generic branch.
+    if (h.event.kind === "project.created_with_cert") {
+      return { ...base, kind: "project.created_with_cert", record: payload.record }
+    }
     return { ...base, kind: "collection.create", record: payload.record }
   }
   if (payload?.kind === "endorsement.award") {

@@ -431,7 +431,8 @@ function HomeFeedRow({ event }: { event: HomeFeedEvent }) {
         {event.kind === "cert.create" ? (
           <CertPreview record={event.record} uri={event.uri} labels={event.labels} />
         ) : null}
-        {event.kind === "collection.create" ? (
+        {event.kind === "collection.create" ||
+        event.kind === "project.created_with_cert" ? (
           <CollectionPreview record={event.record} uri={event.uri} />
         ) : null}
       </div>
@@ -452,6 +453,8 @@ function EventSentence({ event }: { event: HomeFeedEvent }) {
       return <>created a cert</>
     case "collection.create":
       return <>created a {collectionTypeLabel(event.record)}</>
+    case "project.created_with_cert":
+      return <>created a project with a cert</>
     case "endorsement.award":
     case "legacy.endorsement":
       return <EndorsementSentence subjectDid={event.subjectDid} />
@@ -525,6 +528,8 @@ function UnhydratedSentence({ rawKind }: { rawKind: string }) {
       return <>created a cert</>
     case "collection.create":
       return <>created a project</>
+    case "project.created_with_cert":
+      return <>created a project with a cert</>
     case "evaluation.create":
       return <>added an evaluation</>
     case "measurement.create":

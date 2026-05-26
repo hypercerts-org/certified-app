@@ -73,6 +73,15 @@ export const BACKGROUND_POLL_MS = 5 * 60_000
 export const KNOWN_FEED_EVENT_KINDS = [
   "cert.create",
   "collection.create",
+  /**
+   * `project.created_with_cert` is the folded-pair kind introduced
+   * by magic-indexer#132 / PR #134. When a viewer creates a project
+   * and a cert in the same XRPC batch, the indexer emits a single
+   * event of this kind instead of two adjacent rows. `subjectUri`
+   * is the collection (project) URI; the cert URI(s) live inside
+   * the collection's `items[]` array.
+   */
+  "project.created_with_cert",
   "evaluation.create",
   "measurement.create",
   "hyperboard.create",
@@ -439,6 +448,10 @@ export async function hydrateFeedEvents(
         activityUris.push(ev.subjectUri)
         break
       case "collection.create":
+      case "project.created_with_cert":
+        // Same hydration as a plain collection.create — subjectUri
+        // is the project's collection URI. The kind-discriminator
+        // is preserved by the caller via the original event.kind.
         collectionUris.push(ev.subjectUri)
         break
       case "endorsement.award":
