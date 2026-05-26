@@ -1960,6 +1960,18 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   gap: 24px;
 }
 
+/* Single-row navbar (pages without a tabs row, e.g. /home) needs
+   its own bottom border — the two-row case carries the same border
+   on row-2. Without this rule, /home's navbar ends with only the
+   subtle ambient box-shadow on `.desktop-top-bar`, which reads as
+   "no border" against the page background and breaks the page-frame
+   continuity (top bar → sidebar divider → footer). `:last-child`
+   covers the case cleanly because row-chrome is always followed by
+   row-tabs when row-tabs is present. */
+.desktop-top-bar__row--chrome:last-child {
+  border-bottom: 1px solid var(--border-medium);
+}
+
 .desktop-top-bar__row--tabs {
   height: var(--top-bar-row2);
   gap: 20px;

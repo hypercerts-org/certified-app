@@ -44,7 +44,7 @@
 
 .home__layout {
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: 335px 1fr;
   gap: 0;
   align-items: start;
 }
@@ -57,7 +57,7 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 220px;
+  left: 335px;
   width: 1px;
   background: var(--border-medium);
   pointer-events: none;
@@ -81,8 +81,10 @@
   gap: 28px;
   /* Extra breathing room on the left so the sidebar doesn't hug the
      viewport edge — matches the inset the main pane reserves on the
-     right side of the page-frame divider. */
-  padding: 20px 16px 32px 28px;
+     right side of the page-frame divider. Top padding is shared
+     with /explore and /settings so the first line of text sits at
+     the same vertical position on every page-frame route. */
+  padding: 32px 16px 32px 28px;
   min-width: 0;
 }
 

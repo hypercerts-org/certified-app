@@ -53,7 +53,7 @@
 
 .explore__layout {
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: 335px 1fr;
   gap: 0;
   align-items: start;
 }
@@ -69,7 +69,7 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 220px;
+  left: 335px;
   width: 1px;
   background: var(--border-medium);
   pointer-events: none;
@@ -91,9 +91,10 @@
   /* Scrolls with the page (matches the top bar's no-sticky
      behavior). Flush-left to the viewport, with breathing room at
      the top + right so the active filter pill doesn't touch the
-     vertical divider. Bottom padding gives the rail air above the
-     footer's border. */
-  padding: 20px 12px 32px 12px;
+     vertical divider. Top padding shared with /home and /settings
+     so first-line-of-text sits at the same vertical position on
+     every page-frame route. */
+  padding: 32px 12px 32px 12px;
 }
 
 /* Filter list rows need their own right padding now that the
