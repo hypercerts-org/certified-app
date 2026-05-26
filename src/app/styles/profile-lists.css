@@ -200,6 +200,35 @@
   line-height: 1.5;
 }
 
+/* ---------- Bulk-select toolbar ---------- */
+
+.profile-lists__bulk-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 4px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 8px;
+}
+
+.profile-lists__bulk-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.profile-lists__bulk-select-all input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--fg-primary);
+  cursor: pointer;
+}
+
 /* ---------- Items list ---------- */
 
 .profile-lists__items {
@@ -209,6 +238,29 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+/* Each row: optional selection checkbox on the left + the
+   per-kind ItemRow body. The checkbox sits aligned to the row's
+   vertical center so it lines up with the title regardless of
+   whether the row is a tall project card or a slim account row. */
+.profile-lists__items-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-lists__items-check {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--fg-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.profile-lists__items-row-body {
+  flex: 1;
+  min-width: 0;
 }
 
 .profile-lists__item {

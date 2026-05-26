@@ -258,6 +258,50 @@ function ListDetail({
   const [addOpen, setAddOpen] = useState(false)
   const [pasteOpen, setPasteOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
+  // Bulk-select state. The Set holds item URIs (not rkeys) because
+  // `onRemove` keys on URI. Cleaned up below when items disappear
+  // out from under us via individual removal or the bulk loop.
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+
+  // Drop URIs from the selection that no longer exist in items[]
+  // (e.g. another tab removed them, or our own bulk loop just
+  // finished). Without this the Set would silently leak across
+  // refetches.
+  useEffect(() => {
+    setSelected((prev) => {
+      const uris = new Set(list.items.map((it) => it.itemIdentifier.uri))
+      let changed = false
+      const next = new Set<string>()
+      for (const u of prev) {
+        if (uris.has(u)) next.add(u)
+        else changed = true
+      }
+      return changed ? next : prev
+    })
+  }, [list.items])
+
+  const allSelected =
+    list.items.length > 0 && selected.size === list.items.length
+
+  const toggleAll = useCallback(() => {
+    setSelected((prev) => {
+      if (prev.size === list.items.length && list.items.length > 0) {
+        // Currently all selected → deselect all.
+        return new Set()
+      }
+      return new Set(list.items.map((it) => it.itemIdentifier.uri))
+    })
+  }, [list.items])
+
+  const toggleOne = useCallback((uri: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(uri)) next.delete(uri)
+      else next.add(uri)
+      return next
+    })
+  }, [])
 
   const handleDelete = async () => {
     setIsDeleting(true)
@@ -267,6 +311,27 @@ function ListDetail({
       console.error("Failed to delete list:", err)
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selected.size === 0 || bulkDeleting) return
+    setBulkDeleting(true)
+    try {
+      // Serial — `removeFromTypedList` is a read-modify-write with
+      // swapRecord so concurrent calls would race and most would
+      // fail with a conflict. Sequential is bounded by network RTT
+      // × selected.size, which is fine for typical list sizes.
+      for (const uri of selected) {
+        try {
+          await onRemove(uri)
+        } catch (err) {
+          console.error("Failed to remove item during bulk delete:", err)
+        }
+      }
+    } finally {
+      setBulkDeleting(false)
+      setSelected(new Set())
     }
   }
 
@@ -340,18 +405,71 @@ function ListDetail({
           }
         />
       ) : (
-        <ul className="profile-lists__items">
-          {list.items.map((item) => (
-            <li key={item.itemIdentifier.uri}>
-              <ItemRow
-                type={list.type}
-                uri={item.itemIdentifier.uri}
-                canRemove={viewerIsOwner}
-                onRemove={() => onRemove(item.itemIdentifier.uri)}
-              />
-            </li>
-          ))}
-        </ul>
+        <>
+          {viewerIsOwner ? (
+            <div
+              className="profile-lists__bulk-bar"
+              role="toolbar"
+              aria-label="Bulk item actions"
+            >
+              <label className="profile-lists__bulk-select-all">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  disabled={bulkDeleting}
+                  aria-label={
+                    allSelected ? "Deselect all items" : "Select all items"
+                  }
+                />
+                <span>
+                  {allSelected
+                    ? "Deselect all"
+                    : selected.size > 0
+                      ? `${selected.size} selected`
+                      : "Select all"}
+                </span>
+              </label>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDelete}
+                disabled={selected.size === 0 || bulkDeleting}
+                loading={bulkDeleting}
+              >
+                <Trash2 size={14} strokeWidth={1.75} aria-hidden />
+                Delete selected{selected.size > 0 ? ` (${selected.size})` : ""}
+              </Button>
+            </div>
+          ) : null}
+          <ul className="profile-lists__items">
+            {list.items.map((item) => {
+              const uri = item.itemIdentifier.uri
+              return (
+                <li key={uri} className="profile-lists__items-row">
+                  {viewerIsOwner ? (
+                    <input
+                      type="checkbox"
+                      className="profile-lists__items-check"
+                      checked={selected.has(uri)}
+                      onChange={() => toggleOne(uri)}
+                      disabled={bulkDeleting}
+                      aria-label={`Select ${uri}`}
+                    />
+                  ) : null}
+                  <div className="profile-lists__items-row-body">
+                    <ItemRow
+                      type={list.type}
+                      uri={uri}
+                      canRemove={viewerIsOwner}
+                      onRemove={() => onRemove(uri)}
+                    />
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </>
       )}
       {confirmingDelete ? (
         <ConfirmDialog
