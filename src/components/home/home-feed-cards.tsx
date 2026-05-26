@@ -5,6 +5,7 @@ import { Inbox, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import { useActivity } from "@/hooks/use-activity"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useHomeFeed, type HomeFeedEvent } from "@/hooks/use-home-feed"
 import { useFollowedDids } from "@/hooks/use-followed-dids"
@@ -141,7 +142,6 @@ function ActorHeader({ event }: { event: HomeFeedEvent }) {
   // Native tooltip on hover — shows the handle without crowding the
   // visible chrome. Falls back to the DID for actors with no handle.
   const hoverHint = handle ? `@${handle}` : event.actor
-  const actionLabel = actionLabelForEvent(event)
 
   return (
     <header className="home-card__header">
@@ -166,7 +166,9 @@ function ActorHeader({ event }: { event: HomeFeedEvent }) {
         >
           {displayName}
         </Link>{" "}
-        <span className="home-card__action">{actionLabel}</span>
+        <span className="home-card__action">
+          <ActionPhrase event={event} />
+        </span>
       </p>
       <time
         className="home-card__time"
@@ -180,31 +182,78 @@ function ActorHeader({ event }: { event: HomeFeedEvent }) {
 }
 
 /**
- * Header verb for every event kind, including the degraded
- * `unknown` variant where we fall back on `rawKind` so a missed
- * hydration still reads as "alice created a cert" instead of
- * "alice did something".
+ * Header verb phrase for every event kind. Renders JSX rather than a
+ * plain string because evaluation + measurement events embed a
+ * clickable cert target ("added a measurement to <cert>"), and
+ * unhydrated unknown-kind events still recover their verb from
+ * `rawKind` instead of degrading to "did something".
  */
-function actionLabelForEvent(event: HomeFeedEvent): string {
+function ActionPhrase({ event }: { event: HomeFeedEvent }) {
   switch (event.kind) {
     case "cert.create":
-      return "created a cert"
+      return <>created a cert</>
     case "collection.create":
-      return `created a ${collectionVerb(event.record)}`
+      return <>created a {collectionVerb(event.record)}</>
     case "evaluation.create":
-      return "added an evaluation"
+      return (
+        <CertTargetPhrase verb="added an evaluation to" targetUri={event.targetUri} />
+      )
     case "measurement.create":
-      return "added a measurement"
+      return (
+        <CertTargetPhrase verb="added a measurement to" targetUri={event.targetUri} />
+      )
     case "hyperboard.create":
-      return "created a hyperboard"
+      return <>created a hyperboard</>
     case "update.create":
-      return "posted an update"
+      return <>posted an update</>
     case "endorsement.award":
     case "legacy.endorsement":
-      return "endorsed"
+      return <>endorsed</>
     case "unknown":
-      return actionLabelForRawKind(event.rawKind)
+      return <>{actionLabelForRawKind(event.rawKind)}</>
   }
+}
+
+/**
+ * Verb + clickable cert link, e.g. "added a measurement to <cert>".
+ * Falls back to the verb minus its trailing "to" when the target
+ * URI isn't known (rare — hydration miss).
+ */
+function CertTargetPhrase({
+  verb,
+  targetUri,
+}: {
+  verb: string
+  targetUri: string | null
+}) {
+  if (!targetUri) {
+    return <>{verb.replace(/ to$/, "")}</>
+  }
+  const parsed = parseAtUri(targetUri)
+  const href = parsed
+    ? `/activity/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
+    : null
+  return (
+    <>
+      {verb}{" "}
+      {href ? (
+        <Link href={href} className="home-card__action-target">
+          <CertTargetName did={parsed!.did} rkey={parsed!.rkey} />
+        </Link>
+      ) : (
+        <CertTargetName did={parsed?.did ?? ""} rkey={parsed?.rkey ?? ""} />
+      )}
+    </>
+  )
+}
+
+function CertTargetName({ did, rkey }: { did: string; rkey: string }) {
+  const { activity } = useActivity(did || null, rkey || null)
+  const title =
+    typeof activity?.value.title === "string" && activity.value.title.length > 0
+      ? activity.value.title
+      : null
+  return <>{title ?? "a cert"}</>
 }
 
 function actionLabelForRawKind(kind: string): string {
@@ -355,7 +404,9 @@ function CollectionCardBody({
     typeof v.shortDescription === "string" && v.shortDescription.length > 0
       ? v.shortDescription
       : null
-  const rawImage = v.banner ?? v.image
+  // Avatar (project image) preferred over banner. Falls back to
+  // banner when the project has no avatar set.
+  const rawImage = v.image ?? v.banner
   const imageUrl =
     rawImage && parsed
       ? resolveActivityImageUrl(

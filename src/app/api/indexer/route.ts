@@ -670,6 +670,10 @@ ${ACTIVITY_NODE_SELECTION}
             did
             createdAt
             summary
+            subject {
+              __typename
+              ... on ComAtprotoRepoStrongRef { uri cid }
+            }
           }
         }
       }
@@ -686,6 +690,10 @@ ${ACTIVITY_NODE_SELECTION}
             metric
             value
             unit
+            subjects {
+              __typename
+              ... on ComAtprotoRepoStrongRef { uri cid }
+            }
           }
         }
       }

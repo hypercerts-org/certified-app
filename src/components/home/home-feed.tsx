@@ -6,6 +6,7 @@ import CertIcon from "@/components/ui/cert-icon"
 import Avatar from "@/components/ui/avatar"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import { useActivity } from "@/hooks/use-activity"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useHomeFeed, type HomeFeedEvent } from "@/hooks/use-home-feed"
 import { useFollowedDids } from "@/hooks/use-followed-dids"
@@ -167,9 +168,9 @@ function EventSentence({ event }: { event: HomeFeedEvent }) {
     case "legacy.endorsement":
       return <EndorsementSentence subjectDid={event.subjectDid} />
     case "evaluation.create":
-      return <>added an evaluation</>
+      return <CertTargetSentence verb="added an evaluation to" targetUri={event.targetUri} />
     case "measurement.create":
-      return <>added a measurement</>
+      return <CertTargetSentence verb="added a measurement to" targetUri={event.targetUri} />
     case "hyperboard.create":
       return <>created a hyperboard</>
     case "update.create":
@@ -181,6 +182,53 @@ function EventSentence({ event }: { event: HomeFeedEvent }) {
       // the body content is OK; losing the action label isn't.
       return <UnhydratedSentence rawKind={event.rawKind} />
   }
+}
+
+/**
+ * Evaluation / measurement sentence with a clickable cert target.
+ * If hydration didn't surface a targetUri, falls back to plain text
+ * "added a measurement" (no "to <cert>" tail).
+ */
+function CertTargetSentence({
+  verb,
+  targetUri,
+}: {
+  verb: string
+  targetUri: string | null
+}) {
+  if (!targetUri) {
+    // Trim the "to" off the verb when there's no link target.
+    return <>{verb.replace(/ to$/, "")}</>
+  }
+  const parsed = parseAtUri(targetUri)
+  const href = parsed
+    ? `/activity/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
+    : null
+  return (
+    <>
+      {verb}{" "}
+      {href ? (
+        <Link href={href} className="home-feed__target">
+          <CertTargetName did={parsed!.did} rkey={parsed!.rkey} />
+        </Link>
+      ) : (
+        <CertTargetName did={parsed?.did ?? ""} rkey={parsed?.rkey ?? ""} />
+      )}
+    </>
+  )
+}
+
+/**
+ * Resolves the linked cert's title for use as inline link text.
+ * Falls back to "a cert" while loading or on miss.
+ */
+function CertTargetName({ did, rkey }: { did: string; rkey: string }) {
+  const { activity } = useActivity(did || null, rkey || null)
+  const title =
+    typeof activity?.value.title === "string" && activity.value.title.length > 0
+      ? activity.value.title
+      : null
+  return <>{title ?? "a cert"}</>
 }
 
 function UnhydratedSentence({ rawKind }: { rawKind: string }) {
@@ -303,7 +351,9 @@ function CollectionPreview({
     typeof v.shortDescription === "string" && v.shortDescription.length > 0
       ? v.shortDescription
       : null
-  const rawImage = v.banner ?? v.image
+  // Avatar (project image) preferred over banner. Falls back to
+  // banner when the project has no avatar set.
+  const rawImage = v.image ?? v.banner
   const imageUrl =
     rawImage && parsed
       ? resolveActivityImageUrl(

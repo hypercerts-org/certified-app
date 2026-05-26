@@ -64,6 +64,14 @@ export type HomeFeedEvent =
         | "update.create"
       title: string | null
       subjectUri: string
+      /**
+       * For evaluation + measurement: the at:// URI of the cert this
+       * event references (the thing being evaluated / measured).
+       * Null for hyperboard and update events whose lexicons don't
+       * carry a target reference. The renderer uses this to make the
+       * "X added a measurement to <cert>" link clickable.
+       */
+      targetUri: string | null
     })
   | (HomeFeedEventBase & {
       kind: "unknown"
@@ -204,6 +212,7 @@ function hydratedToHomeFeedEvent(h: HydratedFeedEvent): HomeFeedEvent {
       kind: payload.kind,
       title: payload.title,
       subjectUri: h.event.subjectUri,
+      targetUri: payload.targetUri,
     }
   }
 

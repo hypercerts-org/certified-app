@@ -617,6 +617,18 @@ a.home-feed__preview:hover {
   font-weight: 400;
 }
 
+.home-card__action-target {
+  color: var(--fg-primary);
+  font-weight: 500;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--transition-fast);
+}
+
+.home-card__action-target:hover {
+  border-bottom-color: var(--fg-primary);
+}
+
 .home-card__time {
   font-size: 0.8125rem;
   color: var(--fg-muted);

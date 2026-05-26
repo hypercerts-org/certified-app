@@ -268,10 +268,15 @@ export interface HydratedPayloadLegacyEndorsement {
 /**
  * The four single-record kinds added by magic-indexer #125
  * (evaluation, measurement, hyperboard, update). Headline payload is
- * a uniform `{ title, createdAt }` because the lexicons differ enough
- * that a kind-specific shape would balloon the type surface for
- * little visual gain — the cards show the title and the relative
- * time, nothing else, in v1.
+ * a uniform `{ title, createdAt, targetUri }`:
+ *   - `title` is the kind-specific headline string (evaluation
+ *     summary, measurement metric, attachment title, null for
+ *     hyperboard).
+ *   - `targetUri` is the at:// URI of the cert this event references,
+ *     when the lexicon carries one — evaluations link to a single
+ *     cert via `subject`, measurements via the first entry in
+ *     `subjects[]`. Hyperboard and update don't expose a target;
+ *     the field is null for those.
  */
 export interface HydratedPayloadSimpleRecord {
   kind:
@@ -281,6 +286,7 @@ export interface HydratedPayloadSimpleRecord {
     | "update.create"
   title: string | null
   createdAt: string
+  targetUri: string | null
 }
 
 export type HydratedPayload =
@@ -309,12 +315,18 @@ interface CollectionWithTypeGraphQLNode extends CollectionGraphQLNode {
   type?: string | null
 }
 
+interface StrongRefNode {
+  uri: string
+  cid: string
+}
+
 interface EvaluationGraphQLNode {
   uri: string
   cid: string
   did: string
   createdAt: string
   summary: string | null
+  subject: StrongRefNode | null
 }
 
 interface MeasurementGraphQLNode {
@@ -325,6 +337,7 @@ interface MeasurementGraphQLNode {
   metric: string | null
   value: string | null
   unit: string | null
+  subjects: StrongRefNode[] | null
 }
 
 interface HyperboardGraphQLNode {
@@ -509,6 +522,7 @@ export async function hydrateFeedEvents(
       kind: "evaluation.create",
       title: edge.node.summary,
       createdAt: edge.node.createdAt,
+      targetUri: edge.node.subject?.uri ?? null,
     })
   }
   for (const edge of json.data?.measurements?.edges ?? []) {
@@ -517,6 +531,10 @@ export async function hydrateFeedEvents(
       kind: "measurement.create",
       title: edge.node.metric,
       createdAt: edge.node.createdAt,
+      // The lexicon allows multiple subjects, but the v1 sentence
+      // ("X added a measurement to <cert>") names one cert — take
+      // the first reference. Later cards can show a count if needed.
+      targetUri: edge.node.subjects?.[0]?.uri ?? null,
     })
   }
   for (const edge of json.data?.hyperboards?.edges ?? []) {
@@ -525,6 +543,7 @@ export async function hydrateFeedEvents(
       kind: "hyperboard.create",
       title: null,
       createdAt: edge.node.createdAt,
+      targetUri: null,
     })
   }
   for (const edge of json.data?.attachments?.edges ?? []) {
@@ -533,6 +552,7 @@ export async function hydrateFeedEvents(
       kind: "update.create",
       title: edge.node.title,
       createdAt: edge.node.createdAt,
+      targetUri: null,
     })
   }
 
