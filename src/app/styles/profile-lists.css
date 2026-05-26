@@ -1,0 +1,467 @@
+/* ========================================================================
+   Profile → Lists tab.
+
+   Three stacked sections (certs / projects / accounts), each showing the
+   viewer's `list:*` collection records of that type. Section headings are
+   left-aligned, a + button is right-aligned on the same row, and the
+   list rows below click through to a detail view that shows the
+   underlying items + an Add-items modal.
+
+   Most of the chrome reuses tokens from profile-endorsements.css so the
+   surface reads as a sibling of the existing endorsement-lists UI.
+   ======================================================================== */
+
+.profile-lists {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 0;
+}
+
+.profile-lists__loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+/* ---------- Section ---------- */
+
+.profile-lists__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-lists__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.profile-lists__section-title {
+  margin: 0;
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--fg-primary);
+}
+
+.profile-lists__create-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.profile-lists__create-btn:hover {
+  background: var(--bg-sunken);
+}
+
+.profile-lists__create-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring, var(--fg-primary));
+}
+
+.profile-lists__empty {
+  margin: 0;
+  padding: 12px 0;
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+}
+
+/* ---------- List summary rows ---------- */
+
+.profile-lists__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-lists__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  color: var(--fg-primary);
+}
+
+.profile-lists__row:hover {
+  background: var(--bg-sunken);
+  border-color: var(--border-medium);
+}
+
+.profile-lists__row-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.profile-lists__row-title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-lists__row-desc {
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-lists__row-meta {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+/* ---------- Detail view ---------- */
+
+.profile-lists__detail-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.profile-lists__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.profile-lists__back:hover {
+  background: var(--bg-sunken);
+}
+
+.profile-lists__detail-title {
+  flex: 1;
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+}
+
+.profile-lists__detail-count {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+}
+
+.profile-lists__detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-lists__detail-desc {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+  line-height: 1.5;
+}
+
+/* ---------- Items list ---------- */
+
+.profile-lists__items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-lists__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: transparent;
+  transition: background var(--transition-fast);
+}
+
+.profile-lists__item:hover {
+  background: var(--bg-sunken);
+}
+
+.profile-lists__item-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.profile-lists__item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.profile-lists__item-title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-lists__item-subtitle {
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-lists__item-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.profile-lists__item-remove:hover {
+  background: var(--bg-sunken);
+  color: var(--color-error);
+}
+
+.profile-lists__item-remove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- Thumbnails / avatar placeholder ---------- */
+
+.profile-lists__thumb {
+  display: block;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--bg-sunken);
+}
+
+.profile-lists__thumb--placeholder {
+  border: 1px solid var(--border-subtle);
+}
+
+/* ---------- Create modal ---------- */
+
+.profile-lists__create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.profile-lists__create-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-lists__create-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-secondary);
+}
+
+.profile-lists__create-input,
+.profile-lists__create-textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--fg-primary);
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+}
+
+.profile-lists__create-textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.profile-lists__create-input:focus,
+.profile-lists__create-textarea:focus {
+  outline: none;
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+.profile-lists__create-error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-error);
+}
+
+.profile-lists__create-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---------- Add-items modal ---------- */
+
+.profile-lists__add-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-lists__add-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-canvas);
+  color: var(--fg-secondary);
+}
+
+.profile-lists__add-search:focus-within {
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+.profile-lists__add-input {
+  flex: 1;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--fg-primary);
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+.profile-lists__add-spinner {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0;
+}
+
+.profile-lists__add-empty {
+  margin: 0;
+  padding: 8px 0;
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  text-align: center;
+}
+
+.profile-lists__add-error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-error);
+}
+
+.profile-lists__add-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.profile-lists__add-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+}
+
+.profile-lists__add-row:hover {
+  background: var(--bg-sunken);
+}
+
+.profile-lists__add-avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.profile-lists__add-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.profile-lists__add-title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-lists__add-subtitle {
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

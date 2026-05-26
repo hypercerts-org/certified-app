@@ -21,6 +21,7 @@ import ProfileSidebar from "@/components/profile/profile-sidebar"
 import ProfileOverview from "@/components/profile/profile-overview"
 import ProfileEndorsements from "@/components/profile/profile-endorsements"
 import ProfileFollowers from "@/components/profile/profile-followers"
+import ProfileLists from "@/components/profile/profile-lists"
 import ProfileProjects from "@/components/profile/profile-projects"
 import ProfileCerts from "@/components/profile/profile-certs"
 import ProfileGroups from "@/components/profile/profile-groups"
@@ -43,6 +44,7 @@ type TabKey =
   | "groups"
   | "endorsements"
   | "followers"
+  | "lists"
   | "settings"
 
 // Tab strip order — keep in sync with PROFILE_TABS in
@@ -57,6 +59,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "groups", label: "Groups" },
   { key: "endorsements", label: "Endorsements" },
   { key: "followers", label: "Followers" },
+  { key: "lists", label: "Lists" },
   { key: "about", label: "About" },
   { key: "settings", label: "Settings" },
 ]
@@ -462,6 +465,15 @@ export default function UserProfilePage() {
                 aria-labelledby="tab-followers"
               >
                 <ProfileFollowers did={did} />
+              </div>
+            )}
+            {activeTab === "lists" && did && (
+              <div
+                role="tabpanel"
+                id="tabpanel-lists"
+                aria-labelledby="tab-lists"
+              >
+                <ProfileLists did={did} viewerIsOwner={isViewerThisEntity} />
               </div>
             )}
           </div>

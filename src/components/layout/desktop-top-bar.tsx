@@ -50,6 +50,7 @@ const PROFILE_TABS: ProfileTab[] = [
   { key: "groups", label: "Groups", groupsOnly: true },
   { key: "endorsements", label: "Endorsements" },
   { key: "followers", label: "Followers" },
+  { key: "lists", label: "Lists" },
   { key: "about", label: "About", aboutOnly: true },
   // Settings used to sit here as an own-only tab; it's now a
   // standalone page reachable only from the hamburger site drawer
