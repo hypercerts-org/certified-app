@@ -267,11 +267,13 @@
   width: 26px;
   height: 26px;
   padding: 0;
+  margin-right: 8px;
   border: 1px solid transparent;
   border-radius: 6px;
   background: transparent;
   color: var(--fg-secondary);
   cursor: pointer;
+  flex-shrink: 0;
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 
@@ -283,6 +285,57 @@
 .profile-lists__item-remove:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ---------- Project items (reuse explore-page row) ---------- */
+
+/* Wrapper around <ProjectListRow> with a right-aligned remove button.
+   The row already supplies its own border + hover via .cert-list-row,
+   so we just keep it inside a horizontal flex with the × button. */
+.profile-lists__project {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  overflow: hidden;
+  background: transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.profile-lists__project:hover {
+  border-color: var(--border-medium);
+}
+
+.profile-lists__project-row {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The cert-list-row inside the wrapper renders flush with the
+   wrapper edges — its own padding handles inner spacing. Strip
+   the wrapper's hover from the row's own hover so the wash
+   applies uniformly across both halves. */
+.profile-lists__project .cert-list-row {
+  padding: 10px 14px;
+}
+
+.profile-lists__project:hover .cert-list-row {
+  background: var(--bg-sunken);
+}
+
+.profile-lists__project--loading {
+  align-items: center;
+  padding: 10px 14px;
+  min-height: 60px;
+}
+
+.profile-lists__project-skel {
+  display: block;
+  flex: 1;
+  height: 40px;
+  border-radius: 6px;
+  background: var(--bg-sunken);
 }
 
 /* ---------- Thumbnails / avatar placeholder ---------- */

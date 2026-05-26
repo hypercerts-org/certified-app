@@ -38,7 +38,12 @@ export default function ProjectListRow({
     asString(value.title) || asString(value.name) || "Untitled project"
   const createdAt = asString(value.createdAt)
 
-  const rawImage = (value as Record<string, unknown>).banner ?? value.image
+  // Priority: avatar (the project's primary identity image) →
+  // image (legacy field on older records) → banner (decorative
+  // hero). Mirrors the home feed's CollectionPreview precedence so
+  // the same project reads identically across surfaces.
+  const v = value as Record<string, unknown>
+  const rawImage = v.avatar ?? v.image ?? v.banner
   const imageUrl =
     rawImage && did
       ? resolveActivityImageUrl(

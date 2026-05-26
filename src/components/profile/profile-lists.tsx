@@ -21,8 +21,10 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import { authFetch } from "@/lib/auth/fetch"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useActivity } from "@/hooks/use-activity"
+import { useProject } from "@/hooks/use-project"
 import { useTypedLists } from "@/hooks/use-typed-lists"
 import { fetchIndexerActivities, INDEXER_PROXY_URL } from "@/lib/atproto/indexer"
+import ProjectListRow from "@/components/explore-page/project-list-row"
 import {
   ITEM_NSID,
   LIST_ACCOUNTS_TYPE,
@@ -417,22 +419,59 @@ function ProjectItemRow({
   onRemove: () => Promise<unknown>
 }) {
   const parsed = parseAtUri(uri)
-  const href = parsed
-    ? `/project/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
-    : null
-  // No general-purpose useProject hook today; show the URI tail as the
-  // title placeholder. The detail page resolves the real title when the
-  // viewer clicks through.
-  const title = parsed?.rkey ?? uri
+  const { project, isLoading } = useProject(parsed?.did ?? null, parsed?.rkey ?? null)
+  const [removing, setRemoving] = useState(false)
+
+  const handleRemove = async () => {
+    if (removing) return
+    setRemoving(true)
+    try {
+      await onRemove()
+    } catch (err) {
+      console.error("Failed to remove item:", err)
+      setRemoving(false)
+    }
+  }
+
+  // While the project record is still loading, render a slim
+  // placeholder shell so the row doesn't collapse and shift the
+  // surrounding layout. Real height of `cert-list-row` is ~60px.
+  if (!project) {
+    return (
+      <div className="profile-lists__project profile-lists__project--loading">
+        <span className="profile-lists__project-skel" aria-hidden />
+        {canRemove ? (
+          <button
+            type="button"
+            className="profile-lists__item-remove"
+            onClick={handleRemove}
+            disabled={removing || isLoading}
+            aria-label="Remove project"
+          >
+            <X size={14} strokeWidth={2} aria-hidden />
+          </button>
+        ) : null}
+      </div>
+    )
+  }
+
   return (
-    <ItemRowShell
-      href={href}
-      avatar={<span className="profile-lists__thumb profile-lists__thumb--placeholder" />}
-      title={title}
-      subtitle="Project"
-      canRemove={canRemove}
-      onRemove={onRemove}
-    />
+    <div className="profile-lists__project">
+      <div className="profile-lists__project-row">
+        <ProjectListRow project={project} />
+      </div>
+      {canRemove ? (
+        <button
+          type="button"
+          className="profile-lists__item-remove"
+          onClick={handleRemove}
+          disabled={removing}
+          aria-label={`Remove ${project.value.title ?? "project"}`}
+        >
+          <X size={14} strokeWidth={2} aria-hidden />
+        </button>
+      ) : null}
+    </div>
   )
 }
 
