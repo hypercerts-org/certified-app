@@ -175,8 +175,7 @@ describe("hydrateFeedEvents", () => {
       makeEvent("cert.create", "a"),
       makeEvent("collection.create", "b"),
       makeEvent("endorsement.award", "c"),
-      makeEvent("legacy.endorsement", "d"),
-      makeEvent("future.kind", "e"),
+      makeEvent("future.kind", "d"),
     ]
     respondWith({
       data: {
@@ -230,29 +229,16 @@ describe("hydrateFeedEvents", () => {
             },
           ],
         },
-        legacyEndorsements: {
-          edges: [
-            {
-              node: {
-                uri: events[3].subjectUri,
-                did: "did:plc:x",
-                createdAt: "2026-05-26T00:00:00.000Z",
-                subject: { did: "did:plc:subject" },
-              },
-            },
-          ],
-        },
       },
     })
 
     const out = await hydrateFeedEvents(events)
-    expect(out).toHaveLength(5)
+    expect(out).toHaveLength(4)
     expect(out.map((h) => h.event.id)).toEqual(events.map((e) => e.id))
     expect(out[0].payload?.kind).toBe("cert.create")
     expect(out[1].payload?.kind).toBe("collection.create")
     expect(out[2].payload?.kind).toBe("endorsement.award")
-    expect(out[3].payload?.kind).toBe("legacy.endorsement")
-    expect(out[4].payload).toBeNull()
+    expect(out[3].payload).toBeNull()
   })
 
   it("returns payload null for events whose by-URI lookup missed", async () => {
@@ -280,7 +266,6 @@ describe("hydrateFeedEvents", () => {
         },
         collections: { edges: [] },
         badgeAwards: { edges: [] },
-        legacyEndorsements: { edges: [] },
       },
     })
     const out = await hydrateFeedEvents(events)
@@ -311,7 +296,6 @@ describe("hydrateFeedEvents", () => {
           ],
         },
         badgeAwards: { edges: [] },
-        legacyEndorsements: { edges: [] },
       },
     })
     const out = await hydrateFeedEvents(events)

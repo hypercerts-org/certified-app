@@ -305,13 +305,6 @@ interface BadgeAwardGraphQLNode {
   subject: { did: string } | null
 }
 
-interface LegacyEndorsementGraphQLNode {
-  uri: string
-  did: string
-  createdAt: string
-  subject: { did: string } | null
-}
-
 interface CollectionWithTypeGraphQLNode extends CollectionGraphQLNode {
   type?: string | null
 }
@@ -356,9 +349,6 @@ interface HydrateFeedPageResponse {
       edges: { node: CollectionWithTypeGraphQLNode | null }[]
     } | null
     badgeAwards?: { edges: { node: BadgeAwardGraphQLNode | null }[] } | null
-    legacyEndorsements?: {
-      edges: { node: LegacyEndorsementGraphQLNode | null }[]
-    } | null
     evaluations?: { edges: { node: EvaluationGraphQLNode | null }[] } | null
     measurements?: { edges: { node: MeasurementGraphQLNode | null }[] } | null
     hyperboards?: { edges: { node: HyperboardGraphQLNode | null }[] } | null
@@ -381,7 +371,6 @@ export async function hydrateFeedEvents(
   const activityUris: string[] = []
   const collectionUris: string[] = []
   const badgeAwardUris: string[] = []
-  const legacyEndorsementUris: string[] = []
   const evaluationUris: string[] = []
   const measurementUris: string[] = []
   const hyperboardUris: string[] = []
@@ -399,9 +388,6 @@ export async function hydrateFeedEvents(
       case "badge.award":
         badgeAwardUris.push(ev.subjectUri)
         break
-      case "legacy.endorsement":
-        legacyEndorsementUris.push(ev.subjectUri)
-        break
       case "evaluation.create":
         evaluationUris.push(ev.subjectUri)
         break
@@ -414,7 +400,9 @@ export async function hydrateFeedEvents(
       case "update.create":
         attachmentUris.push(ev.subjectUri)
         break
-      // Unknown kinds skip hydration.
+      // legacy.endorsement and unknown kinds skip hydration —
+      // appCertifiedTempGraphEndorsement isn't on the schema, and
+      // the new server doesn't emit `legacy.endorsement` anyway.
     }
   }
 
@@ -422,7 +410,6 @@ export async function hydrateFeedEvents(
     activityUris.length +
     collectionUris.length +
     badgeAwardUris.length +
-    legacyEndorsementUris.length +
     evaluationUris.length +
     measurementUris.length +
     hyperboardUris.length +
@@ -442,7 +429,6 @@ export async function hydrateFeedEvents(
         activityUris,
         collectionUris,
         badgeAwardUris,
-        legacyEndorsementUris,
         evaluationUris,
         measurementUris,
         hyperboardUris,
@@ -502,14 +488,6 @@ export async function hydrateFeedEvents(
       kind: "endorsement.award",
       subjectDid: edge.node.subject.did,
       note: edge.node.note,
-      createdAt: edge.node.createdAt,
-    })
-  }
-  for (const edge of json.data?.legacyEndorsements?.edges ?? []) {
-    if (!edge.node || !edge.node.subject) continue
-    payloadByUri.set(edge.node.uri, {
-      kind: "legacy.endorsement",
-      subjectDid: edge.node.subject.did,
       createdAt: edge.node.createdAt,
     })
   }

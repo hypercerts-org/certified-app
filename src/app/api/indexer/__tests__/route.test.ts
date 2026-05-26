@@ -498,7 +498,6 @@ describe("/api/indexer trust boundary", () => {
       activityUris: [],
       collectionUris: [],
       badgeAwardUris: [],
-      legacyEndorsementUris: [],
       evaluationUris: [],
       measurementUris: [],
       hyperboardUris: [],
@@ -533,7 +532,7 @@ describe("/api/indexer trust boundary", () => {
           activityUris: ["at://x"],
           collectionUris: ["at://y"],
           badgeAwardUris: [],
-          // legacyEndorsementUris (and the new four) omitted
+          // other buckets omitted
         },
       })
       expect(res.status).toBe(400)
@@ -546,7 +545,6 @@ describe("/api/indexer trust boundary", () => {
           activityUris: [],
           collectionUris: [],
           badgeAwardUris: [],
-          legacyEndorsementUris: [],
           evaluationUris: [],
           measurementUris: [],
           hyperboardUris: [],

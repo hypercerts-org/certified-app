@@ -584,7 +584,6 @@ ${ACTIVITY_NODE_SELECTION}
       $activityUris: [String!]!
       $collectionUris: [String!]!
       $badgeAwardUris: [String!]!
-      $legacyEndorsementUris: [String!]!
       $evaluationUris: [String!]!
       $measurementUris: [String!]!
       $hyperboardUris: [String!]!
@@ -653,22 +652,6 @@ ${ACTIVITY_NODE_SELECTION}
             did
             createdAt
             note
-            subject {
-              __typename
-              ... on AppCertifiedDefsDid { did }
-            }
-          }
-        }
-      }
-      legacyEndorsements: appCertifiedTempGraphEndorsement(
-        first: ${MAX_URI_LIST_PER_KIND}
-        where: { uri: { in: $legacyEndorsementUris } }
-      ) {
-        edges {
-          node {
-            uri
-            did
-            createdAt
             subject {
               __typename
               ... on AppCertifiedDefsDid { did }
@@ -1003,7 +986,6 @@ function buildVariables(
       const activityUris = readUriList(vars.activityUris)
       const collectionUris = readUriList(vars.collectionUris)
       const badgeAwardUris = readUriList(vars.badgeAwardUris)
-      const legacyEndorsementUris = readUriList(vars.legacyEndorsementUris)
       const evaluationUris = readUriList(vars.evaluationUris)
       const measurementUris = readUriList(vars.measurementUris)
       const hyperboardUris = readUriList(vars.hyperboardUris)
@@ -1012,7 +994,6 @@ function buildVariables(
         activityUris === null ||
         collectionUris === null ||
         badgeAwardUris === null ||
-        legacyEndorsementUris === null ||
         evaluationUris === null ||
         measurementUris === null ||
         hyperboardUris === null ||
@@ -1024,7 +1005,6 @@ function buildVariables(
         activityUris,
         collectionUris,
         badgeAwardUris,
-        legacyEndorsementUris,
         evaluationUris,
         measurementUris,
         hyperboardUris,
