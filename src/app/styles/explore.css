@@ -30,12 +30,23 @@
     padding-bottom: 0;
     padding-left: 0;
     padding-right: 0;
+    /* Flex column so .explore-page can flex:1 below and fill the
+       full min-height: 100vh the shell already reserves. Without
+       this the page (and its absolute-positioned divider) stops
+       at content height, leaving the divider chopped above the
+       footer when results are short. */
+    display: flex;
+    flex-direction: column;
   }
   .explore-page {
     padding-top: 0;
     padding-bottom: 0;
     padding-left: 0;
     padding-right: 0;
+    /* Stretch to fill the shell's reserved height. Pairs with the
+       flex-column above so short result lists still produce a
+       full-height divider that meets the footer top border. */
+    flex: 1;
   }
 
   /* Footer normally carries margin-top: 48px for airy spacing on
