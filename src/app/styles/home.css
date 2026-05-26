@@ -42,23 +42,15 @@
   }
 }
 
-/* Left pane width: 335px only at the wide-desktop band
-   (--bp-gt-desktop: 1300px), 260px between mobile-cutoff and that
-   threshold, then drops entirely below 760px (mobile, where the
-   layout collapses to a single column). Matches the news-rail and
-   left-rail-expand breakpoints so the three responsive transitions
-   happen together at 1300px.
+/* Left pane width: fluid between 256px (min) and 296px (max),
+   scaling with viewport via clamp(). Same expression on /home and
+   /explore so the two surfaces feel consistent. Below 760px the
+   layout collapses to a single column (the var is unused there).
    Variable lives on `.home-page` (not `.home__layout`) so the
    page-frame `::before` divider can read it too — custom properties
    only cascade DOWN, and the divider is on the parent. */
 .home-page {
-  --home-sidebar-width: 260px;
-}
-
-@media (min-width: 1300px) {
-  .home-page {
-    --home-sidebar-width: 335px;
-  }
+  --home-sidebar-width: clamp(256px, 22vw, 296px);
 }
 
 .home__layout {

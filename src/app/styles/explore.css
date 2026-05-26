@@ -49,11 +49,14 @@
 
 .explore-page {
   position: relative;
+  /* Fluid sidebar width clamped to 256–296px, matching /home's
+     .home-page var so the two surfaces line up at every viewport. */
+  --explore-sidebar-width: clamp(256px, 22vw, 296px);
 }
 
 .explore__layout {
   display: grid;
-  grid-template-columns: 335px 1fr;
+  grid-template-columns: var(--explore-sidebar-width) 1fr;
   gap: 0;
   align-items: start;
 }
@@ -69,7 +72,7 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 335px;
+  left: var(--explore-sidebar-width);
   width: 1px;
   background: var(--border-medium);
   pointer-events: none;
