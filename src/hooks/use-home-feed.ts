@@ -230,11 +230,19 @@ export function useHomeFeed(followedDids: Set<string>) {
  * the `"unknown"` variant so the renderer can show a generic card.
  */
 function hydratedToHomeFeedEvent(h: HydratedFeedEvent): HomeFeedEvent {
+  // Prefer the underlying record's `createdAt` (when the record's
+  // really from). `event.sortAt` is the indexer's clock-skew-clamped
+  // ordering key — fine for stable pagination, wrong for the user-
+  // facing "X did Y 3h ago" timestamp because the indexer's clock
+  // can lag actual publish time, making everything bunch up to
+  // "indexed-at" rather than "happened-at". Fall back to sortAt only
+  // when hydration didn't surface a record createdAt.
+  const createdAt = recordCreatedAt(h) ?? h.event.sortAt
   const base: HomeFeedEventBase = {
     uri: h.event.id,
     actor: h.event.actor.did,
     actorProfile: h.event.actor,
-    createdAt: h.event.sortAt,
+    createdAt,
   }
 
   const payload = h.payload
@@ -283,4 +291,23 @@ function hydratedToHomeFeedEvent(h: HydratedFeedEvent): HomeFeedEvent {
     rawKind: h.event.kind,
     subjectUri: h.event.subjectUri,
   }
+}
+
+/**
+ * Extract the source-record `createdAt` from a hydrated event.
+ * Returns null when hydration produced no payload or when the
+ * payload lexicon doesn't carry a createdAt (rare; we still fall
+ * back to sortAt at the call site).
+ */
+function recordCreatedAt(h: HydratedFeedEvent): string | null {
+  const p = h.payload
+  if (!p) return null
+  if (p.kind === "cert.create" || p.kind === "collection.create") {
+    const t = p.record.value.createdAt
+    return typeof t === "string" && t.length > 0 ? t : null
+  }
+  // endorsement.award / legacy.endorsement / evaluation / measurement
+  // / hyperboard / update — `createdAt` is directly on the payload
+  // (populated from the indexer's per-record createdAt field).
+  return p.createdAt
 }
