@@ -132,12 +132,18 @@
   text-decoration: none;
   color: inherit;
   border-radius: 4px;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  transition: background var(--transition-fast);
+}
+
+.home-section__title-link:hover {
+  background: var(--bg-sunken);
+  text-decoration: none;
 }
 
 .home-section__title-link:hover .home-section__title {
   color: var(--fg-primary);
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 .home-section__title {
