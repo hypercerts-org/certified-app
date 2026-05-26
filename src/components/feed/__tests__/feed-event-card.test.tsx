@@ -96,17 +96,17 @@ describe("FeedEventCard", () => {
     expect(screen.getByText("My List")).toBeTruthy()
   })
 
-  it("renders badge.award with subject byline and note", () => {
+  it("renders endorsement.award with subject byline and note", () => {
     const payload: HydratedPayload = {
-      kind: "badge.award",
+      kind: "endorsement.award",
       subjectDid: "did:plc:subject",
       note: "Great work last quarter.",
       createdAt: "2026-05-26T00:00:00.000Z",
     }
     render(
-      <FeedEventCard event={makeEvent("badge.award")} payload={payload} />,
+      <FeedEventCard event={makeEvent("endorsement.award")} payload={payload} />,
     )
-    expect(screen.getByText("awarded a badge to")).toBeTruthy()
+    expect(screen.getAllByText("endorsed").length).toBeGreaterThan(0)
     expect(screen.getByText("Subject Person")).toBeTruthy()
     expect(screen.getByText("Great work last quarter.")).toBeTruthy()
   })

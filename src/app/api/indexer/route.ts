@@ -582,6 +582,10 @@ ${ACTIVITY_NODE_SELECTION}
       $collectionUris: [String!]!
       $badgeAwardUris: [String!]!
       $legacyEndorsementUris: [String!]!
+      $evaluationUris: [String!]!
+      $measurementUris: [String!]!
+      $hyperboardUris: [String!]!
+      $attachmentUris: [String!]!
     ) {
       activities: orgHypercertsClaimActivity(
         first: ${MAX_URI_LIST_PER_KIND}
@@ -660,6 +664,62 @@ ${ACTIVITY_NODE_SELECTION}
             did
             createdAt
             subject { did }
+          }
+        }
+      }
+      evaluations: orgHypercertsContextEvaluation(
+        first: ${MAX_URI_LIST_PER_KIND}
+        where: { uri: { in: $evaluationUris } }
+      ) {
+        edges {
+          node {
+            uri
+            cid
+            did
+            createdAt
+            title
+          }
+        }
+      }
+      measurements: orgHypercertsContextMeasurement(
+        first: ${MAX_URI_LIST_PER_KIND}
+        where: { uri: { in: $measurementUris } }
+      ) {
+        edges {
+          node {
+            uri
+            cid
+            did
+            createdAt
+            title
+          }
+        }
+      }
+      hyperboards: orgHyperboardsBoard(
+        first: ${MAX_URI_LIST_PER_KIND}
+        where: { uri: { in: $hyperboardUris } }
+      ) {
+        edges {
+          node {
+            uri
+            cid
+            did
+            createdAt
+            title
+          }
+        }
+      }
+      attachments: orgHypercertsContextAttachment(
+        first: ${MAX_URI_LIST_PER_KIND}
+        where: { uri: { in: $attachmentUris } }
+      ) {
+        edges {
+          node {
+            uri
+            cid
+            did
+            createdAt
+            title
           }
         }
       }
@@ -934,11 +994,19 @@ function buildVariables(
       const collectionUris = readUriList(vars.collectionUris)
       const badgeAwardUris = readUriList(vars.badgeAwardUris)
       const legacyEndorsementUris = readUriList(vars.legacyEndorsementUris)
+      const evaluationUris = readUriList(vars.evaluationUris)
+      const measurementUris = readUriList(vars.measurementUris)
+      const hyperboardUris = readUriList(vars.hyperboardUris)
+      const attachmentUris = readUriList(vars.attachmentUris)
       if (
         activityUris === null ||
         collectionUris === null ||
         badgeAwardUris === null ||
-        legacyEndorsementUris === null
+        legacyEndorsementUris === null ||
+        evaluationUris === null ||
+        measurementUris === null ||
+        hyperboardUris === null ||
+        attachmentUris === null
       ) {
         return null
       }
@@ -947,6 +1015,10 @@ function buildVariables(
         collectionUris,
         badgeAwardUris,
         legacyEndorsementUris,
+        evaluationUris,
+        measurementUris,
+        hyperboardUris,
+        attachmentUris,
       }
     }
     default:

@@ -255,19 +255,15 @@
   min-width: 0;
   /* Match the .right-rail surface used elsewhere — light card on
      a darker canvas, with a thin border that reads as a panel
-     edge rather than competing with the page-frame dividers. */
+     edge rather than competing with the page-frame dividers.
+     Scrolls with the page rather than sticking — the rail is a
+     side panel, not a persistent control surface, and pinning it
+     produced an awkward dead zone once the user had scrolled past
+     the news content. */
   padding: 16px 18px 18px;
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
   background: var(--bg-elevated);
-  position: sticky;
-  top: calc(var(--navbar-height) + 20px);
-}
-
-@media (max-width: 1100px) {
-  .home__news {
-    position: static;
-  }
 }
 
 /* ---------- Activity timeline (GitHub-style) ---------- */
@@ -495,4 +491,291 @@ a.home-feed__preview:hover {
   max-width: 480px;
   margin: 64px auto;
   padding: 0 16px;
+}
+
+/* ==========================================================================
+   View toggle (timeline | cards) — mirrors the .explore__view-toggle pattern
+   ========================================================================== */
+
+.home__view-toggle {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  margin-bottom: 16px;
+}
+
+.home__view-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color var(--transition-fast), background var(--transition-fast);
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+.home__view-btn:hover {
+  color: var(--fg-primary);
+}
+
+.home__view-btn--active {
+  color: var(--fg-primary);
+  background: var(--bg-sunken);
+}
+
+.home__view-btn--active:hover {
+  background: var(--bg-sunken);
+}
+
+/* ==========================================================================
+   Card-style feed — social media variant
+   Lives alongside the GitHub-style timeline (`.home-feed`); a view
+   toggle in `.home__main` swaps between them.
+   ========================================================================== */
+
+.home-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.home-cards__loading {
+  display: flex;
+  justify-content: center;
+  padding: 32px 0;
+}
+
+.home-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--bg-elevated);
+}
+
+/* ---- Header (avatar + name + handle/time) ---- */
+
+.home-card__header {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.home-card__avatar {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+}
+
+.home-card__meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.home-card__actor-name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--fg-primary);
+  text-decoration: none;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-card__actor-name:hover {
+  text-decoration: underline;
+}
+
+.home-card__actor-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  line-height: 1.4;
+  min-width: 0;
+}
+
+.home-card__handle {
+  color: var(--fg-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-card__handle:hover {
+  text-decoration: underline;
+}
+
+.home-card__dot {
+  color: var(--fg-muted);
+}
+
+.home-card__time {
+  white-space: nowrap;
+}
+
+/* ---- Body ---- */
+
+.home-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.home-card__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+.home-card__action svg {
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+
+.home-card__link {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.home-card__link:hover .home-card__title {
+  text-decoration: underline;
+}
+
+.home-card__link--inert {
+  cursor: default;
+}
+
+.home-card__media {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--bg-sunken);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.home-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.home-card__primary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.home-card__primary--standalone {
+  padding: 0;
+}
+
+.home-card__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  line-height: 1.3;
+}
+
+.home-card__desc {
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
+/* ---- Endorsement subject row ---- */
+
+.home-card__subject {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--bg-sunken);
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.home-card__subject:hover .home-card__subject-name {
+  text-decoration: underline;
+}
+
+.home-card__subject-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.home-card__subject-name {
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+}
+
+.home-card__subject-handle {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.home-card__note {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--bg-sunken);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.home-card__subject-uri {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  word-break: break-all;
+}
+
+@media (max-width: 760px) {
+  .home-card {
+    padding: 14px 16px;
+    border-radius: 10px;
+  }
+  .home-card__media {
+    aspect-ratio: 4 / 3;
+  }
 }

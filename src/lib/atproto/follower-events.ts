@@ -52,16 +52,32 @@ export const FOREGROUND_POLL_MS = 30_000
 export const BACKGROUND_POLL_MS = 5 * 60_000
 
 /**
- * Documented kinds in v1 of the FollowerEvents API. The wire type
+ * Documented kinds (per magic-indexer #122 + #125). The wire type
  * `FeedEvent.kind` stays `string` (open union) because a new
  * server-side mapping may ship before the client updates — the
  * dispatch site narrows to a known kind or falls through to the
  * fallback card.
+ *
+ * Issue #89 expanded the v1 set from 4 to 7. Deltas vs the #88
+ * surface:
+ *   - `badge.award` renamed to `endorsement.award`. Server now
+ *     filters to endorsement-typed and non-rejected awards via the
+ *     `endorsement_edge` materialised view.
+ *   - Added: `evaluation.create`, `measurement.create`,
+ *     `hyperboard.create`, `update.create` (the
+ *     `context.attachment` variant with `json.type == "update"`).
+ *   - `legacy.endorsement` stays in this list for backward compat
+ *     and as a defensive case in the dispatcher, even though the
+ *     new server doesn't emit it.
  */
 export const KNOWN_FEED_EVENT_KINDS = [
   "cert.create",
   "collection.create",
-  "badge.award",
+  "evaluation.create",
+  "measurement.create",
+  "hyperboard.create",
+  "update.create",
+  "endorsement.award",
   "legacy.endorsement",
 ] as const
 export type KnownFeedEventKind = (typeof KNOWN_FEED_EVENT_KINDS)[number]
@@ -236,8 +252,8 @@ export interface HydratedPayloadCollection {
   record: CollectionRecord
 }
 
-export interface HydratedPayloadBadgeAward {
-  kind: "badge.award"
+export interface HydratedPayloadEndorsementAward {
+  kind: "endorsement.award"
   subjectDid: string
   note: string | null
   createdAt: string
@@ -249,11 +265,30 @@ export interface HydratedPayloadLegacyEndorsement {
   createdAt: string
 }
 
+/**
+ * The four single-record kinds added by magic-indexer #125
+ * (evaluation, measurement, hyperboard, update). Headline payload is
+ * a uniform `{ title, createdAt }` because the lexicons differ enough
+ * that a kind-specific shape would balloon the type surface for
+ * little visual gain — the cards show the title and the relative
+ * time, nothing else, in v1.
+ */
+export interface HydratedPayloadSimpleRecord {
+  kind:
+    | "evaluation.create"
+    | "measurement.create"
+    | "hyperboard.create"
+    | "update.create"
+  title: string | null
+  createdAt: string
+}
+
 export type HydratedPayload =
   | HydratedPayloadActivity
   | HydratedPayloadCollection
-  | HydratedPayloadBadgeAward
+  | HydratedPayloadEndorsementAward
   | HydratedPayloadLegacyEndorsement
+  | HydratedPayloadSimpleRecord
 
 export interface HydratedFeedEvent {
   event: FeedEvent
@@ -281,6 +316,14 @@ interface CollectionWithTypeGraphQLNode extends CollectionGraphQLNode {
   type?: string | null
 }
 
+interface SimpleTitleGraphQLNode {
+  uri: string
+  cid: string
+  did: string
+  createdAt: string
+  title: string | null
+}
+
 interface HydrateFeedPageResponse {
   data?: {
     activities?: { edges: { node: ActivityGraphQLNode | null }[] } | null
@@ -291,6 +334,10 @@ interface HydrateFeedPageResponse {
     legacyEndorsements?: {
       edges: { node: LegacyEndorsementGraphQLNode | null }[]
     } | null
+    evaluations?: { edges: { node: SimpleTitleGraphQLNode | null }[] } | null
+    measurements?: { edges: { node: SimpleTitleGraphQLNode | null }[] } | null
+    hyperboards?: { edges: { node: SimpleTitleGraphQLNode | null }[] } | null
+    attachments?: { edges: { node: SimpleTitleGraphQLNode | null }[] } | null
   } | null
   errors?: { message: string }[]
 }
@@ -310,6 +357,10 @@ export async function hydrateFeedEvents(
   const collectionUris: string[] = []
   const badgeAwardUris: string[] = []
   const legacyEndorsementUris: string[] = []
+  const evaluationUris: string[] = []
+  const measurementUris: string[] = []
+  const hyperboardUris: string[] = []
+  const attachmentUris: string[] = []
 
   for (const ev of events) {
     switch (ev.kind) {
@@ -319,23 +370,39 @@ export async function hydrateFeedEvents(
       case "collection.create":
         collectionUris.push(ev.subjectUri)
         break
+      case "endorsement.award":
       case "badge.award":
         badgeAwardUris.push(ev.subjectUri)
         break
       case "legacy.endorsement":
         legacyEndorsementUris.push(ev.subjectUri)
         break
+      case "evaluation.create":
+        evaluationUris.push(ev.subjectUri)
+        break
+      case "measurement.create":
+        measurementUris.push(ev.subjectUri)
+        break
+      case "hyperboard.create":
+        hyperboardUris.push(ev.subjectUri)
+        break
+      case "update.create":
+        attachmentUris.push(ev.subjectUri)
+        break
       // Unknown kinds skip hydration.
     }
   }
 
-  const haveAny =
+  const totalToHydrate =
     activityUris.length +
-      collectionUris.length +
-      badgeAwardUris.length +
-      legacyEndorsementUris.length >
-    0
-  if (!haveAny) {
+    collectionUris.length +
+    badgeAwardUris.length +
+    legacyEndorsementUris.length +
+    evaluationUris.length +
+    measurementUris.length +
+    hyperboardUris.length +
+    attachmentUris.length
+  if (totalToHydrate === 0) {
     // Every event is an unknown kind; the dispatch site renders the
     // fallback card for each, no hydration round-trip needed.
     return events.map((event) => ({ event, payload: null }))
@@ -351,6 +418,10 @@ export async function hydrateFeedEvents(
         collectionUris,
         badgeAwardUris,
         legacyEndorsementUris,
+        evaluationUris,
+        measurementUris,
+        hyperboardUris,
+        attachmentUris,
       },
     }),
     signal,
@@ -403,7 +474,7 @@ export async function hydrateFeedEvents(
   for (const edge of json.data?.badgeAwards?.edges ?? []) {
     if (!edge.node || !edge.node.subject) continue
     payloadByUri.set(edge.node.uri, {
-      kind: "badge.award",
+      kind: "endorsement.award",
       subjectDid: edge.node.subject.did,
       note: edge.node.note,
       createdAt: edge.node.createdAt,
@@ -414,6 +485,42 @@ export async function hydrateFeedEvents(
     payloadByUri.set(edge.node.uri, {
       kind: "legacy.endorsement",
       subjectDid: edge.node.subject.did,
+      createdAt: edge.node.createdAt,
+    })
+  }
+  // The four new simple-record kinds collapse onto a single shape —
+  // {title, createdAt} — because they render with the same chrome in
+  // v1. The `kind` discriminator preserves the source lexicon so
+  // future renderers can specialise without changing the wire types.
+  for (const edge of json.data?.evaluations?.edges ?? []) {
+    if (!edge.node) continue
+    payloadByUri.set(edge.node.uri, {
+      kind: "evaluation.create",
+      title: edge.node.title,
+      createdAt: edge.node.createdAt,
+    })
+  }
+  for (const edge of json.data?.measurements?.edges ?? []) {
+    if (!edge.node) continue
+    payloadByUri.set(edge.node.uri, {
+      kind: "measurement.create",
+      title: edge.node.title,
+      createdAt: edge.node.createdAt,
+    })
+  }
+  for (const edge of json.data?.hyperboards?.edges ?? []) {
+    if (!edge.node) continue
+    payloadByUri.set(edge.node.uri, {
+      kind: "hyperboard.create",
+      title: edge.node.title,
+      createdAt: edge.node.createdAt,
+    })
+  }
+  for (const edge of json.data?.attachments?.edges ?? []) {
+    if (!edge.node) continue
+    payloadByUri.set(edge.node.uri, {
+      kind: "update.create",
+      title: edge.node.title,
       createdAt: edge.node.createdAt,
     })
   }
