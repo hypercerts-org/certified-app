@@ -131,21 +131,42 @@ function AddToListModal({
 }: AddToListModalProps) {
   const { byType, isLoading, createList, addItem } = useTypedLists(viewerDid)
   const candidates = byType[targetType]
-  const alreadyIn = useMemo(() => {
-    const out = new Set<string>()
-    for (const list of candidates) {
-      if (list.items.some((it) => it.itemIdentifier.uri === targetUri)) {
-        out.add(list.rkey)
-      }
-    }
-    return out
-  }, [candidates, targetUri])
 
   const [busyRkey, setBusyRkey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [newTitle, setNewTitle] = useState("")
   const newInputRef = useRef<HTMLInputElement>(null)
+  // Rkeys we already added in this modal session — reflect "Added"
+  // immediately, even if the hook's refetch hasn't surfaced the
+  // new items[] yet. Same for newly-created lists: keep a tiny
+  // preview Map so the row renders right after Create & add and
+  // doesn't disappear-then-pop-back when the refetch catches up.
+  const [justAdded, setJustAdded] = useState<Set<string>>(new Set())
+  const [createdPreviews, setCreatedPreviews] = useState<
+    { rkey: string; title: string }[]
+  >([])
+
+  const renderedLists = useMemo(() => {
+    const seen = new Set<string>(candidates.map((l) => l.rkey))
+    const previews = createdPreviews
+      .filter((p) => !seen.has(p.rkey))
+      .map((p) => ({ rkey: p.rkey, title: p.title }))
+    return [
+      ...previews,
+      ...candidates.map((l) => ({ rkey: l.rkey, title: l.title })),
+    ]
+  }, [candidates, createdPreviews])
+
+  const alreadyIn = useMemo(() => {
+    const out = new Set<string>(justAdded)
+    for (const list of candidates) {
+      if (list.items.some((it) => it.itemIdentifier.uri === targetUri)) {
+        out.add(list.rkey)
+      }
+    }
+    return out
+  }, [candidates, justAdded, targetUri])
 
   useEffect(() => {
     if (creating) newInputRef.current?.focus()
@@ -160,6 +181,14 @@ function AddToListModal({
         const cid = targetCid || (await resolveRecordCid(targetUri))
         if (!cid) throw new Error("Couldn't resolve record CID")
         await addItem(rkey, targetType, { uri: targetUri, cid })
+        // Reflect "Added" immediately — the hook's refetch follows
+        // but may lag by a tick.
+        setJustAdded((prev) => {
+          if (prev.has(rkey)) return prev
+          const next = new Set(prev)
+          next.add(rkey)
+          return next
+        })
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to add")
       } finally {
@@ -183,6 +212,20 @@ function AddToListModal({
         const rkey = ref.uri.split("/").pop()
         if (!rkey) throw new Error("New list missing rkey")
         await addItem(rkey, targetType, { uri: targetUri, cid })
+        // Optimistic state: preview the new list immediately so it
+        // renders in the candidates section, and mark its rkey as
+        // already-added so the row shows "Added" right away. Both
+        // entries become no-ops once the hook's refetch surfaces
+        // the real record (renderedLists dedupes by rkey).
+        setCreatedPreviews((prev) =>
+          prev.some((p) => p.rkey === rkey) ? prev : [...prev, { rkey, title }],
+        )
+        setJustAdded((prev) => {
+          if (prev.has(rkey)) return prev
+          const next = new Set(prev)
+          next.add(rkey)
+          return next
+        })
         setCreating(false)
         setNewTitle("")
       } catch (err) {
@@ -219,14 +262,14 @@ function AddToListModal({
             <LoadingSpinner size="sm" />
           </div>
         ) : null}
-        {!isLoading && candidates.length === 0 && !creating ? (
+        {!isLoading && renderedLists.length === 0 && !creating ? (
           <p className="add-to-list__empty">
             You don&rsquo;t have a {TYPE_LABEL[targetType]} list yet.
           </p>
         ) : null}
-        {!isLoading && candidates.length > 0 ? (
+        {!isLoading && renderedLists.length > 0 ? (
           <ul className="add-to-list__list">
-            {candidates.map((list) => {
+            {renderedLists.map((list) => {
               const isIn = alreadyIn.has(list.rkey)
               const isBusy = busyRkey === list.rkey
               return (
