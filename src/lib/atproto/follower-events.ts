@@ -65,7 +65,7 @@ export const BACKGROUND_POLL_MS = 5 * 60_000
  *     `endorsement_edge` materialised view.
  *   - Added: `evaluation.create`, `measurement.create`,
  *     `hyperboard.create`, `update.create` (the
- *     `context.attachment` variant with `json.type == "update"`).
+ *     `context.attachment` variant with `json.contentType == "update"`).
  *   - `legacy.endorsement` stays in this list for backward compat
  *     and as a defensive case in the dispatcher, even though the
  *     new server doesn't emit it.
@@ -316,7 +316,32 @@ interface CollectionWithTypeGraphQLNode extends CollectionGraphQLNode {
   type?: string | null
 }
 
-interface SimpleTitleGraphQLNode {
+interface EvaluationGraphQLNode {
+  uri: string
+  cid: string
+  did: string
+  createdAt: string
+  summary: string | null
+}
+
+interface MeasurementGraphQLNode {
+  uri: string
+  cid: string
+  did: string
+  createdAt: string
+  metric: string | null
+  value: string | null
+  unit: string | null
+}
+
+interface HyperboardGraphQLNode {
+  uri: string
+  cid: string
+  did: string
+  createdAt: string
+}
+
+interface AttachmentGraphQLNode {
   uri: string
   cid: string
   did: string
@@ -334,10 +359,10 @@ interface HydrateFeedPageResponse {
     legacyEndorsements?: {
       edges: { node: LegacyEndorsementGraphQLNode | null }[]
     } | null
-    evaluations?: { edges: { node: SimpleTitleGraphQLNode | null }[] } | null
-    measurements?: { edges: { node: SimpleTitleGraphQLNode | null }[] } | null
-    hyperboards?: { edges: { node: SimpleTitleGraphQLNode | null }[] } | null
-    attachments?: { edges: { node: SimpleTitleGraphQLNode | null }[] } | null
+    evaluations?: { edges: { node: EvaluationGraphQLNode | null }[] } | null
+    measurements?: { edges: { node: MeasurementGraphQLNode | null }[] } | null
+    hyperboards?: { edges: { node: HyperboardGraphQLNode | null }[] } | null
+    attachments?: { edges: { node: AttachmentGraphQLNode | null }[] } | null
   } | null
   errors?: { message: string }[]
 }
@@ -490,13 +515,21 @@ export async function hydrateFeedEvents(
   }
   // The four new simple-record kinds collapse onto a single shape —
   // {title, createdAt} — because they render with the same chrome in
-  // v1. The `kind` discriminator preserves the source lexicon so
-  // future renderers can specialise without changing the wire types.
+  // v1. Source lexicon for the headline string differs per kind
+  // (the lexicons have different real field names; the renderer
+  // doesn't care):
+  //   - evaluation: `summary`
+  //   - measurement: `metric` (richer body could combine value + unit
+  //     later, but the headline is the metric itself)
+  //   - hyperboard: nothing — lexicon is sparse, no headline field
+  //     until @hypercerts-org/lexicon is enriched (magic-indexer#129
+  //     §3). Renders as the actor + verb sentence alone.
+  //   - update: attachment's `title`
   for (const edge of json.data?.evaluations?.edges ?? []) {
     if (!edge.node) continue
     payloadByUri.set(edge.node.uri, {
       kind: "evaluation.create",
-      title: edge.node.title,
+      title: edge.node.summary,
       createdAt: edge.node.createdAt,
     })
   }
@@ -504,7 +537,7 @@ export async function hydrateFeedEvents(
     if (!edge.node) continue
     payloadByUri.set(edge.node.uri, {
       kind: "measurement.create",
-      title: edge.node.title,
+      title: edge.node.metric,
       createdAt: edge.node.createdAt,
     })
   }
@@ -512,7 +545,7 @@ export async function hydrateFeedEvents(
     if (!edge.node) continue
     payloadByUri.set(edge.node.uri, {
       kind: "hyperboard.create",
-      title: edge.node.title,
+      title: null,
       createdAt: edge.node.createdAt,
     })
   }

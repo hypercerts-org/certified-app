@@ -686,7 +686,7 @@ ${ACTIVITY_NODE_SELECTION}
             cid
             did
             createdAt
-            title
+            summary
           }
         }
       }
@@ -700,7 +700,9 @@ ${ACTIVITY_NODE_SELECTION}
             cid
             did
             createdAt
-            title
+            metric
+            value
+            unit
           }
         }
       }
@@ -714,7 +716,6 @@ ${ACTIVITY_NODE_SELECTION}
             cid
             did
             createdAt
-            title
           }
         }
       }
