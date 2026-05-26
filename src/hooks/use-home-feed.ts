@@ -117,20 +117,19 @@ const EMPTY_STATE: State = {
 /**
  * Aggregator hook that powers the home page's activity feed.
  *
- * Internally:
- *   - One round-trip to `followerEvents` (the union of CREATE
- *     events across the follow set, sorted server-side by createdAt
- *     — see magic-indexer#136 for why this matches the rendered
- *     "X ago" order).
- *   - One follow-up round-trip to `HydrateFeedPage` to pull the
- *     headline payload (title, image, banner, subject DID, etc.)
- *     for each event whose kind needs more than the actor + verb.
+ * Each page is two round-trips:
+ *   - `followerEvents` returns the next page of CREATE events
+ *     across the follow set, sorted server-side by `createdAt`
+ *     (magic-indexer#136 — matches the rendered "X ago" order).
+ *   - `HydrateFeedPage` fetches the headline payload (title,
+ *     image, banner, labels, subject DID, etc.) for each event
+ *     whose kind needs more than the actor + verb.
  *
- * Pagination is intentionally absent in this first cut: the visible
- * cap is `DISPLAY_CAP`, and the home page composition only allots
- * room for one screen of activity. Adding `loadMore` is mechanical
- * once the surface needs it — see `useFollowerEventsFeed` for the
- * shape.
+ * Returns `loadMore` for IntersectionObserver-driven pagination
+ * and refetches from the head when the follow set or the cert-
+ * label exclude filter changes. On `INVALID_CURSOR` from a stale
+ * cursor (e.g. a sort-mode swap), the hook drops the cursor and
+ * reloads page 1.
  */
 export function useHomeFeed(
   followedDids: Set<string>,

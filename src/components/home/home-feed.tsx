@@ -57,9 +57,11 @@ const DEFAULT_INCLUDED_TIERS: ReadonlySet<HyperlabelTier> = new Set(
  * single-line treatment since the sentence already names both ends
  * of the action.
  *
- * Pagination intentionally absent in this first cut — see
- * `useHomeFeed` for the rationale (no unified indexer events op
- * yet).
+ * A `<header>` above the list carries the "Feed" heading on the
+ * left and a per-tier filter popover (Hyperlabel quality tiers) on
+ * the right. Bottom of the list hosts an IntersectionObserver
+ * sentinel that calls `useHomeFeed`'s `loadMore` when it enters
+ * the viewport.
  */
 export default function HomeFeed({ activeDid }: { activeDid: string }) {
   const {

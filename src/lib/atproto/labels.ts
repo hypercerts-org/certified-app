@@ -27,16 +27,12 @@
  * at the same endpoint but dormant. The indexer must subscribe to
  * BOTH via `LABELER_DIDS`, or the actively-signed labels never get
  * ingested and `excludeLabels: ["likely-test"]` is a no-op. See
- * hypercerts-org/magic-indexer config for the env var.
- *
- * `HYPERLABEL_DID` is kept as the canonical alias for downstream
- * code that needs a single identity.
+ * hypercerts-org/magic-indexer#138.
  */
 export const HYPERLABEL_DIDS = [
   "did:plc:5rw6of6lry7ihmyhm323ycwn", // canonical (einstein.climateai.org) — dormant
   "did:plc:edod7rboajioq3jbyxsgeicc", // active signer (heisenberg.climateai.org)
 ] as const
-export const HYPERLABEL_DID = HYPERLABEL_DIDS[0]
 
 /** Orglabeler's DID — scores org-record quality. */
 export const ORGLABELER_DID = "did:plc:pswneepkd5lesumj7ejmkbal"
