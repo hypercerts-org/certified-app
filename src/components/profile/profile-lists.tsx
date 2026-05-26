@@ -39,9 +39,9 @@ import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { getInitials } from "@/lib/utils/initials"
 
 const SECTIONS: { type: TypedListType; title: string; emptyHint: string }[] = [
-  { type: LIST_CERTS_TYPE, title: "Certs lists", emptyHint: "No cert lists yet." },
-  { type: LIST_PROJECTS_TYPE, title: "Projects lists", emptyHint: "No project lists yet." },
-  { type: LIST_ACCOUNTS_TYPE, title: "Accounts lists", emptyHint: "No account lists yet." },
+  { type: LIST_CERTS_TYPE, title: "Certs", emptyHint: "No cert lists yet." },
+  { type: LIST_PROJECTS_TYPE, title: "Projects", emptyHint: "No project lists yet." },
+  { type: LIST_ACCOUNTS_TYPE, title: "Accounts", emptyHint: "No account lists yet." },
 ]
 
 interface ProfileListsProps {
