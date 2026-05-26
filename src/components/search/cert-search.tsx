@@ -1,7 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Award, Search as SearchIcon, X } from "lucide-react"
+import { Search as SearchIcon, X } from "lucide-react"
+import CertIcon from "@/components/ui/cert-icon"
 import {
   fetchIndexerActivities,
   fetchUserIndexerActivities,
@@ -456,7 +457,7 @@ function CertSearchRow({
             className="cert-search__thumb cert-search__thumb--placeholder"
             aria-hidden="true"
           >
-            <Award size={16} strokeWidth={1.5} />
+            <CertIcon size={16} strokeWidth={1.5} />
           </div>
         )}
         <div className="cert-search__item-info">

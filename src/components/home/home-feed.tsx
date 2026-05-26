@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { Award, FolderGit2, Inbox, MapPin, Users } from "lucide-react"
+import { FolderGit2, Inbox, MapPin, Users } from "lucide-react"
+import CertIcon from "@/components/ui/cert-icon"
 import Avatar from "@/components/ui/avatar"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -258,7 +259,7 @@ function CertPreview({ record, uri }: { record: ActivityRecord; uri: string }) {
     <PreviewCard
       href={href}
       title={title}
-      titleIcon={<Award size={12} strokeWidth={1.75} aria-hidden />}
+      titleIcon={<CertIcon size={12} strokeWidth={1.75} aria-hidden />}
       imageUrl={imageUrl}
       description={description}
       meta={[

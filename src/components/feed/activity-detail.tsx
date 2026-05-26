@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { Award, Calendar, FileText, Pencil, Target } from "lucide-react"
+import { Calendar, FileText, Pencil, Target } from "lucide-react"
+import CertIcon from "@/components/ui/cert-icon"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
@@ -701,7 +702,7 @@ export default function ActivityDetail({
               onError={() => setImageFailed(true)}
             />
           ) : (
-            <Award
+            <CertIcon
               size={56}
               strokeWidth={1.25}
               className="cert-detail__image-placeholder-icon"

@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Award, MapPin } from "lucide-react"
+import { MapPin } from "lucide-react"
+import CertIcon from "@/components/ui/cert-icon"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import {
   evaluateWorkScope,
@@ -70,7 +71,7 @@ export default function CertListRow({
                 onError={() => setImageFailed(true)}
               />
             ) : (
-              <Award
+              <CertIcon
                 size={20}
                 strokeWidth={1.25}
                 aria-hidden

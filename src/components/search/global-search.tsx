@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Award, Search as SearchIcon, X } from "lucide-react"
+import { Search as SearchIcon, X } from "lucide-react"
+import CertIcon from "@/components/ui/cert-icon"
 import Avatar from "@/components/ui/avatar"
 import { getInitials } from "@/lib/utils/initials"
 import { fetchIndexerActivities } from "@/lib/atproto/indexer"
@@ -542,7 +543,7 @@ function CertRowItem({
             className="cert-search__thumb cert-search__thumb--placeholder"
             aria-hidden="true"
           >
-            <Award size={16} strokeWidth={1.5} />
+            <CertIcon size={16} strokeWidth={1.5} />
           </div>
         )}
         <div className="cert-search__item-info">

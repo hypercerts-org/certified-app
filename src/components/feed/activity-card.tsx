@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Award } from "lucide-react"
+import CertIcon from "@/components/ui/cert-icon"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import {
   resolveActivityImageUrl,
@@ -53,7 +53,7 @@ export default function ActivityCard({ record, did, label }: ActivityCardProps) 
           className="feed-card__image-wrap feed-card__image-wrap--placeholder"
           aria-hidden="true"
         >
-          <Award size={40} strokeWidth={1.25} className="feed-card__image-placeholder-icon" />
+          <CertIcon size={40} strokeWidth={1.25} className="feed-card__image-placeholder-icon" />
         </div>
       )}
 

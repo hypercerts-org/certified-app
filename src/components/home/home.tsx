@@ -5,13 +5,13 @@ import { useCallback } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import {
   ArrowRight,
-  Award,
   FolderGit2,
   LayoutList,
   LogIn,
   Newspaper,
   Users,
 } from "lucide-react"
+import CertIcon from "@/components/ui/cert-icon"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useUserProjects } from "@/hooks/use-user-projects"
@@ -205,7 +205,7 @@ function HomeSidebar({ activeDid }: { activeDid: string }) {
       />
       <SidebarSection
         title="My certs"
-        icon={Award}
+        icon={CertIcon}
         isLoading={certsLoading && previewCerts.length === 0}
         items={previewCerts}
         total={certs.length}
@@ -361,7 +361,7 @@ function CertRow({
             /* eslint-disable-next-line @next/next/no-img-element */
             <img src={imageUrl} alt="" loading="lazy" />
           ) : (
-            <Award
+            <CertIcon
               size={14}
               strokeWidth={1.5}
               aria-hidden

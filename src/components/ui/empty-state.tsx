@@ -1,8 +1,17 @@
 import React from "react";
-import type { LucideIcon } from "lucide-react";
+
+/**
+ * Structural icon type — accepts both lucide-react icons and our
+ * own wrapper components (e.g. `CertIcon` wrapping a tabler icon).
+ * Both lucides and tablers expose `size` + `strokeWidth`.
+ */
+export type EmptyStateIcon = React.ComponentType<{
+  size?: number | string;
+  strokeWidth?: number | string;
+}>;
 
 export interface EmptyStateProps {
-  icon?: LucideIcon;
+  icon?: EmptyStateIcon;
   title: string;
   description?: string;
   children?: React.ReactNode;

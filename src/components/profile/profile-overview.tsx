@@ -2,7 +2,8 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ArrowRight, Award, MapPin, X } from "lucide-react"
+import { ArrowRight, MapPin, X } from "lucide-react"
+import CertIcon from "@/components/ui/cert-icon"
 import Avatar from "@/components/ui/avatar"
 import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -515,7 +516,7 @@ function ActivityThumb({ value, did }: ActivityThumbProps) {
       className="profile-overview__activity-thumb profile-overview__activity-thumb--placeholder"
       aria-hidden="true"
     >
-      <Award size={20} strokeWidth={1.25} />
+      <CertIcon size={20} strokeWidth={1.25} />
     </span>
   )
 }

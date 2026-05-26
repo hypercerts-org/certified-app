@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowUpDown,
-  Award,
   ChevronDown,
   Filter as FilterIcon,
   FolderGit2,
@@ -13,6 +12,7 @@ import {
   Search,
   Users,
 } from "lucide-react"
+import CertIcon from "@/components/ui/cert-icon"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import ActivityCard from "@/components/feed/activity-card"
@@ -888,7 +888,7 @@ function EmptyResults({ kind }: { kind: ExploreKind }) {
     kind === "accounts" ? "accounts" : kind === "projects" ? "projects" : "certs"
   return (
     <EmptyState
-      icon={kind === "accounts" ? Users : kind === "projects" ? FolderGit2 : Award}
+      icon={kind === "accounts" ? Users : kind === "projects" ? FolderGit2 : CertIcon}
       title={`No ${label} match`}
       description="Try a different filter, clear the search, or pick a broader scope."
     />

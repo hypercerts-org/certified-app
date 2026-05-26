@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ArrowRight, Award, Calendar, FolderGit2, Plus } from "lucide-react"
+import { ArrowRight, Calendar, FolderGit2, Plus } from "lucide-react"
+import CertIcon from "@/components/ui/cert-icon"
 import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -203,7 +204,7 @@ function ProjectBox({ project }: ProjectBoxProps) {
           </div>
         ) : previews.length === 0 ? (
           <p className="profile-projects__section-empty">
-            <Award size={14} strokeWidth={1.5} aria-hidden /> No certs in this
+            <CertIcon size={14} strokeWidth={1.5} aria-hidden /> No certs in this
             project yet.
           </p>
         ) : (
@@ -280,7 +281,7 @@ function CertThumb({ url }: { url: string | null }) {
   }
   return (
     <span className="profile-projects__cert-thumb profile-projects__cert-thumb--placeholder">
-      <Award size={16} strokeWidth={1.5} aria-hidden />
+      <CertIcon size={16} strokeWidth={1.5} aria-hidden />
     </span>
   )
 }
