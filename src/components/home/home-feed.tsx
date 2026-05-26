@@ -6,6 +6,7 @@ import CertIcon from "@/components/ui/cert-icon"
 import Avatar from "@/components/ui/avatar"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import LoadMoreSentinel from "@/components/ui/load-more-sentinel"
 import { useActivity } from "@/hooks/use-activity"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useHomeFeed, type HomeFeedEvent } from "@/hooks/use-home-feed"
@@ -37,7 +38,8 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
     isLoading: followsLoading,
     error: followsError,
   } = useFollowedDids(activeDid)
-  const { events, isLoading, error } = useHomeFeed(followedDids)
+  const { events, isLoading, isLoadingMore, hasMore, loadMore, error } =
+    useHomeFeed(followedDids)
 
   if (followsLoading || isLoading) {
     return (
@@ -84,13 +86,23 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
   }
 
   return (
-    <ol className="home-feed">
-      {events.map((event) => (
-        <li key={event.uri} className="home-feed__item">
-          <HomeFeedRow event={event} />
-        </li>
-      ))}
-    </ol>
+    <>
+      <ol className="home-feed">
+        {events.map((event) => (
+          <li key={event.uri} className="home-feed__item">
+            <HomeFeedRow event={event} />
+          </li>
+        ))}
+      </ol>
+      {hasMore || isLoadingMore ? (
+        <LoadMoreSentinel
+          onLoadMore={loadMore}
+          isLoading={isLoadingMore}
+          className="home-feed__load-more"
+          buttonClassName="home-feed__load-more-btn"
+        />
+      ) : null}
+    </>
   )
 }
 

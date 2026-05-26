@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowRight, FolderGit2, LogIn, Users } from "lucide-react"
+import { FolderGit2, LogIn, Users } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
@@ -109,6 +109,9 @@ function HomeSidebar({ activeDid }: { activeDid: string }) {
 
   return (
     <>
+      <Link href={profileBase} className="home__profile-link">
+        Go to my profile
+      </Link>
       <SidebarSection
         title="My groups"
         icon={Users}
@@ -164,14 +167,16 @@ function SidebarSection<T>({
   moreHref,
   emptyLabel,
 }: SidebarSectionProps<T>) {
-  // "Show more" only makes sense when there are extras to reveal —
+  // "Show all" only makes sense when there are extras to reveal —
   // hide when the preview already contains everything.
   const hasMore = total > items.length
   return (
     <section className="home-section">
       <header className="home-section__head">
         <Icon size={14} strokeWidth={1.75} aria-hidden />
-        <h2 className="home-section__title">{title}</h2>
+        <Link href={moreHref} className="home-section__title-link">
+          <h2 className="home-section__title">{title}</h2>
+        </Link>
         {total > 0 ? (
           <span className="home-section__count">{total}</span>
         ) : null}
@@ -187,8 +192,7 @@ function SidebarSection<T>({
       )}
       {hasMore ? (
         <Link href={moreHref} className="home-section__more">
-          Show more
-          <ArrowRight size={12} strokeWidth={1.75} aria-hidden />
+          Show all
         </Link>
       ) : null}
     </section>

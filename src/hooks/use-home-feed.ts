@@ -80,15 +80,24 @@ export type HomeFeedEvent =
     })
 
 const PAGE_SIZE = 25
-const DISPLAY_CAP = 60
 
 interface State {
   events: HomeFeedEvent[]
   isLoading: boolean
+  isLoadingMore: boolean
+  hasMore: boolean
+  cursor: string | null
   error: string | null
 }
 
-const EMPTY_STATE: State = { events: [], isLoading: true, error: null }
+const EMPTY_STATE: State = {
+  events: [],
+  isLoading: true,
+  isLoadingMore: false,
+  hasMore: false,
+  cursor: null,
+  error: null,
+}
 
 /**
  * Aggregator hook that powers the home page's activity feed.
@@ -121,11 +130,16 @@ export function useHomeFeed(followedDids: Set<string>) {
   const followedRef = useRef(followedDids)
   followedRef.current = followedDids
 
+  // Snapshot of the latest state so callbacks (loadMore) see the
+  // current cursor/loading flags without re-binding on every render.
+  const stateRef = useRef(state)
+  stateRef.current = state
+
   const load = useCallback(async (signal: AbortSignal) => {
-    setState((prev) => ({ ...prev, isLoading: true, error: null }))
+    setState((prev) => ({ ...prev, ...EMPTY_STATE, isLoading: true }))
     const authors = Array.from(followedRef.current)
     if (authors.length === 0) {
-      setState({ events: [], isLoading: false, error: null })
+      setState({ ...EMPTY_STATE, isLoading: false })
       return
     }
     try {
@@ -139,20 +153,64 @@ export function useHomeFeed(followedDids: Set<string>) {
       const hydrated = await hydrateFeedEvents(page.events, signal)
       if (signal.aborted) return
 
-      const events = hydrated
-        .map(hydratedToHomeFeedEvent)
-        .slice(0, DISPLAY_CAP)
+      const events = hydrated.map(hydratedToHomeFeedEvent)
 
-      setState({ events, isLoading: false, error: null })
+      setState({
+        events,
+        isLoading: false,
+        isLoadingMore: false,
+        hasMore: page.hasNextPage,
+        cursor: page.endCursor,
+        error: null,
+      })
     } catch (err) {
       if (signal.aborted) return
       console.error("[home-feed] follower-events fetch failed:", err)
       setState({
-        events: [],
+        ...EMPTY_STATE,
         isLoading: false,
         error: err instanceof Error ? err.message : "Failed to load feed",
       })
     }
+  }, [])
+
+  const loadMore = useCallback(() => {
+    const snap = stateRef.current
+    if (snap.isLoading || snap.isLoadingMore || !snap.hasMore || !snap.cursor) {
+      return
+    }
+    const authors = Array.from(followedRef.current)
+    if (authors.length === 0) return
+
+    setState((prev) => ({ ...prev, isLoadingMore: true }))
+    ;(async () => {
+      try {
+        const page = await fetchFollowerEvents({
+          authors,
+          first: PAGE_SIZE,
+          after: snap.cursor ?? undefined,
+        })
+        const hydrated = await hydrateFeedEvents(page.events)
+        const fresh = hydrated.map(hydratedToHomeFeedEvent)
+        setState((prev) => {
+          // Dedupe by URI in case the server returns overlapping
+          // edges across a cursor boundary.
+          const seen = new Set(prev.events.map((e) => e.uri))
+          const append = fresh.filter((e) => !seen.has(e.uri))
+          return {
+            ...prev,
+            events: [...prev.events, ...append],
+            isLoadingMore: false,
+            hasMore: page.hasNextPage,
+            cursor: page.endCursor,
+          }
+        })
+      } catch (err) {
+        console.warn("[home-feed] loadMore failed:", err)
+        // Stop offering pagination on error — keep the visible list.
+        setState((prev) => ({ ...prev, isLoadingMore: false, hasMore: false }))
+      }
+    })()
   }, [])
 
   useEffect(() => {
@@ -163,7 +221,7 @@ export function useHomeFeed(followedDids: Set<string>) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [followedKey])
 
-  return state
+  return { ...state, loadMore }
 }
 
 /**

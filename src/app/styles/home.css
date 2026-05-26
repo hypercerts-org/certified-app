@@ -42,11 +42,23 @@
   }
 }
 
+/* Left pane width scales with viewport: 335px at full width, 260px
+   at mid-widths, then drops entirely below 760px (mobile, where the
+   layout collapses to a single column). The page-frame vertical
+   divider follows the same breakpoints via a custom property so the
+   `.home-page::before` rule doesn't repeat the math. */
 .home__layout {
+  --home-sidebar-width: 335px;
   display: grid;
-  grid-template-columns: 335px 1fr;
+  grid-template-columns: var(--home-sidebar-width) 1fr;
   gap: 0;
   align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .home__layout {
+    --home-sidebar-width: 260px;
+  }
 }
 
 /* Vertical divider between the sidebar and the main pane —
@@ -57,7 +69,7 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 335px;
+  left: var(--home-sidebar-width, 335px);
   width: 1px;
   background: var(--border-medium);
   pointer-events: none;
@@ -94,6 +106,25 @@
   }
 }
 
+.home__profile-link {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  text-decoration: none;
+  padding: 4px 4px;
+  border-radius: 6px;
+  transition: color var(--transition-fast);
+}
+
+.home__profile-link:hover {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .home-section {
   display: flex;
   flex-direction: column;
@@ -109,6 +140,18 @@
   color: var(--fg-secondary);
 }
 
+.home-section__title-link {
+  text-decoration: none;
+  color: inherit;
+  border-radius: 4px;
+}
+
+.home-section__title-link:hover .home-section__title {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .home-section__title {
   margin: 0;
   font-size: 0.7rem;
@@ -116,6 +159,7 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--fg-secondary);
+  transition: color var(--transition-fast);
 }
 
 .home-section__count {
@@ -243,7 +287,14 @@
 @media (max-width: 1100px) {
   .home__split {
     grid-template-columns: minmax(0, 1fr);
-    gap: 24px;
+    gap: 0;
+  }
+  /* The news rail is a side panel — when the layout collapses to a
+     single column, it would otherwise stack at the bottom of the
+     feed where nobody looks for it. Hide entirely below 1100px
+     rather than relocate. */
+  .home__news {
+    display: none;
   }
 }
 
@@ -491,5 +542,37 @@ a.home-feed__preview:hover {
   max-width: 480px;
   margin: 64px auto;
   padding: 0 16px;
+}
+
+/* ---------- Activity timeline load-more sentinel ---------- */
+
+.home-feed__load-more {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 32px;
+}
+
+.home-feed__load-more-btn {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  background: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.home-feed__load-more-btn:hover {
+  color: var(--fg-primary);
+  background: var(--bg-sunken);
+  border-color: var(--border-hover);
+}
+
+.home-feed__load-more-btn:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 

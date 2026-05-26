@@ -22,8 +22,10 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
 import { useOrg } from "@/lib/groups/org-context";
-import { resolvePostSwitchPath } from "@/lib/groups/navigation";
-import { isRouteVisibleToActor } from "@/lib/groups/personal-only";
+import {
+  isRouteVisibleToActor,
+  pathnameToPersonalOnlyRoute,
+} from "@/lib/groups/personal-only";
 import { useOrgProfile } from "@/hooks/use-org-profile";
 import { usePendingAwardsCount } from "@/hooks/use-pending-awards-count";
 import { useNotifications } from "@/lib/notifications-context";
@@ -194,13 +196,11 @@ export default function DesktopLeftRail() {
   // personal-handle path uses `handle` (from useSession) rather than
   // `identity.handle`, which is the *group* handle when activeOrg is
   // set and would otherwise send us to /profile/<group-handle>.
-  const brandHref = !isAuthenticated
-    ? "/"
-    : activeOrg
-      ? resolvePostSwitchPath(activeOrg)
-      : handle
-        ? `/profile/${encodeURIComponent(handle)}`
-        : "/profile";
+  // Brand mark sends authed viewers to /home (the activity feed) and
+  // unauthed to / (welcome redirector). Org-switch acting-as state
+  // is no longer load-bearing here — the user's mental model is
+  // "brand = home", not "brand = my current profile".
+  const brandHref = isAuthenticated ? "/home" : "/";
 
   // Personal-only visibility (Create, Endorsements, Groups) is decided
   // by lib/groups/personal-only.ts — same source of truth used by the
@@ -367,7 +367,17 @@ export default function DesktopLeftRail() {
                 switchOrg={switchOrg}
                 onAfterSwitch={(next) => {
                   setSwitcherOpen(false);
-                  router.push(resolvePostSwitchPath(next));
+                  // Stay on the current pathname unless the route is
+                  // personal-only AND the new actor is an org (in
+                  // which case the new persona wouldn't have access
+                  // — redirect to /home).
+                  const routeKey = pathnameToPersonalOnlyRoute(pathname || "")
+                  const nextIsOrg = !!next
+                  const dest =
+                    routeKey && !isRouteVisibleToActor(routeKey, nextIsOrg)
+                      ? "/home"
+                      : pathname || "/home"
+                  router.push(dest);
                 }}
                 onSignOut={() => {
                   setSwitcherOpen(false);

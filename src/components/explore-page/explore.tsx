@@ -15,6 +15,7 @@ import {
 import CertIcon from "@/components/ui/cert-icon"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
+import SharedLoadMoreSentinel from "@/components/ui/load-more-sentinel"
 import ActivityCard from "@/components/feed/activity-card"
 import CertListRow from "./cert-list-row"
 import ExploreUserCard from "./explore-user-card"
@@ -550,39 +551,13 @@ function LoadMoreSentinel({
   onLoadMore: () => void
   isLoading: boolean
 }) {
-  const ref = useRef<HTMLDivElement | null>(null)
-  // Capture the latest onLoadMore so the observer doesn't bind a
-  // stale closure when the callback identity changes.
-  const cbRef = useRef(onLoadMore)
-  useEffect(() => {
-    cbRef.current = onLoadMore
-  }, [onLoadMore])
-  useEffect(() => {
-    if (typeof IntersectionObserver === "undefined") return
-    const el = ref.current
-    if (!el) return
-    const obs = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) cbRef.current()
-        }
-      },
-      { rootMargin: "200px 0px" },
-    )
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [])
   return (
-    <div ref={ref} className="explore__load-more">
-      <button
-        type="button"
-        className="explore__load-more-btn"
-        onClick={onLoadMore}
-        disabled={isLoading}
-      >
-        {isLoading ? "Loading…" : "Load more"}
-      </button>
-    </div>
+    <SharedLoadMoreSentinel
+      onLoadMore={onLoadMore}
+      isLoading={isLoading}
+      className="explore__load-more"
+      buttonClassName="explore__load-more-btn"
+    />
   )
 }
 
