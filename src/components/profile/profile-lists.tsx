@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
+import { useUrlParam } from "@/hooks/use-url-param"
 import {
   ArrowLeft,
   ChevronRight,
@@ -69,22 +70,13 @@ export default function ProfileLists({ did, viewerIsOwner }: ProfileListsProps) 
   // returns to the detail view rather than the section list, and
   // c) deep-links work. Mirrors the existing `?sub=` pattern on the
   // endorsements + followers tabs.
-  const pathname = usePathname()
+  //
+  // Default mode is "push" so opening a list creates a back-able
+  // history entry; specific call sites pass "replace" when the
+  // entry shouldn't survive (e.g. after deleting the underlying
+  // record).
+  const [selectedRkey, setSelectedRkey] = useUrlParam("list", { mode: "push" })
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const selectedRkey = searchParams?.get("list") ?? null
-  const setSelectedRkey = useCallback(
-    (next: string | null, mode: "push" | "replace" = "push") => {
-      const params = new URLSearchParams(searchParams?.toString() ?? "")
-      if (next) params.set("list", next)
-      else params.delete("list")
-      const qs = params.toString()
-      const target = qs ? `${pathname}?${qs}` : (pathname ?? "")
-      if (mode === "push") router.push(target, { scroll: false })
-      else router.replace(target, { scroll: false })
-    },
-    [pathname, router, searchParams],
-  )
   const [creating, setCreating] = useState<TypedListType | null>(null)
 
   // Drop selection if the selected list disappears (deletion, refetch

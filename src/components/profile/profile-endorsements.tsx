@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useUrlParam } from "@/hooks/use-url-param"
 import {
   ArrowUpDown,
   Check,
@@ -109,22 +109,11 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
   // the viewer on the same Given/Received view, and a direct link
   // can deep-link straight into it. Default "received" stays
   // implicit — no `sub=received` in the URL.
-  const pathname = usePathname()
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const subParam = searchParams?.get("sub")
+  const [subParam, setSubParam] = useUrlParam("sub", { defaultValue: "received" })
   const tab: SubTab = subParam === "given" ? "given" : "received"
   const setTab = useCallback(
-    (next: SubTab) => {
-      const params = new URLSearchParams(searchParams?.toString() ?? "")
-      if (next === "received") params.delete("sub")
-      else params.set("sub", next)
-      const qs = params.toString()
-      router.replace(qs ? `${pathname}?${qs}` : (pathname ?? ""), {
-        scroll: false,
-      })
-    },
-    [pathname, router, searchParams],
+    (next: SubTab) => setSubParam(next),
+    [setSubParam],
   )
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState<SortKey>("created-desc")
