@@ -184,7 +184,7 @@ function HomeSidebar({ activeDid }: { activeDid: string }) {
   return (
     <>
       <SidebarSection
-        title="Groups"
+        title="My groups"
         icon={Users}
         isLoading={groupsLoading && previewGroups.length === 0}
         items={previewGroups}
@@ -194,7 +194,7 @@ function HomeSidebar({ activeDid }: { activeDid: string }) {
         emptyLabel="No groups yet."
       />
       <SidebarSection
-        title="Projects"
+        title="My projects"
         icon={FolderGit2}
         isLoading={projectsLoading && previewProjects.length === 0}
         items={previewProjects}
@@ -204,7 +204,7 @@ function HomeSidebar({ activeDid }: { activeDid: string }) {
         emptyLabel="No projects yet."
       />
       <SidebarSection
-        title="Certs"
+        title="My certs"
         icon={Award}
         isLoading={certsLoading && previewCerts.length === 0}
         items={previewCerts}
