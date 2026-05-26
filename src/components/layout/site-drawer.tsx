@@ -85,7 +85,7 @@ export default function SiteDrawer({
       >
         <header className="site-drawer__head">
           <Link
-            href="/"
+            href="/home"
             className="site-drawer__brand"
             onClick={onClose}
             aria-label="Certified home"

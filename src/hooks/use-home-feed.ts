@@ -14,11 +14,13 @@ import type { CollectionRecord } from "@/lib/atproto/collection"
 
 export interface UseHomeFeedOptions {
   /**
-   * When false (default), cert.create events whose subject carries
-   * a `draft` or `likely-test` label are dropped from the visible
-   * feed. Set to true to show them anyway — backs a UI toggle.
+   * Cert quality labels to exclude at the hydration round-trip.
+   * Defaults to `DEFAULT_HIDDEN_CERT_LABELS` (draft + likely-test) so
+   * the feed hides low-quality records out of the box. Caller can
+   * pass any subset of the Hyperlabel tiers — the UI surfaces this
+   * via the filter popover above the feed.
    */
-  includeLowQuality?: boolean
+  excludeCertLabels?: readonly string[]
 }
 
 /**
@@ -133,7 +135,7 @@ export function useHomeFeed(
   options: UseHomeFeedOptions = {},
 ) {
   const [state, setState] = useState<State>(EMPTY_STATE)
-  const { includeLowQuality = false } = options
+  const { excludeCertLabels = DEFAULT_HIDDEN_CERT_LABELS } = options
 
   // Stable string key — parent useMemo of `followedDids` recomputes
   // a new Set instance whenever the union recomputes; we don't want
@@ -142,6 +144,13 @@ export function useHomeFeed(
     if (followedDids.size === 0) return "[]"
     return Array.from(followedDids).sort().join(",")
   }, [followedDids])
+
+  // Stable key for the exclude-labels list — drives the refetch
+  // effect below so toggling the filter re-runs the page-1 load.
+  const excludeKey = useMemo(
+    () => [...excludeCertLabels].sort().join(","),
+    [excludeCertLabels],
+  )
 
   // Carry the latest set into the effect closure without re-running.
   const followedRef = useRef(followedDids)
@@ -155,12 +164,8 @@ export function useHomeFeed(
   // Snapshot the filter so the existing load() / loadMore() callbacks
   // (which deliberately have empty deps for stability) can read the
   // latest value without re-binding.
-  const excludeCertLabelsRef = useRef<readonly string[]>(
-    includeLowQuality ? [] : DEFAULT_HIDDEN_CERT_LABELS,
-  )
-  excludeCertLabelsRef.current = includeLowQuality
-    ? []
-    : DEFAULT_HIDDEN_CERT_LABELS
+  const excludeCertLabelsRef = useRef<readonly string[]>(excludeCertLabels)
+  excludeCertLabelsRef.current = excludeCertLabels
 
   const load = useCallback(async (signal: AbortSignal) => {
     setState((prev) => ({ ...prev, ...EMPTY_STATE, isLoading: true }))
@@ -268,9 +273,11 @@ export function useHomeFeed(
     const controller = new AbortController()
     load(controller.signal)
     return () => controller.abort()
-    // The followedKey dep covers contents-change; load is stable.
+    // followedKey covers follow-set changes; excludeKey covers filter
+    // toggles — both should retrigger a from-the-head fetch. load is
+    // stable (useCallback with []).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [followedKey])
+  }, [followedKey, excludeKey])
 
   return { ...state, loadMore }
 }

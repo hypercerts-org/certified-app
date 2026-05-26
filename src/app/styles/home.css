@@ -290,8 +290,16 @@
   min-width: 0;
 }
 
-.home__feed-heading {
+.home-feed__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin: 0 0 12px;
+}
+
+.home-feed__heading {
+  margin: 0;
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -554,28 +562,94 @@ a.home-feed__preview:hover {
   padding: 0 16px;
 }
 
-/* ---------- Quality filter toggle (above the timeline) ---------- */
+/* ---------- Quality filter popover (right side of feed header) ---------- */
 
-.home-feed__quality-filter {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 12px;
-  padding: 4px 6px;
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.8125rem;
-  color: var(--fg-secondary);
-  cursor: pointer;
-  user-select: none;
-  border-radius: 6px;
-  transition: color var(--transition-fast);
+.home-feed__filter {
+  position: relative;
 }
 
-.home-feed__quality-filter:hover {
+.home-feed__filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.home-feed__filter-btn:hover {
+  background: var(--bg-sunken);
   color: var(--fg-primary);
 }
 
-.home-feed__quality-filter input {
+.home-feed__filter-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring, var(--fg-primary));
+}
+
+/* When any tier is excluded, give the trigger a subtle filled state
+   so the filter doesn't look idle. */
+.home-feed__filter-btn--active {
+  color: var(--fg-primary);
+  border-color: var(--border-medium);
+  background: var(--bg-sunken);
+}
+
+.home-feed__filter-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  min-width: 184px;
+  padding: 10px 8px 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.home-feed__filter-title {
+  margin: 0 4px 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-secondary);
+}
+
+.home-feed__filter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.home-feed__filter-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  color: var(--fg-primary);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition-fast);
+}
+
+.home-feed__filter-item:hover {
+  background: var(--bg-sunken);
+}
+
+.home-feed__filter-item input {
   width: 14px;
   height: 14px;
   accent-color: var(--fg-primary);

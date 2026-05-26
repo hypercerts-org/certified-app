@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { Inbox, MapPin, Users } from "lucide-react"
+import { Inbox, MapPin, SlidersHorizontal, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -16,8 +16,37 @@ import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { formatShortDate } from "@/lib/utils/format-date"
 import { getInitials } from "@/lib/utils/initials"
 import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
+import {
+  DEFAULT_HIDDEN_CERT_LABELS,
+  HYPERLABEL_TIERS,
+  type HyperlabelTier,
+} from "@/lib/atproto/labels"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { CollectionRecord } from "@/lib/atproto/collection"
+
+/**
+ * Filter popover order — best to worst, opposite of HYPERLABEL_TIERS
+ * (which goes lowest → highest for indexer-side comparisons).
+ */
+const FILTER_TIERS: readonly HyperlabelTier[] = [
+  "high-quality",
+  "standard",
+  "draft",
+  "likely-test",
+]
+
+const TIER_LABELS: Record<HyperlabelTier, string> = {
+  "high-quality": "High quality",
+  standard: "Standard",
+  draft: "Draft",
+  "likely-test": "Likely test",
+}
+
+const DEFAULT_INCLUDED_TIERS: ReadonlySet<HyperlabelTier> = new Set(
+  HYPERLABEL_TIERS.filter(
+    (t) => !DEFAULT_HIDDEN_CERT_LABELS.includes(t),
+  ),
+)
 
 /**
  * GitHub-style activity timeline for the home page. Each entry is
@@ -38,10 +67,61 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
     isLoading: followsLoading,
     error: followsError,
   } = useFollowedDids(activeDid)
-  const [includeLowQuality, setIncludeLowQuality] = useState(false)
+  const [includedTiers, setIncludedTiers] = useState<Set<HyperlabelTier>>(
+    () => new Set(DEFAULT_INCLUDED_TIERS),
+  )
+  const excludeCertLabels = useMemo(
+    () => HYPERLABEL_TIERS.filter((t) => !includedTiers.has(t)),
+    [includedTiers],
+  )
   const { events, isLoading, isLoadingMore, hasMore, loadMore, error } =
-    useHomeFeed(followedDids, { includeLowQuality })
+    useHomeFeed(followedDids, { excludeCertLabels })
 
+  return (
+    <>
+      <header className="home-feed__header">
+        <h2 className="home-feed__heading">Feed</h2>
+        <QualityFilter
+          included={includedTiers}
+          onChange={setIncludedTiers}
+        />
+      </header>
+      <HomeFeedBody
+        followsLoading={followsLoading}
+        followsError={!!followsError}
+        followedCount={followedDids.size}
+        isLoading={isLoading}
+        error={error}
+        events={events}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
+        loadMore={loadMore}
+      />
+    </>
+  )
+}
+
+function HomeFeedBody({
+  followsLoading,
+  followsError,
+  followedCount,
+  isLoading,
+  error,
+  events,
+  hasMore,
+  isLoadingMore,
+  loadMore,
+}: {
+  followsLoading: boolean
+  followsError: boolean
+  followedCount: number
+  isLoading: boolean
+  error: string | null
+  events: HomeFeedEvent[]
+  hasMore: boolean
+  isLoadingMore: boolean
+  loadMore: () => void
+}) {
   if (followsLoading || isLoading) {
     return (
       <div className="home-feed__loading">
@@ -49,7 +129,6 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
       </div>
     )
   }
-
   if (followsError) {
     return (
       <div className="feed__warning" role="alert">
@@ -57,8 +136,7 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
       </div>
     )
   }
-
-  if (followedDids.size === 0) {
+  if (followedCount === 0) {
     return (
       <EmptyState
         icon={Users}
@@ -67,7 +145,6 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
       />
     )
   }
-
   if (error) {
     return (
       <div className="feed__warning" role="alert">
@@ -75,7 +152,6 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
       </div>
     )
   }
-
   if (events.length === 0) {
     return (
       <EmptyState
@@ -85,13 +161,8 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
       />
     )
   }
-
   return (
     <>
-      <QualityFilter
-        includeLowQuality={includeLowQuality}
-        onChange={setIncludeLowQuality}
-      />
       <ol className="home-feed">
         {events.map((event) => (
           <li key={event.uri} className="home-feed__item">
@@ -112,27 +183,79 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
 }
 
 /**
- * Small inline toggle above the feed. When checked, the feed
- * includes cert.create events tagged `draft` or `likely-test` by
- * the hyperlabel — otherwise (default) they're filtered out at the
- * hydration round-trip and the matching rows never render.
+ * Right-aligned icon button next to the "Feed" heading. Opens a
+ * popover with one checkbox per Hyperlabel tier. The selected set
+ * drives `excludeCertLabels` at the hydration round-trip — anything
+ * unchecked is filtered out before reaching the timeline.
  */
 function QualityFilter({
-  includeLowQuality,
+  included,
   onChange,
 }: {
-  includeLowQuality: boolean
-  onChange: (next: boolean) => void
+  included: Set<HyperlabelTier>
+  onChange: (next: Set<HyperlabelTier>) => void
 }) {
+  const [open, setOpen] = useState(false)
+  const wrapRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handleDown = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false)
+    }
+    document.addEventListener("mousedown", handleDown)
+    document.addEventListener("keydown", handleKey)
+    return () => {
+      document.removeEventListener("mousedown", handleDown)
+      document.removeEventListener("keydown", handleKey)
+    }
+  }, [open])
+
+  const toggle = (tier: HyperlabelTier) => {
+    const next = new Set(included)
+    if (next.has(tier)) next.delete(tier)
+    else next.add(tier)
+    onChange(next)
+  }
+
+  const activeCount = included.size
+  const filtered = activeCount !== HYPERLABEL_TIERS.length
+
   return (
-    <label className="home-feed__quality-filter">
-      <input
-        type="checkbox"
-        checked={includeLowQuality}
-        onChange={(e) => onChange(e.target.checked)}
-      />
-      <span>Include drafts and test data</span>
-    </label>
+    <div className="home-feed__filter" ref={wrapRef}>
+      <button
+        type="button"
+        className={`home-feed__filter-btn${filtered ? " home-feed__filter-btn--active" : ""}`}
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="true"
+        aria-expanded={open}
+        aria-label="Filter feed by cert quality"
+      >
+        <SlidersHorizontal size={14} strokeWidth={1.75} aria-hidden />
+      </button>
+      {open ? (
+        <div className="home-feed__filter-pop" role="dialog" aria-label="Cert quality filters">
+          <p className="home-feed__filter-title">Show certs labeled</p>
+          <ul className="home-feed__filter-list">
+            {FILTER_TIERS.map((tier) => (
+              <li key={tier}>
+                <label className="home-feed__filter-item">
+                  <input
+                    type="checkbox"
+                    checked={included.has(tier)}
+                    onChange={() => toggle(tier)}
+                  />
+                  <span>{TIER_LABELS[tier]}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
   )
 }
 
