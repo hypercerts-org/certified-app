@@ -48,6 +48,8 @@ import type {
 } from "@/lib/atproto/activity-types"
 import type { HypercertsSmallImage } from "@/lib/atproto/types"
 import type { BlobRef } from "@atproto/api"
+import AddToListMenu from "@/components/lists/add-to-list-menu"
+import { LIST_CERTS_TYPE } from "@/lib/atproto/typed-lists"
 
 interface ActivityDetailProps {
   did: string
@@ -716,6 +718,16 @@ export default function ActivityDetail({
             />
           ) : null}
         </div>
+
+        {rkey ? (
+          <div className="cert-detail__actions">
+            <AddToListMenu
+              targetUri={`at://${did}/org.hypercerts.claim.activity/${rkey}`}
+              targetCid={cid}
+              targetType={LIST_CERTS_TYPE}
+            />
+          </div>
+        ) : null}
 
         <dl className="cert-detail__meta">
           {/* "Created" lives in the headline byline now — no need to

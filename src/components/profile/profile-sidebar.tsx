@@ -40,6 +40,8 @@ import {
   deleteEndorsementAward,
 } from "@/lib/atproto/badges"
 import { appendItemToList } from "@/lib/atproto/collection"
+import AddToListMenu from "@/components/lists/add-to-list-menu"
+import { LIST_ACCOUNTS_TYPE } from "@/lib/atproto/typed-lists"
 import type { CertifiedProfile } from "@/lib/atproto/types"
 import {
   newDraftUrlRow,
@@ -215,6 +217,19 @@ export default function ProfileSidebar({
             hasPending={hasPendingAvatar}
           />
         ) : null}
+      </div>
+
+      {/* "Add to list" affordance — first row below the avatar. The
+          menu component renders nothing for signed-out viewers, so
+          this only shows up to authenticated users. The CID is
+          resolved lazily on click since the sidebar doesn't track
+          the actor-profile record's CID. */}
+      <div className="profile-sidebar__actions">
+        <AddToListMenu
+          targetUri={`at://${did}/app.certified.actor.profile/self`}
+          targetCid=""
+          targetType={LIST_ACCOUNTS_TYPE}
+        />
       </div>
 
       <div className="profile-sidebar__name-block">

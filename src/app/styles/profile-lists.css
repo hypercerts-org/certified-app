@@ -424,6 +424,189 @@
   gap: 8px;
 }
 
+/* Shared "actions row" beneath the primary image on cert / project /
+   profile overview surfaces — hosts the AddToListMenu trigger today,
+   ready for siblings later. Left-aligned so the 3-dot button sits at
+   the start of the left pane. */
+.cert-detail__actions,
+.project-detail__actions,
+.profile-sidebar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+/* ---------- AddToListMenu (cert / project / profile overviews) ---------- */
+
+.add-to-list {
+  position: relative;
+  display: inline-flex;
+}
+
+.add-to-list__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.add-to-list__trigger:hover {
+  background: var(--bg-sunken);
+}
+
+.add-to-list__trigger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring, var(--fg-primary));
+}
+
+.add-to-list__pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 50;
+  min-width: 168px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.add-to-list__pop-item {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg-primary);
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.add-to-list__pop-item:hover {
+  background: var(--bg-sunken);
+}
+
+/* ---------- AddToListModal ---------- */
+
+.add-to-list__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.add-to-list__loading {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0;
+}
+
+.add-to-list__empty {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+}
+
+.add-to-list__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.add-to-list__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.add-to-list__row-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9375rem;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.add-to-list__error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-error);
+}
+
+.add-to-list__create-btn {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 6px 10px;
+  border: 1px dashed var(--border-medium);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fg-primary);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.add-to-list__create-btn:hover {
+  background: var(--bg-sunken);
+}
+
+.add-to-list__create-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.add-to-list__create {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.add-to-list__create-input {
+  width: 100%;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--fg-primary);
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+}
+
+.add-to-list__create-input:focus {
+  outline: none;
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+.add-to-list__create-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 /* ---------- Add-items modal ---------- */
 
 .profile-lists__add-body {
