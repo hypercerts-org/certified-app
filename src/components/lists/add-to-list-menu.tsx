@@ -5,11 +5,11 @@ import { Copy, ListPlus, MoreVertical, X } from "lucide-react"
 import AppDialog from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import { authFetch } from "@/lib/auth/fetch"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useTypedLists } from "@/hooks/use-typed-lists"
 import {
   itemUriMatchesType,
+  resolveRecordCid,
   type TypedListType,
 } from "@/lib/atproto/typed-lists"
 
@@ -377,17 +377,3 @@ function AddToListModal({
   )
 }
 
-async function resolveRecordCid(uri: string): Promise<string | null> {
-  const parts = uri.split("/")
-  if (parts.length < 5) return null
-  const [, , repo, collection, rkey] = parts
-  if (!repo || !collection || !rkey) return null
-  const params = new URLSearchParams({ repo, collection, rkey })
-  const res = await authFetch(
-    `/api/xrpc/com/atproto/repo/getRecord?${params.toString()}`,
-    { cache: "no-store" },
-  )
-  if (!res.ok) return null
-  const data = (await res.json()) as { cid?: string }
-  return data.cid ?? null
-}

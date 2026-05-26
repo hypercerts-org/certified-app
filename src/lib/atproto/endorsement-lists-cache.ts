@@ -1,16 +1,24 @@
 /**
- * Module-level invalidation token for endorsement-list collections.
+ * Module-level invalidation token for `org.hypercerts.collection`
+ * records — the shared write/refresh bus for both the older
+ * endorsement-list flow AND the typed-list flow (`list:certs` /
+ * `list:projects` / `list:accounts`).
  *
- * Mirrors `endorsement-closure-cache.ts`: a tiny store with a
- * useSyncExternalStore-backed hook. Bumping the version notifies
- * every subscribed `useEndorsementLists` instance so they all
- * refetch — without the call site having to know what's mounted.
+ * Despite the file name (kept for git-history continuity), every
+ * mutation that touches a collection record broadcasts through
+ * this token:
+ *   - endorsement-list create/update/delete + item append/remove
+ *     (`src/lib/atproto/collection.ts`)
+ *   - typed-list create/update/delete + item append/remove
+ *     (`src/lib/atproto/typed-lists.ts`)
+ *   - `deleteEndorsementAward` (purges the award from every list
+ *     it appeared in, so list-detail views need to refresh too)
  *
- * Use case: a revoke from the Given panel deletes the award AND
- * (via `purgeAwardFromLists` inside `deleteEndorsementAward`) drops
- * the entry from every list that referenced it. The list-detail
- * view above needs to reflect the removal even though the mutation
- * happened from a sibling component the hook can't see.
+ * Pattern mirrors `endorsement-closure-cache.ts`: a tiny store
+ * fronted by `useSyncExternalStore`. Bumping the version notifies
+ * every subscribed hook instance so they all refetch — without the
+ * call site having to know what's mounted across the component
+ * tree.
  */
 
 let version = 0

@@ -983,7 +983,7 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
       after: cursor ?? undefined,
       search: search || undefined,
       excludeLabels: args.excludeCertLabels?.length ? [...args.excludeCertLabels] : undefined,
-      labels: args.includeCertLabels?.length ? ([...args.includeCertLabels] as string[]) : undefined,
+      labels: args.includeCertLabels?.length ? [...args.includeCertLabels] : undefined,
       signal: signal ?? undefined,
     })
     return {
@@ -1001,7 +1001,7 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
       after: cursor ?? undefined,
       search: search || undefined,
       excludeLabels: args.excludeCertLabels?.length ? [...args.excludeCertLabels] : undefined,
-      labels: args.includeCertLabels?.length ? ([...args.includeCertLabels] as string[]) : undefined,
+      labels: args.includeCertLabels?.length ? [...args.includeCertLabels] : undefined,
       signal: signal ?? undefined,
     })
     return {
@@ -1037,7 +1037,7 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
       authors: scopedAuthors,
       search: search || undefined,
       excludeLabels: args.excludeCertLabels?.length ? [...args.excludeCertLabels] : undefined,
-      labels: args.includeCertLabels?.length ? ([...args.includeCertLabels] as string[]) : undefined,
+      labels: args.includeCertLabels?.length ? [...args.includeCertLabels] : undefined,
       signal: signal ?? undefined,
     })
     return {
@@ -1097,7 +1097,7 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
     authors: scopedAuthors,
     search: search || undefined,
     excludeLabels: args.excludeCertLabels?.length ? [...args.excludeCertLabels] : undefined,
-    labels: args.includeCertLabels?.length ? ([...args.includeCertLabels] as string[]) : undefined,
+    labels: args.includeCertLabels?.length ? [...args.includeCertLabels] : undefined,
     signal: signal ?? undefined,
   })
   return {

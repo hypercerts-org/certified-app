@@ -46,50 +46,6 @@ export const MAX_AUTHORS_FILTER_SIZE = 500
 /** Server-enforced cap on `first`. */
 export const MAX_FEED_PAGE_SIZE = 50
 export const DEFAULT_FEED_PAGE_SIZE = 20
-/** Polling cadence when the tab is visible. */
-export const FOREGROUND_POLL_MS = 30_000
-/** Polling cadence when the tab is hidden (per issue's load planning). */
-export const BACKGROUND_POLL_MS = 5 * 60_000
-
-/**
- * Documented kinds (per magic-indexer #122 + #125). The wire type
- * `FeedEvent.kind` stays `string` (open union) because a new
- * server-side mapping may ship before the client updates — the
- * dispatch site narrows to a known kind or falls through to the
- * fallback card.
- *
- * Issue #89 expanded the v1 set from 4 to 7. Deltas vs the #88
- * surface:
- *   - `badge.award` renamed to `endorsement.award`. Server now
- *     filters to endorsement-typed and non-rejected awards via the
- *     `endorsement_edge` materialised view.
- *   - Added: `evaluation.create`, `measurement.create`,
- *     `hyperboard.create`, `update.create` (the
- *     `context.attachment` variant with `json.contentType == "update"`).
- *   - `legacy.endorsement` stays in this list for backward compat
- *     and as a defensive case in the dispatcher, even though the
- *     new server doesn't emit it.
- */
-export const KNOWN_FEED_EVENT_KINDS = [
-  "cert.create",
-  "collection.create",
-  /**
-   * `project.created_with_cert` is the folded-pair kind introduced
-   * by magic-indexer#132 / PR #134. When a viewer creates a project
-   * and a cert in the same XRPC batch, the indexer emits a single
-   * event of this kind instead of two adjacent rows. `subjectUri`
-   * is the collection (project) URI; the cert URI(s) live inside
-   * the collection's `items[]` array.
-   */
-  "project.created_with_cert",
-  "evaluation.create",
-  "measurement.create",
-  "hyperboard.create",
-  "update.create",
-  "endorsement.award",
-  "legacy.endorsement",
-] as const
-export type KnownFeedEventKind = (typeof KNOWN_FEED_EVENT_KINDS)[number]
 
 // ============================================================================
 // Wire types

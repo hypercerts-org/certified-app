@@ -22,7 +22,6 @@
 import { authFetch } from "@/lib/auth/fetch"
 import { invalidateEndorsementLists } from "@/lib/atproto/endorsement-lists-cache"
 import type {
-  CollectionRecord,
   CollectionValue,
   ItemIdentifier,
 } from "@/lib/atproto/collection"
@@ -427,19 +426,29 @@ export async function removeManyFromTypedList(
   return { removed }
 }
 
-/** Helper so the hook can reuse the existing `CollectionRecord` type
- *  when a caller wants to map back to the loose shape. */
-export function toCollectionRecord(rec: TypedListRecord): CollectionRecord {
-  return {
-    uri: rec.uri,
-    cid: rec.cid,
-    value: {
-      $type: COLLECTION,
-      type: rec.type,
-      title: rec.title,
-      description: rec.description,
-      createdAt: rec.createdAt,
-      items: rec.items,
-    } as CollectionValue,
-  }
+/**
+ * Resolve a record's current CID via the XRPC proxy. Returns null
+ * when the URI is malformed or the record doesn't exist. Used by
+ * any caller that has an at:// URI but needs to write a strongRef
+ * to it (the strongRef's CID has to match the latest record on the
+ * referenced PDS).
+ *
+ * Lives here rather than each component's local helper file so the
+ * cert / project / profile "Add to list" menu, the bulk-paste
+ * modal, and the search-based add modal all share one
+ * implementation.
+ */
+export async function resolveRecordCid(uri: string): Promise<string | null> {
+  const parts = uri.split("/")
+  if (parts.length < 5) return null
+  const [, , repo, collection, rkey] = parts
+  if (!repo || !collection || !rkey) return null
+  const params = new URLSearchParams({ repo, collection, rkey })
+  const res = await authFetch(
+    `/api/xrpc/com/atproto/repo/getRecord?${params.toString()}`,
+    { cache: "no-store" },
+  )
+  if (!res.ok) return null
+  const data = (await res.json()) as { cid?: string }
+  return data.cid ?? null
 }

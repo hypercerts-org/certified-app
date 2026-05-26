@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   ChevronRight,
   ClipboardPaste,
-  Inbox,
   ListIcon,
   Pencil,
   Plus,
@@ -21,7 +20,6 @@ import Button from "@/components/ui/button"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import { authFetch } from "@/lib/auth/fetch"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useActivity } from "@/hooks/use-activity"
 import { useProject } from "@/hooks/use-project"
@@ -34,6 +32,7 @@ import {
   LIST_CERTS_TYPE,
   LIST_PROJECTS_TYPE,
   itemUriMatchesType,
+  resolveRecordCid,
   type TypedListRecord,
   type TypedListType,
 } from "@/lib/atproto/typed-lists"
@@ -1369,11 +1368,11 @@ async function searchAccounts(query: string, signal: AbortSignal): Promise<Searc
     if (!a.did) continue
     // app.certified.actor.profile records use the literal rkey "self" —
     // the at:// for an account-list item is at://<did>/app.certified.actor.profile/self.
-    // We don't have a CID for the profile record at search time; the
-    // PDS read on append uses the latest, so we use an empty CID and
-    // let the proxy resolve it. The lexicon validator only requires
-    // a string. (If this turns out to be brittle we can resolve the
-    // profile record's CID before append via a getRecord call.)
+    // Bluesky's actor search doesn't expose profile-record CIDs; we
+    // emit an empty placeholder and let `handleAdd` resolve the real
+    // CID on click via the shared `resolveRecordCid` helper before
+    // the strongRef is written. Keeps the typeahead fast — no per-
+    // result PDS round-trip — and writes never use an unsigned CID.
     out.push({
       uri: `at://${a.did}/${ITEM_NSID["list:accounts"]}/self`,
       cid: "",
@@ -1453,18 +1452,3 @@ async function searchProjects(query: string, signal: AbortSignal): Promise<Searc
   return out
 }
 
-async function resolveRecordCid(uri: string): Promise<string | null> {
-  // Parse at://<did>/<collection>/<rkey>.
-  const parts = uri.split("/")
-  if (parts.length < 5) return null
-  const [, , repo, collection, rkey] = parts
-  if (!repo || !collection || !rkey) return null
-  const params = new URLSearchParams({ repo, collection, rkey })
-  const res = await authFetch(
-    `/api/xrpc/com/atproto/repo/getRecord?${params.toString()}`,
-    { cache: "no-store" },
-  )
-  if (!res.ok) return null
-  const data = (await res.json()) as { cid?: string }
-  return data.cid ?? null
-}
