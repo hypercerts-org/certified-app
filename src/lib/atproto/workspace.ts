@@ -136,6 +136,101 @@ export async function fetchNetworkActors(
   }
 }
 
+// --------------------- Org-by-label + profiles-by-DID -----------------
+
+/**
+ * Walk the `appCertifiedActorOrganization` connection filtered by
+ * orglabeler tier labels (include or exclude). Pages through every
+ * match — the labeled-org set is small in practice (sub-100), so
+ * collecting all DIDs upfront is fine and lets the caller use the
+ * result for a downstream `authors:` / DID-set intersection.
+ */
+export async function fetchOrgDidsByLabel(opts: {
+  labels?: readonly string[]
+  excludeLabels?: readonly string[]
+  signal?: AbortSignal
+}): Promise<Set<string>> {
+  const { labels, excludeLabels, signal } = opts
+  if (
+    (!labels || labels.length === 0) &&
+    (!excludeLabels || excludeLabels.length === 0)
+  ) {
+    return new Set()
+  }
+  const out = new Set<string>()
+  let cursor: string | null = null
+  while (true) {
+    const variables: Record<string, unknown> = {
+      first: 100,
+      after: cursor,
+      labels: labels && labels.length > 0 ? [...labels] : null,
+      excludeLabels:
+        excludeLabels && excludeLabels.length > 0 ? [...excludeLabels] : null,
+    }
+    const res = await fetch(INDEXER_PROXY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ operationName: "OrganizationDidsByLabel", variables }),
+      signal,
+    })
+    if (!res.ok) break
+    const json = (await res.json()) as {
+      data?: {
+        appCertifiedActorOrganization?: {
+          edges: { node: { did: string } | null }[]
+          pageInfo: { hasNextPage: boolean; endCursor: string | null }
+        } | null
+      }
+    }
+    const conn = json.data?.appCertifiedActorOrganization
+    if (!conn) break
+    for (const edge of conn.edges) {
+      if (edge.node?.did) out.add(edge.node.did)
+    }
+    if (!conn.pageInfo.hasNextPage || !conn.pageInfo.endCursor) break
+    cursor = conn.pageInfo.endCursor
+  }
+  return out
+}
+
+/**
+ * Fetch actor profiles for a known set of DIDs. Bypasses the
+ * `NetworkActors` 100-actor pagination cap — caller passes the
+ * exact set they need, indexer returns up to 100 in one shot.
+ * Returns an empty array on empty input.
+ */
+export async function fetchNetworkActorsByDids(
+  dids: readonly string[],
+  signal?: AbortSignal,
+): Promise<NetworkActor[]> {
+  if (dids.length === 0) return []
+  const res = await fetch(INDEXER_PROXY_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      operationName: "NetworkActorsByDids",
+      variables: { dids: [...dids] },
+    }),
+    signal,
+  })
+  if (!res.ok) return []
+  const json = (await res.json()) as NetworkActorsGraphQLResponse
+  const edges = json.data?.appCertifiedActorProfile?.edges ?? []
+  const actors: NetworkActor[] = []
+  for (const edge of edges) {
+    if (!edge.node) continue
+    const n = edge.node
+    actors.push({
+      did: n.did,
+      displayName: n.displayName,
+      description: n.description,
+      avatarUrl: avatarUrlFromUnion(n.did, n.avatar),
+      createdAt: typeof n.createdAt === "string" ? n.createdAt : null,
+    })
+  }
+  return actors
+}
+
 // --------------------------- Workspace counts ---------------------------
 
 export type WorkspaceLexicon =

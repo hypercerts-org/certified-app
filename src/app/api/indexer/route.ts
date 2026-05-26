@@ -334,6 +334,65 @@ ${ACTIVITY_NODE_SELECTION}
     }
   `,
 
+  // Org DIDs filtered by orglabeler tier. Backs the explore page's
+  // "Account quality" filter on the certs + accounts tabs: get the
+  // set of org DIDs matching the viewer's tier selection, then
+  // either use it to scope the certs `authors` filter or to
+  // narrow the actor list. Same shape as `OrganizationDids` but
+  // adds the label include / exclude args.
+  OrganizationDidsByLabel: `
+    query OrganizationDidsByLabel(
+      $first: Int!
+      $after: String
+      $labels: [String!]
+      $excludeLabels: [String!]
+    ) {
+      appCertifiedActorOrganization(
+        first: $first
+        after: $after
+        labels: $labels
+        excludeLabels: $excludeLabels
+      ) {
+        totalCount
+        edges { cursor node { did } }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  `,
+
+  // Actor profiles for a specific set of DIDs. Bypasses the 100-
+  // most-recently-indexed pagination cap on `NetworkActors` when
+  // the caller already knows which DIDs they want — used by the
+  // explore page's "Account quality (include only)" path, where
+  // we resolve org DIDs via `OrganizationDidsByLabel` and then
+  // fetch the matching profiles in one shot.
+  NetworkActorsByDids: `
+    query NetworkActorsByDids($dids: [String!]!) {
+      appCertifiedActorProfile(
+        first: 100
+        where: { did: { in: $dids } }
+      ) {
+        totalCount
+        edges {
+          cursor
+          node {
+            uri
+            did
+            displayName
+            description
+            createdAt
+            avatar {
+              __typename
+              ... on OrgHypercertsDefsUri { uri }
+              ... on OrgHypercertsDefsSmallImage { image { ref mimeType } }
+            }
+          }
+        }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  `,
+
   // Per-actor counts of the major lexicons. One round-trip via
   // aliased connections — each branch shares the where: { did: $did }
   // filter so we get five small headers back in one fetch.
@@ -1030,6 +1089,22 @@ function buildVariables(
         first: clampFirst(vars.first, MAX_FIRST, 20),
         after: readString(vars.after, MAX_AFTER_LEN),
       }
+    }
+    case "OrganizationDidsByLabel": {
+      return {
+        first: clampFirst(vars.first, MAX_FIRST, 100),
+        after: readString(vars.after, MAX_AFTER_LEN),
+        labels: readLabelList(vars.labels),
+        excludeLabels: readLabelList(vars.excludeLabels),
+      }
+    }
+    case "NetworkActorsByDids": {
+      // Reuse the author-list reader: same shape (DID list, ≤500),
+      // same defensive truncation. Empty list is rejected — the
+      // op is meaningless without a target set.
+      const dids = readAuthorList(vars.dids)
+      if (dids === null || dids.length === 0) return null
+      return { dids }
     }
     case "ActorWorkspaceCounts": {
       const did = readDid(vars.did)
