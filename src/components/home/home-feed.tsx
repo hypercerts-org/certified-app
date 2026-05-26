@@ -93,15 +93,28 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
 }
 
 function HomeFeedRow({ event }: { event: HomeFeedEvent }) {
-  // Actor is denormalised onto the event by the indexer — no
-  // per-row useAuthorInfo lookup needed for the header.
-  const actor = event.actorProfile
+  // The indexer's denormalised `actorProfile` is empty in practice
+  // today (magic-indexer#130 — profile ingestion not enabled on
+  // prod). `useAuthorInfo` does the per-actor PDS resolve and caches
+  // at module scope. Prefer its data; treat the indexer's
+  // actorProfile as a first-paint hint when present.
+  const { info: lookup } = useAuthorInfo(event.actor)
+  const indexer = event.actorProfile
   const actorName =
-    actor.displayName || actor.handle || event.actor.slice(0, 16)
-  const actorAvatar = buildAvatarUrlFromCid(actor.did, actor.avatarCid)
-  const actorInitials = getInitials(actor.displayName, event.actor)
+    lookup?.displayName ||
+    indexer.displayName ||
+    lookup?.handle ||
+    indexer.handle ||
+    event.actor.slice(0, 16)
+  const actorAvatar =
+    lookup?.avatarUrl ||
+    buildAvatarUrlFromCid(indexer.did, indexer.avatarCid)
+  const actorInitials = getInitials(
+    lookup?.displayName ?? indexer.displayName,
+    event.actor,
+  )
   const profileHref = `/profile/${encodeURIComponent(
-    actor.handle || event.actor,
+    lookup?.handle || indexer.handle || event.actor,
   )}`
 
   return (

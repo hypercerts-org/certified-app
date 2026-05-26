@@ -113,17 +113,34 @@ function HomeFeedCard({ event }: { event: HomeFeedEvent }) {
 }
 
 function ActorHeader({ event }: { event: HomeFeedEvent }) {
-  const actor = event.actorProfile
+  // The indexer's denormalised `actorProfile` (displayName, avatarCid)
+  // is empty in practice today (magic-indexer#130 — profile ingestion
+  // not enabled on prod yet). `useAuthorInfo` does the per-actor PDS
+  // resolve and caches at module scope, so multiple cards for the
+  // same actor share one request. Prefer its data; treat the
+  // indexer's actorProfile as a first-paint hint when present.
+  const { info: lookup } = useAuthorInfo(event.actor)
+  const indexer = event.actorProfile
   const displayName =
-    actor.displayName || actor.handle || event.actor.slice(0, 16)
-  const initials = getInitials(actor.displayName, event.actor)
-  const avatarUrl = buildAvatarUrlFromCid(actor.did, actor.avatarCid)
+    lookup?.displayName ||
+    indexer.displayName ||
+    lookup?.handle ||
+    indexer.handle ||
+    event.actor.slice(0, 16)
+  const handle = lookup?.handle ?? indexer.handle
+  const initials = getInitials(
+    lookup?.displayName ?? indexer.displayName,
+    event.actor,
+  )
+  const avatarUrl =
+    lookup?.avatarUrl ||
+    buildAvatarUrlFromCid(indexer.did, indexer.avatarCid)
   const profileHref = `/profile/${encodeURIComponent(
-    actor.handle || event.actor,
+    handle || event.actor,
   )}`
   // Native tooltip on hover — shows the handle without crowding the
   // visible chrome. Falls back to the DID for actors with no handle.
-  const hoverHint = actor.handle ? `@${actor.handle}` : event.actor
+  const hoverHint = handle ? `@${handle}` : event.actor
   const actionLabel = actionLabelForEvent(event)
 
   return (
