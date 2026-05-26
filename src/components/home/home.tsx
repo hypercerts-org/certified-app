@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { FolderGit2, LogIn, Users } from "lucide-react"
+import { FolderGit2, LogIn, User, Users } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
@@ -109,9 +109,14 @@ function HomeSidebar({ activeDid }: { activeDid: string }) {
 
   return (
     <>
-      <Link href={profileBase} className="home__profile-link">
-        Go to my profile
-      </Link>
+      <section className="home-section">
+        <header className="home-section__head">
+          <User size={14} strokeWidth={1.75} aria-hidden />
+          <Link href={profileBase} className="home-section__title-link">
+            <h2 className="home-section__title">Go to my profile</h2>
+          </Link>
+        </header>
+      </section>
       <SidebarSection
         title="My groups"
         icon={Users}

@@ -106,25 +106,6 @@
   }
 }
 
-.home__profile-link {
-  display: inline-flex;
-  align-items: center;
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--fg-primary);
-  text-decoration: none;
-  padding: 4px 4px;
-  border-radius: 6px;
-  transition: color var(--transition-fast);
-}
-
-.home__profile-link:hover {
-  color: var(--fg-primary);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
 .home-section {
   display: flex;
   flex-direction: column;
