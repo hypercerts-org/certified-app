@@ -494,22 +494,36 @@ describe("/api/indexer trust boundary", () => {
   })
 
   describe("HydrateFeedPage", () => {
+    const allEmpty = {
+      activityUris: [],
+      collectionUris: [],
+      badgeAwardUris: [],
+      legacyEndorsementUris: [],
+      evaluationUris: [],
+      measurementUris: [],
+      hyperboardUris: [],
+      attachmentUris: [],
+    }
+
     it("forwards a mixed-kind page", async () => {
       const res = await postIndexer({
         operationName: "HydrateFeedPage",
         variables: {
+          ...allEmpty,
           activityUris: ["at://did:plc:a/org.hypercerts.claim.activity/abc"],
           collectionUris: ["at://did:plc:b/org.hypercerts.collection/def"],
-          badgeAwardUris: [],
-          legacyEndorsementUris: [],
+          evaluationUris: ["at://did:plc:c/org.hypercerts.context.evaluation/e"],
+          hyperboardUris: ["at://did:plc:d/org.hyperboards.board/h"],
         },
       })
       expect(res.status).toBe(200)
       const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
       expect(body.variables.activityUris).toHaveLength(1)
       expect(body.variables.collectionUris).toHaveLength(1)
+      expect(body.variables.evaluationUris).toHaveLength(1)
+      expect(body.variables.hyperboardUris).toHaveLength(1)
       expect(body.variables.badgeAwardUris).toEqual([])
-      expect(body.variables.legacyEndorsementUris).toEqual([])
+      expect(body.variables.attachmentUris).toEqual([])
     })
 
     it("400s when any *Uris is missing (not an array)", async () => {
@@ -519,7 +533,24 @@ describe("/api/indexer trust boundary", () => {
           activityUris: ["at://x"],
           collectionUris: ["at://y"],
           badgeAwardUris: [],
-          // legacyEndorsementUris omitted
+          // legacyEndorsementUris (and the new four) omitted
+        },
+      })
+      expect(res.status).toBe(400)
+    })
+
+    it("400s when one of the new-kind *Uris is missing", async () => {
+      const res = await postIndexer({
+        operationName: "HydrateFeedPage",
+        variables: {
+          activityUris: [],
+          collectionUris: [],
+          badgeAwardUris: [],
+          legacyEndorsementUris: [],
+          evaluationUris: [],
+          measurementUris: [],
+          hyperboardUris: [],
+          // attachmentUris omitted — the new buckets are required too
         },
       })
       expect(res.status).toBe(400)
@@ -529,12 +560,7 @@ describe("/api/indexer trust boundary", () => {
       const tooMany = Array.from({ length: 51 }, (_, i) => `at://x/${i}`)
       const res = await postIndexer({
         operationName: "HydrateFeedPage",
-        variables: {
-          activityUris: tooMany,
-          collectionUris: [],
-          badgeAwardUris: [],
-          legacyEndorsementUris: [],
-        },
+        variables: { ...allEmpty, activityUris: tooMany },
       })
       expect(res.status).toBe(400)
     })
@@ -542,12 +568,7 @@ describe("/api/indexer trust boundary", () => {
     it("400s on non-string URI entries", async () => {
       const res = await postIndexer({
         operationName: "HydrateFeedPage",
-        variables: {
-          activityUris: ["ok", 42],
-          collectionUris: [],
-          badgeAwardUris: [],
-          legacyEndorsementUris: [],
-        },
+        variables: { ...allEmpty, activityUris: ["ok", 42] },
       })
       expect(res.status).toBe(400)
     })

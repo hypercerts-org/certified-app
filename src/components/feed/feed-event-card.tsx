@@ -95,13 +95,13 @@ function FeedEventBody({ event, payload }: FeedEventCardProps) {
   if (payload?.kind === "collection.create") {
     return <CollectionCreateBody event={event} record={payload.record} />
   }
-  if (payload?.kind === "badge.award") {
+  if (payload?.kind === "endorsement.award") {
     return (
       <SubjectActionBody
         subjectDid={payload.subjectDid}
-        action="awarded a badge to"
+        action="endorsed"
         note={payload.note}
-        icon={<Award size={16} strokeWidth={1.75} aria-hidden="true" />}
+        icon={<Heart size={16} strokeWidth={1.75} aria-hidden="true" />}
       />
     )
   }
@@ -114,6 +114,14 @@ function FeedEventBody({ event, payload }: FeedEventCardProps) {
         icon={<Heart size={16} strokeWidth={1.75} aria-hidden="true" />}
       />
     )
+  }
+  if (
+    payload?.kind === "evaluation.create" ||
+    payload?.kind === "measurement.create" ||
+    payload?.kind === "hyperboard.create" ||
+    payload?.kind === "update.create"
+  ) {
+    return <SimpleTitleBody kind={payload.kind} title={payload.title} />
   }
   // Hydration missed (404) on a known kind — show the action line we
   // can derive from event.kind alone, with no body content. Beats
@@ -132,8 +140,16 @@ function actionLabelForKnownKind(kind: string): string | null {
       return "created a cert"
     case "collection.create":
       return "created a project"
-    case "badge.award":
-      return "awarded a badge"
+    case "evaluation.create":
+      return "added an evaluation"
+    case "measurement.create":
+      return "added a measurement"
+    case "hyperboard.create":
+      return "created a hyperboard"
+    case "update.create":
+      return "posted an update"
+    case "endorsement.award":
+      return "endorsed someone"
     case "legacy.endorsement":
       return "endorsed someone"
     default:
@@ -148,6 +164,40 @@ function DegradedKnownKindBody({ label }: { label: string }) {
         <Sparkles size={16} strokeWidth={1.75} aria-hidden="true" />
         <span>{label}</span>
       </div>
+    </div>
+  )
+}
+
+// ----------------------------------------------------------------------
+// evaluation / measurement / hyperboard / update — simple-title body
+// ----------------------------------------------------------------------
+
+function SimpleTitleBody({
+  kind,
+  title,
+}: {
+  kind:
+    | "evaluation.create"
+    | "measurement.create"
+    | "hyperboard.create"
+    | "update.create"
+  title: string | null
+}) {
+  const label =
+    kind === "evaluation.create"
+      ? "added an evaluation"
+      : kind === "measurement.create"
+        ? "added a measurement"
+        : kind === "hyperboard.create"
+          ? "created a hyperboard"
+          : "posted an update"
+  return (
+    <div className="feed-card__body">
+      <div className="feed-card__action">
+        <Sparkles size={16} strokeWidth={1.75} aria-hidden="true" />
+        <span>{label}</span>
+      </div>
+      {title ? <h2 className="feed-card__title">{title}</h2> : null}
     </div>
   )
 }

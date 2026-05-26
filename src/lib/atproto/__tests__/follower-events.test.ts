@@ -174,7 +174,7 @@ describe("hydrateFeedEvents", () => {
     const events = [
       makeEvent("cert.create", "a"),
       makeEvent("collection.create", "b"),
-      makeEvent("badge.award", "c"),
+      makeEvent("endorsement.award", "c"),
       makeEvent("legacy.endorsement", "d"),
       makeEvent("future.kind", "e"),
     ]
@@ -250,7 +250,7 @@ describe("hydrateFeedEvents", () => {
     expect(out.map((h) => h.event.id)).toEqual(events.map((e) => e.id))
     expect(out[0].payload?.kind).toBe("cert.create")
     expect(out[1].payload?.kind).toBe("collection.create")
-    expect(out[2].payload?.kind).toBe("badge.award")
+    expect(out[2].payload?.kind).toBe("endorsement.award")
     expect(out[3].payload?.kind).toBe("legacy.endorsement")
     expect(out[4].payload).toBeNull()
   })

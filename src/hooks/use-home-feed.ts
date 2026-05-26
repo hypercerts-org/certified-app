@@ -2,49 +2,76 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  fetchEndorsements,
-  fetchIndexerActivities,
-  fetchProjects,
-} from "@/lib/atproto/indexer"
+  fetchFollowerEvents,
+  hydrateFeedEvents,
+  type FeedActor,
+  type HydratedFeedEvent,
+} from "@/lib/atproto/follower-events"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 
 /**
- * Discriminated union of the timeline event kinds we can construct
- * from the current indexer surface (Activities / Endorsements /
- * Collections). Each variant carries the author DID, the createdAt
- * timestamp used for merging, and enough record-specific payload for
- * the renderer to compose the verb sentence + permalink.
+ * Discriminated union of the timeline event kinds the home feed
+ * renders. Driven by magic-indexer's `followerEvents` field (issue
+ * #89), which returns one paginated stream of CREATE events
+ * authored by the viewer's follow set.
  *
- * The magic-indexer would need a unified events endpoint to support
- * edit events ("alice updated a cert"), badge issuance, etc. — see
- * the open tracking issue. For now we stick to "create" verbs
- * because that's all the current ops emit.
+ * The wire `FeedEvent.kind` is a string-typed open union (a new
+ * server-side kind may ship before the client updates). At this
+ * layer we narrow to a closed set: known kinds become specific
+ * variants below; unrecognised kinds become a `"unknown"` variant
+ * that the renderer can fall back to a generic "actor + subjectUri"
+ * card without dropping the event.
+ *
+ * Every variant carries:
+ *   - `uri`: the source record's at:// URI (= `id` on the wire).
+ *   - `actor`: DID convenience accessor (same as `actorProfile.did`).
+ *   - `actorProfile`: denormalised actor profile (handle, display
+ *     name, avatar CID) from the indexer. Renderers can use this
+ *     directly instead of firing a per-row `useAuthorInfo` lookup.
+ *   - `createdAt`: RFC3339 timestamp from the event's `sortAt`.
  */
-export type HomeFeedEvent =
-  | {
-      kind: "cert.create"
-      uri: string
-      actor: string
-      createdAt: string
-      record: ActivityRecord
-    }
-  | {
-      kind: "project.create"
-      uri: string
-      actor: string
-      createdAt: string
-      record: CollectionRecord
-    }
-  | {
-      kind: "endorsement.create"
-      uri: string
-      actor: string
-      createdAt: string
-      subjectDid: string
-    }
+export interface HomeFeedEventBase {
+  uri: string
+  actor: string
+  actorProfile: FeedActor
+  createdAt: string
+}
 
-const PER_SOURCE_LIMIT = 25
+export type HomeFeedEvent =
+  | (HomeFeedEventBase & {
+      kind: "cert.create"
+      record: ActivityRecord
+    })
+  | (HomeFeedEventBase & {
+      kind: "collection.create"
+      record: CollectionRecord
+    })
+  | (HomeFeedEventBase & {
+      kind: "endorsement.award"
+      subjectDid: string
+      note: string | null
+    })
+  | (HomeFeedEventBase & {
+      kind: "legacy.endorsement"
+      subjectDid: string
+    })
+  | (HomeFeedEventBase & {
+      kind:
+        | "evaluation.create"
+        | "measurement.create"
+        | "hyperboard.create"
+        | "update.create"
+      title: string | null
+      subjectUri: string
+    })
+  | (HomeFeedEventBase & {
+      kind: "unknown"
+      rawKind: string
+      subjectUri: string
+    })
+
+const PAGE_SIZE = 25
 const DISPLAY_CAP = 60
 
 interface State {
@@ -56,29 +83,27 @@ interface State {
 const EMPTY_STATE: State = { events: [], isLoading: true, error: null }
 
 /**
- * Aggregator hook that powers the GitHub-style activity feed on the
- * home page. Given a set of followed DIDs (union of Bluesky +
- * Certified follow graphs from `useFollowedDids`), it fans out across
- * the three existing indexer ops the home feed cares about — cert
- * creations, project creations, and endorsement awards — merges the
- * payloads into a single timestamp-sorted stream, and exposes it as
- * a flat `HomeFeedEvent[]` for the renderer.
+ * Aggregator hook that powers the home page's activity feed.
  *
- * Pagination is intentionally absent in this first cut: the indexer
- * doesn't yet expose a unified events endpoint, so client-side
- * "load more" would have to maintain three independent cursors and
- * re-sort on every page. The MVP fetches `PER_SOURCE_LIMIT` rows
- * from each source, merges, and caps the displayed total at
- * `DISPLAY_CAP`. Once the indexer ships a unified op (see the open
- * tracking issue) this hook collapses to a single fetch with a
- * stable cursor.
+ * Internally:
+ *   - One round-trip to `followerEvents` (the union of CREATE
+ *     events across the follow set, sorted server-side by sortAt).
+ *   - One follow-up round-trip to `HydrateFeedPage` to pull the
+ *     headline payload (title, image, banner, subject DID, etc.)
+ *     for each event whose kind needs more than the actor + verb.
+ *
+ * Pagination is intentionally absent in this first cut: the visible
+ * cap is `DISPLAY_CAP`, and the home page composition only allots
+ * room for one screen of activity. Adding `loadMore` is mechanical
+ * once the surface needs it — see `useFollowerEventsFeed` for the
+ * shape.
  */
 export function useHomeFeed(followedDids: Set<string>) {
   const [state, setState] = useState<State>(EMPTY_STATE)
 
-  // Stable string key so the effect doesn't refetch on every render
-  // when the parent recreates the Set instance (it does — useMemo
-  // returns a new Set whenever the union recomputes).
+  // Stable string key — parent useMemo of `followedDids` recomputes
+  // a new Set instance whenever the union recomputes; we don't want
+  // that to refire the fetch.
   const followedKey = useMemo(() => {
     if (followedDids.size === 0) return "[]"
     return Array.from(followedDids).sort().join(",")
@@ -96,88 +121,24 @@ export function useHomeFeed(followedDids: Set<string>) {
       return
     }
     try {
-      const [activities, projects, endorsements] = await Promise.all([
-        fetchIndexerActivities({
-          first: PER_SOURCE_LIMIT,
-          authors,
-          signal,
-        }).catch((err) => {
-          console.warn("[home-feed] activities fetch failed:", err)
-          return { records: [] as ActivityRecord[] }
-        }),
-        fetchProjects({ first: PER_SOURCE_LIMIT, authors, signal }).catch(
-          (err) => {
-            console.warn("[home-feed] projects fetch failed:", err)
-            return { records: [] as CollectionRecord[] }
-          },
-        ),
-        fetchEndorsements({ authors, signal }).catch((err) => {
-          console.warn("[home-feed] endorsements fetch failed:", err)
-          return []
-        }),
-      ])
-
+      const page = await fetchFollowerEvents({
+        authors,
+        first: PAGE_SIZE,
+        signal,
+      })
       if (signal.aborted) return
 
-      const events: HomeFeedEvent[] = []
+      const hydrated = await hydrateFeedEvents(page.events, signal)
+      if (signal.aborted) return
 
-      for (const rec of activities.records) {
-        const createdAt =
-          typeof rec.value.createdAt === "string" ? rec.value.createdAt : ""
-        if (!createdAt) continue
-        const actor = parseDidFromAtUri(rec.uri)
-        if (!actor) continue
-        events.push({
-          kind: "cert.create",
-          uri: rec.uri,
-          actor,
-          createdAt,
-          record: rec,
-        })
-      }
+      const events = hydrated
+        .map(hydratedToHomeFeedEvent)
+        .slice(0, DISPLAY_CAP)
 
-      for (const rec of projects.records) {
-        const createdAt =
-          typeof rec.value.createdAt === "string" ? rec.value.createdAt : ""
-        if (!createdAt) continue
-        // Drop endorsement-list collections — they're a separate
-        // surface (Lists tab) and shouldn't read as "created a
-        // project" in the timeline.
-        const collectionType = typeof rec.value.type === "string"
-          ? rec.value.type.toLowerCase()
-          : ""
-        if (collectionType && collectionType !== "project") continue
-        const actor = parseDidFromAtUri(rec.uri)
-        if (!actor) continue
-        events.push({
-          kind: "project.create",
-          uri: rec.uri,
-          actor,
-          createdAt,
-          record: rec,
-        })
-      }
-
-      for (const endorsement of endorsements.slice(0, PER_SOURCE_LIMIT)) {
-        if (!endorsement.createdAt) continue
-        events.push({
-          kind: "endorsement.create",
-          uri: endorsement.uri,
-          actor: endorsement.author,
-          createdAt: endorsement.createdAt,
-          subjectDid: endorsement.subject,
-        })
-      }
-
-      events.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      setState({
-        events: events.slice(0, DISPLAY_CAP),
-        isLoading: false,
-        error: null,
-      })
+      setState({ events, isLoading: false, error: null })
     } catch (err) {
       if (signal.aborted) return
-      console.error("[home-feed] aggregate fetch failed:", err)
+      console.error("[home-feed] follower-events fetch failed:", err)
       setState({
         events: [],
         isLoading: false,
@@ -197,10 +158,62 @@ export function useHomeFeed(followedDids: Set<string>) {
   return state
 }
 
-function parseDidFromAtUri(uri: string): string | null {
-  if (!uri.startsWith("at://")) return null
-  const slash = uri.indexOf("/", 5)
-  if (slash === -1) return null
-  const did = uri.slice(5, slash)
-  return did.startsWith("did:") ? did : null
+/**
+ * Maps a hydrated FeedEvent into the discriminated `HomeFeedEvent`
+ * the renderer expects. Unknown kinds and known-kind 404s land in
+ * the `"unknown"` variant so the renderer can show a generic card.
+ */
+function hydratedToHomeFeedEvent(h: HydratedFeedEvent): HomeFeedEvent {
+  const base: HomeFeedEventBase = {
+    uri: h.event.id,
+    actor: h.event.actor.did,
+    actorProfile: h.event.actor,
+    createdAt: h.event.sortAt,
+  }
+
+  const payload = h.payload
+  if (payload?.kind === "cert.create") {
+    return { ...base, kind: "cert.create", record: payload.record }
+  }
+  if (payload?.kind === "collection.create") {
+    return { ...base, kind: "collection.create", record: payload.record }
+  }
+  if (payload?.kind === "endorsement.award") {
+    return {
+      ...base,
+      kind: "endorsement.award",
+      subjectDid: payload.subjectDid,
+      note: payload.note,
+    }
+  }
+  if (payload?.kind === "legacy.endorsement") {
+    return {
+      ...base,
+      kind: "legacy.endorsement",
+      subjectDid: payload.subjectDid,
+    }
+  }
+  if (
+    payload?.kind === "evaluation.create" ||
+    payload?.kind === "measurement.create" ||
+    payload?.kind === "hyperboard.create" ||
+    payload?.kind === "update.create"
+  ) {
+    return {
+      ...base,
+      kind: payload.kind,
+      title: payload.title,
+      subjectUri: h.event.subjectUri,
+    }
+  }
+
+  // Either payload was null (404 hydration) or the wire `kind` was
+  // outside our known set entirely. The renderer falls through to a
+  // generic actor + subjectUri card.
+  return {
+    ...base,
+    kind: "unknown",
+    rawKind: h.event.kind,
+    subjectUri: h.event.subjectUri,
+  }
 }
