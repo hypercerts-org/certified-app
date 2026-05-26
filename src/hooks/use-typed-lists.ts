@@ -7,6 +7,7 @@ import {
   deleteTypedList,
   fetchTypedLists,
   removeFromTypedList,
+  removeManyFromTypedList,
   updateTypedList,
   type TypedListRecord,
   type TypedListType,
@@ -121,6 +122,15 @@ export function useTypedLists(did: string | null) {
     return removeFromTypedList(ownDid, rkey, itemUri)
   }, [])
 
+  const removeManyItems = useCallback(
+    async (rkey: string, itemUris: readonly string[]) => {
+      const ownDid = didRef.current
+      if (!ownDid) throw new Error("No active DID")
+      return removeManyFromTypedList(ownDid, rkey, itemUris)
+    },
+    [],
+  )
+
   return {
     lists,
     byType,
@@ -131,5 +141,6 @@ export function useTypedLists(did: string | null) {
     deleteList,
     addItem,
     removeItem,
+    removeManyItems,
   }
 }

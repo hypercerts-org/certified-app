@@ -331,6 +331,37 @@ export async function removeFromTypedList(
   return { removed: true }
 }
 
+/**
+ * Bulk-remove every entry whose URI appears in `itemUris` from a
+ * typed list in a single read-modify-write. Much cheaper than the
+ * per-item version when the viewer selects many items at once:
+ * one getRecord + one putRecord regardless of count, vs. 2N RTTs
+ * for the per-item loop. `swapRecord` still protects against
+ * concurrent edits — if another tab mutated the list between the
+ * read and the write, the PDS rejects the put and the caller
+ * surfaces an error.
+ */
+export async function removeManyFromTypedList(
+  ownDid: string,
+  rkey: string,
+  itemUris: readonly string[],
+): Promise<{ removed: number }> {
+  if (itemUris.length === 0) return { removed: 0 }
+  const existing = await getRecord(ownDid, rkey)
+  if (!existing) throw new Error("List not found")
+  const dropSet = new Set(itemUris)
+  const currentItems = Array.isArray(existing.value.items) ? existing.value.items : []
+  const filtered = currentItems.filter(
+    (it) => !dropSet.has(it.itemIdentifier?.uri ?? ""),
+  )
+  const removed = currentItems.length - filtered.length
+  if (removed === 0) return { removed: 0 }
+  const next: TypedListValue = { ...existing.value, items: filtered }
+  await putRecord(ownDid, rkey, next, existing.cid)
+  invalidateEndorsementLists()
+  return { removed }
+}
+
 /** Helper so the hook can reuse the existing `CollectionRecord` type
  *  when a caller wants to map back to the loose shape. */
 export function toCollectionRecord(rec: TypedListRecord): CollectionRecord {

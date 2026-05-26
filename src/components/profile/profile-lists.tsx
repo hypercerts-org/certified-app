@@ -62,6 +62,7 @@ export default function ProfileLists({ did, viewerIsOwner }: ProfileListsProps) 
     deleteList,
     addItem,
     removeItem,
+    removeManyItems,
   } = useTypedLists(did)
   // Selection lives in `?list=<rkey>` so a) refreshing keeps you on
   // the same list, b) clicking through to an item and pressing back
@@ -136,6 +137,7 @@ export default function ProfileLists({ did, viewerIsOwner }: ProfileListsProps) 
         }
         onAdd={async (item) => addItem(selected.rkey, selected.type, item)}
         onRemove={async (uri) => removeItem(selected.rkey, uri)}
+        onRemoveMany={async (uris) => removeManyItems(selected.rkey, uris)}
       />
     )
   }
@@ -244,6 +246,7 @@ function ListDetail({
   onEdit,
   onAdd,
   onRemove,
+  onRemoveMany,
 }: {
   list: TypedListRecord
   viewerIsOwner: boolean
@@ -252,6 +255,7 @@ function ListDetail({
   onEdit: (title: string, description?: string) => Promise<unknown>
   onAdd: (item: { uri: string; cid: string }) => Promise<unknown>
   onRemove: (uri: string) => Promise<unknown>
+  onRemoveMany: (uris: readonly string[]) => Promise<unknown>
 }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -318,17 +322,12 @@ function ListDetail({
     if (selected.size === 0 || bulkDeleting) return
     setBulkDeleting(true)
     try {
-      // Serial — `removeFromTypedList` is a read-modify-write with
-      // swapRecord so concurrent calls would race and most would
-      // fail with a conflict. Sequential is bounded by network RTT
-      // × selected.size, which is fine for typical list sizes.
-      for (const uri of selected) {
-        try {
-          await onRemove(uri)
-        } catch (err) {
-          console.error("Failed to remove item during bulk delete:", err)
-        }
-      }
+      // Single read-modify-write that drops every selected URI in
+      // one go — far cheaper than the previous per-item loop
+      // (2 round-trips total vs 2 × selected.size).
+      await onRemoveMany(Array.from(selected))
+    } catch (err) {
+      console.error("Failed to bulk-delete items:", err)
     } finally {
       setBulkDeleting(false)
       setSelected(new Set())
