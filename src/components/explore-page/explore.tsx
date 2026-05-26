@@ -15,6 +15,8 @@ import {
 import {
   DEFAULT_HIDDEN_CERT_LABELS,
   DEFAULT_HIDDEN_ORG_LABELS,
+  HYPERLABEL_DISPLAY_LABELS,
+  HYPERLABEL_DISPLAY_ORDER,
   HYPERLABEL_TIERS,
   ORGLABEL_TIERS,
   type HyperlabelTier,
@@ -55,23 +57,6 @@ const SORT_LABEL: Record<SortOrder, string> = {
  *  `excludeCertLabels` / `includeCertLabels` below). */
 const UNLABELED_SLUG = "unlabeled" as const
 type UnlabeledSlug = typeof UNLABELED_SLUG
-
-/** Display order for the certs-quality popover — best to worst,
- *  then the unlabeled bucket. The raw tier list in `labels.ts` is
- *  sorted worst → best for indexer comparisons. */
-const QUALITY_TIER_DISPLAY: readonly HyperlabelTier[] = [
-  "high-quality",
-  "standard",
-  "draft",
-  "likely-test",
-]
-
-const QUALITY_TIER_LABEL: Record<HyperlabelTier, string> = {
-  "high-quality": "High quality",
-  standard: "Standard",
-  draft: "Draft",
-  "likely-test": "Likely test",
-}
 
 const UNLABELED_LABEL = "Not labeled yet"
 
@@ -727,7 +712,7 @@ export default function Explore() {
                   {kind === "certs" ? (
                     <>
                       <p className="popover__section-heading">Cert quality</p>
-                      {QUALITY_TIER_DISPLAY.map((tier) => (
+                      {HYPERLABEL_DISPLAY_ORDER.map((tier) => (
                         <label
                           key={tier}
                           className="popover__item popover__item--check"
@@ -737,7 +722,7 @@ export default function Explore() {
                             checked={qualityIncluded.has(tier)}
                             onChange={() => onQualityToggle(tier)}
                           />
-                          {QUALITY_TIER_LABEL[tier]}
+                          {HYPERLABEL_DISPLAY_LABELS[tier]}
                         </label>
                       ))}
                       <label className="popover__item popover__item--check">

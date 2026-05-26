@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { Inbox, MapPin, SlidersHorizontal, UserCheck, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
@@ -9,6 +9,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import LoadMoreSentinel from "@/components/ui/load-more-sentinel"
 import { useActivity } from "@/hooks/use-activity"
 import { useAuthorInfo } from "@/hooks/use-author-info"
+import { useClickOutsideClose } from "@/hooks/use-click-outside-close"
 import { useEvaluatorEndorsements } from "@/hooks/use-evaluator-endorsements"
 import { useHomeFeed, type HomeFeedEvent } from "@/hooks/use-home-feed"
 import { useFollowedDids } from "@/hooks/use-followed-dids"
@@ -19,30 +20,14 @@ import { getInitials } from "@/lib/utils/initials"
 import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 import {
   DEFAULT_HIDDEN_CERT_LABELS,
+  HYPERLABEL_DISPLAY_LABELS,
+  HYPERLABEL_DISPLAY_ORDER,
   HYPERLABEL_TIERS,
   type HyperlabelTier,
 } from "@/lib/atproto/labels"
 import { TRUSTED_EVALUATOR_DIDS } from "@/lib/atproto/trusted-evaluators"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { CollectionRecord } from "@/lib/atproto/collection"
-
-/**
- * Filter popover order — best to worst, opposite of HYPERLABEL_TIERS
- * (which goes lowest → highest for indexer-side comparisons).
- */
-const FILTER_TIERS: readonly HyperlabelTier[] = [
-  "high-quality",
-  "standard",
-  "draft",
-  "likely-test",
-]
-
-const TIER_LABELS: Record<HyperlabelTier, string> = {
-  "high-quality": "High quality",
-  standard: "Standard",
-  draft: "Draft",
-  "likely-test": "Likely test",
-}
 
 const DEFAULT_INCLUDED_TIERS: ReadonlySet<HyperlabelTier> = new Set(
   HYPERLABEL_TIERS.filter(
@@ -223,21 +208,7 @@ function QualityFilter({
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (!open) return
-    const handleDown = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false)
-    }
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false)
-    }
-    document.addEventListener("mousedown", handleDown)
-    document.addEventListener("keydown", handleKey)
-    return () => {
-      document.removeEventListener("mousedown", handleDown)
-      document.removeEventListener("keydown", handleKey)
-    }
-  }, [open])
+  useClickOutsideClose(open, wrapRef, () => setOpen(false))
 
   const toggle = (tier: HyperlabelTier) => {
     const next = new Set(included)
@@ -265,7 +236,7 @@ function QualityFilter({
         <div className="home-feed__filter-pop" role="dialog" aria-label="Cert quality filters">
           <p className="home-feed__filter-title">Show certs labeled</p>
           <ul className="home-feed__filter-list">
-            {FILTER_TIERS.map((tier) => (
+            {HYPERLABEL_DISPLAY_ORDER.map((tier) => (
               <li key={tier}>
                 <label className="home-feed__filter-item">
                   <input
@@ -273,7 +244,7 @@ function QualityFilter({
                     checked={included.has(tier)}
                     onChange={() => toggle(tier)}
                   />
-                  <span>{TIER_LABELS[tier]}</span>
+                  <span>{HYPERLABEL_DISPLAY_LABELS[tier]}</span>
                 </label>
               </li>
             ))}
@@ -303,21 +274,7 @@ function EvaluatorFilter({
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (!open) return
-    const handleDown = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false)
-    }
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false)
-    }
-    document.addEventListener("mousedown", handleDown)
-    document.addEventListener("keydown", handleKey)
-    return () => {
-      document.removeEventListener("mousedown", handleDown)
-      document.removeEventListener("keydown", handleKey)
-    }
-  }, [open])
+  useClickOutsideClose(open, wrapRef, () => setOpen(false))
 
   const toggle = (did: string) => {
     const next = new Set(selected)

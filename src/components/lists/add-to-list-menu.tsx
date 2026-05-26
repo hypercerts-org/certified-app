@@ -6,6 +6,7 @@ import AppDialog from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useClickOutsideClose } from "@/hooks/use-click-outside-close"
 import { useTypedLists } from "@/hooks/use-typed-lists"
 import {
   itemUriMatchesType,
@@ -54,21 +55,7 @@ export default function AddToListMenu({
   const [copied, setCopied] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (!open) return
-    const handleDown = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false)
-    }
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false)
-    }
-    document.addEventListener("mousedown", handleDown)
-    document.addEventListener("keydown", handleKey)
-    return () => {
-      document.removeEventListener("mousedown", handleDown)
-      document.removeEventListener("keydown", handleKey)
-    }
-  }, [open])
+  useClickOutsideClose(open, wrapRef, () => setOpen(false))
 
   // Reset the brief "Copied" affordance whenever the popover opens
   // again, so the previous run's feedback doesn't leak across opens.

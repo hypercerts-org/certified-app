@@ -41,6 +41,25 @@ export const ORGLABELER_DID = "did:plc:pswneepkd5lesumj7ejmkbal"
 export const HYPERLABEL_TIERS = ["likely-test", "draft", "standard", "high-quality"] as const
 export type HyperlabelTier = (typeof HYPERLABEL_TIERS)[number]
 
+/** Display order (best → worst) used by every Hyperlabel popover /
+ *  filter chip across the app. Opposite of HYPERLABEL_TIERS which is
+ *  sorted worst → best for indexer-side tier comparisons. */
+export const HYPERLABEL_DISPLAY_ORDER: readonly HyperlabelTier[] = [
+  "high-quality",
+  "standard",
+  "draft",
+  "likely-test",
+]
+
+/** Human-readable label per tier — shared by the home-feed filter
+ *  popover and the /explore Cert quality popover. */
+export const HYPERLABEL_DISPLAY_LABELS: Record<HyperlabelTier, string> = {
+  "high-quality": "High quality",
+  standard: "Standard",
+  draft: "Draft",
+  "likely-test": "Likely test",
+}
+
 /** Org quality tiers, lowest to highest. */
 export const ORGLABEL_TIERS = ["⚠ Likely Test", "● Standard", "✦ High Quality"] as const
 export type OrglabelTier = (typeof ORGLABEL_TIERS)[number]
