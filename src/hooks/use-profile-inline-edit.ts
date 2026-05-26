@@ -22,6 +22,7 @@ import type {
 } from "@/lib/atproto/types"
 import type { BlobRef } from "@atproto/api"
 import type { GroupMetadata, OrgUrlItem } from "@/lib/groups/types"
+import { formatMonthYear } from "@/lib/utils/format-date"
 import {
   newDraftUrlRow,
   type ProfileDrafts,
@@ -117,14 +118,17 @@ export function readableOrgTypeTags(v: unknown): string[] {
  * Format `foundedDate` for display. Accepts the full ISO datetime the
  * record stores, a plain `yyyy-mm-dd` string, or just a 4-digit year.
  * Returns `null` for missing / unparseable values.
+ *
+ * Year-only inputs (e.g. "2018") pass through unchanged so the org
+ * card shows "Founded 2018" rather than parsing "2018" as Jan 2018.
+ * Otherwise delegates to formatMonthYear; on parse failure echoes the
+ * raw string so a malformed inline value remains visible.
  */
 export function readableFoundedDate(v: unknown): string | null {
   if (typeof v !== "string" || v.trim().length === 0) return null
   const s = v.trim()
   if (/^\d{4}$/.test(s)) return s
-  const d = new Date(s)
-  if (Number.isNaN(d.getTime())) return s
-  return d.toLocaleDateString("en-US", { month: "short", year: "numeric" })
+  return formatMonthYear(s) ?? s
 }
 
 /** Build the form a `<input type="date">` expects from a stored value. */

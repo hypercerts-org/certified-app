@@ -27,6 +27,7 @@ import { isRouteVisibleToActor } from "@/lib/groups/personal-only";
 import { useOrgProfile } from "@/hooks/use-org-profile";
 import { usePendingAwardsCount } from "@/hooks/use-pending-awards-count";
 import { useNotifications } from "@/lib/notifications-context";
+import { useMounted } from "@/hooks/use-mounted";
 import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
 import AccountSwitcherList from "./account-switcher-list";
@@ -94,8 +95,7 @@ export default function DesktopLeftRail() {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
 
   // Anchor position for the portaled menu, recomputed when it opens and
   // on window resize while open.

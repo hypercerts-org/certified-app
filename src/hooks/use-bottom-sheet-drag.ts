@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useLayoutBreakpoints } from "@/lib/hooks/use-layout-breakpoints"
+import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
 
 interface UseBottomSheetDragOptions {
   isOpen: boolean

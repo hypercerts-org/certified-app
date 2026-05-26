@@ -36,6 +36,12 @@ export function redactSecrets(s: string): string {
       // JWTs — DPoP proofs, bearer tokens, ID tokens. Base64-permissive; benign
       // false positives on any "eyJ…" base64-JSON are acceptable (over-redaction).
       .replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+=*/g, "<jwt>")
+      // Bare `Bearer <token>` / `DPoP <token>` fragments — the lines below
+      // catch header SERIALIZATIONS (with colons), but error messages from
+      // upstream APIs sometimes embed a bare `Bearer abc.def.ghi` mention
+      // without the header prefix. The previous api.ts-local redactor
+      // covered this; preserve that coverage here for the consolidated path.
+      .replace(/(Bearer|DPoP)\s+[A-Za-z0-9._-]+/g, "$1 <redacted>")
       // Header lines as serialized by util.inspect / Request stringification.
       // Excludes `"` and newlines so JSON-shape `{"Cookie":"...","Foo":"..."}`
       // payloads don't have the redaction bleed across into adjacent keys.

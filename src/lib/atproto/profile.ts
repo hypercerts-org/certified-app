@@ -7,7 +7,7 @@ import {
   getBlobRefLink,
 } from "./types";
 import { authFetch } from "@/lib/auth/fetch";
-import { extractError } from "@/lib/utils/api";
+import { extractError, xrpcGetRecordPath } from "@/lib/utils/api";
 import { writeToRepo } from "@/lib/atproto/repo-write";
 
 const COLLECTION = "app.certified.actor.profile";
@@ -34,7 +34,7 @@ export async function getProfile(
   signal?: AbortSignal
 ): Promise<CertifiedProfile | null> {
   const res = await authFetch(
-    `/api/xrpc/com/atproto/repo/getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(COLLECTION)}&rkey=${encodeURIComponent(RKEY)}`,
+    xrpcGetRecordPath({ repo: did, collection: COLLECTION, rkey: RKEY }),
     { signal }
   );
   if (!res.ok) {
@@ -54,7 +54,7 @@ export async function getBlueskyProfile(
   signal?: AbortSignal
 ): Promise<BlueskyProfile | null> {
   const res = await authFetch(
-    `/api/xrpc/com/atproto/repo/getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(BSKY_COLLECTION)}&rkey=${encodeURIComponent(RKEY)}`,
+    xrpcGetRecordPath({ repo: did, collection: BSKY_COLLECTION, rkey: RKEY }),
     { signal }
   );
   if (!res.ok) {

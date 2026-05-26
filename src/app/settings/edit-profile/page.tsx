@@ -10,7 +10,8 @@ import {
 } from "@/lib/navbar-context";
 import { putProfile, uploadAvatar, uploadBanner } from "@/lib/atproto/profile";
 import { authFetch } from "@/lib/auth/fetch";
-import { extractError } from "@/lib/utils/api";
+import { extractError, xrpcGetRecordPath } from "@/lib/utils/api";
+import { getInitials } from "@/lib/utils/initials";
 import { ORG_MARKER_COLLECTION } from "@/lib/groups/constants";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import ProfileEditForm from "@/components/profile/profile-edit-form";
@@ -34,9 +35,11 @@ async function fetchOwnOrgMarker(
   signal?: AbortSignal,
 ): Promise<GroupMetadata | null> {
   const res = await authFetch(
-    `/api/xrpc/com/atproto/repo/getRecord?repo=${encodeURIComponent(
-      did,
-    )}&collection=${encodeURIComponent(ORG_MARKER_COLLECTION)}&rkey=self`,
+    xrpcGetRecordPath({
+      repo: did,
+      collection: ORG_MARKER_COLLECTION,
+      rkey: "self",
+    }),
     { signal },
   );
   if (!res.ok) {
@@ -170,11 +173,7 @@ export default function EditProfilePage() {
     }
   };
 
-  const fallbackInitials = profile?.displayName
-    ? profile.displayName.slice(0, 2)
-    : did
-      ? did.slice(4, 6)
-      : "?";
+  const fallbackInitials = getInitials(profile?.displayName, did);
 
   const initialOrgUrls = orgMarker?.urls ?? [];
 

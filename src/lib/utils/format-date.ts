@@ -11,3 +11,18 @@ export function formatShortDate(iso: string): string {
     year: "numeric",
   })
 }
+
+/**
+ * Format an ISO date string as month + year only, e.g. "Jan 2025".
+ * Returns null for unparseable input — callers typically render nothing
+ * in that case (vs. formatShortDate which echoes the raw input so a
+ * malformed inline value doesn't disappear silently).
+ */
+export function formatMonthYear(iso: string): string | null {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+  })
+}

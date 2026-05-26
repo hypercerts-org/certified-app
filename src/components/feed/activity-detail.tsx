@@ -18,6 +18,7 @@ import {
 import { useContributorInformationRecord } from "@/hooks/use-contributor-information-record"
 import { useRights } from "@/hooks/use-rights"
 import { getInitials } from "@/lib/utils/initials"
+import { formatShortDate } from "@/lib/utils/format-date"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EditBanner from "@/components/ui/edit-banner"
@@ -84,17 +85,10 @@ function contributionRoleText(details: unknown): string | null {
   return typeof obj.role === "string" ? obj.role : null
 }
 
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    })
-  } catch {
-    return iso
-  }
-}
+// Single date format used throughout this view: "Mon D, YYYY".
+// Identical output to lib/utils/format-date.ts#formatShortDate, which
+// also handles invalid input by returning the raw string.
+const formatDate = formatShortDate
 
 /**
  * Detail view of a single activity claim.

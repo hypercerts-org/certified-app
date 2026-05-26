@@ -12,6 +12,7 @@ import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
 import { useOrg } from "@/lib/groups/org-context";
 import { useOrgProfile } from "@/hooks/use-org-profile";
+import { useMounted } from "@/hooks/use-mounted";
 import { resolvePostSwitchPath } from "@/lib/groups/navigation";
 import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
@@ -203,8 +204,7 @@ export default function DesktopTopBar() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
 
   const [anchor, setAnchor] = useState<{ right: number; top: number } | null>(null);
   useEffect(() => {

@@ -6,7 +6,7 @@ import { useFeedback } from "@/lib/feedback-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { useOrg } from "@/lib/groups/org-context";
 import { isRouteVisibleToActor } from "@/lib/groups/personal-only";
-import { useLayoutBreakpoints } from "@/lib/hooks/use-layout-breakpoints";
+import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints";
 
 function formatBadge(count: number, more: boolean): string | null {
   if (count <= 0) return null

@@ -16,6 +16,7 @@ import type { OrgRole } from "@/lib/groups/types"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Button from "@/components/ui/button"
+import { getInitials } from "@/lib/utils/initials"
 
 type TabKey = "public" | "private"
 
@@ -101,7 +102,7 @@ export default function GroupsPage() {
             src={org.avatarUrl}
             alt={org.displayName || org.handle}
             size="sm"
-            fallbackInitials={(org.displayName || org.handle).slice(0, 2)}
+            fallbackInitials={getInitials(org.displayName || org.handle)}
           />
         </div>
         <div className="org-list__item-info">

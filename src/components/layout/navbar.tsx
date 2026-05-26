@@ -20,7 +20,7 @@ import MobileSidebar from "./mobile-sidebar";
 import AccountSwitcherList from "./account-switcher-list";
 import Brandmark from "@/components/ui/brandmark";
 import ThemeToggle from "@/components/ui/theme-toggle";
-import { useLayoutBreakpoints } from "@/lib/hooks/use-layout-breakpoints";
+import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints";
 
 const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
 

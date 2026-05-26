@@ -17,6 +17,7 @@ import ErrorMessage from "@/components/ui/error-message"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import AvatarUpload from "@/components/profile/avatar-upload"
 import BannerUpload from "@/components/profile/banner-upload"
+import { getInitials } from "@/lib/utils/initials"
 
 export default function EditOrgProfilePage() {
   const router = useRouter()
@@ -105,9 +106,10 @@ export default function EditOrgProfilePage() {
     }
   }
 
-  const fallbackInitials = displayName
-    ? displayName.slice(0, 2).toUpperCase()
-    : "O"
+  // getInitials returns lowercase chars from the displayName; the
+  // <Avatar> primitive uppercases via .toUpperCase() before render.
+  // Fallback "O" preserves the prior behavior when no displayName yet.
+  const fallbackInitials = displayName ? getInitials(displayName) : "O"
 
   const handleSave = async () => {
     setIsSaving(true)

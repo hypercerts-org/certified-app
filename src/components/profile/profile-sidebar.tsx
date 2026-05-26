@@ -24,6 +24,7 @@ import ConfirmDialog from "@/components/ui/confirm-dialog"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import SmartLink from "@/components/ui/smart-link"
 import { getInitials } from "@/lib/utils/initials"
+import { formatMonthYear } from "@/lib/utils/format-date"
 import { useProfilePds } from "@/hooks/use-profile-pds"
 import { useUserGroups, type UserGroup } from "@/hooks/use-user-groups"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -102,9 +103,8 @@ const GROUPS_GRID_LIMIT = 12
 
 function formatJoined(iso?: string): string | null {
   if (!iso) return null
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return null
-  return `Joined ${date.toLocaleDateString("en-US", { month: "short", year: "numeric" })}`
+  const monthYear = formatMonthYear(iso)
+  return monthYear ? `Joined ${monthYear}` : null
 }
 
 /**

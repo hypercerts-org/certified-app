@@ -277,7 +277,7 @@ export function uriHost(uri: string): string {
  */
 const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{11}$/
 
-export function extractYouTubeId(uri: string): string | null {
+function extractYouTubeId(uri: string): string | null {
   let parsed: URL
   try {
     parsed = new URL(uri)

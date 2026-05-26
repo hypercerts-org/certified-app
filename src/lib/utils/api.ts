@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { logSafe } from "./log-safe"
+import { logSafe, redactSecrets } from "./log-safe"
 
 /**
  * Extract a usable HTTP status from an unknown caught error and emit a
@@ -47,20 +47,14 @@ function messageFor4xx(err: unknown, status: number): string {
   if (err && typeof err === "object") {
     const e = err as Record<string, unknown>
     if (typeof e.message === "string" && e.message.trim().length > 0) {
+      // redactSecrets from log-safe is a strict superset of the prior
+      // local redactor (JWT + Authorization/DPoP/Cookie header lines +
+      // OAuth grants + JWK material + email). Strict superset is the
+      // safer direction here — over-redacting a 4xx body never leaks.
       return redactSecrets(e.message).trim()
     }
   }
   return genericMessageFor(status)
-}
-
-// Mirror of the redaction shape in logSafe — strip anything that looks
-// like a token / authorization header / DPoP material that the atproto
-// SDK sometimes embeds in error messages.
-function redactSecrets(s: string): string {
-  return s
-    .replace(/Bearer\s+[A-Za-z0-9._\-]+/g, "Bearer [redacted]")
-    .replace(/DPoP\s+[A-Za-z0-9._\-]+/g, "DPoP [redacted]")
-    .replace(/eyJ[A-Za-z0-9._\-]+/g, "[jwt-redacted]")
 }
 
 function genericMessageFor(status: number): string {
@@ -138,4 +132,56 @@ export async function extractError(
   } catch {
     return fallback
   }
+}
+
+/**
+ * Build the query-string for `com.atproto.repo.getRecord` consumed via the
+ * BFF's XRPC proxy. Centralizes the `encodeURIComponent` triple-call so
+ * callers don't reproduce it.
+ *
+ * Use only for client-side reads through `/api/xrpc/...`. Server-side
+ * routes that hit a foreign PDS directly construct their own URL because
+ * the path shape differs (`/xrpc/com.atproto.repo.getRecord` with dots
+ * vs. the BFF's `/api/xrpc/com/atproto/repo/getRecord` with slashes).
+ */
+export function xrpcGetRecordPath(args: {
+  repo: string
+  collection: string
+  rkey: string
+}): string {
+  return (
+    "/api/xrpc/com/atproto/repo/getRecord" +
+    `?repo=${encodeURIComponent(args.repo)}` +
+    `&collection=${encodeURIComponent(args.collection)}` +
+    `&rkey=${encodeURIComponent(args.rkey)}`
+  )
+}
+
+/**
+ * Validate the `{ data: { uri, cid } }` shape that AT Protocol mutation
+ * XRPC methods (createRecord / putRecord etc.) return through the
+ * AtpAgent. Returns `{ uri, cid }` when both strings are present, or
+ * `null` to signal the upstream response was malformed — the caller
+ * typically maps that to a 502.
+ *
+ * The previous pattern, repeated verbatim in four group route handlers,
+ * was:
+ *
+ *     const data = (upstream as unknown as {
+ *       data?: { uri?: string; cid?: string }
+ *     }).data
+ *     const uri = typeof data?.uri === "string" ? data.uri : null
+ *     const cid = typeof data?.cid === "string" ? data.cid : null
+ *     if (!uri || !cid) return 502
+ *
+ * This collapses to a single call.
+ */
+export function extractRecordRef(
+  upstream: unknown,
+): { uri: string; cid: string } | null {
+  const data = (upstream as { data?: { uri?: unknown; cid?: unknown } } | null)
+    ?.data
+  if (!data) return null
+  if (typeof data.uri !== "string" || typeof data.cid !== "string") return null
+  return { uri: data.uri, cid: data.cid }
 }

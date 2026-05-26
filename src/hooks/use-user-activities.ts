@@ -5,9 +5,8 @@ import { fetchActivities } from "@/lib/atproto/activity"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 
 /**
- * Fetch the activities of a specific user by DID. Mirrors `useActivities`
- * but takes an explicit `did` parameter so it can power any profile
- * (own or someone else's).
+ * Fetch the activities of a specific user by DID. Takes an explicit
+ * `did` parameter so it can power any profile (own or someone else's).
  */
 export function useUserActivities(did: string | null) {
   const [activities, setActivities] = useState<ActivityRecord[]>([])

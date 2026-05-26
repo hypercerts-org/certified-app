@@ -7,6 +7,7 @@ import { resolvePdsUrl } from "@/lib/atproto/did"
 import { checkCsrf } from "@/lib/auth/csrf"
 import { isValidDid } from "@/lib/utils/did"
 import {
+  extractRecordRef,
   extractRouteError,
   parseJsonBody,
   pickAllowedFields,
@@ -252,17 +253,14 @@ export async function PUT(
       { encoding: "application/json" },
     )
 
-    const data = (upstream as unknown as { data?: { uri?: string; cid?: string } })
-      .data
-    const uri = typeof data?.uri === "string" ? data.uri : null
-    const cid = typeof data?.cid === "string" ? data.cid : null
-    if (!uri || !cid) {
+    const ref = extractRecordRef(upstream)
+    if (!ref) {
       return NextResponse.json(
         { error: "Upstream returned no record reference" },
         { status: 502 },
       )
     }
-    return NextResponse.json({ uri, cid })
+    return NextResponse.json(ref)
   } catch (err: unknown) {
     const { status, message } = extractRouteError(err)
     return NextResponse.json({ error: message }, { status })

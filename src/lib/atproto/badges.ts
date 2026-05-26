@@ -619,18 +619,6 @@ export async function deleteEndorsementAward(
   invalidateEndorsementClosure()
 }
 
-/**
- * Extract the issuer DID from an award URI. Used by read paths that
- * fan out across users and need to attribute each award to its
- * author.
- */
-export function awardAuthorDid(award: { uri: string }): string | null {
-  if (!award.uri.startsWith("at://")) return null
-  const tail = award.uri.slice("at://".length)
-  const slash = tail.indexOf("/")
-  return slash >= 0 ? tail.slice(0, slash) : tail
-}
-
 // ---------------------------------------------------------------------------
 // app.certified.badge.response — recipient accept/reject lever
 // ---------------------------------------------------------------------------
