@@ -111,7 +111,21 @@ export default function AppDialog({
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
-    dialog.showModal()
+    // Defence-in-depth: the original InvalidStateError was caused by
+    // `showModal()` being called on an already-open dialog (effect
+    // re-running because `onClose` was in deps). The ref pattern
+    // above is the real fix; this guard + try/catch keeps a future
+    // regression from unmounting the modal mid-task again. Any
+    // browsers that throw for a non-spec reason also fall through
+    // silently rather than tearing down the consumer.
+    if (!dialog.open) {
+      try {
+        dialog.showModal()
+      } catch {
+        // swallow — modal stays closed but the rest of the app
+        // keeps running.
+      }
+    }
     const handleClose = () => onCloseRef.current()
     dialog.addEventListener("close", handleClose)
     return () => dialog.removeEventListener("close", handleClose)

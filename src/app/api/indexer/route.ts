@@ -58,11 +58,18 @@ const UPSTREAM_TIMEOUT_MS = 15_000
 const MAX_BODY_SIZE = 32 * 1024
 
 // IP-scoped rate limiter — defence in depth against a same-origin
-// script / XSS fan-out abusing the proxy. Matches the cadence of
-// the other BFF routes (resolve-handle = 100/min, search-actors =
-// 60/min). The indexer's own per-op variable caps + 15s upstream
-// timeout still apply; this is just the global brake.
-const LIMITER = makeLimiter("indexer-proxy", 120, 60)
+// script / XSS fan-out abusing the proxy. Sized higher than the
+// other BFF routes (resolve-handle = 100/min, search-actors =
+// 60/min) because the indexer is the highest-fan-out route in the
+// app: every home-feed page is 2 RPCs (FollowerEvents +
+// HydrateFeedPage), every explore filter change is 2-3 RPCs, every
+// profile-tab switch is 1+N. A power user navigating across tabs
+// can plausibly cross 120/min in normal use. The real
+// XSS/abuse defences here are the per-op variable caps, the
+// 15s upstream timeout, and the 32KB body cap — this limit is just
+// the global brake that ensures one IP can't monopolise the
+// upstream throughput.
+const LIMITER = makeLimiter("indexer-proxy", 240, 60)
 const MAX_FIRST = 100
 const MAX_FIRST_DEFINITIONS = 1000
 const MAX_FEED_PAGE_SIZE = 50
