@@ -12,6 +12,7 @@ import { formatRelativeTime, resolveActivityImageUrl } from "@/lib/atproto/activ
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { formatShortDate } from "@/lib/utils/format-date"
 import { getInitials } from "@/lib/utils/initials"
+import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 
@@ -92,14 +93,15 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
 }
 
 function HomeFeedRow({ event }: { event: HomeFeedEvent }) {
-  const { info: actorInfo } = useAuthorInfo(event.actor)
+  // Actor is denormalised onto the event by the indexer — no
+  // per-row useAuthorInfo lookup needed for the header.
+  const actor = event.actorProfile
   const actorName =
-    actorInfo?.displayName || actorInfo?.handle || event.actor.slice(0, 16)
-  const actorHandle = actorInfo?.handle ?? null
-  const actorAvatar = actorInfo?.avatarUrl ?? null
-  const actorInitials = getInitials(actorInfo?.displayName, event.actor)
+    actor.displayName || actor.handle || event.actor.slice(0, 16)
+  const actorAvatar = buildAvatarUrlFromCid(actor.did, actor.avatarCid)
+  const actorInitials = getInitials(actor.displayName, event.actor)
   const profileHref = `/profile/${encodeURIComponent(
-    actorHandle || event.actor,
+    actor.handle || event.actor,
   )}`
 
   return (
@@ -126,8 +128,8 @@ function HomeFeedRow({ event }: { event: HomeFeedEvent }) {
         {event.kind === "cert.create" ? (
           <CertPreview record={event.record} uri={event.uri} />
         ) : null}
-        {event.kind === "project.create" ? (
-          <ProjectPreview record={event.record} uri={event.uri} />
+        {event.kind === "collection.create" ? (
+          <CollectionPreview record={event.record} uri={event.uri} />
         ) : null}
       </div>
       <time
@@ -142,13 +144,33 @@ function HomeFeedRow({ event }: { event: HomeFeedEvent }) {
 }
 
 function EventSentence({ event }: { event: HomeFeedEvent }) {
-  if (event.kind === "cert.create") {
-    return <>created a cert</>
+  switch (event.kind) {
+    case "cert.create":
+      return <>created a cert</>
+    case "collection.create":
+      return <>created a {collectionTypeLabel(event.record)}</>
+    case "endorsement.award":
+    case "legacy.endorsement":
+      return <EndorsementSentence subjectDid={event.subjectDid} />
+    case "evaluation.create":
+      return <>added an evaluation</>
+    case "measurement.create":
+      return <>added a measurement</>
+    case "hyperboard.create":
+      return <>created a hyperboard</>
+    case "update.create":
+      return <>posted an update</>
+    case "unknown":
+      return <>did something</>
   }
-  if (event.kind === "project.create") {
-    return <>created a project</>
-  }
-  return <EndorsementSentence subjectDid={event.subjectDid} />
+}
+
+function collectionTypeLabel(record: CollectionRecord): string {
+  const t =
+    typeof record.value.type === "string" ? record.value.type.toLowerCase() : null
+  if (t === "endorsement-list") return "list"
+  if (t === "portfolio") return "portfolio"
+  return "project"
 }
 
 function EndorsementSentence({ subjectDid }: { subjectDid: string }) {
@@ -211,9 +233,9 @@ function CertPreview({ record, uri }: { record: ActivityRecord; uri: string }) {
   )
 }
 
-// -------------------------------- Project preview ---------------------------
+// ------------------------------ Collection preview --------------------------
 
-function ProjectPreview({
+function CollectionPreview({
   record,
   uri,
 }: {
@@ -225,10 +247,18 @@ function ProjectPreview({
     ? `/project/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
     : null
   const v = record.value as Record<string, unknown>
+  const collectionType =
+    typeof v.type === "string" ? v.type.toLowerCase() : "project"
+  const fallbackTitle =
+    collectionType === "endorsement-list"
+      ? "Untitled list"
+      : collectionType === "portfolio"
+        ? "Untitled portfolio"
+        : "Untitled project"
   const title =
     (typeof v.title === "string" && v.title.length > 0 ? v.title : null) ||
     (typeof v.name === "string" && v.name.length > 0 ? v.name : null) ||
-    "Untitled project"
+    fallbackTitle
   const description =
     typeof v.shortDescription === "string" && v.shortDescription.length > 0
       ? v.shortDescription
@@ -242,6 +272,7 @@ function ProjectPreview({
         )
       : null
   const itemCount = Array.isArray(v.items) ? v.items.length : 0
+  const itemNoun = collectionType === "endorsement-list" ? "endorsement" : "cert"
 
   return (
     <PreviewCard
@@ -251,7 +282,9 @@ function ProjectPreview({
       imageUrl={imageUrl}
       description={description}
       meta={[
-        itemCount > 0 ? `${itemCount} cert${itemCount === 1 ? "" : "s"}` : null,
+        itemCount > 0
+          ? `${itemCount} ${itemNoun}${itemCount === 1 ? "" : "s"}`
+          : null,
       ].filter((s): s is string => !!s)}
     />
   )

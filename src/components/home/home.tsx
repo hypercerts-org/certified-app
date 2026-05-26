@@ -1,7 +1,17 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowRight, Award, FolderGit2, LogIn, Users } from "lucide-react"
+import { useCallback } from "react"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import {
+  ArrowRight,
+  Award,
+  FolderGit2,
+  LayoutList,
+  LogIn,
+  Newspaper,
+  Users,
+} from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useUserProjects } from "@/hooks/use-user-projects"
@@ -11,6 +21,7 @@ import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Avatar from "@/components/ui/avatar"
 import HomeFeed from "@/components/home/home-feed"
+import HomeFeedCards from "@/components/home/home-feed-cards"
 import NewsSection from "@/components/right-rail/news-section"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
@@ -18,6 +29,11 @@ import { getInitials } from "@/lib/utils/initials"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { Group } from "@/lib/groups/types"
+
+type HomeFeedView = "timeline" | "cards"
+function parseView(v: string | null): HomeFeedView {
+  return v === "cards" ? "cards" : "timeline"
+}
 
 /** DID of the actor whose Bluesky timeline powers the home page's
  *  "Our news" rail. Hard-coded — the source-of-truth lives in this
@@ -78,7 +94,7 @@ export default function Home() {
         <main className="home__main">
           <div className="home__split">
             <div className="home__feed">
-              <HomeFeed activeDid={activeDid} />
+              <HomeFeedSection activeDid={activeDid} />
             </div>
             <aside className="home__news" aria-label="News from Certified">
               <NewsSection actor={NEWS_ACTOR_DID} heading="News from Certified" />
@@ -87,6 +103,65 @@ export default function Home() {
         </main>
       </div>
     </div>
+  )
+}
+
+// ---------------------- Feed section with view toggle ----------------------
+
+function HomeFeedSection({ activeDid }: { activeDid: string }) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const view: HomeFeedView = parseView(searchParams.get("view"))
+
+  const setView = useCallback(
+    (next: HomeFeedView) => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (next === "timeline") {
+        params.delete("view")
+      } else {
+        params.set("view", "cards")
+      }
+      const qs = params.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    },
+    [pathname, router, searchParams],
+  )
+
+  return (
+    <>
+      <div
+        className="home__view-toggle"
+        role="group"
+        aria-label="Feed layout"
+      >
+        <button
+          type="button"
+          aria-label="Timeline view"
+          aria-pressed={view === "timeline"}
+          className={`home__view-btn${view === "timeline" ? " home__view-btn--active" : ""}`}
+          onClick={() => setView("timeline")}
+        >
+          <LayoutList size={14} strokeWidth={1.75} aria-hidden />
+          <span>Timeline</span>
+        </button>
+        <button
+          type="button"
+          aria-label="Cards view"
+          aria-pressed={view === "cards"}
+          className={`home__view-btn${view === "cards" ? " home__view-btn--active" : ""}`}
+          onClick={() => setView("cards")}
+        >
+          <Newspaper size={14} strokeWidth={1.75} aria-hidden />
+          <span>Cards</span>
+        </button>
+      </div>
+      {view === "cards" ? (
+        <HomeFeedCards activeDid={activeDid} />
+      ) : (
+        <HomeFeed activeDid={activeDid} />
+      )}
+    </>
   )
 }
 
