@@ -167,17 +167,36 @@ export function useExploreData(opts: {
    *  active filter is endorsement-based (Accounts/"endorsed",
    *  Projects/"by-endorsed", Certs/"by-endorsed"). Defaults to 1. */
   degree?: 1 | 2 | 3
-  /** Hyperlabel tier labels to exclude on the certs query. Only
-   *  consulted when `kind === "certs"`. Passed straight through to
-   *  `fetchIndexerActivities`'s `excludeLabels`. */
+  /** Hyperlabel tier labels to exclude on the certs query. Used when
+   *  the "Not labeled yet" option is INCLUDED — `excludeLabels`
+   *  filters out specific labels while letting unlabeled records
+   *  pass through. */
   excludeCertLabels?: readonly string[]
+  /** Hyperlabel tier labels to require on the certs query. Used when
+   *  the "Not labeled yet" option is EXCLUDED — `labels` limits the
+   *  result set to records carrying one of these labels, which
+   *  naturally drops unlabeled records. Mutually exclusive with
+   *  `excludeCertLabels` at the call site. */
+  includeCertLabels?: readonly string[]
   /** Orglabeler tier labels to exclude. On the accounts kind these
    *  filter the actor list directly; on certs they would filter the
    *  cert's author org (best-effort — actual server-side filtering
    *  depends on indexer support for label-on-author joins). */
   excludeOrgLabels?: readonly string[]
+  /** Orglabeler tier labels to require (analog of
+   *  includeCertLabels). */
+  includeOrgLabels?: readonly string[]
 }): ExploreData {
-  const { kind, filter, sub, search, excludeCertLabels, excludeOrgLabels } = opts
+  const {
+    kind,
+    filter,
+    sub,
+    search,
+    excludeCertLabels,
+    includeCertLabels,
+    excludeOrgLabels,
+    includeOrgLabels,
+  } = opts
   const degree: 1 | 2 | 3 = opts.degree ?? 1
   // Stable key so the load effect can refetch when the exclude list
   // changes without retriggering when an identical-content array
@@ -186,9 +205,17 @@ export function useExploreData(opts: {
     () => (excludeCertLabels ? [...excludeCertLabels].sort().join(",") : ""),
     [excludeCertLabels],
   )
+  const includeKey = useMemo(
+    () => (includeCertLabels ? `+${[...includeCertLabels].sort().join(",")}` : ""),
+    [includeCertLabels],
+  )
   const excludeOrgKey = useMemo(
     () => (excludeOrgLabels ? [...excludeOrgLabels].sort().join(",") : ""),
     [excludeOrgLabels],
+  )
+  const includeOrgKey = useMemo(
+    () => (includeOrgLabels ? `+${[...includeOrgLabels].sort().join(",")}` : ""),
+    [includeOrgLabels],
   )
   const { did: personalDid } = useAuth()
   const { activeOrg, groups } = useOrg()
@@ -249,7 +276,9 @@ export function useExploreData(opts: {
           signal: controller.signal,
           degree,
           excludeCertLabels: excludeCertLabels ?? null,
+          includeCertLabels: includeCertLabels ?? null,
           excludeOrgLabels: excludeOrgLabels ?? null,
+          includeOrgLabels: includeOrgLabels ?? null,
         })
         if (controller.signal.aborted) return
         if (generation !== generationRef.current) return
@@ -278,7 +307,9 @@ export function useExploreData(opts: {
     degree,
     closureVersion,
     excludeKey,
+    includeKey,
     excludeOrgKey,
+    includeOrgKey,
   ])
 
   const loadMore = useCallback(() => {
@@ -302,7 +333,9 @@ export function useExploreData(opts: {
             signal: null,
             degree,
             excludeCertLabels: excludeCertLabels ?? null,
+          includeCertLabels: includeCertLabels ?? null,
           excludeOrgLabels: excludeOrgLabels ?? null,
+          includeOrgLabels: includeOrgLabels ?? null,
           })
           if (generation !== generationRef.current) return
           setState((current) => {
@@ -360,7 +393,9 @@ export function useExploreData(opts: {
     degree,
     closureVersion,
     excludeKey,
+    includeKey,
     excludeOrgKey,
+    includeOrgKey,
   ])
 
   return {
@@ -418,9 +453,11 @@ interface LoadArgs {
   /** Forwarded to `fetchIndexerActivities` when loading the certs
    *  page; null on other kinds. */
   excludeCertLabels: readonly string[] | null
+  includeCertLabels: readonly string[] | null
   /** Org-tier exclusions. Used by the accounts + certs loaders;
    *  no-op when null. */
   excludeOrgLabels: readonly string[] | null
+  includeOrgLabels: readonly string[] | null
 }
 
 async function loadPage(args: LoadArgs): Promise<LoadedPage> {
@@ -775,6 +812,7 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
       after: cursor ?? undefined,
       search: search || undefined,
       excludeLabels: args.excludeCertLabels?.length ? [...args.excludeCertLabels] : undefined,
+      labels: args.includeCertLabels?.length ? ([...args.includeCertLabels] as string[]) : undefined,
       signal: signal ?? undefined,
     })
     return {
@@ -792,6 +830,7 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
       after: cursor ?? undefined,
       search: search || undefined,
       excludeLabels: args.excludeCertLabels?.length ? [...args.excludeCertLabels] : undefined,
+      labels: args.includeCertLabels?.length ? ([...args.includeCertLabels] as string[]) : undefined,
       signal: signal ?? undefined,
     })
     return {
@@ -823,6 +862,7 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
       authors,
       search: search || undefined,
       excludeLabels: args.excludeCertLabels?.length ? [...args.excludeCertLabels] : undefined,
+      labels: args.includeCertLabels?.length ? ([...args.includeCertLabels] as string[]) : undefined,
       signal: signal ?? undefined,
     })
     return {
@@ -869,6 +909,7 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
     authors,
     search: search || undefined,
     excludeLabels: args.excludeCertLabels?.length ? [...args.excludeCertLabels] : undefined,
+    labels: args.includeCertLabels?.length ? ([...args.includeCertLabels] as string[]) : undefined,
     signal: signal ?? undefined,
   })
   return {

@@ -111,7 +111,7 @@ export interface FetchIndexerOptions {
    * at least one of these label values active on them. Pass
    * undefined / empty array to skip the filter.
    */
-  labels?: LabelValue[]
+  labels?: LabelValue[] | string[]
   /**
    * Server-side label exclude filter. Records returned will have
    * NONE of these label values active on them. Useful for honoring

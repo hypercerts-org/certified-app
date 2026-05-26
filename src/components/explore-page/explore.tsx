@@ -49,9 +49,16 @@ const SORT_LABEL: Record<SortOrder, string> = {
   alphabetical: "Alphabetical",
 }
 
-/** Display order for the certs-quality popover — best to worst. The
- *  raw tier list in `labels.ts` is sorted worst → best for indexer
- *  comparisons. */
+/** Sentinel slug for the "no label yet" checkbox that sits at the
+ *  end of every labeler popover. Backed by an `includeLabels` /
+ *  `excludeLabels` swap at the loader (see comment on
+ *  `excludeCertLabels` / `includeCertLabels` below). */
+const UNLABELED_SLUG = "unlabeled" as const
+type UnlabeledSlug = typeof UNLABELED_SLUG
+
+/** Display order for the certs-quality popover — best to worst,
+ *  then the unlabeled bucket. The raw tier list in `labels.ts` is
+ *  sorted worst → best for indexer comparisons. */
 const QUALITY_TIER_DISPLAY: readonly HyperlabelTier[] = [
   "high-quality",
   "standard",
@@ -65,6 +72,8 @@ const QUALITY_TIER_LABEL: Record<HyperlabelTier, string> = {
   draft: "Draft",
   "likely-test": "Likely test",
 }
+
+const UNLABELED_LABEL = "Not labeled yet"
 
 /**
  * Orglabeler tier slugs used in the URL `?orgQuality=` param.
@@ -229,30 +238,54 @@ export default function Explore() {
   // (every tier excluded) so toggling all four off is a legible
   // state rather than a coincidental no-op.
   const qualityParam = searchParams?.get("quality")
-  const qualityIncluded = useMemo<Set<HyperlabelTier>>(() => {
+  // Slug set holds both named Hyperlabel tiers AND the synthetic
+  // `unlabeled` sentinel. Default includes every tier that isn't
+  // in DEFAULT_HIDDEN_CERT_LABELS, plus `unlabeled` (records with
+  // no Hyperlabel verdict yet stay visible by default — matches
+  // the home feed policy).
+  const qualityIncluded = useMemo<Set<HyperlabelTier | UnlabeledSlug>>(() => {
     if (qualityParam == null) {
-      return new Set(
-        HYPERLABEL_TIERS.filter(
+      return new Set<HyperlabelTier | UnlabeledSlug>([
+        ...HYPERLABEL_TIERS.filter(
           (t) => !DEFAULT_HIDDEN_CERT_LABELS.includes(t),
         ),
-      )
+        UNLABELED_SLUG,
+      ])
     }
+    const valid = new Set<string>([...HYPERLABEL_TIERS, UNLABELED_SLUG])
     return new Set(
       qualityParam
         .split(",")
-        .filter((v): v is HyperlabelTier =>
-          (HYPERLABEL_TIERS as readonly string[]).includes(v),
-        ),
+        .filter((v): v is HyperlabelTier | UnlabeledSlug => valid.has(v)),
     )
   }, [qualityParam])
-  const excludeCertLabels = useMemo(
-    () => HYPERLABEL_TIERS.filter((t) => !qualityIncluded.has(t)),
-    [qualityIncluded],
+  // Two filter modes:
+  //   - Unlabeled INCLUDED → use `excludeLabels` (filter out specific
+  //     tiers; unlabeled passes because it has nothing to match).
+  //   - Unlabeled EXCLUDED → use `labels` (must have one of the
+  //     checked tiers; unlabeled records don't qualify).
+  // Only one of the two is non-undefined at a time.
+  const certIncludeUnlabeled = qualityIncluded.has(UNLABELED_SLUG)
+  const excludeCertLabels = useMemo<readonly string[] | undefined>(
+    () =>
+      certIncludeUnlabeled
+        ? HYPERLABEL_TIERS.filter((t) => !qualityIncluded.has(t))
+        : undefined,
+    [qualityIncluded, certIncludeUnlabeled],
+  )
+  const includeCertLabels = useMemo<readonly string[] | undefined>(
+    () =>
+      certIncludeUnlabeled
+        ? undefined
+        : HYPERLABEL_TIERS.filter((t) => qualityIncluded.has(t)),
+    [qualityIncluded, certIncludeUnlabeled],
   )
   const qualityIsDefault = useMemo(() => {
-    if (qualityIncluded.size !== HYPERLABEL_TIERS.length - DEFAULT_HIDDEN_CERT_LABELS.length) {
-      return false
-    }
+    // Default = every non-hidden tier + unlabeled.
+    const expectedSize =
+      HYPERLABEL_TIERS.length - DEFAULT_HIDDEN_CERT_LABELS.length + 1
+    if (qualityIncluded.size !== expectedSize) return false
+    if (!qualityIncluded.has(UNLABELED_SLUG)) return false
     for (const t of HYPERLABEL_TIERS) {
       const shouldBeIncluded = !DEFAULT_HIDDEN_CERT_LABELS.includes(t)
       if (qualityIncluded.has(t) !== shouldBeIncluded) return false
@@ -260,28 +293,45 @@ export default function Explore() {
     return true
   }, [qualityIncluded])
 
-  // Orglabeler quality state — same pattern as the Hyperlabel one.
-  // Url param holds the comma-separated slugs of *included* tiers.
+  // Orglabeler quality state — same pattern as the Hyperlabel one,
+  // including the `unlabeled` sentinel for org records without a tier.
   const orgQualityParam = searchParams?.get("orgQuality")
-  const orgQualityIncluded = useMemo<Set<OrgTierSlug>>(() => {
-    if (orgQualityParam == null) return new Set(DEFAULT_ORG_TIER_SLUGS)
+  const orgQualityIncluded = useMemo<Set<OrgTierSlug | UnlabeledSlug>>(() => {
+    if (orgQualityParam == null) {
+      return new Set<OrgTierSlug | UnlabeledSlug>([
+        ...DEFAULT_ORG_TIER_SLUGS,
+        UNLABELED_SLUG,
+      ])
+    }
+    const valid = new Set<string>([...ORG_TIER_SLUGS, UNLABELED_SLUG])
     return new Set(
       orgQualityParam
         .split(",")
-        .filter((v): v is OrgTierSlug =>
-          (ORG_TIER_SLUGS as readonly string[]).includes(v),
-        ),
+        .filter((v): v is OrgTierSlug | UnlabeledSlug => valid.has(v)),
     )
   }, [orgQualityParam])
-  const excludeOrgLabels = useMemo<readonly OrglabelTier[]>(
+  const orgIncludeUnlabeled = orgQualityIncluded.has(UNLABELED_SLUG)
+  const excludeOrgLabels = useMemo<readonly OrglabelTier[] | undefined>(
     () =>
-      ORG_TIER_SLUGS.filter((slug) => !orgQualityIncluded.has(slug)).map(
-        (slug) => ORG_TIER_BY_SLUG[slug],
-      ),
-    [orgQualityIncluded],
+      orgIncludeUnlabeled
+        ? ORG_TIER_SLUGS.filter((slug) => !orgQualityIncluded.has(slug)).map(
+            (slug) => ORG_TIER_BY_SLUG[slug],
+          )
+        : undefined,
+    [orgQualityIncluded, orgIncludeUnlabeled],
+  )
+  const includeOrgLabels = useMemo<readonly OrglabelTier[] | undefined>(
+    () =>
+      orgIncludeUnlabeled
+        ? undefined
+        : ORG_TIER_SLUGS.filter((slug) => orgQualityIncluded.has(slug)).map(
+            (slug) => ORG_TIER_BY_SLUG[slug],
+          ),
+    [orgQualityIncluded, orgIncludeUnlabeled],
   )
   const orgQualityIsDefault = useMemo(() => {
-    if (orgQualityIncluded.size !== DEFAULT_ORG_TIER_SLUGS.length) return false
+    if (orgQualityIncluded.size !== DEFAULT_ORG_TIER_SLUGS.length + 1) return false
+    if (!orgQualityIncluded.has(UNLABELED_SLUG)) return false
     for (const slug of ORG_TIER_SLUGS) {
       const shouldBeIncluded = DEFAULT_ORG_TIER_SLUGS.includes(slug)
       if (orgQualityIncluded.has(slug) !== shouldBeIncluded) return false
@@ -355,43 +405,48 @@ export default function Explore() {
   )
 
   const onQualityToggle = useCallback(
-    (tier: HyperlabelTier) => {
+    (slug: HyperlabelTier | UnlabeledSlug) => {
       const next = new Set(qualityIncluded)
-      if (next.has(tier)) next.delete(tier)
-      else next.add(tier)
-      // Drop the param when the selection equals the default so the
-      // URL stays short for the common case.
+      if (next.has(slug)) next.delete(slug)
+      else next.add(slug)
+      // Default = every non-hidden tier + unlabeled.
+      const defaultSlugs = new Set<HyperlabelTier | UnlabeledSlug>([
+        ...HYPERLABEL_TIERS.filter(
+          (t) => !DEFAULT_HIDDEN_CERT_LABELS.includes(t),
+        ),
+        UNLABELED_SLUG,
+      ])
       const isDefault =
-        next.size === HYPERLABEL_TIERS.length - DEFAULT_HIDDEN_CERT_LABELS.length &&
-        HYPERLABEL_TIERS.every((t) => {
-          const shouldBeIncluded = !DEFAULT_HIDDEN_CERT_LABELS.includes(t)
-          return next.has(t) === shouldBeIncluded
-        })
-      setUrl({
-        quality: isDefault
-          ? null
-          : HYPERLABEL_TIERS.filter((t) => next.has(t)).join(","),
-      })
+        next.size === defaultSlugs.size &&
+        Array.from(defaultSlugs).every((s) => next.has(s))
+      // URL preserves slug order matching the popover render order
+      // (named tiers first, then unlabeled).
+      const ordered: (HyperlabelTier | UnlabeledSlug)[] = [
+        ...HYPERLABEL_TIERS.filter((t) => next.has(t)),
+        ...(next.has(UNLABELED_SLUG) ? [UNLABELED_SLUG] : []),
+      ]
+      setUrl({ quality: isDefault ? null : ordered.join(",") })
     },
     [qualityIncluded, setUrl],
   )
 
   const onOrgQualityToggle = useCallback(
-    (slug: OrgTierSlug) => {
+    (slug: OrgTierSlug | UnlabeledSlug) => {
       const next = new Set(orgQualityIncluded)
       if (next.has(slug)) next.delete(slug)
       else next.add(slug)
+      const defaultSlugs = new Set<OrgTierSlug | UnlabeledSlug>([
+        ...DEFAULT_ORG_TIER_SLUGS,
+        UNLABELED_SLUG,
+      ])
       const isDefault =
-        next.size === DEFAULT_ORG_TIER_SLUGS.length &&
-        ORG_TIER_SLUGS.every((s) => {
-          const shouldBeIncluded = DEFAULT_ORG_TIER_SLUGS.includes(s)
-          return next.has(s) === shouldBeIncluded
-        })
-      setUrl({
-        orgQuality: isDefault
-          ? null
-          : ORG_TIER_SLUGS.filter((s) => next.has(s)).join(","),
-      })
+        next.size === defaultSlugs.size &&
+        Array.from(defaultSlugs).every((s) => next.has(s))
+      const ordered: (OrgTierSlug | UnlabeledSlug)[] = [
+        ...ORG_TIER_SLUGS.filter((s) => next.has(s)),
+        ...(next.has(UNLABELED_SLUG) ? [UNLABELED_SLUG] : []),
+      ]
+      setUrl({ orgQuality: isDefault ? null : ordered.join(",") })
     },
     [orgQualityIncluded, setUrl],
   )
@@ -409,10 +464,13 @@ export default function Explore() {
     // Cert-quality filter — only meaningful for the certs kind, but
     // passing it for other kinds is a no-op at the load-page level.
     excludeCertLabels: kind === "certs" ? excludeCertLabels : undefined,
+    includeCertLabels: kind === "certs" ? includeCertLabels : undefined,
     // Org-quality filter — used on accounts (filters the actor list)
     // and certs (filters certs whose author org carries the tier).
     excludeOrgLabels:
       kind === "accounts" || kind === "certs" ? excludeOrgLabels : undefined,
+    includeOrgLabels:
+      kind === "accounts" || kind === "certs" ? includeOrgLabels : undefined,
   })
 
   const onDegreeButtonClick = useCallback(
@@ -682,6 +740,14 @@ export default function Explore() {
                           {QUALITY_TIER_LABEL[tier]}
                         </label>
                       ))}
+                      <label className="popover__item popover__item--check">
+                        <input
+                          type="checkbox"
+                          checked={qualityIncluded.has(UNLABELED_SLUG)}
+                          onChange={() => onQualityToggle(UNLABELED_SLUG)}
+                        />
+                        {UNLABELED_LABEL}
+                      </label>
                       <hr className="popover__divider" aria-hidden="true" />
                       <p className="popover__section-heading">Account quality</p>
                     </>
@@ -699,6 +765,14 @@ export default function Explore() {
                       {ORG_TIER_DISPLAY_LABEL[slug]}
                     </label>
                   ))}
+                  <label className="popover__item popover__item--check">
+                    <input
+                      type="checkbox"
+                      checked={orgQualityIncluded.has(UNLABELED_SLUG)}
+                      onChange={() => onOrgQualityToggle(UNLABELED_SLUG)}
+                    />
+                    {UNLABELED_LABEL}
+                  </label>
                 </Popover>
               ) : null}
             </div>
