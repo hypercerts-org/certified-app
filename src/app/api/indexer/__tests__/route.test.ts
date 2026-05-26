@@ -491,6 +491,51 @@ describe("/api/indexer trust boundary", () => {
       const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
       expect(body.variables.authors).toEqual(["did:plc:ok", "did:plc:also-ok"])
     })
+
+    it("forwards sortBy=SORT_AT", async () => {
+      await postIndexer({
+        operationName: "FollowerEvents",
+        variables: { authors: ["did:plc:a"], sortBy: "SORT_AT" },
+      })
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
+      expect(body.variables.sortBy).toBe("SORT_AT")
+    })
+
+    it("forwards sortBy=CREATED_AT", async () => {
+      await postIndexer({
+        operationName: "FollowerEvents",
+        variables: { authors: ["did:plc:a"], sortBy: "CREATED_AT" },
+      })
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
+      expect(body.variables.sortBy).toBe("CREATED_AT")
+    })
+
+    it("drops unknown sortBy values to null (allowlist enforcement)", async () => {
+      await postIndexer({
+        operationName: "FollowerEvents",
+        variables: { authors: ["did:plc:a"], sortBy: "INJECTED_VALUE" },
+      })
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
+      expect(body.variables.sortBy).toBeNull()
+    })
+
+    it("drops non-string sortBy to null", async () => {
+      await postIndexer({
+        operationName: "FollowerEvents",
+        variables: { authors: ["did:plc:a"], sortBy: 42 },
+      })
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
+      expect(body.variables.sortBy).toBeNull()
+    })
+
+    it("treats missing sortBy as null (server falls back to its default)", async () => {
+      await postIndexer({
+        operationName: "FollowerEvents",
+        variables: { authors: ["did:plc:a"] },
+      })
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
+      expect(body.variables.sortBy).toBeNull()
+    })
   })
 
   describe("HydrateFeedPage", () => {

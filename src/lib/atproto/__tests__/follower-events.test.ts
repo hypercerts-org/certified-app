@@ -273,6 +273,78 @@ describe("hydrateFeedEvents", () => {
     expect(out[1].payload).toBeNull()
   })
 
+  it("threads the activity's labels through to the cert.create payload", async () => {
+    const events = [makeEvent("cert.create", "labeled")]
+    respondWith({
+      data: {
+        activities: {
+          edges: [
+            {
+              node: {
+                uri: events[0].subjectUri,
+                cid: "c1",
+                did: "did:plc:x",
+                title: "Likely test cert",
+                shortDescription: "",
+                createdAt: "2026-05-26T00:00:00.000Z",
+                startDate: null,
+                endDate: null,
+                labels: ["likely-test"],
+                image: null,
+                workScope: null,
+              },
+            },
+          ],
+        },
+        collections: { edges: [] },
+        badgeAwards: { edges: [] },
+      },
+    })
+    const out = await hydrateFeedEvents(events)
+    const payload = out[0].payload
+    if (payload?.kind === "cert.create") {
+      expect(payload.labels).toEqual(["likely-test"])
+    } else {
+      throw new Error("Expected cert.create payload")
+    }
+  })
+
+  it("defaults the hydrated cert labels to [] when the node omits them", async () => {
+    const events = [makeEvent("cert.create", "unlabeled")]
+    respondWith({
+      data: {
+        activities: {
+          edges: [
+            {
+              node: {
+                uri: events[0].subjectUri,
+                cid: "c1",
+                did: "did:plc:x",
+                title: "Unlabeled cert",
+                shortDescription: "",
+                createdAt: "2026-05-26T00:00:00.000Z",
+                startDate: null,
+                endDate: null,
+                labels: null,
+                image: null,
+                workScope: null,
+              },
+            },
+          ],
+        },
+        collections: { edges: [] },
+        badgeAwards: { edges: [] },
+      },
+    })
+    const out = await hydrateFeedEvents(events)
+    const payload = out[0].payload
+    if (payload?.kind === "cert.create") {
+      expect(payload.labels).toEqual([])
+    } else {
+      throw new Error("Expected cert.create payload")
+    }
+  })
+
   it("includes the collection.value.type from the hydration payload", async () => {
     const events = [makeEvent("collection.create", "a")]
     respondWith({
