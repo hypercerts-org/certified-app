@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { checkCsrf } from "@/lib/auth/csrf"
+import { enforceRateLimit, makeLimiter } from "@/lib/auth/rate-limit"
+import { clientIp } from "@/lib/utils/ip"
 import { logSafe } from "@/lib/utils/log-safe"
 
 /**
@@ -54,6 +56,13 @@ const UPSTREAM_TIMEOUT_MS = 15_000
 // 32KB — operationName + variables. The 16KB original was too tight for
 // HydrateFeedPage, which sends up to 50 at:// URIs per kind × 4 kinds.
 const MAX_BODY_SIZE = 32 * 1024
+
+// IP-scoped rate limiter — defence in depth against a same-origin
+// script / XSS fan-out abusing the proxy. Matches the cadence of
+// the other BFF routes (resolve-handle = 100/min, search-actors =
+// 60/min). The indexer's own per-op variable caps + 15s upstream
+// timeout still apply; this is just the global brake.
+const LIMITER = makeLimiter("indexer-proxy", 120, 60)
 const MAX_FIRST = 100
 const MAX_FIRST_DEFINITIONS = 1000
 const MAX_FEED_PAGE_SIZE = 50
@@ -1028,6 +1037,12 @@ function readUriList(value: unknown): string[] | null {
   for (const item of value) {
     if (typeof item !== "string") return null
     if (item.length === 0 || item.length > MAX_URI_LEN) return null
+    // Defensive prefix check — every consumer of this list passes
+    // the values as a GraphQL `$uris` variable (not body-interpolated),
+    // so the actual injection risk is zero. Rejecting non-at:// values
+    // here makes a manipulated request fail at the proxy with a 400
+    // instead of producing an empty result downstream.
+    if (!item.startsWith("at://")) return null
     out.push(item)
   }
   return out
@@ -1119,7 +1134,7 @@ function buildVariables(
     }
     case "ProjectsContainingCert": {
       const certUri = readString(vars.certUri, MAX_URI_LEN)
-      if (!certUri) return null
+      if (!certUri || !certUri.startsWith("at://")) return null
       return {
         certUri,
         first: clampFirst(vars.first, MAX_FIRST, 50),
@@ -1265,6 +1280,9 @@ function buildVariables(
 export async function POST(request: NextRequest) {
   const csrfError = checkCsrf(request)
   if (csrfError) return csrfError
+
+  const rateDenied = await enforceRateLimit(LIMITER, clientIp(request))
+  if (rateDenied) return rateDenied
 
   const contentLength = request.headers.get("content-length")
   if (contentLength && Number(contentLength) > MAX_BODY_SIZE) {
