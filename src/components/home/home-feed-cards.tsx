@@ -1,16 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import {
-  Award,
-  BarChart3,
-  FolderGit2,
-  Inbox,
-  LayoutDashboard,
-  Megaphone,
-  Sparkles,
-  Users,
-} from "lucide-react"
+import { Inbox, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -29,14 +20,21 @@ import type { CollectionRecord } from "@/lib/atproto/collection"
 
 /**
  * Card-style alternative to the GitHub-style timeline at `<HomeFeed>`.
- * Each event renders as a distinct social-media card (Twitter / Bluesky
- * shape): prominent actor header, action line, large image, body
- * copy. Cards sit in a vertical column with whitespace between them
- * rather than the dense list-rhythm of the timeline.
  *
- * Consumes the same `useHomeFeed` data as the timeline — the
- * difference is purely visual. Toggle UI in `home.tsx` swaps between
- * `<HomeFeed>` and this component.
+ * Each event renders as a distinct social-media card. Header layout:
+ *
+ *     ┌─────┐  display-name verbed-something                  · time ·
+ *     │ av  │
+ *     └─────┘
+ *     (body: rich record content — image, title, description)
+ *
+ * The handle is hidden from the chrome; hovering the avatar or the
+ * display name reveals it via the native title tooltip. The action
+ * verb sits inline with the display name ("alice created a cert")
+ * so the header reads as one sentence. The body shows the actual
+ * hydrated record — cert image + title, project banner + title,
+ * endorsement subject row, evaluation summary, measurement metric.
+ * No raw at-URIs in the body.
  */
 export default function HomeFeedCards({ activeDid }: { activeDid: string }) {
   const {
@@ -123,6 +121,10 @@ function ActorHeader({ event }: { event: HomeFeedEvent }) {
   const profileHref = `/profile/${encodeURIComponent(
     actor.handle || event.actor,
   )}`
+  // Native tooltip on hover — shows the handle without crowding the
+  // visible chrome. Falls back to the DID for actors with no handle.
+  const hoverHint = actor.handle ? `@${actor.handle}` : event.actor
+  const actionLabel = actionLabelForEvent(event)
 
   return (
     <header className="home-card__header">
@@ -130,6 +132,7 @@ function ActorHeader({ event }: { event: HomeFeedEvent }) {
         href={profileHref}
         className="home-card__avatar"
         aria-label={`${displayName}'s profile`}
+        title={hoverHint}
       >
         <Avatar
           size="md"
@@ -138,96 +141,52 @@ function ActorHeader({ event }: { event: HomeFeedEvent }) {
           fallbackInitials={initials}
         />
       </Link>
-      <div className="home-card__meta">
-        <Link href={profileHref} className="home-card__actor-name">
+      <p className="home-card__sentence">
+        <Link
+          href={profileHref}
+          className="home-card__actor-name"
+          title={hoverHint}
+        >
           {displayName}
-        </Link>
-        <span className="home-card__actor-sub">
-          {actor.handle ? (
-            <Link href={profileHref} className="home-card__handle">
-              @{actor.handle}
-            </Link>
-          ) : null}
-          {actor.handle ? (
-            <span className="home-card__dot" aria-hidden="true">
-              ·
-            </span>
-          ) : null}
-          <time
-            className="home-card__time"
-            dateTime={event.createdAt}
-            title={event.createdAt}
-          >
-            {formatRelativeTime(event.createdAt)}
-          </time>
-        </span>
-      </div>
+        </Link>{" "}
+        <span className="home-card__action">{actionLabel}</span>
+      </p>
+      <time
+        className="home-card__time"
+        dateTime={event.createdAt}
+        title={event.createdAt}
+      >
+        {formatRelativeTime(event.createdAt)}
+      </time>
     </header>
   )
 }
 
-// ----------------------------------------------------------------------
-// Body dispatch
-// ----------------------------------------------------------------------
-
-function CardBody({ event }: { event: HomeFeedEvent }) {
+/**
+ * Header verb for every event kind, including the degraded
+ * `unknown` variant where we fall back on `rawKind` so a missed
+ * hydration still reads as "alice created a cert" instead of
+ * "alice did something".
+ */
+function actionLabelForEvent(event: HomeFeedEvent): string {
   switch (event.kind) {
     case "cert.create":
-      return <CertCardBody event={event} record={event.record} />
+      return "created a cert"
     case "collection.create":
-      return <CollectionCardBody event={event} record={event.record} />
+      return `created a ${collectionVerb(event.record)}`
+    case "evaluation.create":
+      return "added an evaluation"
+    case "measurement.create":
+      return "added a measurement"
+    case "hyperboard.create":
+      return "created a hyperboard"
+    case "update.create":
+      return "posted an update"
     case "endorsement.award":
     case "legacy.endorsement":
-      return (
-        <EndorsementCardBody
-          subjectDid={event.subjectDid}
-          note={"note" in event ? event.note : null}
-        />
-      )
-    case "evaluation.create":
-      return (
-        <SimpleCardBody
-          icon={<BarChart3 size={14} strokeWidth={1.75} aria-hidden />}
-          action="added an evaluation"
-          title={event.title}
-        />
-      )
-    case "measurement.create":
-      return (
-        <SimpleCardBody
-          icon={<BarChart3 size={14} strokeWidth={1.75} aria-hidden />}
-          action="added a measurement"
-          title={event.title}
-        />
-      )
-    case "hyperboard.create":
-      return (
-        <SimpleCardBody
-          icon={<LayoutDashboard size={14} strokeWidth={1.75} aria-hidden />}
-          action="created a hyperboard"
-          title={event.title}
-        />
-      )
-    case "update.create":
-      return (
-        <SimpleCardBody
-          icon={<Megaphone size={14} strokeWidth={1.75} aria-hidden />}
-          action="posted an update"
-          title={event.title}
-        />
-      )
+      return "endorsed"
     case "unknown":
-      // Wire kind known but hydration produced no payload (or kind
-      // genuinely unknown). Recover the verb from the wire kind so
-      // we don't render "did something" for events we recognise.
-      return (
-        <SimpleCardBody
-          icon={<Sparkles size={14} strokeWidth={1.75} aria-hidden />}
-          action={actionLabelForRawKind(event.rawKind)}
-          title={null}
-          subjectUri={event.subjectUri}
-        />
-      )
+      return actionLabelForRawKind(event.rawKind)
   }
 }
 
@@ -247,9 +206,54 @@ function actionLabelForRawKind(kind: string): string {
       return "posted an update"
     case "endorsement.award":
     case "legacy.endorsement":
-      return "endorsed someone"
+      return "endorsed"
     default:
       return "did something"
+  }
+}
+
+function collectionVerb(record: CollectionRecord): string {
+  const t =
+    typeof record.value.type === "string"
+      ? record.value.type.toLowerCase()
+      : null
+  if (t === "endorsement-list") return "list"
+  if (t === "portfolio") return "portfolio"
+  return "project"
+}
+
+// ----------------------------------------------------------------------
+// Body dispatch — no more action line in here; that's in the header.
+// Each body just renders the rich record content.
+// ----------------------------------------------------------------------
+
+function CardBody({ event }: { event: HomeFeedEvent }) {
+  switch (event.kind) {
+    case "cert.create":
+      return <CertCardBody event={event} record={event.record} />
+    case "collection.create":
+      return <CollectionCardBody event={event} record={event.record} />
+    case "endorsement.award":
+    case "legacy.endorsement":
+      return (
+        <EndorsementCardBody
+          subjectDid={event.subjectDid}
+          note={"note" in event ? event.note : null}
+        />
+      )
+    case "evaluation.create":
+    case "measurement.create":
+    case "update.create":
+      return event.title ? <TitleOnlyBody title={event.title} /> : null
+    case "hyperboard.create":
+      // Hyperboard lexicon doesn't surface a title — header carries
+      // the full message.
+      return null
+    case "unknown":
+      // Wire kind we couldn't hydrate (or genuinely unknown). The
+      // header already carries the recovered verb; no body content
+      // to surface beyond that.
+      return null
   }
 }
 
@@ -284,10 +288,6 @@ function CertCardBody({
 
   return (
     <div className="home-card__body">
-      <ActionLine
-        icon={<Award size={14} strokeWidth={1.75} aria-hidden />}
-        label="created a cert"
-      />
       <CardLink href={href}>
         {imageUrl ? (
           <span className="home-card__media">
@@ -324,12 +324,6 @@ function CollectionCardBody({
   const v = record.value as Record<string, unknown>
   const collectionType =
     typeof v.type === "string" ? v.type.toLowerCase() : "project"
-  const verb =
-    collectionType === "endorsement-list"
-      ? "created a list"
-      : collectionType === "portfolio"
-        ? "created a portfolio"
-        : "created a project"
   const fallbackTitle =
     collectionType === "endorsement-list"
       ? "Untitled list"
@@ -355,10 +349,6 @@ function CollectionCardBody({
 
   return (
     <div className="home-card__body">
-      <ActionLine
-        icon={<FolderGit2 size={14} strokeWidth={1.75} aria-hidden />}
-        label={verb}
-      />
       <CardLink href={href}>
         {imageUrl ? (
           <span className="home-card__media">
@@ -396,25 +386,21 @@ function EndorsementCardBody({
   const subjectHref = `/profile/${encodeURIComponent(
     info?.handle || subjectDid,
   )}`
+  const subjectHint = info?.handle ? `@${info.handle}` : subjectDid
   return (
     <div className="home-card__body">
-      <ActionLine
-        icon={<Award size={14} strokeWidth={1.75} aria-hidden />}
-        label="endorsed"
-      />
-      <Link href={subjectHref} className="home-card__subject">
+      <Link
+        href={subjectHref}
+        className="home-card__subject"
+        title={subjectHint}
+      >
         <Avatar
           size="sm"
           src={subjectAvatar ?? undefined}
           alt=""
           fallbackInitials={subjectInitials}
         />
-        <span className="home-card__subject-meta">
-          <span className="home-card__subject-name">{subjectName}</span>
-          {info?.handle ? (
-            <span className="home-card__subject-handle">@{info.handle}</span>
-          ) : null}
-        </span>
+        <span className="home-card__subject-name">{subjectName}</span>
       </Link>
       {note ? <p className="home-card__note">{note}</p> : null}
     </div>
@@ -422,57 +408,24 @@ function EndorsementCardBody({
 }
 
 // ----------------------------------------------------------------------
-// Simple-title body (evaluation, measurement, hyperboard, update,
-// unknown). Keeps the card chrome consistent without an image
-// preview — the source records don't reliably surface one.
+// Title-only body — evaluation summary, measurement metric, attachment
+// title. Pure text headline; no image, no description.
 // ----------------------------------------------------------------------
 
-function SimpleCardBody({
-  icon,
-  action,
-  title,
-  subjectUri,
-}: {
-  icon: React.ReactNode
-  action: string
-  title: string | null
-  subjectUri?: string
-}) {
+function TitleOnlyBody({ title }: { title: string }) {
   return (
     <div className="home-card__body">
-      <ActionLine icon={icon} label={action} />
-      {title ? (
-        <span className="home-card__primary home-card__primary--standalone">
-          <span className="home-card__title">{title}</span>
-        </span>
-      ) : null}
-      {subjectUri ? (
-        <p className="home-card__subject-uri" title={subjectUri}>
-          {subjectUri}
-        </p>
-      ) : null}
+      <span className="home-card__primary home-card__primary--standalone">
+        <span className="home-card__title">{title}</span>
+      </span>
     </div>
   )
 }
 
 // ----------------------------------------------------------------------
-// Card subprimitives
+// Card link wrapper — degrades to a div when the target route doesn't
+// exist (some kinds don't have a detail page yet).
 // ----------------------------------------------------------------------
-
-function ActionLine({
-  icon,
-  label,
-}: {
-  icon: React.ReactNode
-  label: string
-}) {
-  return (
-    <div className="home-card__action">
-      {icon}
-      <span>{label}</span>
-    </div>
-  )
-}
 
 function CardLink({
   href,

@@ -567,70 +567,61 @@ a.home-feed__preview:hover {
   background: var(--bg-elevated);
 }
 
-/* ---- Header (avatar + name + handle/time) ---- */
+/* ---- Header (avatar + sentence + top-right time) ----
+   3-column grid: fixed-width avatar gutter · flexible sentence ·
+   right-anchored timestamp. The avatar slot is sized exactly to the
+   Avatar component's "md" intrinsic (40px) and uses flex-shrink:0 so
+   it can never compress when the sentence grows long. */
 
 .home-card__header {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-columns: 40px minmax(0, 1fr) auto;
   gap: 12px;
-  align-items: center;
+  align-items: start;
 }
 
 .home-card__avatar {
   display: inline-flex;
   width: 40px;
   height: 40px;
+  flex-shrink: 0;
 }
 
-.home-card__meta {
-  display: flex;
-  flex-direction: column;
+.home-card__avatar > * {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.home-card__sentence {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  color: var(--fg-primary);
   min-width: 0;
+  padding-top: 4px;
 }
 
 .home-card__actor-name {
   font-weight: 600;
-  font-size: 0.9375rem;
   color: var(--fg-primary);
   text-decoration: none;
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .home-card__actor-name:hover {
   text-decoration: underline;
 }
 
-.home-card__actor-sub {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.8125rem;
+.home-card__action {
   color: var(--fg-muted);
-  line-height: 1.4;
-  min-width: 0;
-}
-
-.home-card__handle {
-  color: var(--fg-muted);
-  text-decoration: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.home-card__handle:hover {
-  text-decoration: underline;
-}
-
-.home-card__dot {
-  color: var(--fg-muted);
+  font-weight: 400;
 }
 
 .home-card__time {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
   white-space: nowrap;
+  padding-top: 6px;
 }
 
 /* ---- Body ---- */
@@ -639,19 +630,16 @@ a.home-feed__preview:hover {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  /* Indent the body under the sentence — aligns the body's left
+     edge with the start of the actor name (past the avatar gutter
+     and its 12px right margin). */
+  padding-left: 52px;
 }
 
-.home-card__action {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.8125rem;
-  color: var(--fg-muted);
-}
-
-.home-card__action svg {
-  color: var(--fg-muted);
-  flex-shrink: 0;
+@media (max-width: 560px) {
+  .home-card__body {
+    padding-left: 0;
+  }
 }
 
 .home-card__link {
@@ -734,21 +722,14 @@ a.home-feed__preview:hover {
   text-decoration: underline;
 }
 
-.home-card__subject-meta {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
 .home-card__subject-name {
   font-weight: 500;
   font-size: 0.875rem;
   color: var(--fg-primary);
-}
-
-.home-card__subject-handle {
-  font-size: 0.75rem;
-  color: var(--fg-muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .home-card__note {
@@ -760,14 +741,6 @@ a.home-feed__preview:hover {
   color: var(--fg-primary);
   white-space: pre-wrap;
   word-break: break-word;
-}
-
-.home-card__subject-uri {
-  margin: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.75rem;
-  color: var(--fg-muted);
-  word-break: break-all;
 }
 
 @media (max-width: 760px) {
