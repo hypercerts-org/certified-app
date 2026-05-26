@@ -374,20 +374,49 @@ export default function Explore() {
           {/* Kind switcher used to live here but didn't fit in 220px
               with three labels; promoted to the top of the main pane
               (see below). Sidebar is now filter-list-only. */}
-          <ul className="explore__filter-list">
-            {filtersForKind(kind).map((f) => (
-              <li key={f.key}>
-                <button
-                  type="button"
-                  className={`explore__filter${filter === f.key ? " explore__filter--active" : ""}`}
-                  data-filter-key={f.key}
-                  onClick={onFilterButtonClick}
-                >
-                  {f.label}
-                </button>
-              </li>
-            ))}
-          </ul>
+          {(() => {
+            const all = filtersForKind(kind)
+            const featured = all.filter((f) => f.featured)
+            const standard = all.filter((f) => !f.featured)
+            return (
+              <>
+                {featured.length > 0 ? (
+                  <>
+                    <h3 className="explore__filter-heading">Featured</h3>
+                    <ul className="explore__filter-list">
+                      {featured.map((f) => (
+                        <li key={f.key}>
+                          <button
+                            type="button"
+                            className={`explore__filter${filter === f.key ? " explore__filter--active" : ""}`}
+                            data-filter-key={f.key}
+                            onClick={onFilterButtonClick}
+                          >
+                            {f.label}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <hr className="explore__filter-divider" aria-hidden="true" />
+                  </>
+                ) : null}
+                <ul className="explore__filter-list">
+                  {standard.map((f) => (
+                    <li key={f.key}>
+                      <button
+                        type="button"
+                        className={`explore__filter${filter === f.key ? " explore__filter--active" : ""}`}
+                        data-filter-key={f.key}
+                        onClick={onFilterButtonClick}
+                      >
+                        {f.label}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )
+          })()}
         </aside>
 
         <main className="explore__main">

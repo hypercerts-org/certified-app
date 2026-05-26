@@ -2,15 +2,24 @@ export type ExploreKind = "accounts" | "projects" | "certs"
 
 export type SortOrder = "newest" | "oldest" | "alphabetical"
 
-interface FilterOption {
+export interface FilterOption {
   key: string
   label: string
   /** Whether the filter requires the viewer to be signed in. Used to
    *  disable filters the viewer can't usefully see (e.g. "By me"). */
   requiresAuth?: boolean
+  /** Curated featured groups (today only Ma Earth). Renders above the
+   *  generic filter list under a "Featured" heading, with a divider
+   *  between the two groups. */
+  featured?: boolean
 }
 
+const FEATURED_FILTERS: FilterOption[] = [
+  { key: "ma-earth", label: "Ma Earth", featured: true },
+]
+
 const ACCOUNT_FILTERS: FilterOption[] = [
+  ...FEATURED_FILTERS,
   { key: "recent", label: "Recently viewed" },
   { key: "my-groups", label: "My organizations", requiresAuth: true },
   { key: "follows", label: "Accounts I follow", requiresAuth: true },
@@ -19,6 +28,7 @@ const ACCOUNT_FILTERS: FilterOption[] = [
 ]
 
 const PROJECT_FILTERS: FilterOption[] = [
+  ...FEATURED_FILTERS,
   { key: "recent", label: "Recently viewed" },
   { key: "by-me", label: "My projects", requiresAuth: true },
   { key: "by-follows", label: "Accounts I follow", requiresAuth: true },
@@ -27,6 +37,7 @@ const PROJECT_FILTERS: FilterOption[] = [
 ]
 
 const CERT_FILTERS: FilterOption[] = [
+  ...FEATURED_FILTERS,
   { key: "recent", label: "Recently viewed" },
   { key: "by-me", label: "My certs", requiresAuth: true },
   { key: "by-follows", label: "Accounts I follow", requiresAuth: true },

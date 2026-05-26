@@ -122,6 +122,26 @@
   gap: 1px;
 }
 
+/* Section heading above the Featured group. Small + medium weight
+   so it reads as a label rather than competing with the filter
+   pills themselves. Sentence case keeps it consistent with the
+   rest of the menu typography. */
+.explore__filter-heading {
+  margin: 0 0 6px;
+  padding: 0 10px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+}
+
+/* Thin horizontal divider between the Featured group and the
+   generic filter list. Uses the standard subtle border token. */
+.explore__filter-divider {
+  margin: 12px 10px;
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
 .explore__filter {
   display: block;
   width: 100%;

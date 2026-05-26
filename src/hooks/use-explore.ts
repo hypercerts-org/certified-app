@@ -39,6 +39,13 @@ import {
   fetchActivitiesByUris,
   fetchProjectsByUris,
 } from "@/lib/atproto/records-by-uri"
+import {
+  MA_EARTH_COLLECTIONS,
+  MA_EARTH_FILTER,
+} from "@/lib/atproto/featured"
+import type { CollectionItem } from "@/lib/atproto/collection"
+import { parseAtUri } from "@/lib/atproto/activity-uri"
+import { authFetch } from "@/lib/auth/fetch"
 import type { ExploreKind } from "@/components/explore-page/explore-types"
 
 /**
@@ -406,6 +413,55 @@ async function loadPage(args: LoadArgs): Promise<LoadedPage> {
   return loadCertsPage(args)
 }
 
+/**
+ * Fetch a curated set of `org.hypercerts.collection` records and
+ * union their `items[]` arrays into a single deduplicated URI list.
+ * Used by the Ma Earth featured filter: the curator's 3 collections
+ * (per kind) are stored as constants and resolved here in parallel.
+ * Collections that 404 or carry a non-array `items` field are
+ * skipped silently.
+ */
+async function loadFeaturedItemUris(
+  collectionUris: readonly string[],
+  signal: AbortSignal | null,
+): Promise<string[]> {
+  const responses = await Promise.all(
+    collectionUris.map(async (uri) => {
+      const parsed = parseAtUri(uri)
+      if (!parsed) return null
+      const params = new URLSearchParams({
+        repo: parsed.did,
+        collection: parsed.collection,
+        rkey: parsed.rkey,
+      })
+      try {
+        const res = await authFetch(
+          `/api/xrpc/com/atproto/repo/getRecord?${params.toString()}`,
+          signal ? { signal } : undefined,
+        )
+        if (!res.ok) return null
+        return (await res.json()) as { value?: { items?: unknown } }
+      } catch {
+        return null
+      }
+    }),
+  )
+  if (signal?.aborted) return []
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const r of responses) {
+    const items = r?.value?.items
+    if (!Array.isArray(items)) continue
+    for (const item of items as CollectionItem[]) {
+      const uri = item?.itemIdentifier?.uri
+      if (typeof uri !== "string" || seen.has(uri)) continue
+      seen.add(uri)
+      out.push(uri)
+    }
+  }
+  return out
+}
+
 // ----------------------------- Accounts --------------------------------
 
 async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
@@ -420,6 +476,45 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
     signal,
     degree,
   } = args
+
+  if (filter === MA_EARTH_FILTER) {
+    if (cursor !== null) return EMPTY_PAGE
+    const itemUris = await loadFeaturedItemUris(
+      MA_EARTH_COLLECTIONS.accounts,
+      signal,
+    )
+    if (signal?.aborted) return EMPTY_PAGE
+    // Items point at `at://<did>/app.certified.actor.profile/self`;
+    // strip out the DID and synthesise NetworkActor stubs that
+    // AccountListRow / ExploreUserCard will hydrate per-row from
+    // `useAuthorInfo`. No second fetch needed at this layer.
+    const dids: string[] = []
+    const seen = new Set<string>()
+    for (const uri of itemUris) {
+      const parsed = parseAtUri(uri)
+      if (!parsed || seen.has(parsed.did)) continue
+      seen.add(parsed.did)
+      dids.push(parsed.did)
+    }
+    const orgDids =
+      sub !== "all" ? await getOrgDids() : new Set<string>()
+    if (signal?.aborted) return EMPTY_PAGE
+    let users: NetworkActor[] = dids.map((did) => ({
+      did,
+      displayName: null,
+      description: null,
+      avatarUrl: null,
+      createdAt: null,
+    }))
+    if (sub === "people") users = users.filter((a) => !orgDids.has(a.did))
+    else if (sub === "organizations")
+      users = users.filter((a) => orgDids.has(a.did))
+    if (search.trim().length > 0) {
+      const q = search.trim().toLowerCase()
+      users = users.filter((a) => a.did.includes(q))
+    }
+    return { ...EMPTY_PAGE, users }
+  }
 
   // Filters that aren't server-backed: short-circuit pagination.
   // The follows / recent / my-groups filters fetch a NetworkActors
@@ -540,6 +635,29 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
 async function loadProjectsPage(args: LoadArgs): Promise<LoadedPage> {
   const { filter, search, viewerDid, followedDids, cursor, signal, degree } = args
 
+  if (filter === MA_EARTH_FILTER) {
+    if (cursor !== null) return EMPTY_PAGE
+    const itemUris = await loadFeaturedItemUris(
+      MA_EARTH_COLLECTIONS.projects,
+      signal,
+    )
+    if (signal?.aborted) return EMPTY_PAGE
+    if (itemUris.length === 0) return EMPTY_PAGE
+    const res = await fetchProjectsByUris(itemUris, signal ?? undefined)
+    if (signal?.aborted) return EMPTY_PAGE
+    let projects = res.records
+    if (search.trim().length > 0) {
+      const q = search.trim().toLowerCase()
+      projects = projects.filter((p) => {
+        const v = p.value as Record<string, unknown>
+        const title = typeof v.title === "string" ? v.title : ""
+        const desc = typeof v.shortDescription === "string" ? v.shortDescription : ""
+        return title.toLowerCase().includes(q) || desc.toLowerCase().includes(q)
+      })
+    }
+    return { ...EMPTY_PAGE, projects }
+  }
+
   if (filter === "by-endorsed") {
     if (cursor !== null) return EMPTY_PAGE
     if (!viewerDid) return EMPTY_PAGE
@@ -610,6 +728,28 @@ async function loadProjectsPage(args: LoadArgs): Promise<LoadedPage> {
 
 async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
   const { filter, sub, search, viewerDid, followedDids, cursor, signal, degree } = args
+
+  if (filter === MA_EARTH_FILTER) {
+    if (cursor !== null) return EMPTY_PAGE
+    const itemUris = await loadFeaturedItemUris(
+      MA_EARTH_COLLECTIONS.certs,
+      signal,
+    )
+    if (signal?.aborted) return EMPTY_PAGE
+    if (itemUris.length === 0) return EMPTY_PAGE
+    const res = await fetchActivitiesByUris(itemUris, signal ?? undefined)
+    if (signal?.aborted) return EMPTY_PAGE
+    let certs = res.records
+    if (search.trim().length > 0) {
+      const q = search.trim().toLowerCase()
+      certs = certs.filter((c) => {
+        const title = typeof c.value.title === "string" ? c.value.title : ""
+        const desc = typeof c.value.shortDescription === "string" ? c.value.shortDescription : ""
+        return title.toLowerCase().includes(q) || desc.toLowerCase().includes(q)
+      })
+    }
+    return { ...EMPTY_PAGE, certs, certDids: res.dids }
+  }
 
   // Sub-category overrides — pinned to viewer.
   if (sub === "created" && viewerDid) {
