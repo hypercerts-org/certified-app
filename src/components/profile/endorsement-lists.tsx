@@ -33,7 +33,10 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { formatShortDate } from "@/lib/utils/format-date"
 import { getInitials } from "@/lib/utils/initials"
-import { extractAwardSubjectDid } from "@/lib/atproto/badges"
+import {
+  deleteEndorsementAward,
+  extractAwardSubjectDid,
+} from "@/lib/atproto/badges"
 
 interface EndorsementListsProps {
   /** DID of the profile being viewed. */
@@ -162,6 +165,20 @@ export default function EndorsementLists({
           }}
           onRemoveItem={(awardUri) =>
             removeSubjectFromList(selectedList.rkey, awardUri)
+          }
+          onRevokeAward={
+            viewerDid
+              ? async (awardUri) => {
+                  // Award URIs are at://<did>/<collection>/<rkey>;
+                  // deleteEndorsementAward purges the award from every
+                  // list owned by the issuer, so a list-side refetch
+                  // catches the cleanup across all lists.
+                  const rkey = awardUri.split("/").pop()
+                  if (!rkey) return
+                  await deleteEndorsementAward(viewerDid, rkey)
+                  await refetch()
+                }
+              : undefined
           }
         />
         {isAddingPeople && viewerIsOwner && viewerDid ? (
@@ -439,6 +456,11 @@ interface ListDetailProps {
    *  the item from the list's collection record; the underlying
    *  endorsement award is NOT deleted. */
   onRemoveItem: (awardUri: string) => Promise<unknown>
+  /** Called when the viewer chooses "Revoke endorsement" from the
+   *  remove confirmation. Deletes the underlying award entirely —
+   *  the badge layer also purges the award from every list owned by
+   *  the issuer, so the row disappears from this view too. */
+  onRevokeAward?: (awardUri: string) => Promise<unknown>
 }
 
 function ListDetail({
@@ -450,6 +472,7 @@ function ListDetail({
   onEdit,
   onDelete,
   onRemoveItem,
+  onRevokeAward,
 }: ListDetailProps) {
   const canRevokeItems = canEdit
   return (
@@ -534,6 +557,9 @@ function ListDetail({
                         awardUri: award.uri,
                         listTitle: list.title,
                         onRemove: () => onRemoveItem(award.uri),
+                        onRevokeAward: onRevokeAward
+                          ? () => onRevokeAward(award.uri)
+                          : undefined,
                       }
                     : null
                 }
@@ -551,13 +577,16 @@ interface ListItemRowProps {
   createdAt: string
   note?: string
   /** Owner-only "remove from list" handle. When set, the row renders
-   *  a × that confirms + drops the item from the list's collection
-   *  record. The underlying endorsement award is NOT deleted — the
-   *  subject still appears in the Given panel. */
+   *  a × that opens a confirmation. `onRemove` drops the item from
+   *  the list (award untouched); `onRevokeAward`, when present,
+   *  surfaces a second action that deletes the underlying award
+   *  outright. When `onRevokeAward` is omitted the dialog falls
+   *  back to the legacy 2-option (remove / cancel) layout. */
   revoke: {
     awardUri: string
     listTitle: string
     onRemove: () => Promise<unknown>
+    onRevokeAward?: () => Promise<unknown>
   } | null
 }
 
@@ -618,6 +647,7 @@ function ListItemRow({ subjectDid, createdAt, note, revoke }: ListItemRowProps) 
           listTitle={revoke.listTitle}
           subjectDisplay={displayName}
           onRemove={revoke.onRemove}
+          onRevokeAward={revoke.onRevokeAward}
         />
       ) : null}
     </li>
@@ -775,26 +805,35 @@ function RevokeListItemButton({
   listTitle,
   subjectDisplay,
   onRemove,
+  onRevokeAward,
 }: {
   listTitle: string
   subjectDisplay: string
   onRemove: () => Promise<unknown>
+  onRevokeAward?: () => Promise<unknown>
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [isRevoking, setIsRevoking] = useState(false)
+  const [busy, setBusy] = useState<null | "remove" | "revoke">(null)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleConfirm = async () => {
-    if (isRevoking) return
-    setIsRevoking(true)
+  const run = async (action: "remove" | "revoke") => {
+    if (busy) return
+    setBusy(action)
+    setError(null)
     try {
-      await onRemove()
+      await (action === "remove" ? onRemove() : onRevokeAward!())
       setConfirmOpen(false)
     } catch (err) {
-      console.error("Failed to remove list item:", err)
+      console.error(`Failed to ${action} endorsement:`, err)
+      setError(err instanceof Error ? err.message : `Failed to ${action}`)
     } finally {
-      setIsRevoking(false)
+      setBusy(null)
     }
   }
+
+  // Without onRevokeAward, fall back to the legacy 2-button confirm
+  // so call sites that haven't opted into the revoke flow stay unchanged.
+  const supportsRevoke = !!onRevokeAward
 
   return (
     <>
@@ -813,17 +852,73 @@ function RevokeListItemButton({
       >
         <X size={14} strokeWidth={2} aria-hidden />
       </button>
-      {confirmOpen ? (
+      {confirmOpen && !supportsRevoke ? (
         <ConfirmDialog
           title={`Remove ${subjectDisplay} from "${listTitle}"?`}
           message="Their endorsement from you stays — only the list membership is removed."
           confirmLabel="Remove"
           cancelLabel="Cancel"
           confirmVariant="destructive"
-          isConfirming={isRevoking}
-          onConfirm={handleConfirm}
-          onCancel={() => !isRevoking && setConfirmOpen(false)}
+          isConfirming={busy === "remove"}
+          onConfirm={() => run("remove")}
+          onCancel={() => !busy && setConfirmOpen(false)}
         />
+      ) : null}
+      {confirmOpen && supportsRevoke ? (
+        <AppDialog
+          ariaLabel="Remove or revoke endorsement"
+          role="alertdialog"
+          className="endorsement-lists__revoke-dialog"
+          maxWidth={460}
+          onClose={() => !busy && setConfirmOpen(false)}
+          disableBackdropClose={!!busy}
+        >
+          <div className="signin-modal__header">
+            <span className="signin-modal__title">
+              Remove {subjectDisplay} from &ldquo;{listTitle}&rdquo;?
+            </span>
+          </div>
+          <div className="signin-modal__body endorsement-lists__revoke-body">
+            <p className="endorsement-lists__revoke-copy">
+              You can drop them from this list and keep your
+              endorsement, or revoke the endorsement entirely (which
+              also removes them from every list they&rsquo;re in).
+            </p>
+            {error ? (
+              <p className="endorsement-lists__revoke-error" role="alert">
+                {error}
+              </p>
+            ) : null}
+            <div className="endorsement-lists__revoke-actions">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => !busy && setConfirmOpen(false)}
+                disabled={!!busy}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => run("remove")}
+                loading={busy === "remove"}
+                disabled={!!busy}
+              >
+                Remove from list
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => run("revoke")}
+                loading={busy === "revoke"}
+                disabled={!!busy}
+              >
+                Revoke endorsement
+              </Button>
+            </div>
+          </div>
+        </AppDialog>
       ) : null}
     </>
   )

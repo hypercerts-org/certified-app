@@ -948,6 +948,34 @@
   color: var(--fg-secondary);
 }
 
+/* ----- 3-option remove / revoke dialog ----- */
+
+.endorsement-lists__revoke-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.endorsement-lists__revoke-copy {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--fg-secondary);
+}
+
+.endorsement-lists__revoke-error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-error);
+}
+
+.endorsement-lists__revoke-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 /* ----- Create modal ----- */
 
 .endorsement-lists__create-field {

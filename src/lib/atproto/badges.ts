@@ -1,6 +1,7 @@
 import { authFetch } from "@/lib/auth/fetch"
 import { purgeAwardFromLists } from "@/lib/atproto/collection"
 import { invalidateEndorsementClosure } from "@/lib/atproto/endorsement-closure-cache"
+import { invalidateEndorsementLists } from "@/lib/atproto/endorsement-lists-cache"
 import type { ListRecordsResponse } from "@/lib/types/api"
 
 /**
@@ -617,6 +618,11 @@ export async function deleteEndorsementAward(
   // Bust the endorsement-closure cache — same rationale as
   // createEndorsementAward above.
   invalidateEndorsementClosure()
+  // `purgeAwardFromLists` above may have rewritten one or more of
+  // the issuer's lists. Notify any mounted `useEndorsementLists`
+  // so a sibling list-detail view reflects the removal without
+  // waiting for the next mount or the 5-min cache TTL.
+  invalidateEndorsementLists()
 }
 
 // ---------------------------------------------------------------------------

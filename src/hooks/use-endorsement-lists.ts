@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import {
   listAwards,
   createEndorsementAward,
@@ -15,6 +15,11 @@ import {
   removeItemFromList,
   updateEndorsementListCollection,
 } from "@/lib/atproto/collection"
+import {
+  getEndorsementListsVersionSnapshot,
+  invalidateEndorsementLists,
+  subscribeEndorsementListsVersion,
+} from "@/lib/atproto/endorsement-lists-cache"
 
 /**
  * One "list" on a profile's Endorsements tab.
@@ -167,11 +172,24 @@ export function useEndorsementLists(did: string | null): {
     [],
   )
 
+  // Subscribe to module-level invalidations so a mutation in a
+  // sibling component (e.g. a revoke from the Given panel that
+  // purges this issuer's lists) refetches without prop drilling.
+  // The version goes into the load effect's deps below.
+  const listsVersion = useSyncExternalStore(
+    subscribeEndorsementListsVersion,
+    getEndorsementListsVersionSnapshot,
+    getEndorsementListsVersionSnapshot,
+  )
+
   useEffect(() => {
     const controller = new AbortController()
-    doFetch(did, controller.signal)
+    // Force a cache bypass when the version bumped — the broadcast
+    // means something outside this hook just mutated the lists.
+    const force = listsVersion > 0
+    doFetch(did, controller.signal, force)
     return () => controller.abort()
-  }, [did, doFetch])
+  }, [did, doFetch, listsVersion])
 
   const refetch = useCallback(async () => {
     const targetDid = didRef.current
