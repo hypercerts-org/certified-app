@@ -574,6 +574,49 @@ ${ACTIVITY_NODE_SELECTION}
     }
   `,
 
+  // Cross-DID "projects containing this cert" — backs the cert
+  // detail page's Projects section. Replaces the per-DID PDS
+  // listRecords stopgap in `use-cert-projects.ts` now that
+  // magic-indexer #110's `itemUri` promoted filter has shipped.
+  // Returns the same `orgHypercertsCollection` node shape as
+  // `UserProjects` so the consumer can reuse the existing
+  // CollectionRecord rendering.
+  ProjectsContainingCert: `
+    query ProjectsContainingCert($certUri: String!, $first: Int!) {
+      orgHypercertsCollection(
+        first: $first
+        where: {
+          type: { eqi: "project" }
+          itemUri: { eq: $certUri }
+        }
+      ) {
+        totalCount
+        edges {
+          cursor
+          node {
+            uri
+            cid
+            did
+            createdAt
+            title
+            shortDescription
+            items {
+              itemIdentifier {
+                ... on ComAtprotoRepoStrongRef { uri cid }
+              }
+            }
+            banner {
+              __typename
+              ... on OrgHypercertsDefsUri { uri }
+              ... on OrgHypercertsDefsLargeImage { image { ref mimeType } }
+            }
+          }
+        }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  `,
+
   // Legacy temp endorsement records — pre-badge-migration. Kept for
   // the read-side compatibility window. Drop when no longer referenced.
   LegacyEndorsements: `
@@ -1072,6 +1115,14 @@ function buildVariables(
         did,
         first: clampFirst(vars.first, MAX_FIRST, 50),
         after: readString(vars.after, MAX_AFTER_LEN),
+      }
+    }
+    case "ProjectsContainingCert": {
+      const certUri = readString(vars.certUri, MAX_URI_LEN)
+      if (!certUri) return null
+      return {
+        certUri,
+        first: clampFirst(vars.first, MAX_FIRST, 50),
       }
     }
     case "Projects": {
