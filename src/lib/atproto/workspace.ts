@@ -144,7 +144,24 @@ export async function fetchNetworkActors(
  * match — the labeled-org set is small in practice (sub-100), so
  * collecting all DIDs upfront is fine and lets the caller use the
  * result for a downstream `authors:` / DID-set intersection.
+ *
+ * Results are cached in-memory by the (labels, excludeLabels) tuple.
+ * The labeled-org set is slow-changing (depends on the orglabeler
+ * service emitting new verdicts) and the explore loader calls this
+ * on every paginated page; the cache prevents the same call from
+ * firing on every loadMore.
  */
+const orgDidsByLabelCache = new Map<string, Set<string>>()
+const orgDidsByLabelInflight = new Map<string, Promise<Set<string>>>()
+function cacheKeyForOrgLabels(
+  labels: readonly string[] | undefined,
+  excludeLabels: readonly string[] | undefined,
+): string {
+  const inc = labels ? [...labels].sort().join(",") : ""
+  const exc = excludeLabels ? [...excludeLabels].sort().join(",") : ""
+  return `${inc}|${exc}`
+}
+
 export async function fetchOrgDidsByLabel(opts: {
   labels?: readonly string[]
   excludeLabels?: readonly string[]
@@ -157,6 +174,31 @@ export async function fetchOrgDidsByLabel(opts: {
   ) {
     return new Set()
   }
+  const key = cacheKeyForOrgLabels(labels, excludeLabels)
+  const cached = orgDidsByLabelCache.get(key)
+  if (cached) return cached
+  let inflight = orgDidsByLabelInflight.get(key)
+  if (inflight) return inflight
+  inflight = (async () => {
+    const fetched = await fetchOrgDidsByLabelUncached({ labels, excludeLabels, signal })
+    orgDidsByLabelCache.set(key, fetched)
+    return fetched
+  })()
+  orgDidsByLabelInflight.set(key, inflight)
+  inflight.finally(() => {
+    if (orgDidsByLabelInflight.get(key) === inflight) {
+      orgDidsByLabelInflight.delete(key)
+    }
+  })
+  return inflight
+}
+
+async function fetchOrgDidsByLabelUncached(opts: {
+  labels?: readonly string[]
+  excludeLabels?: readonly string[]
+  signal?: AbortSignal
+}): Promise<Set<string>> {
+  const { labels, excludeLabels, signal } = opts
   const out = new Set<string>()
   let cursor: string | null = null
   while (true) {

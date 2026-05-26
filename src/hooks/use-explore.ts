@@ -476,8 +476,41 @@ async function loadPage(args: LoadArgs): Promise<LoadedPage> {
  * (per kind) are stored as constants and resolved here in parallel.
  * Collections that 404 or carry a non-array `items` field are
  * skipped silently.
+ *
+ * Cached in-memory by the (sorted) collection URI tuple. The Ma
+ * Earth source collections are slow-changing (curated by hand) and
+ * the explore loader hits this path on every filter activation /
+ * loadMore on the Ma Earth filter — the cache prevents redundant
+ * fan-outs to the PDS for the same URI list across navigations.
  */
+const featuredItemUrisCache = new Map<string, string[]>()
+const featuredItemUrisInflight = new Map<string, Promise<string[]>>()
+
 async function loadFeaturedItemUris(
+  collectionUris: readonly string[],
+  signal: AbortSignal | null,
+): Promise<string[]> {
+  if (collectionUris.length === 0) return []
+  const key = [...collectionUris].sort().join("|")
+  const cached = featuredItemUrisCache.get(key)
+  if (cached) return cached
+  const existingInflight = featuredItemUrisInflight.get(key)
+  if (existingInflight) return existingInflight
+  const promise = (async () => {
+    const fetched = await loadFeaturedItemUrisUncached(collectionUris, signal)
+    if (!signal?.aborted) featuredItemUrisCache.set(key, fetched)
+    return fetched
+  })()
+  featuredItemUrisInflight.set(key, promise)
+  promise.finally(() => {
+    if (featuredItemUrisInflight.get(key) === promise) {
+      featuredItemUrisInflight.delete(key)
+    }
+  })
+  return promise
+}
+
+async function loadFeaturedItemUrisUncached(
   collectionUris: readonly string[],
   signal: AbortSignal | null,
 ): Promise<string[]> {

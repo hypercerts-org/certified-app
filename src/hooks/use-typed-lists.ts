@@ -19,15 +19,42 @@ import {
 } from "@/lib/atproto/endorsement-lists-cache"
 import type { ItemIdentifier } from "@/lib/atproto/collection"
 
+// Module-level cache so the typed-list set for a given viewer is
+// shared across every mounted `useTypedLists` instance. The 3-dot
+// "Add to list" menu lives on cert / project / profile overviews,
+// so multiple instances of this hook commonly mount in the same
+// navigation session. Keyed by `${did}:${version}` so the
+// invalidation bus (`endorsement-lists-cache`) naturally invalidates
+// stale entries on mutation.
+const cache = new Map<string, TypedListRecord[]>()
+const inflight = new Map<string, Promise<TypedListRecord[]>>()
+
+interface UseTypedListsOptions {
+  /** When false the hook skips the initial fetch and returns the
+   *  empty state. Useful when the consumer only needs the data
+   *  conditionally (e.g. only when a modal opens) — avoids
+   *  paginating the PDS on every page mount. Defaults to true. */
+  enabled?: boolean
+}
+
 /**
  * Read + mutate the viewer's `list:*` collection records, grouped by
  * type. Reuses the existing `endorsement-lists-cache` invalidation
  * bus so any list mutation refreshes every mounted instance — same
  * cross-component sync the endorsement-list hook already relies on.
+ *
+ * Pass `{ enabled: false }` to defer the fetch (e.g. until a modal
+ * opens). When toggled back to true the hook reads from the
+ * module-level cache if the value is still current, so reopen is
+ * instant.
  */
-export function useTypedLists(did: string | null) {
+export function useTypedLists(
+  did: string | null,
+  options: UseTypedListsOptions = {},
+) {
+  const { enabled = true } = options
   const [lists, setLists] = useState<TypedListRecord[]>([])
-  const [isLoading, setIsLoading] = useState(!!did)
+  const [isLoading, setIsLoading] = useState(!!did && enabled)
   const [error, setError] = useState<string | null>(null)
   const didRef = useRef(did)
   didRef.current = did
@@ -46,10 +73,34 @@ export function useTypedLists(did: string | null) {
         setError(null)
         return
       }
+      const cacheKey = `${targetDid}:${version}`
+      const cached = cache.get(cacheKey)
+      if (cached) {
+        setLists(cached)
+        setIsLoading(false)
+        setError(null)
+        return
+      }
       setIsLoading(true)
       setError(null)
       try {
-        const records = await fetchTypedLists(targetDid, signal)
+        // Dedupe concurrent fetches across instances by sharing the
+        // in-flight promise — common when multiple AddToListMenu's
+        // mount the hook on the same overview render.
+        let promise = inflight.get(cacheKey)
+        if (!promise) {
+          promise = fetchTypedLists(targetDid, signal).then((records) => {
+            cache.set(cacheKey, records)
+            return records
+          })
+          inflight.set(cacheKey, promise)
+          promise.finally(() => {
+            // Only clear if still ours (subsequent fetches may have
+            // overwritten the value during the await window).
+            if (inflight.get(cacheKey) === promise) inflight.delete(cacheKey)
+          })
+        }
+        const records = await promise
         if (signal?.aborted) return
         setLists(records)
       } catch (err) {
@@ -59,15 +110,20 @@ export function useTypedLists(did: string | null) {
         if (!signal?.aborted) setIsLoading(false)
       }
     },
-    [],
+    [version],
   )
 
   useEffect(() => {
+    if (!enabled) {
+      setLists([])
+      setIsLoading(false)
+      return
+    }
     const controller = new AbortController()
     doFetch(did, controller.signal)
     return () => controller.abort()
     // version included so any cross-component mutation refreshes us.
-  }, [did, doFetch, version])
+  }, [did, doFetch, version, enabled])
 
   const byType = useMemo(() => {
     const out: Record<TypedListType, TypedListRecord[]> = {
