@@ -31,19 +31,22 @@ import { logSafe } from "@/lib/utils/log-safe"
 const UPSTREAM_INDEXER_URL =
   process.env.INDEXER_URL ||
   process.env.NEXT_PUBLIC_INDEXER_URL ||
-  "https://magic-indexer-dev.up.railway.app/graphql"
+  "https://magic-indexer-prod.up.railway.app/graphql"
 
-// Mirror the module-load warning the notifications route has — without
-// this a production deploy that forgets to set INDEXER_URL silently
-// routes every feed query at the dev indexer.
+// Mirror the module-load warning the notifications route has — flags
+// the case where neither INDEXER_URL nor NEXT_PUBLIC_INDEXER_URL is
+// set so the fallback default is silent in dev too. Production used
+// to fall back to the dev indexer here; the default now points at
+// prod so an unset env doesn't break the feed.
 if (
   process.env.NODE_ENV === "production" &&
   !process.env.INDEXER_URL &&
   !process.env.NEXT_PUBLIC_INDEXER_URL
 ) {
   console.warn(
-    "[indexer] no INDEXER_URL set in production — falling back to the dev " +
-      "instance. Set INDEXER_URL in the Vercel project env.",
+    "[indexer] no INDEXER_URL set in production — using the built-in " +
+      "fallback (magic-indexer-prod). Set INDEXER_URL in the Vercel project " +
+      "env to override.",
   )
 }
 
