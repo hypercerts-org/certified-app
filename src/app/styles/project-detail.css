@@ -224,6 +224,28 @@
   word-break: break-word;
 }
 
+/* Row hosting the short description on the left and the "Add to
+   list" 3-dot menu on the right. The lead grows to fill; the menu
+   stays a fixed-size square at the trailing edge. The lead's
+   font-style: italic isn't carried by the wrapper, so the lead
+   keeps its visual identity. */
+.project-detail__lead-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.project-detail__lead-row .project-detail__lead {
+  flex: 1;
+  min-width: 0;
+}
+
+.project-detail__lead--empty {
+  flex: 1;
+  min-width: 0;
+}
+
 @media (min-width: 800px) {
   .project-detail__lead {
     font-size: 1.125rem;

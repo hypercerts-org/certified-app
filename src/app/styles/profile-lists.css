@@ -424,20 +424,6 @@
   gap: 8px;
 }
 
-/* Shared "actions row" beneath the primary image on cert / project /
-   profile overview surfaces — hosts the AddToListMenu trigger today,
-   ready for siblings later. Left-aligned so the 3-dot button sits at
-   the start of the left pane. */
-.cert-detail__actions,
-.project-detail__actions,
-.profile-sidebar__actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-  margin-bottom: 12px;
-}
-
 /* ---------- AddToListMenu (cert / project / profile overviews) ---------- */
 
 .add-to-list {
@@ -452,16 +438,17 @@
   width: 28px;
   height: 28px;
   padding: 0;
-  border: 1px solid var(--border-medium);
+  border: 0;
   border-radius: 6px;
   background: transparent;
-  color: var(--fg-primary);
+  color: var(--fg-secondary);
   cursor: pointer;
-  transition: background var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .add-to-list__trigger:hover {
   background: var(--bg-sunken);
+  color: var(--fg-primary);
 }
 
 .add-to-list__trigger:focus-visible {

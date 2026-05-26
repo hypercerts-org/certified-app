@@ -504,6 +504,23 @@
   gap: 5px;
 }
 
+/* Time-period row hosts the "Add to list" 3-dot menu on the same
+   line, right-aligned. The label text is wrapped in a child span
+   so the trigger can sit at the row's trailing edge. */
+.cert-detail__meta-label--with-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.cert-detail__meta-label-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .cert-detail__meta-value {
   font-size: 0.875rem;
   color: var(--fg-primary);

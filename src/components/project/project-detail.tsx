@@ -864,14 +864,6 @@ export default function ProjectDetail({
               ) : null}
             </div>
 
-            <div className="project-detail__actions">
-              <AddToListMenu
-                targetUri={`at://${did}/org.hypercerts.collection/${rkey}`}
-                targetCid={cid}
-                targetType={LIST_PROJECTS_TYPE}
-              />
-            </div>
-
             {editing ? (
               <textarea
                 className="project-detail__lead-input"
@@ -887,9 +879,20 @@ export default function ProjectDetail({
                 }
                 rows={2}
               />
-            ) : shortDesc ? (
-              <p className="project-detail__lead">{shortDesc}</p>
-            ) : null}
+            ) : (
+              <div className="project-detail__lead-row">
+                {shortDesc ? (
+                  <p className="project-detail__lead">{shortDesc}</p>
+                ) : (
+                  <span className="project-detail__lead project-detail__lead--empty" />
+                )}
+                <AddToListMenu
+                  targetUri={`at://${did}/org.hypercerts.collection/${rkey}`}
+                  targetCid={cid}
+                  targetType={LIST_PROJECTS_TYPE}
+                />
+              </div>
+            )}
 
             {showFullDescription && descriptionHref ? (
               <p className="more-link-row">

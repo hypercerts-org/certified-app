@@ -336,22 +336,33 @@
 }
 
 .signin-modal__close {
-  width: 32px;
-  height: 32px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: none;
-  background: none;
-  color: var(--color-mid-gray);
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg-muted);
   cursor: pointer;
-  border-radius: var(--radius);
+  border-radius: 6px;
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .signin-modal__close:hover {
-  background: var(--color-off-white);
-  color: var(--color-navy);
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
+.signin-modal__close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring, var(--fg-primary));
+}
+
+.signin-modal__close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .signin-modal__body {

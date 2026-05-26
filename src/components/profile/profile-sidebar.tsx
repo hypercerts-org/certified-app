@@ -219,19 +219,6 @@ export default function ProfileSidebar({
         ) : null}
       </div>
 
-      {/* "Add to list" affordance — first row below the avatar. The
-          menu component renders nothing for signed-out viewers, so
-          this only shows up to authenticated users. The CID is
-          resolved lazily on click since the sidebar doesn't track
-          the actor-profile record's CID. */}
-      <div className="profile-sidebar__actions">
-        <AddToListMenu
-          targetUri={`at://${did}/app.certified.actor.profile/self`}
-          targetCid=""
-          targetType={LIST_ACCOUNTS_TYPE}
-        />
-      </div>
-
       <div className="profile-sidebar__name-block">
         {isEditing && hasInline ? (
           <input
@@ -299,6 +286,11 @@ export default function ProfileSidebar({
               }}
             />
             <EndorseButton viewerDid={viewerDid} subjectDid={did} />
+            <AddToListMenu
+              targetUri={`at://${did}/app.certified.actor.profile/self`}
+              targetCid=""
+              targetType={LIST_ACCOUNTS_TYPE}
+            />
           </>
         ) : (
           <Button variant="primary" size="sm" disabled>

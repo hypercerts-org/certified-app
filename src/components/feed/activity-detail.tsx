@@ -719,23 +719,22 @@ export default function ActivityDetail({
           ) : null}
         </div>
 
-        {rkey ? (
-          <div className="cert-detail__actions">
-            <AddToListMenu
-              targetUri={`at://${did}/org.hypercerts.claim.activity/${rkey}`}
-              targetCid={cid}
-              targetType={LIST_CERTS_TYPE}
-            />
-          </div>
-        ) : null}
-
         <dl className="cert-detail__meta">
           {/* "Created" lives in the headline byline now — no need to
               repeat it in the aside meta list. */}
           <div className="cert-detail__meta-row">
-            <dt className="cert-detail__meta-label">
-              <Calendar size={11} strokeWidth={2} aria-hidden />
-              Time period
+            <dt className="cert-detail__meta-label cert-detail__meta-label--with-action">
+              <span className="cert-detail__meta-label-text">
+                <Calendar size={11} strokeWidth={2} aria-hidden />
+                Time period
+              </span>
+              {rkey ? (
+                <AddToListMenu
+                  targetUri={`at://${did}/org.hypercerts.claim.activity/${rkey}`}
+                  targetCid={cid}
+                  targetType={LIST_CERTS_TYPE}
+                />
+              ) : null}
             </dt>
             <dd className="cert-detail__meta-value">
               {editing ? (
