@@ -410,6 +410,26 @@
   margin: 0;
 }
 
+/* Sub-section heading inside a popover — used by the certs-tab
+   Quality popover to separate the Hyperlabel + Orglabeler tier
+   blocks. Same font size as the items, muted color, medium weight
+   so it reads as a label. */
+.popover__section-heading {
+  margin: 4px 0 2px;
+  padding: 0 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+}
+
+/* Thin rule between popover sections. Inset from the menu edges so
+   it doesn't visually merge with the menu border. */
+.popover__divider {
+  margin: 6px 8px;
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
 /* ---------- View toggle (certs + projects) ---------- */
 
 .explore__view-toggle {

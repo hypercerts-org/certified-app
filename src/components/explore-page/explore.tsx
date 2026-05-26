@@ -14,8 +14,11 @@ import {
 } from "lucide-react"
 import {
   DEFAULT_HIDDEN_CERT_LABELS,
+  DEFAULT_HIDDEN_ORG_LABELS,
   HYPERLABEL_TIERS,
+  ORGLABEL_TIERS,
   type HyperlabelTier,
+  type OrglabelTier,
 } from "@/lib/atproto/labels"
 import CertIcon from "@/components/ui/cert-icon"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -62,6 +65,43 @@ const QUALITY_TIER_LABEL: Record<HyperlabelTier, string> = {
   draft: "Draft",
   "likely-test": "Likely test",
 }
+
+/**
+ * Orglabeler tier slugs used in the URL `?orgQuality=` param.
+ * Map to the unicode-prefixed values the lexicon actually stores
+ * (see `ORGLABEL_TIERS` in labels.ts) at filter-evaluation time so
+ * the URL stays printable. */
+const ORG_TIER_SLUGS = ["high-quality", "standard", "likely-test"] as const
+type OrgTierSlug = (typeof ORG_TIER_SLUGS)[number]
+
+const ORG_TIER_DISPLAY_LABEL: Record<OrgTierSlug, string> = {
+  "high-quality": "High quality",
+  standard: "Standard",
+  "likely-test": "Likely test",
+}
+
+/** Slug ↔ raw lexicon value (the glyph-prefixed strings the
+ *  orglabeler emits). */
+const ORG_TIER_BY_SLUG: Record<OrgTierSlug, OrglabelTier> = {
+  "high-quality": "✦ High Quality",
+  standard: "● Standard",
+  "likely-test": "⚠ Likely Test",
+}
+
+/** Inverse of ORG_TIER_BY_SLUG. Used when checking which slug a raw
+ *  label value belongs to. */
+const ORG_TIER_BY_VALUE = {
+  "✦ High Quality": "high-quality" as const,
+  "● Standard": "standard" as const,
+  "⚠ Likely Test": "likely-test" as const,
+} satisfies Record<OrglabelTier, OrgTierSlug>
+
+/** Default org-quality set when `?orgQuality=` is missing —
+ *  everything except the labels listed in DEFAULT_HIDDEN_ORG_LABELS
+ *  (today only "⚠ Likely Test"). Matches the home feed's policy. */
+const DEFAULT_ORG_TIER_SLUGS: readonly OrgTierSlug[] = ORG_TIER_SLUGS.filter(
+  (slug) => !DEFAULT_HIDDEN_ORG_LABELS.includes(ORG_TIER_BY_SLUG[slug]),
+)
 
 function parseKind(v: string | null): ExploreKind {
   if (v === "accounts" || v === "projects" || v === "certs") return v
@@ -220,6 +260,35 @@ export default function Explore() {
     return true
   }, [qualityIncluded])
 
+  // Orglabeler quality state — same pattern as the Hyperlabel one.
+  // Url param holds the comma-separated slugs of *included* tiers.
+  const orgQualityParam = searchParams?.get("orgQuality")
+  const orgQualityIncluded = useMemo<Set<OrgTierSlug>>(() => {
+    if (orgQualityParam == null) return new Set(DEFAULT_ORG_TIER_SLUGS)
+    return new Set(
+      orgQualityParam
+        .split(",")
+        .filter((v): v is OrgTierSlug =>
+          (ORG_TIER_SLUGS as readonly string[]).includes(v),
+        ),
+    )
+  }, [orgQualityParam])
+  const excludeOrgLabels = useMemo<readonly OrglabelTier[]>(
+    () =>
+      ORG_TIER_SLUGS.filter((slug) => !orgQualityIncluded.has(slug)).map(
+        (slug) => ORG_TIER_BY_SLUG[slug],
+      ),
+    [orgQualityIncluded],
+  )
+  const orgQualityIsDefault = useMemo(() => {
+    if (orgQualityIncluded.size !== DEFAULT_ORG_TIER_SLUGS.length) return false
+    for (const slug of ORG_TIER_SLUGS) {
+      const shouldBeIncluded = DEFAULT_ORG_TIER_SLUGS.includes(slug)
+      if (orgQualityIncluded.has(slug) !== shouldBeIncluded) return false
+    }
+    return true
+  }, [orgQualityIncluded])
+
   const setUrl = useCallback(
     (patch: Record<string, string | null>) => {
       const params = new URLSearchParams(searchParams?.toString() ?? "")
@@ -307,6 +376,26 @@ export default function Explore() {
     [qualityIncluded, setUrl],
   )
 
+  const onOrgQualityToggle = useCallback(
+    (slug: OrgTierSlug) => {
+      const next = new Set(orgQualityIncluded)
+      if (next.has(slug)) next.delete(slug)
+      else next.add(slug)
+      const isDefault =
+        next.size === DEFAULT_ORG_TIER_SLUGS.length &&
+        ORG_TIER_SLUGS.every((s) => {
+          const shouldBeIncluded = DEFAULT_ORG_TIER_SLUGS.includes(s)
+          return next.has(s) === shouldBeIncluded
+        })
+      setUrl({
+        orgQuality: isDefault
+          ? null
+          : ORG_TIER_SLUGS.filter((s) => next.has(s)).join(","),
+      })
+    },
+    [orgQualityIncluded, setUrl],
+  )
+
   const data = useExploreData({
     kind,
     filter,
@@ -320,6 +409,10 @@ export default function Explore() {
     // Cert-quality filter — only meaningful for the certs kind, but
     // passing it for other kinds is a no-op at the load-page level.
     excludeCertLabels: kind === "certs" ? excludeCertLabels : undefined,
+    // Org-quality filter — used on accounts (filters the actor list)
+    // and certs (filters certs whose author org carries the tier).
+    excludeOrgLabels:
+      kind === "accounts" || kind === "certs" ? excludeOrgLabels : undefined,
   })
 
   const onDegreeButtonClick = useCallback(
@@ -508,10 +601,9 @@ export default function Explore() {
               </Popover>
 
               {/* The generic attr-based Filter popover stays for
-                  accounts + projects; on the certs tab it's
-                  replaced by the Hyperlabel-tier Quality popover
-                  below (and its icon takes over the Filter slot). */}
-              {kind !== "certs" ? (
+                  projects only; on certs + accounts it's replaced
+                  by the labeler-tier Quality popover below. */}
+              {kind === "projects" ? (
                 <Popover
                   open={filtersOpen}
                   onClose={() => setFiltersOpen(false)}
@@ -547,34 +639,64 @@ export default function Explore() {
                 </Popover>
               ) : null}
 
-              {kind === "certs" ? (
+              {kind === "certs" || kind === "accounts" ? (
                 <Popover
                   open={qualityOpen}
                   onClose={() => setQualityOpen(false)}
                   trigger={
                     <button
                       type="button"
-                      className={`explore__chrome-btn explore__chrome-btn--icon${qualityIsDefault ? "" : " explore__chrome-btn--active"}`}
+                      className={`explore__chrome-btn explore__chrome-btn--icon${
+                        (kind === "certs" && !qualityIsDefault) ||
+                        !orgQualityIsDefault
+                          ? " explore__chrome-btn--active"
+                          : ""
+                      }`}
                       onClick={() => setQualityOpen((v) => !v)}
                       aria-expanded={qualityOpen}
-                      aria-label={`Filter certs by quality${qualityIsDefault ? "" : ` (${qualityIncluded.size} selected)`}`}
+                      aria-label={`Filter by quality${
+                        (kind === "certs" && !qualityIsDefault) ||
+                        !orgQualityIsDefault
+                          ? " (filtered)"
+                          : ""
+                      }`}
                       title="Filter by quality"
                     >
                       <FilterIcon size={13} strokeWidth={1.75} aria-hidden />
                     </button>
                   }
                 >
-                  {QUALITY_TIER_DISPLAY.map((tier) => (
+                  {kind === "certs" ? (
+                    <>
+                      <p className="popover__section-heading">Cert quality</p>
+                      {QUALITY_TIER_DISPLAY.map((tier) => (
+                        <label
+                          key={tier}
+                          className="popover__item popover__item--check"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={qualityIncluded.has(tier)}
+                            onChange={() => onQualityToggle(tier)}
+                          />
+                          {QUALITY_TIER_LABEL[tier]}
+                        </label>
+                      ))}
+                      <hr className="popover__divider" aria-hidden="true" />
+                      <p className="popover__section-heading">Account quality</p>
+                    </>
+                  ) : null}
+                  {ORG_TIER_SLUGS.map((slug) => (
                     <label
-                      key={tier}
+                      key={slug}
                       className="popover__item popover__item--check"
                     >
                       <input
                         type="checkbox"
-                        checked={qualityIncluded.has(tier)}
-                        onChange={() => onQualityToggle(tier)}
+                        checked={orgQualityIncluded.has(slug)}
+                        onChange={() => onOrgQualityToggle(slug)}
                       />
-                      {QUALITY_TIER_LABEL[tier]}
+                      {ORG_TIER_DISPLAY_LABEL[slug]}
                     </label>
                   ))}
                 </Popover>

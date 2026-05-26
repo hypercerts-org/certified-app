@@ -171,8 +171,13 @@ export function useExploreData(opts: {
    *  consulted when `kind === "certs"`. Passed straight through to
    *  `fetchIndexerActivities`'s `excludeLabels`. */
   excludeCertLabels?: readonly string[]
+  /** Orglabeler tier labels to exclude. On the accounts kind these
+   *  filter the actor list directly; on certs they would filter the
+   *  cert's author org (best-effort — actual server-side filtering
+   *  depends on indexer support for label-on-author joins). */
+  excludeOrgLabels?: readonly string[]
 }): ExploreData {
-  const { kind, filter, sub, search, excludeCertLabels } = opts
+  const { kind, filter, sub, search, excludeCertLabels, excludeOrgLabels } = opts
   const degree: 1 | 2 | 3 = opts.degree ?? 1
   // Stable key so the load effect can refetch when the exclude list
   // changes without retriggering when an identical-content array
@@ -180,6 +185,10 @@ export function useExploreData(opts: {
   const excludeKey = useMemo(
     () => (excludeCertLabels ? [...excludeCertLabels].sort().join(",") : ""),
     [excludeCertLabels],
+  )
+  const excludeOrgKey = useMemo(
+    () => (excludeOrgLabels ? [...excludeOrgLabels].sort().join(",") : ""),
+    [excludeOrgLabels],
   )
   const { did: personalDid } = useAuth()
   const { activeOrg, groups } = useOrg()
@@ -240,6 +249,7 @@ export function useExploreData(opts: {
           signal: controller.signal,
           degree,
           excludeCertLabels: excludeCertLabels ?? null,
+          excludeOrgLabels: excludeOrgLabels ?? null,
         })
         if (controller.signal.aborted) return
         if (generation !== generationRef.current) return
@@ -268,6 +278,7 @@ export function useExploreData(opts: {
     degree,
     closureVersion,
     excludeKey,
+    excludeOrgKey,
   ])
 
   const loadMore = useCallback(() => {
@@ -291,6 +302,7 @@ export function useExploreData(opts: {
             signal: null,
             degree,
             excludeCertLabels: excludeCertLabels ?? null,
+          excludeOrgLabels: excludeOrgLabels ?? null,
           })
           if (generation !== generationRef.current) return
           setState((current) => {
@@ -348,6 +360,7 @@ export function useExploreData(opts: {
     degree,
     closureVersion,
     excludeKey,
+    excludeOrgKey,
   ])
 
   return {
@@ -405,6 +418,9 @@ interface LoadArgs {
   /** Forwarded to `fetchIndexerActivities` when loading the certs
    *  page; null on other kinds. */
   excludeCertLabels: readonly string[] | null
+  /** Org-tier exclusions. Used by the accounts + certs loaders;
+   *  no-op when null. */
+  excludeOrgLabels: readonly string[] | null
 }
 
 async function loadPage(args: LoadArgs): Promise<LoadedPage> {
