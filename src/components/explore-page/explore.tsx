@@ -398,7 +398,7 @@ export default function Explore() {
                   <>
                     <hr className="explore__filter-divider" aria-hidden="true" />
                     <h3 className="explore__filter-heading">Featured</h3>
-                    <ul className="explore__filter-list">
+                    <ul className="explore__filter-list explore__filter-list--indented">
                       {featured.map((f) => (
                         <li key={f.key}>
                           <button

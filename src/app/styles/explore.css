@@ -122,14 +122,14 @@
   gap: 1px;
 }
 
-/* Section heading above the Featured group. Small + medium weight
-   so it reads as a label rather than competing with the filter
-   pills themselves. Sentence case keeps it consistent with the
-   rest of the menu typography. */
+/* Section heading above the Featured group. Same font size as
+   the filter pills below so the two read at the same visual
+   weight; the muted color + medium weight still carries the
+   label/target hierarchy. */
 .explore__filter-heading {
   margin: 0 0 2px;
   padding: 0 10px;
-  font-size: 0.8125rem;
+  font-size: 0.85rem;
   font-weight: 500;
   color: var(--fg-secondary);
 }
@@ -140,6 +140,14 @@
   margin: 12px 10px;
   border: 0;
   border-top: 1px solid var(--border-subtle);
+}
+
+/* Featured-group pills sit slightly indented from the section
+   heading so they read as nested children of it instead of a
+   parallel list. The pill's hover background still spans the
+   whole row (we shift the inner padding, not the row width). */
+.explore__filter-list--indented .explore__filter {
+  padding-left: 22px;
 }
 
 .explore__filter {
