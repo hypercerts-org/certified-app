@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth/auth-context"
 import EmptyState from "@/components/ui/empty-state"
 import ActivityCardSkeleton from "@/components/feed/activity-card-skeleton"
 import FeedEventCard from "@/components/feed/feed-event-card"
-import type { UseHomeFeedResult } from "@/hooks/use-home-feed"
+import type { UseFollowerEventsFeedResult } from "@/hooks/use-follower-events-feed"
 
 /**
  * Home-timeline feed shell. Three distinct empty-state variants per
@@ -19,7 +19,7 @@ import type { UseHomeFeedResult } from "@/hooks/use-home-feed"
  * `authorsCount` from the hook (signed-in + follows = authorsCount > 0
  * after the cap-aware dedupe).
  */
-export default function HomeFeed(props: UseHomeFeedResult) {
+export default function HomeFeed(props: UseFollowerEventsFeedResult) {
   const {
     events,
     authorsCount,

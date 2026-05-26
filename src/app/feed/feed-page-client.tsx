@@ -1,7 +1,7 @@
 "use client"
 
 import HomeFeed from "@/components/feed/home-feed"
-import { useHomeFeed } from "@/hooks/use-home-feed"
+import { useFollowerEventsFeed } from "@/hooks/use-follower-events-feed"
 import { usePageTitle } from "@/lib/navbar-context"
 
 /**
@@ -16,6 +16,6 @@ import { usePageTitle } from "@/lib/navbar-context"
  */
 export default function FeedPageClient() {
   usePageTitle("Feed")
-  const feed = useHomeFeed()
+  const feed = useFollowerEventsFeed()
   return <HomeFeed {...feed} />
 }
