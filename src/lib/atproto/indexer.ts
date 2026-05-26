@@ -30,9 +30,9 @@ import { getBlobRefLink } from "./types"
  * accepts `labels` / `excludeLabels` filter args on the records
  * query, so this hook makes a single GraphQL call per page.
  */
-const INDEXER_PROXY_URL = "/api/indexer"
+export const INDEXER_PROXY_URL = "/api/indexer"
 
-interface GraphQLNode {
+export interface ActivityGraphQLNode {
   uri: string
   cid: string
   did: string
@@ -50,14 +50,14 @@ interface GraphQLResponse {
   data?: {
     orgHypercertsClaimActivity?: {
       totalCount: number | null
-      edges: { cursor: string; node: GraphQLNode | null }[]
+      edges: { cursor: string; node: ActivityGraphQLNode | null }[]
       pageInfo: { hasNextPage: boolean; endCursor: string | null }
     } | null
   } | null
   errors?: { message: string }[]
 }
 
-function nodeToActivityRecord(node: GraphQLNode): ActivityRecord {
+export function nodeToActivityRecord(node: ActivityGraphQLNode): ActivityRecord {
   // Map the indexer image union into a shape resolveActivityImageUrl can handle.
   // The indexer may return partial data (null uri on OrgHypercertsDefsUri due
   // to a schema bug), so we guard each branch carefully.
@@ -683,7 +683,7 @@ export async function fetchNetworkCounts(): Promise<NetworkCounts> {
 // whose type discriminator is "project" (case-insensitive via eqi).
 // ============================================================================
 
-interface UserProjectsNode {
+export interface CollectionGraphQLNode {
   uri: string
   cid: string
   did: string
@@ -704,14 +704,14 @@ interface UserProjectsGraphQLResponse {
   data?: {
     orgHypercertsCollection?: {
       totalCount: number | null
-      edges: { cursor: string; node: UserProjectsNode | null }[]
+      edges: { cursor: string; node: CollectionGraphQLNode | null }[]
       pageInfo: { hasNextPage: boolean; endCursor: string | null }
     } | null
   } | null
   errors?: { message: string }[]
 }
 
-function nodeToCollectionRecord(node: UserProjectsNode): CollectionRecord {
+export function nodeToCollectionRecord(node: CollectionGraphQLNode): CollectionRecord {
   // Re-shape the indexer's typed banner union back into the loose
   // `{ uri }` / `{ image: { ref, mimeType } }` blob that
   // resolveActivityImageUrl already understands. The blob ref comes

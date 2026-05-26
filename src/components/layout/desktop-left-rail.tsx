@@ -16,6 +16,7 @@ import {
   Info,
   LayoutGrid,
   LogIn,
+  Rss,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
@@ -209,6 +210,7 @@ export default function DesktopLeftRail() {
   const showGroups = isRouteVisibleToActor("groups", isActingAsOrg);
   const authedItems: NavItem[] = [
     { href: profileHref, label: "Profile", icon: User, matchPrefix: true },
+    { href: "/feed", label: "Feed", icon: Rss, matchPrefix: true },
     { href: "/search", label: "Explore", icon: Search },
     ...(showEndorsements
       ? [{ href: "/endorsements", label: "Endorsements", icon: Award, badge: pendingBadge, badgeUnit: "pending", matchPrefix: true }]

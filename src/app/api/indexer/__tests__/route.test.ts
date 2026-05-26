@@ -267,7 +267,7 @@ describe("/api/indexer trust boundary", () => {
     it("returns 413 when body length > MAX_BODY_SIZE", async () => {
       const huge = JSON.stringify({
         operationName: "Activities",
-        variables: { search: "x".repeat(20_000) },
+        variables: { search: "x".repeat(40_000) },
       })
       const res = await postIndexer(huge)
       expect(res.status).toBe(413)
@@ -395,6 +395,161 @@ describe("/api/indexer trust boundary", () => {
       })
       expect(res.status).toBe(400)
       expect(mockFetch).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("FollowerEvents", () => {
+    it("forwards a valid authors list", async () => {
+      const res = await postIndexer({
+        operationName: "FollowerEvents",
+        variables: { authors: ["did:plc:a", "did:plc:b"], first: 10 },
+      })
+      expect(res.status).toBe(200)
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
+      expect(body.variables.authors).toEqual(["did:plc:a", "did:plc:b"])
+      expect(body.variables.first).toBe(10)
+      expect(body.variables.kinds).toBeNull()
+    })
+
+    it("accepts an empty authors array (load-bearing — server returns empty)", async () => {
+      const res = await postIndexer({
+        operationName: "FollowerEvents",
+        variables: { authors: [] },
+      })
+      expect(res.status).toBe(200)
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
+      expect(body.variables.authors).toEqual([])
+    })
+
+    it("400s when authors is missing", async () => {
+      const res = await postIndexer({
+        operationName: "FollowerEvents",
+        variables: {},
+      })
+      expect(res.status).toBe(400)
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+
+    it("400s when authors is not an array", async () => {
+      const res = await postIndexer({
+        operationName: "FollowerEvents",
+        variables: { authors: "did:plc:a" },
+      })
+      expect(res.status).toBe(400)
+    })
+
+    it("400s when authors exceeds MAX_AUTHORS_FILTER_SIZE (500)", async () => {
+      const tooMany = Array.from({ length: 501 }, (_, i) => `did:plc:x${i}`)
+      const res = await postIndexer({
+        operationName: "FollowerEvents",
+        variables: { authors: tooMany },
+      })
+      expect(res.status).toBe(400)
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+
+    it("clamps first above 50 to 50 (MAX_FEED_PAGE_SIZE)", async () => {
+      await postIndexer({
+        operationName: "FollowerEvents",
+        variables: { authors: ["did:plc:a"], first: 999 },
+      })
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
+      expect(body.variables.first).toBe(50)
+    })
+
+    it("forwards a valid kinds inclusion filter", async () => {
+      await postIndexer({
+        operationName: "FollowerEvents",
+        variables: { authors: ["did:plc:a"], kinds: ["cert.create"] },
+      })
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
+      expect(body.variables.kinds).toEqual(["cert.create"])
+    })
+
+    it("400s on non-string kind entries", async () => {
+      const res = await postIndexer({
+        operationName: "FollowerEvents",
+        variables: { authors: ["did:plc:a"], kinds: ["ok", 42] },
+      })
+      expect(res.status).toBe(400)
+    })
+
+    it("treats empty kinds array as no-filter (null)", async () => {
+      await postIndexer({
+        operationName: "FollowerEvents",
+        variables: { authors: ["did:plc:a"], kinds: [] },
+      })
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
+      expect(body.variables.kinds).toBeNull()
+    })
+
+    it("fail-soft filters non-DID author entries (matches readDidList policy)", async () => {
+      await postIndexer({
+        operationName: "FollowerEvents",
+        variables: { authors: ["did:plc:ok", "not-a-did", "did:plc:also-ok"] },
+      })
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
+      expect(body.variables.authors).toEqual(["did:plc:ok", "did:plc:also-ok"])
+    })
+  })
+
+  describe("HydrateFeedPage", () => {
+    it("forwards a mixed-kind page", async () => {
+      const res = await postIndexer({
+        operationName: "HydrateFeedPage",
+        variables: {
+          activityUris: ["at://did:plc:a/org.hypercerts.claim.activity/abc"],
+          collectionUris: ["at://did:plc:b/org.hypercerts.collection/def"],
+          badgeAwardUris: [],
+          legacyEndorsementUris: [],
+        },
+      })
+      expect(res.status).toBe(200)
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
+      expect(body.variables.activityUris).toHaveLength(1)
+      expect(body.variables.collectionUris).toHaveLength(1)
+      expect(body.variables.badgeAwardUris).toEqual([])
+      expect(body.variables.legacyEndorsementUris).toEqual([])
+    })
+
+    it("400s when any *Uris is missing (not an array)", async () => {
+      const res = await postIndexer({
+        operationName: "HydrateFeedPage",
+        variables: {
+          activityUris: ["at://x"],
+          collectionUris: ["at://y"],
+          badgeAwardUris: [],
+          // legacyEndorsementUris omitted
+        },
+      })
+      expect(res.status).toBe(400)
+    })
+
+    it("400s when a *Uris exceeds MAX_URI_LIST_PER_KIND (50)", async () => {
+      const tooMany = Array.from({ length: 51 }, (_, i) => `at://x/${i}`)
+      const res = await postIndexer({
+        operationName: "HydrateFeedPage",
+        variables: {
+          activityUris: tooMany,
+          collectionUris: [],
+          badgeAwardUris: [],
+          legacyEndorsementUris: [],
+        },
+      })
+      expect(res.status).toBe(400)
+    })
+
+    it("400s on non-string URI entries", async () => {
+      const res = await postIndexer({
+        operationName: "HydrateFeedPage",
+        variables: {
+          activityUris: ["ok", 42],
+          collectionUris: [],
+          badgeAwardUris: [],
+          legacyEndorsementUris: [],
+        },
+      })
+      expect(res.status).toBe(400)
     })
   })
 })

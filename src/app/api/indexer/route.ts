@@ -48,15 +48,27 @@ if (
 }
 
 const UPSTREAM_TIMEOUT_MS = 15_000
-const MAX_BODY_SIZE = 16 * 1024 // 16KB — operationName + variables only
+// 32KB — operationName + variables. The 16KB original was too tight for
+// HydrateFeedPage, which sends up to 50 at:// URIs per kind × 4 kinds.
+const MAX_BODY_SIZE = 32 * 1024
 const MAX_FIRST = 100
 const MAX_FIRST_DEFINITIONS = 1000
+const MAX_FEED_PAGE_SIZE = 50
 const MAX_SEARCH_LEN = 200
 const MAX_AFTER_LEN = 1024
 const MAX_DID_LEN = 256
 const MAX_DID_LIST = 1000
+// Hard cap on `authors` for FollowerEvents, matching the indexer's
+// `MaxAuthorsFilterSize`. The client also pre-truncates to this value;
+// enforcing here is defence-in-depth so a manipulated request can't
+// push a 10k-entry array downstream.
+const MAX_AUTHORS_FILTER_SIZE = 500
 const MAX_LABEL_LIST = 50
 const MAX_LABEL_LEN = 64
+const MAX_KIND_LIST = 16
+const MAX_KIND_LEN = 64
+const MAX_URI_LEN = 512
+const MAX_URI_LIST_PER_KIND = 50
 
 /** Activity node selection — shared by the three activity ops below. */
 const ACTIVITY_NODE_SELECTION = `
@@ -502,6 +514,157 @@ ${ACTIVITY_NODE_SELECTION}
       }
     }
   `,
+
+  // Home-timeline feed — magic-indexer #122. Single GraphQL field that
+  // returns the union of the viewer's relevant lexicon-level "create"
+  // events authored by `authors` (the viewer's follow union). The
+  // `actor` is denormalised onto each FeedEvent so the client doesn't
+  // need a per-row profile lookup. Headline render still hydrates the
+  // record via `HydrateFeedPage` because the `subjectUri` only carries
+  // the URI.
+  //
+  // Coded errors (returned via `errors[].extensions.code`):
+  //   - AUTHORS_FILTER_TOO_LARGE — set on the indexer (cap is
+  //     `MaxAuthorsFilterSize = 500`). The proxy also caps at 500
+  //     so this should be unreachable in normal use.
+  //   - INVALID_CURSOR — opaque cursor failed to decode.
+  //   - AUTHORS_REQUIRED — defensive; proxy rejects first via the
+  //     `readAuthorList` required-array check.
+  FollowerEvents: `
+    query FollowerEvents(
+      $authors: [String!]!
+      $first: Int!
+      $after: String
+      $kinds: [String!]
+    ) {
+      followerEvents(
+        authors: $authors
+        first: $first
+        after: $after
+        kinds: $kinds
+      ) {
+        edges {
+          cursor
+          node {
+            id
+            kind
+            subjectUri
+            sortAt
+            actor {
+              did
+              handle
+              displayName
+              avatarCid
+            }
+          }
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  `,
+
+  // Headline-render hydration for one FollowerEvents page. Buckets each
+  // event by `kind` into a per-lexicon URI list and fetches all four
+  // connections in one round-trip via `where: { uri: { in: $uris } }`.
+  // Empty arrays are valid (and expected — most pages only have a
+  // subset of the four kinds present); the indexer returns an empty
+  // connection for each empty filter.
+  //
+  // If `where: { uri: { in: [...] } }` is not supported by the indexer
+  // schema for one of these collections, the client falls back to a
+  // per-collection op fan-out — see the track-1 log for details.
+  HydrateFeedPage: `
+    query HydrateFeedPage(
+      $activityUris: [String!]!
+      $collectionUris: [String!]!
+      $badgeAwardUris: [String!]!
+      $legacyEndorsementUris: [String!]!
+    ) {
+      activities: orgHypercertsClaimActivity(
+        first: ${MAX_URI_LIST_PER_KIND}
+        where: { uri: { in: $activityUris } }
+      ) {
+        edges {
+          node {
+            uri
+            cid
+            did
+            title
+            shortDescription
+            createdAt
+            startDate
+            endDate
+            labels
+            image {
+              __typename
+              ... on OrgHypercertsDefsUri { uri }
+              ... on OrgHypercertsDefsSmallImage { image { ref mimeType } }
+            }
+            workScope {
+              ... on OrgHypercertsClaimActivityWorkScopeString { scope }
+            }
+          }
+        }
+      }
+      collections: orgHypercertsCollection(
+        first: ${MAX_URI_LIST_PER_KIND}
+        where: { uri: { in: $collectionUris } }
+      ) {
+        edges {
+          node {
+            uri
+            cid
+            did
+            createdAt
+            title
+            shortDescription
+            type
+            items {
+              itemIdentifier {
+                ... on ComAtprotoRepoStrongRef { uri cid }
+              }
+            }
+            banner {
+              __typename
+              ... on OrgHypercertsDefsUri { uri }
+              ... on OrgHypercertsDefsLargeImage { image { ref mimeType } }
+            }
+          }
+        }
+      }
+      badgeAwards: appCertifiedBadgeAward(
+        first: ${MAX_URI_LIST_PER_KIND}
+        where: { uri: { in: $badgeAwardUris } }
+      ) {
+        edges {
+          node {
+            uri
+            cid
+            did
+            createdAt
+            note
+            subject { did }
+          }
+        }
+      }
+      legacyEndorsements: appCertifiedTempGraphEndorsement(
+        first: ${MAX_URI_LIST_PER_KIND}
+        where: { uri: { in: $legacyEndorsementUris } }
+      ) {
+        edges {
+          node {
+            uri
+            did
+            createdAt
+            subject { did }
+          }
+        }
+      }
+    }
+  `,
 }
 
 type ClientVariables = Record<string, unknown>
@@ -566,6 +729,71 @@ function readLabelList(value: unknown): string[] | null {
   for (const item of value) {
     if (typeof item !== "string") return null
     if (item.length === 0 || item.length > MAX_LABEL_LEN) return null
+    out.push(item)
+  }
+  return out
+}
+
+/**
+ * Reads the `authors` argument for `FollowerEvents`.
+ *
+ *   - Required (cannot be omitted; the indexer's `AUTHORS_REQUIRED` is
+ *     defensive, our proxy rejects first).
+ *   - Length 0..MAX_AUTHORS_FILTER_SIZE inclusive. The empty array is
+ *     load-bearing: the upstream returns an empty connection rather
+ *     than an error, which the client uses for the
+ *     no-follows-yet case.
+ *   - Per-entry: non-DID strings are filtered out silently
+ *     (fail-soft, matching `readDidList`). Returns null only on
+ *     structural failure or oversize, not on bad-entry content —
+ *     a single malformed DID in a viewer's follow list shouldn't
+ *     take out their entire feed.
+ */
+function readAuthorList(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null
+  if (value.length > MAX_AUTHORS_FILTER_SIZE) return null
+  const out: string[] = []
+  for (const item of value) {
+    const did = readDid(item)
+    if (did) out.push(did)
+  }
+  return out
+}
+
+/**
+ * Reads the optional `kinds` inclusion filter on `FollowerEvents`.
+ * The cap numbers are defensive defaults (the spec doesn't mandate
+ * them), kept tight so a manipulated request can't push pathological
+ * inputs downstream. Returns null for structurally-invalid input
+ * (non-array / non-string entry / oversized), which 400s the request.
+ */
+function readKindList(value: unknown): string[] | null | undefined {
+  if (value === undefined || value === null) return undefined
+  if (!Array.isArray(value)) return null
+  if (value.length === 0) return undefined
+  if (value.length > MAX_KIND_LIST) return null
+  const out: string[] = []
+  for (const item of value) {
+    if (typeof item !== "string") return null
+    if (item.length === 0 || item.length > MAX_KIND_LEN) return null
+    out.push(item)
+  }
+  return out
+}
+
+/**
+ * Reads one of the `*Uris` array variables for `HydrateFeedPage`.
+ * Length 0..MAX_URI_LIST_PER_KIND inclusive — empty arrays pass
+ * through because a typical page has events of only a few kinds and
+ * the other arrays should be `[]`.
+ */
+function readUriList(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null
+  if (value.length > MAX_URI_LIST_PER_KIND) return null
+  const out: string[] = []
+  for (const item of value) {
+    if (typeof item !== "string") return null
+    if (item.length === 0 || item.length > MAX_URI_LEN) return null
     out.push(item)
   }
   return out
@@ -688,6 +916,38 @@ function buildVariables(
       if (typeof rawDegree !== "number" || !Number.isInteger(rawDegree)) return null
       if (rawDegree < 1 || rawDegree > 3) return null
       return { viewer, degree: rawDegree }
+    }
+    case "FollowerEvents": {
+      const authors = readAuthorList(vars.authors)
+      if (authors === null) return null
+      const kinds = readKindList(vars.kinds)
+      if (kinds === null) return null
+      return {
+        authors,
+        first: clampFirst(vars.first, MAX_FEED_PAGE_SIZE, 20),
+        after: readString(vars.after, MAX_AFTER_LEN),
+        kinds: kinds ?? null,
+      }
+    }
+    case "HydrateFeedPage": {
+      const activityUris = readUriList(vars.activityUris)
+      const collectionUris = readUriList(vars.collectionUris)
+      const badgeAwardUris = readUriList(vars.badgeAwardUris)
+      const legacyEndorsementUris = readUriList(vars.legacyEndorsementUris)
+      if (
+        activityUris === null ||
+        collectionUris === null ||
+        badgeAwardUris === null ||
+        legacyEndorsementUris === null
+      ) {
+        return null
+      }
+      return {
+        activityUris,
+        collectionUris,
+        badgeAwardUris,
+        legacyEndorsementUris,
+      }
     }
     default:
       return null

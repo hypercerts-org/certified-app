@@ -9,19 +9,31 @@ const MAX_FOLLOWS = 10_000
 
 const EMPTY_SET = new Set<string>()
 
+interface FollowsResult {
+  data: Set<string>
+  /** True when the 10k page-walk cap stopped the loop AND the upstream
+   *  still had more pages. Consumers that derive set arithmetic from
+   *  `data` (e.g. `useSocialGraphSync`) must refuse to act on the
+   *  result when this is true — the "do I already follow X?" check
+   *  would return false-negatives. */
+  truncated: boolean
+}
+
 // Single-entry module-level cache keyed by DID.
 let cache: {
   did: string
   data: Set<string>
+  truncated: boolean
   fetchedAt: number
 } | null = null
 
 async function fetchAllFollows(
   did: string,
   signal?: AbortSignal,
-): Promise<Set<string>> {
+): Promise<FollowsResult> {
   const followedDids = new Set<string>()
   let cursor: string | undefined
+  let truncated = false
 
   while (followedDids.size < MAX_FOLLOWS) {
     const params = new URLSearchParams({
@@ -52,11 +64,21 @@ async function fetchAllFollows(
     if (!cursor || records.length < PAGE_LIMIT) break
   }
 
-  return followedDids
+  // If the while exited because we hit the cap AND the upstream is
+  // still handing us a cursor, mark as truncated. The cursor check is
+  // load-bearing — without it, a viewer with exactly 10k follows
+  // would be flagged truncated even though the indexer has nothing
+  // more to return.
+  if (followedDids.size >= MAX_FOLLOWS && cursor) {
+    truncated = true
+  }
+
+  return { data: followedDids, truncated }
 }
 
 export function useBlueskyFollows(did: string | null) {
   const [followedDids, setFollowedDids] = useState<Set<string>>(EMPTY_SET)
+  const [truncated, setTruncated] = useState(false)
   const [isLoading, setIsLoading] = useState(did != null)
   const [error, setError] = useState<string | null>(null)
 
@@ -67,6 +89,7 @@ export function useBlueskyFollows(did: string | null) {
     async (targetDid: string | null, signal?: AbortSignal) => {
       if (!targetDid) {
         setFollowedDids(EMPTY_SET)
+        setTruncated(false)
         setIsLoading(false)
         return
       }
@@ -74,6 +97,7 @@ export function useBlueskyFollows(did: string | null) {
       // Check cache
       if (cache && cache.did === targetDid && Date.now() - cache.fetchedAt < STALE_TIME) {
         setFollowedDids(cache.data)
+        setTruncated(cache.truncated)
         setIsLoading(false)
         return
       }
@@ -81,10 +105,16 @@ export function useBlueskyFollows(did: string | null) {
       setIsLoading(true)
       setError(null)
       try {
-        const data = await fetchAllFollows(targetDid, signal)
+        const result = await fetchAllFollows(targetDid, signal)
         if (signal?.aborted) return
-        cache = { did: targetDid, data, fetchedAt: Date.now() }
-        setFollowedDids(data)
+        cache = {
+          did: targetDid,
+          data: result.data,
+          truncated: result.truncated,
+          fetchedAt: Date.now(),
+        }
+        setFollowedDids(result.data)
+        setTruncated(result.truncated)
       } catch (err) {
         if (signal?.aborted) return
         console.error("Failed to fetch Bluesky follows:", err)
@@ -116,5 +146,5 @@ export function useBlueskyFollows(did: string | null) {
     return () => window.removeEventListener("focus", handleFocus)
   }, [doFetch])
 
-  return { followedDids, isLoading, error }
+  return { followedDids, truncated, isLoading, error }
 }

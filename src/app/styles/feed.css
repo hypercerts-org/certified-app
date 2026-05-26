@@ -2236,3 +2236,104 @@
     font-size: 16px;
   }
 }
+
+/* ==========================================================================
+   Follower-events home feed — issue #88
+   Builds on .feed and .feed-card primitives above; the additions here
+   are author-row chrome (avatar + name + inline time), the per-kind
+   action line, and the feed-shell decorations (warning, hint, sentinel).
+   ========================================================================== */
+
+.feed-card__author-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.feed-card__time--inline {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.feed-card__action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.feed-card__action svg {
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+
+.feed-card__action-subject {
+  color: var(--fg-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.feed-card__action-subject:hover {
+  text-decoration: underline;
+}
+
+.feed-card__note {
+  margin: 12px 0 0;
+  padding: 12px;
+  background: var(--bg-sunken);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.feed-card__desc--unknown {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  word-break: break-all;
+}
+
+.feed__warning {
+  margin: 12px 0;
+  padding: 10px 14px;
+  background: var(--bg-sunken);
+  border-left: 3px solid var(--fg-muted);
+  border-radius: 4px;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+}
+
+.feed__sentinel {
+  height: 1px;
+  width: 100%;
+}
+
+.feed__hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 24px 0;
+  padding: 14px 16px;
+  background: var(--bg-sunken);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+}
+
+.feed__hint svg {
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+
+.feed__hint p {
+  margin: 0;
+}
