@@ -61,22 +61,31 @@ export default function AppDialog({
   children,
 }: AppDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  // Stash the latest onClose in a ref so the mount effect's listener
+  // always calls the current value WITHOUT having to re-run (which
+  // would re-call `showModal()` on an already-open dialog and throw
+  // `InvalidStateError`, unmounting the modal mid-task).
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
     dialog.showModal()
-    const handleClose = () => onClose()
+    const handleClose = () => onCloseRef.current()
     dialog.addEventListener("close", handleClose)
     return () => dialog.removeEventListener("close", handleClose)
-  }, [onClose])
+    // Mount-once: no dep on `onClose`. The listener reads the latest
+    // value via the ref above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleBackdropClick = useCallback(
     (e: MouseEvent<HTMLDialogElement>) => {
       if (disableBackdropClose) return
-      if (e.target === dialogRef.current) onClose()
+      if (e.target === dialogRef.current) onCloseRef.current()
     },
-    [onClose, disableBackdropClose],
+    [disableBackdropClose],
   )
 
   const composedClassName = className
