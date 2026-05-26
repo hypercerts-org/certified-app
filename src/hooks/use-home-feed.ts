@@ -153,7 +153,7 @@ export function useHomeFeed(followedDids: Set<string>) {
       const hydrated = await hydrateFeedEvents(page.events, signal)
       if (signal.aborted) return
 
-      const events = hydrated.map(hydratedToHomeFeedEvent)
+      const events = hydrated.map(hydratedToHomeFeedEvent).sort(byCreatedAtDesc)
 
       setState({
         events,
@@ -194,12 +194,15 @@ export function useHomeFeed(followedDids: Set<string>) {
         const fresh = hydrated.map(hydratedToHomeFeedEvent)
         setState((prev) => {
           // Dedupe by URI in case the server returns overlapping
-          // edges across a cursor boundary.
+          // edges across a cursor boundary, then re-sort newest-
+          // first so a late page can't drop older items above
+          // newer ones we already had on screen.
           const seen = new Set(prev.events.map((e) => e.uri))
           const append = fresh.filter((e) => !seen.has(e.uri))
+          const merged = [...prev.events, ...append].sort(byCreatedAtDesc)
           return {
             ...prev,
-            events: [...prev.events, ...append],
+            events: merged,
             isLoadingMore: false,
             hasMore: page.hasNextPage,
             cursor: page.endCursor,
@@ -222,6 +225,18 @@ export function useHomeFeed(followedDids: Set<string>) {
   }, [followedKey])
 
   return { ...state, loadMore }
+}
+
+/**
+ * Newest-first comparator on `createdAt`. ISO-8601 strings compare
+ * lexicographically the same way as their Date.parse values, so the
+ * string compare is correct without parsing. Ties (same timestamp,
+ * rare) keep the indexer's tie-break order via Array.sort's
+ * stability guarantee in modern engines.
+ */
+function byCreatedAtDesc(a: HomeFeedEvent, b: HomeFeedEvent): number {
+  if (a.createdAt === b.createdAt) return 0
+  return a.createdAt < b.createdAt ? 1 : -1
 }
 
 /**
