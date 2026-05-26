@@ -127,7 +127,7 @@
    pills themselves. Sentence case keeps it consistent with the
    rest of the menu typography. */
 .explore__filter-heading {
-  margin: 0 0 6px;
+  margin: 0 0 2px;
   padding: 0 10px;
   font-size: 0.8125rem;
   font-weight: 500;

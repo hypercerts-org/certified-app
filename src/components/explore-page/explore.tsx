@@ -380,8 +380,23 @@ export default function Explore() {
             const standard = all.filter((f) => !f.featured)
             return (
               <>
+                <ul className="explore__filter-list">
+                  {standard.map((f) => (
+                    <li key={f.key}>
+                      <button
+                        type="button"
+                        className={`explore__filter${filter === f.key ? " explore__filter--active" : ""}`}
+                        data-filter-key={f.key}
+                        onClick={onFilterButtonClick}
+                      >
+                        {f.label}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
                 {featured.length > 0 ? (
                   <>
+                    <hr className="explore__filter-divider" aria-hidden="true" />
                     <h3 className="explore__filter-heading">Featured</h3>
                     <ul className="explore__filter-list">
                       {featured.map((f) => (
@@ -397,23 +412,8 @@ export default function Explore() {
                         </li>
                       ))}
                     </ul>
-                    <hr className="explore__filter-divider" aria-hidden="true" />
                   </>
                 ) : null}
-                <ul className="explore__filter-list">
-                  {standard.map((f) => (
-                    <li key={f.key}>
-                      <button
-                        type="button"
-                        className={`explore__filter${filter === f.key ? " explore__filter--active" : ""}`}
-                        data-filter-key={f.key}
-                        onClick={onFilterButtonClick}
-                      >
-                        {f.label}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
               </>
             )
           })()}

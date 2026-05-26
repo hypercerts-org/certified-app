@@ -51,10 +51,12 @@ export function filtersForKind(kind: ExploreKind): FilterOption[] {
   return CERT_FILTERS
 }
 
-export function defaultFilterForKind(kind: ExploreKind): string {
-  if (kind === "accounts") return "all"
-  if (kind === "projects") return "all"
-  return "all"
+export function defaultFilterForKind(_kind: ExploreKind): string {
+  // Ma Earth is curated as the front door for every kind today.
+  // First-load on /explore (no `?filter=` in the URL) lands on this
+  // featured set; the All / By me / etc. filters stay one click
+  // away in the standard list below the divider.
+  return "ma-earth"
 }
 
 // ---------------------------------------------------------------------------
