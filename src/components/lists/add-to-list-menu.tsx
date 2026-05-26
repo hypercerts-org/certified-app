@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { MoreVertical, X } from "lucide-react"
+import { Copy, MoreVertical, X } from "lucide-react"
 import AppDialog from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -51,6 +51,7 @@ export default function AddToListMenu({
   const { did: viewerDid } = useAuth()
   const [open, setOpen] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -68,6 +69,26 @@ export default function AddToListMenu({
       document.removeEventListener("keydown", handleKey)
     }
   }, [open])
+
+  // Reset the brief "Copied" affordance whenever the popover opens
+  // again, so the previous run's feedback doesn't leak across opens.
+  useEffect(() => {
+    if (open) setCopied(false)
+  }, [open])
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(targetUri)
+      setCopied(true)
+      // Keep the popover open briefly so the user sees the
+      // confirmation, then auto-close.
+      window.setTimeout(() => {
+        setOpen(false)
+      }, 900)
+    } catch (err) {
+      console.error("Failed to copy URI:", err)
+    }
+  }, [targetUri])
 
   if (!viewerDid) return null
   if (!itemUriMatchesType(targetUri, targetType)) return null
@@ -97,6 +118,15 @@ export default function AddToListMenu({
               }}
             >
               Add to list
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="add-to-list__pop-item"
+              onClick={handleCopy}
+            >
+              <Copy size={13} strokeWidth={1.75} aria-hidden />
+              {copied ? "Copied" : "Copy AT URI"}
             </button>
           </div>
         ) : null}
