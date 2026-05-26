@@ -11,6 +11,7 @@ import {
 import {
   fetchEndorsementClosure,
   fetchIndexerActivities,
+  fetchIndexerActivitiesByUris,
   fetchProjects,
   fetchUserIndexerActivities,
   EndorsementClosureError,
@@ -790,7 +791,16 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
     )
     if (signal?.aborted) return EMPTY_PAGE
     if (itemUris.length === 0) return EMPTY_PAGE
-    const res = await fetchActivitiesByUris(itemUris, signal ?? undefined)
+    // Route through the indexer (not PDS getRecord) so the Quality
+    // popover's label filters are honored on this surface too. The
+    // server-side filter lives on the `orgHypercertsClaimActivity`
+    // connection — see `ActivitiesByUris` op in
+    // `src/app/api/indexer/route.ts`.
+    const res = await fetchIndexerActivitiesByUris(itemUris, {
+      labels: args.includeCertLabels?.length ? [...args.includeCertLabels] : undefined,
+      excludeLabels: args.excludeCertLabels?.length ? [...args.excludeCertLabels] : undefined,
+      signal: signal ?? undefined,
+    })
     if (signal?.aborted) return EMPTY_PAGE
     let certs = res.records
     if (search.trim().length > 0) {

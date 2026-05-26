@@ -135,6 +135,29 @@ ${ACTIVITY_NODE_SELECTION}
     }
   `,
 
+  // Fetch a specific set of activity URIs, with optional label
+  // include / exclude filters applied server-side. Used by surfaces
+  // that already know the URIs they want (e.g. the explore page's
+  // Ma Earth featured filter) and need labels on the records so
+  // the same Quality popover that filters server-side on the
+  // generic Activities op also works here.
+  ActivitiesByUris: `
+    query ActivitiesByUris(
+      $uris: [String!]!
+      $labels: [String!]
+      $excludeLabels: [String!]
+    ) {
+      orgHypercertsClaimActivity(
+        first: 100
+        where: { uri: { in: $uris } }
+        labels: $labels
+        excludeLabels: $excludeLabels
+      ) {
+${ACTIVITY_NODE_SELECTION}
+      }
+    }
+  `,
+
   // Per-user "authored" activities (Certs tab > Created bucket).
   AuthoredActivities: `
     query AuthoredActivities(
@@ -931,6 +954,15 @@ function buildVariables(
         excludeLabels: readLabelList(vars.excludeLabels),
         authors: authors === undefined ? null : authors,
         search: readString(vars.search, MAX_SEARCH_LEN),
+      }
+    }
+    case "ActivitiesByUris": {
+      const uris = readUriList(vars.uris)
+      if (uris === null) return null
+      return {
+        uris,
+        labels: readLabelList(vars.labels),
+        excludeLabels: readLabelList(vars.excludeLabels),
       }
     }
     case "AuthoredActivities":

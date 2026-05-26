@@ -140,6 +140,74 @@ export interface FetchIndexerOptions {
  * upstream Hyperindex schema are not supported by Magic Indexer
  * and have been dropped from the query.
  */
+/**
+ * Fetch a specific set of activity URIs through the indexer (rather
+ * than the PDS-direct `fetchActivitiesByUris`), applying optional
+ * server-side label include / exclude filters at the same time. Used
+ * by the explore page's Ma Earth featured-filter path: the URIs come
+ * from the curator's collections, but the Quality popover should
+ * still narrow that set.
+ *
+ * Returns the same shape as `fetchIndexerActivities`. Records that
+ * 404 on the indexer (e.g. the curator listed a URI the indexer hasn't
+ * ingested yet) are silently dropped — the surface's empty / partial
+ * result behaviour matches the rest of the explore page.
+ */
+export async function fetchIndexerActivitiesByUris(
+  uris: readonly string[],
+  opts: {
+    labels?: LabelValue[] | string[]
+    excludeLabels?: LabelValue[] | string[]
+    signal?: AbortSignal
+  } = {},
+): Promise<IndexerActivitiesResult> {
+  const emptyResult: IndexerActivitiesResult = {
+    records: [], dids: new Map(), labels: new Map(), hasMore: false, endCursor: null, totalCount: null,
+  }
+  if (uris.length === 0) return emptyResult
+
+  const variables: Record<string, unknown> = {
+    uris: [...uris],
+    labels: opts.labels && opts.labels.length > 0 ? opts.labels : null,
+    excludeLabels:
+      opts.excludeLabels && opts.excludeLabels.length > 0 ? opts.excludeLabels : null,
+  }
+
+  const res = await fetch(INDEXER_PROXY_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ operationName: "ActivitiesByUris", variables }),
+    signal: opts.signal,
+  })
+  const json = (await res.json()) as GraphQLResponse
+  if (!json.data?.orgHypercertsClaimActivity) {
+    if (json.errors?.length) {
+      console.warn("[Indexer] ActivitiesByUris error:", json.errors[0].message)
+    } else if (!res.ok) {
+      throw new Error(`Indexer request failed: ${res.status}`)
+    }
+    return emptyResult
+  }
+  const connection = json.data.orgHypercertsClaimActivity
+  const records: ActivityRecord[] = []
+  const dids = new Map<string, string>()
+  const recordLabels = new Map<string, LabelValue[]>()
+  for (const edge of connection.edges) {
+    if (!edge.node) continue
+    records.push(nodeToActivityRecord(edge.node))
+    dids.set(edge.node.uri, edge.node.did)
+    recordLabels.set(edge.node.uri, (edge.node.labels ?? []) as LabelValue[])
+  }
+  return {
+    records,
+    dids,
+    labels: recordLabels,
+    hasMore: false,
+    endCursor: null,
+    totalCount: connection.totalCount ?? null,
+  }
+}
+
 export async function fetchIndexerActivities(
   options: FetchIndexerOptions = {},
 ): Promise<IndexerActivitiesResult> {
