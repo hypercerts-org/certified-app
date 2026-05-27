@@ -17,7 +17,7 @@ import {
   groupConsecutiveEndorsements,
   type EndorsementGroupItem,
 } from "@/lib/utils/group-feed"
-import { useFollowedDids } from "@/hooks/use-followed-dids"
+import { useFollowing } from "@/hooks/use-following"
 import { formatRelativeTime, resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { formatShortDate } from "@/lib/utils/format-date"
@@ -78,11 +78,18 @@ const MAX_AUTO_LOADS = 25
  * the viewport.
  */
 export default function HomeFeed({ activeDid }: { activeDid: string }) {
+  // Home feed reads ONLY the Certified follow graph
+  // (`app.certified.graph.follow`). Viewers who want their Bluesky
+  // follows reflected here run the social-graph sync in Settings,
+  // which mirrors their Bluesky graph into the Certified collection
+  // once — after that, the Certified graph is the canonical source
+  // and the home feed reads from a single place instead of merging
+  // both live every page load.
   const {
-    followedDids,
+    subjects: followedDids,
     isLoading: followsLoading,
     error: followsError,
-  } = useFollowedDids(activeDid)
+  } = useFollowing(activeDid)
   // Default state has every visible Hyperlabel tier checked AND
   // "Not labeled yet" checked — same default as the explore page so
   // a viewer who hasn't touched the filter sees the same set of certs
