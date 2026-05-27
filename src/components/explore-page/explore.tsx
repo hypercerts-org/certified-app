@@ -484,11 +484,27 @@ export default function Explore() {
 
   // Local search debounce: keep typing snappy, hit indexer once typing stops.
   const [localQuery, setLocalQuery] = useState(search)
-  useEffect(() => setLocalQuery(search), [search])
+  // Remember the value we last wrote to the URL so the URL→local
+  // sync below can tell our own debounce writes apart from external
+  // URL changes (back/forward, filter switch that clears `q`). Without
+  // this, the sync effect fires every time we write — and if the user
+  // typed an extra keystroke between scheduling the write and the URL
+  // commit, that keystroke gets stomped (it shows on screen briefly,
+  // then the URL→local sync overwrites localQuery with the older URL
+  // value). Symptom: "not all keystrokes are recognised when results
+  // come in."
+  const lastWroteToUrlRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (search === lastWroteToUrlRef.current) return
+    setLocalQuery(search)
+  }, [search])
   useEffect(() => {
     const t = setTimeout(() => {
-      if (localQuery !== search) setUrl({ q: localQuery || null })
-    }, 250)
+      if (localQuery !== search) {
+        lastWroteToUrlRef.current = localQuery
+        setUrl({ q: localQuery || null })
+      }
+    }, 350)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localQuery])
