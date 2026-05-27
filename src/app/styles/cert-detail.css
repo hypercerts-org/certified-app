@@ -844,6 +844,27 @@
   gap: 2px;
 }
 
+/* "%" column heading rendered above the contributors list when any
+   row carries a contributionWeight. Right-aligned and indented to
+   sit roughly above the weight pills in the rows below (which are
+   the last child of each row, flush against the row's right
+   padding). `cursor: help` hints that hovering reveals the
+   "Relative weight of the contribution" tooltip carried on the
+   parent's `title` attribute. */
+.cert-detail__contributors-weight-header {
+  display: flex;
+  justify-content: flex-end;
+  /* Match the contributor row's right padding (6px main / 6px
+     aside) so the heading's right edge lines up with the weight
+     pill's right edge. The extra 7px nudges the % over the pill's
+     content area (the pill itself has `padding: 1px 7px`). */
+  padding: 0 13px 4px 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+  cursor: help;
+}
+
 /* Aside variant — tighter rows + flush left padding so the
    contributor block fits the narrow meta column without feeling
    crowded against the rounded card edge. */

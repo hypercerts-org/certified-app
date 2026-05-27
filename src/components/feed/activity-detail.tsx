@@ -847,8 +847,14 @@ export default function ActivityDetail({
                   const contributorsHref = pathname
                     ? `${pathname}?tab=contributors`
                     : null
+                  const hasAnyWeight = previewContributors.some(
+                    (c) => c.contributionWeight != null,
+                  )
                   return (
                     <>
+                      {hasAnyWeight ? (
+                        <ContributorWeightHeader />
+                      ) : null}
                       <ul className="cert-detail__contributors cert-detail__contributors--aside">
                         {previewContributors.map((c, i) => {
                           const roleText = contributionRoleText(
@@ -992,19 +998,24 @@ export default function ActivityDetail({
               </span>
             </div>
             {contributorCount > 0 ? (
-              <ul className="cert-detail__contributors">
-                {contributors.map((c, i) => {
-                  const roleText = contributionRoleText(c.contributionDetails)
-                  return (
-                    <ContributorRow
-                      key={contributorKey(c, i)}
-                      contributor={c}
-                      role={roleText}
-                      weight={c.contributionWeight ?? null}
-                    />
-                  )
-                })}
-              </ul>
+              <>
+                {contributors.some((c) => c.contributionWeight != null) ? (
+                  <ContributorWeightHeader />
+                ) : null}
+                <ul className="cert-detail__contributors">
+                  {contributors.map((c, i) => {
+                    const roleText = contributionRoleText(c.contributionDetails)
+                    return (
+                      <ContributorRow
+                        key={contributorKey(c, i)}
+                        contributor={c}
+                        role={roleText}
+                        weight={c.contributionWeight ?? null}
+                      />
+                    )
+                  })}
+                </ul>
+              </>
             ) : (
               <p className="cert-detail__short-desc">No contributors listed.</p>
             )}
@@ -1047,6 +1058,26 @@ function useRouteRkey(): string | null {
     }
   }, [])
   return rkey
+}
+
+/**
+ * Right-aligned `%` column heading rendered above a contributors
+ * list when at least one row carries a `contributionWeight`. The
+ * pill-shaped weight chips below align to the row's right edge, so
+ * the `%` sits over that column to label what the numbers mean.
+ * Hovering surfaces the full sentence via a native browser tooltip
+ * (`title`); the `aria-label` mirrors the same text for AT.
+ */
+function ContributorWeightHeader() {
+  return (
+    <div
+      className="cert-detail__contributors-weight-header"
+      title="Relative weight of the contribution"
+      aria-label="Relative weight of the contribution"
+    >
+      <span aria-hidden="true">%</span>
+    </div>
+  )
 }
 
 /* ---------- Contributor row ----------
