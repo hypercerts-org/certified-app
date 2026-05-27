@@ -13,7 +13,45 @@ import {
   locationFallbackText,
   type LocationRecord,
 } from "@/lib/atproto/location"
+import { getBlobRefLink } from "@/lib/atproto/types"
 import type { StrongRef } from "@/lib/atproto/activity-types"
+
+/**
+ * When a location record's `location` field is the
+ * `org.hypercerts.defs#smallBlob` variant, the actual coordinate
+ * payload lives inside a binary blob on the same repo (e.g. a 35-byte
+ * `text/plain` blob containing `"12.345, 8.901"` for the
+ * `coordinate-decimal` locationType). The inline parsers can't see
+ * inside the blob, so without this resolution step the map silently
+ * falls back to the text label only. Fetch the blob, return its text
+ * content, hand it back to `parseLocationShape` to extract the actual
+ * point/polygon geometry.
+ */
+async function fetchSmallBlobText(
+  did: string,
+  location: unknown,
+  signal: AbortSignal,
+): Promise<string | null> {
+  if (!location || typeof location !== "object") return null
+  const obj = location as Record<string, unknown>
+  if (obj.$type !== "org.hypercerts.defs#smallBlob") return null
+  const blob = obj.blob as { ref?: unknown } | null | undefined
+  const ref = blob?.ref
+  if (!ref) return null
+  const cid = getBlobRefLink(ref)
+  if (!cid || cid === "undefined") return null
+  const params = new URLSearchParams({ did, cid })
+  try {
+    const res = await authFetch(
+      `/api/xrpc/com/atproto/sync/getBlob?${params.toString()}`,
+      { signal },
+    )
+    if (!res.ok) return null
+    return await res.text()
+  } catch {
+    return null
+  }
+}
 
 interface CertLocationsMapProps {
   locations: StrongRef[]
@@ -82,7 +120,21 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
           const data = (await res.json()) as { value?: LocationRecord }
           const record = data.value ?? null
           if (!record) return empty
-          const shape = parseLocationShape(record.locationType, record.location)
+          // First try the sync path — inline-string + URI variants
+          // parse without a network call. When that returns null AND
+          // the location field is the `smallBlob` variant, fetch the
+          // blob's text content and re-parse with the same logic.
+          let shape = parseLocationShape(record.locationType, record.location)
+          if (shape === null) {
+            const blobText = await fetchSmallBlobText(
+              parsed.did,
+              record.location,
+              signal,
+            )
+            if (blobText) {
+              shape = parseLocationShape(record.locationType, blobText)
+            }
+          }
           const name =
             record.name?.trim() || (shape ? "Location" : "Unnamed location")
           let pin: MapPinT | null = null

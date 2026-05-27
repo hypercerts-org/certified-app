@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { Calendar, ChevronRight, FileText, Pencil, Target } from "lucide-react"
+import { Calendar, ChevronRight, FileText, MapPin, Pencil, Target } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -816,15 +816,19 @@ export default function ActivityDetail({
 
         {/* Locations live in the left pane (under the meta list) so the
             map sits alongside the meta facts rather than competing for
-            vertical space in the main reading column. */}
+            vertical space in the main reading column. The heading
+            matches the meta-row label style (small uppercase label +
+            11px icon) so Locations reads as a peer of Work scope /
+            Rights rather than a tab-style heading. */}
         {activeTab === "overview" && locations.length > 0 ? (
           <section className="cert-detail__section cert-detail__aside-locations">
-            <div className="cert-detail__section-header">
-              <h2 className="cert-detail__section-title">Locations</h2>
-              <span className="cert-detail__section-count">
+            <h2 className="cert-detail__meta-label cert-detail__aside-locations-label">
+              <MapPin size={11} strokeWidth={2} aria-hidden />
+              Locations
+              <span className="cert-detail__aside-locations-count">
                 {locations.length}
               </span>
-            </div>
+            </h2>
             <CertLocationsMap locations={locations} />
           </section>
         ) : null}

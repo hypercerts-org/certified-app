@@ -331,6 +331,22 @@
   margin-top: 0;
 }
 
+/* `<h2>` carries default user-agent margins; the `cert-detail__meta-label`
+   utility was designed for `<dt>` slots inside the meta `<dl>`, so we
+   layer a small override that zeroes the margin and adds a tiny gap
+   below the label before the map starts. */
+.cert-detail__aside-locations-label {
+  margin: 0;
+}
+
+.cert-detail__aside-locations-count {
+  color: var(--fg-secondary);
+  font-variant-numeric: tabular-nums;
+  /* Lighter weight than the label text so the count reads as
+     metadata, not the primary word. */
+  font-weight: 500;
+}
+
 /* "Read full description" affordance below the short description.
    Replaces the older quiet "more" text-link with an inline-flex
    pill that reads as a clearer call to navigate — left-aligned
