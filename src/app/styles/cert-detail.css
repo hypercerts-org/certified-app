@@ -1201,17 +1201,27 @@
    reads as a structural peer of the aside metadata. */
 
 .cert-detail__headline-cols {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
-  align-items: start;
+  /* Flex (not grid) so each column only takes the width its
+     content needs — narrow cells stay narrow and the unused row
+     space stays empty rather than padding each cell to a third of
+     the main pane. `flex-wrap: wrap` keeps long content from
+     overflowing on small screens. */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 32px;
+  align-items: flex-start;
 }
 
 .cert-detail__headline-col {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  /* `min-width: 0` lets the column shrink below its intrinsic
+     size when the row needs to wrap, instead of forcing overflow.
+     `flex: 0 0 auto` keeps each cell tied to its content width. */
+  flex: 0 0 auto;
   min-width: 0;
+  max-width: 100%;
 }
 
 .cert-detail__headline-col-value {
@@ -1233,15 +1243,62 @@
   background: var(--overlay-weak);
 }
 
+/* Project cell renders as a small thumb + title inline. The thumb
+   uses the project's avatar / legacy image / banner (in that
+   precedence) so the cell carries the project's identity glyph,
+   not just text. Falls back to an empty rounded square if the
+   project hasn't published an image yet — keeps the row alignment
+   stable across mixed projects. */
+.cert-detail__headline-project-value {
+  min-width: 0;
+}
+
 .cert-detail__headline-project-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   color: var(--fg-primary);
   text-decoration: none;
+  min-width: 0;
+  /* Underline on hover only, so the row reads as a compact label
+     by default and reveals affordance on intent. */
   border-bottom: 1px solid transparent;
   transition: border-color var(--transition-fast);
 }
 
 .cert-detail__headline-project-link:hover {
   border-bottom-color: var(--fg-primary);
+}
+
+.cert-detail__headline-project-link--static {
+  cursor: default;
+}
+
+.cert-detail__headline-project-thumb {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-subtle);
+}
+
+.cert-detail__headline-project-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cert-detail__headline-project-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (max-width: 640px) {

@@ -33,7 +33,6 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import EditBanner from "@/components/ui/edit-banner"
 import { useCertProjects } from "@/hooks/use-cert-projects"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import CertProjects from "./cert-projects"
 import LeafletDocument, {
   isRenderableDescription,
 } from "@/components/leaflet/leaflet-document"
@@ -929,12 +928,14 @@ export default function ActivityDetail({
             {shortDescSection}
 
             {/* Contributors moved to the aside meta-list — see the
-                Contributors row above (`<dt>Contributors</dt>`). The
-                main pane now renders Projects as a single full-width
-                section instead of sharing a row with Contributors. */}
-            {rkey ? <CertProjects did={did} rkey={rkey} /> : null}
-
-            {/* Locations section + map: aside (see the Locations
+                Contributors row above (`<dt>Contributors</dt>`).
+                Project association is now surfaced in the
+                three-column byline below the title (see
+                `<CertHeadlineColumns>` in the headline above), so
+                the older full-width Projects section that used to
+                live here is gone — the row would have duplicated
+                the headline Project column.
+                Locations section + map: aside (see the Locations
                 meta-row above). */}
 
             {rkey ? (
@@ -1278,12 +1279,12 @@ function CertHeadlineColumns({
           </span>
         ) : (
           (() => {
-            // First-project preview — same scope-rule the
-            // Projects section in the main pane uses (single
-            // primary association for the heads-up byline). A
-            // "+N more" count surfaces when the cert belongs to
-            // additional projects so the reader knows to scroll
-            // down to the full list.
+            // First-project preview — same scope-rule the Projects
+            // section in the main pane uses (single primary
+            // association for the heads-up byline). A "+N more"
+            // count surfaces when the cert belongs to additional
+            // projects so the reader knows to scroll down to the
+            // full list.
             const first = projects[0]
             const remaining = projects.length - 1
             const firstParts = first.uri.match(
@@ -1301,18 +1302,57 @@ function CertHeadlineColumns({
                 ? v.name
                 : null) ||
               "Untitled project"
+            // Image precedence mirrors the home-feed CollectionPreview
+            // and explore-page ProjectListRow: avatar (primary
+            // identity image) → image (legacy field) → banner
+            // (decorative). Resolved against the project's own DID
+            // so foreign-PDS blobs come through the xrpc proxy.
+            const projectDid = firstParts ? firstParts[1] : ""
+            const rawImage = v.avatar ?? v.image ?? v.banner
+            const imageUrl =
+              rawImage && projectDid
+                ? resolveActivityImageUrl(
+                    rawImage as Parameters<typeof resolveActivityImageUrl>[0],
+                    projectDid,
+                  )
+                : null
+            const thumb = (
+              <span
+                className="cert-detail__headline-project-thumb"
+                aria-hidden="true"
+              >
+                {imageUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={imageUrl}
+                    alt=""
+                    className="cert-detail__headline-project-thumb-img"
+                  />
+                ) : null}
+              </span>
+            )
+            const innerBody = (
+              <>
+                {thumb}
+                <span className="cert-detail__headline-project-title">
+                  {title}
+                </span>
+              </>
+            )
             const label = firstHref ? (
               <Link
                 href={firstHref}
                 className="cert-detail__headline-project-link"
               >
-                {title}
+                {innerBody}
               </Link>
             ) : (
-              <span>{title}</span>
+              <span className="cert-detail__headline-project-link cert-detail__headline-project-link--static">
+                {innerBody}
+              </span>
             )
             return (
-              <span className="cert-detail__headline-col-value">
+              <span className="cert-detail__headline-col-value cert-detail__headline-project-value">
                 {label}
                 {remaining > 0 ? (
                   <span className="cert-detail__meta-aux"> +{remaining}</span>
