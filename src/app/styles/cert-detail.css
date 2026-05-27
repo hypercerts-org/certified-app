@@ -1112,6 +1112,105 @@
   text-overflow: ellipsis;
 }
 
+/* ---------- /create page tweaks ----------
+   The create-cert page reuses the cert-detail visual shell
+   (`.page-layout.cert-detail--wide`, `.cert-detail__aside`, etc.)
+   so the editing surface reads like an inline draft of the same
+   page it'll publish to. Only a few create-specific bits live
+   here. */
+
+.create-cert__date-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.create-cert__date-row .cert-detail__meta-input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.create-cert__counter {
+  margin: 0;
+  align-self: flex-end;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.create-cert__counter--over {
+  color: var(--color-error, #b91c1c);
+  font-weight: 600;
+}
+
+.create-cert__contrib-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.create-cert__contrib-row {
+  display: grid;
+  grid-template-columns: 2fr 100px 1.5fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.create-cert__contrib-weight {
+  text-align: right;
+}
+
+.create-cert__contrib-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.create-cert__contrib-remove:hover {
+  background: var(--bg-sunken);
+  color: var(--color-error, #b91c1c);
+  border-color: var(--color-error, #b91c1c);
+}
+
+@media (max-width: 560px) {
+  .create-cert__contrib-row {
+    grid-template-columns: 1fr auto;
+    gap: 6px;
+  }
+  .create-cert__contrib-row > input:nth-child(2),
+  .create-cert__contrib-row > input:nth-child(3) {
+    grid-column: 1 / 2;
+  }
+}
+
+.create-cert__followup-note {
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  background: var(--bg-sunken);
+  border-radius: 8px;
+  border: 1px dashed var(--border-default);
+}
+
+.create-cert__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+}
+
 /* ---------- Expand-map button + modal ---------- */
 
 /* Small icon button overlaying the top-right of the map. Sized
