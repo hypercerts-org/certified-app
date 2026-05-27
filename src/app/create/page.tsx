@@ -29,6 +29,7 @@ import {
   type UploadedBlob,
 } from "@/lib/atproto/profile"
 import { useAuthorInfo } from "@/hooks/use-author-info"
+import { isAtprotoIdentity } from "@/hooks/use-contributor-info"
 import type { HypercertsSmallImage } from "@/lib/atproto/types"
 import {
   putLocationRecord,
@@ -101,6 +102,30 @@ function freshContributor(): ContributorRow {
     weight: "",
     role: "",
   }
+}
+
+/**
+ * Strip the leading `@` so the value passes `isAtprotoIdentity`'s
+ * `looksLikeHandle` regex (which doesn't accept the `@` prefix
+ * humans naturally type). Also collapses surrounding whitespace.
+ */
+function normalizeIdentity(raw: string): string {
+  const trimmed = raw.trim()
+  return trimmed.startsWith("@") ? trimmed.slice(1) : trimmed
+}
+
+/**
+ * A contributor identity passes if it's empty (the user hasn't
+ * filled the row yet — those rows are silently skipped at submit)
+ * or if it normalises to a proper atproto handle / DID we can
+ * actually resolve. Free-text labels like "John Doe" are rejected
+ * so every saved contributor renders as a clickable avatar +
+ * handle on the cert detail page.
+ */
+function isContributorIdentityAcceptable(raw: string): boolean {
+  const v = raw.trim()
+  if (!v) return true
+  return isAtprotoIdentity(normalizeIdentity(v))
 }
 
 interface AddedLocation {
@@ -363,6 +388,11 @@ export default function CreatePage() {
     const trimS = countGraphemes(shortDescription.trim())
     if (trimT < TITLE_MIN || trimS < SHORT_DESC_MIN) return
     if (titleCount > TITLE_MAX || shortDescCount > SHORT_DESC_MAX) return
+    if (
+      !contributors.every((c) => isContributorIdentityAcceptable(c.identity))
+    ) {
+      return
+    }
 
     setIsSubmitting(true)
     setError(null)
@@ -427,7 +457,11 @@ export default function CreatePage() {
         const entry: NonNullable<ClaimActivityRecord["contributors"]>[number] = {
           contributorIdentity: {
             $type: "org.hypercerts.claim.activity#contributorIdentity",
-            identity: c.identity.trim(),
+            // Store the canonical form — strip the `@` that the
+            // typeahead writes back into the field on pick — so
+            // downstream `/api/resolve-did?handle=…` queries don't
+            // have to special-case the prefix.
+            identity: normalizeIdentity(c.identity),
           },
         }
         if (c.weight.trim()) entry.contributionWeight = c.weight.trim()
@@ -499,11 +533,18 @@ export default function CreatePage() {
   const shortDescUnder =
     trimmedShortDescCount > 0 && trimmedShortDescCount < SHORT_DESC_MIN
   const shortDescOver = shortDescCount > SHORT_DESC_MAX
+  // Contributors gate: every row that has been started must resolve
+  // to a proper DID or handle. Empty rows are dropped at save time
+  // so they don't fail this check.
+  const allContributorsValid = contributors.every((c) =>
+    isContributorIdentityAcceptable(c.identity),
+  )
   const canSubmit =
     trimmedTitleCount >= TITLE_MIN &&
     titleCount <= TITLE_MAX &&
     trimmedShortDescCount >= SHORT_DESC_MIN &&
     shortDescCount <= SHORT_DESC_MAX &&
+    allContributorsValid &&
     !isSubmitting
 
   return (
@@ -748,7 +789,11 @@ export default function CreatePage() {
               </p>
             ) : (
               <ul className="create-cert__contrib-list">
-                {contributors.map((c, idx) => (
+                {contributors.map((c, idx) => {
+                  const identityValid = isContributorIdentityAcceptable(
+                    c.identity,
+                  )
+                  return (
                   <li key={c.key} className="create-cert__contrib-row">
                     <ContributorIdentityField
                       value={c.identity}
@@ -761,6 +806,7 @@ export default function CreatePage() {
                       }
                       ariaLabel={`Contributor ${idx + 1} identity`}
                       idx={idx}
+                      invalid={!identityValid}
                     />
                     <input
                       type="text"
@@ -808,8 +854,17 @@ export default function CreatePage() {
                     >
                       <Trash2 size={14} strokeWidth={1.75} aria-hidden />
                     </button>
+                    {!identityValid ? (
+                      <p
+                        className="create-cert__contrib-error"
+                        role="alert"
+                      >
+                        Use a DID (did:plc:…) or a handle (alice.bsky.social).
+                      </p>
+                    ) : null}
                   </li>
-                ))}
+                  )
+                })}
               </ul>
             )}
 
@@ -953,6 +1008,10 @@ interface ContributorIdentityFieldProps {
   onChange: (next: string) => void
   ariaLabel: string
   idx: number
+  /** True when the current value is non-empty AND doesn't normalise
+   *  to a recognisable DID or handle. Paints a red border around
+   *  the input so the row's invalidity reads at a glance. */
+  invalid: boolean
 }
 
 function ContributorIdentityField({
@@ -960,6 +1019,7 @@ function ContributorIdentityField({
   onChange,
   ariaLabel,
   idx,
+  invalid,
 }: ContributorIdentityFieldProps) {
   const [results, setResults] = useState<Actor[]>([])
   const [isOpen, setIsOpen] = useState(false)
@@ -1075,8 +1135,13 @@ function ContributorIdentityField({
     <div className="create-cert__contrib-id" ref={containerRef}>
       <input
         type="text"
-        className="cert-detail__meta-input"
+        className={
+          invalid
+            ? "cert-detail__meta-input create-cert__contrib-id-input--invalid"
+            : "cert-detail__meta-input"
+        }
         aria-label={ariaLabel}
+        aria-invalid={invalid}
         placeholder="@handle or did:plc:…"
         value={value}
         maxLength={1000}

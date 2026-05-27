@@ -1177,6 +1177,15 @@
   min-width: 0;
 }
 
+/* MapPin SVG anchoring the row. Without `flex-shrink: 0` the
+   icon would be allowed to compress when the row's name text was
+   too long to fit — the SVG defaults to flex-shrink: 1 like any
+   other flex child. Pin it at full size; long names truncate
+   via the name element's ellipsis instead. */
+.cert-detail__map-locations-item > svg {
+  flex-shrink: 0;
+}
+
 .cert-detail__map-locations-name {
   font-weight: 500;
   color: var(--fg-primary);
@@ -1458,6 +1467,29 @@
 
 .create-cert__contrib-id input {
   width: 100%;
+}
+
+/* Invalid identity — paints the border red so the row's failure
+   reads at a glance. The accompanying `<p create-cert__contrib-
+   error>` below the row carries the explanation; this is the
+   field-level visual cue. */
+.create-cert__contrib-id-input--invalid {
+  border-color: var(--color-error, #b91c1c);
+}
+
+.create-cert__contrib-id-input--invalid:focus {
+  border-color: var(--color-error, #b91c1c);
+  box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.15);
+}
+
+/* Per-row identity error — slots into the contributor grid by
+   spanning all four tracks, sitting below the row's inputs. The
+   text reuses the form-error rhythm: small, muted red. */
+.create-cert__contrib-error {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-error, #b91c1c);
 }
 
 .create-cert__contrib-id-spinner {
