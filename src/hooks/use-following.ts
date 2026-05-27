@@ -23,6 +23,16 @@ function extractRkey(uri: string): string {
 // Module-level cache keyed by DID. Re-mounts (e.g. tab switches) reuse
 // the snapshot instead of re-paginating the PDS — matches the pattern
 // in `useReceivedEndorsements`.
+//
+// **Invalidation contract:** this cache lives entirely inside the
+// `useFollowing` hook. There is no cross-component invalidation bus
+// (unlike `useTypedLists`, which subscribes to
+// `endorsement-lists-cache`). Mutations through `unfollow` /
+// `followBack` clear the local entry via `cache.set(...)` so this
+// hook stays self-consistent, but a different component issuing a
+// follow / unfollow without going through this hook would leave
+// the cache stale until the next page-reload. There are no such
+// out-of-band writes today.
 const cache = new Map<string, CacheEntry>()
 
 /**

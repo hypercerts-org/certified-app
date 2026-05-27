@@ -27,7 +27,7 @@ export interface LinkDialogProps {
   /** True when the editor had no selection — show a Text field so the
    *  user can type the label that the link should display. */
   allowTextEdit: boolean
-  onCancel: () => void
+  onClose: () => void
   onConfirm: (result: LinkDialogResult) => void
 }
 
@@ -45,7 +45,7 @@ export default function LinkDialog({
   initialUrl = "",
   initialText = "",
   allowTextEdit,
-  onCancel,
+  onClose,
   onConfirm,
 }: LinkDialogProps) {
   const urlInputRef = useRef<HTMLInputElement>(null)
@@ -83,8 +83,8 @@ export default function LinkDialog({
   const resolvedTitle = title ?? (isEdit ? "Edit link" : "Add link")
 
   return (
-    <AppDialog ariaLabel={resolvedTitle} maxWidth={440} onClose={onCancel}>
-      <AppDialogHeader title={resolvedTitle} onClose={onCancel} />
+    <AppDialog ariaLabel={resolvedTitle} maxWidth={440} onClose={onClose}>
+      <AppDialogHeader title={resolvedTitle} onClose={onClose} />
       <form className="signin-modal__body" onSubmit={handleSubmit}>
         <label className="link-dialog__field">
           <span className="link-dialog__label">URL</span>
@@ -135,7 +135,7 @@ export default function LinkDialog({
             </Button>
           ) : null}
           <div className="link-dialog__actions-right">
-            <Button type="button" variant="ghost" onClick={onCancel}>
+            <Button type="button" variant="ghost" onClick={onClose}>
               Cancel
             </Button>
             <Button type="submit" variant="primary" disabled={url.trim() === ""}>

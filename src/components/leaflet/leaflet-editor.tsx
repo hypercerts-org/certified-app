@@ -387,7 +387,7 @@ export default function LeafletEditor({
           initialUrl={linkDialog.initialUrl}
           initialText={linkDialog.initialText}
           allowTextEdit={linkDialog.allowTextEdit}
-          onCancel={() => {
+          onClose={() => {
             selectionRef.current = null
             setLinkDialog((prev) => ({ ...prev, open: false }))
           }}
