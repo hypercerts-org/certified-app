@@ -53,11 +53,14 @@ type QualityFilterValue = HyperlabelTier | UnlabeledSlug
  *  IntersectionObserver-based sentinel still handles further
  *  scroll-driven loads. */
 const MIN_VISIBLE_ITEMS = 10
-/** Hard cap on consecutive auto-loads — a burst of 1000+ same-actor
- *  endorsements would otherwise fan out one request per page until
- *  exhausted. 5 × PAGE_SIZE (25 in useHomeFeed) = up to 125 events
- *  pulled before we yield to the user's scroll. */
-const MAX_AUTO_LOADS = 5
+/** Hard cap on consecutive auto-loads. Sized so a single curator
+ *  who batch-endorses ~1000 accounts can be fully absorbed into a
+ *  single grouped row before the auto-loader yields to the user's
+ *  scroll. 25 × PAGE_SIZE (50 in useHomeFeed) = up to 1250 events
+ *  pulled in the auto-loop — covers the 1000-endorsement design
+ *  target with headroom for trailing events. Beyond that the
+ *  IntersectionObserver sentinel takes over. */
+const MAX_AUTO_LOADS = 25
 
 /**
  * GitHub-style activity timeline for the home page. Each entry is

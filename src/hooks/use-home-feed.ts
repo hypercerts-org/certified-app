@@ -139,7 +139,12 @@ export type HomeFeedEvent =
       subjectUri: string
     })
 
-const PAGE_SIZE = 25
+/** Page size for the FollowerEvents indexer query — sized to the
+ *  indexer's hard cap (`MAX_FEED_PAGE_SIZE = 50` in the proxy /
+ *  follower-events lib). Larger pages reduce the number of round-
+ *  trips when the renderer's grouping logic collapses a burst of
+ *  same-actor endorsements into a single visible row. */
+const PAGE_SIZE = 50
 
 interface State {
   events: HomeFeedEvent[]
