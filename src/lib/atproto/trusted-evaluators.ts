@@ -27,10 +27,18 @@ export const TRUSTED_EVALUATOR_DIDS = [
 ] as const
 
 const PAGE_SIZE = 50
-/** Bound total endorsements pulled across pages — protects against
- *  one prolific evaluator turning the popover into a multi-second
- *  data fetch. 500 = 10 pages of 50. */
+/** Bound on unique endorsed-subject DIDs collected. Stops paging early
+ *  when an evaluator endorses very many distinct accounts. */
 const MAX_TOTAL = 500
+/** Hard cap on page count, regardless of unique-DID progress. The
+ *  award stream is "many awards per subject, few distinct subjects"
+ *  in practice — evaluators re-endorse the same accounts repeatedly,
+ *  so the unique-DID cap (`MAX_TOTAL`) doesn't trigger and the loop
+ *  would otherwise crawl every award the evaluator has ever issued
+ *  before returning. 10 pages × 50 awards = at most 500 awards
+ *  examined, which is enough to surface the useful expansion set
+ *  without delaying the feed by seconds while we walk duplicates. */
+const MAX_PAGES = 10
 
 interface RawResponse {
   data?: {
@@ -64,7 +72,7 @@ export async function fetchEvaluatorEndorsedDids(
   if (evaluators.length === 0) return result
 
   let cursor: string | null = null
-  while (true) {
+  for (let page = 0; page < MAX_PAGES; page++) {
     const res = await fetch(INDEXER_PROXY_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
