@@ -509,7 +509,11 @@
 .add-to-list__pop {
   position: absolute;
   top: calc(100% + 6px);
-  left: 0;
+  /* Anchored to the trigger's right edge so the menu flows LEFT
+     instead of RIGHT. The trigger lives on the right edge of the
+     aside meta rows (Time period, Locations) where a
+     right-flowing menu would overflow past the cert column. */
+  right: 0;
   z-index: 50;
   min-width: 168px;
   padding: 4px;
