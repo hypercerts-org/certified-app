@@ -26,7 +26,7 @@ import {
  * One "list" on a profile's Endorsements tab.
  *
  * Backed by a single `org.hypercerts.collection` record with
- * `type === "endorsement-list"`. The collection's `items[]` holds
+ * `type === "list:endorsements"`. The collection's `items[]` holds
  * strongRefs to `app.certified.badge.award` records on the same
  * issuer's repo. `items` here is resolved client-side — for each
  * `itemIdentifier.uri` we look up the matching award record from a

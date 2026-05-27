@@ -4,12 +4,20 @@ const COLLECTION = "org.hypercerts.collection"
 
 /**
  * `type` discriminator used by endorsement-list collection records.
- * Sibling discriminator to the project flow's `"project"` value, which
- * the Projects tab filters on. The two filters are symmetric — lists
- * are excluded from the Projects tab and projects are excluded from
- * the Lists tab.
+ * Matches the `list:certs` / `list:projects` / `list:accounts`
+ * convention used by typed-lists — every "X is a curated list of Y"
+ * collection records its kind as `list:<plural>`. Sibling
+ * discriminator to the project flow's `"project"` value, which
+ * the Projects tab filters on. The two filters are symmetric —
+ * lists are excluded from the Projects tab and projects are
+ * excluded from the Lists tab.
+ *
+ * Records created before this rename used `"endorsement-list"`;
+ * read paths now filter strictly to `"list:endorsements"`, so any
+ * existing records need to be migrated to the new value before
+ * they reappear in the Lists view.
  */
-export const ENDORSEMENT_LIST_TYPE = "endorsement-list"
+export const ENDORSEMENT_LIST_TYPE = "list:endorsements"
 
 /**
  * Loose shape of an `org.hypercerts.collection` record. The lexicon
@@ -17,7 +25,7 @@ export const ENDORSEMENT_LIST_TYPE = "endorsement-list"
  * components consuming the records narrow as needed and treat anything
  * else as optional / unknown. The `type` discriminator is what the
  * Projects tab filters on (`type === "project"`) and what the Lists
- * tab filters on (`type === "endorsement-list"`).
+ * tab filters on (`type === "list:endorsements"`).
  */
 export interface CollectionValue {
   $type?: string
@@ -55,7 +63,7 @@ export interface CollectionItem {
 /**
  * Narrowed view of an endorsement-list collection record. Used by the
  * lists hook + components; reads remain loose at the boundary
- * (`CollectionValue`) and narrow internally once `type === "endorsement-list"`
+ * (`CollectionValue`) and narrow internally once `type === "list:endorsements"`
  * is confirmed.
  */
 export interface EndorsementListCollectionValue extends CollectionValue {

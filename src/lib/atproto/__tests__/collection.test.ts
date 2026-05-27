@@ -45,7 +45,7 @@ describe("asEndorsementListValue", () => {
   it("narrows a well-formed endorsement-list value", async () => {
     const { asEndorsementListValue } = await loadModule()
     const narrowed = asEndorsementListValue({
-      type: "endorsement-list",
+      type: "list:endorsements",
       title: "Frontend mentors",
       createdAt: "2026-05-20T12:00:00Z",
     })
@@ -68,13 +68,13 @@ describe("asEndorsementListValue", () => {
     const { asEndorsementListValue } = await loadModule()
     expect(
       asEndorsementListValue({
-        type: "endorsement-list",
+        type: "list:endorsements",
         createdAt: "2026-05-20T12:00:00Z",
       }),
     ).toBeNull()
     expect(
       asEndorsementListValue({
-        type: "endorsement-list",
+        type: "list:endorsements",
         title: "x",
       }),
     ).toBeNull()
@@ -97,7 +97,7 @@ describe("createEndorsementListCollection", () => {
     expect(url).toBe("/api/xrpc/com/atproto/repo/createRecord")
     const body = JSON.parse(init.body as string)
     expect(body.collection).toBe("org.hypercerts.collection")
-    expect(body.record.type).toBe("endorsement-list")
+    expect(body.record.type).toBe("list:endorsements")
     expect(body.record.title).toBe("Frontend mentors")
     expect(body.record.description).toBe("weekly cohort")
     expect(body.record.items).toEqual([])
@@ -132,7 +132,7 @@ describe("updateEndorsementListCollection", () => {
     mockAuthFetch.mockResolvedValueOnce(
       ok({
         value: {
-          type: "endorsement-list",
+          type: "list:endorsements",
           title: "Old title",
           description: "Old desc",
           createdAt: "2026-01-01T00:00:00Z",
@@ -165,7 +165,7 @@ describe("appendItemToList", () => {
     mockAuthFetch.mockResolvedValueOnce(
       ok({
         value: {
-          type: "endorsement-list",
+          type: "list:endorsements",
           title: "Mentors",
           createdAt: "2026-05-20T00:00:00Z",
           items: [
@@ -199,7 +199,7 @@ describe("appendItemToList", () => {
     mockAuthFetch.mockResolvedValueOnce(
       ok({
         value: {
-          type: "endorsement-list",
+          type: "list:endorsements",
           title: "Mentors",
           createdAt: "2026-05-20T00:00:00Z",
           items: [{ itemIdentifier: awardRef("aaa") }],
@@ -221,7 +221,7 @@ describe("removeItemFromList", () => {
     mockAuthFetch.mockResolvedValueOnce(
       ok({
         value: {
-          type: "endorsement-list",
+          type: "list:endorsements",
           title: "Mentors",
           createdAt: "2026-05-20T00:00:00Z",
           items: [
@@ -247,7 +247,7 @@ describe("removeItemFromList", () => {
     mockAuthFetch.mockResolvedValueOnce(
       ok({
         value: {
-          type: "endorsement-list",
+          type: "list:endorsements",
           title: "Mentors",
           createdAt: "2026-05-20T00:00:00Z",
           items: [{ itemIdentifier: awardRef("aaa") }],
@@ -274,7 +274,7 @@ describe("purgeAwardFromLists", () => {
             uri: `at://${DID}/org.hypercerts.collection/list1`,
             cid: "cidL1",
             value: {
-              type: "endorsement-list",
+              type: "list:endorsements",
               title: "Mentors",
               createdAt: "2026-05-20T00:00:00Z",
               items: [{ itemIdentifier: awardRef("target") }],
@@ -284,7 +284,7 @@ describe("purgeAwardFromLists", () => {
             uri: `at://${DID}/org.hypercerts.collection/list2`,
             cid: "cidL2",
             value: {
-              type: "endorsement-list",
+              type: "list:endorsements",
               title: "Reviewers",
               createdAt: "2026-05-20T00:00:00Z",
               items: [{ itemIdentifier: awardRef("other") }],
@@ -306,7 +306,7 @@ describe("purgeAwardFromLists", () => {
     mockAuthFetch.mockResolvedValueOnce(
       ok({
         value: {
-          type: "endorsement-list",
+          type: "list:endorsements",
           title: "Mentors",
           createdAt: "2026-05-20T00:00:00Z",
           items: [{ itemIdentifier: awardRef("target") }],

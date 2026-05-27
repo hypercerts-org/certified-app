@@ -360,7 +360,7 @@ describe("hydrateFeedEvents", () => {
                 title: "List",
                 shortDescription: "",
                 createdAt: "2026-05-26T00:00:00.000Z",
-                type: "endorsement-list",
+                type: "list:endorsements",
                 items: null,
                 banner: null,
               },
@@ -373,7 +373,7 @@ describe("hydrateFeedEvents", () => {
     const out = await hydrateFeedEvents(events)
     const payload = out[0].payload
     if (payload?.kind === "collection.create") {
-      expect(payload.record.value.type).toBe("endorsement-list")
+      expect(payload.record.value.type).toBe("list:endorsements")
     } else {
       throw new Error("Expected collection.create payload")
     }

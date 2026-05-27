@@ -431,7 +431,7 @@ ${ACTIVITY_NODE_SELECTION}
       }
       lists: orgHypercertsCollection(
         first: 1
-        where: { did: { eq: $did }, type: { eqi: "endorsement-list" } }
+        where: { did: { eq: $did }, type: { eqi: "list:endorsements" } }
       ) {
         totalCount
       }

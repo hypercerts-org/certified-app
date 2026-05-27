@@ -744,7 +744,7 @@ function CertTargetName({ did, rkey }: { did: string; rkey: string }) {
  * cert-detail link, project collection URIs through the project
  * detail link, anything else falls back to plain text. Used by
  * update.create events, whose target can be either a cert
- * (`org.hypercerts.claim.activity`) OR a project / endorsement-list
+ * (`org.hypercerts.claim.activity`) OR a project / endorsements-list
  * (`org.hypercerts.collection`).
  *
  * `fallback` is the text shown when `targetUri` is null (lexicon
@@ -823,7 +823,7 @@ function UnhydratedSentence({ rawKind }: { rawKind: string }) {
 function collectionTypeLabel(record: CollectionRecord): string {
   const t =
     typeof record.value.type === "string" ? record.value.type.toLowerCase() : null
-  if (t === "endorsement-list") return "list"
+  if (t === "list:endorsements") return "list"
   if (t === "portfolio") return "portfolio"
   return "project"
 }
@@ -924,7 +924,7 @@ function CollectionPreview({
   const collectionType =
     typeof v.type === "string" ? v.type.toLowerCase() : "project"
   const fallbackTitle =
-    collectionType === "endorsement-list"
+    collectionType === "list:endorsements"
       ? "Untitled list"
       : collectionType === "portfolio"
         ? "Untitled portfolio"
@@ -950,7 +950,7 @@ function CollectionPreview({
         )
       : null
   const itemCount = Array.isArray(v.items) ? v.items.length : 0
-  const itemNoun = collectionType === "endorsement-list" ? "endorsement" : "cert"
+  const itemNoun = collectionType === "list:endorsements" ? "endorsement" : "cert"
 
   return (
     <PreviewCard
