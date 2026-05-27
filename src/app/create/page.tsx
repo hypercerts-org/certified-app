@@ -43,6 +43,7 @@ import {
   suggestForwardGeocode,
   type ForwardGeocodeResult,
 } from "@/lib/locations/geocode"
+import { usePageTitle } from "@/lib/navbar-context"
 
 /**
  * `/create` — new cert. Mirrors the visual language of the cert detail
@@ -161,6 +162,7 @@ interface RightsOption {
 }
 
 export default function CreatePage() {
+  usePageTitle("New cert")
   const { isAuthenticated, isLoading, did } = useAuth()
   const { activeOrg } = useOrg()
   const router = useRouter()
