@@ -906,6 +906,11 @@ ${ACTIVITY_NODE_SELECTION}
             did
             createdAt
             title
+            shortDescription
+            subjects {
+              __typename
+              ... on ComAtprotoRepoStrongRef { uri cid }
+            }
           }
         }
       }

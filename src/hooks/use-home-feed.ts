@@ -98,13 +98,21 @@ export type HomeFeedEvent =
       title: string | null
       subjectUri: string
       /**
-       * For evaluation + measurement: the at:// URI of the cert this
-       * event references (the thing being evaluated / measured).
-       * Null for hyperboard and update events whose lexicons don't
-       * carry a target reference. The renderer uses this to make the
-       * "X added a measurement to <cert>" link clickable.
+       * For evaluation + measurement + update: the at:// URI of the
+       * cert/project the event references (the thing being evaluated,
+       * measured, or attached to). Null for hyperboard events whose
+       * lexicon doesn't carry a target reference. The renderer uses
+       * this to make the "X added a measurement to <cert>" /
+       * "X posted an update to <Y>" tail link clickable.
        */
       targetUri: string | null
+      /**
+       * Kind-specific preview snippet. Today only update.create
+       * populates it (from the attachment record's `shortDescription`
+       * lexicon field); other kinds stay null and render with just
+       * the actor + verb sentence.
+       */
+      shortDescription: string | null
     })
   | (HomeFeedEventBase & {
       kind: "unknown"
@@ -404,6 +412,7 @@ function hydratedToHomeFeedEvent(h: HydratedFeedEvent): HomeFeedEvent {
       title: payload.title,
       subjectUri: h.event.subjectUri,
       targetUri: payload.targetUri,
+      shortDescription: payload.shortDescription,
     }
   }
 

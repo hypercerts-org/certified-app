@@ -8,6 +8,7 @@ import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import LoadMoreSentinel from "@/components/ui/load-more-sentinel"
 import { useActivity } from "@/hooks/use-activity"
+import { useProject } from "@/hooks/use-project"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useClickOutsideClose } from "@/hooks/use-click-outside-close"
 import { useEvaluatorEndorsements } from "@/hooks/use-evaluator-endorsements"
@@ -452,6 +453,13 @@ function HomeFeedRow({ event }: { event: HomeFeedEvent }) {
         event.kind === "project.created_with_cert" ? (
           <CollectionPreview record={event.record} uri={event.uri} />
         ) : null}
+        {event.kind === "update.create" ? (
+          <UpdatePreview
+            title={event.title}
+            shortDescription={event.shortDescription}
+            targetUri={event.targetUri}
+          />
+        ) : null}
       </div>
       <time
         className="home-feed__time"
@@ -482,7 +490,7 @@ function EventSentence({ event }: { event: HomeFeedEvent }) {
     case "hyperboard.create":
       return <>created a hyperboard</>
     case "update.create":
-      return <>posted an update</>
+      return <TargetSentence verb="posted an update to" targetUri={event.targetUri} fallback="posted an update" />
     case "unknown":
       // The wire kind was known but hydration didn't return a
       // payload (or it was genuinely unknown). Recover the verb
@@ -537,6 +545,64 @@ function CertTargetName({ did, rkey }: { did: string; rkey: string }) {
       ? activity.value.title
       : null
   return <>{title ?? "a cert"}</>
+}
+
+/**
+ * Generalized verb-and-target sentence that dispatches on the
+ * target URI's collection (NSID) — cert URIs route through the
+ * cert-detail link, project collection URIs through the project
+ * detail link, anything else falls back to plain text. Used by
+ * update.create events, whose target can be either a cert
+ * (`org.hypercerts.claim.activity`) OR a project / endorsement-list
+ * (`org.hypercerts.collection`).
+ *
+ * `fallback` is the text shown when `targetUri` is null (lexicon
+ * didn't populate `subjects[]`) — typically a shorter sentence
+ * without the trailing "to" preposition.
+ */
+function TargetSentence({
+  verb,
+  targetUri,
+  fallback,
+}: {
+  verb: string
+  targetUri: string | null
+  fallback: string
+}) {
+  if (!targetUri) return <>{fallback}</>
+  const parsed = parseAtUri(targetUri)
+  if (!parsed) return <>{fallback}</>
+  if (parsed.collection === "org.hypercerts.claim.activity") {
+    return <CertTargetSentence verb={verb} targetUri={targetUri} />
+  }
+  if (parsed.collection === "org.hypercerts.collection") {
+    const href = `/project/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
+    return (
+      <>
+        {verb}{" "}
+        <Link href={href} className="home-feed__target">
+          <ProjectTargetName did={parsed.did} rkey={parsed.rkey} />
+        </Link>
+      </>
+    )
+  }
+  // Unknown lexicon — keep the verb but drop the "to <X>" tail.
+  return <>{fallback}</>
+}
+
+/**
+ * Resolves the linked project's title for use as inline link text.
+ * Falls back to "a project" while loading or on miss.
+ */
+function ProjectTargetName({ did, rkey }: { did: string; rkey: string }) {
+  const { project } = useProject(did || null, rkey || null)
+  const title =
+    typeof project?.value.title === "string" && project.value.title.length > 0
+      ? project.value.title
+      : typeof project?.value.name === "string" && project.value.name.length > 0
+        ? project.value.name
+        : null
+  return <>{title ?? "a project"}</>
 }
 
 function UnhydratedSentence({ rawKind }: { rawKind: string }) {
@@ -706,6 +772,49 @@ function CollectionPreview({
           ? `${itemCount} ${itemNoun}${itemCount === 1 ? "" : "s"}`
           : null,
       ].filter((s): s is string => !!s)}
+    />
+  )
+}
+
+// ----------------------------- Update preview ------------------------------
+
+/**
+ * Card preview for an `update.create` event. The attachment lexicon's
+ * `title` + `shortDescription` populate the card body; the card links
+ * to the target's detail page when one resolves (cert or project),
+ * matching the inline "posted an update to <X>" sentence above. When
+ * there's no target URI (the lexicon didn't populate `subjects[]`),
+ * the card renders unlinked — still useful as a body-of-the-update
+ * preview, but no navigation.
+ *
+ * Attachments don't carry an image suitable for a feed preview thumb
+ * (the lexicon's `content` is the underlying document, not an
+ * identity image), so the card always renders in its no-image flow.
+ */
+function UpdatePreview({
+  title,
+  shortDescription,
+  targetUri,
+}: {
+  title: string | null
+  shortDescription: string | null
+  targetUri: string | null
+}) {
+  const parsed = targetUri ? parseAtUri(targetUri) : null
+  const href = parsed
+    ? parsed.collection === "org.hypercerts.claim.activity"
+      ? `/activity/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
+      : parsed.collection === "org.hypercerts.collection"
+        ? `/project/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
+        : null
+    : null
+  return (
+    <PreviewCard
+      href={href}
+      title={title?.trim() || "Update"}
+      imageUrl={null}
+      description={shortDescription}
+      meta={[]}
     />
   )
 }
