@@ -299,6 +299,13 @@ export function useExploreData(opts: {
     }
     run()
     return () => controller.abort()
+    // The `*Key` strings drive refetch on content-change while the
+    // raw `*Labels` arrays are listed for closure-capture correctness:
+    // the effect body reads the arrays, not the keys, so React 19's
+    // exhaustive-deps lint (and the React Compiler) needs them in the
+    // dep list. Memoized in the parent so reference identity tracks
+    // content, which makes the doubling harmless — both fire iff the
+    // labels actually changed.
   }, [
     kind,
     filter,
@@ -313,6 +320,10 @@ export function useExploreData(opts: {
     includeKey,
     excludeOrgKey,
     includeOrgKey,
+    excludeCertLabels,
+    includeCertLabels,
+    excludeOrgLabels,
+    includeOrgLabels,
   ])
 
   const loadMore = useCallback(() => {
@@ -399,6 +410,10 @@ export function useExploreData(opts: {
     includeKey,
     excludeOrgKey,
     includeOrgKey,
+    excludeCertLabels,
+    includeCertLabels,
+    excludeOrgLabels,
+    includeOrgLabels,
   ])
 
   return {

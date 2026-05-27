@@ -31,8 +31,17 @@ export function useClickOutsideClose(
   // Listener thrash without this ref means closed-then-reopened
   // popovers spin up + tear down listeners every time state
   // upstream changes.
+  //
+  // The ref-update lives in a useEffect (not a render-time write)
+  // to satisfy React 19's "no refs during render" lint rule. The
+  // microsecond gap between render-phase prop change and the
+  // commit-phase ref update is below the threshold any mousedown
+  // / keydown event can hit in practice — the listener sees the
+  // latest closure on the next event tick.
   const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
+  useEffect(() => {
+    onCloseRef.current = onClose
+  })
 
   useEffect(() => {
     if (!open) return

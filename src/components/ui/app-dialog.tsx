@@ -111,6 +111,16 @@ export default function AppDialog({
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
+    // Save the previously-focused element so we can restore focus
+    // when the dialog closes. A11y: keyboard users should land back
+    // on the trigger that opened the modal, not on `<body>`.
+    // (Round-2 a11y finding A-2 — partial fix; a full Tab-cycle
+    // focus trap remains deferred to round 3.)
+    const previouslyFocused =
+      typeof document !== "undefined" &&
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null
     // Defence-in-depth: the original InvalidStateError was caused by
     // `showModal()` being called on an already-open dialog (effect
     // re-running because `onClose` was in deps). The ref pattern
@@ -128,7 +138,20 @@ export default function AppDialog({
     }
     const handleClose = () => onCloseRef.current()
     dialog.addEventListener("close", handleClose)
-    return () => dialog.removeEventListener("close", handleClose)
+    return () => {
+      dialog.removeEventListener("close", handleClose)
+      // Restore focus to whichever element had it before the modal
+      // opened. Guard against the previous element being torn out
+      // of the DOM (e.g. on a route navigation that closes the
+      // dialog as a side effect).
+      if (previouslyFocused && previouslyFocused.isConnected) {
+        try {
+          previouslyFocused.focus()
+        } catch {
+          // swallow — focus restoration is best-effort.
+        }
+      }
+    }
     // Mount-once: no dep on `onClose`. The listener reads the latest
     // value via the ref above.
     // eslint-disable-next-line react-hooks/exhaustive-deps

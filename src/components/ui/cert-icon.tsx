@@ -1,5 +1,3 @@
-"use client"
-
 import { IconCertificate } from "@tabler/icons-react"
 
 /**

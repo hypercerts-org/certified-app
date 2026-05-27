@@ -1004,6 +1004,24 @@ function Popover({
    *  controls like the sub-category dropdown at the start of the chrome). */
   align?: "left" | "right"
 }) {
+  // Escape closes the popover. Keyboard-only users would otherwise be
+  // stuck inside the menu without a way to dismiss without a mouse
+  // (round-2 a11y finding A-1). Stash onClose in a ref so the
+  // listener always picks up the latest closure without re-attaching
+  // every render.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  })
+  useEffect(() => {
+    if (!open) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCloseRef.current()
+    }
+    document.addEventListener("keydown", handleKey)
+    return () => document.removeEventListener("keydown", handleKey)
+  }, [open])
+
   return (
     <div className="popover">
       {trigger}

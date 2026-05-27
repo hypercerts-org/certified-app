@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useOrg } from "@/lib/groups/org-context";
 import { useRouter } from "next/navigation";
@@ -18,21 +18,21 @@ export default function CreatePage() {
   const { activeOrg } = useOrg();
   const router = useRouter();
   // Track whether the user navigated to /create from inside the app.
-  // window.history.length is unreliable cross-browser, but we know we
-  // were rendered after a client navigation if the navigation API ever
-  // ran since mount. Using a ref keeps the check stable across renders.
-  const arrivedFromInAppRef = useRef<boolean | null>(null);
-  if (arrivedFromInAppRef.current === null && typeof window !== "undefined") {
-    // `document.referrer` is empty on direct loads / external links and
-    // non-empty when the previous page was on our origin. Comparing
-    // origins protects against off-site referrers.
+  // window.history.length is unreliable cross-browser, but
+  // `document.referrer` is set when the previous page was on our
+  // origin and empty on direct loads / external links. Computed once
+  // via useState's lazy initializer so the value is read at mount and
+  // stays stable for the lifetime of the page (no render-time ref
+  // writes, which React 19 disallows).
+  const [arrivedFromInApp] = useState(() => {
+    if (typeof window === "undefined") return false;
     try {
       const referrer = document.referrer ? new URL(document.referrer) : null;
-      arrivedFromInAppRef.current = !!referrer && referrer.origin === window.location.origin;
+      return !!referrer && referrer.origin === window.location.origin;
     } catch {
-      arrivedFromInAppRef.current = false;
+      return false;
     }
-  }
+  });
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -167,7 +167,7 @@ export default function CreatePage() {
                   // when they landed on /create from an email link or
                   // direct URL — fall back to "/" in that case so
                   // Cancel always stays in-app.
-                  if (arrivedFromInAppRef.current) {
+                  if (arrivedFromInApp) {
                     router.back();
                   } else {
                     router.push("/");
