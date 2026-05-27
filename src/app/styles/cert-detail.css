@@ -1629,6 +1629,67 @@
 
 /* ---------- /project/new cert picker + selected-cert list ---------- */
 
+/* "Your certs" quick-pick — click-to-add list shown above the
+   CertSearch typeahead so the author can attach their own certs
+   without typing. Checked rows visually fade so the eye lands on
+   the still-unattached certs. */
+.create-project__quick-pick-label {
+  margin: 0 0 6px 0;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.create-project__quick-pick-list {
+  list-style: none;
+  margin: 0 0 12px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* Cap the list height when the user has lots of certs — the
+     overflow scrolls so the rest of the form stays in view. */
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 6px;
+}
+
+.create-project__quick-pick-row {
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+  transition: background var(--transition-fast);
+}
+
+.create-project__quick-pick-row:hover {
+  background: var(--overlay-weak);
+}
+
+.create-project__quick-pick-row--added {
+  opacity: 0.6;
+}
+
+.create-project__quick-pick-label-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+}
+
+.create-project__quick-pick-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .create-project__cert-picker {
   display: flex;
   flex-direction: column;

@@ -88,6 +88,14 @@ export default function CreateProjectPage() {
   const [location, setLocation] = useState<AddedLocation | null>(null)
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false)
 
+  // "Your certs" quick-pick. Fetched on mount via listRecords on the
+  // active repo (own DID or active group's DID) so the author can
+  // toggle entries straight from a checklist without first typing
+  // into the CertSearch typeahead. The typeahead stays below for
+  // finding certs that aren't theirs.
+  const [ownCerts, setOwnCerts] = useState<SelectedCert[]>([])
+  const [ownCertsLoading, setOwnCertsLoading] = useState(true)
+
   const [pendingBannerBlob, setPendingBannerBlob] =
     useState<UploadedBlob | null>(null)
   const [pendingBannerPreviewUrl, setPendingBannerPreviewUrl] =
@@ -101,6 +109,67 @@ export default function CreateProjectPage() {
       if (pendingBannerPreviewUrl) URL.revokeObjectURL(pendingBannerPreviewUrl)
     }
   }, [pendingBannerPreviewUrl])
+
+  // Fetch the author's own certs once so the quick-pick row below
+  // can render immediately when the user opens the form. Sourced
+  // from the same repo a fresh cert would be written to (group or
+  // personal), so the list always matches the publish target. 50 is
+  // listRecords' default page size; covers the typical use case
+  // without pagination plumbing.
+  useEffect(() => {
+    const sourceDid = activeOrg ? activeOrg.groupDid : did
+    if (!sourceDid) return
+    const controller = new AbortController()
+    setOwnCertsLoading(true)
+    const params = new URLSearchParams({
+      repo: sourceDid,
+      collection: "org.hypercerts.claim.activity",
+      limit: "50",
+    })
+    authFetch(
+      `/api/xrpc/com/atproto/repo/listRecords?${params.toString()}`,
+      { signal: controller.signal },
+    )
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`listRecords failed: ${res.status}`)
+        const body = (await res.json()) as {
+          records?: Array<{
+            uri: string
+            cid: string
+            value?: { title?: unknown; createdAt?: unknown }
+          }>
+        }
+        const records = (body.records ?? []).map((rec) => ({
+          uri: rec.uri,
+          cid: rec.cid,
+          title:
+            typeof rec.value?.title === "string" && rec.value.title.trim()
+              ? rec.value.title.trim()
+              : rec.uri.split("/").pop() ?? "(untitled cert)",
+          createdAt:
+            typeof rec.value?.createdAt === "string"
+              ? rec.value.createdAt
+              : "",
+        }))
+        // Newest first so the most recently authored certs land at
+        // the top of the list — closest to what the user expects to
+        // see when they open the project form right after writing
+        // a cert.
+        records.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        setOwnCerts(
+          records.map(({ uri, cid, title }) => ({ uri, cid, title })),
+        )
+      })
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === "AbortError") return
+        // Silently — quick-pick is best-effort; the user can still
+        // use the CertSearch typeahead to find their certs.
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setOwnCertsLoading(false)
+      })
+    return () => controller.abort()
+  }, [did, activeOrg])
 
   const countGraphemes = useCallback((s: string): number => {
     if (typeof Intl !== "undefined" && "Segmenter" in Intl) {
@@ -455,6 +524,55 @@ export default function CreateProjectPage() {
               </ul>
             ) : null}
 
+            {/* "Your certs" quick-pick — a toggleable checklist of
+                the certs the author has already published. Clicking
+                a row adds/removes the strongRef from the project's
+                items[] without typing anything. Hidden when the
+                user has no certs OR the active group has none. */}
+            {ownCertsLoading ? (
+              <p className="cert-detail__empty-line">Loading your certs…</p>
+            ) : ownCerts.length > 0 ? (
+              <>
+                <p className="create-project__quick-pick-label">
+                  Your certs — click to add:
+                </p>
+                <ul className="create-project__quick-pick-list">
+                  {ownCerts.map((c) => {
+                    const isAdded = items.some((r) => r.uri === c.uri)
+                    return (
+                      <li
+                        key={c.uri}
+                        className={
+                          isAdded
+                            ? "create-project__quick-pick-row create-project__quick-pick-row--added"
+                            : "create-project__quick-pick-row"
+                        }
+                      >
+                        <label className="create-project__quick-pick-label-inner">
+                          <input
+                            type="checkbox"
+                            checked={isAdded}
+                            onChange={() => {
+                              if (isAdded) {
+                                setItems((rows) =>
+                                  rows.filter((r) => r.uri !== c.uri),
+                                )
+                              } else {
+                                setItems((rows) => [...rows, c])
+                              }
+                            }}
+                          />
+                          <span className="create-project__quick-pick-title">
+                            {c.title}
+                          </span>
+                        </label>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </>
+            ) : null}
+
             {addingCert ? (
               <div className="create-project__cert-picker">
                 <CertSearch
@@ -477,7 +595,7 @@ export default function CreateProjectPage() {
                   }}
                   prioritizeAuthorDid={did ?? undefined}
                   excludeUris={items.map((c) => c.uri)}
-                  placeholder="Search for a cert to add…"
+                  placeholder="Search for any cert…"
                   autoFocus
                   clearOnSelect
                 />
@@ -499,7 +617,7 @@ export default function CreateProjectPage() {
                   onClick={() => setAddingCert(true)}
                 >
                   <Plus size={14} strokeWidth={1.75} aria-hidden />
-                  Add cert
+                  Search for any cert
                 </Button>
               </div>
             )}
