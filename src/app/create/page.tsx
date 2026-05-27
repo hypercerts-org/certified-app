@@ -846,6 +846,7 @@ export default function CreatePage() {
               placeholder="Full description of this cert. Headings, lists, links, images, and video embeds are all supported via the toolbar."
               ariaLabel="Cert description"
               did={did ?? ""}
+              onImageUpload={(file) => uploadBlob(file)}
             />
           </section>
 

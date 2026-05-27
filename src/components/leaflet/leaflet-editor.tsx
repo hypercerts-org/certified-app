@@ -505,6 +505,11 @@ function Toolbar({
     active: boolean,
     onClick: () => void,
     disabled = false,
+    /** When true the post-click `editor.commands.focus()` is skipped.
+     *  Used by the link / image / embed buttons which open a modal
+     *  dialog — refocusing the editor would steal focus back from
+     *  the dialog's input and visibly flicker the caret. */
+    keepFocusOff = false,
   ) => (
     <button
       key={key}
@@ -518,7 +523,7 @@ function Toolbar({
       title={label}
       onClick={() => {
         onClick()
-        editor.commands.focus()
+        if (!keepFocusOff) editor.commands.focus()
       }}
       disabled={disabled}
     >
@@ -590,6 +595,8 @@ function Toolbar({
         LinkIcon,
         editor.isActive("link"),
         onLinkClick,
+        false,
+        true, // keep focus off — opens LinkDialog
       )}
       {onImageClick
         ? btn(
@@ -599,6 +606,7 @@ function Toolbar({
             false,
             onImageClick,
             isUploadingImage,
+            true, // keep focus off — opens native file picker
           )
         : null}
       {btn(
@@ -607,6 +615,8 @@ function Toolbar({
         YoutubeIcon,
         false,
         onEmbedClick,
+        false,
+        true, // keep focus off — opens EmbedDialog
       )}
     </div>
   )
