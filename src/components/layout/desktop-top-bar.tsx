@@ -399,6 +399,10 @@ export default function DesktopTopBar() {
         </div>
 
         <div className="desktop-top-bar__right">
+          <div className="desktop-top-bar__search">
+            <GlobalSearch placeholder="Search Certified" />
+          </div>
+
           {isAuthenticated ? (
             <div
               ref={createRef}
@@ -417,10 +421,6 @@ export default function DesktopTopBar() {
               </button>
             </div>
           ) : null}
-
-          <div className="desktop-top-bar__search">
-            <GlobalSearch placeholder="Search Certified" />
-          </div>
 
           <Link
             href="/apps"
