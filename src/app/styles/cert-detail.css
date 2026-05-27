@@ -35,6 +35,16 @@
     max-width: 1280px;
   }
 
+  /* /create overrides the wider cert-detail cap so the publish
+     form's two-pane layout has the same total content width as
+     the single-pane /project/new (.project-detail max-width
+     960px). 1008 = 960 inner content + 48 (.page-layout's 24px
+     of horizontal padding on each side). The aside stays at
+     296px; only the flex main column narrows to ~632px. */
+  .app-shell:has(.cert-detail--wide.create-cert) .app-shell__content {
+    max-width: 1008px;
+  }
+
   /* Cert detail flips the shared `.page-layout` column order — main
      reading column on the LEFT, supplementary aside on the RIGHT.
      Same widths as before; just swap which side they sit on.
