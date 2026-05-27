@@ -153,6 +153,22 @@ export interface FetchIndexerOptions {
  * ingested yet) are silently dropped — the surface's empty / partial
  * result behaviour matches the rest of the explore page.
  */
+/** Per-request URI cap for `ActivitiesByUris`. The upstream indexer
+ *  rejects `where: { uri: { in: [...] } }` filters with more than 50
+ *  values ("in list must contain 1 to 50 values"); the proxy validator
+ *  mirrors that cap. Larger input sets get chunked into this many URIs
+ *  per request and the results are merged client-side. */
+const ACTIVITIES_BY_URIS_CHUNK = 50
+
+function chunkArray<T>(arr: readonly T[], size: number): T[][] {
+  if (size <= 0) return [arr.slice()]
+  const chunks: T[][] = []
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size))
+  }
+  return chunks
+}
+
 export async function fetchIndexerActivitiesByUris(
   uris: readonly string[],
   opts: {
@@ -166,37 +182,60 @@ export async function fetchIndexerActivitiesByUris(
   }
   if (uris.length === 0) return emptyResult
 
-  const variables: Record<string, unknown> = {
-    uris: [...uris],
-    labels: opts.labels && opts.labels.length > 0 ? opts.labels : null,
-    excludeLabels:
-      opts.excludeLabels && opts.excludeLabels.length > 0 ? opts.excludeLabels : null,
-  }
+  // Chunk to fit the indexer's per-page cap. Curated sets (e.g. the
+  // Ma Earth featured filter) can carry well over 100 URIs across
+  // their unioned collections; the indexer truncates at 100 silently,
+  // so anything past that disappears from the result unless we
+  // multi-page. Each chunk is a separate proxy call; results merge
+  // client-side via Maps so duplicate URIs dedupe naturally.
+  const chunks = chunkArray(uris, ACTIVITIES_BY_URIS_CHUNK)
+  const responses = await Promise.all(
+    chunks.map(async (chunk) => {
+      const variables: Record<string, unknown> = {
+        uris: [...chunk],
+        labels: opts.labels && opts.labels.length > 0 ? opts.labels : null,
+        excludeLabels:
+          opts.excludeLabels && opts.excludeLabels.length > 0
+            ? opts.excludeLabels
+            : null,
+      }
+      const res = await fetch(INDEXER_PROXY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ operationName: "ActivitiesByUris", variables }),
+        signal: opts.signal,
+      })
+      const json = (await res.json()) as GraphQLResponse
+      if (!json.data?.orgHypercertsClaimActivity) {
+        if (json.errors?.length) {
+          console.warn("[Indexer] ActivitiesByUris error:", json.errors[0].message)
+        } else if (!res.ok) {
+          throw new Error(`Indexer request failed: ${res.status}`)
+        }
+        return null
+      }
+      return json.data.orgHypercertsClaimActivity
+    }),
+  )
 
-  const res = await fetch(INDEXER_PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ operationName: "ActivitiesByUris", variables }),
-    signal: opts.signal,
-  })
-  const json = (await res.json()) as GraphQLResponse
-  if (!json.data?.orgHypercertsClaimActivity) {
-    if (json.errors?.length) {
-      console.warn("[Indexer] ActivitiesByUris error:", json.errors[0].message)
-    } else if (!res.ok) {
-      throw new Error(`Indexer request failed: ${res.status}`)
-    }
-    return emptyResult
-  }
-  const connection = json.data.orgHypercertsClaimActivity
   const records: ActivityRecord[] = []
   const dids = new Map<string, string>()
   const recordLabels = new Map<string, LabelValue[]>()
-  for (const edge of connection.edges) {
-    if (!edge.node) continue
-    records.push(nodeToActivityRecord(edge.node))
-    dids.set(edge.node.uri, edge.node.did)
-    recordLabels.set(edge.node.uri, (edge.node.labels ?? []) as LabelValue[])
+  const seen = new Set<string>()
+  let totalCount: number | null = null
+  for (const connection of responses) {
+    if (!connection) continue
+    if (totalCount === null && typeof connection.totalCount === "number") {
+      totalCount = connection.totalCount
+    }
+    for (const edge of connection.edges) {
+      if (!edge.node) continue
+      if (seen.has(edge.node.uri)) continue
+      seen.add(edge.node.uri)
+      records.push(nodeToActivityRecord(edge.node))
+      dids.set(edge.node.uri, edge.node.did)
+      recordLabels.set(edge.node.uri, (edge.node.labels ?? []) as LabelValue[])
+    }
   }
   return {
     records,
@@ -204,7 +243,7 @@ export async function fetchIndexerActivitiesByUris(
     labels: recordLabels,
     hasMore: false,
     endCursor: null,
-    totalCount: connection.totalCount ?? null,
+    totalCount,
   }
 }
 

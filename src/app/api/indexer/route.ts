@@ -87,6 +87,12 @@ const MAX_LABEL_LEN = 64
 const MAX_KIND_LIST = 16
 const MAX_KIND_LEN = 64
 const MAX_URI_LEN = 512
+/** Per-kind URI cap for the `HydrateFeedPage` op (4 kinds × 50 = up to
+ *  200 URIs total per feed page). Matches the indexer's hard cap on
+ *  the `where: { uri: { in: [...] } }` filter (50 entries; values
+ *  above that error out with "in list must contain 1 to 50 values").
+ *  The GraphQL query also embeds this as `first: ${MAX_URI_LIST_PER_KIND}`
+ *  so changing it here changes the page size on the wire too. */
 const MAX_URI_LIST_PER_KIND = 50
 
 /** Activity node selection — shared by the three activity ops below. */
@@ -1032,14 +1038,17 @@ function readFollowerEventsSort(value: unknown): "SORT_AT" | "CREATED_AT" | null
 }
 
 /**
- * Reads one of the `*Uris` array variables for `HydrateFeedPage`.
- * Length 0..MAX_URI_LIST_PER_KIND inclusive — empty arrays pass
- * through because a typical page has events of only a few kinds and
- * the other arrays should be `[]`.
+ * Reads one of the `*Uris` array variables. Length 0..`maxItems`
+ * inclusive — empty arrays pass through because a typical
+ * `HydrateFeedPage` call only has events of a few kinds and the
+ * unused kinds should be `[]`. The `maxItems` arg lets the
+ * `ActivitiesByUris` path accept a larger set than the per-kind
+ * hydration arrays (one indexer page = 100 URIs, vs the feed
+ * hydration's 50-per-kind page-size cap).
  */
-function readUriList(value: unknown): string[] | null {
+function readUriList(value: unknown, maxItems: number): string[] | null {
   if (!Array.isArray(value)) return null
-  if (value.length > MAX_URI_LIST_PER_KIND) return null
+  if (value.length > maxItems) return null
   const out: string[] = []
   for (const item of value) {
     if (typeof item !== "string") return null
@@ -1081,7 +1090,7 @@ function buildVariables(
       }
     }
     case "ActivitiesByUris": {
-      const uris = readUriList(vars.uris)
+      const uris = readUriList(vars.uris, MAX_URI_LIST_PER_KIND)
       if (uris === null) return null
       return {
         uris,
@@ -1236,13 +1245,13 @@ function buildVariables(
       }
     }
     case "HydrateFeedPage": {
-      const activityUris = readUriList(vars.activityUris)
-      const collectionUris = readUriList(vars.collectionUris)
-      const badgeAwardUris = readUriList(vars.badgeAwardUris)
-      const evaluationUris = readUriList(vars.evaluationUris)
-      const measurementUris = readUriList(vars.measurementUris)
-      const hyperboardUris = readUriList(vars.hyperboardUris)
-      const attachmentUris = readUriList(vars.attachmentUris)
+      const activityUris = readUriList(vars.activityUris, MAX_URI_LIST_PER_KIND)
+      const collectionUris = readUriList(vars.collectionUris, MAX_URI_LIST_PER_KIND)
+      const badgeAwardUris = readUriList(vars.badgeAwardUris, MAX_URI_LIST_PER_KIND)
+      const evaluationUris = readUriList(vars.evaluationUris, MAX_URI_LIST_PER_KIND)
+      const measurementUris = readUriList(vars.measurementUris, MAX_URI_LIST_PER_KIND)
+      const hyperboardUris = readUriList(vars.hyperboardUris, MAX_URI_LIST_PER_KIND)
+      const attachmentUris = readUriList(vars.attachmentUris, MAX_URI_LIST_PER_KIND)
       if (
         activityUris === null ||
         collectionUris === null ||
