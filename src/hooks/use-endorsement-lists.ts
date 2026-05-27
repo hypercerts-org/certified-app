@@ -9,6 +9,7 @@ import {
 } from "@/lib/atproto/badges"
 import {
   appendItemToList,
+  appendManyItemsToList,
   createEndorsementListCollection,
   deleteEndorsementListCollection,
   listEndorsementListCollections,
@@ -102,6 +103,23 @@ export function useEndorsementLists(did: string | null): {
     rkey: string,
     subjectDid: string,
   ) => Promise<EndorsementList>
+  /**
+   * Bulk variant of `addSubjectToList`. For every subject DID not
+   * already in the list, mints a fresh endorsement award in parallel
+   * and then writes them all to the list's `items[]` in a single
+   * read-modify-write. Reports per-subject status so the bulk-paste UI
+   * can surface "added", "already in", and "award create failed" rows
+   * independently. Mirrors `appendManyToTypedList` semantics for the
+   * endorsement-list lexicon.
+   */
+  addManySubjectsToList: (
+    rkey: string,
+    subjectDids: readonly string[],
+  ) => Promise<{
+    added: string[]
+    skippedAlreadyIn: string[]
+    awardFailed: { subjectDid: string; message: string }[]
+  }>
   removeSubjectFromList: (
     rkey: string,
     awardUri: string,
@@ -314,6 +332,116 @@ export function useEndorsementLists(did: string | null): {
     [lists, refetch],
   )
 
+  // Owner-only bulk variant of addSubjectToList. Mirrors the typed-list
+  // bulk-paste flow: parallel award creation, then a single RMW on the
+  // list collection to append every new ref at once. Subject-level
+  // dedupe runs BEFORE the parallel award creates so a list that
+  // already contains 5 of the 20 pasted DIDs only mints 15 awards
+  // instead of all 20.
+  const addManySubjectsToList = useCallback(
+    async (
+      rkey: string,
+      subjectDids: readonly string[],
+    ): Promise<{
+      added: string[]
+      skippedAlreadyIn: string[]
+      awardFailed: { subjectDid: string; message: string }[]
+    }> => {
+      const targetDid = didRef.current
+      if (!targetDid) throw new Error("No active DID for addManySubjectsToList")
+      const existing = lists.find((l) => l.rkey === rkey)
+      if (!existing) throw new Error("List not found")
+
+      // Dedupe-before-create. Subjects already in the list (or
+      // duplicated within the input itself) skip the PDS write entirely.
+      const presentSubjects = new Set<string>()
+      for (const a of existing.items) {
+        const subj = extractAwardSubjectDid(a.value.subject)
+        if (subj) presentSubjects.add(subj)
+      }
+      const toCreate: string[] = []
+      const skippedAlreadyIn: string[] = []
+      const seenInBatch = new Set<string>()
+      for (const subj of subjectDids) {
+        if (presentSubjects.has(subj) || seenInBatch.has(subj)) {
+          skippedAlreadyIn.push(subj)
+          continue
+        }
+        seenInBatch.add(subj)
+        toCreate.push(subj)
+      }
+
+      const awardFailed: { subjectDid: string; message: string }[] = []
+      if (toCreate.length === 0) {
+        return { added: [], skippedAlreadyIn, awardFailed }
+      }
+
+      // Mint awards in parallel — each `createEndorsementAward` is an
+      // independent createRecord with a fresh TID, so they don't
+      // conflict on the PDS. Failures are collected per-row so the UI
+      // can show "could not endorse alice.bsky.social" without
+      // tearing down the rest of the batch.
+      const minted = await Promise.all(
+        toCreate.map(async (subjectDid) => {
+          try {
+            const award = await createEndorsementAward(targetDid, subjectDid)
+            return { subjectDid, ref: { uri: award.uri, cid: award.cid } } as const
+          } catch (err) {
+            awardFailed.push({
+              subjectDid,
+              message: err instanceof Error ? err.message : "Award create failed",
+            })
+            return null
+          }
+        }),
+      )
+      const refs = minted
+        .filter(
+          (m): m is { subjectDid: string; ref: { uri: string; cid: string } } =>
+            m !== null,
+        )
+        .map((m) => m.ref)
+
+      if (refs.length === 0) {
+        return { added: [], skippedAlreadyIn, awardFailed }
+      }
+
+      // Single RMW on the list collection — turns N round-trips into
+      // one. `appendManyItemsToList` returns the URIs it actually
+      // wrote, so the per-subject result mapping survives a partial
+      // swap-record failure (if the swap rejects everything, the
+      // catch falls through to awardFailed-style surfacing in the UI).
+      let bulkResult: Awaited<ReturnType<typeof appendManyItemsToList>>
+      try {
+        bulkResult = await appendManyItemsToList(targetDid, rkey, refs)
+      } catch (err) {
+        // The awards were created but the list-append failed — the
+        // ghosted awards are still on the PDS but won't appear in any
+        // list. Surface this as award-failed-style errors against the
+        // affected subjects so the user knows something needs to be
+        // tried again (or revoked).
+        const message =
+          err instanceof Error ? err.message : "List update failed"
+        for (const m of minted) {
+          if (m) awardFailed.push({ subjectDid: m.subjectDid, message })
+        }
+        return { added: [], skippedAlreadyIn, awardFailed }
+      }
+
+      // Back-map written award URIs to subject DIDs for the response.
+      const writtenUris = new Set(bulkResult.added)
+      const addedSubjects: string[] = []
+      for (const m of minted) {
+        if (m && writtenUris.has(m.ref.uri)) addedSubjects.push(m.subjectDid)
+      }
+
+      // Single refetch at the end so all the new rows appear together.
+      await refetch()
+      return { added: addedSubjects, skippedAlreadyIn, awardFailed }
+    },
+    [lists, refetch],
+  )
+
   // Owner-only. Drops the item from the list. Award is NOT deleted.
   const removeSubjectFromList = useCallback(
     async (rkey: string, awardUri: string): Promise<EndorsementList> => {
@@ -346,6 +474,7 @@ export function useEndorsementLists(did: string | null): {
       updateList,
       deleteList,
       addSubjectToList,
+      addManySubjectsToList,
       removeSubjectFromList,
     }),
     [
@@ -357,6 +486,7 @@ export function useEndorsementLists(did: string | null): {
       updateList,
       deleteList,
       addSubjectToList,
+      addManySubjectsToList,
       removeSubjectFromList,
     ],
   )

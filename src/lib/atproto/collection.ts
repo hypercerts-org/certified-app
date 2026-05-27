@@ -351,6 +351,68 @@ export async function appendItemToList(
 }
 
 /**
+ * Bulk variant of `appendItemToList`: append every entry in `awardRefs`
+ * in a single read-modify-write on the list's collection record.
+ *
+ * Dedupe-on-URI both against the existing items and within the batch
+ * itself — a caller that hands in 50 refs of which 5 are already in
+ * the list ends up with 45 net additions, not a no-op or a dupes-
+ * tolerated write. Returns the URI sets so the caller can surface
+ * per-row status (added vs skipped-already-in) on the bulk UI.
+ *
+ * Mirrors `appendManyToTypedList` for the endorsement-list lexicon —
+ * the only reason it's a separate function is the value shape
+ * (`asEndorsementListValue` validation) and write-shape narrowing.
+ */
+export async function appendManyItemsToList(
+  ownDid: string,
+  rkey: string,
+  awardRefs: readonly ItemIdentifier[],
+): Promise<{ added: string[]; skippedAlreadyIn: string[] }> {
+  const added: string[] = []
+  const skippedAlreadyIn: string[] = []
+  if (awardRefs.length === 0) return { added, skippedAlreadyIn }
+
+  const existing = await getCollectionRecord(ownDid, rkey)
+  if (!existing) throw new Error("List not found")
+  const narrow = asEndorsementListValue(existing.value)
+  if (!narrow) throw new Error("Record is not an endorsement-list")
+  const currentItems = Array.isArray(narrow.items) ? narrow.items : []
+  const present = new Set(
+    currentItems
+      .map((it) => it.itemIdentifier?.uri)
+      .filter((u): u is string => typeof u === "string"),
+  )
+
+  const now = new Date().toISOString()
+  const additions: { itemIdentifier: ItemIdentifier; addedAt: string }[] = []
+  const seenInBatch = new Set<string>()
+  for (const ref of awardRefs) {
+    if (present.has(ref.uri) || seenInBatch.has(ref.uri)) {
+      skippedAlreadyIn.push(ref.uri)
+      continue
+    }
+    seenInBatch.add(ref.uri)
+    additions.push({
+      itemIdentifier: { uri: ref.uri, cid: ref.cid },
+      addedAt: now,
+    })
+    added.push(ref.uri)
+  }
+
+  if (additions.length === 0) {
+    return { added, skippedAlreadyIn }
+  }
+
+  const next: EndorsementListCollectionValue = {
+    ...narrow,
+    items: [...currentItems, ...additions],
+  }
+  await putCollectionRecord(ownDid, rkey, next, existing.cid)
+  return { added, skippedAlreadyIn }
+}
+
+/**
  * Drop the entry whose `itemIdentifier.uri === awardUri` from the
  * list's `items[]`. No-op (with `removed: false`) if not found. Does
  * NOT delete the underlying award.

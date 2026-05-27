@@ -12,12 +12,15 @@ import {
   ArrowLeft,
   ArrowUpDown,
   Check,
+  ClipboardPaste,
   ListIcon,
   Pencil,
   Plus,
   Trash2,
   X,
 } from "lucide-react"
+import { resolveHandleToDid } from "@/lib/atproto/did"
+import { parseSubjectInput } from "@/lib/utils/parse-subject-input"
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
@@ -82,6 +85,7 @@ export default function EndorsementLists({
     updateList,
     deleteList,
     addSubjectToList,
+    addManySubjectsToList,
     removeSubjectFromList,
   } = useEndorsementLists(did)
   const { did: viewerDid } = useAuth()
@@ -91,6 +95,11 @@ export default function EndorsementLists({
   // endorsement award (idempotency guard in `addSubjectToList`) plus
   // a strong-ref entry in the list's collection record.
   const [isAddingPeople, setIsAddingPeople] = useState(false)
+  // Bulk-paste flow — mirrors the typed-list paste modal. The button
+  // sits next to `+` on the detail header and opens a textarea that
+  // accepts DIDs / handles / profile URLs separated by any
+  // whitespace or commas.
+  const [isBulkPasting, setIsBulkPasting] = useState(false)
   const [sort, setSort] = useState<SortKey>("created-desc")
   const [sortOpen, setSortOpen] = useState(false)
   // Modal mode: `null` closed, `"create"` for a fresh list, or an
@@ -158,6 +167,7 @@ export default function EndorsementLists({
           viewerDid={viewerDid}
           onBack={() => setSelectedListUri(null)}
           onAdd={() => setIsAddingPeople(true)}
+          onBulkPaste={() => setIsBulkPasting(true)}
           onEdit={() => setModalMode({ rkey: selectedList.rkey })}
           onDelete={() => {
             setDeleteError(null)
@@ -181,6 +191,15 @@ export default function EndorsementLists({
               : undefined
           }
         />
+        {isBulkPasting && viewerIsOwner ? (
+          <PasteSubjectsModal
+            list={selectedList}
+            onAddMany={(subjectDids) =>
+              addManySubjectsToList(selectedList.rkey, subjectDids)
+            }
+            onClose={() => setIsBulkPasting(false)}
+          />
+        ) : null}
         {isAddingPeople && viewerIsOwner && viewerDid ? (
           <EndorsePeopleModal
             viewerDid={viewerDid}
@@ -450,6 +469,8 @@ interface ListDetailProps {
   viewerDid: string | null
   onBack: () => void
   onAdd: () => void
+  /** Opens the bulk-paste modal. Owner-only; ignored on foreign views. */
+  onBulkPaste: () => void
   onEdit: () => void
   onDelete: () => void
   /** Called when the viewer confirms the × on an item row. Removes
@@ -469,6 +490,7 @@ function ListDetail({
   viewerDid,
   onBack,
   onAdd,
+  onBulkPaste,
   onEdit,
   onDelete,
   onRemoveItem,
@@ -507,6 +529,15 @@ function ListDetail({
               title="Add people"
             >
               <Plus size={16} strokeWidth={1.75} aria-hidden />
+            </button>
+            <button
+              type="button"
+              className="endorsement-lists__add-btn"
+              onClick={onBulkPaste}
+              aria-label="Bulk add people by handle or DID"
+              title="Bulk paste"
+            >
+              <ClipboardPaste size={16} strokeWidth={1.75} aria-hidden />
             </button>
             <Button variant="secondary" size="sm" onClick={onEdit}>
               <Pencil size={14} strokeWidth={1.75} aria-hidden />
@@ -908,6 +939,316 @@ function RevokeListItemButton({
         </AppDialog>
       ) : null}
     </>
+  )
+}
+
+// --------------------------- Bulk paste modal ---------------------------
+
+/**
+ * Status of one row in the bulk-paste preview list.
+ *
+ *   - `pending`     — accepted by the parser, waiting on the run.
+ *   - `resolving`   — handle / profile-URL being resolved to a DID.
+ *   - `unresolved`  — handle failed to resolve (typo / deactivated).
+ *   - `wrong-shape` — the raw input didn't look like a DID, handle, or
+ *                     profile URL we know how to parse.
+ *   - `already`     — the subject is already in the list (no-op).
+ *   - `endorsing`   — endorsement award is being minted on the PDS.
+ *   - `error`       — award create or list-append failed for this row.
+ *   - `added`       — full success: endorsement minted + list updated.
+ */
+type SubjectPasteStatus =
+  | "pending"
+  | "resolving"
+  | "unresolved"
+  | "wrong-shape"
+  | "already"
+  | "endorsing"
+  | "error"
+  | "added"
+
+interface SubjectPasteRow {
+  /** The raw token the user pasted; verbatim so the preview is honest. */
+  input: string
+  /** Resolved DID once we have it. */
+  did: string | null
+  status: SubjectPasteStatus
+  message?: string
+}
+
+function statusLabelForSubject(s: SubjectPasteStatus): string {
+  switch (s) {
+    case "pending":
+      return "Pending"
+    case "resolving":
+      return "Resolving…"
+    case "unresolved":
+      return "Not found"
+    case "wrong-shape":
+      return "Unrecognized"
+    case "already":
+      return "Already in"
+    case "endorsing":
+      return "Endorsing…"
+    case "error":
+      return "Error"
+    case "added":
+      return "Added"
+  }
+}
+
+function PasteSubjectsModal({
+  list,
+  onAddMany,
+  onClose,
+}: {
+  list: EndorsementList
+  onAddMany: (subjectDids: readonly string[]) => Promise<{
+    added: string[]
+    skippedAlreadyIn: string[]
+    awardFailed: { subjectDid: string; message: string }[]
+  }>
+  onClose: () => void
+}) {
+  const [raw, setRaw] = useState("")
+  const [rows, setRows] = useState<SubjectPasteRow[]>([])
+  const [running, setRunning] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    textareaRef.current?.focus()
+  }, [])
+
+  // Pre-compute the set of subject DIDs already in this list so the
+  // parse phase can flag `already` rows without a server round-trip.
+  const alreadyInList = useMemo(() => {
+    const out = new Set<string>()
+    for (const award of list.items) {
+      const subj = extractAwardSubjectDid(award.value.subject)
+      if (subj) out.add(subj)
+    }
+    return out
+  }, [list.items])
+
+  const handleRun = useCallback(async () => {
+    if (running) return
+    // Same separator policy as the typed-list paste flow: any
+    // whitespace or comma splits inputs; dedupe-by-input within the
+    // batch so a viewer pasting the same handle twice only mints one
+    // award.
+    const tokens = Array.from(
+      new Set(
+        raw
+          .split(/[\s,]+/)
+          .map((s) => s.trim())
+          .filter(Boolean),
+      ),
+    )
+    if (tokens.length === 0) return
+
+    const initial: SubjectPasteRow[] = tokens.map((input) => {
+      const parsed = parseSubjectInput(input)
+      if (!parsed) {
+        return {
+          input,
+          did: null,
+          status: "wrong-shape",
+          message: "Not a DID, handle, or profile URL",
+        }
+      }
+      if (parsed.kind === "did") {
+        if (alreadyInList.has(parsed.value)) {
+          return { input, did: parsed.value, status: "already" }
+        }
+        return { input, did: parsed.value, status: "pending" }
+      }
+      // handle — resolve next.
+      return { input, did: null, status: "resolving" }
+    })
+    setRows(initial)
+    setRunning(true)
+
+    // Phase 1: parallel handle resolution. Each handle hits the
+    // public appView via `resolveHandleToDid`. Results flip the row
+    // into `pending` (with a DID) or `unresolved`.
+    const handleRows = initial
+      .map((row, i) => ({ row, i }))
+      .filter(({ row }) => row.status === "resolving")
+    const resolved = await Promise.all(
+      handleRows.map(async ({ row, i }) => {
+        const parsed = parseSubjectInput(row.input)
+        if (!parsed || parsed.kind !== "handle") return { i, did: null }
+        try {
+          const did = await resolveHandleToDid(parsed.value)
+          return { i, did }
+        } catch {
+          return { i, did: null }
+        }
+      }),
+    )
+    // Splice resolution results back into the row table. Handles that
+    // resolve into a DID already in the list flip to `already`.
+    setRows((prev) => {
+      const next = prev.slice()
+      for (const { i, did } of resolved) {
+        if (did === null) {
+          next[i] = {
+            ...next[i],
+            status: "unresolved",
+            message: "Handle did not resolve",
+          }
+        } else if (alreadyInList.has(did)) {
+          next[i] = { ...next[i], did, status: "already" }
+        } else {
+          next[i] = { ...next[i], did, status: "pending" }
+        }
+      }
+      return next
+    })
+
+    // Snapshot the post-resolution rows so we don't depend on a stale
+    // closure capture. (`initial` is pre-resolution.)
+    const postResolve: SubjectPasteRow[] = initial.map((row, i) => {
+      const hit = resolved.find((r) => r.i === i)
+      if (!hit) return row
+      if (hit.did === null) {
+        return { ...row, status: "unresolved", message: "Handle did not resolve" }
+      }
+      if (alreadyInList.has(hit.did)) {
+        return { ...row, did: hit.did, status: "already" }
+      }
+      return { ...row, did: hit.did, status: "pending" }
+    })
+
+    // Phase 2: bulk endorse+append. Flip every pending row to
+    // `endorsing` so the user sees motion; the hook fans out the
+    // award creates in parallel and then writes the list in one
+    // shot.
+    const toEndorse = postResolve.filter(
+      (r): r is SubjectPasteRow & { did: string } =>
+        r.status === "pending" && r.did !== null,
+    )
+    if (toEndorse.length === 0) {
+      setRunning(false)
+      return
+    }
+    setRows((prev) =>
+      prev.map((r) =>
+        toEndorse.some((t) => t.input === r.input)
+          ? { ...r, status: "endorsing" }
+          : r,
+      ),
+    )
+
+    try {
+      const result = await onAddMany(toEndorse.map((t) => t.did))
+      const addedSet = new Set(result.added)
+      const skippedSet = new Set(result.skippedAlreadyIn)
+      const failedMap = new Map<string, string>()
+      for (const f of result.awardFailed) failedMap.set(f.subjectDid, f.message)
+      setRows((prev) =>
+        prev.map((r) => {
+          if (r.status !== "endorsing" || !r.did) return r
+          if (addedSet.has(r.did)) {
+            return { ...r, status: "added", message: undefined }
+          }
+          if (skippedSet.has(r.did)) {
+            return { ...r, status: "already", message: undefined }
+          }
+          const failMsg = failedMap.get(r.did)
+          if (failMsg) {
+            return { ...r, status: "error", message: failMsg }
+          }
+          // Defensive — shouldn't reach here unless the hook returned
+          // a result we don't know how to slot. Mark the row error so
+          // the user knows it wasn't a silent no-op.
+          return { ...r, status: "error", message: "Unknown result" }
+        }),
+      )
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Bulk add failed"
+      setRows((prev) =>
+        prev.map((r) =>
+          r.status === "endorsing" ? { ...r, status: "error", message } : r,
+        ),
+      )
+    } finally {
+      setRunning(false)
+    }
+  }, [alreadyInList, onAddMany, raw, running])
+
+  const anyAdded = rows.some((r) => r.status === "added")
+  const closeLabel = anyAdded ? "Done" : "Cancel"
+
+  return (
+    <AppDialog
+      ariaLabel="Bulk add people by handle or DID"
+      maxWidth={600}
+      onClose={() => !running && onClose()}
+      disableBackdropClose={running}
+    >
+      <AppDialogHeader
+        title={`Bulk add to "${list.title}"`}
+        onClose={() => !running && onClose()}
+        disabled={running}
+      />
+      <div className="signin-modal__body profile-lists__paste-body">
+        <p className="profile-lists__paste-help">
+          Paste handles, DIDs, or profile URLs separated by commas,
+          newlines, or spaces. Each person gets an endorsement from you
+          (if they don&rsquo;t have one already) and is added to this
+          list.
+        </p>
+        <textarea
+          ref={textareaRef}
+          className="profile-lists__paste-textarea"
+          value={raw}
+          onChange={(e) => setRaw(e.target.value)}
+          rows={6}
+          placeholder="alice.bsky.social, did:plc:…, https://redesign.certified.app/profile/bob.bsky.social"
+          disabled={running}
+        />
+        {rows.length > 0 ? (
+          <ul className="profile-lists__paste-results" aria-live="polite">
+            {rows.map((r, i) => (
+              <li
+                key={`${r.input}-${i}`}
+                className={`profile-lists__paste-row profile-lists__paste-row--${r.status}`}
+              >
+                <span className="profile-lists__paste-status">
+                  {statusLabelForSubject(r.status)}
+                </span>
+                <code className="profile-lists__paste-uri">{r.input}</code>
+                {r.message ? (
+                  <span className="profile-lists__paste-message">
+                    {r.message}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <div className="profile-lists__paste-actions">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onClose}
+            disabled={running}
+          >
+            {closeLabel}
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            onClick={handleRun}
+            loading={running}
+            disabled={running || raw.trim().length === 0}
+          >
+            Add
+          </Button>
+        </div>
+      </div>
+    </AppDialog>
   )
 }
 
