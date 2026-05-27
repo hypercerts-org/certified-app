@@ -1193,6 +1193,64 @@
   outline-offset: 1px;
 }
 
+/* ---------- Cert title row's three-column byline ----------
+   Below the cert title in the main pane: a three-cell grid with
+   no visible borders (the "invisible columns" — chrome-free) that
+   labels and renders Date created, Author, and first Project. The
+   per-cell label reuses `.cert-detail__meta-label` so the row
+   reads as a structural peer of the aside metadata. */
+
+.cert-detail__headline-cols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+.cert-detail__headline-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cert-detail__headline-col-value {
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  line-height: 1.4;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Skeleton placeholder while the author resolution is in flight —
+   roughly matches the height of the avatar+name pair so the row
+   doesn't shift when data lands. */
+.cert-detail__headline-col-value--skel {
+  display: block;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--overlay-weak);
+}
+
+.cert-detail__headline-project-link {
+  color: var(--fg-primary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--transition-fast);
+}
+
+.cert-detail__headline-project-link:hover {
+  border-bottom-color: var(--fg-primary);
+}
+
+@media (max-width: 640px) {
+  .cert-detail__headline-cols {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
 /* ---------- /create page tweaks ----------
    The create-cert page reuses the cert-detail visual shell
    (`.page-layout.cert-detail--wide`, `.cert-detail__aside`, etc.)

@@ -31,7 +31,8 @@ import { formatShortDate } from "@/lib/utils/format-date"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EditBanner from "@/components/ui/edit-banner"
-import CertHeadlineByline from "./cert-headline-byline"
+import { useCertProjects } from "@/hooks/use-cert-projects"
+import { useAuthorInfo } from "@/hooks/use-author-info"
 import CertProjects from "./cert-projects"
 import LeafletDocument, {
   isRenderableDescription,
@@ -619,8 +620,9 @@ export default function ActivityDetail({
           </button>
         ) : null}
       </div>
-      <CertHeadlineByline
+      <CertHeadlineColumns
         did={did}
+        rkey={rkey}
         createdAt={effectiveValue.createdAt}
         formattedDate={createdAbsolute}
       />
@@ -1175,6 +1177,152 @@ function ContributorRow({ contributor, role, weight }: ContributorRowProps) {
         <span className="cert-detail__contributor-weight">{weight}</span>
       ) : null}
     </li>
+  )
+}
+
+/**
+ * Three-column byline below the cert title — invisible grid (no
+ * borders, no card chrome) with three small labelled cells:
+ *
+ *   Date created · Author · Project
+ *
+ * Each cell carries the same `cert-detail__meta-label` styling used
+ * in the aside meta list so the three blocks read as a peer of the
+ * Work scope / Locations / Rights metadata that lives on the right.
+ *
+ * "Project" surfaces the first project that contains this cert
+ * (via the existing `useCertProjects` hook, same data source as the
+ * main-pane Projects section below — module-cached so the lookup
+ * doesn't double-fire). When the cert isn't in any project the
+ * column renders a quiet em-dash so the three columns stay aligned.
+ *
+ * Below ~640px the grid collapses to a single-column stack — the
+ * column track widths can't shrink further without truncating the
+ * author handle or the project title past readability.
+ */
+function CertHeadlineColumns({
+  did,
+  rkey,
+  createdAt,
+  formattedDate,
+}: {
+  did: string
+  rkey: string | null
+  createdAt: string
+  formattedDate: string
+}) {
+  const { info, isLoading: authorLoading } = useAuthorInfo(did)
+  const { projects } = useCertProjects(did, rkey)
+
+  return (
+    <div className="cert-detail__headline-cols">
+      <div className="cert-detail__headline-col">
+        <span className="cert-detail__meta-label">
+          <Calendar size={11} strokeWidth={2} aria-hidden />
+          Date created
+        </span>
+        <time
+          dateTime={createdAt}
+          className="cert-detail__headline-col-value"
+          title={createdAt}
+        >
+          {formattedDate}
+        </time>
+      </div>
+
+      <div className="cert-detail__headline-col">
+        <span className="cert-detail__meta-label">Author</span>
+        {authorLoading || !info ? (
+          <span
+            className="cert-detail__headline-col-value cert-detail__headline-col-value--skel"
+            aria-hidden="true"
+          />
+        ) : (
+          (() => {
+            const displayName = info.displayName || info.handle || "Anonymous"
+            const initials = getInitials(info.displayName, did)
+            const profileHref = `/profile/${encodeURIComponent(info.handle || did)}`
+            return (
+              <Link
+                href={profileHref}
+                className="cert-detail__headline-author"
+                aria-label={`View ${displayName}'s profile`}
+              >
+                <Avatar
+                  size="sm"
+                  src={info.avatarUrl || undefined}
+                  alt=""
+                  fallbackInitials={initials}
+                />
+                <span className="cert-detail__headline-author-meta">
+                  <span className="cert-detail__headline-name">
+                    {displayName}
+                  </span>
+                  {info.handle ? (
+                    <span className="cert-detail__headline-handle">
+                      @{info.handle}
+                    </span>
+                  ) : null}
+                </span>
+              </Link>
+            )
+          })()
+        )}
+      </div>
+
+      <div className="cert-detail__headline-col">
+        <span className="cert-detail__meta-label">Project</span>
+        {projects.length === 0 ? (
+          <span className="cert-detail__headline-col-value cert-detail__meta-aux">
+            —
+          </span>
+        ) : (
+          (() => {
+            // First-project preview — same scope-rule the
+            // Projects section in the main pane uses (single
+            // primary association for the heads-up byline). A
+            // "+N more" count surfaces when the cert belongs to
+            // additional projects so the reader knows to scroll
+            // down to the full list.
+            const first = projects[0]
+            const remaining = projects.length - 1
+            const firstParts = first.uri.match(
+              /^at:\/\/([^/]+)\/[^/]+\/(.+)$/,
+            )
+            const firstHref = firstParts
+              ? `/project/${encodeURIComponent(firstParts[1])}/${encodeURIComponent(firstParts[2])}`
+              : null
+            const v = first.value as Record<string, unknown>
+            const title =
+              (typeof v.title === "string" && v.title.length > 0
+                ? v.title
+                : null) ||
+              (typeof v.name === "string" && v.name.length > 0
+                ? v.name
+                : null) ||
+              "Untitled project"
+            const label = firstHref ? (
+              <Link
+                href={firstHref}
+                className="cert-detail__headline-project-link"
+              >
+                {title}
+              </Link>
+            ) : (
+              <span>{title}</span>
+            )
+            return (
+              <span className="cert-detail__headline-col-value">
+                {label}
+                {remaining > 0 ? (
+                  <span className="cert-detail__meta-aux"> +{remaining}</span>
+                ) : null}
+              </span>
+            )
+          })()
+        )}
+      </div>
+    </div>
   )
 }
 
