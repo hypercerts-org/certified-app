@@ -751,6 +751,12 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   margin: 0 auto;
   padding: calc(var(--navbar-height) + 16px) 32px calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 24px);
   min-height: 100vh;
+  /* `min-height: 100vh` plus the padding above would otherwise stack
+     to 100vh + ~160px (navbar + safe-area + breathing room) under
+     content-box, forcing a scrollbar on every page even when the
+     content fits the viewport. Border-box folds the padding into
+     the min-height so the content slot is exactly 100vh tall. */
+  box-sizing: border-box;
 }
 
 /* Desktop: reading width narrows to 600px (matches bsky/x). The flanking
@@ -759,6 +765,46 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 @media (min-width: 800px) {
   .app-shell__content {
     max-width: 600px;
+  }
+}
+
+/* ========== Page-frame layout (shared by /home + /explore) ==========
+   Pages that span the viewport edge-to-edge with their own
+   sidebar/main divider. They drop the shell's reading-column width
+   caps, zero its lateral padding (the inner panes carry their own),
+   and turn the content slot into a flex column so the page can
+   stretch to fill the shell's reserved 100vh. Without the flex
+   stretch the page only reaches its content height — short pages
+   leave the sidebar divider chopped off above the footer.
+
+   Add the page's wrapper class to the `:is(...)` selector below
+   when introducing another page that wants this layout. Per-page
+   styling (sidebar width, grid columns, divider color) stays in
+   the per-page CSS file. */
+.app-shell:is(:has(.home-page), :has(.explore-page)) .app-shell__grid {
+  max-width: none;
+}
+
+@media (min-width: 800px) {
+  .app-shell:is(:has(.home-page), :has(.explore-page)) .app-shell__grid {
+    grid-template-columns: 1fr;
+  }
+  .app-shell:is(:has(.home-page), :has(.explore-page)) .app-shell__content {
+    max-width: none;
+    padding-top: var(--navbar-height);
+    padding-bottom: 0;
+    padding-left: 0;
+    padding-right: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  :is(.home-page, .explore-page) {
+    flex: 1;
+  }
+  /* Footer carries margin-top: 48px elsewhere; collapse it so the
+     sidebar/main divider meets the footer border flush. */
+  html:is(:has(.home-page), :has(.explore-page)) .site-footer {
+    margin-top: 0;
   }
 }
 

@@ -1,60 +1,18 @@
-/* ---------- /explore page ---------- */
+/* ---------- /explore page ----------
+   Page-frame layout lives in layout.css under the
+   `:is(:has(.home-page), :has(.explore-page))` selector — those
+   rules zero the shell padding, stretch the page to fill the
+   100vh shell, and collapse the footer margin so the sidebar/main
+   divider meets the footer flush. This file owns explore-specific
+   styling only. */
 
 .explore-page {
   padding: 24px 16px 64px;
 }
 
-/* Full-viewport frame: the rail hugs the actual left edge of the
-   screen, and the main pane centers its content in whatever
-   horizontal space is left. We undo every ancestor width cap —
-   .app-shell__grid (1300px max-width + minmax grid track),
-   .app-shell__content (720/600px max-width + 32px horizontal
-   padding), and .explore-page's own padding — so the layout
-   spans the entire viewport. Per-pane padding is then put back
-   inside the rail/main so their contents breathe correctly. */
-.app-shell:has(.explore-page) .app-shell__grid {
-  max-width: none;
-}
-
 @media (min-width: 800px) {
-  .app-shell:has(.explore-page) .app-shell__grid {
-    grid-template-columns: 1fr;
-  }
-  .app-shell:has(.explore-page) .app-shell__content {
-    max-width: none;
-    /* Zero out every edge padding so the page-frame borders
-       (navbar row-2 bottom border, sidebar/main divider, footer
-       top border) all meet without a gap. Inner content gets its
-       own padding so the body still breathes. */
-    padding-top: var(--navbar-height);
-    padding-bottom: 0;
-    padding-left: 0;
-    padding-right: 0;
-    /* Flex column so .explore-page can flex:1 below and fill the
-       full min-height: 100vh the shell already reserves. Without
-       this the page (and its absolute-positioned divider) stops
-       at content height, leaving the divider chopped above the
-       footer when results are short. */
-    display: flex;
-    flex-direction: column;
-  }
   .explore-page {
-    padding-top: 0;
-    padding-bottom: 0;
-    padding-left: 0;
-    padding-right: 0;
-    /* Stretch to fill the shell's reserved height. Pairs with the
-       flex-column above so short result lists still produce a
-       full-height divider that meets the footer top border. */
-    flex: 1;
-  }
-
-  /* Footer normally carries margin-top: 48px for airy spacing on
-     other pages; on /explore the sidebar/main divider needs to
-     meet the footer top border without a gap. The inner pane
-     padding-bottom takes over the breathing-room job. */
-  html:has(.explore-page) .site-footer {
-    margin-top: 0;
+    padding: 0;
   }
 }
 

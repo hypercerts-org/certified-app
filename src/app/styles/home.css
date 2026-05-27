@@ -1,15 +1,9 @@
-/* ---------- /home page ---------- */
-
-/* Full-viewport frame matching /explore + /settings — sidebar hugs
-   the viewport's left edge and the main pane centers in the
-   remainder. We undo `.app-shell__grid` (1300px max-width + minmax
-   grid track) and `.app-shell__content` (600/720px max-width + 32px
-   horizontal padding) so the layout spans the full width. Per-pane
-   padding is reintroduced inside the rail / main so content
-   breathes. */
-.app-shell:has(.home-page) .app-shell__grid {
-  max-width: none;
-}
+/* ---------- /home page ----------
+   Page-frame layout lives in layout.css under the
+   `:is(:has(.home-page), :has(.explore-page))` selector — those
+   rules zero the shell padding and stretch the page to fill the
+   100vh shell so the sidebar/main divider reaches the footer.
+   This file owns home-specific styling only. */
 
 .home-page {
   padding: 24px 16px 64px;
@@ -17,28 +11,8 @@
 }
 
 @media (min-width: 800px) {
-  .app-shell:has(.home-page) .app-shell__grid {
-    grid-template-columns: 1fr;
-  }
-  .app-shell:has(.home-page) .app-shell__content {
-    max-width: none;
-    /* Zero out every edge padding so the page-frame borders meet
-       the navbar's bottom border, the sidebar/main divider, and
-       the footer's top border without a gap. Inner pane padding
-       takes over the breathing-room job. */
-    padding-top: var(--navbar-height);
-    padding-bottom: 0;
-    padding-left: 0;
-    padding-right: 0;
-  }
   .home-page {
     padding: 0;
-  }
-
-  /* Footer carries margin-top: 48px elsewhere; collapse it here so
-     the sidebar/main divider meets the footer border flush. */
-  html:has(.home-page) .site-footer {
-    margin-top: 0;
   }
 }
 
