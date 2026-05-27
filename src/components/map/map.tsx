@@ -12,7 +12,7 @@ import {
   useMap,
   useMapEvent,
 } from "react-leaflet"
-import { getTileConfig } from "@/lib/map/tiles"
+import { getOverlayTileConfig, getTileConfig } from "@/lib/map/tiles"
 
 import "leaflet/dist/leaflet.css"
 
@@ -177,16 +177,34 @@ function ThemeReactiveTiles() {
   const { resolvedTheme } = useTheme()
   const theme = resolvedTheme === "dark" ? "dark" : "light"
   const config = getTileConfig(theme)
+  const overlay = getOverlayTileConfig()
 
   // `key` forces React Leaflet to recreate the layer when the URL
   // changes. Simpler than imperatively calling tileLayer.setUrl().
+  //
+  // Two layers stacked: the Imagery raster underneath, the
+  // Boundaries-and-Places reference overlay (transparent PNG tiles)
+  // on top so political borders + place names render legibly
+  // against the satellite background. Leaflet z-orders by mount
+  // order: the second `<TileLayer>` paints over the first.
   return (
-    <TileLayer
-      key={config.url}
-      url={config.url}
-      attribution={config.attribution}
-      detectRetina
-    />
+    <>
+      <TileLayer
+        key={config.url}
+        url={config.url}
+        attribution={config.attribution}
+        detectRetina
+      />
+      <TileLayer
+        key={overlay.url}
+        url={overlay.url}
+        attribution={overlay.attribution}
+        detectRetina
+        // Reference overlay z-order — sits above the basemap but
+        // below any pins / polygons drawn by the renderer below.
+        zIndex={2}
+      />
+    </>
   )
 }
 
