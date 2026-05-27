@@ -28,8 +28,13 @@
   display: none;
 }
 
+/* Same shape as `.cert-detail__meta-label` (Date created / Author /
+   Project headings on the cert overview) — smaller font-size than
+   the cert-detail__section-title family so the Updates heading
+   reads as a peer of the headline-column labels above it instead
+   of a stronger main-pane section title. */
 .context-updates__heading {
-  font-size: 0.8125rem;
+  font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;

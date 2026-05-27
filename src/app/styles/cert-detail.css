@@ -449,27 +449,30 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  /* The parent section is a flex column; without an explicit
-     `align-self` the inline-flex child still stretches to the
-     cross-axis (full width). Anchor to the start so the pill
-     sizes to its label + chevron. */
+  /* Anchor to the start so the button sizes to its content
+     instead of stretching to fill the flex-column parent. */
   align-self: flex-start;
   margin-top: 8px;
-  padding: 4px 10px 4px 12px;
-  border-radius: 999px;
+  /* Shape matches the canonical Button secondary variant
+     (`rounded` = 4px, transparent fill, fg-primary text, neutral
+     border). Replaces the earlier full-pill (`border-radius: 999px`)
+     which read as a different button family from the rest of the
+     app. */
+  padding: 6px 16px;
+  border-radius: 4px;
   border: 1px solid var(--border-default);
-  background: var(--bg-elevated);
-  color: var(--fg-secondary);
+  background: transparent;
+  color: var(--fg-primary);
   font-size: 0.8125rem;
   font-weight: 500;
   text-decoration: none;
-  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+  transition: background var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .cert-detail__read-more:hover {
-  background: var(--bg-sunken);
   border-color: var(--border-hover);
-  color: var(--fg-primary);
+  background: var(--bg-sunken);
 }
 
 .cert-detail__read-more:focus-visible {
@@ -641,7 +644,11 @@
 .cert-detail__meta {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  /* Bumped 12px → 20px so each meta row reads as a discrete block
+     rather than crowded against its neighbours. Affects every aside
+     row uniformly: Created · Time period · Work scope · Contributors
+     · Locations · Rights. */
+  gap: 20px;
   margin: 0;
   padding: 0;
 }

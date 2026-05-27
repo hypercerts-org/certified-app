@@ -632,9 +632,18 @@ export default function ActivityDetail({
   // (with `cert-detail__main`'s 24px gap) so its top edge aligns
   // with the first content row on the Description / Contributors
   // tabs.
+  // Small label that opens the short description on Overview —
+  // styled the same as the headline columns above (Date created /
+  // Author / Project) so the section reads as another peer in the
+  // overview's labelled-meta family.
+  const summaryHeading = (
+    <span className="cert-detail__meta-label">Summary</span>
+  )
+
   const shortDescSection =
     activeTab !== "overview" ? null : editing ? (
       <section className="cert-detail__section">
+        {summaryHeading}
         <textarea
           className="cert-detail__short-desc-input"
           value={drafts.shortDescription}
@@ -649,6 +658,7 @@ export default function ActivityDetail({
       </section>
     ) : effectiveValue.shortDescription ? (
       <section className="cert-detail__section">
+        {summaryHeading}
         <p className="cert-detail__short-desc">
           {effectiveValue.shortDescription}
         </p>
@@ -672,6 +682,7 @@ export default function ActivityDetail({
       </section>
     ) : showFullDescription && descriptionHref ? (
       <section className="cert-detail__section">
+        {summaryHeading}
         <Link
           href={descriptionHref}
           scroll={false}
@@ -1258,10 +1269,7 @@ function CertHeadlineColumns({
       </div>
 
       <div className="cert-detail__headline-col">
-        <span className="cert-detail__meta-label">
-          <Calendar size={11} strokeWidth={2} aria-hidden />
-          Date created
-        </span>
+        <span className="cert-detail__meta-label">Date created</span>
         <time
           dateTime={createdAt}
           className="cert-detail__headline-col-value"
