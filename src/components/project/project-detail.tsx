@@ -369,11 +369,11 @@ export default function ProjectDetail({
   }
 
   const certCount = resolutions.length
+  // Date created lives ABOVE the meta aside now (rendered inline
+  // below the head bar, no card chrome) so it isn't part of the
+  // aside's empty-state check.
   const hasAnyMeta =
-    !!createdAt ||
-    !!timePeriodLabel ||
-    !!location ||
-    contributors.length > 0
+    !!timePeriodLabel || !!location || contributors.length > 0
 
   const handleEditClick = useCallback(() => {
     const linear =
@@ -463,7 +463,15 @@ export default function ProjectDetail({
             `Delete failed: ${res.status}`,
         )
       }
-      router.push(`/profile/${encodeURIComponent(did)}`)
+      // Hard navigation (window.location) instead of router.push
+      // so client-side caches on the destination page (profile
+      // projects + certs lists, module-level memoised fetches)
+      // don't leave the just-deleted project sitting in the grid.
+      if (typeof window !== "undefined") {
+        window.location.href = `/profile/${encodeURIComponent(did)}`
+      } else {
+        router.push(`/profile/${encodeURIComponent(did)}`)
+      }
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : "Delete failed")
       setIsDeleting(false)
@@ -898,6 +906,24 @@ export default function ProjectDetail({
             get the full page width for their content. */}
         {activeTab === "overview" ? (
           <>
+            {/* Date created — rendered inline (no card chrome) so
+                it reads the same way the cert headline shows it,
+                instead of sitting inside the white `.project-
+                detail__meta` card. */}
+            {createdAt ? (
+              <p className="project-detail__inline-created">
+                <span className="cert-detail__meta-label">
+                  Date created
+                </span>
+                <time
+                  className="project-detail__inline-created-value"
+                  dateTime={createdAt}
+                  title={createdAt}
+                >
+                  {formatShortDate(createdAt)}
+                </time>
+              </p>
+            ) : null}
             <div
               className={
                 editing
@@ -986,19 +1012,6 @@ export default function ProjectDetail({
               className="project-detail__meta"
               aria-label="Project details"
             >
-              {createdAt ? (
-                <div className="project-detail__meta-row">
-                  <span className="project-detail__meta-label">
-                    Date created
-                  </span>
-                  <span className="project-detail__meta-value">
-                    <time dateTime={createdAt} title={createdAt}>
-                      {formatShortDate(createdAt)}
-                    </time>
-                  </span>
-                </div>
-              ) : null}
-
               {timePeriodLabel ? (
                 <div className="project-detail__meta-row">
                   <span className="project-detail__meta-label">

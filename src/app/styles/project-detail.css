@@ -575,6 +575,24 @@
   outline-offset: 2px;
 }
 
+/* Date created inline above the hero — mirrors the cert
+   detail headline column treatment (small uppercase label + a
+   slightly larger value, no card background). The label reuses
+   `.cert-detail__meta-label` from cert-detail.css; this rule
+   provides the row layout + value typography. */
+.project-detail__inline-created {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 12px 0;
+}
+
+.project-detail__inline-created-value {
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Title + lead inputs replace the static h1 / p while editing.
    Border treatment matches the cert detail inline-edit inputs so
    the two surfaces feel like one editor family. The title input

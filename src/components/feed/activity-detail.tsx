@@ -399,9 +399,18 @@ export default function ActivityDetail({
             `Delete failed: ${res.status}`,
         )
       }
-      // Redirect away from the deleted cert — the user's profile
-      // is the natural landing page after a successful delete.
-      router.push(`/profile/${encodeURIComponent(did)}`)
+      // Redirect away from the deleted cert. We use a hard
+      // navigation (window.location) rather than router.push so
+      // every client-side cache the destination page might keep
+      // (profile certs/projects lists, the indexer feed cache,
+      // any module-level memoised fetches) is cleared on the way
+      // — otherwise the just-deleted cert can linger in the
+      // profile grid until the next refresh.
+      if (typeof window !== "undefined") {
+        window.location.href = `/profile/${encodeURIComponent(did)}`
+      } else {
+        router.push(`/profile/${encodeURIComponent(did)}`)
+      }
     } catch (err) {
       setDeleteError(
         err instanceof Error ? err.message : "Delete failed",

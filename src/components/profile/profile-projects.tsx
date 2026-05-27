@@ -142,53 +142,65 @@ function ProjectBox({ project }: ProjectBoxProps) {
   const previews = resolutions.slice(0, CERTS_PER_PROJECT_PREVIEW)
   const hiddenCount = Math.max(0, totalCerts - previews.length)
 
+  // The head section (image + title + short desc + published-when)
+  // is one tappable surface that goes to the project detail page.
+  // Wrapping in a Link instead of only underlining the title gives
+  // a much larger click target + the standard hover-background
+  // affordance other card surfaces use. Nested anchors are invalid
+  // HTML, but the head section has no inner links — the cert rows
+  // below sit OUTSIDE this wrapper so they keep their own anchors.
+  const HeadContents = (
+    <>
+      <div className="profile-projects__box-image-wrap">
+        {showImage ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={imageUrl!}
+            alt=""
+            className="profile-projects__box-image"
+            onError={() => setImageFailed(true)}
+            loading="lazy"
+          />
+        ) : (
+          <div className="profile-projects__box-image profile-projects__box-image--placeholder">
+            <FolderGit2 size={40} strokeWidth={1.25} aria-hidden />
+          </div>
+        )}
+      </div>
+
+      <div className="profile-projects__box-meta">
+        <div className="profile-projects__box-titleline">
+          <h2 className="profile-projects__box-title">{title}</h2>
+        </div>
+        {shortDesc ? (
+          <p className="profile-projects__box-desc">{shortDesc}</p>
+        ) : null}
+        {createdLabel ? (
+          <p className="profile-projects__box-when">
+            <Calendar size={12} strokeWidth={1.75} aria-hidden />
+            <span>Published {createdLabel}</span>
+          </p>
+        ) : null}
+      </div>
+    </>
+  )
+
   return (
     <section
       className="profile-projects__box"
       aria-label={title}
     >
-      <header className="profile-projects__box-head">
-        <div className="profile-projects__box-image-wrap">
-          {showImage ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={imageUrl!}
-              alt=""
-              className="profile-projects__box-image"
-              onError={() => setImageFailed(true)}
-              loading="lazy"
-            />
-          ) : (
-            <div className="profile-projects__box-image profile-projects__box-image--placeholder">
-              <FolderGit2 size={40} strokeWidth={1.25} aria-hidden />
-            </div>
-          )}
-        </div>
-
-        <div className="profile-projects__box-meta">
-          <div className="profile-projects__box-titleline">
-            {detailHref ? (
-              <Link
-                href={detailHref}
-                className="profile-projects__box-title-link"
-              >
-                <h2 className="profile-projects__box-title">{title}</h2>
-              </Link>
-            ) : (
-              <h2 className="profile-projects__box-title">{title}</h2>
-            )}
-          </div>
-          {shortDesc ? (
-            <p className="profile-projects__box-desc">{shortDesc}</p>
-          ) : null}
-          {createdLabel ? (
-            <p className="profile-projects__box-when">
-              <Calendar size={12} strokeWidth={1.75} aria-hidden />
-              <span>Published {createdLabel}</span>
-            </p>
-          ) : null}
-        </div>
-      </header>
+      {detailHref ? (
+        <Link
+          href={detailHref}
+          className="profile-projects__box-head profile-projects__box-head--link"
+          aria-label={`Open ${title}`}
+        >
+          {HeadContents}
+        </Link>
+      ) : (
+        <header className="profile-projects__box-head">{HeadContents}</header>
+      )}
 
       <div className="profile-projects__box-certs">
         <div className="profile-projects__box-certs-head">

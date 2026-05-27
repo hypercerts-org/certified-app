@@ -102,15 +102,27 @@
   min-width: 0;
 }
 
-.profile-projects__box-title-link {
+/* Whole-head clickable variant — the head section becomes a
+   single Link target. Removes the link's default text-decoration
+   so the title doesn't appear underlined, paints a hover
+   background across the entire head, and keeps the focus-visible
+   ring on the head's outer edge so keyboard navigation reads as
+   one focusable region. The plain-card variant (no detail href)
+   keeps the static header treatment. */
+.profile-projects__box-head--link {
   color: inherit;
   text-decoration: none;
-  min-width: 0;
+  cursor: pointer;
+  transition: background var(--transition-fast);
 }
 
-.profile-projects__box-title-link:hover .profile-projects__box-title {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+.profile-projects__box-head--link:hover {
+  background: var(--overlay-weak);
+}
+
+.profile-projects__box-head--link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
 }
 
 .profile-projects__box-title {
