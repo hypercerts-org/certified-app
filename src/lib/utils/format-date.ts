@@ -1,13 +1,18 @@
 /**
- * Format an ISO date string as a short US-English date, e.g. "Jan 5, 2025".
- * Returns the raw input on failure (invalid / unparseable dates).
+ * Format an ISO date string as a short internationally-readable date,
+ * e.g. "5 Jan 2025". Day-Month-Year order is the convention used in
+ * most of the world outside the US (en-GB / ISO-aligned reading order)
+ * and the short month name keeps it ambiguity-free without dropping
+ * into the dense `2025-01-05` ISO 8601 numeric form that reads as a
+ * timestamp rather than a calendar date. Returns the raw input on
+ * failure (invalid / unparseable dates).
  */
 export function formatShortDate(iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return iso
-  return date.toLocaleDateString("en-US", {
-    month: "short",
+  return date.toLocaleDateString("en-GB", {
     day: "numeric",
+    month: "short",
     year: "numeric",
   })
 }

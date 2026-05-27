@@ -28,6 +28,7 @@ import {
   uploadBlob,
   type UploadedBlob,
 } from "@/lib/atproto/profile"
+import { useAuthorInfo } from "@/hooks/use-author-info"
 import type { HypercertsSmallImage } from "@/lib/atproto/types"
 import {
   putLocationRecord,
@@ -119,6 +120,10 @@ export default function CreatePage() {
   const { isAuthenticated, did } = useAuth()
   const { activeOrg } = useOrg()
   const router = useRouter()
+  // Author info for the signed-in user — fuels the "Add me" shortcut
+  // on the contributors row. `useAuthorInfo` resolves the handle
+  // (preferred) and falls back to the DID when none is registered.
+  const { info: selfInfo } = useAuthorInfo(did)
 
   const [arrivedFromInApp] = useState(() => {
     if (typeof window === "undefined") return false
@@ -526,7 +531,7 @@ export default function CreatePage() {
                 <input
                   type="text"
                   aria-label="Work scope"
-                  className="cert-detail__meta-input"
+                  className="cert-detail__meta-input create-cert__field--full"
                   placeholder="e.g. mentorship, code review…"
                   value={workScope}
                   maxLength={256}
@@ -625,8 +630,8 @@ export default function CreatePage() {
             <input
               type="text"
               className="cert-detail__title-input"
-              aria-label="Title"
-              placeholder="Title for your cert"
+              aria-label="Title (required)"
+              placeholder="Title for your cert *"
               value={title}
               maxLength={256}
               onChange={(e) => setTitle(e.target.value)}
@@ -639,8 +644,8 @@ export default function CreatePage() {
             <textarea
               className="cert-detail__short-desc-input"
               value={shortDescription}
-              placeholder="A short description (one or two lines)…"
-              aria-label="Short description"
+              placeholder="A short description (one or two lines) *"
+              aria-label="Short description (required)"
               onChange={(e) => setShortDescription(e.target.value)}
               rows={3}
               required
@@ -652,6 +657,9 @@ export default function CreatePage() {
               aria-live="polite"
             >
               {shortDescCount}/{SHORT_DESC_MAX}
+            </p>
+            <p className="create-cert__required-hint">
+              <span aria-hidden>*</span> Required
             </p>
           </section>
 
@@ -686,18 +694,30 @@ export default function CreatePage() {
               <ul className="create-cert__contrib-list">
                 {contributors.map((c, idx) => (
                   <li key={c.key} className="create-cert__contrib-row">
+                    <ContributorIdentityField
+                      value={c.identity}
+                      onChange={(next) =>
+                        setContributors((rows) =>
+                          rows.map((r) =>
+                            r.key === c.key ? { ...r, identity: next } : r,
+                          ),
+                        )
+                      }
+                      ariaLabel={`Contributor ${idx + 1} identity`}
+                      idx={idx}
+                    />
                     <input
                       type="text"
                       className="cert-detail__meta-input"
-                      aria-label={`Contributor ${idx + 1} identity`}
-                      placeholder="did:plc:… or @handle.example.com"
-                      value={c.identity}
+                      aria-label={`Contributor ${idx + 1} role (optional)`}
+                      placeholder="Role (optional)"
+                      value={c.role}
                       maxLength={1000}
                       onChange={(e) =>
                         setContributors((rows) =>
                           rows.map((r) =>
                             r.key === c.key
-                              ? { ...r, identity: e.target.value }
+                              ? { ...r, role: e.target.value }
                               : r,
                           ),
                         )
@@ -706,8 +726,8 @@ export default function CreatePage() {
                     <input
                       type="text"
                       className="cert-detail__meta-input create-cert__contrib-weight"
-                      aria-label={`Contributor ${idx + 1} weight`}
-                      placeholder="Weight"
+                      aria-label={`Contributor ${idx + 1} relative weight (optional)`}
+                      placeholder="Relative weight (optional)"
                       value={c.weight}
                       maxLength={100}
                       onChange={(e) =>
@@ -715,23 +735,6 @@ export default function CreatePage() {
                           rows.map((r) =>
                             r.key === c.key
                               ? { ...r, weight: e.target.value }
-                              : r,
-                          ),
-                        )
-                      }
-                    />
-                    <input
-                      type="text"
-                      className="cert-detail__meta-input"
-                      aria-label={`Contributor ${idx + 1} role`}
-                      placeholder="Role"
-                      value={c.role}
-                      maxLength={1000}
-                      onChange={(e) =>
-                        setContributors((rows) =>
-                          rows.map((r) =>
-                            r.key === c.key
-                              ? { ...r, role: e.target.value }
                               : r,
                           ),
                         )
@@ -754,17 +757,60 @@ export default function CreatePage() {
               </ul>
             )}
 
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() =>
-                setContributors((rows) => [...rows, freshContributor()])
-              }
-            >
-              <Plus size={14} strokeWidth={1.75} aria-hidden />
-              Add contributor
-            </Button>
+            <div className="create-cert__contrib-actions">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() =>
+                  setContributors((rows) => [...rows, freshContributor()])
+                }
+              >
+                <Plus size={14} strokeWidth={1.75} aria-hidden />
+                Add contributor
+              </Button>
+              {/* "Add me" shortcut — prefills a fresh contributor row
+                  with the signed-in user's @handle (or DID if no
+                  handle resolved). Skipped if the user has already
+                  added themselves so duplicate rows aren't created.
+                  Disabled until the author info loads (no point
+                  spawning a blank row that says "@undefined"). */}
+              {selfInfo && (selfInfo.handle || selfInfo.did) ? (
+                (() => {
+                  const selfIdentity =
+                    selfInfo.handle && selfInfo.handle !== selfInfo.did
+                      ? `@${selfInfo.handle}`
+                      : selfInfo.did
+                  const alreadyAdded = contributors.some(
+                    (c) => c.identity.trim() === selfIdentity,
+                  )
+                  return (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={alreadyAdded}
+                      onClick={() =>
+                        setContributors((rows) => [
+                          ...rows,
+                          {
+                            ...freshContributor(),
+                            identity: selfIdentity,
+                          },
+                        ])
+                      }
+                      title={
+                        alreadyAdded
+                          ? "Already on the list"
+                          : `Add ${selfIdentity} as a contributor`
+                      }
+                    >
+                      Add me
+                    </Button>
+                  )
+                })()
+              ) : null}
+            </div>
           </section>
 
           {error ? (
@@ -813,6 +859,236 @@ export default function CreatePage() {
         />
       ) : null}
     </form>
+  )
+}
+
+// ----------------------------------------------------------------------
+// Contributor identity field — compact typeahead
+//
+// Reuses the same `/api/search-actors` endpoint that powers the
+// HandleSearch component used in groups / endorsements. The visual
+// shell is `cert-detail__meta-input` so the field sits flush in the
+// contributor row alongside the role + weight inputs (HandleSearch
+// itself ships with a 40px tall bordered-bottom input that would
+// dwarf the other fields).
+//
+// Behaviour:
+//   - The input value IS the contributor identity that will be
+//     written to the record. Free-text edits flow straight to the
+//     parent via `onChange`.
+//   - When the value is non-empty and doesn't look like a complete
+//     DID, a debounced search hits /api/search-actors and shows a
+//     dropdown of matches. Picking a match replaces the input value
+//     with `@handle` (or the DID if no handle resolved).
+//   - Looks-like-a-DID values short-circuit the search — the user
+//     is typing a canonical identifier and likely doesn't want
+//     suggestions clobbering it.
+// ----------------------------------------------------------------------
+
+interface Actor {
+  did: string
+  handle: string
+  displayName: string
+  avatar: string | null
+}
+
+interface ContributorIdentityFieldProps {
+  value: string
+  onChange: (next: string) => void
+  ariaLabel: string
+  idx: number
+}
+
+function ContributorIdentityField({
+  value,
+  onChange,
+  ariaLabel,
+  idx,
+}: ContributorIdentityFieldProps) {
+  const [results, setResults] = useState<Actor[]>([])
+  const [isOpen, setIsOpen] = useState(false)
+  const [isSearching, setIsSearching] = useState(false)
+  const [focusedIndex, setFocusedIndex] = useState(-1)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Tracks the last value the user picked from the dropdown so a
+  // re-render of the parent (which re-passes the value prop back
+  // through) doesn't immediately re-fire the search effect against
+  // the same string we just selected.
+  const lastSelectedRef = useRef<string>("")
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    const trimmed = value.trim()
+    if (!trimmed || trimmed.length < 2) {
+      setResults([])
+      setIsOpen(false)
+      return
+    }
+    if (trimmed === lastSelectedRef.current) {
+      // The current value is what we just inserted from the dropdown
+      // — don't re-search and don't reopen the popup.
+      return
+    }
+    // Suppress search for canonical DIDs — the user is typing or
+    // pasting an identifier that doesn't need autocomplete.
+    if (trimmed.startsWith("did:")) {
+      setResults([])
+      setIsOpen(false)
+      return
+    }
+    debounceRef.current = setTimeout(async () => {
+      setIsSearching(true)
+      try {
+        const res = await fetch(
+          `/api/search-actors?q=${encodeURIComponent(trimmed)}&limit=8`,
+          { headers: { Accept: "application/json" } },
+        )
+        if (res.ok) {
+          const data = (await res.json()) as { actors?: Actor[] }
+          const actors = data.actors ?? []
+          setResults(actors)
+          setIsOpen(actors.length > 0)
+        } else {
+          setResults([])
+          setIsOpen(false)
+        }
+      } catch {
+        // Silently — search is best-effort, the free-text input is
+        // always functional as a fallback.
+      } finally {
+        setIsSearching(false)
+      }
+    }, 300)
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [value])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target
+      if (!(target instanceof Node)) return
+      if (containerRef.current && !containerRef.current.contains(target)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClick)
+    return () => document.removeEventListener("mousedown", handleClick)
+  }, [isOpen])
+
+  const handleSelect = (actor: Actor) => {
+    // Prefer the human-readable handle; fall back to the DID when
+    // the upstream record has no handle attached.
+    const picked =
+      actor.handle && actor.handle !== actor.did
+        ? `@${actor.handle}`
+        : actor.did
+    lastSelectedRef.current = picked
+    onChange(picked)
+    setIsOpen(false)
+    setResults([])
+    setFocusedIndex(-1)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault()
+      if (!isOpen || results.length === 0) return
+      setFocusedIndex((prev) => (prev + 1) % results.length)
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault()
+      if (!isOpen || results.length === 0) return
+      setFocusedIndex((prev) => (prev <= 0 ? results.length - 1 : prev - 1))
+    } else if (e.key === "Escape") {
+      setIsOpen(false)
+      setFocusedIndex(-1)
+    } else if (e.key === "Enter") {
+      if (focusedIndex >= 0 && focusedIndex < results.length) {
+        e.preventDefault()
+        handleSelect(results[focusedIndex])
+      } else if (results.length === 1) {
+        e.preventDefault()
+        handleSelect(results[0])
+      }
+    }
+  }
+
+  return (
+    <div className="create-cert__contrib-id" ref={containerRef}>
+      <input
+        type="text"
+        className="cert-detail__meta-input"
+        aria-label={ariaLabel}
+        placeholder="@handle or did:plc:…"
+        value={value}
+        maxLength={1000}
+        autoComplete="off"
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-controls={`create-cert-contrib-listbox-${idx}`}
+        aria-autocomplete="list"
+        aria-activedescendant={
+          focusedIndex >= 0
+            ? `create-cert-contrib-opt-${idx}-${focusedIndex}`
+            : undefined
+        }
+        onChange={(e) => {
+          // Once the user edits past the selected value, allow
+          // future searches again.
+          if (e.target.value !== lastSelectedRef.current) {
+            lastSelectedRef.current = ""
+          }
+          onChange(e.target.value)
+        }}
+        onKeyDown={handleKeyDown}
+        onFocus={() => {
+          if (results.length > 0) setIsOpen(true)
+        }}
+      />
+      {isSearching ? (
+        <span className="create-cert__contrib-id-spinner" aria-hidden />
+      ) : null}
+      {isOpen && results.length > 0 ? (
+        <ul
+          id={`create-cert-contrib-listbox-${idx}`}
+          role="listbox"
+          className="create-cert__contrib-id-dropdown"
+        >
+          {results.map((actor, i) => {
+            const isActive = i === focusedIndex
+            return (
+              <li
+                key={actor.did}
+                id={`create-cert-contrib-opt-${idx}-${i}`}
+                role="option"
+                aria-selected={isActive}
+                className={
+                  isActive
+                    ? "create-cert__contrib-id-option create-cert__contrib-id-option--active"
+                    : "create-cert__contrib-id-option"
+                }
+                onMouseEnter={() => setFocusedIndex(i)}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  handleSelect(actor)
+                }}
+              >
+                <span className="create-cert__contrib-id-name">
+                  {actor.displayName || actor.handle}
+                </span>
+                <span className="create-cert__contrib-id-handle">
+                  {actor.handle !== actor.did
+                    ? `@${actor.handle}`
+                    : actor.did}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
+    </div>
   )
 }
 

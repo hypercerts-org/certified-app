@@ -72,7 +72,23 @@ export default function ImageEditOverlay({
     }
   }
 
-  const showRemove = variant === "with-remove" && !!onRemove
+  // Three label states: "Add image" when the slot is empty (no
+  // saved record-image AND no pending blob), "Replace image" while
+  // a fresh upload is staged but not saved, "Change image" otherwise.
+  // The Add/Change distinction tells a first-time author that this
+  // is the upload affordance (not just an edit on an existing image).
+  const isEmpty = !hasImage && !hasPending
+  const changeLabel = hasPending
+    ? "Replace image"
+    : hasImage
+      ? "Change image"
+      : "Add image"
+  // Remove pill only renders in the with-remove variant AND when
+  // there's actually something to remove (saved image or pending
+  // upload). The pre-upload empty state shouldn't carry a Remove
+  // affordance at all — there's nothing to delete.
+  const showRemove =
+    variant === "with-remove" && !!onRemove && !isEmpty
   // Wrap in a row when we have multiple pills so they cluster
   // together visually instead of stacking at the same corner.
   const wrapperClass = showRemove
@@ -85,8 +101,8 @@ export default function ImageEditOverlay({
         type="button"
         className="image-edit-overlay__btn"
         onClick={handleClick}
-        aria-label={isUploading ? "Uploading image" : "Change image"}
-        title="Change image"
+        aria-label={isUploading ? "Uploading image" : changeLabel}
+        title={changeLabel}
         disabled={isUploading}
       >
         {isUploading ? (
@@ -94,7 +110,7 @@ export default function ImageEditOverlay({
         ) : (
           <>
             <Camera size={14} strokeWidth={1.75} aria-hidden />
-            <span>{hasPending ? "Replace image" : "Change image"}</span>
+            <span>{changeLabel}</span>
           </>
         )}
       </button>
@@ -105,7 +121,7 @@ export default function ImageEditOverlay({
           onClick={onRemove}
           aria-label="Remove image"
           title="Remove image"
-          disabled={!hasImage || isUploading}
+          disabled={isUploading}
         >
           <X size={14} strokeWidth={1.75} aria-hidden />
           <span>Remove</span>

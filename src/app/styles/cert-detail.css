@@ -1356,6 +1356,15 @@
    page it'll publish to. Only a few create-specific bits live
    here. */
 
+/* Full-pane-width modifier for a meta input on /create. Used by the
+   Work scope field so the input stretches to fill the aside column
+   instead of sitting at the browser's default input width. Applies
+   width: 100% but leaves the rest of the .cert-detail__meta-input
+   styling intact. */
+.cert-detail__meta-input.create-cert__field--full {
+  width: 100%;
+}
+
 .create-cert__date-row {
   display: flex;
   align-items: center;
@@ -1365,6 +1374,35 @@
 .create-cert__date-row .cert-detail__meta-input {
   flex: 1 1 0;
   min-width: 0;
+}
+
+/* "* Required" hint rendered once near the top of the form, just
+   below the short-description counter. Asterisks in the title +
+   short-description placeholders signal which fields are required;
+   this line decodes the asterisk so first-time authors know what
+   it means. */
+.create-cert__required-hint {
+  margin: 0;
+  padding: 4px 0 0 0;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.create-cert__required-hint > span {
+  color: var(--color-error, #b91c1c);
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+/* "Add contributor" + "Add me" sit side by side. Wrapping the two
+   buttons in a single flex row keeps them aligned at the left edge
+   while letting them flow onto a second line on narrow screens. */
+.create-cert__contrib-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 8px;
 }
 
 .create-cert__counter {
@@ -1391,13 +1429,86 @@
 
 .create-cert__contrib-row {
   display: grid;
-  grid-template-columns: 2fr 100px 1.5fr auto;
+  /* Identity (typeahead) — role — weight — remove. Weight is the
+     narrowest scalar so it gets a fixed track; role gets the
+     middle flex track since role labels run longer than weight
+     values; identity gets the widest track because it carries
+     @handle + dropdown affordance. */
+  grid-template-columns: 2fr 1.5fr 100px auto;
   gap: 8px;
-  align-items: center;
+  align-items: start;
 }
 
 .create-cert__contrib-weight {
   text-align: right;
+}
+
+/* Identity field wrapper — positions the typeahead dropdown
+   absolutely beneath the input. `min-width: 0` keeps the field
+   from blowing out the grid track when the search results contain
+   long display names. */
+.create-cert__contrib-id {
+  position: relative;
+  min-width: 0;
+}
+
+.create-cert__contrib-id input {
+  width: 100%;
+}
+
+.create-cert__contrib-id-spinner {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--border-medium);
+  border-top-color: var(--fg-primary);
+  border-radius: 50%;
+  animation: spin 600ms linear infinite;
+  pointer-events: none;
+}
+
+.create-cert__contrib-id-dropdown {
+  list-style: none;
+  margin: 4px 0 0 0;
+  padding: 4px;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+}
+
+.create-cert__contrib-id-option {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.create-cert__contrib-id-option--active {
+  background: var(--overlay-weak);
+}
+
+.create-cert__contrib-id-name {
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  font-weight: 500;
+}
+
+.create-cert__contrib-id-handle {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
 }
 
 .create-cert__contrib-remove {
