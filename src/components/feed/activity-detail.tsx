@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { usePathname, useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
+import { authFetch } from "@/lib/auth/fetch"
 import {
   Calendar,
   ChevronRight,
@@ -10,6 +12,7 @@ import {
   MapPin,
   Pencil,
   Target,
+  Trash2,
   Users,
 } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
@@ -354,6 +357,59 @@ export default function ActivityDetail({
     setSaveError(null)
   }, [])
 
+  // ----- Destructive delete -----
+  const router = useRouter()
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!rkey) return
+    setIsDeleting(true)
+    setDeleteError(null)
+    try {
+      // Same activeOrg-aware routing the save path uses: group BFF
+      // when acting as a group, xrpc proxy on the user's own repo
+      // otherwise.
+      const useGroupRoute = canEditAsActiveOrg
+      // Group BFF takes DELETE; the xrpc proxy expects POST for
+      // com.atproto.repo.deleteRecord per the lexicon.
+      const res = await authFetch(
+        useGroupRoute
+          ? `/api/groups/${encodeURIComponent(did)}/activity`
+          : "/api/xrpc/com/atproto/repo/deleteRecord",
+        {
+          method: useGroupRoute ? "DELETE" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            useGroupRoute
+              ? { rkey }
+              : {
+                  repo: did,
+                  collection: "org.hypercerts.claim.activity",
+                  rkey,
+                },
+          ),
+        },
+      )
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(
+          (data as { error?: string }).error ||
+            `Delete failed: ${res.status}`,
+        )
+      }
+      // Redirect away from the deleted cert — the user's profile
+      // is the natural landing page after a successful delete.
+      router.push(`/profile/${encodeURIComponent(did)}`)
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : "Delete failed",
+      )
+      setIsDeleting(false)
+    }
+  }, [rkey, did, canEditAsActiveOrg, router])
+
   const handleImageFile = useCallback(
     async (file: File) => {
       const previewUrl = URL.createObjectURL(file)
@@ -646,16 +702,30 @@ export default function ActivityDetail({
           <h1 className="cert-detail__title">{effectiveValue.title}</h1>
         )}
         {!editing && isCreator ? (
-          <button
-            type="button"
-            className="cert-detail__edit-btn"
-            aria-label="Edit cert"
-            title="Edit cert"
-            onClick={handleEditClick}
-          >
-            <Pencil size={14} strokeWidth={1.75} aria-hidden />
-            Edit
-          </button>
+          <>
+            <button
+              type="button"
+              className="cert-detail__edit-btn"
+              aria-label="Edit cert"
+              title="Edit cert"
+              onClick={handleEditClick}
+            >
+              <Pencil size={14} strokeWidth={1.75} aria-hidden />
+              Edit
+            </button>
+            <button
+              type="button"
+              className="cert-detail__delete-btn"
+              aria-label="Delete cert"
+              title="Delete cert"
+              onClick={() => {
+                setDeleteError(null)
+                setDeleteOpen(true)
+              }}
+            >
+              <Trash2 size={14} strokeWidth={1.75} aria-hidden />
+            </button>
+          </>
         ) : null}
       </div>
       <CertHeadlineColumns
@@ -1087,6 +1157,19 @@ export default function ActivityDetail({
         ) : null}
       </div>
     </article>
+    {deleteOpen ? (
+      <DeleteRecordDialog
+        title="Delete this cert"
+        recordName={effectiveValue.title || ""}
+        recordTypeLabel="cert"
+        isDeleting={isDeleting}
+        errorMessage={deleteError}
+        onCancel={() => {
+          if (!isDeleting) setDeleteOpen(false)
+        }}
+        onConfirm={handleDeleteConfirm}
+      />
+    ) : null}
     </>
   )
 }

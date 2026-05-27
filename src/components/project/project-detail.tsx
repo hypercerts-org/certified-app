@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { usePathname, useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
+import { authFetch } from "@/lib/auth/fetch"
 import {
   ChevronRight,
   FolderGit2,
@@ -424,7 +426,49 @@ export default function ProjectDetail({
     setImageRemoved(false)
     setSaveError(null)
     setIsEditing(true)
-  }, [effectiveValue])
+  }, [effectiveValue, cid])
+
+  // ----- Destructive delete -----
+  const router = useRouter()
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const handleDeleteConfirm = useCallback(async () => {
+    setIsDeleting(true)
+    setDeleteError(null)
+    try {
+      const useGroupRoute = canEditAsActiveOrg
+      const res = await authFetch(
+        useGroupRoute
+          ? `/api/groups/${encodeURIComponent(did)}/project`
+          : "/api/xrpc/com/atproto/repo/deleteRecord",
+        {
+          method: useGroupRoute ? "DELETE" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            useGroupRoute
+              ? { rkey }
+              : {
+                  repo: did,
+                  collection: "org.hypercerts.collection",
+                  rkey,
+                },
+          ),
+        },
+      )
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(
+          (data as { error?: string }).error ||
+            `Delete failed: ${res.status}`,
+        )
+      }
+      router.push(`/profile/${encodeURIComponent(did)}`)
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Delete failed")
+      setIsDeleting(false)
+    }
+  }, [rkey, did, canEditAsActiveOrg, router])
 
   const handleCancelEdit = useCallback(() => {
     setIsEditing(false)
@@ -820,17 +864,31 @@ export default function ProjectDetail({
           <div className="project-detail__head-actions">
             <ActivityAuthor did={did} />
             {!editing && isOwner ? (
-              <button
-                ref={editBtnRef}
-                type="button"
-                className="project-detail__edit-btn"
-                aria-label="Edit project"
-                title="Edit project"
-                onClick={handleEditClick}
-              >
-                <Pencil size={14} strokeWidth={1.75} aria-hidden />
-                Edit
-              </button>
+              <>
+                <button
+                  ref={editBtnRef}
+                  type="button"
+                  className="project-detail__edit-btn"
+                  aria-label="Edit project"
+                  title="Edit project"
+                  onClick={handleEditClick}
+                >
+                  <Pencil size={14} strokeWidth={1.75} aria-hidden />
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="project-detail__delete-btn"
+                  aria-label="Delete project"
+                  title="Delete project"
+                  onClick={() => {
+                    setDeleteError(null)
+                    setDeleteOpen(true)
+                  }}
+                >
+                  <Trash2 size={14} strokeWidth={1.75} aria-hidden />
+                </button>
+              </>
             ) : null}
           </div>
         </header>
@@ -1215,6 +1273,19 @@ export default function ProjectDetail({
           />
         ) : null}
       </article>
+      {deleteOpen ? (
+        <DeleteRecordDialog
+          title="Delete this project"
+          recordName={asString(effectiveValue.title) || ""}
+          recordTypeLabel="project"
+          isDeleting={isDeleting}
+          errorMessage={deleteError}
+          onCancel={() => {
+            if (!isDeleting) setDeleteOpen(false)
+          }}
+          onConfirm={handleDeleteConfirm}
+        />
+      ) : null}
     </>
   )
 }

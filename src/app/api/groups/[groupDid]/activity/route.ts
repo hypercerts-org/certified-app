@@ -126,3 +126,52 @@ export async function PUT(
     return NextResponse.json({ error: message }, { status })
   }
 }
+
+/**
+ * DELETE /api/groups/[groupDid]/activity
+ *
+ * Removes an `org.hypercerts.claim.activity` record from the
+ * group's repo via `app.certified.group.repo.deleteRecord`. The
+ * authenticated viewer must be an owner / admin of the group; the
+ * group service enforces that and rejects writes from members.
+ *
+ * Body shape: `{ rkey: string }`.
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ groupDid: string }> },
+) {
+  const csrfError = checkCsrf(request)
+  if (csrfError) return csrfError
+  try {
+    const { groupDid } = await params
+    if (!isValidDid(groupDid)) {
+      return NextResponse.json({ error: "Invalid group DID" }, { status: 400 })
+    }
+    const auth = await getAuthenticatedAgent()
+    if (!auth) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+    }
+    const parsed = await parseJsonBody(request, "[groups/activity DELETE]")
+    if (!parsed.ok) return parsed.response
+    const body = (parsed.body ?? {}) as Record<string, unknown>
+    const rkey = typeof body.rkey === "string" ? body.rkey : null
+    if (!rkey) {
+      return NextResponse.json(
+        { error: "rkey is required" },
+        { status: 400 },
+      )
+    }
+    const groupAgent = createGroupAgent(auth.agent, groupDid)
+    await groupAgent.call(
+      "app.certified.group.repo.deleteRecord",
+      {},
+      { repo: groupDid, collection: ACTIVITY_COLLECTION, rkey },
+      { encoding: "application/json" },
+    )
+    return NextResponse.json({ ok: true })
+  } catch (err: unknown) {
+    const { status, message } = extractRouteError(err)
+    return NextResponse.json({ error: message }, { status })
+  }
+}

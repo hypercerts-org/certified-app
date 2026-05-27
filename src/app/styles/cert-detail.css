@@ -559,6 +559,38 @@
   outline-offset: 2px;
 }
 
+/* Destructive sibling of the Edit button — same height + radius
+   but icon-only (square 32×32) and hover paints the red tint.
+   Sits to the right of Edit in the head-actions cluster. */
+.cert-detail__delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.cert-detail__delete-btn:hover {
+  background: var(--bg-sunken);
+  border-color: var(--color-error, #b91c1c);
+  color: var(--color-error, #b91c1c);
+}
+
+.cert-detail__delete-btn:focus-visible {
+  outline: 2px solid var(--color-error, #b91c1c);
+  outline-offset: 2px;
+}
+
 /* "more" link below the short description — styling now lives in
    `.more-link-row` / `.more-link` in `components.css` so the
    project detail and cert detail share the same affordance shape. */

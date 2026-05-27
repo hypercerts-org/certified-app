@@ -187,6 +187,79 @@ dialog.signin-modal.app-modal .signin-modal__body {
   padding: 0 20px 20px;
 }
 
+/* ---------- Type-to-confirm delete dialog ---------- */
+
+.delete-record-dialog__warning {
+  margin: 0 0 16px 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--fg-secondary);
+}
+
+.delete-record-dialog__warning strong {
+  color: var(--color-error, #b91c1c);
+}
+
+.delete-record-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.delete-record-dialog__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+}
+
+/* Target name shown in monospace so case + whitespace are
+   unambiguous. word-break:break-all so a long title doesn't
+   overflow the dialog. */
+.delete-record-dialog__target {
+  display: block;
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-size: 0.8125rem;
+  color: var(--fg-primary);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 6px 10px;
+  word-break: break-all;
+}
+
+.delete-record-dialog__input {
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--fg-primary);
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border-hover);
+  border-radius: 8px;
+  padding: 8px 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.delete-record-dialog__input:focus {
+  outline: none;
+  border-color: var(--color-error, #b91c1c);
+  box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.15);
+}
+
+.delete-record-dialog__error {
+  margin: 0 0 12px 0;
+  font-size: 0.8125rem;
+  color: var(--color-error, #b91c1c);
+}
+
+.delete-record-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 /* Close button rules now live in `landing.css` (single source of
    truth). The earlier "floating chip" treatment here positioned the
    button outside the dialog corner with a shadow halo, which caused

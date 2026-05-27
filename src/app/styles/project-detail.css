@@ -544,6 +544,37 @@
   outline-offset: 2px;
 }
 
+/* Destructive sibling of the project Edit button — same height +
+   radius but icon-only and the hover paints the red tint. */
+.project-detail__delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.project-detail__delete-btn:hover {
+  background: var(--bg-sunken);
+  border-color: var(--color-error, #b91c1c);
+  color: var(--color-error, #b91c1c);
+}
+
+.project-detail__delete-btn:focus-visible {
+  outline: 2px solid var(--color-error, #b91c1c);
+  outline-offset: 2px;
+}
+
 /* Title + lead inputs replace the static h1 / p while editing.
    Border treatment matches the cert detail inline-edit inputs so
    the two surfaces feel like one editor family. The title input
