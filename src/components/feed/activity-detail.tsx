@@ -102,6 +102,38 @@ function contributionRoleText(details: unknown): string | null {
 const formatDate = formatShortDate
 
 /**
+ * Normalise contributor weights to a percent out of 100. The
+ * lexicon stores `contributionWeight` as a free-form string so a
+ * record can hold values like "1", "0.25", or "high". This helper
+ * sums every parseable numeric weight and rewrites each as
+ * `round(weight / total * 100)`, returning a map from contributor
+ * index to display string. Non-numeric weights are left out of the
+ * map; the caller falls back to the raw value so they still
+ * render. When no weights parse (or the sum is zero) the returned
+ * map is empty — every row falls back to its raw weight.
+ */
+function buildWeightPercents(
+  contribs: readonly ActivityContributorType[],
+): Map<number, string> {
+  const out = new Map<number, string>()
+  const parsed: Array<{ idx: number; n: number }> = []
+  let total = 0
+  contribs.forEach((c, idx) => {
+    const raw = c.contributionWeight?.trim() ?? ""
+    if (!raw) return
+    const n = parseFloat(raw)
+    if (!Number.isFinite(n) || n < 0) return
+    parsed.push({ idx, n })
+    total += n
+  })
+  if (total <= 0) return out
+  for (const { idx, n } of parsed) {
+    out.set(idx, `${Math.round((n / total) * 100)}`)
+  }
+  return out
+}
+
+/**
  * Detail view of a single activity claim.
  *
  * Layout:
@@ -850,6 +882,11 @@ export default function ActivityDetail({
                   const hasAnyWeight = previewContributors.some(
                     (c) => c.contributionWeight != null,
                   )
+                  // Percentages are computed across the FULL
+                  // contributor list (not just the preview slice) so
+                  // the % column adds to 100 even when the aside
+                  // shows only the first 5 of N rows.
+                  const weightPercents = buildWeightPercents(contributors)
                   return (
                     <>
                       {hasAnyWeight ? (
@@ -865,7 +902,11 @@ export default function ActivityDetail({
                               key={contributorKey(c, i)}
                               contributor={c}
                               role={roleText}
-                              weight={c.contributionWeight ?? null}
+                              weight={
+                                weightPercents.get(i) ??
+                                c.contributionWeight ??
+                                null
+                              }
                             />
                           )
                         })}
@@ -998,6 +1039,9 @@ export default function ActivityDetail({
               </span>
             </div>
             {contributorCount > 0 ? (
+              (() => {
+                const weightPercents = buildWeightPercents(contributors)
+                return (
               <>
                 {contributors.some((c) => c.contributionWeight != null) ? (
                   <ContributorWeightHeader />
@@ -1010,12 +1054,18 @@ export default function ActivityDetail({
                         key={contributorKey(c, i)}
                         contributor={c}
                         role={roleText}
-                        weight={c.contributionWeight ?? null}
+                        weight={
+                          weightPercents.get(i) ??
+                          c.contributionWeight ??
+                          null
+                        }
                       />
                     )
                   })}
                 </ul>
               </>
+                )
+              })()
             ) : (
               <p className="cert-detail__short-desc">No contributors listed.</p>
             )}

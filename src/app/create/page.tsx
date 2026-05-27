@@ -460,28 +460,35 @@ export default function CreatePage() {
         scope: workScope.trim(),
       }
     }
-    const populatedContributors = contributors
-      .filter((c) => c.identity.trim().length > 0)
-      .map((c) => {
-        const entry: NonNullable<ClaimActivityRecord["contributors"]>[number] = {
-          contributorIdentity: {
-            $type: "org.hypercerts.claim.activity#contributorIdentity",
-            // Store the canonical form — strip the `@` that the
-            // typeahead writes back into the field on pick — so
-            // downstream `/api/resolve-did?handle=…` queries don't
-            // have to special-case the prefix.
-            identity: normalizeIdentity(c.identity),
-          },
+    const seenSaveIdentities = new Set<string>()
+    const populatedContributors: NonNullable<
+      ClaimActivityRecord["contributors"]
+    > = []
+    for (const c of contributors) {
+      const norm = normalizeIdentity(c.identity)
+      if (!norm) continue
+      const key = norm.toLowerCase()
+      if (seenSaveIdentities.has(key)) continue
+      seenSaveIdentities.add(key)
+      const entry: NonNullable<ClaimActivityRecord["contributors"]>[number] = {
+        contributorIdentity: {
+          $type: "org.hypercerts.claim.activity#contributorIdentity",
+          // Store the canonical form — strip the `@` that the
+          // typeahead writes back into the field on pick — so
+          // downstream `/api/resolve-did?handle=…` queries don't
+          // have to special-case the prefix.
+          identity: norm,
+        },
+      }
+      if (c.weight.trim()) entry.contributionWeight = c.weight.trim()
+      if (c.role.trim()) {
+        entry.contributionDetails = {
+          $type: "org.hypercerts.claim.activity#contributorRole",
+          role: c.role.trim(),
         }
-        if (c.weight.trim()) entry.contributionWeight = c.weight.trim()
-        if (c.role.trim()) {
-          entry.contributionDetails = {
-            $type: "org.hypercerts.claim.activity#contributorRole",
-            role: c.role.trim(),
-          }
-        }
-        return entry
-      })
+      }
+      populatedContributors.push(entry)
+    }
     if (populatedContributors.length > 0) {
       record.contributors = populatedContributors
     }
@@ -825,6 +832,18 @@ export default function CreatePage() {
                   const normalized = normalizeIdentity(c.identity).toLowerCase()
                   const identityDuplicate =
                     normalized.length > 0 && duplicateIdentitySet.has(normalized)
+                  // Other rows' normalised identities — passed into the
+                  // typeahead so the dropdown can hide actors that are
+                  // already on the list. Keeps duplicates from being
+                  // introduced through the autocomplete path; manual
+                  // typing of a duplicate still surfaces the inline
+                  // "Already added" error.
+                  const otherIdentities = new Set<string>()
+                  for (const other of contributors) {
+                    if (other.key === c.key) continue
+                    const n = normalizeIdentity(other.identity).toLowerCase()
+                    if (n) otherIdentities.add(n)
+                  }
                   return (
                   <li key={c.key} className="create-cert__contrib-row">
                     <ContributorIdentityField
@@ -839,6 +858,7 @@ export default function CreatePage() {
                       ariaLabel={`Contributor ${idx + 1} identity`}
                       idx={idx}
                       invalid={!identityValid || identityDuplicate}
+                      excludeIdentities={otherIdentities}
                     />
                     <input
                       type="text"
@@ -1056,6 +1076,13 @@ interface ContributorIdentityFieldProps {
    *  to a recognisable DID or handle. Paints a red border around
    *  the input so the row's invalidity reads at a glance. */
   invalid: boolean
+  /** Normalised (lowercased, @-stripped) identities of the OTHER
+   *  contributor rows. The typeahead drops matching actors from
+   *  its suggestions so the user can't pick someone who's already
+   *  on the list; the picker callback also short-circuits when
+   *  the chosen actor is in this set, as a belt-and-suspenders
+   *  guard against race conditions between debounced searches. */
+  excludeIdentities: Set<string>
 }
 
 function ContributorIdentityField({
@@ -1064,6 +1091,7 @@ function ContributorIdentityField({
   ariaLabel,
   idx,
   invalid,
+  excludeIdentities,
 }: ContributorIdentityFieldProps) {
   const [results, setResults] = useState<Actor[]>([])
   const [isOpen, setIsOpen] = useState(false)
@@ -1106,6 +1134,10 @@ function ContributorIdentityField({
         )
         if (res.ok) {
           const data = (await res.json()) as { actors?: Actor[] }
+          // Store the full result set; the render below filters out
+          // already-added identities. Keeping the filter in render
+          // (not in the fetch effect) means the dropdown reacts to
+          // peer-row changes without re-firing the search.
           const actors = data.actors ?? []
           setResults(actors)
           setIsOpen(actors.length > 0)
@@ -1139,6 +1171,21 @@ function ContributorIdentityField({
   }, [isOpen])
 
   const handleSelect = (actor: Actor) => {
+    // Belt-and-suspenders dup guard: a stale result that survived
+    // the filter (race between debounced search and an upstream
+    // row change) shouldn't be allowed to land. Drop the pick if
+    // the actor is now in the exclude set.
+    const h = actor.handle?.toLowerCase() ?? ""
+    const d = actor.did?.toLowerCase() ?? ""
+    if (
+      (h && excludeIdentities.has(h)) ||
+      (d && excludeIdentities.has(d))
+    ) {
+      setIsOpen(false)
+      setResults([])
+      setFocusedIndex(-1)
+      return
+    }
     // Prefer the human-readable handle; fall back to the DID when
     // the upstream record has no handle attached.
     const picked =
@@ -1152,25 +1199,39 @@ function ContributorIdentityField({
     setFocusedIndex(-1)
   }
 
+  // Filter out actors already attached to another contributor row.
+  // The fetch above stores the unfiltered set; we hide
+  // already-added users at render time so the dropdown reacts when
+  // a peer row adds the same handle (no re-fetch required).
+  const visibleResults = results.filter((a) => {
+    const h = a.handle?.toLowerCase() ?? ""
+    const d = a.did?.toLowerCase() ?? ""
+    if (h && excludeIdentities.has(h)) return false
+    if (d && excludeIdentities.has(d)) return false
+    return true
+  })
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") {
       e.preventDefault()
-      if (!isOpen || results.length === 0) return
-      setFocusedIndex((prev) => (prev + 1) % results.length)
+      if (!isOpen || visibleResults.length === 0) return
+      setFocusedIndex((prev) => (prev + 1) % visibleResults.length)
     } else if (e.key === "ArrowUp") {
       e.preventDefault()
-      if (!isOpen || results.length === 0) return
-      setFocusedIndex((prev) => (prev <= 0 ? results.length - 1 : prev - 1))
+      if (!isOpen || visibleResults.length === 0) return
+      setFocusedIndex((prev) =>
+        prev <= 0 ? visibleResults.length - 1 : prev - 1,
+      )
     } else if (e.key === "Escape") {
       setIsOpen(false)
       setFocusedIndex(-1)
     } else if (e.key === "Enter") {
-      if (focusedIndex >= 0 && focusedIndex < results.length) {
+      if (focusedIndex >= 0 && focusedIndex < visibleResults.length) {
         e.preventDefault()
-        handleSelect(results[focusedIndex])
-      } else if (results.length === 1) {
+        handleSelect(visibleResults[focusedIndex])
+      } else if (visibleResults.length === 1) {
         e.preventDefault()
-        handleSelect(results[0])
+        handleSelect(visibleResults[0])
       }
     }
   }
@@ -1209,19 +1270,19 @@ function ContributorIdentityField({
         }}
         onKeyDown={handleKeyDown}
         onFocus={() => {
-          if (results.length > 0) setIsOpen(true)
+          if (visibleResults.length > 0) setIsOpen(true)
         }}
       />
       {isSearching ? (
         <span className="create-cert__contrib-id-spinner" aria-hidden />
       ) : null}
-      {isOpen && results.length > 0 ? (
+      {isOpen && visibleResults.length > 0 ? (
         <ul
           id={`create-cert-contrib-listbox-${idx}`}
           role="listbox"
           className="create-cert__contrib-id-dropdown"
         >
-          {results.map((actor, i) => {
+          {visibleResults.map((actor, i) => {
             const isActive = i === focusedIndex
             return (
               <li
