@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { useEditor, EditorContent, type Editor } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Link from "@tiptap/extension-link"
@@ -406,24 +407,39 @@ export default function LeafletEditor({
           {uploadError}
         </p>
       ) : null}
-      {linkDialog.open ? (
-        <LinkDialog
-          initialUrl={linkDialog.initialUrl}
-          initialText={linkDialog.initialText}
-          allowTextEdit={linkDialog.allowTextEdit}
-          onClose={() => {
-            selectionRef.current = null
-            setLinkDialog((prev) => ({ ...prev, open: false }))
-          }}
-          onConfirm={handleLinkConfirm}
-        />
-      ) : null}
-      {embedDialogOpen ? (
-        <EmbedDialog
-          onCancel={() => setEmbedDialogOpen(false)}
-          onConfirm={handleEmbedConfirm}
-        />
-      ) : null}
+      {/* LinkDialog + EmbedDialog are portalled to document.body so
+          they aren't nested inside the parent <form> (e.g. on
+          /create the LeafletEditor sits inside the publish form).
+          A form-in-form HTML structure is invalid; browsers
+          handle it inconsistently and the inner <form
+          onSubmit={...}> inside AppDialog wasn't reliably running
+          its submit handler in nested-form contexts. Portalling
+          the dialog to the body sidesteps the issue entirely
+          without changing the AppDialog API. */}
+      {linkDialog.open && typeof document !== "undefined"
+        ? createPortal(
+            <LinkDialog
+              initialUrl={linkDialog.initialUrl}
+              initialText={linkDialog.initialText}
+              allowTextEdit={linkDialog.allowTextEdit}
+              onClose={() => {
+                selectionRef.current = null
+                setLinkDialog((prev) => ({ ...prev, open: false }))
+              }}
+              onConfirm={handleLinkConfirm}
+            />,
+            document.body,
+          )
+        : null}
+      {embedDialogOpen && typeof document !== "undefined"
+        ? createPortal(
+            <EmbedDialog
+              onCancel={() => setEmbedDialogOpen(false)}
+              onConfirm={handleEmbedConfirm}
+            />,
+            document.body,
+          )
+        : null}
     </div>
   )
 }
