@@ -643,11 +643,17 @@ export default function ActivityDetail({
         <p className="cert-detail__short-desc">
           {effectiveValue.shortDescription}
         </p>
+        {/* `push`-mode link (no `replace`) so the description tab
+            becomes a real history entry — pressing the browser
+            Back button returns the viewer to the Overview tab.
+            The navbar's 2nd-row back button uses its own history
+            handler (in `lib/navbar-context`) and walks to whatever
+            page the viewer came from before the cert, not to a
+            tab within it. */}
         {showFullDescription && descriptionHref ? (
           <Link
             href={descriptionHref}
             scroll={false}
-            replace
             className="cert-detail__read-more"
           >
             Read full description
