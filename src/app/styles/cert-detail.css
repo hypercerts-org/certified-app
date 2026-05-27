@@ -317,6 +317,40 @@
   word-break: break-word;
 }
 
+/* "Read full description" affordance below the short description.
+   Replaces the older quiet "more" text-link with an inline-flex
+   pill that reads as a clearer call to navigate — left-aligned
+   (so the eye finds it at the end of the paragraph's reading
+   track) and chevron-tailed to signal "this takes you elsewhere".
+   Kept restrained — secondary color, no fill — so it doesn't
+   compete with primary actions on the page. */
+.cert-detail__read-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 4px 10px 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--fg-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.cert-detail__read-more:hover {
+  background: var(--bg-sunken);
+  border-color: var(--border-hover);
+  color: var(--fg-primary);
+}
+
+.cert-detail__read-more:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 /* Title row — keeps the cert title on the left and floats the
    creator-only Edit button to the far right. Wrap on small screens
    so the button drops below the title rather than colliding. */

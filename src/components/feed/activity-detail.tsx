@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { Calendar, FileText, Pencil, Target } from "lucide-react"
+import { Calendar, ChevronRight, FileText, MapPin, Pencil, Target } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -18,6 +18,7 @@ import {
 } from "@/hooks/use-contributor-info"
 import { useContributorInformationRecord } from "@/hooks/use-contributor-information-record"
 import { useRights } from "@/hooks/use-rights"
+import { useLocation } from "@/hooks/use-location"
 import { getInitials } from "@/lib/utils/initials"
 import { formatShortDate } from "@/lib/utils/format-date"
 import Avatar from "@/components/ui/avatar"
@@ -644,29 +645,27 @@ export default function ActivityDetail({
           {effectiveValue.shortDescription}
         </p>
         {showFullDescription && descriptionHref ? (
-          <p className="more-link-row">
-            <Link
-              href={descriptionHref}
-              scroll={false}
-              replace
-              className="more-link"
-            >
-              more
-            </Link>
-          </p>
+          <Link
+            href={descriptionHref}
+            scroll={false}
+            replace
+            className="cert-detail__read-more"
+          >
+            Read full description
+            <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
+          </Link>
         ) : null}
       </section>
     ) : showFullDescription && descriptionHref ? (
       <section className="cert-detail__section">
-        <p className="more-link-row">
-          <Link
-            href={descriptionHref}
-            scroll={false}
-            className="more-link"
-          >
-            more
-          </Link>
-        </p>
+        <Link
+          href={descriptionHref}
+          scroll={false}
+          className="cert-detail__read-more"
+        >
+          Read full description
+          <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
+        </Link>
       </section>
     ) : null
 
@@ -811,6 +810,18 @@ export default function ActivityDetail({
                 ) : (
                   <span className="cert-detail__uri">{value.rights.uri}</span>
                 )}
+              </dd>
+            </div>
+          ) : null}
+
+          {locations.length > 0 ? (
+            <div className="cert-detail__meta-row">
+              <dt className="cert-detail__meta-label">
+                <MapPin size={11} strokeWidth={2} aria-hidden />
+                Location
+              </dt>
+              <dd className="cert-detail__meta-value">
+                <LocationMetaValue locations={locations} />
               </dd>
             </div>
           ) : null}
@@ -1131,6 +1142,43 @@ function ContributorRow({ contributor, role, weight }: ContributorRowProps) {
         <span className="cert-detail__contributor-weight">{weight}</span>
       ) : null}
     </li>
+  )
+}
+
+/**
+ * Inline "Location" value for the left-pane meta list. Resolves the
+ * FIRST location ref to its human-readable name (the others surface
+ * in the main-pane map section below). When the cert has multiple
+ * locations the value appends a "+N more" tail so the count is
+ * obvious without scrolling to the map. The same useLocation hook
+ * caches at module scope, so this row's resolution piggybacks on
+ * whatever the map already resolved.
+ */
+function LocationMetaValue({
+  locations,
+}: {
+  locations: ReadonlyArray<{ uri: string }>
+}) {
+  const firstUri = locations[0]?.uri ?? ""
+  const { location, isLoading } = useLocation(firstUri)
+  const name = location?.name?.trim()
+  if (!name) {
+    return isLoading ? (
+      <span className="cert-detail__meta-aux">Loading…</span>
+    ) : (
+      <>
+        {locations.length} location{locations.length === 1 ? "" : "s"}
+      </>
+    )
+  }
+  const remaining = locations.length - 1
+  return (
+    <>
+      {name}
+      {remaining > 0 ? (
+        <span className="cert-detail__meta-aux"> +{remaining} more</span>
+      ) : null}
+    </>
   )
 }
 
