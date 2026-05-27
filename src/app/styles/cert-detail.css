@@ -287,7 +287,13 @@
 .cert-detail__main {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  /* 32px (was 24px) — adds breathing room between the headline,
+     the short description, the two-col row, and the Updates
+     section so the page reads as well-spaced editorial content
+     instead of a tightly-packed form. The section dividers
+     inside still anchor visual rhythm; this just enlarges the
+     pause between them. */
+  gap: 32px;
   min-width: 0;
 }
 
@@ -326,30 +332,12 @@
    width:100% so it scales to whatever column it's in — on the
    narrow aside this means a more compact map, which is what the
    relocation intends. */
-.cert-detail__aside-locations {
-  padding-top: 0;
-  margin-top: 0;
-  /* Match the `.cert-detail__meta-row` rhythm — 4px between the
-     label and its value — instead of the `.cert-detail__section`
-     default of 12px. The Locations section reads as another
-     meta entry (Work scope / Rights / Locations) rather than a
-     main-pane content block. */
-  gap: 4px;
-}
-
-/* `<h2>` carries default user-agent margins; the `cert-detail__meta-label`
-   utility was designed for `<dt>` slots inside the meta `<dl>`, so we
-   layer a small override that zeroes the margin and adds a tiny gap
-   below the label before the map starts. */
-.cert-detail__aside-locations-label {
-  margin: 0;
-}
-
-.cert-detail__aside-locations-count {
+/* Inline count tail used by meta-row labels that show a count
+   (e.g. "Locations 3"). Lighter weight than the label text so the
+   count reads as metadata, not the primary word. */
+.cert-detail__meta-count {
   color: var(--fg-secondary);
   font-variant-numeric: tabular-nums;
-  /* Lighter weight than the label text so the count reads as
-     metadata, not the primary word. */
   font-weight: 500;
 }
 

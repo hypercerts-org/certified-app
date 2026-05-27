@@ -818,29 +818,31 @@ export default function ActivityDetail({
               </dd>
             </div>
           ) : null}
-        </dl>
 
-        {/* Locations live in the left pane (under the meta list) so the
-            map sits alongside the meta facts rather than competing for
-            vertical space in the main reading column. The heading
-            matches the meta-row label style (small uppercase label +
-            11px icon) so Locations reads as a peer of Work scope /
-            Rights rather than a tab-style heading.
-            NOT tab-gated — the aside is identical on every cert tab
-            (overview / description / contributors / updates). Anything
-            added here lands on all four tabs at once. */}
-        {locations.length > 0 ? (
-          <section className="cert-detail__section cert-detail__aside-locations">
-            <h2 className="cert-detail__meta-label cert-detail__aside-locations-label">
-              <MapPin size={11} strokeWidth={2} aria-hidden />
-              Locations
-              <span className="cert-detail__aside-locations-count">
-                {locations.length}
-              </span>
-            </h2>
-            <CertLocationsMap locations={locations} />
-          </section>
-        ) : null}
+          {/* Locations row — peer of Created / Time period / Rights so
+              the dl's own `gap: 12px` rule keeps the spacing
+              consistent. (Earlier this lived in a separate section
+              under the dl, which inherited the aside's `gap: 16px`
+              and visibly drifted further from Rights than the other
+              rows were from each other.) NOT tab-gated: the aside
+              is identical on every cert tab; anything added inside
+              it lands on overview / description / contributors /
+              updates at once. */}
+          {locations.length > 0 ? (
+            <div className="cert-detail__meta-row">
+              <dt className="cert-detail__meta-label">
+                <MapPin size={11} strokeWidth={2} aria-hidden />
+                Locations
+                <span className="cert-detail__meta-count">
+                  {locations.length}
+                </span>
+              </dt>
+              <dd className="cert-detail__meta-value">
+                <CertLocationsMap locations={locations} />
+              </dd>
+            </div>
+          ) : null}
+        </dl>
       </aside>
 
       <div className="page-layout__main cert-detail__main">
