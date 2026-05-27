@@ -304,14 +304,27 @@ export default function CreateProjectPage() {
     }
 
     try {
-      const res = await authFetch("/api/xrpc/com/atproto/repo/createRecord", {
-        method: "POST",
+      // Group-active → group BFF (PUT with no rkey → createRecord
+      // on the group's repo). Personal → xrpc proxy. The two
+      // routes return the same `{ uri, cid }` shape so the
+      // redirect logic below doesn't care which path was used.
+      const targetDid = activeOrg ? activeOrg.groupDid : did
+      const useGroupRoute = activeOrg !== null
+      const url = useGroupRoute
+        ? `/api/groups/${encodeURIComponent(targetDid)}/project`
+        : "/api/xrpc/com/atproto/repo/createRecord"
+      const method = useGroupRoute ? "PUT" : "POST"
+      const body = useGroupRoute
+        ? { record }
+        : {
+            repo: targetDid,
+            collection: "org.hypercerts.collection",
+            record,
+          }
+      const res = await authFetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          repo: did,
-          collection: "org.hypercerts.collection",
-          record,
-        }),
+        body: JSON.stringify(body),
       })
 
       const data = await res.json().catch(() => ({}))

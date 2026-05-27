@@ -140,13 +140,7 @@ export async function PUT(
     const body = (parsed.body ?? {}) as Record<string, unknown>
 
     const rkey = typeof body.rkey === "string" ? body.rkey : null
-    if (!rkey) {
-      return NextResponse.json(
-        { error: "rkey is required" },
-        { status: 400 },
-      )
-    }
-    if (!RKEY_RE.test(rkey)) {
+    if (rkey !== null && !RKEY_RE.test(rkey)) {
       return NextResponse.json(
         { error: "rkey is malformed" },
         { status: 400 },
@@ -154,9 +148,11 @@ export async function PUT(
     }
 
     // swapRecord — putRecord envelope field, sibling of `record`.
-    const swapRecord = typeof body.swapRecord === "string"
-      ? body.swapRecord
-      : undefined
+    // Only meaningful on the update path; ignored when creating.
+    const swapRecord =
+      rkey && typeof body.swapRecord === "string"
+        ? body.swapRecord
+        : undefined
 
     const rawRecord = body.record
     if (!rawRecord || typeof rawRecord !== "object") {
@@ -185,73 +181,83 @@ export async function PUT(
       return NextResponse.json({ error: itemsError }, { status: 400 })
     }
 
-    // Read the stored record to server-pin createdAt / type.
-    // Atproto records are public, so a plain fetch against the
-    // group's PDS works — matches the read pattern in the
-    // groups/profile and groups/metadata GET handlers. Failing to
-    // fetch the existing record is a hard error (we can't safely
-    // putRecord without knowing createdAt).
-    const pdsUrl = await resolvePdsUrl(groupDid)
-    if (!pdsUrl) {
-      return NextResponse.json(
-        { error: "Could not resolve group PDS" },
-        { status: 404 },
+    // Two branches:
+    //   - rkey present: read-modify-write on putRecord (existing
+    //     update flow). createdAt / type pinned from the stored
+    //     record so the client can't back-date or morph the type.
+    //   - rkey absent : createRecord on a fresh TID. Server-pins
+    //     createdAt = now and defaults type = "project" — this
+    //     route is project-semantic; we never mint a non-project
+    //     record through it.
+    let record: Record<string, unknown>
+    if (rkey) {
+      const pdsUrl = await resolvePdsUrl(groupDid)
+      if (!pdsUrl) {
+        return NextResponse.json(
+          { error: "Could not resolve group PDS" },
+          { status: 404 },
+        )
+      }
+      const existingRes = await fetch(
+        `${pdsUrl}/xrpc/com.atproto.repo.getRecord` +
+          `?repo=${encodeURIComponent(groupDid)}` +
+          `&collection=${encodeURIComponent(PROJECT_COLLECTION)}` +
+          `&rkey=${encodeURIComponent(rkey)}`,
+        { signal: AbortSignal.timeout(10_000) },
       )
-    }
-    const existingRes = await fetch(
-      `${pdsUrl}/xrpc/com.atproto.repo.getRecord` +
-        `?repo=${encodeURIComponent(groupDid)}` +
-        `&collection=${encodeURIComponent(PROJECT_COLLECTION)}` +
-        `&rkey=${encodeURIComponent(rkey)}`,
-      { signal: AbortSignal.timeout(10_000) },
-    )
-    if (!existingRes.ok) {
-      const status = existingRes.status === 404 ? 404 : 502
-      return NextResponse.json(
-        {
-          error:
-            status === 404
-              ? "Project record not found"
-              : "Upstream getRecord failed",
-        },
-        { status },
-      )
-    }
-    const existingData = (await existingRes.json()) as {
-      value?: Record<string, unknown>
-    }
-    const existing = existingData.value ?? {}
-
-    // Force-pin createdAt / type. Anything in the client body for
-    // these keys is ignored — the allowlist already dropped them
-    // but this is belt-and-suspenders. `items` is now client-driven
-    // so we DON'T pin it here; the allowlist + validateItems above
-    // are the safety net.
-    const record: Record<string, unknown> = {
-      ...clientRecord,
-      createdAt:
-        typeof existing.createdAt === "string"
-          ? existing.createdAt
-          : new Date().toISOString(),
-      // Default `type` to "project" if the stored record somehow
-      // doesn't have one — this BFF route is project-semantic; we
-      // never persist a non-project type via it.
-      type: typeof existing.type === "string" ? existing.type : "project",
+      if (!existingRes.ok) {
+        const status = existingRes.status === 404 ? 404 : 502
+        return NextResponse.json(
+          {
+            error:
+              status === 404
+                ? "Project record not found"
+                : "Upstream getRecord failed",
+          },
+          { status },
+        )
+      }
+      const existingData = (await existingRes.json()) as {
+        value?: Record<string, unknown>
+      }
+      const existing = existingData.value ?? {}
+      record = {
+        ...clientRecord,
+        createdAt:
+          typeof existing.createdAt === "string"
+            ? existing.createdAt
+            : new Date().toISOString(),
+        type:
+          typeof existing.type === "string" ? existing.type : "project",
+      }
+    } else {
+      record = {
+        ...clientRecord,
+        createdAt: new Date().toISOString(),
+        type: "project",
+      }
     }
 
     const groupAgent = createGroupAgent(auth.agent, groupDid)
-    const upstream = await groupAgent.call(
-      "app.certified.group.repo.putRecord",
-      {},
-      {
-        repo: groupDid,
-        collection: PROJECT_COLLECTION,
-        rkey,
-        record,
-        ...(swapRecord ? { swapRecord } : {}),
-      },
-      { encoding: "application/json" },
-    )
+    const method = rkey
+      ? "app.certified.group.repo.putRecord"
+      : "app.certified.group.repo.createRecord"
+    const requestBody = rkey
+      ? {
+          repo: groupDid,
+          collection: PROJECT_COLLECTION,
+          rkey,
+          record,
+          ...(swapRecord ? { swapRecord } : {}),
+        }
+      : {
+          repo: groupDid,
+          collection: PROJECT_COLLECTION,
+          record,
+        }
+    const upstream = await groupAgent.call(method, {}, requestBody, {
+      encoding: "application/json",
+    })
 
     const ref = extractRecordRef(upstream)
     if (!ref) {
