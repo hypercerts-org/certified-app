@@ -3,7 +3,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { FolderGit2, Inbox, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
+import {
+  ChevronRight,
+  FolderGit2,
+  Inbox,
+  MoreVertical,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react"
 import ActivityAuthor from "@/components/feed/activity-author"
 import ActivityCard from "@/components/feed/activity-card"
 import ActivityContributor from "@/components/feed/activity-contributor"
@@ -901,15 +909,14 @@ export default function ProjectDetail({
             )}
 
             {showFullDescription && descriptionHref ? (
-              <p className="more-link-row">
-                <Link
-                  href={descriptionHref}
-                  replace
-                  className="more-link"
-                >
-                  more
-                </Link>
-              </p>
+              <Link
+                href={descriptionHref}
+                scroll={false}
+                className="cert-detail__read-more"
+              >
+                Read full description
+                <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
+              </Link>
             ) : null}
           </>
         ) : null}
@@ -923,9 +930,11 @@ export default function ProjectDetail({
             >
               {createdAt ? (
                 <div className="project-detail__meta-row">
-                  <span className="project-detail__meta-label">Created</span>
+                  <span className="project-detail__meta-label">
+                    Date created
+                  </span>
                   <span className="project-detail__meta-value">
-                    <time dateTime={createdAt}>
+                    <time dateTime={createdAt} title={createdAt}>
                       {formatShortDate(createdAt)}
                     </time>
                   </span>
