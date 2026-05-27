@@ -1177,8 +1177,29 @@ function PasteSubjectsModal({
     }
   }, [alreadyInList, onAddMany, raw, running])
 
-  const anyAdded = rows.some((r) => r.status === "added")
-  const closeLabel = anyAdded ? "Done" : "Cancel"
+  // Three terminal states drive the action-row layout:
+  //
+  //   - `allDone`: every row was either added or already in the list.
+  //     Nothing left to act on — collapse to a single Close button so
+  //     the viewer isn't given a misleading "Cancel" affordance after
+  //     a fully-successful run.
+  //   - `hasErrors`: at least one row hit a write-side error (typical
+  //     case: the per-DID endorsement-write rate limit). Swap "Add"
+  //     for "Try again" so the retry path is the obvious next move.
+  //     handleRun() is idempotent — rows that succeeded the first time
+  //     are now in the list (via parent refetch), so on retry the
+  //     parser flags them `already` and the bulk hook only re-mints
+  //     the failed subjects.
+  //   - default: the original "Cancel + Add" pair, used while the
+  //     viewer is still composing or after a partial-result run with
+  //     remaining `wrong-shape` / `unresolved` rows they might want
+  //     to edit and retry.
+  const allDone =
+    rows.length > 0 &&
+    rows.every((r) => r.status === "added" || r.status === "already")
+  const hasErrors = rows.some((r) => r.status === "error")
+  const showCloseOnly = !running && allDone
+  const showTryAgain = !running && hasErrors && !allDone
 
   return (
     <AppDialog
@@ -1206,7 +1227,7 @@ function PasteSubjectsModal({
           onChange={(e) => setRaw(e.target.value)}
           rows={6}
           placeholder="alice.bsky.social, did:plc:…, https://redesign.certified.app/profile/bob.bsky.social"
-          disabled={running}
+          disabled={running || showCloseOnly}
         />
         {rows.length > 0 ? (
           <ul className="profile-lists__paste-results" aria-live="polite">
@@ -1229,23 +1250,31 @@ function PasteSubjectsModal({
           </ul>
         ) : null}
         <div className="profile-lists__paste-actions">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={onClose}
-            disabled={running}
-          >
-            {closeLabel}
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            onClick={handleRun}
-            loading={running}
-            disabled={running || raw.trim().length === 0}
-          >
-            Add
-          </Button>
+          {showCloseOnly ? (
+            <Button type="button" variant="primary" onClick={onClose}>
+              Close
+            </Button>
+          ) : (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={onClose}
+                disabled={running}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={handleRun}
+                loading={running}
+                disabled={running || raw.trim().length === 0}
+              >
+                {showTryAgain ? "Try again" : "Add"}
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </AppDialog>
