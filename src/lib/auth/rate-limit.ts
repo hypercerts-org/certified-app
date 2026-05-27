@@ -18,15 +18,19 @@ import { getRedis } from "./stores"
  * issuance. None of that ships in this PR.
  *
  * Caps chosen for legitimate use:
- *   - 50 writes / hour : a power user batch-endorsing after an
- *     event gets through; a script spinning thousands gets blocked
- *     within minutes.
- *   - 200 writes / day : catches the "drip 5/hour all day" abuse
- *     pattern that the hourly cap misses.
+ *   - 500 writes / hour : the bulk-paste endorsement flow on
+ *     endorsement-list detail pages can issue 100+ awards in one
+ *     pass when a curator imports a community list. 500/h keeps the
+ *     full bulk-paste flow uninterrupted while still tripping on a
+ *     sustained scripted attack (thousands per hour).
+ *   - 2000 writes / day : catches the "drip N/hour all day" pattern
+ *     that the hourly cap misses. Sized 4x the hourly so a viewer
+ *     who actually batches at the hourly cap doesn't double-trip on
+ *     the daily ceiling.
  */
 
-const HOURLY_LIMIT = 50
-const DAILY_LIMIT = 200
+const HOURLY_LIMIT = 500
+const DAILY_LIMIT = 2000
 const HOUR_SECONDS = 60 * 60
 const DAY_SECONDS = 24 * HOUR_SECONDS
 
