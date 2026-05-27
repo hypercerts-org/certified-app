@@ -1755,6 +1755,39 @@
   min-width: 0;
 }
 
+/* Search-again icon button — only renders in edit mode. Anchored
+   to the right edge of the combobox input; the input grows its
+   right padding via this rule's sibling style so the typed value
+   never overlaps the icon. */
+.create-cert__loc-combobox:has(.create-cert__loc-search-again) > input {
+  padding-right: 32px;
+}
+
+.create-cert__loc-search-again {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.create-cert__loc-search-again:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
 .create-cert__loc-suggestions {
   list-style: none;
   margin: 0;

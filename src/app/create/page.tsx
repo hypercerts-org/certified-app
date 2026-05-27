@@ -7,6 +7,7 @@ import {
   FileText,
   MapPin,
   Plus,
+  Search,
   Target,
   Trash2,
   X,
@@ -1587,7 +1588,41 @@ function LocationPickerDialog({
     setFieldMode("edit")
   }
 
+  // Re-enter "search" mode using the current field value as the
+  // query. Used by the Enter key (in edit mode) and the inline
+  // search icon button. Flipping fieldMode triggers the
+  // forward-geocode effect, which will populate suggestions
+  // automatically on the next debounce cycle.
+  const triggerSearchAgain = () => {
+    setFieldMode("search")
+    setDropdownOpen(true)
+  }
+
   const onInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Always swallow Enter so it can't submit the outer /create
+    // form. The dialog is rendered inside the publish form, so an
+    // unprevented Enter in this input would post the cert mid-edit.
+    if (e.key === "Enter") {
+      e.preventDefault()
+      // In search mode with an open dropdown, pick the highlighted
+      // suggestion (or the first match) — matches typical combobox
+      // affordance.
+      if (
+        fieldMode === "search" &&
+        dropdownOpen &&
+        suggestions.length > 0
+      ) {
+        const pick = suggestions[highlightIndex] ?? suggestions[0]
+        if (pick) pickSuggestion(pick)
+        return
+      }
+      // Otherwise (edit mode, or search mode with no open dropdown)
+      // re-enter search mode using the current value. Lets the user
+      // hit Enter to look up a different address without first
+      // clearing the rename they may have already typed.
+      triggerSearchAgain()
+      return
+    }
     if (!dropdownOpen || suggestions.length === 0) {
       if (e.key === "ArrowDown" && suggestions.length > 0) {
         setDropdownOpen(true)
@@ -1602,12 +1637,6 @@ function LocationPickerDialog({
     } else if (e.key === "ArrowUp") {
       setHighlightIndex((i) => Math.max(0, i - 1))
       e.preventDefault()
-    } else if (e.key === "Enter") {
-      const pick = suggestions[highlightIndex] ?? suggestions[0]
-      if (pick) {
-        e.preventDefault()
-        pickSuggestion(pick)
-      }
     } else if (e.key === "Escape") {
       setDropdownOpen(false)
       e.preventDefault()
@@ -1780,8 +1809,7 @@ function LocationPickerDialog({
             <p className="create-cert__loc-hint">
               Type a place to search, or click anywhere on the map to
               drop a pin. After picking, you can rename the field to
-              something more specific to you (e.g. &ldquo;Main
-              office&rdquo; instead of the full address).
+              something more specific.
             </p>
             <div className="create-cert__loc-combobox">
               <input
@@ -1842,6 +1870,27 @@ function LocationPickerDialog({
                 onKeyDown={onInputKeyDown}
                 autoComplete="off"
               />
+              {/* Inline search-again button — clicking re-enters
+                  search mode using the current value as the query,
+                  matching the Enter-key affordance. Lives only in
+                  edit mode (in search mode the suggestion dropdown
+                  is doing the same job). `onMouseDown` instead of
+                  onClick so the focus-blur on the input doesn't
+                  close the suggestions before this fires. */}
+              {fieldMode === "edit" ? (
+                <button
+                  type="button"
+                  className="create-cert__loc-search-again"
+                  aria-label="Search for a different place"
+                  title="Search again"
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    triggerSearchAgain()
+                  }}
+                >
+                  <Search size={14} strokeWidth={1.75} aria-hidden />
+                </button>
+              ) : null}
               {fieldMode === "search" &&
               dropdownOpen &&
               suggestions.length > 0 ? (
