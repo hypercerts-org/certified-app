@@ -238,6 +238,21 @@ ol.leaflet-doc__list {
   color: var(--fg-primary);
 }
 
+/* ProseMirror ships `.ProseMirror-selectednode { outline: 2px solid #8cf }`
+   (in prosemirror-view/style/prosemirror.css) which paints a light-blue
+   box around any node-selected block. Clicking near the start of the
+   editor — especially into an empty first paragraph — can put the
+   editor in NodeSelection on that <p>, which is what was rendering as
+   a "thin box around the first line" on focus. Our image + embed
+   NodeViews paint their own selected outlines via
+   `.leaflet-doc__image--selected` / `.leaflet-doc__embed--selected`,
+   so suppressing the default within our surface drops the unwanted
+   first-line box without losing the selection cue on the blocks we
+   do want highlighted. */
+.leaflet-editor__surface .ProseMirror-selectednode {
+  outline: none;
+}
+
 /* TipTap renders block-level nodes directly inside
    .leaflet-editor__surface. Mirror the renderer's spacing /
    typography so what the user sees while editing matches the
