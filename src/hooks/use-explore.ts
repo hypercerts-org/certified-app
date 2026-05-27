@@ -508,9 +508,17 @@ async function loadFeaturedItemUris(
   // Atomic has/set so racing callers don't each build a promise
   // and leak the loser.
   if (!featuredItemUrisInflight.has(key)) {
+    // IMPORTANT: don't pass `signal` to the shared fetch — if the
+    // first caller's signal aborts (any useExplore deps churn
+    // triggers a fresh AbortController on every effect re-run),
+    // every sibling waiting on the same promise would see an empty
+    // result and the cache would never populate. The outer caller's
+    // own `signal?.aborted` check is what gates the consumer-level
+    // result; the underlying fetches run to completion so the cache
+    // stays healthy. Symmetric with the H1 fix in useTypedLists.
     const promise = (async () => {
-      const fetched = await loadFeaturedItemUrisUncached(collectionUris, signal)
-      if (!signal?.aborted) setFeaturedCacheEntry(key, fetched)
+      const fetched = await loadFeaturedItemUrisUncached(collectionUris, null)
+      setFeaturedCacheEntry(key, fetched)
       return fetched
     })()
     featuredItemUrisInflight.set(key, promise)

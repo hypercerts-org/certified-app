@@ -194,15 +194,24 @@ export async function fetchOrgDidsByLabel(opts: {
   if (cached) return cached
   // Atomic has/set so two callers racing don't each build a promise.
   if (!orgDidsByLabelInflight.has(key)) {
+    // IMPORTANT: don't pass `signal` to the shared fetch. The
+    // useExplore consumer aborts its AbortController on every deps
+    // churn (filter / kind / search / viewerDid changing). If the
+    // first caller's signal threads into the shared fetch, an abort
+    // resolves the shared promise with partial / empty data and every
+    // sibling waiting on the same promise sees that bad result. The
+    // outer caller's own `signal?.aborted` check below is what gates
+    // the consumer-level result; the underlying paginated fetch runs
+    // to completion so the cache stays healthy. Same fix as the H1
+    // pattern in useTypedLists.
+    void signal // outer-only — kept for API symmetry with callers
     const promise = (async () => {
       const fetched = await fetchOrgDidsByLabelUncached({
         labels,
         excludeLabels,
-        signal,
+        signal: undefined,
       })
-      // Only cache when the original signal didn't abort, to avoid
-      // poisoning the cache with a partially-fetched result.
-      if (!signal?.aborted) setOrgDidsByLabelCacheEntry(key, fetched)
+      setOrgDidsByLabelCacheEntry(key, fetched)
       return fetched
     })()
     orgDidsByLabelInflight.set(key, promise)
