@@ -329,6 +329,12 @@
 .cert-detail__aside-locations {
   padding-top: 0;
   margin-top: 0;
+  /* Match the `.cert-detail__meta-row` rhythm — 4px between the
+     label and its value — instead of the `.cert-detail__section`
+     default of 12px. The Locations section reads as another
+     meta entry (Work scope / Rights / Locations) rather than a
+     main-pane content block. */
+  gap: 4px;
 }
 
 /* `<h2>` carries default user-agent margins; the `cert-detail__meta-label`
@@ -347,6 +353,76 @@
   font-weight: 500;
 }
 
+/* ---------- Cert overview: 2-column row (contributors / projects) ----- */
+
+.cert-detail__two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  padding-top: 24px;
+  margin-top: 4px;
+}
+
+/* When the 2-col row is the first child of the main pane (no
+   headline ahead of it, which doesn't happen today but is defensive)
+   it sheds the top spacing so the page starts flush. */
+.cert-detail__main > .cert-detail__two-col:first-child {
+  padding-top: 0;
+  margin-top: 0;
+}
+
+/* Divider above the 2-col row when it isn't the first child — keeps
+   the main pane's visual rhythm consistent with `.cert-detail__section`
+   siblings around it. */
+.cert-detail__main > *:not(:first-child).cert-detail__two-col {
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Divider before a `.cert-detail__section` that immediately follows the
+   2-col row — the existing `section + section` rule doesn't match
+   across the 2-col wrapper, so add the equivalent here. */
+.cert-detail__main > .cert-detail__two-col + .cert-detail__section {
+  border-top: 1px solid var(--border-subtle);
+}
+
+@media (max-width: 700px) {
+  .cert-detail__two-col {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  /* Below the breakpoint the cells stack — restore the section divider
+     between them so the stack reads like the rest of the main pane. */
+  .cert-detail__two-col > .cert-detail__two-col-cell + .cert-detail__two-col-cell {
+    padding-top: 24px;
+    margin-top: 24px;
+    border-top: 1px solid var(--border-subtle);
+  }
+}
+
+.cert-detail__two-col-cell {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Sections nested inside a 2-col cell sit flush — the cell already
+   provides the outer padding/divider, so the section drops its own
+   top-spacing to avoid double padding. */
+.cert-detail__two-col-cell > .cert-detail__section {
+  padding-top: 0;
+  margin-top: 0;
+}
+
+/* Empty-state line shown when a cell has nothing to render (e.g.
+   "No contributors yet."). Smaller + muted so it doesn't compete
+   visually with populated content in the adjacent column. */
+.cert-detail__empty-line {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+}
+
 /* "Read full description" affordance below the short description.
    Replaces the older quiet "more" text-link with an inline-flex
    pill that reads as a clearer call to navigate — left-aligned
@@ -358,6 +434,11 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  /* The parent section is a flex column; without an explicit
+     `align-self` the inline-flex child still stretches to the
+     cross-axis (full width). Anchor to the start so the pill
+     sizes to its label + chevron. */
+  align-self: flex-start;
   margin-top: 8px;
   padding: 4px 10px 4px 12px;
   border-radius: 999px;

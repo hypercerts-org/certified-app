@@ -819,8 +819,11 @@ export default function ActivityDetail({
             vertical space in the main reading column. The heading
             matches the meta-row label style (small uppercase label +
             11px icon) so Locations reads as a peer of Work scope /
-            Rights rather than a tab-style heading. */}
-        {activeTab === "overview" && locations.length > 0 ? (
+            Rights rather than a tab-style heading.
+            NOT tab-gated — the aside is identical on every cert tab
+            (overview / description / contributors / updates). Anything
+            added here lands on all four tabs at once. */}
+        {locations.length > 0 ? (
           <section className="cert-detail__section cert-detail__aside-locations">
             <h2 className="cert-detail__meta-label cert-detail__aside-locations-label">
               <MapPin size={11} strokeWidth={2} aria-hidden />
@@ -836,12 +839,17 @@ export default function ActivityDetail({
 
       <div className="page-layout__main cert-detail__main">
         {headline}
-        {shortDescSection}
 
         {activeTab === "overview" ? (
           <>
-            {contributorCount > 0 ? (
-              (() => {
+            {/* Contributors and Projects share a row: two 50/50 columns
+                on desktop, stacked single-column below the
+                cert-detail-2col breakpoint. Wrap renders the section
+                whether there are zero contributors or many — projects
+                still shows up alongside; an empty contributors slot
+                keeps the column structure intact. */}
+            <div className="cert-detail__two-col">
+              {(() => {
                 // Overview preview — cap at 5 rows. When the cert has
                 // more, the section header gains a "See all" link
                 // into the dedicated Contributors tab so readers can
@@ -857,7 +865,7 @@ export default function ActivityDetail({
                   ? `${pathname}?tab=contributors`
                   : null
                 return (
-                  <section className="cert-detail__section">
+                  <section className="cert-detail__section cert-detail__two-col-cell">
                     <div className="cert-detail__section-header">
                       <h2 className="cert-detail__section-title">
                         Contributors
@@ -866,19 +874,25 @@ export default function ActivityDetail({
                         {contributorCount}
                       </span>
                     </div>
-                    <ul className="cert-detail__contributors">
-                      {previewContributors.map((c, i) => {
-                        const roleText = contributionRoleText(c.contributionDetails)
-                        return (
-                          <ContributorRow
-                            key={contributorKey(c, i)}
-                            contributor={c}
-                            role={roleText}
-                            weight={c.contributionWeight ?? null}
-                          />
-                        )
-                      })}
-                    </ul>
+                    {contributorCount > 0 ? (
+                      <ul className="cert-detail__contributors">
+                        {previewContributors.map((c, i) => {
+                          const roleText = contributionRoleText(c.contributionDetails)
+                          return (
+                            <ContributorRow
+                              key={contributorKey(c, i)}
+                              contributor={c}
+                              role={roleText}
+                              weight={c.contributionWeight ?? null}
+                            />
+                          )
+                        })}
+                      </ul>
+                    ) : (
+                      <p className="cert-detail__empty-line">
+                        No contributors yet.
+                      </p>
+                    )}
                     {hasMore && contributorsHref ? (
                       <Link
                         href={contributorsHref}
@@ -891,10 +905,19 @@ export default function ActivityDetail({
                     ) : null}
                   </section>
                 )
-              })()
-            ) : null}
+              })()}
 
-            {rkey ? <CertProjects did={did} rkey={rkey} /> : null}
+              <div className="cert-detail__two-col-cell">
+                {rkey ? <CertProjects did={did} rkey={rkey} /> : null}
+              </div>
+            </div>
+
+            {/* Short description + Read-full-description button now sit
+                BELOW the contributors / projects row, with the Read
+                button sized to its content (inline-flex on the link
+                + align-self:flex-start in CSS so the flex-column parent
+                doesn't stretch it to full width). */}
+            {shortDescSection}
 
             {/* The Locations section + map now live in the left pane
                 (aside) — see `cert-detail__aside-locations` above. */}
