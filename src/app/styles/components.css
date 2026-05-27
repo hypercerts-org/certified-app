@@ -154,41 +154,22 @@ dialog.signin-modal.app-modal {
 }
 
 dialog.signin-modal.app-modal .signin-modal__header {
-  padding: 16px 20px 12px;
+  /* Roomier corner inset on the .app-modal variant — pushes the
+     X further from the top-right corner so its 32×32 hover
+     highlight reads as comfortably-spaced inside the modal
+     instead of cramped against the rounded corner. */
+  padding: 20px 24px 12px;
 }
 
 dialog.signin-modal.app-modal .signin-modal__body {
   padding: 0 20px 20px;
 }
 
-.signin-modal__close {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: var(--bg-elevated);
-  color: var(--fg-muted);
-  cursor: pointer;
-  border-radius: 999px;
-  box-shadow: var(--shadow-sm);
-  transition: color var(--transition-fast), transform var(--transition-fast);
-  z-index: 1;
-}
-
-.signin-modal__close:hover {
-  color: var(--fg-primary);
-  transform: scale(1.05);
-}
-
-.signin-modal__close:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
+/* Close button rules now live in `landing.css` (single source of
+   truth). The earlier "floating chip" treatment here positioned the
+   button outside the dialog corner with a shadow halo, which caused
+   the hover highlight to spill past the dialog edge. Removed; the
+   header's flex layout places the X inline with the title now. */
 
 .signin-modal__brandmark-wrap {
   display: flex;
