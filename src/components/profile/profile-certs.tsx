@@ -1,15 +1,20 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ArrowUpDown, Check, Inbox, Search } from "lucide-react"
+import Link from "next/link"
+import { ArrowUpDown, Check, Inbox, Plus, Search } from "lucide-react"
 import { useUserIndexerActivities } from "@/hooks/use-user-indexer-activities"
 import FeedLayout from "@/components/feed/feed-layout"
 import EmptyState from "@/components/ui/empty-state"
+import Button from "@/components/ui/button"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 
 interface ProfileCertsProps {
   /** DID of the profile being viewed. */
   did: string | null
+  /** When true the viewer is looking at their own profile — surface a
+   *  Create-cert CTA in the toolbar that links to the /create flow. */
+  viewerIsOwner?: boolean
 }
 
 type SubTab = "created" | "contributed"
@@ -43,7 +48,7 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
  * match the indexer's contributor filter and will be missing here —
  * see the indexer notes on producer-side handle storage.
  */
-export default function ProfileCerts({ did }: ProfileCertsProps) {
+export default function ProfileCerts({ did, viewerIsOwner }: ProfileCertsProps) {
   const {
     created,
     contributed,
@@ -149,6 +154,14 @@ export default function ProfileCerts({ did }: ProfileCertsProps) {
         </nav>
 
         <div className="profile-certs__controls">
+          {viewerIsOwner ? (
+            <Link href="/create">
+              <Button variant="primary" size="sm">
+                <Plus size={14} strokeWidth={1.75} aria-hidden />
+                Create new cert
+              </Button>
+            </Link>
+          ) : null}
           <label className="profile-certs__search">
             <Search
               size={16}

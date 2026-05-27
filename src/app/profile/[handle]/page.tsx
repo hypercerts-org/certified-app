@@ -425,7 +425,7 @@ export default function UserProfilePage() {
                 id="tabpanel-certs"
                 aria-labelledby="tab-certs"
               >
-                <ProfileCerts did={did} />
+                <ProfileCerts did={did} viewerIsOwner={isViewerThisEntity} />
               </div>
             )}
             {activeTab === "projects" && (

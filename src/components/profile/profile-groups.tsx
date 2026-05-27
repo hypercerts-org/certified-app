@@ -8,9 +8,11 @@ import {
   Check,
   Eye,
   EyeOff,
+  Plus,
   Search,
 } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
+import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { useUserGroups, type UserGroup } from "@/hooks/use-user-groups"
@@ -218,6 +220,14 @@ export default function ProfileGroups({ did }: ProfileGroupsProps) {
         )}
 
         <div className="profile-groups__controls">
+          {isOwnProfile ? (
+            <Link href="/groups/create">
+              <Button variant="primary" size="sm">
+                <Plus size={14} strokeWidth={1.75} aria-hidden />
+                Create new group
+              </Button>
+            </Link>
+          ) : null}
           <label className="profile-groups__search">
             <Search
               size={16}
