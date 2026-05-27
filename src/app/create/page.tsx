@@ -726,8 +726,8 @@ export default function CreatePage() {
                     <input
                       type="text"
                       className="cert-detail__meta-input create-cert__contrib-weight"
-                      aria-label={`Contributor ${idx + 1} relative weight (optional)`}
-                      placeholder="Relative weight (optional)"
+                      aria-label={`Contributor ${idx + 1} weight (optional)`}
+                      placeholder="Weight (optional)"
                       value={c.weight}
                       maxLength={100}
                       onChange={(e) =>

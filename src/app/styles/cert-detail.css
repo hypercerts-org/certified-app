@@ -1429,12 +1429,13 @@
 
 .create-cert__contrib-row {
   display: grid;
-  /* Identity (typeahead) — role — weight — remove. Weight is the
-     narrowest scalar so it gets a fixed track; role gets the
-     middle flex track since role labels run longer than weight
-     values; identity gets the widest track because it carries
+  /* Identity (typeahead) — role — weight — remove. Weight gets a
+     fixed 170px track so its "Weight (optional)" placeholder
+     renders without ellipsis in most cases; role gets the middle
+     flex track since role labels run longer than weight values;
+     identity gets the widest flex track because it carries
      @handle + dropdown affordance. */
-  grid-template-columns: 2fr 1.5fr 100px auto;
+  grid-template-columns: 2fr 1.5fr 170px auto;
   gap: 8px;
   align-items: start;
 }
