@@ -317,6 +317,20 @@
   word-break: break-word;
 }
 
+/* Locations section relocated into the left pane (aside) — sits
+   under the meta `<dl>` and shares the aside's vertical rhythm.
+   Drops the main-pane-specific padding + top divider that
+   `.cert-detail__section` applies (those exist for the reading
+   column above; the aside has its own gap-driven rhythm via
+   `.cert-detail__aside { gap: 16px }`). The map itself stays
+   width:100% so it scales to whatever column it's in — on the
+   narrow aside this means a more compact map, which is what the
+   relocation intends. */
+.cert-detail__aside-locations {
+  padding-top: 0;
+  margin-top: 0;
+}
+
 /* "Read full description" affordance below the short description.
    Replaces the older quiet "more" text-link with an inline-flex
    pill that reads as a clearer call to navigate — left-aligned
