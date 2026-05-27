@@ -221,15 +221,20 @@ ol.leaflet-doc__list {
   /* A roomier default — the textarea felt cramped at 96px. The
      editor still grows as the user types. */
   min-height: 220px;
+  transition: border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
-/* Focus state intentionally inherits the idle border (no
-   `:focus-within` rule changing the colour or adding a box-shadow
-   ring). The bolder treatment that used to fire when the caret
-   entered the editor read as a hard outline on the first line for
-   sighted users — keeping the frame static across focus states
-   matches the cert-detail surface. Focus is still indicated by
-   the native text caret inside the editor. */
+/* Focus state matches the title + short-description inputs (see
+   `.cert-detail__title-input:focus` and
+   `.cert-detail__short-desc-input:focus`): the idle gray border
+   becomes the primary foreground colour and a 2px overlay ring
+   sits outside it. Reading the editor as a peer of those two
+   inputs keeps the form's focus rhythm consistent. */
+.leaflet-editor__content:focus-within {
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
 
 .leaflet-editor__surface {
   outline: none;
@@ -238,19 +243,24 @@ ol.leaflet-doc__list {
   color: var(--fg-primary);
 }
 
-/* ProseMirror ships `.ProseMirror-selectednode { outline: 2px solid #8cf }`
-   (in prosemirror-view/style/prosemirror.css) which paints a light-blue
-   box around any node-selected block. Clicking near the start of the
-   editor — especially into an empty first paragraph — can put the
-   editor in NodeSelection on that <p>, which is what was rendering as
-   a "thin box around the first line" on focus. Our image + embed
-   NodeViews paint their own selected outlines via
-   `.leaflet-doc__image--selected` / `.leaflet-doc__embed--selected`,
-   so suppressing the default within our surface drops the unwanted
-   first-line box without losing the selection cue on the blocks we
-   do want highlighted. */
-.leaflet-editor__surface .ProseMirror-selectednode {
-  outline: none;
+/* Suppress every CSS path that can paint a "second border" around
+   the first paragraph when the editor receives focus:
+   1) ProseMirror's default `.ProseMirror-selectednode` outline
+      (prosemirror-view/style/prosemirror.css) — fires when the
+      editor enters a NodeSelection state on a block, e.g. when
+      clicking into an empty first paragraph.
+   2) The contenteditable's per-block browser-default focus ring
+      (some WebKit builds paint one on direct children of an
+      editable surface).
+   Our image + embed NodeViews carry their own
+   `.leaflet-doc__*--selected` outline classes, so suppressing the
+   default on the surface doesn't drop selection cues for the
+   blocks we do want highlighted. */
+.leaflet-editor__surface .ProseMirror-selectednode,
+.leaflet-editor__surface > *:focus,
+.leaflet-editor__surface > *:focus-visible {
+  outline: none !important;
+  box-shadow: none;
 }
 
 /* TipTap renders block-level nodes directly inside
