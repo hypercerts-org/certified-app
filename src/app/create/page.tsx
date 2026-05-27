@@ -265,6 +265,19 @@ export default function CreatePage() {
         // Stable, name-sorted order so the dropdown reads alphabetically.
         opts.sort((a, b) => a.name.localeCompare(b.name))
         setRightsOptions(opts)
+        // Default selection: "Public Display of Contributions" —
+        // the most permissive option in the curated rights set, so
+        // a brand-new cert is publishable without forcing the
+        // author to make a rights decision they probably haven't
+        // thought about yet. Match by exact name; if the publisher
+        // ever renames it, the dropdown still functions (the user
+        // just has to pick manually).
+        const defaultPick = opts.find(
+          (o) => o.name === "Public Display of Contributions",
+        )
+        if (defaultPick) {
+          setRightsUri((prev) => (prev ? prev : defaultPick.ref.uri))
+        }
       })
       .catch((err: unknown) => {
         if (err instanceof Error && err.name === "AbortError") return

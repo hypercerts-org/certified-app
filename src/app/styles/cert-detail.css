@@ -178,6 +178,33 @@
   box-shadow: 0 0 0 2px var(--overlay-weak);
 }
 
+/* Unified placeholder color for the cert-detail form inputs. The
+   browser default ("a less-saturated gray, ~rgba(0,0,0,0.42)")
+   sat noticeably cooler than the Leaflet editor placeholder
+   (rendered via a CSS `::before` pseudo at `var(--fg-muted)`),
+   so the description placeholder looked like a different
+   typography family than every other field. Setting all native
+   placeholders to `--fg-muted` brings them into one rhythm.
+   `opacity: 1` neutralises Firefox's default 0.54 multiplier on
+   placeholder text. */
+.cert-detail__title-input::placeholder,
+.cert-detail__short-desc-input::placeholder,
+.cert-detail__meta-input::placeholder {
+  color: var(--fg-muted);
+  opacity: 1;
+}
+
+/* Date inputs (type="date") don't expose a `::placeholder` —
+   their format hint ("mm/dd/yyyy") is painted via WebKit's
+   internal `::-webkit-datetime-edit-*` pseudos. Coloring the
+   whole edit area `--fg-muted` matches the Time-period
+   placeholder to every other muted placeholder above; filled
+   values pick up the same colour, which reads naturally in the
+   aside meta column. */
+.cert-detail__meta-input[type="date"]::-webkit-datetime-edit {
+  color: var(--fg-muted);
+}
+
 .cert-detail__short-desc-input {
   width: 100%;
   font: inherit;
