@@ -1441,6 +1441,178 @@
   border: 1px dashed var(--border-default);
 }
 
+/* ---------- Locations list in the aside on /create ---------- */
+
+.create-cert__loc-list {
+  list-style: none;
+  margin: 0 0 6px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.create-cert__loc-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: var(--overlay-weak);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  color: var(--fg-primary);
+  min-width: 0;
+}
+
+.create-cert__loc-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.create-cert__loc-remove {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--fg-muted);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.create-cert__loc-remove:hover {
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
+/* ---------- Location picker dialog ---------- */
+
+.create-cert__loc-dialog-body {
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.create-cert__loc-tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bg-sunken);
+  border-radius: 8px;
+  align-self: flex-start;
+}
+
+.create-cert__loc-tab {
+  padding: 6px 12px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.create-cert__loc-tab:hover {
+  color: var(--fg-primary);
+}
+
+.create-cert__loc-tab--active {
+  background: var(--bg-primary, var(--bg-base, #fff));
+  color: var(--fg-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* Forward-geocode combobox — same pattern as the profile picker:
+   relative-positioned input + absolute-positioned listbox below.
+   The listbox sits on top of the map so it can extend past the
+   input without nudging the map down. */
+.create-cert__loc-combobox {
+  position: relative;
+}
+
+.create-cert__loc-suggestions {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--bg-primary, var(--bg-base, #fff));
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.create-cert__loc-suggestion {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.create-cert__loc-suggestion--active {
+  background: var(--overlay-weak);
+}
+
+.create-cert__loc-suggestion-primary {
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  font-weight: 500;
+}
+
+.create-cert__loc-suggestion-secondary {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.create-cert__loc-map {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.create-cert__loc-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.create-cert__loc-uri-label {
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+}
+
+.create-cert__loc-uri-label code {
+  font-size: 0.75rem;
+  background: var(--bg-sunken);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.create-cert__loc-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
 .create-cert__actions {
   display: flex;
   justify-content: flex-end;
