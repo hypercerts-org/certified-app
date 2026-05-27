@@ -668,7 +668,7 @@ function EventSentence({ event }: { event: HomeFeedEvent }) {
     case "cert.create":
       return <>created a cert</>
     case "collection.create":
-      return <CollectionSentence record={event.record} uri={event.uri} />
+      return <CollectionSentence record={event.record} />
     case "project.created_with_cert":
       return <>created a project with a cert</>
     case "endorsement.award":
@@ -821,92 +821,44 @@ function UnhydratedSentence({ rawKind }: { rawKind: string }) {
 }
 
 /**
- * Sentence for `collection.create` events. The `org.hypercerts.collection`
- * lexicon carries a `type` discriminator that the renderer routes off to
- * pick the right verb + verb-phrase:
+ * Sentence for `collection.create` events. The
+ * `org.hypercerts.collection` lexicon carries a `type` discriminator
+ * that the renderer routes off to pick the right verb phrase:
  *
- *   project          → "created a project"            (title in preview)
- *   list:endorsements → "created an endorsement list <title>"
- *   list:projects    → "created a list of projects: <title>"
- *   list:certs       → "created a list of certs: <title>"
- *   list:accounts    → "created a list of accounts: <title>"
- *   portfolio        → "created a portfolio"          (legacy fallback)
- *   unknown          → "created a collection"         (defensive)
+ *   project           → "created a project"
+ *   list:endorsements → "created an endorsement list"
+ *   list:projects     → "created a list of projects"
+ *   list:certs        → "created a list of certs"
+ *   list:accounts     → "created a list of accounts"
+ *   portfolio         → "created a portfolio"   (legacy)
+ *   unknown           → "created a collection"  (defensive)
  *
- * Titles are rendered as links to the collection detail page so the
- * sentence is navigation-rich. Projects are the exception — they
- * carry their identity in the preview card below, so the sentence
- * stays short. Title fallback when the record didn't populate one is
- * "Untitled <kind>" matching the preview card's convention.
+ * The collection's title + description + image render in the preview
+ * card immediately below the sentence, so the sentence itself stays
+ * short — naming "what kind" without re-stating "which one".
  */
-function CollectionSentence({
-  record,
-  uri,
-}: {
-  record: CollectionRecord
-  uri: string
-}) {
-  const v = record.value as Record<string, unknown>
-  const rawType = typeof v.type === "string" ? v.type.toLowerCase() : null
-  const parsed = parseAtUri(uri)
-  const href = parsed
-    ? `/project/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
-    : null
+function CollectionSentence({ record }: { record: CollectionRecord }) {
+  const rawType =
+    typeof record.value.type === "string"
+      ? record.value.type.toLowerCase()
+      : null
 
-  if (rawType === "project") {
-    return <>created a project</>
+  switch (rawType) {
+    case "project":
+      return <>created a project</>
+    case "list:endorsements":
+      return <>created an endorsement list</>
+    case "list:projects":
+      return <>created a list of projects</>
+    case "list:certs":
+      return <>created a list of certs</>
+    case "list:accounts":
+      return <>created a list of accounts</>
+    case "portfolio":
+      return <>created a portfolio</>
+    default:
+      return <>created a collection</>
   }
-
-  if (
-    rawType !== "list:endorsements" &&
-    rawType !== "list:projects" &&
-    rawType !== "list:certs" &&
-    rawType !== "list:accounts" &&
-    rawType !== "portfolio"
-  ) {
-    // Unknown collection type — preserve the verb, drop the title
-    // since we don't have a sentence shape for it yet. Defensive
-    // against future indexer additions.
-    return <>created a collection</>
-  }
-
-  if (rawType === "portfolio") {
-    return <>created a portfolio</>
-  }
-
-  // From here every branch carries a title inline.
-  const fallbackTitle =
-    rawType === "list:endorsements"
-      ? "Untitled list"
-      : rawType === "list:projects"
-        ? "Untitled projects list"
-        : rawType === "list:certs"
-          ? "Untitled certs list"
-          : "Untitled accounts list"
-  const title =
-    (typeof v.title === "string" && v.title.length > 0 ? v.title : null) ||
-    (typeof v.name === "string" && v.name.length > 0 ? v.name : null) ||
-    fallbackTitle
-
-  const titleNode = href ? (
-    <Link href={href} className="home-feed__target">
-      {title}
-    </Link>
-  ) : (
-    <>{title}</>
-  )
-
-  if (rawType === "list:endorsements") {
-    return <>created an endorsement list {titleNode}</>
-  }
-  if (rawType === "list:projects") {
-    return <>created a list of projects: {titleNode}</>
-  }
-  if (rawType === "list:certs") {
-    return <>created a list of certs: {titleNode}</>
-  }
-  // rawType === "list:accounts"
-  return <>created a list of accounts: {titleNode}</>
 }
 
 function EndorsementSentence({ subjectDid }: { subjectDid: string }) {
