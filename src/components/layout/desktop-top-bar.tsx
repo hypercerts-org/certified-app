@@ -169,7 +169,12 @@ export default function DesktopTopBar() {
   // Cert / project detail pages get a thin row-2 with just a back
   // affordance so the navigation rhythm stays consistent across the app.
   const isOnCertDetail = pathname?.startsWith("/activity/") ?? false;
-  const isOnProjectDetail = pathname?.startsWith("/project/") ?? false;
+  // `/project/new` is the create form, not a record detail page —
+  // the second-row tabs (Description / Certs / Updates) only make
+  // sense for an existing project.
+  const isOnProjectDetail =
+    (pathname?.startsWith("/project/") ?? false) &&
+    pathname !== "/project/new";
   const isOnExplore = pathname === "/explore";
   const showBackRow = isOnCertDetail || isOnProjectDetail;
   // Settings is its own standalone surface now (reachable from the

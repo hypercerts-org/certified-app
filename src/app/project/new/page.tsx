@@ -374,8 +374,13 @@ export default function CreateProjectPage() {
 
   return (
     <form onSubmit={handleSubmit}>
-      <article className="page-layout project-detail--wide create-project">
-        <div className="page-layout__main">
+      {/* `.project-detail--wide` widens `.app-shell__content` to
+          1100px on desktop (via the existing `:has()` rule); the
+          inner `.project-detail` carries the actual 960px reading
+          column so the form's content width matches the
+          project detail page exactly. */}
+      <article className="project-detail-page project-detail--wide create-project">
+        <div className="project-detail">
           {/* Banner / hero image at the top — same aspect ratios as
               project-detail's hero (16/9 on narrow, 21/9 wide). The
               dashed-outline `--editing` modifier carries the same
