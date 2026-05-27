@@ -39,6 +39,14 @@ export default function EmbedDialog({
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault()
+      // The dialog is rendered inside a portal at document.body so
+      // the DOM doesn't nest forms, but React synthetic events
+      // bubble through the *React* tree — which still threads
+      // through the LeafletEditor's parent <form> on /create and
+      // /project/new. Without stopPropagation the inner submit
+      // bubbles up to the page form and publishes the cert /
+      // project the moment the user clicks "Embed".
+      e.stopPropagation()
       if (!normalised) return
       onConfirm({
         url: normalised.embedUrl,

@@ -64,6 +64,15 @@ export default function LinkDialog({
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault()
+      // React synthetic events bubble through the React tree, not
+      // the DOM tree, so even though this dialog is portalled to
+      // document.body its submit still bubbles up through the
+      // LeafletEditor's parent <form> on /create and /project/new
+      // (the editor IS rendered inside that form in the React
+      // tree). Without stopPropagation the outer form's submit
+      // fires too and publishes the cert / project the moment the
+      // user clicks "Add link".
+      e.stopPropagation()
       const trimmed = url.trim()
       // Reject non-http(s) URLs at the boundary. The editor and
       // renderer also defend, but failing here gives the user an
