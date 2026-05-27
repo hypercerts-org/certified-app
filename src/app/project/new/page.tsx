@@ -12,7 +12,6 @@ import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import LeafletEditor from "@/components/leaflet/leaflet-editor"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
-import CertSearch from "@/components/search/cert-search"
 import type { LinearDocument } from "@/lib/leaflet/types"
 import type { BlobRef } from "@atproto/api"
 import {
@@ -80,7 +79,6 @@ export default function CreateProjectPage() {
   const [shortDescription, setShortDescription] = useState("")
   const [description, setDescription] = useState<LinearDocument | null>(null)
   const [items, setItems] = useState<SelectedCert[]>([])
-  const [addingCert, setAddingCert] = useState(false)
   // Collections only carry ONE location (a single strongRef per the
   // lexicon). The host stores a single picked value; the shared
   // dialog still returns one entry per pick — we just replace
@@ -534,7 +532,7 @@ export default function CreateProjectPage() {
             ) : ownCerts.length > 0 ? (
               <>
                 <p className="create-project__quick-pick-label">
-                  Your certs — click to add:
+                  Add your certs:
                 </p>
                 <ul className="create-project__quick-pick-list">
                   {ownCerts.map((c) => {
@@ -573,54 +571,12 @@ export default function CreateProjectPage() {
               </>
             ) : null}
 
-            {addingCert ? (
-              <div className="create-project__cert-picker">
-                <CertSearch
-                  onSelect={(result) => {
-                    setItems((rows) => {
-                      if (rows.some((r) => r.uri === result.record.uri)) {
-                        return rows
-                      }
-                      return [
-                        ...rows,
-                        {
-                          uri: result.record.uri,
-                          cid: result.record.cid,
-                          title:
-                            result.record.value.title ||
-                            result.record.uri,
-                        },
-                      ]
-                    })
-                  }}
-                  prioritizeAuthorDid={did ?? undefined}
-                  excludeUris={items.map((c) => c.uri)}
-                  placeholder="Search for any cert…"
-                  autoFocus
-                  clearOnSelect
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setAddingCert(false)}
-                >
-                  Done
-                </Button>
-              </div>
-            ) : (
-              <div className="create-cert__contrib-actions">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setAddingCert(true)}
-                >
-                  <Plus size={14} strokeWidth={1.75} aria-hidden />
-                  Search for any cert
-                </Button>
-              </div>
-            )}
+            {/* The "search for any cert" affordance is intentionally
+                gone for now — the quick-pick checklist above covers
+                the author's own certs, which is the only flow we
+                want for v1 of /project/new. The full search will
+                come back once we decide how to handle adding
+                someone else's cert to a project. */}
           </section>
 
           {error ? (
