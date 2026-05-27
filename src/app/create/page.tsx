@@ -1662,7 +1662,9 @@ function LocationPickerDialog({
   // Existing-tab selections zoom in to street-ish detail (13);
   // new-tab clicks keep a wider 6 so the user can keep clicking
   // nearby spots without the camera lurching closer each time.
-  const zoom = hasPin ? (mode === "existing" ? 13 : 6) : 1
+  // Empty-state zoom is 2 (one level past full world) so the map
+  // opens with a slightly less abstract view than zoom 1.
+  const zoom = hasPin ? (mode === "existing" ? 13 : 6) : 2
 
   // Force the Leaflet `<MapContainer>` to remount whenever the
   // existing-tab selection changes — Leaflet only honours its
