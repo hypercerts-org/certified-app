@@ -1068,6 +1068,100 @@
   text-overflow: ellipsis;
 }
 
+/* ---------- Locations names list (below the map) ----------
+   Renders every resolved location (mappable or not) so the viewer
+   can read the place name without hovering pins. Same visual
+   shape as the older `__map-other-*` list above but applied
+   universally — that older list only surfaced unmappable
+   fallbacks. */
+
+.cert-detail__map-locations {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+}
+
+.cert-detail__map-locations-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--overlay-weak);
+  min-width: 0;
+}
+
+.cert-detail__map-locations-name {
+  font-weight: 500;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cert-detail__map-locations-detail {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Expand-map button + modal ---------- */
+
+/* Small icon button overlaying the top-right of the map. Sized
+   to read as a control affordance without competing with
+   Leaflet's own zoom controls (which live at top-left). */
+.cert-detail__map {
+  position: relative;
+}
+
+.cert-detail__map-expand-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 500;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.cert-detail__map-expand-btn:hover {
+  background: var(--bg-sunken);
+  border-color: var(--border-hover);
+}
+
+.cert-detail__map-expand-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Modal variant of the map — drops the aside's narrow-column
+   sizing and reads full-width inside the dialog. */
+.cert-detail__map-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 20px 20px;
+}
+
+.cert-detail__map--modal {
+  width: 100%;
+}
+
 /* ---------- Mobile tweaks ---------- */
 
 @media (max-width: 520px) {

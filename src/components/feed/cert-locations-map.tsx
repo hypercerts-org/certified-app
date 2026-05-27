@@ -1,11 +1,12 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { MapPin } from "lucide-react"
+import { MapPin, Maximize2 } from "lucide-react"
 import Map, {
   type MapPin as MapPinT,
   type MapPolygon as MapPolygonT,
 } from "@/components/map/map-dynamic"
+import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import { authFetch } from "@/lib/auth/fetch"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import {
@@ -175,10 +176,9 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
     [resolved],
   )
 
-  const unmappable = resolved.filter(
-    (r) => !r.pin && !r.polygon && r.record,
-  )
   const hasShapes = pins.length > 0 || polygons.length > 0
+
+  const [expanded, setExpanded] = useState(false)
 
   if (locations.length === 0) return null
 
@@ -191,6 +191,33 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
     )
   }
 
+  // Every resolved location gets a row in the names list below the
+  // map — mappable AND unmappable. Mappable entries surface just the
+  // name (the pin label already covers the geometry); unmappable
+  // entries additionally show the fallback text so the address /
+  // h3 / geohash isn't lost.
+  const namesList =
+    resolved.length > 0 ? (
+      <ul className="cert-detail__map-locations">
+        {resolved.map((r) => {
+          const name =
+            r.record?.name?.trim() || r.fallback || "Unnamed location"
+          const hasFallbackDetail = !!r.fallback && !!r.record?.name?.trim()
+          return (
+            <li key={r.uri} className="cert-detail__map-locations-item">
+              <MapPin size={14} strokeWidth={1.75} aria-hidden />
+              <span className="cert-detail__map-locations-name">{name}</span>
+              {hasFallbackDetail ? (
+                <span className="cert-detail__map-locations-detail">
+                  {r.fallback}
+                </span>
+              ) : null}
+            </li>
+          )
+        })}
+      </ul>
+    ) : null
+
   return (
     <div className="cert-detail__map-wrap">
       {hasShapes ? (
@@ -201,6 +228,19 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
             zoom={pins.length + polygons.length === 1 ? 8 : 4}
             height={320}
           />
+          {/* Expand button — opens a modal with a much larger map so
+              fine-grained polygon detail is readable. Positioned as
+              an overlay (top-right of the map container) so it
+              doesn't shift the map's own controls. */}
+          <button
+            type="button"
+            className="cert-detail__map-expand-btn"
+            onClick={() => setExpanded(true)}
+            aria-label="Open larger map"
+            title="Larger map"
+          >
+            <Maximize2 size={14} strokeWidth={1.75} aria-hidden />
+          </button>
         </div>
       ) : (
         <div className="cert-detail__map cert-detail__map--empty">
@@ -209,24 +249,39 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
         </div>
       )}
 
-      {unmappable.length > 0 ? (
-        <ul className="cert-detail__map-other">
-          {unmappable.map((r) => {
-            const name =
-              r.record?.name?.trim() || r.fallback || "Unnamed location"
-            return (
-              <li key={r.uri} className="cert-detail__map-other-item">
-                <MapPin size={14} strokeWidth={1.75} aria-hidden />
-                <span className="cert-detail__map-other-name">{name}</span>
-                {r.fallback && r.record?.name ? (
-                  <span className="cert-detail__map-other-detail">
-                    {r.fallback}
-                  </span>
-                ) : null}
-              </li>
-            )
-          })}
-        </ul>
+      {namesList}
+
+      {expanded ? (
+        <AppDialog
+          ariaLabel="Larger map of cert locations"
+          className="cert-detail__map-modal"
+          maxWidth={1100}
+          onClose={() => setExpanded(false)}
+        >
+          <AppDialogHeader title="Locations" onClose={() => setExpanded(false)} />
+          <div className="cert-detail__map-modal-body">
+            {hasShapes ? (
+              <div className="cert-detail__map cert-detail__map--modal">
+                <Map
+                  pins={pins}
+                  polygons={polygons}
+                  zoom={pins.length + polygons.length === 1 ? 10 : 4}
+                  height={Math.round(
+                    typeof window !== "undefined"
+                      ? Math.min(720, window.innerHeight * 0.7)
+                      : 720,
+                  )}
+                />
+              </div>
+            ) : (
+              <div className="cert-detail__map cert-detail__map--empty">
+                <MapPin size={20} strokeWidth={1.5} aria-hidden />
+                <p>No mappable coordinates</p>
+              </div>
+            )}
+            {namesList}
+          </div>
+        </AppDialog>
       ) : null}
     </div>
   )
