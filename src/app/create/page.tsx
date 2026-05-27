@@ -661,19 +661,35 @@ export default function CreatePage() {
               </dt>
               <dd className="cert-detail__meta-value">
                 <div className="create-cert__date-row">
+                  {/* type="text" + pattern enforces a literal ISO 8601
+                      `YYYY-MM-DD` shape. The native `type="date"`
+                      picker ships with a locale-dependent visual
+                      format (MM/DD/YYYY in en-US, dd/mm/yyyy in
+                      en-GB, etc.) that contradicts the rest of the
+                      app's ISO formatting. The submit path already
+                      consumes YYYY-MM-DD strings, so no other
+                      changes are needed. */}
                   <input
-                    type="date"
-                    aria-label="Start date"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="\d{4}-\d{2}-\d{2}"
+                    placeholder="YYYY-MM-DD"
+                    aria-label="Start date (YYYY-MM-DD)"
                     className="cert-detail__meta-input"
                     value={startDate}
+                    maxLength={10}
                     onChange={(e) => setStartDate(e.target.value)}
                   />
                   <span aria-hidden>→</span>
                   <input
-                    type="date"
-                    aria-label="End date"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="\d{4}-\d{2}-\d{2}"
+                    placeholder="YYYY-MM-DD"
+                    aria-label="End date (YYYY-MM-DD)"
                     className="cert-detail__meta-input"
                     value={endDate}
+                    maxLength={10}
                     onChange={(e) => setEndDate(e.target.value)}
                   />
                 </div>
