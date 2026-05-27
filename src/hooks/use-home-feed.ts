@@ -250,6 +250,17 @@ export function useHomeFeed(
       setState({ ...EMPTY_STATE, isLoading: false })
       return
     }
+    // Explicit-empty include filter — the user deselected every tier
+    // in the quality popover. The indexer's HTTP proxy normalises
+    // empty arrays to "no filter", so without this short-circuit we'd
+    // silently show every cert (i.e. the opposite of what the user
+    // asked for). Render an empty feed; re-selecting at least one
+    // tier re-enables the fetch.
+    const inc = includeCertLabelsRef.current
+    if (Array.isArray(inc) && inc.length === 0) {
+      setState({ ...EMPTY_STATE, isLoading: false })
+      return
+    }
     try {
       const page = await fetchFollowerEvents({
         authors,
@@ -296,6 +307,10 @@ export function useHomeFeed(
     }
     const authors = Array.from(followedRef.current)
     if (authors.length === 0) return
+    // Same explicit-empty guard the initial loader uses — if the user
+    // deselected every quality tier mid-scroll, don't keep paginating.
+    const inc = includeCertLabelsRef.current
+    if (Array.isArray(inc) && inc.length === 0) return
 
     setState((prev) => ({ ...prev, isLoadingMore: true }))
     ;(async () => {
