@@ -57,16 +57,75 @@ interface RawResponse {
 }
 
 /**
+ * Module-level cache for the resolved DID set, keyed by the sorted
+ * evaluator list. Sized small because the popover only exposes
+ * `TRUSTED_EVALUATOR_DIDS` (4 evaluators); the practical key set is
+ * the power-set of those 4 — at most 15 non-empty subsets.
+ *
+ * Each entry stores the result Set itself, NOT a Promise — by the
+ * time we hand a cached entry back the inflight resolution has
+ * completed, so we don't need to share an in-flight promise here.
+ * Repeat /home navigations get an instant evaluator-endorsed-DID
+ * union instead of paying another 10-page indexer fan-out.
+ */
+const endorsedDidsCache = new Map<string, Set<string>>()
+
+/** Live in-flight resolutions so two mounts on the same /home view
+ *  (Strict Mode double-mount, or a navigation back+forth) share one
+ *  network fan-out. */
+const endorsedDidsInflight = new Map<string, Promise<Set<string>>>()
+
+function cacheKey(evaluators: readonly string[]): string {
+  return [...evaluators].sort().join(",")
+}
+
+/**
  * Fetch the set of subject DIDs endorsed by any of the given
  * evaluators. Pages through `EvaluatorEndorsements` until the
  * indexer is exhausted or `MAX_TOTAL` distinct subjects have been
  * collected.
  *
  * Returns an empty Set when `evaluators` is empty (no expansion).
+ *
+ * Cached at module scope so repeat /home mounts (Strict Mode
+ * double-mount, navigation back to /home, etc.) skip the indexer
+ * fan-out. The popover's selection state is the cache key, so
+ * toggling an evaluator computes its result once per session.
  */
 export async function fetchEvaluatorEndorsedDids(
   evaluators: readonly string[],
   signal?: AbortSignal,
+): Promise<Set<string>> {
+  if (evaluators.length === 0) return new Set()
+  const key = cacheKey(evaluators)
+  const cached = endorsedDidsCache.get(key)
+  if (cached) return cached
+  // Atomic has/set so two callers racing into the same key don't
+  // both fire pagination — the loser just await's the winner.
+  // Signal is intentionally NOT threaded into the shared resolution:
+  // a single-caller abort would otherwise resolve the shared promise
+  // with partial data and poison the cache for every sibling. The
+  // outer caller's own signal still gates the consumer-level result.
+  // Same pattern as `useTypedLists` H1 / `loadFeaturedItemUris`.
+  if (!endorsedDidsInflight.has(key)) {
+    const promise = paginateEndorsedDids(evaluators).then((dids) => {
+      endorsedDidsCache.set(key, dids)
+      return dids
+    })
+    endorsedDidsInflight.set(key, promise)
+    promise.finally(() => {
+      if (endorsedDidsInflight.get(key) === promise) {
+        endorsedDidsInflight.delete(key)
+      }
+    })
+  }
+  const fetched = await endorsedDidsInflight.get(key)!
+  if (signal?.aborted) return new Set()
+  return fetched
+}
+
+async function paginateEndorsedDids(
+  evaluators: readonly string[],
 ): Promise<Set<string>> {
   const result = new Set<string>()
   if (evaluators.length === 0) return result
@@ -84,7 +143,6 @@ export async function fetchEvaluatorEndorsedDids(
           after: cursor,
         },
       }),
-      signal,
     })
     if (!res.ok) {
       throw new Error(`EvaluatorEndorsements proxy returned ${res.status}`)

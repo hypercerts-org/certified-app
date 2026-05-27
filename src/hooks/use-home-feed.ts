@@ -29,6 +29,16 @@ export interface UseHomeFeedOptions {
    * picks one mode based on whether unlabeled is included.
    */
   includeCertLabels?: readonly string[]
+  /**
+   * Gates the initial fetch. The home page resolves direct follows
+   * and trusted-evaluator-endorsed DIDs in parallel — both feed into
+   * the effective author set. Setting `ready: false` while either
+   * is still loading defers the fetch so the feed lands in one
+   * frame instead of flashing direct-follow content first and then
+   * re-rendering with the union. Default true — callers that don't
+   * union multiple author sources can ignore this flag.
+   */
+  ready?: boolean
 }
 
 /**
@@ -162,7 +172,7 @@ export function useHomeFeed(
   options: UseHomeFeedOptions = {},
 ) {
   const [state, setState] = useState<State>(EMPTY_STATE)
-  const { includeCertLabels } = options
+  const { includeCertLabels, ready = true } = options
   // DEFAULT_HIDDEN_CERT_LABELS only kicks in when the caller has not
   // configured EITHER filter explicitly — i.e. "no filter at all"
   // reads as "use the sensible default (draft + likely-test hidden)".
@@ -324,6 +334,19 @@ export function useHomeFeed(
   }, [load])
 
   useEffect(() => {
+    // Wait for the caller's upstream resolutions (direct follows
+    // AND any unioned author sources like trusted-evaluator
+    // endorsements). Without this gate the effect fires once on
+    // direct-follows-only, paints, then fires again when the
+    // evaluator-endorsed-DID set lands — producing the two-phase
+    // flash the user reported. Keep `isLoading: true` while we
+    // wait so the body keeps showing the skeleton/spinner.
+    if (!ready) {
+      setState((prev) =>
+        prev.isLoading ? prev : { ...prev, isLoading: true },
+      )
+      return
+    }
     const controller = new AbortController()
     load(controller.signal)
     return () => controller.abort()
@@ -331,7 +354,7 @@ export function useHomeFeed(
     // toggles — both should retrigger a from-the-head fetch. load is
     // stable (useCallback with []).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [followedKey, excludeKey])
+  }, [followedKey, excludeKey, ready])
 
   return { ...state, loadMore }
 }

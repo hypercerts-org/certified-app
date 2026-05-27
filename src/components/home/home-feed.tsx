@@ -99,7 +99,8 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
         : HYPERLABEL_TIERS.filter((t) => includedTiers.has(t)),
     [includedTiers, includeUnlabeled],
   )
-  const { endorsedDids } = useEvaluatorEndorsements(selectedEvaluators)
+  const { endorsedDids, isLoading: endorsementsLoading } =
+    useEvaluatorEndorsements(selectedEvaluators)
   // Direct follows ∪ DIDs endorsed by any selected trusted evaluator.
   // The viewer's own DID is excluded so the feed doesn't show the
   // viewer's own activity (matches the prior behaviour — direct
@@ -111,8 +112,19 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
     }
     return out
   }, [followedDids, endorsedDids, activeDid])
+  // Gate the feed fetch on BOTH author sources being resolved so the
+  // feed renders in a single frame instead of flashing direct-follows
+  // first and then a second pass with the evaluator-endorsed union.
+  // useEvaluatorEndorsements caches its result at module scope, so
+  // after the first /home visit `ready` flips effectively-synchronously
+  // on the next visit — only the cold first paint waits.
+  const ready = !followsLoading && !endorsementsLoading
   const { events, isLoading, isLoadingMore, hasMore, loadMore, error } =
-    useHomeFeed(effectiveFollows, { excludeCertLabels, includeCertLabels })
+    useHomeFeed(effectiveFollows, {
+      excludeCertLabels,
+      includeCertLabels,
+      ready,
+    })
 
   return (
     <>
