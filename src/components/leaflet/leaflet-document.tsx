@@ -305,11 +305,30 @@ function renderListChildren(
  * wrapping byte-ranges in <strong>/<em>/<a> as appropriate. Byte
  * indexing uses TextEncoder/TextDecoder so emoji round-trip cleanly.
  */
+/** Split a text segment on `\n` and interleave `<br>` between the
+ *  resulting pieces. Used for plaintext blocks that author tools
+ *  bake newlines into instead of emitting separate paragraph blocks
+ *  (the `pub.leaflet.blocks.text` lexicon allows either shape). The
+ *  `.leaflet-doc__para` CSS uses `white-space: pre-wrap` which would
+ *  honor the `\n` chars on its own, but emitting `<br>` explicitly
+ *  is robust against any ancestor white-space override and against
+ *  text-content-collapsing in legacy renderers. */
+function withLineBreaks(text: string, keyPrefix: string): ReactNode {
+  if (!text.includes("\n")) return text
+  const parts = text.split("\n")
+  const out: ReactNode[] = []
+  parts.forEach((part, i) => {
+    if (i > 0) out.push(<br key={`${keyPrefix}-br-${i}`} />)
+    if (part.length > 0) out.push(part)
+  })
+  return <>{out}</>
+}
+
 function renderInline(
   text: string,
   facets: Facet[] | undefined,
 ): ReactNode {
-  if (!facets || facets.length === 0) return text
+  if (!facets || facets.length === 0) return withLineBreaks(text, "p")
 
   const encoder = new TextEncoder()
   const decoder = new TextDecoder("utf-8")
@@ -332,7 +351,16 @@ function renderInline(
     if (start === end) continue
     const segment = decoder.decode(bytes.slice(start, end))
     if (segment.length === 0) continue
-    out.push(applyFacets(segment, activeFacets(facets, start, end), i))
+    const active = activeFacets(facets, start, end)
+    // No active facets across this segment → free to split newlines
+    // into explicit `<br>`s. With active facets we wrap as-is and
+    // let the parent's white-space: pre-wrap handle the `\n` so the
+    // facet wrapping element (e.g. `<a>`) stays a single node.
+    if (active.length === 0) {
+      out.push(withLineBreaks(segment, `s${i}`))
+    } else {
+      out.push(applyFacets(segment, active, i))
+    }
   }
 
   return <>{out}</>
