@@ -221,13 +221,15 @@ ol.leaflet-doc__list {
   /* A roomier default — the textarea felt cramped at 96px. The
      editor still grows as the user types. */
   min-height: 220px;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.leaflet-editor__content:focus-within {
-  border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
-}
+/* Focus state intentionally inherits the idle border (no
+   `:focus-within` rule changing the colour or adding a box-shadow
+   ring). The bolder treatment that used to fire when the caret
+   entered the editor read as a hard outline on the first line for
+   sighted users — keeping the frame static across focus states
+   matches the cert-detail surface. Focus is still indicated by
+   the native text caret inside the editor. */
 
 .leaflet-editor__surface {
   outline: none;

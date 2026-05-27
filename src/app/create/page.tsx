@@ -670,7 +670,7 @@ export default function CreatePage() {
             <LeafletEditor
               value={description}
               onChange={setDescription}
-              placeholder="Full description of this cert. Markdown-style headings, lists, and links are supported."
+              placeholder="Full description of this cert. Headings, lists, links, images, and video embeds are all supported via the toolbar."
               ariaLabel="Cert description"
               did={did ?? ""}
             />
