@@ -399,18 +399,6 @@ export default function Explore() {
     [setUrl],
   )
 
-  const onAttrToggle = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const key = e.currentTarget.dataset.attrKey
-      if (!key) return
-      const next = new Set(attrs)
-      if (e.currentTarget.checked) next.add(key)
-      else next.delete(key)
-      setUrl({ attrs: next.size > 0 ? Array.from(next).join(",") : null })
-    },
-    [attrs, setUrl],
-  )
-
   const onQualityToggle = useCallback(
     (slug: HyperlabelTier | UnlabeledSlug) => {
       const next = new Set(qualityIncluded)
@@ -490,9 +478,13 @@ export default function Explore() {
     // Org-quality filter — used on accounts (filters the actor list)
     // and certs (filters certs whose author org carries the tier).
     excludeOrgLabels:
-      kind === "accounts" || kind === "certs" ? excludeOrgLabels : undefined,
+      kind === "accounts" || kind === "certs" || kind === "projects"
+        ? excludeOrgLabels
+        : undefined,
     includeOrgLabels:
-      kind === "accounts" || kind === "certs" ? includeOrgLabels : undefined,
+      kind === "accounts" || kind === "certs" || kind === "projects"
+        ? includeOrgLabels
+        : undefined,
   })
 
   const onDegreeButtonClick = useCallback(
@@ -545,7 +537,6 @@ export default function Explore() {
   }, [localQuery])
 
   const [sortOpen, setSortOpen] = useState(false)
-  const [filtersOpen, setFiltersOpen] = useState(false)
   const [qualityOpen, setQualityOpen] = useState(false)
   const [subPrefixOpen, setSubPrefixOpen] = useState(false)
 
@@ -694,46 +685,13 @@ export default function Explore() {
                 )}
               </Popover>
 
-              {/* The generic attr-based Filter popover stays for
-                  projects only; on certs + accounts it's replaced
-                  by the labeler-tier Quality popover below. */}
-              {kind === "projects" ? (
-                <Popover
-                  open={filtersOpen}
-                  onClose={() => setFiltersOpen(false)}
-                  trigger={
-                    <button
-                      type="button"
-                      className="explore__chrome-btn"
-                      onClick={() => setFiltersOpen((v) => !v)}
-                      aria-expanded={filtersOpen}
-                    >
-                      <FilterIcon size={13} strokeWidth={1.75} aria-hidden />
-                      Filter{attrs.size ? ` (${attrs.size})` : ""}
-                    </button>
-                  }
-                >
-                  {attrOptions(kind).map((opt) => {
-                    const on = attrs.has(opt.key)
-                    return (
-                      <label
-                        key={opt.key}
-                        className="popover__item popover__item--check"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={on}
-                          data-attr-key={opt.key}
-                          onChange={onAttrToggle}
-                        />
-                        {opt.label}
-                      </label>
-                    )
-                  })}
-                </Popover>
-              ) : null}
-
-              {kind === "certs" || kind === "accounts" ? (
+              {/* Labeler-tier quality popover. On certs, shows both
+                  Cert quality (Hyperlabel tiers) and Account quality
+                  (Orglabeler tiers). On accounts + projects, shows
+                  Account quality only — projects' record-tier
+                  filtering is keyed off the author's org label, not
+                  the project itself. */}
+              {kind === "certs" || kind === "accounts" || kind === "projects" ? (
                 <Popover
                   open={qualityOpen}
                   onClose={() => setQualityOpen(false)}
@@ -787,6 +745,8 @@ export default function Explore() {
                       <hr className="popover__divider" aria-hidden="true" />
                       <p className="popover__section-heading">Account quality</p>
                     </>
+                  ) : kind === "projects" ? (
+                    <p className="popover__section-heading">Account quality</p>
                   ) : null}
                   {ORG_TIER_SLUGS.map((slug) => (
                     <label
@@ -1018,23 +978,6 @@ function searchPlaceholder(kind: ExploreKind): string {
   if (kind === "accounts") return "Search accounts by name…"
   if (kind === "projects") return "Search projects…"
   return "Search certs…"
-}
-
-function attrOptions(kind: ExploreKind): { key: string; label: string }[] {
-  if (kind === "accounts")
-    return [
-      { key: "has-avatar", label: "Has avatar" },
-      { key: "has-description", label: "Has description" },
-    ]
-  if (kind === "projects")
-    return [
-      { key: "has-banner", label: "Has banner" },
-      { key: "has-items", label: "Has at least one cert" },
-    ]
-  return [
-    { key: "has-image", label: "Has image" },
-    { key: "has-shortDescription", label: "Has description" },
-  ]
 }
 
 function Popover({
