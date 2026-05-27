@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, X, FolderGit2 } from "lucide-react"
+import { MapPin, Plus, X, FolderGit2 } from "lucide-react"
 import Image from "next/image"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
@@ -21,6 +21,9 @@ import {
 } from "@/lib/atproto/profile"
 import type { HypercertsLargeImage } from "@/lib/atproto/types"
 import { usePageTitle } from "@/lib/navbar-context"
+import LocationPickerDialog, {
+  type AddedLocation,
+} from "@/components/create/location-picker-dialog"
 
 /**
  * `/project/new` — new project. Mirrors the visual language of the
@@ -78,6 +81,12 @@ export default function CreateProjectPage() {
   const [description, setDescription] = useState<LinearDocument | null>(null)
   const [items, setItems] = useState<SelectedCert[]>([])
   const [addingCert, setAddingCert] = useState(false)
+  // Collections only carry ONE location (a single strongRef per the
+  // lexicon). The host stores a single picked value; the shared
+  // dialog still returns one entry per pick — we just replace
+  // instead of pushing.
+  const [location, setLocation] = useState<AddedLocation | null>(null)
+  const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false)
 
   const [pendingBannerBlob, setPendingBannerBlob] =
     useState<UploadedBlob | null>(null)
@@ -116,7 +125,14 @@ export default function CreateProjectPage() {
 
   useEffect(() => {
     setError(null)
-  }, [title, shortDescription, description, items, pendingBannerBlob])
+  }, [
+    title,
+    shortDescription,
+    description,
+    items,
+    location,
+    pendingBannerBlob,
+  ])
 
   const handleBannerFile = useCallback(
     async (file: File) => {
@@ -191,6 +207,7 @@ export default function CreateProjectPage() {
       description?: LinearDocument
       banner?: HypercertsLargeImage
       items?: Array<{ itemIdentifier: { uri: string; cid: string } }>
+      location?: { uri: string; cid: string }
     }
     const record: ProjectRecord = {
       $type: "org.hypercerts.collection",
@@ -214,6 +231,9 @@ export default function CreateProjectPage() {
       record.items = items.map((c) => ({
         itemIdentifier: { uri: c.uri, cid: c.cid },
       }))
+    }
+    if (location) {
+      record.location = { uri: location.ref.uri, cid: location.ref.cid }
     }
 
     try {
@@ -326,7 +346,7 @@ export default function CreateProjectPage() {
               <textarea
                 className="cert-detail__short-desc-input"
                 value={shortDescription}
-                placeholder="A short description (one or two lines) — optional"
+                placeholder="A short description (one or two lines)…"
                 aria-label="Short description"
                 onChange={(e) => setShortDescription(e.target.value)}
                 rows={3}
@@ -359,6 +379,46 @@ export default function CreateProjectPage() {
                 )
               }
             />
+          </section>
+
+          <section className="cert-detail__section">
+            <div className="cert-detail__section-header">
+              <h2 className="cert-detail__section-title">Location</h2>
+            </div>
+            {location ? (
+              <ul className="create-project__cert-list">
+                <li className="create-project__cert-row">
+                  <MapPin
+                    size={14}
+                    strokeWidth={1.75}
+                    aria-hidden
+                    style={{ flexShrink: 0, color: "var(--fg-muted)" }}
+                  />
+                  <span className="create-project__cert-title">
+                    {location.name}
+                  </span>
+                  <button
+                    type="button"
+                    className="create-project__cert-remove"
+                    aria-label={`Remove ${location.name}`}
+                    onClick={() => setLocation(null)}
+                  >
+                    <X size={14} strokeWidth={2} aria-hidden />
+                  </button>
+                </li>
+              </ul>
+            ) : null}
+            <div className="create-cert__contrib-actions">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsLocationDialogOpen(true)}
+              >
+                <Plus size={14} strokeWidth={1.75} aria-hidden />
+                {location ? "Change location" : "Add location"}
+              </Button>
+            </div>
           </section>
 
           <section className="cert-detail__section">
@@ -474,6 +534,19 @@ export default function CreateProjectPage() {
           </div>
         </div>
       </article>
+
+      {isLocationDialogOpen && did ? (
+        <LocationPickerDialog
+          ownDid={did}
+          targetDid={activeOrg ? activeOrg.groupDid : did}
+          onClose={() => setIsLocationDialogOpen(false)}
+          onPick={(added) => {
+            // Projects carry a single location — replace, don't push.
+            setLocation(added)
+            setIsLocationDialogOpen(false)
+          }}
+        />
+      ) : null}
     </form>
   )
 }
