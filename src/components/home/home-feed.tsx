@@ -13,6 +13,10 @@ import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useClickOutsideClose } from "@/hooks/use-click-outside-close"
 import { useEvaluatorEndorsements } from "@/hooks/use-evaluator-endorsements"
 import { useHomeFeed, type HomeFeedEvent } from "@/hooks/use-home-feed"
+import {
+  groupConsecutiveEndorsements,
+  type EndorsementGroupItem,
+} from "@/lib/utils/group-feed"
 import { useFollowedDids } from "@/hooks/use-followed-dids"
 import { formatRelativeTime, resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
@@ -216,14 +220,21 @@ function HomeFeedBody({
       />
     )
   }
+  const items = groupConsecutiveEndorsements(events)
   return (
     <>
       <ol className="home-feed">
-        {events.map((event) => (
-          <li key={event.uri} className="home-feed__item">
-            <HomeFeedRow event={event} />
-          </li>
-        ))}
+        {items.map((item) =>
+          item.type === "single" ? (
+            <li key={item.event.uri} className="home-feed__item">
+              <HomeFeedRow event={item.event} />
+            </li>
+          ) : (
+            <li key={item.key} className="home-feed__item">
+              <EndorsementGroupRow group={item} />
+            </li>
+          ),
+        )}
       </ol>
       {hasMore || isLoadingMore ? (
         <LoadMoreSentinel
@@ -482,6 +493,129 @@ function HomeFeedRow({ event }: { event: HomeFeedEvent }) {
         {formatRelativeTime(event.createdAt)}
       </time>
     </article>
+  )
+}
+
+/**
+ * Grouped row: "<actor> endorsed <first> and N others" with a "Show
+ * all" toggle that expands an inline list of every endorsed account.
+ *
+ * Time + avatar follow the same layout as the single-event HomeFeedRow
+ * so the visual rhythm of the feed stays consistent across mixed
+ * single + grouped rows. The first-subject sentence is the row's
+ * primary identity, since subjectDids[0] is the most recent
+ * endorsement in the burst.
+ */
+function EndorsementGroupRow({ group }: { group: EndorsementGroupItem }) {
+  const { info: lookup } = useAuthorInfo(group.actor)
+  const indexer = group.actorProfile
+  const actorName =
+    lookup?.displayName ||
+    indexer.displayName ||
+    lookup?.handle ||
+    indexer.handle ||
+    group.actor.slice(0, 16)
+  const actorAvatar =
+    lookup?.avatarUrl ||
+    buildAvatarUrlFromCid(indexer.did, indexer.avatarCid)
+  const actorInitials = getInitials(
+    lookup?.displayName ?? indexer.displayName,
+    group.actor,
+  )
+  const profileHref = `/profile/${encodeURIComponent(
+    lookup?.handle || indexer.handle || group.actor,
+  )}`
+
+  const othersCount = group.subjectDids.length - 1
+  const [expanded, setExpanded] = useState(false)
+
+  return (
+    <article className="home-feed__row">
+      <Link
+        href={profileHref}
+        className="home-feed__avatar"
+        aria-label={`${actorName}'s profile`}
+      >
+        <Avatar
+          size="sm"
+          src={actorAvatar ?? undefined}
+          alt=""
+          fallbackInitials={actorInitials}
+        />
+      </Link>
+      <div className="home-feed__content">
+        <p className="home-feed__sentence">
+          <Link href={profileHref} className="home-feed__actor">
+            {actorName}
+          </Link>{" "}
+          endorsed{" "}
+          <EndorsementGroupSummary
+            firstDid={group.subjectDids[0]}
+            othersCount={othersCount}
+          />
+        </p>
+        <button
+          type="button"
+          className="home-feed__group-toggle"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? "Show fewer" : "Show all"}
+        </button>
+        {expanded ? (
+          <ul className="home-feed__group-list">
+            {group.subjectDids.map((did) => (
+              <li key={did} className="home-feed__group-list-item">
+                <EndorsedAccountLink did={did} />
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+      <time
+        className="home-feed__time"
+        dateTime={group.createdAt}
+        title={group.createdAt}
+      >
+        {formatRelativeTime(group.createdAt)}
+      </time>
+    </article>
+  )
+}
+
+function EndorsementGroupSummary({
+  firstDid,
+  othersCount,
+}: {
+  firstDid: string
+  othersCount: number
+}) {
+  const { info } = useAuthorInfo(firstDid)
+  const name = info?.displayName || (info?.handle ? `@${info.handle}` : null)
+  const href = `/profile/${encodeURIComponent(info?.handle || firstDid)}`
+  return (
+    <>
+      <Link href={href} className="home-feed__target">
+        {name ?? "an account"}
+      </Link>
+      {othersCount > 0 ? (
+        <>
+          {" "}
+          and {othersCount} {othersCount === 1 ? "other" : "others"}
+        </>
+      ) : null}
+    </>
+  )
+}
+
+function EndorsedAccountLink({ did }: { did: string }) {
+  const { info } = useAuthorInfo(did)
+  const name = info?.displayName || (info?.handle ? `@${info.handle}` : null)
+  const href = `/profile/${encodeURIComponent(info?.handle || did)}`
+  return (
+    <Link href={href} className="home-feed__target">
+      {name ?? did.slice(0, 16)}
+    </Link>
   )
 }
 
