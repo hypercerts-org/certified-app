@@ -837,6 +837,44 @@
   gap: 2px;
 }
 
+/* Aside variant — tighter rows + flush left padding so the
+   contributor block fits the narrow meta column without feeling
+   crowded against the rounded card edge. */
+.cert-detail__contributors--aside {
+  gap: 0;
+}
+
+.cert-detail__contributors--aside .cert-detail__contributor {
+  padding: 4px 6px;
+}
+
+/* "Show all" tail link below the aside contributor preview. Inline
+   block — sits flush-left under the last preview row at the same
+   font size as the meta-value text. Quiet styling: no underline by
+   default, hover bumps the contrast. */
+.cert-detail__aside-see-all {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  text-decoration: none;
+  border-radius: 4px;
+  transition: background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.cert-detail__aside-see-all:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.cert-detail__aside-see-all:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
 .cert-detail__contributor {
   display: flex;
   align-items: center;

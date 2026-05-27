@@ -3,7 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { Calendar, ChevronRight, FileText, MapPin, Pencil, Target } from "lucide-react"
+import {
+  Calendar,
+  ChevronRight,
+  FileText,
+  MapPin,
+  Pencil,
+  Target,
+  Users,
+} from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -801,6 +809,90 @@ export default function ActivityDetail({
             </div>
           ) : null}
 
+          {/* Contributors row — preview of up to 5, with a "Show all"
+              tail link into the dedicated Contributors tab when there
+              are more. Lives in the aside (not the main pane) so the
+              top of the main column stays reserved for narrative
+              content. NOT tab-gated: the aside is identical on every
+              cert tab. */}
+          {contributorCount > 0 ? (
+            <div className="cert-detail__meta-row">
+              <dt className="cert-detail__meta-label">
+                <Users size={11} strokeWidth={2} aria-hidden />
+                Contributors
+                <span className="cert-detail__meta-count">
+                  {contributorCount}
+                </span>
+              </dt>
+              <dd className="cert-detail__meta-value">
+                {(() => {
+                  const ASIDE_CONTRIB_PREVIEW = 5
+                  const previewContributors = contributors.slice(
+                    0,
+                    ASIDE_CONTRIB_PREVIEW,
+                  )
+                  const hasMore = contributorCount > ASIDE_CONTRIB_PREVIEW
+                  const contributorsHref = pathname
+                    ? `${pathname}?tab=contributors`
+                    : null
+                  return (
+                    <>
+                      <ul className="cert-detail__contributors cert-detail__contributors--aside">
+                        {previewContributors.map((c, i) => {
+                          const roleText = contributionRoleText(
+                            c.contributionDetails,
+                          )
+                          return (
+                            <ContributorRow
+                              key={contributorKey(c, i)}
+                              contributor={c}
+                              role={roleText}
+                              weight={c.contributionWeight ?? null}
+                            />
+                          )
+                        })}
+                      </ul>
+                      {hasMore && contributorsHref ? (
+                        <Link
+                          href={contributorsHref}
+                          scroll={false}
+                          replace
+                          className="cert-detail__aside-see-all"
+                        >
+                          Show all
+                        </Link>
+                      ) : null}
+                    </>
+                  )
+                })()}
+              </dd>
+            </div>
+          ) : null}
+
+          {/* Locations row — peer of Created / Time period / Work
+              scope / Contributors so the dl's own `gap: 12px` rule
+              keeps the spacing consistent. NOT tab-gated: the aside
+              is identical on every cert tab. */}
+          {locations.length > 0 ? (
+            <div className="cert-detail__meta-row">
+              <dt className="cert-detail__meta-label">
+                <MapPin size={11} strokeWidth={2} aria-hidden />
+                Locations
+                <span className="cert-detail__meta-count">
+                  {locations.length}
+                </span>
+              </dt>
+              <dd className="cert-detail__meta-value">
+                <CertLocationsMap locations={locations} />
+              </dd>
+            </div>
+          ) : null}
+
+          {/* Rights row — moved BELOW Locations per the user's
+              ordering. The other meta rows are quick scalar facts;
+              Rights references an external record and reads as a
+              less-frequent reference, so it sits at the bottom of
+              the meta list. */}
           {value.rights ? (
             <div className="cert-detail__meta-row">
               <dt className="cert-detail__meta-label">
@@ -815,30 +907,6 @@ export default function ActivityDetail({
                 ) : (
                   <span className="cert-detail__uri">{value.rights.uri}</span>
                 )}
-              </dd>
-            </div>
-          ) : null}
-
-          {/* Locations row — peer of Created / Time period / Rights so
-              the dl's own `gap: 12px` rule keeps the spacing
-              consistent. (Earlier this lived in a separate section
-              under the dl, which inherited the aside's `gap: 16px`
-              and visibly drifted further from Rights than the other
-              rows were from each other.) NOT tab-gated: the aside
-              is identical on every cert tab; anything added inside
-              it lands on overview / description / contributors /
-              updates at once. */}
-          {locations.length > 0 ? (
-            <div className="cert-detail__meta-row">
-              <dt className="cert-detail__meta-label">
-                <MapPin size={11} strokeWidth={2} aria-hidden />
-                Locations
-                <span className="cert-detail__meta-count">
-                  {locations.length}
-                </span>
-              </dt>
-              <dd className="cert-detail__meta-value">
-                <CertLocationsMap locations={locations} />
               </dd>
             </div>
           ) : null}
@@ -858,82 +926,14 @@ export default function ActivityDetail({
                 parent doesn't stretch it to full width). */}
             {shortDescSection}
 
-            {/* Contributors and Projects share a row: two 50/50 columns
-                on desktop, stacked single-column below the
-                cert-detail-2col breakpoint. Each side mounts the same
-                wrapper shape (`<div.cert-detail__two-col-cell>` →
-                `<section.cert-detail__section>`) so the
-                `cert-detail__section-header` blocks land at identical
-                y positions and the "Contributors" / "Projects"
-                headings sit on one horizontal line. */}
-            <div className="cert-detail__two-col">
-              <div className="cert-detail__two-col-cell">
-                {(() => {
-                  // Overview preview — cap at 5 rows. When the cert
-                  // has more, the section header gains a "See all"
-                  // link into the dedicated Contributors tab so
-                  // readers can jump to the full list without
-                  // scrolling the overview.
-                  const OVERVIEW_CONTRIB_PREVIEW = 5
-                  const previewContributors = contributors.slice(
-                    0,
-                    OVERVIEW_CONTRIB_PREVIEW,
-                  )
-                  const hasMore = contributorCount > OVERVIEW_CONTRIB_PREVIEW
-                  const contributorsHref = pathname
-                    ? `${pathname}?tab=contributors`
-                    : null
-                  return (
-                    <section className="cert-detail__section">
-                      <div className="cert-detail__section-header">
-                        <h2 className="cert-detail__section-title">
-                          Contributors
-                        </h2>
-                        <span className="cert-detail__section-count">
-                          {contributorCount}
-                        </span>
-                      </div>
-                      {contributorCount > 0 ? (
-                        <ul className="cert-detail__contributors">
-                          {previewContributors.map((c, i) => {
-                            const roleText = contributionRoleText(c.contributionDetails)
-                            return (
-                              <ContributorRow
-                                key={contributorKey(c, i)}
-                                contributor={c}
-                                role={roleText}
-                                weight={c.contributionWeight ?? null}
-                              />
-                            )
-                          })}
-                        </ul>
-                      ) : (
-                        <p className="cert-detail__empty-line">
-                          No contributors yet.
-                        </p>
-                      )}
-                      {hasMore && contributorsHref ? (
-                        <Link
-                          href={contributorsHref}
-                          scroll={false}
-                          replace
-                          className="cert-detail__section-see-all-footer"
-                        >
-                          {contributorCount} contributors — see all
-                        </Link>
-                      ) : null}
-                    </section>
-                  )
-                })()}
-              </div>
+            {/* Contributors moved to the aside meta-list — see the
+                Contributors row above (`<dt>Contributors</dt>`). The
+                main pane now renders Projects as a single full-width
+                section instead of sharing a row with Contributors. */}
+            {rkey ? <CertProjects did={did} rkey={rkey} /> : null}
 
-              <div className="cert-detail__two-col-cell">
-                {rkey ? <CertProjects did={did} rkey={rkey} /> : null}
-              </div>
-            </div>
-
-            {/* The Locations section + map now live in the left pane
-                (aside) — see `cert-detail__aside-locations` above. */}
+            {/* Locations section + map: aside (see the Locations
+                meta-row above). */}
 
             {rkey ? (
               <ContextUpdates
