@@ -301,10 +301,10 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   )
 
   return (
-    <div className="sx sx--wide">
+    <div className="sx">
       <h1 className="sx__heading sr-only">Group settings</h1>
 
-      <div className="sx__layout">
+      <div className="page-layout">
         <aside className="sx__menu">
           <nav aria-label="Group settings sections">
             <ul className="sx-menu">
@@ -331,7 +331,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
           </nav>
         </aside>
 
-        <div className="sx__panel">
+        <div className="page-layout__main sx__panel">
           {/* Handle — read-only; group service doesn't support
               handle changes after registration. */}
           <section
