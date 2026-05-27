@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { Inbox, MapPin, SlidersHorizontal, UserCheck, Users } from "lucide-react"
+import { Filter as FilterIcon, Inbox, MapPin, UserCheck, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -324,10 +324,15 @@ function QualityFilter({
     onChange(next)
   }
 
+  const resetToDefault = () => {
+    onChange(new Set<QualityFilterValue>([...DEFAULT_INCLUDED_TIERS, UNLABELED_SLUG]))
+  }
+
   // "Filtered" badge highlights the button when the popover state
   // diverges from the default (every visible tier + unlabeled).
   // Total filter slots = number of Hyperlabel tiers + 1 for unlabeled.
   const filtered = included.size !== HYPERLABEL_TIERS.length + 1
+  const isDefault = isQualityDefault(included)
 
   return (
     <div className="home-feed__filter" ref={wrapRef}>
@@ -338,12 +343,13 @@ function QualityFilter({
         aria-haspopup="true"
         aria-expanded={open}
         aria-label="Filter feed by cert quality"
+        title="Filter by cert quality"
       >
-        <SlidersHorizontal size={14} strokeWidth={1.75} aria-hidden />
+        <FilterIcon size={14} strokeWidth={1.75} aria-hidden />
       </button>
       {open ? (
         <div className="home-feed__filter-pop" role="dialog" aria-label="Cert quality filters">
-          <p className="home-feed__filter-title">Show certs labeled</p>
+          <p className="home-feed__filter-title">Certs quality</p>
           <ul className="home-feed__filter-list">
             {HYPERLABEL_DISPLAY_ORDER.map((tier) => (
               <li key={tier}>
@@ -368,10 +374,26 @@ function QualityFilter({
               </label>
             </li>
           </ul>
+          <button
+            type="button"
+            className="home-feed__filter-reset"
+            onClick={resetToDefault}
+            disabled={isDefault}
+          >
+            Reset to default
+          </button>
         </div>
       ) : null}
     </div>
   )
+}
+
+function isQualityDefault(included: Set<QualityFilterValue>): boolean {
+  // Default = every tier in DEFAULT_INCLUDED_TIERS, plus unlabeled.
+  if (included.size !== DEFAULT_INCLUDED_TIERS.size + 1) return false
+  if (!included.has(UNLABELED_SLUG)) return false
+  for (const t of DEFAULT_INCLUDED_TIERS) if (!included.has(t)) return false
+  return true
 }
 
 /**
@@ -400,6 +422,10 @@ function EvaluatorFilter({
     if (next.has(did)) next.delete(did)
     else next.add(did)
     onChange(next)
+  }
+
+  const resetToDefault = () => {
+    onChange(new Set(TRUSTED_EVALUATOR_DIDS))
   }
 
   const partial = selected.size !== TRUSTED_EVALUATOR_DIDS.length
@@ -432,6 +458,14 @@ function EvaluatorFilter({
               </li>
             ))}
           </ul>
+          <button
+            type="button"
+            className="home-feed__filter-reset"
+            onClick={resetToDefault}
+            disabled={!partial}
+          >
+            Reset to default
+          </button>
         </div>
       ) : null}
     </div>

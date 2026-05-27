@@ -399,6 +399,22 @@ export default function Explore() {
     [setUrl],
   )
 
+  // "Reset to default" buttons clear the URL params they own. The
+  // readers fall back to the canonical default sets when those params
+  // are missing, so a single `setUrl({ key: null })` is enough.
+  const onResetQuality = useCallback(() => {
+    setUrl({ quality: null, orgQuality: null })
+  }, [setUrl])
+
+  const onResetDegrees = useCallback(() => {
+    setUrl({ degrees: null, degree: null })
+  }, [setUrl])
+
+  const onResetSort = useCallback(() => {
+    setUrl({ sort: null })
+    setSortOpen(false)
+  }, [setUrl])
+
   const onQualityToggle = useCallback(
     (slug: HyperlabelTier | UnlabeledSlug) => {
       const next = new Set(qualityIncluded)
@@ -683,6 +699,15 @@ export default function Explore() {
                     </button>
                   ),
                 )}
+                <hr className="popover__divider" aria-hidden="true" />
+                <button
+                  type="button"
+                  className="popover__reset-btn"
+                  onClick={onResetSort}
+                  disabled={sort === "newest"}
+                >
+                  Reset to default
+                </button>
               </Popover>
 
               {/* Labeler-tier quality popover. On certs, shows both
@@ -743,11 +768,13 @@ export default function Explore() {
                         {UNLABELED_LABEL}
                       </label>
                       <hr className="popover__divider" aria-hidden="true" />
-                      <p className="popover__section-heading">Account quality</p>
                     </>
-                  ) : kind === "projects" ? (
-                    <p className="popover__section-heading">Account quality</p>
                   ) : null}
+                  {/* Account-quality heading shows on every kind that
+                      surfaces the orglabeler tiers. On certs it sits
+                      below the divider; on accounts + projects it's
+                      the top of the popover. */}
+                  <p className="popover__section-heading">Account quality</p>
                   {ORG_TIER_SLUGS.map((slug) => (
                     <label
                       key={slug}
@@ -769,6 +796,23 @@ export default function Explore() {
                     />
                     {UNLABELED_LABEL}
                   </label>
+                  {/* Reset returns every section in this popover to
+                      its default selection by clearing the URL params
+                      it owns. Disabled when nothing has been customised
+                      so it doesn't read as an active control on the
+                      default state. */}
+                  <hr className="popover__divider" aria-hidden="true" />
+                  <button
+                    type="button"
+                    className="popover__reset-btn"
+                    onClick={onResetQuality}
+                    disabled={
+                      (kind !== "certs" || qualityIsDefault) &&
+                      orgQualityIsDefault
+                    }
+                  >
+                    Reset to default
+                  </button>
                 </Popover>
               ) : null}
             </div>
@@ -778,6 +822,7 @@ export default function Explore() {
             <EndorsementDegreeBar
               degrees={degrees}
               onSelect={onDegreeButtonClick}
+              onReset={onResetDegrees}
               meta={data.endorsementClosure}
             />
           ) : null}
@@ -838,12 +883,18 @@ const DEGREE_TITLE: Record<Degree, string> = {
 function EndorsementDegreeBar({
   degrees,
   onSelect,
+  onReset,
   meta,
 }: {
   degrees: Set<Degree>
   onSelect: (e: React.MouseEvent<HTMLButtonElement>) => void
+  onReset: () => void
   meta: ReturnType<typeof useExploreData>["endorsementClosure"]
 }) {
+  // Default is {1}. Hide the reset affordance when we're already
+  // there so the inline control doesn't read as "active" on a fresh
+  // visit.
+  const isDefault = degrees.size === 1 && degrees.has(1)
   return (
     <div
       className="explore__degree-bar"
@@ -868,6 +919,16 @@ function EndorsementDegreeBar({
             </button>
           )
         })}
+        {!isDefault ? (
+          <button
+            type="button"
+            className="explore__degree-reset"
+            onClick={onReset}
+            aria-label="Reset endorsement rings to default"
+          >
+            Reset
+          </button>
+        ) : null}
       </div>
       {meta?.truncated ? (
         <p

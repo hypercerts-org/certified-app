@@ -673,6 +673,39 @@ a.home-feed__preview:hover {
   flex-shrink: 0;
 }
 
+/* "Reset to default" link at the bottom of each filter popover.
+   Quiet text-button styling so it doesn't compete with the active
+   selection above; disabled state when already at default keeps it
+   visible but inert. Mirrors `.popover__reset-btn` in explore.css. */
+.home-feed__filter-reset {
+  display: block;
+  width: calc(100% - 8px);
+  margin: 8px 4px 0;
+  padding: 6px 8px;
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+  border-radius: 0;
+  background: none;
+  text-align: left;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.home-feed__filter-reset:hover:not(:disabled) {
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
+.home-feed__filter-reset:disabled {
+  color: var(--fg-muted, #b7bdc6);
+  cursor: default;
+}
+
 /* ---------- Trusted-evaluator popover overrides ---------- */
 
 .home-feed__filter-pop--evaluators {
