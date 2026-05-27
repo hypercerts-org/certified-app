@@ -1413,6 +1413,19 @@
   font-weight: 600;
 }
 
+/* Tight wrapper around an input + its counter line. Used on the
+   title (inside the headline) and on the short description
+   (inside its section). The headline + section both have ~12-32px
+   gaps between their children; that's the right rhythm between
+   blocks, but the counter is metadata about the input directly
+   above it and should sit close. 4px keeps it tucked under the
+   field without forcing a tight cap on the typography. */
+.create-cert__input-with-counter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 /* Auth loading spinner — centered in the dashboard main pane
    while the session check is in flight. The /create page resolves
    `useAuth().isLoading` first; rendering the EmptyState during

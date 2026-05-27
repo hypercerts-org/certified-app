@@ -159,30 +159,28 @@ dialog.signin-modal.app-modal {
 
 dialog.signin-modal.app-modal .signin-modal__header {
   /* Right padding reserves space for the absolute-positioned X
-     (32px button flush in the corner + 12px breathing room).
-     Without this the title would slide under the close button on
-     narrow modals. */
-  padding: 20px 56px 12px 24px;
+     (24px button inset 4px from the modal corner + 12px breathing
+     room = 40px). Without this the title would slide under the
+     close button on narrow modals. */
+  padding: 20px 40px 12px 24px;
 }
 
-/* Close button anchored flush to the modal's top-right corner —
-   `top: 0; right: 0` means the button's outer edges sit exactly
-   on the modal's top + right borders. The hover background fills
-   the button and therefore visibly reaches the modal's top and
-   right edges. 32×32 is the smallest hit target we can use here
-   without dropping below the WCAG 2.5.5 minimum touch size, and
-   it reads as a tighter chip in the corner than the previous 36px.
-   The top-right border-radius matches the modal's `--radius` so
-   the hover highlight integrates with the rounded corner instead
-   of overflowing past it; the bottom-left keeps a small inner
-   radius so the chip reads as docked into the corner. */
+/* Close button — the 18px `<X>` glyph sits in exactly the same
+   place it did when the button was 32×32 flush in the corner
+   (centre at 16px / 16px from the modal's top-right corner) but
+   the hover highlight is a smaller 24×24 chip inset 4px from the
+   corner. A 24×24 button centres an 18px icon at the same screen
+   position (button top 4 + icon offset 3 + icon centre 9 = 16,
+   matching the previous button top 0 + icon offset 7 + icon
+   centre 9 = 16). The radius is a uniform 6px now that the chip
+   no longer touches the modal's rounded corner. */
 dialog.signin-modal.app-modal .signin-modal__close {
   position: absolute;
-  top: 0;
-  right: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: 0 var(--radius) 0 6px;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
 }
 
 dialog.signin-modal.app-modal .signin-modal__body {

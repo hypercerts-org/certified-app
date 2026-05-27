@@ -393,6 +393,15 @@ export default function CreatePage() {
     ) {
       return
     }
+    {
+      const seen = new Set<string>()
+      for (const c of contributors) {
+        const n = normalizeIdentity(c.identity).toLowerCase()
+        if (!n) continue
+        if (seen.has(n)) return
+        seen.add(n)
+      }
+    }
 
     setIsSubmitting(true)
     setError(null)
@@ -535,16 +544,32 @@ export default function CreatePage() {
   const shortDescOver = shortDescCount > SHORT_DESC_MAX
   // Contributors gate: every row that has been started must resolve
   // to a proper DID or handle. Empty rows are dropped at save time
-  // so they don't fail this check.
+  // so they don't fail this check. Additionally, the same identity
+  // cannot appear twice — compare normalised (lowercased, @-stripped)
+  // forms so "@Alice.bsky.social" + "alice.bsky.social" register as
+  // the same contributor.
   const allContributorsValid = contributors.every((c) =>
     isContributorIdentityAcceptable(c.identity),
   )
+  const duplicateIdentitySet = (() => {
+    const seen = new Set<string>()
+    const dupes = new Set<string>()
+    for (const c of contributors) {
+      const norm = normalizeIdentity(c.identity).toLowerCase()
+      if (!norm) continue
+      if (seen.has(norm)) dupes.add(norm)
+      seen.add(norm)
+    }
+    return dupes
+  })()
+  const noContributorDuplicates = duplicateIdentitySet.size === 0
   const canSubmit =
     trimmedTitleCount >= TITLE_MIN &&
     titleCount <= TITLE_MAX &&
     trimmedShortDescCount >= SHORT_DESC_MIN &&
     shortDescCount <= SHORT_DESC_MAX &&
     allContributorsValid &&
+    noContributorDuplicates &&
     !isSubmitting
 
   return (
@@ -713,51 +738,55 @@ export default function CreatePage() {
 
         <div className="page-layout__main cert-detail__main">
           <header className="cert-detail__headline">
-            <input
-              type="text"
-              className="cert-detail__title-input"
-              aria-label="Title"
-              placeholder="Title for your cert"
-              value={title}
-              maxLength={TITLE_MAX}
-              onChange={(e) => setTitle(e.target.value)}
-              autoFocus
-            />
+            <div className="create-cert__input-with-counter">
+              <input
+                type="text"
+                className="cert-detail__title-input"
+                aria-label="Title"
+                placeholder="Title for your cert"
+                value={title}
+                maxLength={TITLE_MAX}
+                onChange={(e) => setTitle(e.target.value)}
+                autoFocus
+              />
+              <p
+                className={`create-cert__counter${
+                  titleOver
+                    ? " create-cert__counter--over"
+                    : titleUnder
+                      ? " create-cert__counter--under"
+                      : ""
+                }`}
+                aria-live="polite"
+              >
+                {titleCount}/{TITLE_MAX} · min. {TITLE_MIN} characters
+              </p>
+            </div>
           </header>
-          <p
-            className={`create-cert__counter${
-              titleOver
-                ? " create-cert__counter--over"
-                : titleUnder
-                  ? " create-cert__counter--under"
-                  : ""
-            }`}
-            aria-live="polite"
-          >
-            {titleCount}/{TITLE_MAX} · {TITLE_MIN} characters minimum
-          </p>
 
           <section className="cert-detail__section">
-            <textarea
-              className="cert-detail__short-desc-input"
-              value={shortDescription}
-              placeholder="A short description (one or two lines)…"
-              aria-label="Short description"
-              onChange={(e) => setShortDescription(e.target.value)}
-              rows={3}
-            />
-            <p
-              className={`create-cert__counter${
-                shortDescOver
-                  ? " create-cert__counter--over"
-                  : shortDescUnder
-                    ? " create-cert__counter--under"
-                    : ""
-              }`}
-              aria-live="polite"
-            >
-              {shortDescCount}/{SHORT_DESC_MAX} · {SHORT_DESC_MIN} characters minimum
-            </p>
+            <div className="create-cert__input-with-counter">
+              <textarea
+                className="cert-detail__short-desc-input"
+                value={shortDescription}
+                placeholder="A short description (one or two lines)…"
+                aria-label="Short description"
+                onChange={(e) => setShortDescription(e.target.value)}
+                rows={3}
+              />
+              <p
+                className={`create-cert__counter${
+                  shortDescOver
+                    ? " create-cert__counter--over"
+                    : shortDescUnder
+                      ? " create-cert__counter--under"
+                      : ""
+                }`}
+                aria-live="polite"
+              >
+                {shortDescCount}/{SHORT_DESC_MAX} · min. {SHORT_DESC_MIN} characters
+              </p>
+            </div>
           </section>
 
           <section className="cert-detail__section">
@@ -793,6 +822,9 @@ export default function CreatePage() {
                   const identityValid = isContributorIdentityAcceptable(
                     c.identity,
                   )
+                  const normalized = normalizeIdentity(c.identity).toLowerCase()
+                  const identityDuplicate =
+                    normalized.length > 0 && duplicateIdentitySet.has(normalized)
                   return (
                   <li key={c.key} className="create-cert__contrib-row">
                     <ContributorIdentityField
@@ -806,7 +838,7 @@ export default function CreatePage() {
                       }
                       ariaLabel={`Contributor ${idx + 1} identity`}
                       idx={idx}
-                      invalid={!identityValid}
+                      invalid={!identityValid || identityDuplicate}
                     />
                     <input
                       type="text"
@@ -861,6 +893,13 @@ export default function CreatePage() {
                       >
                         Use a DID (did:plc:…) or a handle (alice.bsky.social).
                       </p>
+                    ) : identityDuplicate ? (
+                      <p
+                        className="create-cert__contrib-error"
+                        role="alert"
+                      >
+                        Already added — each contributor can only appear once.
+                      </p>
                     ) : null}
                   </li>
                   )
@@ -892,8 +931,13 @@ export default function CreatePage() {
                     selfInfo.handle && selfInfo.handle !== selfInfo.did
                       ? `@${selfInfo.handle}`
                       : selfInfo.did
+                  const selfNormalised = normalizeIdentity(
+                    selfIdentity,
+                  ).toLowerCase()
                   const alreadyAdded = contributors.some(
-                    (c) => c.identity.trim() === selfIdentity,
+                    (c) =>
+                      normalizeIdentity(c.identity).toLowerCase() ===
+                      selfNormalised,
                   )
                   return (
                     <Button
