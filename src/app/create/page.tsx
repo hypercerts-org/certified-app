@@ -128,6 +128,23 @@ function isContributorIdentityAcceptable(raw: string): boolean {
   return isAtprotoIdentity(normalizeIdentity(v))
 }
 
+/**
+ * A contributor weight passes if it's empty (the field is optional)
+ * or parses as a finite, non-negative number. Decimals are allowed
+ * — the lexicon stores weights as free-form strings so "0.25" or
+ * "1.5" are valid representations. Strings like "high" or "lots"
+ * are rejected; the cert detail page can't normalise those to a
+ * percentage and the % column header would be misleading.
+ */
+function isContributorWeightAcceptable(raw: string): boolean {
+  const v = raw.trim()
+  if (!v) return true
+  // `Number(v)` (not `parseFloat`) so a trailing "10abc" is rejected
+  // — parseFloat would silently truncate to 10.
+  const n = Number(v)
+  return Number.isFinite(n) && n >= 0
+}
+
 interface AddedLocation {
   /** strongRef to the freshly-written or resolved location record. */
   ref: StrongRef
@@ -389,7 +406,11 @@ export default function CreatePage() {
     if (trimT < TITLE_MIN || trimS < SHORT_DESC_MIN) return
     if (titleCount > TITLE_MAX || shortDescCount > SHORT_DESC_MAX) return
     if (
-      !contributors.every((c) => isContributorIdentityAcceptable(c.identity))
+      !contributors.every(
+        (c) =>
+          isContributorIdentityAcceptable(c.identity) &&
+          isContributorWeightAcceptable(c.weight),
+      )
     ) {
       return
     }
@@ -555,8 +576,10 @@ export default function CreatePage() {
   // cannot appear twice — compare normalised (lowercased, @-stripped)
   // forms so "@Alice.bsky.social" + "alice.bsky.social" register as
   // the same contributor.
-  const allContributorsValid = contributors.every((c) =>
-    isContributorIdentityAcceptable(c.identity),
+  const allContributorsValid = contributors.every(
+    (c) =>
+      isContributorIdentityAcceptable(c.identity) &&
+      isContributorWeightAcceptable(c.weight),
   )
   const duplicateIdentitySet = (() => {
     const seen = new Set<string>()
@@ -829,6 +852,7 @@ export default function CreatePage() {
                   const identityValid = isContributorIdentityAcceptable(
                     c.identity,
                   )
+                  const weightValid = isContributorWeightAcceptable(c.weight)
                   const normalized = normalizeIdentity(c.identity).toLowerCase()
                   const identityDuplicate =
                     normalized.length > 0 && duplicateIdentitySet.has(normalized)
@@ -879,8 +903,14 @@ export default function CreatePage() {
                     />
                     <input
                       type="text"
-                      className="cert-detail__meta-input create-cert__contrib-weight"
+                      inputMode="decimal"
+                      className={
+                        weightValid
+                          ? "cert-detail__meta-input create-cert__contrib-weight"
+                          : "cert-detail__meta-input create-cert__contrib-weight create-cert__contrib-id-input--invalid"
+                      }
                       aria-label={`Contributor ${idx + 1} weight (optional)`}
+                      aria-invalid={!weightValid}
                       placeholder="Weight (optional)"
                       value={c.weight}
                       maxLength={100}
@@ -919,6 +949,13 @@ export default function CreatePage() {
                         role="alert"
                       >
                         Already added — each contributor can only appear once.
+                      </p>
+                    ) : !weightValid ? (
+                      <p
+                        className="create-cert__contrib-error"
+                        role="alert"
+                      >
+                        Weight must be a number (decimals are fine, e.g. 1.5).
                       </p>
                     ) : null}
                   </li>
