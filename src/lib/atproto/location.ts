@@ -26,6 +26,39 @@ export interface LocationRecord {
   createdAt?: string
 }
 
+/**
+ * Split a human-readable location name into an Open Location Code
+ * ("Plus Code") prefix and the remaining display name. Geocoders
+ * sometimes prepend a short code — `5FX5+QGF`, `G3FC+2P`, etc. —
+ * that's useful as a globally-resolvable handle but adds noise when
+ * the place already has a recognizable name attached. The renderer
+ * uses the split so it can show the clean name as the primary label
+ * AND surface the Plus Code as a small copy-paste-able tag next to
+ * it.
+ *
+ * Plus Code shape per the spec: a sequence of 4+ alphanumerics
+ * (uppercase letters / digits) followed by `+` followed by 2-3 more.
+ * Whitespace + an optional separator comma after the code are
+ * consumed too — `"5FX5+QGF, Timbi-Madina, Guinée"` parses to
+ * `{plusCode: "5FX5+QGF", name: "Timbi-Madina, Guinée"}`.
+ *
+ * If the input doesn't start with a Plus Code, `plusCode` is null
+ * and `name` is the input verbatim.
+ */
+const PLUS_CODE_PREFIX = /^([A-Z0-9]{4,}\+[A-Z0-9]{2,3})\s*,?\s*/
+
+export function splitLocationName(name: string): {
+  plusCode: string | null
+  name: string
+} {
+  const match = name.match(PLUS_CODE_PREFIX)
+  if (!match) return { plusCode: null, name }
+  return {
+    plusCode: match[1],
+    name: name.slice(match[0].length).trim(),
+  }
+}
+
 export interface LatLng {
   lat: number
   lng: number

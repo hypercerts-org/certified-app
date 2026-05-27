@@ -12,6 +12,7 @@ import { parseAtUri } from "@/lib/atproto/activity-uri"
 import {
   parseLocationShape,
   locationFallbackText,
+  splitLocationName,
   type LocationRecord,
 } from "@/lib/atproto/location"
 import { getBlobRefLink } from "@/lib/atproto/types"
@@ -136,8 +137,15 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
               shape = parseLocationShape(record.locationType, blobText)
             }
           }
+          // Strip the Plus Code prefix from the display name so the
+          // pin label reads as the human-friendly place ("Timbi-
+          // Madina, Guinée" not "5FX5+QGF, Timbi-Madina, Guinée").
+          // The code itself is surfaced separately below the map as
+          // a copy-paste affordance — see the names-list render.
+          const rawName = record.name?.trim() ?? ""
+          const split = splitLocationName(rawName)
           const name =
-            record.name?.trim() || (shape ? "Location" : "Unnamed location")
+            (split.name || rawName || (shape ? "Location" : "Unnamed location"))
           let pin: MapPinT | null = null
           let polygon: MapPolygonT | null = null
           if (shape?.kind === "point") {
@@ -195,18 +203,27 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
   // map — mappable AND unmappable. Mappable entries surface just the
   // name (the pin label already covers the geometry); unmappable
   // entries additionally show the fallback text so the address /
-  // h3 / geohash isn't lost.
+  // h3 / geohash isn't lost. The Plus Code prefix (when present in
+  // the raw name) is rendered as a click-to-copy tag instead of
+  // taking up space inside the primary name.
   const namesList =
     resolved.length > 0 ? (
       <ul className="cert-detail__map-locations">
         {resolved.map((r) => {
-          const name =
-            r.record?.name?.trim() || r.fallback || "Unnamed location"
-          const hasFallbackDetail = !!r.fallback && !!r.record?.name?.trim()
+          const raw = r.record?.name?.trim() ?? ""
+          const split = splitLocationName(raw)
+          const displayName =
+            split.name || raw || r.fallback || "Unnamed location"
+          const hasFallbackDetail = !!r.fallback && !!raw
           return (
             <li key={r.uri} className="cert-detail__map-locations-item">
               <MapPin size={14} strokeWidth={1.75} aria-hidden />
-              <span className="cert-detail__map-locations-name">{name}</span>
+              <span className="cert-detail__map-locations-name">
+                {displayName}
+              </span>
+              {split.plusCode ? (
+                <PlusCodeTag code={split.plusCode} />
+              ) : null}
               {hasFallbackDetail ? (
                 <span className="cert-detail__map-locations-detail">
                   {r.fallback}
@@ -284,5 +301,42 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
         </AppDialog>
       ) : null}
     </div>
+  )
+}
+
+/**
+ * Inline copy-paste tag for the Open Location Code prefix of a
+ * location name. Renders as a small monospace pill next to the
+ * human-readable place; clicking copies the code to the clipboard
+ * and the label flips to "Copied" for a moment so the action is
+ * confirmed. Falls through to a non-interactive span if the browser
+ * doesn't expose `navigator.clipboard.writeText`.
+ */
+function PlusCodeTag({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false)
+  const handleCopy = async () => {
+    if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // Permissions blocked or document isn't focused — silently
+      // fall through. The tag stays in place and the viewer can
+      // copy manually by selecting the text.
+    }
+  }
+  return (
+    <button
+      type="button"
+      className="cert-detail__map-locations-plus"
+      onClick={handleCopy}
+      aria-label={`Copy Plus Code ${code}`}
+      title={copied ? "Copied" : "Copy Plus Code"}
+    >
+      {copied ? "Copied" : code}
+    </button>
   )
 }

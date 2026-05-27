@@ -1100,6 +1100,34 @@
   text-overflow: ellipsis;
 }
 
+/* Plus Code copy-paste pill. Quiet monospace tag — reads as
+   metadata next to the human-readable name. Hover bumps the
+   contrast a touch so it's discoverable as interactive. */
+.cert-detail__map-locations-plus {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg-muted);
+  font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.cert-detail__map-locations-plus:hover {
+  color: var(--fg-primary);
+  background: var(--overlay-weak);
+  border-color: var(--border-hover);
+}
+
+.cert-detail__map-locations-plus:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
 /* ---------- /create page tweaks ----------
    The create-cert page reuses the cert-detail visual shell
    (`.page-layout.cert-detail--wide`, `.cert-detail__aside`, etc.)
