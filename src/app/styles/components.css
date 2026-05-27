@@ -159,21 +159,29 @@ dialog.signin-modal.app-modal {
 
 dialog.signin-modal.app-modal .signin-modal__header {
   /* Right padding reserves space for the absolute-positioned X
-     (32px button + 12px inset on its right). Without this the
-     title would slide under the close button on narrow modals. */
-  padding: 20px 56px 12px 24px;
+     (36px button flush in the corner + 12px breathing room).
+     Without this the title would slide under the close button on
+     narrow modals. */
+  padding: 20px 60px 12px 24px;
 }
 
-/* Close button anchored to the top-right corner of the modal with
-   equal inset on the top + right sides. The 32×32 hover highlight
-   sits exactly the same distance from both the modal's top border
-   and its right border so the affordance reads as symmetrically
-   placed in the corner, not "almost in the corner but shifted
-   inward to one side." */
+/* Close button anchored flush to the modal's top-right corner —
+   `top: 0; right: 0` means the button's outer edges sit exactly
+   on the modal's top + right borders (equal distance: zero from
+   both). On hover the background fills the button and visibly
+   reaches the modal's top and right edges, instead of stopping
+   short inside an inset chip. The button's own top-right
+   border-radius matches the modal's `--radius` so the hover
+   highlight integrates with the rounded corner instead of
+   overflowing past it; the bottom-left keeps a small inner
+   radius so the chip reads as docked into the corner. */
 dialog.signin-modal.app-modal .signin-modal__close {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 0;
+  right: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 0 var(--radius) 0 8px;
 }
 
 dialog.signin-modal.app-modal .signin-modal__body {

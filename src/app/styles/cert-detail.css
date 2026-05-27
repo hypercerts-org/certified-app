@@ -1295,8 +1295,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  /* Matches the Author avatar's effective size (24×24 — see the
+     `.cert-detail__headline-author > div:first-child` override
+     that scales the shared Avatar component down to 24px on the
+     headline byline) so the two glyphs read as a pair. */
+  width: 24px;
+  height: 24px;
   border-radius: 4px;
   overflow: hidden;
   background: var(--bg-sunken);

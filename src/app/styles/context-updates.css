@@ -28,17 +28,23 @@
   display: none;
 }
 
-/* Same shape as `.cert-detail__meta-label` (Date created / Author /
-   Project headings on the cert overview) — smaller font-size than
-   the cert-detail__section-title family so the Updates heading
-   reads as a peer of the headline-column labels above it instead
-   of a stronger main-pane section title. */
+/* Identical to `.cert-detail__meta-label` (the Author / Date
+   created / Project headings on the cert overview headline) so
+   the Updates section heading reads as a peer of those labels —
+   same font-size, weight, uppercase + letter-spacing, color, and
+   inline-flex line-height. The h2 needs an explicit
+   `line-height: 1` because the browser default (~1.2) makes the
+   uppercase glyphs sit lower than the inline-flex spans they're
+   supposed to match. */
 .context-updates__heading {
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--fg-muted);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
   margin: 0;
 }
 
