@@ -143,7 +143,13 @@ export default function ProjectDetail({
     !!activeOrg &&
     activeOrg.groupDid === did &&
     (activeOrg.role === "owner" || activeOrg.role === "admin")
-  const isOwner = (!!sessionDid && sessionDid === did) || canEditAsActiveOrg
+  // When acting as a group, only group-owned projects are editable;
+  // the personal-edit branch only fires when no org is active.
+  // Otherwise a member who switched into a group would still see
+  // the Edit button on their own personal projects.
+  const isOwner = activeOrg
+    ? canEditAsActiveOrg
+    : !!sessionDid && sessionDid === did
   const editTargetDid = canEditAsActiveOrg ? did : undefined
 
   // -------------------------------------------------------------------

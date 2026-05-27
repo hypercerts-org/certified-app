@@ -228,8 +228,15 @@ export default function ActivityDetail({
     !!activeOrg &&
     activeOrg.groupDid === did &&
     (activeOrg.role === "owner" || activeOrg.role === "admin")
-  const isCreator =
-    (!!sessionDid && sessionDid === did) || canEditAsActiveOrg
+  // When acting as a group, the user can only edit certs OWNED BY
+  // that group — even though the session DID is still their
+  // personal identity. Without this, a member who switches into a
+  // group they're part of would still see the Edit button on their
+  // own personal certs, which contradicts the active identity. The
+  // personal-edit branch only fires when there's no active org.
+  const isCreator = activeOrg
+    ? canEditAsActiveOrg
+    : !!sessionDid && sessionDid === did
   // When the creator is acting as the group, writes route through
   // the BFF (target ≠ session); otherwise straight XRPC.
   const editTargetDid = canEditAsActiveOrg ? did : undefined
