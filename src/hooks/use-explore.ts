@@ -189,6 +189,11 @@ export function useExploreData(opts: {
   /** Orglabeler tier labels to require (analog of
    *  includeCertLabels). */
   includeOrgLabels?: readonly string[]
+  /** Set by the explore page when the active filter consumes the
+   *  endorsement-graph closure and the user has deselected every
+   *  ring (degrees set is empty). The hook short-circuits to an
+   *  empty result list instead of defaulting back to degree=1. */
+  noEndorsementRings?: boolean
 }): ExploreData {
   const {
     kind,
@@ -201,6 +206,7 @@ export function useExploreData(opts: {
     includeOrgLabels,
   } = opts
   const degree: 1 | 2 | 3 = opts.degree ?? 1
+  const noEndorsementRings: boolean = opts.noEndorsementRings ?? false
   // Stable key so the load effect can refetch when the exclude list
   // changes without retriggering when an identical-content array
   // arrives by reference.
@@ -278,6 +284,7 @@ export function useExploreData(opts: {
           cursor: null,
           signal: controller.signal,
           degree,
+          noEndorsementRings,
           excludeCertLabels: excludeCertLabels ?? null,
           includeCertLabels: includeCertLabels ?? null,
           excludeOrgLabels: excludeOrgLabels ?? null,
@@ -315,6 +322,7 @@ export function useExploreData(opts: {
     followedDids,
     myGroupDids,
     degree,
+    noEndorsementRings,
     closureVersion,
     excludeKey,
     includeKey,
@@ -346,10 +354,11 @@ export function useExploreData(opts: {
             cursor,
             signal: null,
             degree,
+            noEndorsementRings,
             excludeCertLabels: excludeCertLabels ?? null,
-          includeCertLabels: includeCertLabels ?? null,
-          excludeOrgLabels: excludeOrgLabels ?? null,
-          includeOrgLabels: includeOrgLabels ?? null,
+            includeCertLabels: includeCertLabels ?? null,
+            excludeOrgLabels: excludeOrgLabels ?? null,
+            includeOrgLabels: includeOrgLabels ?? null,
           })
           if (generation !== generationRef.current) return
           setState((current) => {
@@ -405,6 +414,7 @@ export function useExploreData(opts: {
     followedDids,
     myGroupDids,
     degree,
+    noEndorsementRings,
     closureVersion,
     excludeKey,
     includeKey,
@@ -468,6 +478,11 @@ interface LoadArgs {
   cursor: string | null
   signal: AbortSignal | null
   degree: 1 | 2 | 3
+  /** True when the active filter consumes the endorsement-graph
+   *  closure and the user has deselected every ring. The loader
+   *  short-circuits to an empty page in that state instead of
+   *  defaulting back to degree=1. */
+  noEndorsementRings: boolean
   /** Forwarded to `fetchIndexerActivities` when loading the certs
    *  page; null on other kinds. */
   excludeCertLabels: readonly string[] | null
@@ -479,9 +494,44 @@ interface LoadArgs {
 }
 
 async function loadPage(args: LoadArgs): Promise<LoadedPage> {
+  // Explicit-empty "include" filter = the user deselected every
+  // option in that filter's popover. The indexer's HTTP proxy
+  // normalises empty arrays to `null` (i.e. "no filter"), which would
+  // silently show every record — masking what should look like an
+  // empty result set. Short-circuit at the loader level so deselecting
+  // all options reads as "nothing matches", which is the natural
+  // affordance for re-adding a selection.
+  if (
+    (args.kind === "certs" || args.kind === "projects") &&
+    isExplicitlyEmpty(args.includeCertLabels)
+  ) {
+    return EMPTY_PAGE
+  }
+  if (
+    (args.kind === "accounts" || args.kind === "certs") &&
+    isExplicitlyEmpty(args.includeOrgLabels)
+  ) {
+    return EMPTY_PAGE
+  }
+  // Endorsement-degree multi-select: zero rings selected = "show no
+  // endorsement matches" (only applies to endorsement-graph filters).
+  if (
+    args.noEndorsementRings &&
+    (
+      (args.kind === "accounts" && args.filter === "endorsed") ||
+      ((args.kind === "certs" || args.kind === "projects") &&
+        args.filter === "by-endorsed")
+    )
+  ) {
+    return EMPTY_PAGE
+  }
   if (args.kind === "accounts") return loadAccountsPage(args)
   if (args.kind === "projects") return loadProjectsPage(args)
   return loadCertsPage(args)
+}
+
+function isExplicitlyEmpty(v: readonly string[] | null | undefined): boolean {
+  return Array.isArray(v) && v.length === 0
 }
 
 /**

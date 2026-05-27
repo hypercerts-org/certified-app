@@ -120,23 +120,37 @@ type Degree = 1 | 2 | 3
 const ALL_DEGREES: readonly Degree[] = [1, 2, 3] as const
 
 /**
- * Parse the URL into a non-empty `Set<Degree>` of selected endorsement
- * rings. The control is a multi-select of three tags — direct, 2nd-hop,
+ * Sentinel for an explicitly-empty selection. Without this, a writer
+ * that puts `""` into the URL would be normalised away by setUrl
+ * (which deletes empty values), and the next read would resolve to
+ * the default set — making "deselect all" indistinguishable from "no
+ * preference" for the user. We pick `-` because it never collides
+ * with a legitimate value across degrees / quality / orgQuality.
+ */
+const EMPTY_SELECTION_SENTINEL = "-"
+
+/**
+ * Parse the URL into a `Set<Degree>` of selected endorsement rings.
+ * The control is a multi-select of three tags — direct, 2nd-hop,
  * 3rd-hop — and the URL serialises the active subset as a sorted
  * comma-separated list (`?degrees=1,3`).
+ *
+ * Special values:
+ *   - missing param → default `{1}` (direct endorsements only)
+ *   - `degrees=-`   → empty set (user explicitly deselected every
+ *                     ring; result list renders empty until they
+ *                     re-add at least one)
  *
  * Migration shim: a legacy `?degree=N` (single integer, cumulative
  * up to N — the old segmented-control semantics) is read as
  * `{1, …, N}`. Preferred form is `degrees=...`; the migration keeps
  * existing bookmarks meaningful.
- *
- * Returns `{1}` (default — direct endorsements only) when neither
- * param is present, matching the old default-degree behaviour.
  */
 function parseDegrees(
   rawDegrees: string | null,
   legacyDegree: string | null,
 ): Set<Degree> {
+  if (rawDegrees === EMPTY_SELECTION_SENTINEL) return new Set<Degree>()
   if (rawDegrees) {
     const out = new Set<Degree>()
     for (const part of rawDegrees.split(",")) {
@@ -152,8 +166,10 @@ function parseDegrees(
 }
 
 /** Serialise a degree set for URL storage — sorted, comma-joined.
- *  Returns null for the `{1}` default so the URL stays clean. */
+ *  Returns null for the `{1}` default so the URL stays clean, and
+ *  the explicit-empty sentinel when the user deselected every ring. */
 function serializeDegrees(degrees: Set<Degree>): string | null {
+  if (degrees.size === 0) return EMPTY_SELECTION_SENTINEL
   if (degrees.size === 1 && degrees.has(1)) return null
   return ALL_DEGREES.filter((d) => degrees.has(d)).join(",")
 }
@@ -237,6 +253,9 @@ export default function Explore() {
         UNLABELED_SLUG,
       ])
     }
+    if (qualityParam === EMPTY_SELECTION_SENTINEL) {
+      return new Set<HyperlabelTier | UnlabeledSlug>()
+    }
     const valid = new Set<string>([...HYPERLABEL_TIERS, UNLABELED_SLUG])
     return new Set(
       qualityParam
@@ -287,6 +306,9 @@ export default function Explore() {
         ...DEFAULT_ORG_TIER_SLUGS,
         UNLABELED_SLUG,
       ])
+    }
+    if (orgQualityParam === EMPTY_SELECTION_SENTINEL) {
+      return new Set<OrgTierSlug | UnlabeledSlug>()
     }
     const valid = new Set<string>([...ORG_TIER_SLUGS, UNLABELED_SLUG])
     return new Set(
@@ -405,12 +427,18 @@ export default function Explore() {
         next.size === defaultSlugs.size &&
         Array.from(defaultSlugs).every((s) => next.has(s))
       // URL preserves slug order matching the popover render order
-      // (named tiers first, then unlabeled).
+      // (named tiers first, then unlabeled). Empty set writes the
+      // sentinel so deselect-all isn't normalised back to default.
       const ordered: (HyperlabelTier | UnlabeledSlug)[] = [
         ...HYPERLABEL_TIERS.filter((t) => next.has(t)),
         ...(next.has(UNLABELED_SLUG) ? [UNLABELED_SLUG] : []),
       ]
-      setUrl({ quality: isDefault ? null : ordered.join(",") })
+      const value = isDefault
+        ? null
+        : ordered.length === 0
+          ? EMPTY_SELECTION_SENTINEL
+          : ordered.join(",")
+      setUrl({ quality: value })
     },
     [qualityIncluded, setUrl],
   )
@@ -431,7 +459,12 @@ export default function Explore() {
         ...ORG_TIER_SLUGS.filter((s) => next.has(s)),
         ...(next.has(UNLABELED_SLUG) ? [UNLABELED_SLUG] : []),
       ]
-      setUrl({ orgQuality: isDefault ? null : ordered.join(",") })
+      const value = isDefault
+        ? null
+        : ordered.length === 0
+          ? EMPTY_SELECTION_SENTINEL
+          : ordered.join(",")
+      setUrl({ orgQuality: value })
     },
     [orgQualityIncluded, setUrl],
   )
@@ -446,6 +479,10 @@ export default function Explore() {
     // stale `?degrees=…` on a non-endorsement filter doesn't perturb
     // caching keys / loader behaviour.
     degree: showsDegreeControl ? maxDegree(degrees) : undefined,
+    // Signals "user deselected every endorsement ring on the
+    // endorsement-graph filter" — the loader short-circuits to an
+    // empty page in that state instead of defaulting back to {1}.
+    noEndorsementRings: showsDegreeControl && degrees.size === 0,
     // Cert-quality filter — only meaningful for the certs kind, but
     // passing it for other kinds is a no-op at the load-page level.
     excludeCertLabels: kind === "certs" ? excludeCertLabels : undefined,
@@ -464,16 +501,14 @@ export default function Explore() {
       const key =
         raw === "1" ? 1 : raw === "2" ? 2 : raw === "3" ? 3 : null
       if (!key) return
-      // Toggle: deselect if already active, select otherwise. Block
-      // the move that would leave the set empty — at least one ring
-      // must stay active so the result list isn't filtered to zero.
+      // Toggle: deselect if already active, select otherwise.
+      // Deselecting the last ring is allowed — the result list
+      // renders empty until the user re-adds a ring. serializeDegrees
+      // encodes the empty set as the explicit sentinel so the round-
+      // trip through the URL doesn't collapse it back to the default.
       const next = new Set<Degree>(degrees)
-      if (next.has(key)) {
-        if (next.size === 1) return
-        next.delete(key)
-      } else {
-        next.add(key)
-      }
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       // Clear the legacy `degree=` param while we're patching so it
       // doesn't outlive a multi-select edit and re-take precedence
       // on the next read.
