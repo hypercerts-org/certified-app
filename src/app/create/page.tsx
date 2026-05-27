@@ -117,7 +117,7 @@ interface RightsOption {
 }
 
 export default function CreatePage() {
-  const { isAuthenticated, did } = useAuth()
+  const { isAuthenticated, isLoading, did } = useAuth()
   const { activeOrg } = useOrg()
   const router = useRouter()
   // Author info for the signed-in user — fuels the "Add me" shortcut
@@ -240,8 +240,10 @@ export default function CreatePage() {
   // graphemes (not bytes). Intl.Segmenter is the right tool;
   // older browsers fall back to `Array.from(str).length` which
   // counts code points (close enough at the 300-cap range and
-  // never overestimates).
-  const shortDescGraphemes = useCallback((s: string): number => {
+  // never overestimates). Reused for the title counter too so
+  // both fields count "visible characters" rather than raw code
+  // units — emoji + grapheme clusters then count as one.
+  const countGraphemes = useCallback((s: string): number => {
     if (typeof Intl !== "undefined" && "Segmenter" in Intl) {
       const seg = new Intl.Segmenter(undefined, { granularity: "grapheme" })
       let count = 0
@@ -250,7 +252,15 @@ export default function CreatePage() {
     }
     return Array.from(s).length
   }, [])
-  const shortDescCount = shortDescGraphemes(shortDescription)
+  const titleCount = countGraphemes(title)
+  const shortDescCount = countGraphemes(shortDescription)
+  // Lexicon caps: title.maxLength = 256 (bytes), shortDescription
+  // maxGraphemes = 300. Minimums are our product floor, not a
+  // lexicon constraint — kept here so the validation gate +
+  // counter copy stay in sync.
+  const TITLE_MIN = 5
+  const TITLE_MAX = 256
+  const SHORT_DESC_MIN = 100
   const SHORT_DESC_MAX = 300
 
   useEffect(() => {
@@ -290,6 +300,25 @@ export default function CreatePage() {
     })
   }, [])
 
+  // Auth state takes a tick to resolve on refresh — the session is
+  // restored from a cookie via `/api/auth/session` and that round-
+  // trip hasn't completed yet. During that window `isAuthenticated`
+  // is false but the user is in fact signed in. Surfacing a
+  // "Sign in to create" message during the loading window felt
+  // jarring on every refresh; we now render a quiet spinner until
+  // the session check settles.
+  if (isLoading) {
+    return (
+      <div className="dashboard">
+        <div className="dashboard__body">
+          <div className="dashboard__main create-cert__auth-loading">
+            <LoadingSpinner size="md" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="dashboard">
@@ -326,8 +355,14 @@ export default function CreatePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim() || !shortDescription.trim() || !did) return
-    if (shortDescCount > SHORT_DESC_MAX) return
+    if (!did) return
+    // Guard against the form firing past the disabled submit button
+    // (Enter-key submit in a child input would still trigger
+    // handleSubmit). Same bounds the submit-disable check enforces.
+    const trimT = countGraphemes(title.trim())
+    const trimS = countGraphemes(shortDescription.trim())
+    if (trimT < TITLE_MIN || trimS < SHORT_DESC_MIN) return
+    if (titleCount > TITLE_MAX || shortDescCount > SHORT_DESC_MAX) return
 
     setIsSubmitting(true)
     setError(null)
@@ -453,13 +488,23 @@ export default function CreatePage() {
     }
   }
 
+  // Validation gates the submit button. Title + short description
+  // both have min + max bounds; we count graphemes (visible chars)
+  // not code units. Trimmed length keeps "    " from counting as
+  // five real characters.
+  const trimmedTitleCount = countGraphemes(title.trim())
+  const trimmedShortDescCount = countGraphemes(shortDescription.trim())
+  const titleUnder = trimmedTitleCount > 0 && trimmedTitleCount < TITLE_MIN
+  const titleOver = titleCount > TITLE_MAX
+  const shortDescUnder =
+    trimmedShortDescCount > 0 && trimmedShortDescCount < SHORT_DESC_MIN
+  const shortDescOver = shortDescCount > SHORT_DESC_MAX
   const canSubmit =
-    title.trim().length > 0 &&
-    shortDescription.trim().length > 0 &&
+    trimmedTitleCount >= TITLE_MIN &&
+    titleCount <= TITLE_MAX &&
+    trimmedShortDescCount >= SHORT_DESC_MIN &&
     shortDescCount <= SHORT_DESC_MAX &&
     !isSubmitting
-
-  const overLimit = shortDescCount > SHORT_DESC_MAX
 
   return (
     <form onSubmit={handleSubmit}>
@@ -630,36 +675,47 @@ export default function CreatePage() {
             <input
               type="text"
               className="cert-detail__title-input"
-              aria-label="Title (required)"
-              placeholder="Title for your cert *"
+              aria-label="Title"
+              placeholder="Title for your cert"
               value={title}
-              maxLength={256}
+              maxLength={TITLE_MAX}
               onChange={(e) => setTitle(e.target.value)}
-              required
               autoFocus
             />
           </header>
+          <p
+            className={`create-cert__counter${
+              titleOver
+                ? " create-cert__counter--over"
+                : titleUnder
+                  ? " create-cert__counter--under"
+                  : ""
+            }`}
+            aria-live="polite"
+          >
+            {titleCount}/{TITLE_MAX} · {TITLE_MIN} characters minimum
+          </p>
 
           <section className="cert-detail__section">
             <textarea
               className="cert-detail__short-desc-input"
               value={shortDescription}
-              placeholder="A short description (one or two lines) *"
-              aria-label="Short description (required)"
+              placeholder="A short description (one or two lines)…"
+              aria-label="Short description"
               onChange={(e) => setShortDescription(e.target.value)}
               rows={3}
-              required
             />
             <p
               className={`create-cert__counter${
-                overLimit ? " create-cert__counter--over" : ""
+                shortDescOver
+                  ? " create-cert__counter--over"
+                  : shortDescUnder
+                    ? " create-cert__counter--under"
+                    : ""
               }`}
               aria-live="polite"
             >
-              {shortDescCount}/{SHORT_DESC_MAX}
-            </p>
-            <p className="create-cert__required-hint">
-              <span aria-hidden>*</span> Required
+              {shortDescCount}/{SHORT_DESC_MAX} · {SHORT_DESC_MIN} characters minimum
             </p>
           </section>
 

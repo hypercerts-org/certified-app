@@ -1376,24 +1376,6 @@
   min-width: 0;
 }
 
-/* "* Required" hint rendered once near the top of the form, just
-   below the short-description counter. Asterisks in the title +
-   short-description placeholders signal which fields are required;
-   this line decodes the asterisk so first-time authors know what
-   it means. */
-.create-cert__required-hint {
-  margin: 0;
-  padding: 4px 0 0 0;
-  font-size: 0.75rem;
-  color: var(--fg-muted);
-}
-
-.create-cert__required-hint > span {
-  color: var(--color-error, #b91c1c);
-  font-weight: 600;
-  margin-right: 4px;
-}
-
 /* "Add contributor" + "Add me" sit side by side. Wrapping the two
    buttons in a single flex row keeps them aligned at the left edge
    while letting them flow onto a second line on narrow screens. */
@@ -1413,9 +1395,25 @@
   font-variant-numeric: tabular-nums;
 }
 
-.create-cert__counter--over {
+.create-cert__counter--over,
+.create-cert__counter--under {
   color: var(--color-error, #b91c1c);
+}
+
+.create-cert__counter--over {
   font-weight: 600;
+}
+
+/* Auth loading spinner — centered in the dashboard main pane
+   while the session check is in flight. The /create page resolves
+   `useAuth().isLoading` first; rendering the EmptyState during
+   that window flashed a "Sign in to create" message on every
+   refresh even for already-signed-in users. */
+.create-cert__auth-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
 }
 
 .create-cert__contrib-list {
@@ -1441,7 +1439,12 @@
 }
 
 .create-cert__contrib-weight {
-  text-align: right;
+  /* Left-align matches the role + identity inputs in the same row.
+     Right-aligning the weight made the "Weight (optional)"
+     placeholder hug the right edge while the entered numeric value
+     was supposed to read as a label; consistent left alignment
+     keeps the row visually tidy. */
+  text-align: left;
 }
 
 /* Identity field wrapper — positions the typeahead dropdown
