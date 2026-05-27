@@ -1504,6 +1504,12 @@ function LocationPickerDialog({
   // ----- Submit state -----
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  // Info banner shown when a "New" submit was short-circuited to an
+  // existing My locations entry. Holds the matched location's
+  // display name so the user knows which record was reused.
+  const [reusedExistingName, setReusedExistingName] = useState<string | null>(
+    null,
+  )
 
   // Forward-geocode autocomplete — same shape as the profile picker.
   // The 350ms debounce keeps Nominatim out of trouble; the
@@ -1588,6 +1594,31 @@ function LocationPickerDialog({
 
   const handleSubmitNew = async () => {
     if (!coords) return
+    // Short-circuit: if the picked coordinates already match a
+    // record in My locations, reuse the existing strongRef instead
+    // of minting a duplicate. Match precision is 4 decimals
+    // (~11m) — tight enough that two different addresses won't
+    // collide but loose enough that a re-typed search result picks
+    // up the same Nominatim coords as a previous save.
+    const round4 = (n: number) => Math.round(n * 10000) / 10000
+    const targetLat = round4(coords.lat)
+    const targetLng = round4(coords.lng)
+    const existing = myLocations.find((loc) => {
+      if (!loc.coords) return false
+      return (
+        round4(loc.coords.lat) === targetLat &&
+        round4(loc.coords.lng) === targetLng
+      )
+    })
+    if (existing) {
+      setReusedExistingName(existing.name)
+      // Surface the banner for ~1.4s so the user can read it before
+      // the dialog closes via onPick.
+      setIsSaving(true)
+      setSaveError(null)
+      window.setTimeout(() => onPick(existing), 1400)
+      return
+    }
     setIsSaving(true)
     setSaveError(null)
     try {
@@ -1628,7 +1659,21 @@ function LocationPickerDialog({
   const center: LatLng = hasPin
     ? (activeCoords as LatLng)
     : { lat: 20, lng: 0 }
-  const zoom = hasPin ? 6 : 1
+  // Existing-tab selections zoom in to street-ish detail (13);
+  // new-tab clicks keep a wider 6 so the user can keep clicking
+  // nearby spots without the camera lurching closer each time.
+  const zoom = hasPin ? (mode === "existing" ? 13 : 6) : 1
+
+  // Force the Leaflet `<MapContainer>` to remount whenever the
+  // existing-tab selection changes — Leaflet only honours its
+  // initial `center` / `zoom` props on mount, and our shared
+  // MapDataEffect intentionally skips re-centering when a SINGLE
+  // pin moves (it would otherwise lurch the camera every time a
+  // user clicks-to-pin on the new tab). Re-mounting via the `key`
+  // prop is the lightest way to get the "jump + zoom" behaviour
+  // only for the existing-tab dropdown flow.
+  const mapKey =
+    mode === "existing" ? `existing-${selectedExistingUri || "empty"}` : "new"
 
   // Map height — exactly the calc the cert-detail "view location"
   // modal uses (`CertLocationsMap` → AppDialog) so the add + view
@@ -1687,6 +1732,10 @@ function LocationPickerDialog({
 
         {mode === "new" ? (
           <>
+            <p className="create-cert__loc-hint">
+              Type a place to search, or click anywhere on the map to
+              drop a pin.
+            </p>
             <div className="create-cert__loc-combobox">
               <input
                 type="text"
@@ -1767,6 +1816,7 @@ function LocationPickerDialog({
             </div>
             <div className="create-cert__loc-map">
               <Map
+                key={mapKey}
                 pins={pins}
                 center={center}
                 zoom={zoom}
@@ -1820,6 +1870,7 @@ function LocationPickerDialog({
                 </select>
                 <div className="create-cert__loc-map">
                   <Map
+                    key={mapKey}
                     pins={pins}
                     center={center}
                     zoom={zoom}
@@ -1838,6 +1889,12 @@ function LocationPickerDialog({
           </>
         )}
 
+        {reusedExistingName ? (
+          <p className="create-cert__loc-reused" role="status">
+            Already in My locations — using your existing record:{" "}
+            <strong>{reusedExistingName}</strong>.
+          </p>
+        ) : null}
         {saveError ? (
           <p className="cert-detail__error-desc" role="alert">
             {saveError}
