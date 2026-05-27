@@ -34,6 +34,23 @@
   .app-shell:has(.cert-detail--wide) .app-shell__content {
     max-width: 1280px;
   }
+
+  /* Cert detail flips the shared `.page-layout` column order — main
+     reading column on the LEFT, supplementary aside on the RIGHT.
+     Same widths as before; just swap which side they sit on.
+     Profile page keeps the original 296px-left / 1fr-right since it
+     doesn't carry the `.cert-detail--wide` modifier.
+     DOM order stays aside-first (semantic supplementary block);
+     CSS grid-column placement does the visual flip. */
+  .cert-detail--wide.page-layout {
+    grid-template-columns: minmax(0, 1fr) 296px;
+  }
+  .cert-detail--wide.page-layout > .cert-detail__aside {
+    grid-column: 2;
+  }
+  .cert-detail--wide.page-layout > .cert-detail__main {
+    grid-column: 1;
+  }
 }
 
 /* ---------- Loading + error ---------- */
