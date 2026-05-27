@@ -842,82 +842,87 @@ export default function ActivityDetail({
 
         {activeTab === "overview" ? (
           <>
+            {/* Short description + Read-full-description button sit
+                ABOVE the Contributors / Projects row so the cert's
+                narrative reads first, then the structural facts. The
+                Read button is sized to its content (inline-flex on the
+                link + align-self:flex-start in CSS so the flex-column
+                parent doesn't stretch it to full width). */}
+            {shortDescSection}
+
             {/* Contributors and Projects share a row: two 50/50 columns
                 on desktop, stacked single-column below the
-                cert-detail-2col breakpoint. Wrap renders the section
-                whether there are zero contributors or many — projects
-                still shows up alongside; an empty contributors slot
-                keeps the column structure intact. */}
+                cert-detail-2col breakpoint. Each side mounts the same
+                wrapper shape (`<div.cert-detail__two-col-cell>` →
+                `<section.cert-detail__section>`) so the
+                `cert-detail__section-header` blocks land at identical
+                y positions and the "Contributors" / "Projects"
+                headings sit on one horizontal line. */}
             <div className="cert-detail__two-col">
-              {(() => {
-                // Overview preview — cap at 5 rows. When the cert has
-                // more, the section header gains a "See all" link
-                // into the dedicated Contributors tab so readers can
-                // jump to the full list without scrolling the
-                // overview.
-                const OVERVIEW_CONTRIB_PREVIEW = 5
-                const previewContributors = contributors.slice(
-                  0,
-                  OVERVIEW_CONTRIB_PREVIEW,
-                )
-                const hasMore = contributorCount > OVERVIEW_CONTRIB_PREVIEW
-                const contributorsHref = pathname
-                  ? `${pathname}?tab=contributors`
-                  : null
-                return (
-                  <section className="cert-detail__section cert-detail__two-col-cell">
-                    <div className="cert-detail__section-header">
-                      <h2 className="cert-detail__section-title">
-                        Contributors
-                      </h2>
-                      <span className="cert-detail__section-count">
-                        {contributorCount}
-                      </span>
-                    </div>
-                    {contributorCount > 0 ? (
-                      <ul className="cert-detail__contributors">
-                        {previewContributors.map((c, i) => {
-                          const roleText = contributionRoleText(c.contributionDetails)
-                          return (
-                            <ContributorRow
-                              key={contributorKey(c, i)}
-                              contributor={c}
-                              role={roleText}
-                              weight={c.contributionWeight ?? null}
-                            />
-                          )
-                        })}
-                      </ul>
-                    ) : (
-                      <p className="cert-detail__empty-line">
-                        No contributors yet.
-                      </p>
-                    )}
-                    {hasMore && contributorsHref ? (
-                      <Link
-                        href={contributorsHref}
-                        scroll={false}
-                        replace
-                        className="cert-detail__section-see-all-footer"
-                      >
-                        {contributorCount} contributors — see all
-                      </Link>
-                    ) : null}
-                  </section>
-                )
-              })()}
+              <div className="cert-detail__two-col-cell">
+                {(() => {
+                  // Overview preview — cap at 5 rows. When the cert
+                  // has more, the section header gains a "See all"
+                  // link into the dedicated Contributors tab so
+                  // readers can jump to the full list without
+                  // scrolling the overview.
+                  const OVERVIEW_CONTRIB_PREVIEW = 5
+                  const previewContributors = contributors.slice(
+                    0,
+                    OVERVIEW_CONTRIB_PREVIEW,
+                  )
+                  const hasMore = contributorCount > OVERVIEW_CONTRIB_PREVIEW
+                  const contributorsHref = pathname
+                    ? `${pathname}?tab=contributors`
+                    : null
+                  return (
+                    <section className="cert-detail__section">
+                      <div className="cert-detail__section-header">
+                        <h2 className="cert-detail__section-title">
+                          Contributors
+                        </h2>
+                        <span className="cert-detail__section-count">
+                          {contributorCount}
+                        </span>
+                      </div>
+                      {contributorCount > 0 ? (
+                        <ul className="cert-detail__contributors">
+                          {previewContributors.map((c, i) => {
+                            const roleText = contributionRoleText(c.contributionDetails)
+                            return (
+                              <ContributorRow
+                                key={contributorKey(c, i)}
+                                contributor={c}
+                                role={roleText}
+                                weight={c.contributionWeight ?? null}
+                              />
+                            )
+                          })}
+                        </ul>
+                      ) : (
+                        <p className="cert-detail__empty-line">
+                          No contributors yet.
+                        </p>
+                      )}
+                      {hasMore && contributorsHref ? (
+                        <Link
+                          href={contributorsHref}
+                          scroll={false}
+                          replace
+                          className="cert-detail__section-see-all-footer"
+                        >
+                          {contributorCount} contributors — see all
+                        </Link>
+                      ) : null}
+                    </section>
+                  )
+                })()}
+              </div>
 
               <div className="cert-detail__two-col-cell">
                 {rkey ? <CertProjects did={did} rkey={rkey} /> : null}
               </div>
             </div>
-
-            {/* Short description + Read-full-description button now sit
-                BELOW the contributors / projects row, with the Read
-                button sized to its content (inline-flex on the link
-                + align-self:flex-start in CSS so the flex-column parent
-                doesn't stretch it to full width). */}
-            {shortDescSection}
 
             {/* The Locations section + map now live in the left pane
                 (aside) — see `cert-detail__aside-locations` above. */}
