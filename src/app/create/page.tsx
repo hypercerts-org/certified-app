@@ -1421,18 +1421,19 @@ function LocationPickerDialog({
   const [mode, setMode] = useState<"new" | "existing">("existing")
 
   // ----- New-record fields -----
-  // Two separate text states by design:
-  //   `searchQuery` drives the Nominatim typeahead. It's ephemeral
-  //     — picking a suggestion (or clicking the map) clears it so
-  //     the user knows the search has resolved into a pin.
-  //   `name`        is the value the record will be saved with.
-  //     It's seeded from the picked/reverse-geocoded display name
-  //     but the user is free to overwrite it with something more
-  //     specific (e.g. "Main office" instead of "123 Main St,
-  //     San Francisco, CA, United States"). Editing name does NOT
-  //     re-fire a search.
-  const [searchQuery, setSearchQuery] = useState("")
+  // One field, two modes:
+  //   "search" — user is typing to find a place. Nominatim
+  //              suggestions appear in a dropdown beneath. Picking a
+  //              suggestion (or clicking the map) flips us into
+  //              "edit" mode.
+  //   "edit"   — user is refining the saved name (e.g. "Main office"
+  //              instead of "123 Main St, San Francisco, CA, United
+  //              States"). Typing does NOT re-fire a search; the
+  //              dropdown stays closed.
+  // Clearing the field flips back to "search" so the user can find
+  // a new place after the initial pick.
   const [name, setName] = useState("")
+  const [fieldMode, setFieldMode] = useState<"search" | "edit">("search")
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     null,
   )
@@ -1540,14 +1541,14 @@ function LocationPickerDialog({
     null,
   )
 
-  // Forward-geocode autocomplete on the dedicated search field —
-  // the 350ms debounce keeps Nominatim out of trouble. Typing in
-  // the Name field below the map does NOT trigger a search; that's
-  // the whole point of the split (lets the user refine the saved
-  // name without forking back into a fresh search).
+  // Forward-geocode autocomplete — fires only while the field is in
+  // "search" mode (i.e. before the user has picked anything OR after
+  // they cleared the field). Picking a place flips into "edit" mode
+  // so subsequent typing renames the saved value without spawning
+  // fresh suggestions. 350ms debounce keeps Nominatim out of trouble.
   useEffect(() => {
-    if (mode !== "new") return
-    const trimmed = searchQuery.trim()
+    if (mode !== "new" || fieldMode !== "search") return
+    const trimmed = name.trim()
     if (trimmed.length < 2) {
       setSuggestions([])
       return
@@ -1565,15 +1566,12 @@ function LocationPickerDialog({
       ctrl.abort()
       setBusy("idle")
     }
-  }, [searchQuery, mode])
+  }, [name, mode, fieldMode])
 
   const pickSuggestion = (hit: ForwardGeocodeResult) => {
     setCoords({ lat: hit.lat, lng: hit.lng })
     setName(hit.displayName)
-    // Clear the search query so the user knows the search resolved
-    // and the typeahead won't immediately re-fire when they tab to
-    // the Name field.
-    setSearchQuery("")
+    setFieldMode("edit")
     setDropdownOpen(false)
     setSuggestions([])
     setHighlightIndex(-1)
@@ -1586,6 +1584,7 @@ function LocationPickerDialog({
     const hit = await reverseGeocode(latlng.lat, latlng.lng)
     setBusy("idle")
     if (hit?.displayName) setName(hit.displayName)
+    setFieldMode("edit")
   }
 
   const onInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -1780,97 +1779,111 @@ function LocationPickerDialog({
           <>
             <p className="create-cert__loc-hint">
               Type a place to search, or click anywhere on the map to
-              drop a pin.
+              drop a pin. After picking, you can rename the field to
+              something more specific to you (e.g. &ldquo;Main
+              office&rdquo; instead of the full address).
             </p>
-            <div className="create-cert__loc-fields">
-              <div className="create-cert__loc-combobox">
-                <input
-                  type="text"
-                  className="cert-detail__meta-input create-cert__field--full"
-                  value={searchQuery}
-                  maxLength={256}
-                  placeholder="Search a city or address…"
-                  aria-label="Search a location"
-                  role="combobox"
-                  aria-expanded={dropdownOpen && suggestions.length > 0}
-                  aria-autocomplete="list"
-                  aria-controls="create-cert-loc-suggestions"
-                  aria-activedescendant={
-                    highlightIndex >= 0
-                      ? `create-cert-loc-suggestion-${highlightIndex}`
-                      : undefined
-                  }
-                  onChange={(e) => {
-                    setDropdownOpen(true)
-                    setSearchQuery(e.target.value)
-                  }}
-                  onFocus={() => {
-                    if (blurTimerRef.current) {
-                      window.clearTimeout(blurTimerRef.current)
-                      blurTimerRef.current = null
-                    }
-                    if (suggestions.length > 0) setDropdownOpen(true)
-                  }}
-                  onBlur={() => {
-                    blurTimerRef.current = window.setTimeout(() => {
-                      setDropdownOpen(false)
-                    }, 150)
-                  }}
-                  onKeyDown={onInputKeyDown}
-                  autoComplete="off"
-                />
-                {dropdownOpen && suggestions.length > 0 ? (
-                  <ul
-                    id="create-cert-loc-suggestions"
-                    role="listbox"
-                    className="create-cert__loc-suggestions"
-                  >
-                    {suggestions.map((hit, i) => {
-                      const isActive = i === highlightIndex
-                      const [primary, ...rest] = hit.displayName.split(", ")
-                      const secondary = rest.join(", ")
-                      return (
-                        <li
-                          key={`${hit.lat}-${hit.lng}-${i}`}
-                          id={`create-cert-loc-suggestion-${i}`}
-                          role="option"
-                          aria-selected={isActive}
-                          className={
-                            isActive
-                              ? "create-cert__loc-suggestion create-cert__loc-suggestion--active"
-                              : "create-cert__loc-suggestion"
-                          }
-                          onMouseEnter={() => setHighlightIndex(i)}
-                          onMouseDown={(e) => {
-                            e.preventDefault()
-                            pickSuggestion(hit)
-                          }}
-                        >
-                          <span className="create-cert__loc-suggestion-primary">
-                            {primary}
-                          </span>
-                          {secondary ? (
-                            <span className="create-cert__loc-suggestion-secondary">
-                              {secondary}
-                            </span>
-                          ) : null}
-                        </li>
-                      )
-                    })}
-                  </ul>
-                ) : null}
-              </div>
+            <div className="create-cert__loc-combobox">
               <input
-                id="create-cert-loc-name"
                 type="text"
                 className="cert-detail__meta-input create-cert__field--full"
                 value={name}
                 maxLength={256}
-                placeholder="Name (you can rename it)"
-                aria-label="Location name"
-                onChange={(e) => setName(e.target.value)}
+                placeholder={
+                  fieldMode === "edit"
+                    ? "Rename to something more specific"
+                    : "Search a city or address…"
+                }
+                aria-label={
+                  fieldMode === "edit"
+                    ? "Location name"
+                    : "Search a location"
+                }
+                role="combobox"
+                aria-expanded={
+                  fieldMode === "search" &&
+                  dropdownOpen &&
+                  suggestions.length > 0
+                }
+                aria-autocomplete="list"
+                aria-controls="create-cert-loc-suggestions"
+                aria-activedescendant={
+                  highlightIndex >= 0
+                    ? `create-cert-loc-suggestion-${highlightIndex}`
+                    : undefined
+                }
+                onChange={(e) => {
+                  const next = e.target.value
+                  setName(next)
+                  if (next.trim().length === 0) {
+                    // Empty field re-opens the search mode so the
+                    // user can find a different place without an
+                    // explicit "search again" affordance.
+                    setFieldMode("search")
+                  }
+                  if (fieldMode === "search") {
+                    setDropdownOpen(true)
+                  }
+                }}
+                onFocus={() => {
+                  if (blurTimerRef.current) {
+                    window.clearTimeout(blurTimerRef.current)
+                    blurTimerRef.current = null
+                  }
+                  if (fieldMode === "search" && suggestions.length > 0) {
+                    setDropdownOpen(true)
+                  }
+                }}
+                onBlur={() => {
+                  blurTimerRef.current = window.setTimeout(() => {
+                    setDropdownOpen(false)
+                  }, 150)
+                }}
+                onKeyDown={onInputKeyDown}
                 autoComplete="off"
               />
+              {fieldMode === "search" &&
+              dropdownOpen &&
+              suggestions.length > 0 ? (
+                <ul
+                  id="create-cert-loc-suggestions"
+                  role="listbox"
+                  className="create-cert__loc-suggestions"
+                >
+                  {suggestions.map((hit, i) => {
+                    const isActive = i === highlightIndex
+                    const [primary, ...rest] = hit.displayName.split(", ")
+                    const secondary = rest.join(", ")
+                    return (
+                      <li
+                        key={`${hit.lat}-${hit.lng}-${i}`}
+                        id={`create-cert-loc-suggestion-${i}`}
+                        role="option"
+                        aria-selected={isActive}
+                        className={
+                          isActive
+                            ? "create-cert__loc-suggestion create-cert__loc-suggestion--active"
+                            : "create-cert__loc-suggestion"
+                        }
+                        onMouseEnter={() => setHighlightIndex(i)}
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          pickSuggestion(hit)
+                        }}
+                      >
+                        <span className="create-cert__loc-suggestion-primary">
+                          {primary}
+                        </span>
+                        {secondary ? (
+                          <span className="create-cert__loc-suggestion-secondary">
+                            {secondary}
+                          </span>
+                        ) : null}
+                      </li>
+                    )
+                  })}
+                </ul>
+              ) : null}
             </div>
             <div className="create-cert__loc-map">
               <Map
