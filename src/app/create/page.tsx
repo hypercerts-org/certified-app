@@ -22,7 +22,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
 import Map from "@/components/map/map-dynamic"
-import { PenLine, Building2 } from "lucide-react"
+import { PenLine } from "lucide-react"
 import type { LinearDocument } from "@/lib/leaflet/types"
 import type { BlobRef } from "@atproto/api"
 import {
@@ -30,7 +30,12 @@ import {
   type UploadedBlob,
 } from "@/lib/atproto/profile"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import { isAtprotoIdentity } from "@/hooks/use-contributor-info"
+import {
+  ContributorIdentityField,
+  isContributorIdentityAcceptable,
+  isContributorWeightAcceptable,
+  normalizeIdentity,
+} from "@/components/create/contributor-identity-field"
 import type { HypercertsSmallImage } from "@/lib/atproto/types"
 import {
   parseLocationShape,
@@ -108,46 +113,11 @@ function freshContributor(): ContributorRow {
   }
 }
 
-/**
- * Strip the leading `@` so the value passes `isAtprotoIdentity`'s
- * `looksLikeHandle` regex (which doesn't accept the `@` prefix
- * humans naturally type). Also collapses surrounding whitespace.
- */
-function normalizeIdentity(raw: string): string {
-  const trimmed = raw.trim()
-  return trimmed.startsWith("@") ? trimmed.slice(1) : trimmed
-}
-
-/**
- * A contributor identity passes if it's empty (the user hasn't
- * filled the row yet — those rows are silently skipped at submit)
- * or if it normalises to a proper atproto handle / DID we can
- * actually resolve. Free-text labels like "John Doe" are rejected
- * so every saved contributor renders as a clickable avatar +
- * handle on the cert detail page.
- */
-function isContributorIdentityAcceptable(raw: string): boolean {
-  const v = raw.trim()
-  if (!v) return true
-  return isAtprotoIdentity(normalizeIdentity(v))
-}
-
-/**
- * A contributor weight passes if it's empty (the field is optional)
- * or parses as a finite, non-negative number. Decimals are allowed
- * — the lexicon stores weights as free-form strings so "0.25" or
- * "1.5" are valid representations. Strings like "high" or "lots"
- * are rejected; the cert detail page can't normalise those to a
- * percentage and the % column header would be misleading.
- */
-function isContributorWeightAcceptable(raw: string): boolean {
-  const v = raw.trim()
-  if (!v) return true
-  // `Number(v)` (not `parseFloat`) so a trailing "10abc" is rejected
-  // — parseFloat would silently truncate to 10.
-  const n = Number(v)
-  return Number.isFinite(n) && n >= 0
-}
+// Contributor helpers (normalizeIdentity, isContributorIdentityAcceptable,
+// isContributorWeightAcceptable) and the ContributorIdentityField
+// typeahead are imported from
+// `@/components/create/contributor-identity-field` so the /project/new
+// form can reuse them.
 
 interface AddedLocation {
   /** strongRef to the freshly-written or resolved location record. */
@@ -348,9 +318,15 @@ export default function CreatePage() {
       if (prev) URL.revokeObjectURL(prev)
       return previewUrl
     })
-    const blob = await uploadBlob(file)
+    // Route the blob upload to the group's repo when the active
+    // identity is a group; otherwise the user's own.
+    const targetDid = activeOrg ? activeOrg.groupDid : null
+    const blob = await uploadBlob(
+      file,
+      targetDid ? { targetDid } : undefined,
+    )
     setPendingImageBlob(blob)
-  }, [])
+  }, [activeOrg])
 
   const handleImageRemove = useCallback(() => {
     setPendingImageBlob(null)
@@ -395,23 +371,10 @@ export default function CreatePage() {
     )
   }
 
-  // Group context isn't supported yet — same constraint as before:
-  // the xrpc proxy validates repo === session DID for write methods.
-  if (activeOrg) {
-    return (
-      <div className="dashboard">
-        <div className="dashboard__body">
-          <div className="dashboard__main">
-            <EmptyState
-              icon={Building2}
-              title="Switch to your personal account"
-              description="Creating activity claims as a group isn't supported yet. Use the account switcher to switch to your personal identity."
-            />
-          </div>
-        </div>
-      </div>
-    )
-  }
+  // When the user has switched into a group, the cert is published
+  // on the group's repo via the BFF route. The /create form is
+  // identical either way — only the submit path differs (see
+  // handleSubmit's targetDid branch).
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -546,14 +509,27 @@ export default function CreatePage() {
     }
 
     try {
-      const res = await authFetch("/api/xrpc/com/atproto/repo/createRecord", {
-        method: "POST",
+      // Route through the group BFF when the user has switched into
+      // a group identity; otherwise use the xrpc proxy on the
+      // viewer's own repo. The BFF's PUT route accepts
+      // `{ record }` with no rkey → createRecord on the group repo.
+      const targetDid = activeOrg ? activeOrg.groupDid : did
+      const useGroupRoute = activeOrg !== null
+      const url = useGroupRoute
+        ? `/api/groups/${encodeURIComponent(targetDid)}/activity`
+        : "/api/xrpc/com/atproto/repo/createRecord"
+      const method = useGroupRoute ? "PUT" : "POST"
+      const body = useGroupRoute
+        ? { record }
+        : {
+            repo: targetDid,
+            collection: "org.hypercerts.claim.activity",
+            record,
+          }
+      const res = await authFetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          repo: did,
-          collection: "org.hypercerts.claim.activity",
-          record,
-        }),
+        body: JSON.stringify(body),
       })
 
       const data = await res.json().catch(() => ({}))
@@ -857,7 +833,12 @@ export default function CreatePage() {
               placeholder="Full description of this cert. Headings, lists, links, images, and video embeds are all supported via the toolbar."
               ariaLabel="Cert description"
               did={did ?? ""}
-              onImageUpload={(file) => uploadBlob(file)}
+              onImageUpload={(file) =>
+                uploadBlob(
+                  file,
+                  activeOrg ? { targetDid: activeOrg.groupDid } : undefined,
+                )
+              }
             />
           </section>
 
@@ -1087,6 +1068,7 @@ export default function CreatePage() {
       {isLocationDialogOpen && did ? (
         <LocationPickerDialog
           ownDid={did}
+          targetDid={activeOrg ? activeOrg.groupDid : did}
           onClose={() => setIsLocationDialogOpen(false)}
           onPick={(added) => {
             setLocations((rows) => {
@@ -1100,287 +1082,6 @@ export default function CreatePage() {
         />
       ) : null}
     </form>
-  )
-}
-
-// ----------------------------------------------------------------------
-// Contributor identity field — compact typeahead
-//
-// Reuses the same `/api/search-actors` endpoint that powers the
-// HandleSearch component used in groups / endorsements. The visual
-// shell is `cert-detail__meta-input` so the field sits flush in the
-// contributor row alongside the role + weight inputs (HandleSearch
-// itself ships with a 40px tall bordered-bottom input that would
-// dwarf the other fields).
-//
-// Behaviour:
-//   - The input value IS the contributor identity that will be
-//     written to the record. Free-text edits flow straight to the
-//     parent via `onChange`.
-//   - When the value is non-empty and doesn't look like a complete
-//     DID, a debounced search hits /api/search-actors and shows a
-//     dropdown of matches. Picking a match replaces the input value
-//     with `@handle` (or the DID if no handle resolved).
-//   - Looks-like-a-DID values short-circuit the search — the user
-//     is typing a canonical identifier and likely doesn't want
-//     suggestions clobbering it.
-// ----------------------------------------------------------------------
-
-interface Actor {
-  did: string
-  handle: string
-  displayName: string
-  avatar: string | null
-}
-
-interface ContributorIdentityFieldProps {
-  value: string
-  onChange: (next: string) => void
-  ariaLabel: string
-  idx: number
-  /** True when the current value is non-empty AND doesn't normalise
-   *  to a recognisable DID or handle. Paints a red border around
-   *  the input so the row's invalidity reads at a glance. */
-  invalid: boolean
-  /** Normalised (lowercased, @-stripped) identities of the OTHER
-   *  contributor rows. The typeahead drops matching actors from
-   *  its suggestions so the user can't pick someone who's already
-   *  on the list; the picker callback also short-circuits when
-   *  the chosen actor is in this set, as a belt-and-suspenders
-   *  guard against race conditions between debounced searches. */
-  excludeIdentities: Set<string>
-}
-
-function ContributorIdentityField({
-  value,
-  onChange,
-  ariaLabel,
-  idx,
-  invalid,
-  excludeIdentities,
-}: ContributorIdentityFieldProps) {
-  const [results, setResults] = useState<Actor[]>([])
-  const [isOpen, setIsOpen] = useState(false)
-  const [isSearching, setIsSearching] = useState(false)
-  const [focusedIndex, setFocusedIndex] = useState(-1)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Tracks the last value the user picked from the dropdown so a
-  // re-render of the parent (which re-passes the value prop back
-  // through) doesn't immediately re-fire the search effect against
-  // the same string we just selected.
-  const lastSelectedRef = useRef<string>("")
-
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    const trimmed = value.trim()
-    if (!trimmed || trimmed.length < 2) {
-      setResults([])
-      setIsOpen(false)
-      return
-    }
-    if (trimmed === lastSelectedRef.current) {
-      // The current value is what we just inserted from the dropdown
-      // — don't re-search and don't reopen the popup.
-      return
-    }
-    // Suppress search for canonical DIDs — the user is typing or
-    // pasting an identifier that doesn't need autocomplete.
-    if (trimmed.startsWith("did:")) {
-      setResults([])
-      setIsOpen(false)
-      return
-    }
-    debounceRef.current = setTimeout(async () => {
-      setIsSearching(true)
-      try {
-        const res = await fetch(
-          `/api/search-actors?q=${encodeURIComponent(trimmed)}&limit=8`,
-          { headers: { Accept: "application/json" } },
-        )
-        if (res.ok) {
-          const data = (await res.json()) as { actors?: Actor[] }
-          // Store the full result set; the render below filters out
-          // already-added identities. Keeping the filter in render
-          // (not in the fetch effect) means the dropdown reacts to
-          // peer-row changes without re-firing the search.
-          const actors = data.actors ?? []
-          setResults(actors)
-          setIsOpen(actors.length > 0)
-        } else {
-          setResults([])
-          setIsOpen(false)
-        }
-      } catch {
-        // Silently — search is best-effort, the free-text input is
-        // always functional as a fallback.
-      } finally {
-        setIsSearching(false)
-      }
-    }, 300)
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-    }
-  }, [value])
-
-  useEffect(() => {
-    if (!isOpen) return
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target
-      if (!(target instanceof Node)) return
-      if (containerRef.current && !containerRef.current.contains(target)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener("mousedown", handleClick)
-    return () => document.removeEventListener("mousedown", handleClick)
-  }, [isOpen])
-
-  const handleSelect = (actor: Actor) => {
-    // Belt-and-suspenders dup guard: a stale result that survived
-    // the filter (race between debounced search and an upstream
-    // row change) shouldn't be allowed to land. Drop the pick if
-    // the actor is now in the exclude set.
-    const h = actor.handle?.toLowerCase() ?? ""
-    const d = actor.did?.toLowerCase() ?? ""
-    if (
-      (h && excludeIdentities.has(h)) ||
-      (d && excludeIdentities.has(d))
-    ) {
-      setIsOpen(false)
-      setResults([])
-      setFocusedIndex(-1)
-      return
-    }
-    // Prefer the human-readable handle; fall back to the DID when
-    // the upstream record has no handle attached.
-    const picked =
-      actor.handle && actor.handle !== actor.did
-        ? `@${actor.handle}`
-        : actor.did
-    lastSelectedRef.current = picked
-    onChange(picked)
-    setIsOpen(false)
-    setResults([])
-    setFocusedIndex(-1)
-  }
-
-  // Filter out actors already attached to another contributor row.
-  // The fetch above stores the unfiltered set; we hide
-  // already-added users at render time so the dropdown reacts when
-  // a peer row adds the same handle (no re-fetch required).
-  const visibleResults = results.filter((a) => {
-    const h = a.handle?.toLowerCase() ?? ""
-    const d = a.did?.toLowerCase() ?? ""
-    if (h && excludeIdentities.has(h)) return false
-    if (d && excludeIdentities.has(d)) return false
-    return true
-  })
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "ArrowDown") {
-      e.preventDefault()
-      if (!isOpen || visibleResults.length === 0) return
-      setFocusedIndex((prev) => (prev + 1) % visibleResults.length)
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault()
-      if (!isOpen || visibleResults.length === 0) return
-      setFocusedIndex((prev) =>
-        prev <= 0 ? visibleResults.length - 1 : prev - 1,
-      )
-    } else if (e.key === "Escape") {
-      setIsOpen(false)
-      setFocusedIndex(-1)
-    } else if (e.key === "Enter") {
-      if (focusedIndex >= 0 && focusedIndex < visibleResults.length) {
-        e.preventDefault()
-        handleSelect(visibleResults[focusedIndex])
-      } else if (visibleResults.length === 1) {
-        e.preventDefault()
-        handleSelect(visibleResults[0])
-      }
-    }
-  }
-
-  return (
-    <div className="create-cert__contrib-id" ref={containerRef}>
-      <input
-        type="text"
-        className={
-          invalid
-            ? "cert-detail__meta-input create-cert__contrib-id-input--invalid"
-            : "cert-detail__meta-input"
-        }
-        aria-label={ariaLabel}
-        aria-invalid={invalid}
-        placeholder="@handle or did:plc:…"
-        value={value}
-        maxLength={1000}
-        autoComplete="off"
-        role="combobox"
-        aria-expanded={isOpen}
-        aria-controls={`create-cert-contrib-listbox-${idx}`}
-        aria-autocomplete="list"
-        aria-activedescendant={
-          focusedIndex >= 0
-            ? `create-cert-contrib-opt-${idx}-${focusedIndex}`
-            : undefined
-        }
-        onChange={(e) => {
-          // Once the user edits past the selected value, allow
-          // future searches again.
-          if (e.target.value !== lastSelectedRef.current) {
-            lastSelectedRef.current = ""
-          }
-          onChange(e.target.value)
-        }}
-        onKeyDown={handleKeyDown}
-        onFocus={() => {
-          if (visibleResults.length > 0) setIsOpen(true)
-        }}
-      />
-      {isSearching ? (
-        <span className="create-cert__contrib-id-spinner" aria-hidden />
-      ) : null}
-      {isOpen && visibleResults.length > 0 ? (
-        <ul
-          id={`create-cert-contrib-listbox-${idx}`}
-          role="listbox"
-          className="create-cert__contrib-id-dropdown"
-        >
-          {visibleResults.map((actor, i) => {
-            const isActive = i === focusedIndex
-            return (
-              <li
-                key={actor.did}
-                id={`create-cert-contrib-opt-${idx}-${i}`}
-                role="option"
-                aria-selected={isActive}
-                className={
-                  isActive
-                    ? "create-cert__contrib-id-option create-cert__contrib-id-option--active"
-                    : "create-cert__contrib-id-option"
-                }
-                onMouseEnter={() => setFocusedIndex(i)}
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  handleSelect(actor)
-                }}
-              >
-                <span className="create-cert__contrib-id-name">
-                  {actor.displayName || actor.handle}
-                </span>
-                <span className="create-cert__contrib-id-handle">
-                  {actor.handle !== actor.did
-                    ? `@${actor.handle}`
-                    : actor.did}
-                </span>
-              </li>
-            )
-          })}
-        </ul>
-      ) : null}
-    </div>
   )
 }
 
@@ -1399,13 +1100,21 @@ function ContributorIdentityField({
 // ----------------------------------------------------------------------
 
 interface LocationPickerDialogProps {
+  /** The signed-in user's own DID — used as the My-locations source
+   *  (we list the *user*'s previously-published locations, not the
+   *  active group's). */
   ownDid: string
+  /** The repo a new location record will be written to. Equals
+   *  `ownDid` for personal certs; the active group's DID when the
+   *  user has switched into a group identity. */
+  targetDid: string
   onClose: () => void
   onPick: (added: AddedLocation) => void
 }
 
 function LocationPickerDialog({
   ownDid,
+  targetDid,
   onClose,
   onPick,
 }: LocationPickerDialogProps) {
@@ -1672,7 +1381,7 @@ function LocationPickerDialog({
     try {
       const ref = await putLocationRecord(
         ownDid,
-        ownDid,
+        targetDid,
         coords,
         name.trim() || null,
       )

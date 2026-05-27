@@ -31,18 +31,17 @@ const ALLOWED_ACTIVITY_FIELDS = [
 /**
  * PUT /api/groups/[groupDid]/activity
  *
- * Write (overwrite) an existing `org.hypercerts.claim.activity`
- * record on a group's repo. Used by the cert detail page's inline
- * edit when the cert lives on a group's PDS — group admins / owners
- * who've switched into the group can update title / short
- * description / image / description through this endpoint.
+ * Read/write an `org.hypercerts.claim.activity` record on a group's
+ * repo:
+ *   - `rkey` present → putRecord (overwrite existing cert; used by
+ *     the cert detail page's inline edit when the cert lives on a
+ *     group's PDS).
+ *   - `rkey` absent  → createRecord (mint a fresh cert on the
+ *     group's repo; used by /create when the active account is a
+ *     group).
  *
  * Body shape:
- *   { rkey: string, record: <activity body> }
- *
- * `rkey` is required — this route only updates an existing cert.
- * Creating a fresh one happens through the activity-creation flow,
- * not the inline-edit surface.
+ *   { rkey?: string, record: <activity body>, swapRecord?: string }
  *
  * Returns `{ uri, cid }` so the client can mirror the new commit
  * locally without a re-read.
@@ -68,19 +67,12 @@ export async function PUT(
     if (!parsed.ok) return parsed.response
     const body = (parsed.body ?? {}) as Record<string, unknown>
     const rkey = typeof body.rkey === "string" ? body.rkey : null
-    if (!rkey) {
-      return NextResponse.json(
-        { error: "rkey is required" },
-        { status: 400 },
-      )
-    }
-    // swapRecord is a putRecord envelope field — sibling of
-    // `record`, NOT inside it. Read off the raw body and forward
-    // to the upstream call. Caller passes it to enable
-    // CID-precondition writes per atproto's putRecord spec.
-    const swapRecord = typeof body.swapRecord === "string"
-      ? body.swapRecord
-      : undefined
+    // swapRecord is only meaningful on the putRecord (update) path —
+    // createRecord doesn't accept it. Ignored when rkey is absent.
+    const swapRecord =
+      rkey && typeof body.swapRecord === "string"
+        ? body.swapRecord
+        : undefined
     const rawRecord = body.record
     if (!rawRecord || typeof rawRecord !== "object") {
       return NextResponse.json(
@@ -100,18 +92,26 @@ export async function PUT(
     )
 
     const groupAgent = createGroupAgent(auth.agent, groupDid)
-    const upstream = await groupAgent.call(
-      "app.certified.group.repo.putRecord",
-      {},
-      {
-        repo: groupDid,
-        collection: ACTIVITY_COLLECTION,
-        rkey,
-        record,
-        ...(swapRecord ? { swapRecord } : {}),
-      },
-      { encoding: "application/json" },
-    )
+    const method = rkey
+      ? "app.certified.group.repo.putRecord"
+      : "app.certified.group.repo.createRecord"
+    const requestBody = rkey
+      ? {
+          repo: groupDid,
+          collection: ACTIVITY_COLLECTION,
+          rkey,
+          record,
+          ...(swapRecord ? { swapRecord } : {}),
+        }
+      : {
+          repo: groupDid,
+          collection: ACTIVITY_COLLECTION,
+          record,
+        }
+
+    const upstream = await groupAgent.call(method, {}, requestBody, {
+      encoding: "application/json",
+    })
 
     const ref = extractRecordRef(upstream)
     if (!ref) {
