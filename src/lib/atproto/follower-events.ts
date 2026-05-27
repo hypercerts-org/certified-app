@@ -368,6 +368,15 @@ export interface HydrateFeedEventsOptions {
    * render them as a degraded card.
    */
   excludeCertLabels?: readonly string[]
+  /**
+   * If set, narrow cert hydration to records carrying one of these
+   * labels. Used when the home-feed quality popover has "Not labeled
+   * yet" UNCHECKED — only labelled records pass, unlabeled ones drop.
+   * Mutually exclusive with `excludeCertLabels` in practice (the
+   * caller picks one mode); both being non-empty is also valid but
+   * unusual.
+   */
+  includeCertLabels?: readonly string[]
 }
 
 /**
@@ -387,7 +396,7 @@ export async function hydrateFeedEvents(
     signalOrOptions instanceof AbortSignal
       ? { signal: signalOrOptions }
       : (signalOrOptions ?? {})
-  const { signal, excludeCertLabels } = opts
+  const { signal, excludeCertLabels, includeCertLabels } = opts
   if (events.length === 0) return []
 
   const activityUris: string[] = []
@@ -462,6 +471,10 @@ export async function hydrateFeedEvents(
         activityExcludeLabels:
           excludeCertLabels && excludeCertLabels.length > 0
             ? [...excludeCertLabels]
+            : null,
+        activityIncludeLabels:
+          includeCertLabels && includeCertLabels.length > 0
+            ? [...includeCertLabels]
             : null,
       },
     }),

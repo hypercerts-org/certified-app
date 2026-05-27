@@ -765,10 +765,12 @@ ${ACTIVITY_NODE_SELECTION}
       $hyperboardUris: [String!]!
       $attachmentUris: [String!]!
       $activityExcludeLabels: [String!]
+      $activityIncludeLabels: [String!]
     ) {
       activities: orgHypercertsClaimActivity(
         first: ${MAX_URI_LIST_PER_KIND}
         where: { uri: { in: $activityUris } }
+        labels: $activityIncludeLabels
         excludeLabels: $activityExcludeLabels
       ) {
         edges {
@@ -1266,8 +1268,15 @@ function buildVariables(
       // Optional inclusion / exclusion filter for the hyperlabel-style
       // cert labels (`high-quality` / `standard` / `draft` /
       // `likely-test`). Permissive reader — null when omitted or
-      // invalid; the GraphQL query treats null as "no exclusion".
+      // invalid; the GraphQL query treats null as "no filter" on each
+      // side. The client picks ONE of the two modes:
+      //   - excludeLabels: include unlabeled records, drop the listed
+      //     tiers (the home-feed default).
+      //   - includeLabels: only records carrying one of the listed
+      //     tiers pass; unlabeled records do not. Used when the
+      //     "Not labeled yet" checkbox is unchecked.
       const activityExcludeLabels = readLabelList(vars.activityExcludeLabels)
+      const activityIncludeLabels = readLabelList(vars.activityIncludeLabels)
       return {
         activityUris,
         collectionUris,
@@ -1277,6 +1286,7 @@ function buildVariables(
         hyperboardUris,
         attachmentUris,
         activityExcludeLabels,
+        activityIncludeLabels,
       }
     }
     default:

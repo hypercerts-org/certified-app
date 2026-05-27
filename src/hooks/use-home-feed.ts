@@ -21,6 +21,14 @@ export interface UseHomeFeedOptions {
    * via the filter popover above the feed.
    */
   excludeCertLabels?: readonly string[]
+  /**
+   * When set, narrow the hydration to records carrying one of these
+   * labels. The home-feed quality popover uses this when the
+   * "Not labeled yet" checkbox is UNCHECKED — only labelled certs
+   * pass. Mutually exclusive with `excludeCertLabels`: the parent
+   * picks one mode based on whether unlabeled is included.
+   */
+  includeCertLabels?: readonly string[]
 }
 
 /**
@@ -146,7 +154,23 @@ export function useHomeFeed(
   options: UseHomeFeedOptions = {},
 ) {
   const [state, setState] = useState<State>(EMPTY_STATE)
-  const { excludeCertLabels = DEFAULT_HIDDEN_CERT_LABELS } = options
+  const { includeCertLabels } = options
+  // DEFAULT_HIDDEN_CERT_LABELS only kicks in when the caller has not
+  // configured EITHER filter explicitly — i.e. "no filter at all"
+  // reads as "use the sensible default (draft + likely-test hidden)".
+  // As soon as the caller passes an include OR exclude list they're
+  // in explicit control and the default stays out of the way. Without
+  // this gate a viewer in include-only mode (Hyperlabel popover's
+  // "Not labeled yet" unchecked) would have the default exclude
+  // applied on top, dropping any tier listed in
+  // DEFAULT_HIDDEN_CERT_LABELS even when they're explicitly ticked
+  // in the include list.
+  const excludeCertLabels: readonly string[] | undefined =
+    options.excludeCertLabels !== undefined
+      ? options.excludeCertLabels
+      : includeCertLabels === undefined
+        ? DEFAULT_HIDDEN_CERT_LABELS
+        : undefined
 
   // Stable string key — parent useMemo of `followedDids` recomputes
   // a new Set instance whenever the union recomputes; we don't want
@@ -156,12 +180,15 @@ export function useHomeFeed(
     return Array.from(followedDids).sort().join(",")
   }, [followedDids])
 
-  // Stable key for the exclude-labels list — drives the refetch
-  // effect below so toggling the filter re-runs the page-1 load.
-  const excludeKey = useMemo(
-    () => [...excludeCertLabels].sort().join(","),
-    [excludeCertLabels],
-  )
+  // Stable key for the label filters — drives the refetch effect
+  // below so toggling either include OR exclude lists re-runs the
+  // page-1 load. Keyed `exc=...|inc=...` so include vs exclude
+  // changes don't collide (toggling unlabeled flips between the two).
+  const excludeKey = useMemo(() => {
+    const exc = excludeCertLabels ? [...excludeCertLabels].sort().join(",") : ""
+    const inc = includeCertLabels ? [...includeCertLabels].sort().join(",") : ""
+    return `exc=${exc}|inc=${inc}`
+  }, [excludeCertLabels, includeCertLabels])
 
   // Carry the latest set into the effect closure without re-running.
   const followedRef = useRef(followedDids)
@@ -175,8 +202,14 @@ export function useHomeFeed(
   // Snapshot the filter so the existing load() / loadMore() callbacks
   // (which deliberately have empty deps for stability) can read the
   // latest value without re-binding.
-  const excludeCertLabelsRef = useRef<readonly string[]>(excludeCertLabels)
+  const excludeCertLabelsRef = useRef<readonly string[] | undefined>(
+    excludeCertLabels,
+  )
   excludeCertLabelsRef.current = excludeCertLabels
+  const includeCertLabelsRef = useRef<readonly string[] | undefined>(
+    includeCertLabels,
+  )
+  includeCertLabelsRef.current = includeCertLabels
 
   const load = useCallback(async (signal: AbortSignal) => {
     setState((prev) => ({ ...prev, ...EMPTY_STATE, isLoading: true }))
@@ -197,6 +230,7 @@ export function useHomeFeed(
       const hydrated = await hydrateFeedEvents(page.events, {
         signal,
         excludeCertLabels: excludeCertLabelsRef.current,
+        includeCertLabels: includeCertLabelsRef.current,
       })
       if (signal.aborted) return
 
@@ -242,6 +276,7 @@ export function useHomeFeed(
         })
         const hydrated = await hydrateFeedEvents(page.events, {
           excludeCertLabels: excludeCertLabelsRef.current,
+          includeCertLabels: includeCertLabelsRef.current,
         })
         const fresh = hydrated
           .map(hydratedToHomeFeedEvent)

@@ -35,6 +35,13 @@ const DEFAULT_INCLUDED_TIERS: ReadonlySet<HyperlabelTier> = new Set(
   ),
 )
 
+/** Sentinel for the "Not labeled yet" checkbox — separate from the
+ *  Hyperlabel tier enum so the popover state can carry it without
+ *  widening the tier type. Mirrors the explore-page convention. */
+const UNLABELED_SLUG = "unlabeled" as const
+type UnlabeledSlug = typeof UNLABELED_SLUG
+type QualityFilterValue = HyperlabelTier | UnlabeledSlug
+
 /**
  * GitHub-style activity timeline for the home page. Each entry is
  * an actor byline + verb sentence on top; cert and project creates
@@ -56,15 +63,40 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
     isLoading: followsLoading,
     error: followsError,
   } = useFollowedDids(activeDid)
-  const [includedTiers, setIncludedTiers] = useState<Set<HyperlabelTier>>(
-    () => new Set(DEFAULT_INCLUDED_TIERS),
+  // Default state has every visible Hyperlabel tier checked AND
+  // "Not labeled yet" checked — same default as the explore page so
+  // a viewer who hasn't touched the filter sees the same set of certs
+  // here and on /explore.
+  const [includedTiers, setIncludedTiers] = useState<Set<QualityFilterValue>>(
+    () => new Set<QualityFilterValue>([...DEFAULT_INCLUDED_TIERS, UNLABELED_SLUG]),
   )
   const [selectedEvaluators, setSelectedEvaluators] = useState<Set<string>>(
     () => new Set(TRUSTED_EVALUATOR_DIDS),
   )
-  const excludeCertLabels = useMemo(
-    () => HYPERLABEL_TIERS.filter((t) => !includedTiers.has(t)),
-    [includedTiers],
+  // Two filter modes, mirroring the explore page (see the
+  // `certIncludeUnlabeled` comment block there for the full rationale):
+  //   - Unlabeled INCLUDED → use `excludeCertLabels` (drop specific
+  //     tiers; unlabeled records pass because they have nothing to
+  //     match the exclude list against). Default mode.
+  //   - Unlabeled EXCLUDED → use `includeCertLabels` (only records
+  //     carrying one of the checked tiers pass; unlabeled records
+  //     don't qualify).
+  // Only one is non-undefined at a time. The hydration query treats
+  // null on either side as "no filter on that axis".
+  const includeUnlabeled = includedTiers.has(UNLABELED_SLUG)
+  const excludeCertLabels = useMemo<readonly string[] | undefined>(
+    () =>
+      includeUnlabeled
+        ? HYPERLABEL_TIERS.filter((t) => !includedTiers.has(t))
+        : undefined,
+    [includedTiers, includeUnlabeled],
+  )
+  const includeCertLabels = useMemo<readonly string[] | undefined>(
+    () =>
+      includeUnlabeled
+        ? undefined
+        : HYPERLABEL_TIERS.filter((t) => includedTiers.has(t)),
+    [includedTiers, includeUnlabeled],
   )
   const { endorsedDids } = useEvaluatorEndorsements(selectedEvaluators)
   // Direct follows ∪ DIDs endorsed by any selected trusted evaluator.
@@ -79,7 +111,7 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
     return out
   }, [followedDids, endorsedDids, activeDid])
   const { events, isLoading, isLoadingMore, hasMore, loadMore, error } =
-    useHomeFeed(effectiveFollows, { excludeCertLabels })
+    useHomeFeed(effectiveFollows, { excludeCertLabels, includeCertLabels })
 
   return (
     <>
@@ -202,23 +234,25 @@ function QualityFilter({
   included,
   onChange,
 }: {
-  included: Set<HyperlabelTier>
-  onChange: (next: Set<HyperlabelTier>) => void
+  included: Set<QualityFilterValue>
+  onChange: (next: Set<QualityFilterValue>) => void
 }) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
 
   useClickOutsideClose(open, wrapRef, () => setOpen(false))
 
-  const toggle = (tier: HyperlabelTier) => {
+  const toggle = (value: QualityFilterValue) => {
     const next = new Set(included)
-    if (next.has(tier)) next.delete(tier)
-    else next.add(tier)
+    if (next.has(value)) next.delete(value)
+    else next.add(value)
     onChange(next)
   }
 
-  const activeCount = included.size
-  const filtered = activeCount !== HYPERLABEL_TIERS.length
+  // "Filtered" badge highlights the button when the popover state
+  // diverges from the default (every visible tier + unlabeled).
+  // Total filter slots = number of Hyperlabel tiers + 1 for unlabeled.
+  const filtered = included.size !== HYPERLABEL_TIERS.length + 1
 
   return (
     <div className="home-feed__filter" ref={wrapRef}>
@@ -248,6 +282,16 @@ function QualityFilter({
                 </label>
               </li>
             ))}
+            <li>
+              <label className="home-feed__filter-item">
+                <input
+                  type="checkbox"
+                  checked={included.has(UNLABELED_SLUG)}
+                  onChange={() => toggle(UNLABELED_SLUG)}
+                />
+                <span>Not labeled yet</span>
+              </label>
+            </li>
           </ul>
         </div>
       ) : null}
