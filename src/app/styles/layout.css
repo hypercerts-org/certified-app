@@ -2409,6 +2409,51 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   z-index: var(--z-popover);
 }
 
+/* "+" create-menu trigger wrapper — kept as a wrapper so the
+   open/close effects can anchor against a stable DOM node even
+   when the button itself re-renders. */
+.desktop-top-bar__create-wrap {
+  display: inline-flex;
+}
+
+/* Dropdown panel rendered via createPortal — same surface
+   treatment as `.account-switcher__menu--top-bar` so the three
+   shortcuts visually read as the same "menu" family. */
+.desktop-top-bar__create-menu {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 6px;
+  z-index: var(--z-popover);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.desktop-top-bar__create-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  text-decoration: none;
+  transition: background var(--transition-fast);
+}
+
+.desktop-top-bar__create-item:hover,
+.desktop-top-bar__create-item:focus-visible {
+  background: var(--overlay-weak);
+  outline: none;
+}
+
+.desktop-top-bar__create-item > svg {
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+
 /* ========== Profile page CSS scaffolding for the top-bar redesign ==========
    On desktop the mobile-only ProfileHeader is hidden; the Overview tab's
    left sidebar carries the identity instead, and the top bar's row 2

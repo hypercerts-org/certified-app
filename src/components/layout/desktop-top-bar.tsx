@@ -4,7 +4,17 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ChevronDown, LayoutGrid, Menu, Settings } from "lucide-react";
+import {
+  ArrowLeft,
+  Building2,
+  ChevronDown,
+  FileBadge,
+  FolderKanban,
+  LayoutGrid,
+  Menu,
+  Plus,
+  Settings,
+} from "lucide-react";
 import SiteDrawer from "./site-drawer";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useNavbarContext } from "@/lib/navbar-context";
@@ -205,6 +215,19 @@ export default function DesktopTopBar() {
   const menuRef = useRef<HTMLDivElement>(null);
   const mounted = useMounted();
 
+  // "+" create dropdown — same pattern as the account switcher
+  // (portal to body, anchor recomputed on resize, close on outside
+  // click + Escape + route change). Lives left of the global search
+  // field as a single-icon trigger that expands into three Create-
+  // shortcut Links.
+  const [createOpen, setCreateOpen] = useState(false);
+  const createRef = useRef<HTMLDivElement>(null);
+  const createMenuRef = useRef<HTMLDivElement>(null);
+  const [createAnchor, setCreateAnchor] = useState<{
+    right: number;
+    top: number;
+  } | null>(null);
+
   const [anchor, setAnchor] = useState<{ right: number; top: number } | null>(null);
   useEffect(() => {
     if (!switcherOpen || !switcherRef.current) {
@@ -255,6 +278,58 @@ export default function DesktopTopBar() {
 
   useEffect(() => {
     setSwitcherOpen(false);
+  }, [pathname]);
+
+  // ----- Create-menu effects (mirror the switcher) -----
+  useEffect(() => {
+    if (!createOpen || !createRef.current) {
+      setCreateAnchor(null);
+      return;
+    }
+    const compute = () => {
+      const rect = createRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setCreateAnchor({
+        right: globalThis.innerWidth - rect.right,
+        top: rect.bottom + 8,
+      });
+    };
+    compute();
+    globalThis.addEventListener("resize", compute);
+    globalThis.addEventListener("scroll", compute, true);
+    return () => {
+      globalThis.removeEventListener("resize", compute);
+      globalThis.removeEventListener("scroll", compute, true);
+    };
+  }, [createOpen]);
+
+  useEffect(() => {
+    if (!createOpen) return;
+    const onMouseDown = (e: MouseEvent) => {
+      const t = e.target;
+      if (!(t instanceof Node)) return;
+      const inTrigger = createRef.current?.contains(t) ?? false;
+      const inMenu = createMenuRef.current?.contains(t) ?? false;
+      if (!inTrigger && !inMenu) setCreateOpen(false);
+    };
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, [createOpen]);
+
+  useEffect(() => {
+    if (!createOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      setCreateOpen(false);
+      createRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [createOpen]);
+
+  useEffect(() => {
+    setCreateOpen(false);
   }, [pathname]);
 
   if (isLoading) return null;
@@ -324,6 +399,25 @@ export default function DesktopTopBar() {
         </div>
 
         <div className="desktop-top-bar__right">
+          {isAuthenticated ? (
+            <div
+              ref={createRef}
+              className="desktop-top-bar__create-wrap"
+            >
+              <button
+                type="button"
+                className="desktop-top-bar__icon-btn"
+                onClick={() => setCreateOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={createOpen}
+                aria-label="Create new"
+                title="Create new"
+              >
+                <Plus size={20} strokeWidth={1.75} aria-hidden />
+              </button>
+            </div>
+          ) : null}
+
           <div className="desktop-top-bar__search">
             <GlobalSearch placeholder="Search Certified" />
           </div>
@@ -530,6 +624,51 @@ export default function DesktopTopBar() {
           ) : null}
         </div>
       ) : null}
+
+      {mounted && createOpen && isAuthenticated && createAnchor
+        ? createPortal(
+            <div
+              ref={createMenuRef}
+              className="desktop-top-bar__create-menu"
+              role="menu"
+              style={{
+                position: "fixed",
+                top: createAnchor.top,
+                right: createAnchor.right,
+                width: 220,
+              }}
+            >
+              <Link
+                href="/create"
+                role="menuitem"
+                className="desktop-top-bar__create-item"
+                onClick={() => setCreateOpen(false)}
+              >
+                <FileBadge size={16} strokeWidth={1.75} aria-hidden />
+                <span>New cert</span>
+              </Link>
+              <Link
+                href="/project/new"
+                role="menuitem"
+                className="desktop-top-bar__create-item"
+                onClick={() => setCreateOpen(false)}
+              >
+                <FolderKanban size={16} strokeWidth={1.75} aria-hidden />
+                <span>New project</span>
+              </Link>
+              <Link
+                href="/groups/create"
+                role="menuitem"
+                className="desktop-top-bar__create-item"
+                onClick={() => setCreateOpen(false)}
+              >
+                <Building2 size={16} strokeWidth={1.75} aria-hidden />
+                <span>New group</span>
+              </Link>
+            </div>,
+            document.body
+          )
+        : null}
 
       {mounted && switcherOpen && isAuthenticated && anchor
         ? createPortal(
