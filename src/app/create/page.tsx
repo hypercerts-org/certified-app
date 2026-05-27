@@ -123,10 +123,19 @@ export default function CreatePage() {
   const { isAuthenticated, isLoading, did } = useAuth()
   const { activeOrg } = useOrg()
   const router = useRouter()
-  // Author info for the signed-in user — fuels the "Add me" shortcut
-  // on the contributors row. `useAuthorInfo` resolves the handle
-  // (preferred) and falls back to the DID when none is registered.
-  const { info: selfInfo } = useAuthorInfo(did)
+  // "Effective identity" — the DID the cert is published as on
+  // this page. When the user has switched into a group, that's the
+  // group's DID; otherwise their own session DID. Used anywhere
+  // "self" matters here (Add me shortcut, blob target repo,
+  // submit destination) so the form treats the active identity as
+  // a first-class subject rather than always falling through to the
+  // personal user.
+  const effectiveDid: string =
+    activeOrg?.groupDid ?? did ?? ""
+  // Author info for whoever is currently publishing — feeds the
+  // "Add me" shortcut on the contributors row. `useAuthorInfo`
+  // resolves the handle (preferred) and falls back to the DID.
+  const { info: selfInfo } = useAuthorInfo(effectiveDid)
 
   const [arrivedFromInApp] = useState(() => {
     if (typeof window === "undefined") return false
@@ -390,6 +399,9 @@ export default function CreatePage() {
         seen.add(n)
       }
     }
+    // Time-period sanity: start must not be after end. Both fields
+    // are optional; only enforce when the user filled both.
+    if (startDate && endDate && startDate > endDate) return
 
     setIsSubmitting(true)
     setError(null)
@@ -499,16 +511,15 @@ export default function CreatePage() {
       // a group identity; otherwise use the xrpc proxy on the
       // viewer's own repo. The BFF's PUT route accepts
       // `{ record }` with no rkey → createRecord on the group repo.
-      const targetDid = activeOrg ? activeOrg.groupDid : did
       const useGroupRoute = activeOrg !== null
       const url = useGroupRoute
-        ? `/api/groups/${encodeURIComponent(targetDid)}/activity`
+        ? `/api/groups/${encodeURIComponent(effectiveDid)}/activity`
         : "/api/xrpc/com/atproto/repo/createRecord"
       const method = useGroupRoute ? "PUT" : "POST"
       const body = useGroupRoute
         ? { record }
         : {
-            repo: targetDid,
+            repo: effectiveDid,
             collection: "org.hypercerts.claim.activity",
             record,
           }
@@ -573,6 +584,13 @@ export default function CreatePage() {
     return dupes
   })()
   const noContributorDuplicates = duplicateIdentitySet.size === 0
+  // Date inputs use the lexicographically-sortable YYYY-MM-DD shape
+  // browsers emit for `<input type="date">`, so a plain string
+  // comparison is equivalent to a calendar comparison. Equal dates
+  // are allowed (the cert covers a single day). Empty values bypass
+  // the check.
+  const datesValid =
+    !startDate || !endDate || startDate <= endDate
   const canSubmit =
     trimmedTitleCount >= TITLE_MIN &&
     titleCount <= TITLE_MAX &&
@@ -580,6 +598,7 @@ export default function CreatePage() {
     shortDescCount <= SHORT_DESC_MAX &&
     allContributorsValid &&
     noContributorDuplicates &&
+    datesValid &&
     !isSubmitting
 
   return (
@@ -645,11 +664,24 @@ export default function CreatePage() {
                   <input
                     type="date"
                     aria-label="End date"
-                    className="cert-detail__meta-input"
+                    className={
+                      datesValid
+                        ? "cert-detail__meta-input"
+                        : "cert-detail__meta-input create-cert__contrib-id-input--invalid"
+                    }
+                    aria-invalid={!datesValid}
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                   />
                 </div>
+                {!datesValid ? (
+                  <p
+                    className="create-cert__contrib-error"
+                    role="alert"
+                  >
+                    End date must be on or after the start date.
+                  </p>
+                ) : null}
               </dd>
             </div>
 
@@ -1054,7 +1086,7 @@ export default function CreatePage() {
       {isLocationDialogOpen && did ? (
         <LocationPickerDialog
           ownDid={did}
-          targetDid={activeOrg ? activeOrg.groupDid : did}
+          targetDid={effectiveDid}
           onClose={() => setIsLocationDialogOpen(false)}
           onPick={(added) => {
             setLocations((rows) => {
