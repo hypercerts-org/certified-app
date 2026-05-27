@@ -1402,6 +1402,17 @@ function LocationPickerDialog({
   const [mode, setMode] = useState<"new" | "existing">("existing")
 
   // ----- New-record fields -----
+  // Two separate text states by design:
+  //   `searchQuery` drives the Nominatim typeahead. It's ephemeral
+  //     — picking a suggestion (or clicking the map) clears it so
+  //     the user knows the search has resolved into a pin.
+  //   `name`        is the value the record will be saved with.
+  //     It's seeded from the picked/reverse-geocoded display name
+  //     but the user is free to overwrite it with something more
+  //     specific (e.g. "Main office" instead of "123 Main St,
+  //     San Francisco, CA, United States"). Editing name does NOT
+  //     re-fire a search.
+  const [searchQuery, setSearchQuery] = useState("")
   const [name, setName] = useState("")
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     null,
@@ -1410,7 +1421,6 @@ function LocationPickerDialog({
   const [highlightIndex, setHighlightIndex] = useState(-1)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [busy, setBusy] = useState<"idle" | "forward" | "reverse">("idle")
-  const lastSourceRef = useRef<"user" | "map" | null>(null)
   const blurTimerRef = useRef<number | null>(null)
 
   // ----- Existing-record state -----
@@ -1511,19 +1521,14 @@ function LocationPickerDialog({
     null,
   )
 
-  // Forward-geocode autocomplete — same shape as the profile picker.
-  // The 350ms debounce keeps Nominatim out of trouble; the
-  // `lastSourceRef === "map"` early-out prevents the reverse-geocode
-  // result (set programmatically by the map click handler) from
-  // immediately triggering another forward search.
+  // Forward-geocode autocomplete on the dedicated search field —
+  // the 350ms debounce keeps Nominatim out of trouble. Typing in
+  // the Name field below the map does NOT trigger a search; that's
+  // the whole point of the split (lets the user refine the saved
+  // name without forking back into a fresh search).
   useEffect(() => {
     if (mode !== "new") return
-    if (lastSourceRef.current === "map") {
-      lastSourceRef.current = null
-      setSuggestions([])
-      return
-    }
-    const trimmed = name.trim()
+    const trimmed = searchQuery.trim()
     if (trimmed.length < 2) {
       setSuggestions([])
       return
@@ -1541,12 +1546,15 @@ function LocationPickerDialog({
       ctrl.abort()
       setBusy("idle")
     }
-  }, [name, mode])
+  }, [searchQuery, mode])
 
   const pickSuggestion = (hit: ForwardGeocodeResult) => {
-    lastSourceRef.current = "map"
-    setName(hit.displayName)
     setCoords({ lat: hit.lat, lng: hit.lng })
+    setName(hit.displayName)
+    // Clear the search query so the user knows the search resolved
+    // and the typeahead won't immediately re-fire when they tab to
+    // the Name field.
+    setSearchQuery("")
     setDropdownOpen(false)
     setSuggestions([])
     setHighlightIndex(-1)
@@ -1554,7 +1562,6 @@ function LocationPickerDialog({
 
   const handleMapClick = async (latlng: { lat: number; lng: number }) => {
     setCoords(latlng)
-    lastSourceRef.current = "map"
     setBusy("reverse")
     setDropdownOpen(false)
     const hit = await reverseGeocode(latlng.lat, latlng.lng)
@@ -1742,10 +1749,10 @@ function LocationPickerDialog({
               <input
                 type="text"
                 className="cert-detail__meta-input create-cert__field--full"
-                value={name}
+                value={searchQuery}
                 maxLength={256}
-                placeholder="Type a city or address…"
-                aria-label="Location name"
+                placeholder="Search a city or address…"
+                aria-label="Search a location"
                 role="combobox"
                 aria-expanded={dropdownOpen && suggestions.length > 0}
                 aria-autocomplete="list"
@@ -1756,9 +1763,8 @@ function LocationPickerDialog({
                     : undefined
                 }
                 onChange={(e) => {
-                  lastSourceRef.current = "user"
                   setDropdownOpen(true)
-                  setName(e.target.value)
+                  setSearchQuery(e.target.value)
                 }}
                 onFocus={() => {
                   if (blurTimerRef.current) {
@@ -1835,6 +1841,23 @@ function LocationPickerDialog({
                     ? `Pinned at ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`
                     : "Search above or click the map to drop a pin"}
             </p>
+            <label
+              htmlFor="create-cert-loc-name"
+              className="create-cert__loc-uri-label"
+            >
+              Name (you can rename the auto-filled value to something
+              more specific):
+            </label>
+            <input
+              id="create-cert-loc-name"
+              type="text"
+              className="cert-detail__meta-input create-cert__field--full"
+              value={name}
+              maxLength={256}
+              placeholder="e.g. Main office, Project HQ…"
+              onChange={(e) => setName(e.target.value)}
+              autoComplete="off"
+            />
           </>
         ) : (
           <>
@@ -1842,7 +1865,7 @@ function LocationPickerDialog({
               htmlFor="create-cert-loc-existing"
               className="create-cert__loc-uri-label"
             >
-              Pick one of the locations you've already published:
+              Pick one of the locations you&apos;ve already published:
             </label>
             {myLocationsLoading ? (
               <p className="create-cert__loc-hint">Loading…</p>
