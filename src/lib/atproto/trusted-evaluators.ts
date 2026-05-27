@@ -26,7 +26,12 @@ export const TRUSTED_EVALUATOR_DIDS = [
   "did:plc:ghilmzxkfzrg6zr4bglxvlio",
 ] as const
 
-const PAGE_SIZE = 50
+/** Per-page size for the EvaluatorEndorsements indexer query. The
+ *  proxy clamps `first` to 100; the upstream silently caps higher
+ *  values. Larger pages halve the cold-start latency since the
+ *  whole feed waits on this pagination to complete before firing
+ *  FollowerEvents. */
+const PAGE_SIZE = 100
 /** Bound on unique endorsed-subject DIDs collected. Stops paging early
  *  when an evaluator endorses very many distinct accounts. */
 const MAX_TOTAL = 500
@@ -35,10 +40,63 @@ const MAX_TOTAL = 500
  *  in practice — evaluators re-endorse the same accounts repeatedly,
  *  so the unique-DID cap (`MAX_TOTAL`) doesn't trigger and the loop
  *  would otherwise crawl every award the evaluator has ever issued
- *  before returning. 10 pages × 50 awards = at most 500 awards
+ *  before returning. 5 pages × 100 awards = at most 500 awards
  *  examined, which is enough to surface the useful expansion set
  *  without delaying the feed by seconds while we walk duplicates. */
-const MAX_PAGES = 10
+const MAX_PAGES = 5
+
+/** localStorage cache TTL for the resolved DID set. The
+ *  trusted-evaluator graph is slow-changing (evaluators add a few
+ *  endorsements a day, not minutes); 1 hour is short enough that
+ *  new endorsements appear soon after they're issued, long enough
+ *  to skip the 5-round-trip pagination on every page reload. */
+const LOCAL_STORAGE_TTL_MS = 60 * 60 * 1000
+const LOCAL_STORAGE_KEY_PREFIX = "evaluator-endorsed-dids:"
+
+function safeLocalStorage(): Storage | null {
+  if (typeof window === "undefined") return null
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
+
+function readPersistedCache(key: string): Set<string> | null {
+  const storage = safeLocalStorage()
+  if (!storage) return null
+  try {
+    const raw = storage.getItem(LOCAL_STORAGE_KEY_PREFIX + key)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as {
+      savedAt?: unknown
+      dids?: unknown
+    }
+    if (typeof parsed.savedAt !== "number") return null
+    if (Date.now() - parsed.savedAt > LOCAL_STORAGE_TTL_MS) return null
+    if (!Array.isArray(parsed.dids)) return null
+    const dids = parsed.dids.filter(
+      (d): d is string => typeof d === "string" && d.startsWith("did:"),
+    )
+    return new Set(dids)
+  } catch {
+    return null
+  }
+}
+
+function writePersistedCache(key: string, dids: Set<string>): void {
+  const storage = safeLocalStorage()
+  if (!storage) return
+  try {
+    storage.setItem(
+      LOCAL_STORAGE_KEY_PREFIX + key,
+      JSON.stringify({ savedAt: Date.now(), dids: [...dids] }),
+    )
+  } catch {
+    // Quota exceeded / privacy-mode storage / serialization fail.
+    // Non-fatal — module-level cache still serves this session.
+  }
+}
 
 interface RawResponse {
   data?: {
@@ -66,7 +124,13 @@ interface RawResponse {
  * time we hand a cached entry back the inflight resolution has
  * completed, so we don't need to share an in-flight promise here.
  * Repeat /home navigations get an instant evaluator-endorsed-DID
- * union instead of paying another 10-page indexer fan-out.
+ * union instead of paying another fan-out.
+ *
+ * A second cache layer lives in localStorage (`readPersistedCache` /
+ * `writePersistedCache`) so the warm path survives page reloads.
+ * The module-level Map is the in-memory hit; localStorage is the
+ * cold-start hit on subsequent navigations. Both refer to the same
+ * cacheKey shape (sorted evaluator DIDs joined by commas).
  */
 const endorsedDidsCache = new Map<string, Set<string>>()
 
@@ -100,6 +164,15 @@ export async function fetchEvaluatorEndorsedDids(
   const key = cacheKey(evaluators)
   const cached = endorsedDidsCache.get(key)
   if (cached) return cached
+  // localStorage hit — repopulate the in-memory cache and return
+  // immediately. The whole feed waits on this resolution before
+  // firing FollowerEvents, so a sub-millisecond storage read beats
+  // a multi-second indexer fan-out for the typical page-reload case.
+  const persisted = readPersistedCache(key)
+  if (persisted) {
+    endorsedDidsCache.set(key, persisted)
+    return persisted
+  }
   // Atomic has/set so two callers racing into the same key don't
   // both fire pagination — the loser just await's the winner.
   // Signal is intentionally NOT threaded into the shared resolution:
@@ -110,6 +183,7 @@ export async function fetchEvaluatorEndorsedDids(
   if (!endorsedDidsInflight.has(key)) {
     const promise = paginateEndorsedDids(evaluators).then((dids) => {
       endorsedDidsCache.set(key, dids)
+      writePersistedCache(key, dids)
       return dids
     })
     endorsedDidsInflight.set(key, promise)
