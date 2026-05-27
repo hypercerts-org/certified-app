@@ -32,8 +32,10 @@ import { useAuthorInfo } from "@/hooks/use-author-info"
 import { isAtprotoIdentity } from "@/hooks/use-contributor-info"
 import type { HypercertsSmallImage } from "@/lib/atproto/types"
 import {
+  parseLocationShape,
   putLocationRecord,
   splitLocationName,
+  type LatLng,
   type StrongRef,
 } from "@/lib/atproto/location"
 import {
@@ -1393,7 +1395,11 @@ function LocationPickerDialog({
   onClose,
   onPick,
 }: LocationPickerDialogProps) {
-  const [mode, setMode] = useState<"new" | "existing">("new")
+  // Default tab is "existing" — most authors are picking from a
+  // location they already published rather than minting a fresh
+  // record. The "New" tab is one click away when they want a new
+  // place.
+  const [mode, setMode] = useState<"new" | "existing">("existing")
 
   // ----- New-record fields -----
   const [name, setName] = useState("")
@@ -1412,10 +1418,16 @@ function LocationPickerDialog({
   // published `app.certified.location` records. We fetch them on
   // mount via listRecords on their repo; the dropdown shows the
   // record's `name`, the strongRef + name flow back through onPick
-  // exactly the same as a freshly-created record would.
+  // exactly the same as a freshly-created record would. `coords`
+  // is parsed from the record's `location` field via
+  // `parseLocationShape` so picking a location can drop a pin on
+  // the map preview; smallBlob variants resolve to `null` (we'd
+  // need to fetch the blob to extract lat/lng) and just won't
+  // pin — the strongRef is still attached on Add.
   interface MyLocation {
     ref: StrongRef
     name: string
+    coords: LatLng | null
   }
   const [myLocations, setMyLocations] = useState<MyLocation[]>([])
   const [myLocationsLoading, setMyLocationsLoading] = useState(true)
@@ -1441,7 +1453,11 @@ function LocationPickerDialog({
           records?: Array<{
             uri: string
             cid: string
-            value?: { name?: unknown }
+            value?: {
+              name?: unknown
+              locationType?: unknown
+              location?: unknown
+            }
           }>
         }
         const opts: MyLocation[] = (body.records ?? []).map((rec) => {
@@ -1455,7 +1471,20 @@ function LocationPickerDialog({
             rawName ||
             rec.uri.split("/").pop() ||
             "(unnamed location)"
-          return { ref: { uri: rec.uri, cid: rec.cid }, name: display }
+          const lt =
+            typeof rec.value?.locationType === "string"
+              ? rec.value.locationType
+              : undefined
+          const shape = parseLocationShape(lt, rec.value?.location)
+          // Only point shapes give a single pin to drop on the map;
+          // polygons fall back to no pin (the dropdown still picks
+          // them up — the cert detail page can render the polygon).
+          const coords = shape?.kind === "point" ? shape.point : null
+          return {
+            ref: { uri: rec.uri, cid: rec.cid },
+            name: display,
+            coords,
+          }
         })
         opts.sort((a, b) => a.name.localeCompare(b.name))
         setMyLocations(opts)
@@ -1585,13 +1614,31 @@ function LocationPickerDialog({
     onPick(chosen)
   }
 
-  const hasPin = !!coords
-  const pins = hasPin ? [coords as { lat: number; lng: number }] : []
-  const center = hasPin ? (coords as { lat: number; lng: number }) : {
-    lat: 20,
-    lng: 0,
-  }
+  // The active pin depends on which tab is showing. "new" mode uses
+  // the coords from the search-or-click flow; "existing" mode uses
+  // the coords parsed from the picked record. Either way a single
+  // point or no point at all — same shape the Map component expects.
+  const selectedExistingLoc = myLocations.find(
+    (l) => l.ref.uri === selectedExistingUri,
+  )
+  const activeCoords: LatLng | null =
+    mode === "new" ? coords : (selectedExistingLoc?.coords ?? null)
+  const hasPin = !!activeCoords
+  const pins = hasPin ? [activeCoords as LatLng] : []
+  const center: LatLng = hasPin
+    ? (activeCoords as LatLng)
+    : { lat: 20, lng: 0 }
   const zoom = hasPin ? 6 : 1
+
+  // Map height: same calc the view-location modal uses
+  // (CertLocationsMap → AppDialog), so the add + view modals share
+  // a frame visually. ~60vh capped at 560 keeps the map dominant on
+  // tall monitors without forcing the dialog past the viewport on
+  // short ones.
+  const mapHeight =
+    typeof window !== "undefined"
+      ? Math.round(Math.min(560, Math.max(320, window.innerHeight * 0.6)))
+      : 480
 
   return (
     <AppDialog
@@ -1613,19 +1660,6 @@ function LocationPickerDialog({
           <button
             type="button"
             role="tab"
-            aria-selected={mode === "new"}
-            className={
-              mode === "new"
-                ? "create-cert__loc-tab create-cert__loc-tab--active"
-                : "create-cert__loc-tab"
-            }
-            onClick={() => setMode("new")}
-          >
-            New
-          </button>
-          <button
-            type="button"
-            role="tab"
             aria-selected={mode === "existing"}
             className={
               mode === "existing"
@@ -1635,6 +1669,19 @@ function LocationPickerDialog({
             onClick={() => setMode("existing")}
           >
             My locations
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "new"}
+            className={
+              mode === "new"
+                ? "create-cert__loc-tab create-cert__loc-tab--active"
+                : "create-cert__loc-tab"
+            }
+            onClick={() => setMode("new")}
+          >
+            New
           </button>
         </div>
 
@@ -1723,7 +1770,7 @@ function LocationPickerDialog({
                 pins={pins}
                 center={center}
                 zoom={zoom}
-                height={280}
+                height={mapHeight}
                 onMapClick={handleMapClick}
               />
             </div>
@@ -1757,19 +1804,36 @@ function LocationPickerDialog({
                 via the New tab and it will appear here on the next cert.
               </p>
             ) : (
-              <select
-                id="create-cert-loc-existing"
-                className="cert-detail__meta-input create-cert__field--full"
-                value={selectedExistingUri}
-                onChange={(e) => setSelectedExistingUri(e.target.value)}
-              >
-                <option value="">Select a location…</option>
-                {myLocations.map((loc) => (
-                  <option key={loc.ref.uri} value={loc.ref.uri}>
-                    {loc.name}
-                  </option>
-                ))}
-              </select>
+              <>
+                <select
+                  id="create-cert-loc-existing"
+                  className="cert-detail__meta-input create-cert__field--full"
+                  value={selectedExistingUri}
+                  onChange={(e) => setSelectedExistingUri(e.target.value)}
+                >
+                  <option value="">Select a location…</option>
+                  {myLocations.map((loc) => (
+                    <option key={loc.ref.uri} value={loc.ref.uri}>
+                      {loc.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="create-cert__loc-map">
+                  <Map
+                    pins={pins}
+                    center={center}
+                    zoom={zoom}
+                    height={mapHeight}
+                  />
+                </div>
+                <p className="create-cert__loc-hint">
+                  {selectedExistingLoc
+                    ? selectedExistingLoc.coords
+                      ? `${selectedExistingLoc.name} — ${selectedExistingLoc.coords.lat.toFixed(4)}, ${selectedExistingLoc.coords.lng.toFixed(4)}`
+                      : `${selectedExistingLoc.name} — no pinnable coordinates`
+                    : "Pick a location above to see it on the map"}
+                </p>
+              </>
             )}
           </>
         )}
