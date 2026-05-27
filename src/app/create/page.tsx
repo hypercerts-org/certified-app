@@ -662,35 +662,29 @@ export default function CreatePage() {
               </dt>
               <dd className="cert-detail__meta-value">
                 <div className="create-cert__date-row">
-                  {/* type="text" + pattern enforces a literal ISO 8601
-                      `YYYY-MM-DD` shape. The native `type="date"`
-                      picker ships with a locale-dependent visual
-                      format (MM/DD/YYYY in en-US, dd/mm/yyyy in
-                      en-GB, etc.) that contradicts the rest of the
-                      app's ISO formatting. The submit path already
-                      consumes YYYY-MM-DD strings, so no other
-                      changes are needed. */}
+                  {/* Native `type="date"` keeps the calendar picker
+                      affordance the user expects. The .value
+                      attribute is ALWAYS ISO 8601 `YYYY-MM-DD`
+                      regardless of the locale-dependent visual
+                      formatting in the field (en-US: MM/DD/YYYY,
+                      en-GB: DD/MM/YYYY, etc.) — so the stored
+                      string the submit handler consumes is ISO
+                      either way. The displayed text format is
+                      controlled by the browser/OS locale and can't
+                      be overridden without dropping the picker UI. */}
                   <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="\d{4}-\d{2}-\d{2}"
-                    placeholder="YYYY-MM-DD"
-                    aria-label="Start date (YYYY-MM-DD)"
+                    type="date"
+                    aria-label="Start date"
                     className="cert-detail__meta-input"
                     value={startDate}
-                    maxLength={10}
                     onChange={(e) => setStartDate(e.target.value)}
                   />
                   <span aria-hidden>→</span>
                   <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="\d{4}-\d{2}-\d{2}"
-                    placeholder="YYYY-MM-DD"
-                    aria-label="End date (YYYY-MM-DD)"
+                    type="date"
+                    aria-label="End date"
                     className="cert-detail__meta-input"
                     value={endDate}
-                    maxLength={10}
                     onChange={(e) => setEndDate(e.target.value)}
                   />
                 </div>
