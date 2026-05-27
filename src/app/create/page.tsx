@@ -1745,82 +1745,95 @@ function LocationPickerDialog({
               Type a place to search, or click anywhere on the map to
               drop a pin.
             </p>
-            <div className="create-cert__loc-combobox">
+            <div className="create-cert__loc-fields">
+              <div className="create-cert__loc-combobox">
+                <input
+                  type="text"
+                  className="cert-detail__meta-input create-cert__field--full"
+                  value={searchQuery}
+                  maxLength={256}
+                  placeholder="Search a city or address…"
+                  aria-label="Search a location"
+                  role="combobox"
+                  aria-expanded={dropdownOpen && suggestions.length > 0}
+                  aria-autocomplete="list"
+                  aria-controls="create-cert-loc-suggestions"
+                  aria-activedescendant={
+                    highlightIndex >= 0
+                      ? `create-cert-loc-suggestion-${highlightIndex}`
+                      : undefined
+                  }
+                  onChange={(e) => {
+                    setDropdownOpen(true)
+                    setSearchQuery(e.target.value)
+                  }}
+                  onFocus={() => {
+                    if (blurTimerRef.current) {
+                      window.clearTimeout(blurTimerRef.current)
+                      blurTimerRef.current = null
+                    }
+                    if (suggestions.length > 0) setDropdownOpen(true)
+                  }}
+                  onBlur={() => {
+                    blurTimerRef.current = window.setTimeout(() => {
+                      setDropdownOpen(false)
+                    }, 150)
+                  }}
+                  onKeyDown={onInputKeyDown}
+                  autoComplete="off"
+                />
+                {dropdownOpen && suggestions.length > 0 ? (
+                  <ul
+                    id="create-cert-loc-suggestions"
+                    role="listbox"
+                    className="create-cert__loc-suggestions"
+                  >
+                    {suggestions.map((hit, i) => {
+                      const isActive = i === highlightIndex
+                      const [primary, ...rest] = hit.displayName.split(", ")
+                      const secondary = rest.join(", ")
+                      return (
+                        <li
+                          key={`${hit.lat}-${hit.lng}-${i}`}
+                          id={`create-cert-loc-suggestion-${i}`}
+                          role="option"
+                          aria-selected={isActive}
+                          className={
+                            isActive
+                              ? "create-cert__loc-suggestion create-cert__loc-suggestion--active"
+                              : "create-cert__loc-suggestion"
+                          }
+                          onMouseEnter={() => setHighlightIndex(i)}
+                          onMouseDown={(e) => {
+                            e.preventDefault()
+                            pickSuggestion(hit)
+                          }}
+                        >
+                          <span className="create-cert__loc-suggestion-primary">
+                            {primary}
+                          </span>
+                          {secondary ? (
+                            <span className="create-cert__loc-suggestion-secondary">
+                              {secondary}
+                            </span>
+                          ) : null}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : null}
+              </div>
               <input
+                id="create-cert-loc-name"
                 type="text"
                 className="cert-detail__meta-input create-cert__field--full"
-                value={searchQuery}
+                value={name}
                 maxLength={256}
-                placeholder="Search a city or address…"
-                aria-label="Search a location"
-                role="combobox"
-                aria-expanded={dropdownOpen && suggestions.length > 0}
-                aria-autocomplete="list"
-                aria-controls="create-cert-loc-suggestions"
-                aria-activedescendant={
-                  highlightIndex >= 0
-                    ? `create-cert-loc-suggestion-${highlightIndex}`
-                    : undefined
-                }
-                onChange={(e) => {
-                  setDropdownOpen(true)
-                  setSearchQuery(e.target.value)
-                }}
-                onFocus={() => {
-                  if (blurTimerRef.current) {
-                    window.clearTimeout(blurTimerRef.current)
-                    blurTimerRef.current = null
-                  }
-                  if (suggestions.length > 0) setDropdownOpen(true)
-                }}
-                onBlur={() => {
-                  blurTimerRef.current = window.setTimeout(() => {
-                    setDropdownOpen(false)
-                  }, 150)
-                }}
-                onKeyDown={onInputKeyDown}
+                placeholder="Name (you can rename it)"
+                aria-label="Location name"
+                onChange={(e) => setName(e.target.value)}
                 autoComplete="off"
               />
-              {dropdownOpen && suggestions.length > 0 ? (
-                <ul
-                  id="create-cert-loc-suggestions"
-                  role="listbox"
-                  className="create-cert__loc-suggestions"
-                >
-                  {suggestions.map((hit, i) => {
-                    const isActive = i === highlightIndex
-                    const [primary, ...rest] = hit.displayName.split(", ")
-                    const secondary = rest.join(", ")
-                    return (
-                      <li
-                        key={`${hit.lat}-${hit.lng}-${i}`}
-                        id={`create-cert-loc-suggestion-${i}`}
-                        role="option"
-                        aria-selected={isActive}
-                        className={
-                          isActive
-                            ? "create-cert__loc-suggestion create-cert__loc-suggestion--active"
-                            : "create-cert__loc-suggestion"
-                        }
-                        onMouseEnter={() => setHighlightIndex(i)}
-                        onMouseDown={(e) => {
-                          e.preventDefault()
-                          pickSuggestion(hit)
-                        }}
-                      >
-                        <span className="create-cert__loc-suggestion-primary">
-                          {primary}
-                        </span>
-                        {secondary ? (
-                          <span className="create-cert__loc-suggestion-secondary">
-                            {secondary}
-                          </span>
-                        ) : null}
-                      </li>
-                    )
-                  })}
-                </ul>
-              ) : null}
             </div>
             <div className="create-cert__loc-map">
               <Map
@@ -1841,23 +1854,6 @@ function LocationPickerDialog({
                     ? `Pinned at ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`
                     : "Search above or click the map to drop a pin"}
             </p>
-            <label
-              htmlFor="create-cert-loc-name"
-              className="create-cert__loc-uri-label"
-            >
-              Name (you can rename the auto-filled value to something
-              more specific):
-            </label>
-            <input
-              id="create-cert-loc-name"
-              type="text"
-              className="cert-detail__meta-input create-cert__field--full"
-              value={name}
-              maxLength={256}
-              placeholder="e.g. Main office, Project HQ…"
-              onChange={(e) => setName(e.target.value)}
-              autoComplete="off"
-            />
           </>
         ) : (
           <>
