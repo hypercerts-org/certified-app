@@ -1627,6 +1627,66 @@
   }
 }
 
+/* ---------- /project/new cert picker + selected-cert list ---------- */
+
+.create-project__cert-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.create-project__cert-list {
+  list-style: none;
+  margin: 0 0 8px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.create-project__cert-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--overlay-weak);
+  border-radius: 6px;
+  min-width: 0;
+}
+
+.create-project__cert-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+}
+
+.create-project__cert-remove {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--fg-muted);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.create-project__cert-remove:hover {
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
 .create-cert__followup-note {
   margin: 0;
   padding: 12px 14px;

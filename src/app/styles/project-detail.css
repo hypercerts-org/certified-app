@@ -319,6 +319,13 @@
 }
 
 .project-detail__meta-label {
+  display: inline-flex;
+  align-items: center;
+  /* Pulls the SVG icon onto the same baseline as the uppercase
+     text and gives a consistent 5px gap between icon + label
+     across every row (matches the cert-detail meta label rhythm
+     and the create-project meta strip below). */
+  gap: 5px;
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
