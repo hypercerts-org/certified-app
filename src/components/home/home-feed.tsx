@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { Inbox, MapPin, SlidersHorizontal, UserCheck, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
@@ -46,6 +46,18 @@ const DEFAULT_INCLUDED_TIERS: ReadonlySet<HyperlabelTier> = new Set(
 const UNLABELED_SLUG = "unlabeled" as const
 type UnlabeledSlug = typeof UNLABELED_SLUG
 type QualityFilterValue = HyperlabelTier | UnlabeledSlug
+
+/** Visible-row threshold below which the feed auto-paginates. Sized
+ *  to "more than fits in one screen on a tall viewport" so a user
+ *  who scrolls down rarely lands on an empty feed; the
+ *  IntersectionObserver-based sentinel still handles further
+ *  scroll-driven loads. */
+const MIN_VISIBLE_ITEMS = 10
+/** Hard cap on consecutive auto-loads — a burst of 1000+ same-actor
+ *  endorsements would otherwise fan out one request per page until
+ *  exhausted. 5 × PAGE_SIZE (25 in useHomeFeed) = up to 125 events
+ *  pulled before we yield to the user's scroll. */
+const MAX_AUTO_LOADS = 5
 
 /**
  * GitHub-style activity timeline for the home page. Each entry is
@@ -181,6 +193,35 @@ function HomeFeedBody({
   isLoadingMore: boolean
   loadMore: () => void
 }) {
+  // Hooks at the top, before any early return — rules-of-hooks
+  // requires identical hook ordering on every render. The branches
+  // below all bail before render but the hooks above run regardless.
+  const items = useMemo(
+    () => groupConsecutiveEndorsements(events),
+    [events],
+  )
+
+  // Auto-load-more when grouping collapses a page into too few
+  // visible rows. The indexer pages by event count (PAGE_SIZE = 25
+  // in useHomeFeed); a burst of 50+ endorsements by one user
+  // becomes a single grouped row, leaving the screen feeling
+  // empty. Trigger a follow-up loadMore when the visible-item
+  // count is below MIN_VISIBLE_ITEMS, until that's no longer true
+  // OR we've made MAX_AUTO_LOADS consecutive auto-fetches (cap
+  // so a run of 1000+ same-actor endorsements doesn't fan out
+  // dozens of requests).
+  const autoLoadAttemptsRef = useRef(0)
+  useEffect(() => {
+    if (!hasMore || isLoading || isLoadingMore) return
+    if (items.length >= MIN_VISIBLE_ITEMS) {
+      autoLoadAttemptsRef.current = 0
+      return
+    }
+    if (autoLoadAttemptsRef.current >= MAX_AUTO_LOADS) return
+    autoLoadAttemptsRef.current++
+    loadMore()
+  }, [items.length, hasMore, isLoading, isLoadingMore, loadMore])
+
   if (followsLoading || isLoading) {
     return (
       <div className="home-feed__loading">
@@ -220,7 +261,7 @@ function HomeFeedBody({
       />
     )
   }
-  const items = groupConsecutiveEndorsements(events)
+
   return (
     <>
       <ol className="home-feed">
