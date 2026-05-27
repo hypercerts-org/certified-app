@@ -531,6 +531,13 @@
   color: var(--fg-primary);
   font: inherit;
   font-size: 0.875rem;
+  /* Explicit normal weight — the kebab trigger lives inside meta
+     labels (`.cert-detail__meta-label`, `font-weight: 600`) and
+     similar uppercase-label contexts, which `font: inherit` was
+     dragging into the menu items as a bold default. The pop-out
+     menu should always read as normal-weight body text regardless
+     of where the trigger sits. */
+  font-weight: 400;
   text-align: left;
   cursor: pointer;
 }

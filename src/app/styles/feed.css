@@ -1796,6 +1796,10 @@
   background: transparent;
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 0.8125rem;
+  /* Normal weight regardless of the surrounding context's
+     font-weight (the kebab trigger can sit inside semibold
+     labels). */
+  font-weight: 400;
   color: var(--fg-primary);
   text-align: left;
   cursor: pointer;
