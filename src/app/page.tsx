@@ -3,33 +3,34 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
-import { useSession } from "@/hooks/use-session";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 
 /**
- * Home — `/`.
+ * Root — `/`.
  *
- * Signed-in visitors land on their own profile. Signed-out visitors
- * land on `/welcome` (the marketing landing); we no longer auto-open
- * the sign-in modal — the landing page has its own Sign-in CTAs.
+ * Signed-in visitors land on `/home` (the activity feed). Signed-out
+ * visitors land on `/welcome` (the marketing landing). Applies
+ * uniformly across hosts — production (certified.app), redesign
+ * (redesign.certified.app), and staging (staging.certified.app) all
+ * resolve `/` through this component.
  *
- * Implementation is a client-side redirect rather than an inline render
- * because the underlying profile page already lives at /profile/[handle]
- * and we want one canonical URL per profile rather than two.
+ * Client-side redirect rather than a server-side rewrite because
+ * authentication state lives in a cookie-backed client context and
+ * resolves a tick after first paint; an inline loading spinner
+ * covers that gap.
  */
-export default function Home() {
+export default function Root() {
   const { isAuthenticated, isLoading } = useAuth();
-  const { handle } = useSession();
   const router = useRouter();
 
   useEffect(() => {
     if (isLoading) return;
-    if (isAuthenticated && handle) {
-      router.replace(`/profile/${encodeURIComponent(handle)}`);
-    } else if (!isAuthenticated) {
+    if (isAuthenticated) {
+      router.replace("/home");
+    } else {
       router.replace("/welcome");
     }
-  }, [isLoading, isAuthenticated, handle, router]);
+  }, [isLoading, isAuthenticated, router]);
 
   return (
     <div className="loading-screen">
