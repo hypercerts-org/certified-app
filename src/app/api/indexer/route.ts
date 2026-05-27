@@ -911,6 +911,11 @@ ${ACTIVITY_NODE_SELECTION}
               __typename
               ... on ComAtprotoRepoStrongRef { uri cid }
             }
+            content {
+              __typename
+              ... on OrgHypercertsDefsUri { uri }
+              ... on OrgHypercertsDefsSmallBlob { blob { ref mimeType } }
+            }
           }
         }
       }

@@ -123,6 +123,15 @@ export type HomeFeedEvent =
        * the actor + verb sentence.
        */
       shortDescription: string | null
+      /**
+       * Kind-specific preview thumbnail URL. update.create resolves
+       * this from the first `content[]` item that's an image blob
+       * on the attachment record. Null when the attachment has no
+       * image content (PDF-only) or for non-update kinds. Threaded
+       * through so the renderer can give update previews the same
+       * project-style card layout (image + title + description).
+       */
+      imageUrl: string | null
     })
   | (HomeFeedEventBase & {
       kind: "unknown"
@@ -436,6 +445,7 @@ function hydratedToHomeFeedEvent(h: HydratedFeedEvent): HomeFeedEvent {
       subjectUri: h.event.subjectUri,
       targetUri: payload.targetUri,
       shortDescription: payload.shortDescription,
+      imageUrl: payload.imageUrl,
     }
   }
 

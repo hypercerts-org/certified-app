@@ -36,6 +36,7 @@ import {
   nodeToActivityRecord,
   nodeToCollectionRecord,
 } from "./indexer"
+import { getBlobRefLink } from "./types"
 
 // ============================================================================
 // Constants
@@ -253,7 +254,7 @@ export interface HydratedPayloadLegacyEndorsement {
 /**
  * The four single-record kinds added by magic-indexer #125
  * (evaluation, measurement, hyperboard, update). Headline payload is
- * a uniform `{ title, createdAt, targetUri, shortDescription }`:
+ * a uniform `{ title, createdAt, targetUri, shortDescription, imageUrl }`:
  *   - `title` is the kind-specific headline string (evaluation
  *     summary, measurement metric, attachment title, null for
  *     hyperboard).
@@ -266,6 +267,11 @@ export interface HydratedPayloadLegacyEndorsement {
  *     today only attachment.create populates it (the lexicon's
  *     `shortDescription` field); the others stay null and the
  *     renderer falls back to the single-line sentence.
+ *   - `imageUrl` is the preview thumbnail URL. update.create
+ *     resolves it from the FIRST `content[]` item that's a
+ *     smallBlob with an `image/*` mimeType (so a PDF-only
+ *     attachment renders without a thumb instead of trying to
+ *     serve the PDF as an image). The other kinds leave it null.
  */
 export interface HydratedPayloadSimpleRecord {
   kind:
@@ -277,6 +283,7 @@ export interface HydratedPayloadSimpleRecord {
   createdAt: string
   targetUri: string | null
   shortDescription: string | null
+  imageUrl: string | null
 }
 
 export type HydratedPayload =
@@ -337,6 +344,12 @@ interface HyperboardGraphQLNode {
   createdAt: string
 }
 
+interface AttachmentContentItem {
+  __typename: string
+  uri?: string | null
+  blob?: { ref?: string | null; mimeType?: string | null } | null
+}
+
 interface AttachmentGraphQLNode {
   uri: string
   cid: string
@@ -345,6 +358,7 @@ interface AttachmentGraphQLNode {
   title: string | null
   shortDescription: string | null
   subjects: StrongRefNode[] | null
+  content: AttachmentContentItem[] | null
 }
 
 interface HydrateFeedPageResponse {
@@ -562,6 +576,7 @@ export async function hydrateFeedEvents(
       createdAt: edge.node.createdAt,
       targetUri: edge.node.subject?.uri ?? null,
       shortDescription: null,
+      imageUrl: null,
     })
   }
   for (const edge of json.data?.measurements?.edges ?? []) {
@@ -575,6 +590,7 @@ export async function hydrateFeedEvents(
       // the first reference. Later cards can show a count if needed.
       targetUri: edge.node.subjects?.[0]?.uri ?? null,
       shortDescription: null,
+      imageUrl: null,
     })
   }
   for (const edge of json.data?.hyperboards?.edges ?? []) {
@@ -585,6 +601,7 @@ export async function hydrateFeedEvents(
       createdAt: edge.node.createdAt,
       targetUri: null,
       shortDescription: null,
+      imageUrl: null,
     })
   }
   for (const edge of json.data?.attachments?.edges ?? []) {
@@ -599,6 +616,7 @@ export async function hydrateFeedEvents(
       // update to <X>" names one; take the first.
       targetUri: edge.node.subjects?.[0]?.uri ?? null,
       shortDescription: edge.node.shortDescription,
+      imageUrl: firstAttachmentImageUrl(edge.node),
     })
   }
 
@@ -606,4 +624,30 @@ export async function hydrateFeedEvents(
     event,
     payload: payloadByUri.get(event.subjectUri) ?? null,
   }))
+}
+
+/**
+ * Pick the first `content[]` entry that's a smallBlob with an
+ * `image/*` mimeType and build the getBlob proxy URL for it. Returns
+ * null when the attachment has no image content (e.g. PDF-only
+ * uploads), letting the preview card fall back to its no-image
+ * layout instead of trying to render a non-image blob as an `<img>`.
+ *
+ * The lexicon (`org.hypercerts.context.attachment`) allows the
+ * `content` array to mix URI links + small blobs (images, PDFs,
+ * other documents). For a feed thumbnail we want the first image,
+ * not the first arbitrary blob — serving a PDF blob through an
+ * `<img>` element would render broken.
+ */
+function firstAttachmentImageUrl(node: AttachmentGraphQLNode): string | null {
+  if (!Array.isArray(node.content)) return null
+  for (const item of node.content) {
+    if (item.__typename !== "OrgHypercertsDefsSmallBlob") continue
+    const mime = item.blob?.mimeType
+    if (typeof mime !== "string" || !mime.startsWith("image/")) continue
+    const cid = item.blob?.ref ? getBlobRefLink(item.blob.ref) : null
+    if (!cid) continue
+    return `/api/xrpc/com/atproto/sync/getBlob?did=${encodeURIComponent(node.did)}&cid=${encodeURIComponent(cid)}`
+  }
+  return null
 }

@@ -470,6 +470,7 @@ function HomeFeedRow({ event }: { event: HomeFeedEvent }) {
             title={event.title}
             shortDescription={event.shortDescription}
             targetUri={event.targetUri}
+            imageUrl={event.imageUrl}
           />
         ) : null}
       </div>
@@ -791,26 +792,26 @@ function CollectionPreview({
 // ----------------------------- Update preview ------------------------------
 
 /**
- * Card preview for an `update.create` event. The attachment lexicon's
- * `title` + `shortDescription` populate the card body; the card links
- * to the target's detail page when one resolves (cert or project),
- * matching the inline "posted an update to <X>" sentence above. When
- * there's no target URI (the lexicon didn't populate `subjects[]`),
- * the card renders unlinked — still useful as a body-of-the-update
- * preview, but no navigation.
- *
- * Attachments don't carry an image suitable for a feed preview thumb
- * (the lexicon's `content` is the underlying document, not an
- * identity image), so the card always renders in its no-image flow.
+ * Card preview for an `update.create` event. Modeled on the project
+ * card: the attachment lexicon's `title` + `shortDescription`
+ * populate the body; the first `image/*` blob in `content[]`
+ * (resolved server-side via the indexer's hydration round-trip)
+ * supplies the thumb when present. The card links to the target
+ * cert / project detail page when `subjects[0]` resolves, matching
+ * the inline "posted an update to <X>" sentence above. When the
+ * attachment has no image content the PreviewCard falls back to
+ * its no-image flow automatically.
  */
 function UpdatePreview({
   title,
   shortDescription,
   targetUri,
+  imageUrl,
 }: {
   title: string | null
   shortDescription: string | null
   targetUri: string | null
+  imageUrl: string | null
 }) {
   const parsed = targetUri ? parseAtUri(targetUri) : null
   const href = parsed
@@ -824,7 +825,7 @@ function UpdatePreview({
     <PreviewCard
       href={href}
       title={title?.trim() || "Update"}
-      imageUrl={null}
+      imageUrl={imageUrl}
       description={shortDescription}
       meta={[]}
     />
