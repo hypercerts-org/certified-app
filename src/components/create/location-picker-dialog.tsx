@@ -68,6 +68,13 @@ export default function LocationPickerDialog({
   onPick,
 }: LocationPickerDialogProps) {
   const [mode, setMode] = useState<"new" | "existing">("existing")
+  // Hides the "My locations" tab entirely once we've confirmed the
+  // user has zero published locations. With no locations there's
+  // nothing to pick from, and the empty-state copy was just noise —
+  // jumping the user straight to the "New" tab is the right
+  // default. We keep the tab visible during the initial fetch so
+  // the dialog doesn't flicker between layouts on first open.
+  const [showExistingTab, setShowExistingTab] = useState(true)
 
   const [name, setName] = useState("")
   const [fieldMode, setFieldMode] = useState<"search" | "edit">("search")
@@ -139,6 +146,12 @@ export default function LocationPickerDialog({
         })
         opts.sort((a, b) => a.name.localeCompare(b.name))
         setMyLocations(opts)
+        if (opts.length === 0) {
+          // No published locations → hide the tab + flip to New so
+          // the user lands on the actually-useful surface.
+          setShowExistingTab(false)
+          setMode("new")
+        }
       })
       .catch((err: unknown) => {
         if (err instanceof Error && err.name === "AbortError") return
@@ -321,38 +334,45 @@ export default function LocationPickerDialog({
     >
       <AppDialogHeader title="Add location" onClose={onClose} />
       <div className="create-cert__loc-dialog-body">
-        <div
-          role="tablist"
-          aria-label="Location source"
-          className="create-cert__loc-tabs"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === "existing"}
-            className={
-              mode === "existing"
-                ? "create-cert__loc-tab create-cert__loc-tab--active"
-                : "create-cert__loc-tab"
-            }
-            onClick={() => setMode("existing")}
+        {/* The tab strip is only useful when there's more than one
+            option to choose between. Hide it entirely when the
+            user has no published locations — the dialog body
+            then renders the New flow directly without a single-
+            tab strip on top of it. */}
+        {showExistingTab ? (
+          <div
+            role="tablist"
+            aria-label="Location source"
+            className="create-cert__loc-tabs"
           >
-            My locations
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === "new"}
-            className={
-              mode === "new"
-                ? "create-cert__loc-tab create-cert__loc-tab--active"
-                : "create-cert__loc-tab"
-            }
-            onClick={() => setMode("new")}
-          >
-            New
-          </button>
-        </div>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === "existing"}
+              className={
+                mode === "existing"
+                  ? "create-cert__loc-tab create-cert__loc-tab--active"
+                  : "create-cert__loc-tab"
+              }
+              onClick={() => setMode("existing")}
+            >
+              My locations
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === "new"}
+              className={
+                mode === "new"
+                  ? "create-cert__loc-tab create-cert__loc-tab--active"
+                  : "create-cert__loc-tab"
+              }
+              onClick={() => setMode("new")}
+            >
+              New
+            </button>
+          </div>
+        ) : null}
 
         {mode === "new" ? (
           <>
