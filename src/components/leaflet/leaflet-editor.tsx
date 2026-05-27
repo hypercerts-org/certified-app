@@ -92,6 +92,17 @@ export default function LeafletEditor({
     onChangeRef.current = onChange
   })
 
+  // Stringified version of the LinearDocument the editor most
+  // recently produced. The sync effect below uses this to short-
+  // circuit when a `value` prop change is the parent's controlled-
+  // state echo of our own onUpdate — without that, the round-trip
+  // serialiser can produce a TipTap doc that doesn't byte-identical
+  // match the editor's live `getJSON()` (e.g. `{type: "paragraph"}`
+  // vs `{type: "paragraph", content: []}` for empty blocks), which
+  // would trigger `setContent` on every keystroke and clobber the
+  // cursor — most visibly when pressing Enter inside a list.
+  const lastProducedJsonRef = useRef<string | null>(null)
+
   const initial = toInitialDoc(value)
 
   const editor = useEditor({
@@ -130,6 +141,9 @@ export default function LeafletEditor({
       const next = tiptapToLinearDocument(
         json as Parameters<typeof tiptapToLinearDocument>[0],
       )
+      // Stamp the produced value so the sync effect can recognise
+      // the parent's controlled-state echo of this update.
+      lastProducedJsonRef.current = JSON.stringify(next)
       onChangeRef.current(next)
     },
     editorProps: {
@@ -158,6 +172,16 @@ export default function LeafletEditor({
   // what the editor just produced; skip the setContent.
   useEffect(() => {
     if (!editor) return
+    // If the incoming `value` is exactly what the editor just
+    // produced, this is the parent's controlled-state echo of our
+    // own update — bail before setContent can reset the cursor.
+    // The previous "compare against getJSON" guard misfired when
+    // the to-/from-TipTap round-trip wasn't byte-identical (e.g.
+    // empty paragraphs got `content: []` injected). Comparing the
+    // parent-passed LinearDocument to the LinearDocument we
+    // produced sidesteps that whole class of mismatch.
+    const valueJson = JSON.stringify(value ?? null)
+    if (lastProducedJsonRef.current === valueJson) return
     const next = toInitialDoc(value)
     const current = editor.getJSON()
     if (!shallowEqual(next, current)) {

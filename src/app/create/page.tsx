@@ -1630,15 +1630,15 @@ function LocationPickerDialog({
     : { lat: 20, lng: 0 }
   const zoom = hasPin ? 6 : 1
 
-  // Map height: same calc the view-location modal uses
-  // (CertLocationsMap → AppDialog), so the add + view modals share
-  // a frame visually. ~60vh capped at 560 keeps the map dominant on
-  // tall monitors without forcing the dialog past the viewport on
-  // short ones.
+  // Map height — exactly the calc the cert-detail "view location"
+  // modal uses (`CertLocationsMap` → AppDialog) so the add + view
+  // modals have the same body height. 70vh capped at 720 keeps the
+  // map dominant on tall monitors without forcing the dialog past
+  // the viewport on short ones.
   const mapHeight =
     typeof window !== "undefined"
-      ? Math.round(Math.min(560, Math.max(320, window.innerHeight * 0.6)))
-      : 480
+      ? Math.round(Math.min(720, window.innerHeight * 0.7))
+      : 720
 
   return (
     <AppDialog
