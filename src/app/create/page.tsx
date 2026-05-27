@@ -1687,24 +1687,42 @@ function LocationPickerDialog({
   const mapKey =
     mode === "existing" ? `existing-${selectedExistingUri || "empty"}` : "new"
 
-  // Map height — exactly the calc the cert-detail "view location"
-  // modal uses (`CertLocationsMap` → AppDialog) so the add + view
-  // modals have the same body height. 70vh capped at 720 keeps the
-  // map dominant on tall monitors without forcing the dialog past
-  // the viewport on short ones.
-  const mapHeight =
-    typeof window !== "undefined"
-      ? Math.round(Math.min(720, window.innerHeight * 0.7))
-      : 720
+  // Modal sizing — derived from the live viewport so the dialog
+  // never overflows on small/medium screens but still respects a
+  // floor on really tiny phones.
+  //
+  // Width: capped at 1100 (the same hero width the cert-detail
+  // "view location" modal uses), but no wider than `viewport - 40`
+  // so there's always at least a 20px gutter on each side. The
+  // `Math.max(320, …)` clamps to a minimum of 320 so an ultra-
+  // narrow viewport (<320px) still gets a usable form rather than
+  // collapsing into nothing — content scrolls horizontally inside
+  // the dialog in that edge case.
+  //
+  // Map height: viewport height minus the non-map chrome the
+  // dialog also carries (header, tabs, field row, hint, action
+  // row, paddings ~= 280px) — capped at 720 on tall monitors,
+  // floored at 220 so the map doesn't shrink to a sliver.
+  const NON_MAP_CHROME = 280
+  const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1280
+  const viewportHeight =
+    typeof window !== "undefined" ? window.innerHeight : 800
+  const modalMaxWidth = Math.max(320, Math.min(1100, viewportWidth - 40))
+  const mapHeight = Math.max(
+    220,
+    Math.min(720, viewportHeight - 40 - NON_MAP_CHROME),
+  )
 
   return (
     <AppDialog
       ariaLabel="Add location"
       className="create-cert__loc-dialog"
-      /* Same width as the "view location" modal on the cert detail
-         page (`CertLocationsMap` → AppDialog maxWidth=1100) so the
-         author flow and the reader flow share a frame size. */
-      maxWidth={1100}
+      /* Capped at 1100 to share a hero width with the "view
+         location" modal on the cert detail page, but clamped to
+         the live viewport (with a 20px gutter on each side) so
+         the dialog never overflows on smaller screens. The 320
+         floor keeps a usable form on ultra-narrow viewports. */
+      maxWidth={modalMaxWidth}
       onClose={onClose}
     >
       <AppDialogHeader title="Add location" onClose={onClose} />
