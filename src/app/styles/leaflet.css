@@ -243,24 +243,32 @@ ol.leaflet-doc__list {
   color: var(--fg-primary);
 }
 
-/* Suppress every CSS path that can paint a "second border" around
-   the first paragraph when the editor receives focus:
-   1) ProseMirror's default `.ProseMirror-selectednode` outline
-      (prosemirror-view/style/prosemirror.css) — fires when the
-      editor enters a NodeSelection state on a block, e.g. when
-      clicking into an empty first paragraph.
-   2) The contenteditable's per-block browser-default focus ring
-      (some WebKit builds paint one on direct children of an
-      editable surface).
-   Our image + embed NodeViews carry their own
-   `.leaflet-doc__*--selected` outline classes, so suppressing the
-   default on the surface doesn't drop selection cues for the
-   blocks we do want highlighted. */
-.leaflet-editor__surface .ProseMirror-selectednode,
+/* Nuclear: kill every possible source of a "second border" around
+   any block inside the editor surface. The previous targeted
+   override (`.ProseMirror-selectednode` only) didn't catch what the
+   user is reporting on the first line, so we cast wider:
+   - every descendant gets `outline: 0 !important` for any state
+     (idle / focus / focus-visible / selected-node);
+   - direct-child blocks (the actual paragraphs / headings) also
+     have `box-shadow: none !important` so nothing renders an
+     inner ring.
+   The image + embed NodeViews paint their own selection cue via
+   `.leaflet-doc__image--selected` / `.leaflet-doc__embed--selected`,
+   so removing the default selection outline doesn't drop those
+   block-level affordances. */
+.leaflet-editor__surface,
+.leaflet-editor__surface *,
+.leaflet-editor__surface *:focus,
+.leaflet-editor__surface *:focus-visible,
+.leaflet-editor__surface .ProseMirror-selectednode {
+  outline: 0 !important;
+  outline-style: none !important;
+}
+
+.leaflet-editor__surface > *,
 .leaflet-editor__surface > *:focus,
 .leaflet-editor__surface > *:focus-visible {
-  outline: none !important;
-  box-shadow: none;
+  box-shadow: none !important;
 }
 
 /* TipTap renders block-level nodes directly inside

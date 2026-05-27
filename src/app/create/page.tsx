@@ -33,7 +33,7 @@ import { isAtprotoIdentity } from "@/hooks/use-contributor-info"
 import type { HypercertsSmallImage } from "@/lib/atproto/types"
 import {
   putLocationRecord,
-  readLocationStrongRef,
+  splitLocationName,
   type StrongRef,
 } from "@/lib/atproto/location"
 import {
@@ -1394,8 +1394,70 @@ function LocationPickerDialog({
   const lastSourceRef = useRef<"user" | "map" | null>(null)
   const blurTimerRef = useRef<number | null>(null)
 
-  // ----- Existing-record field -----
-  const [uri, setUri] = useState("")
+  // ----- Existing-record state -----
+  // The "Existing" mode lists the signed-in user's own previously
+  // published `app.certified.location` records. We fetch them on
+  // mount via listRecords on their repo; the dropdown shows the
+  // record's `name`, the strongRef + name flow back through onPick
+  // exactly the same as a freshly-created record would.
+  interface MyLocation {
+    ref: StrongRef
+    name: string
+  }
+  const [myLocations, setMyLocations] = useState<MyLocation[]>([])
+  const [myLocationsLoading, setMyLocationsLoading] = useState(true)
+  const [myLocationsError, setMyLocationsError] = useState<string | null>(null)
+  const [selectedExistingUri, setSelectedExistingUri] = useState<string>("")
+
+  useEffect(() => {
+    const controller = new AbortController()
+    setMyLocationsLoading(true)
+    setMyLocationsError(null)
+    const params = new URLSearchParams({
+      repo: ownDid,
+      collection: "app.certified.location",
+      limit: "100",
+    })
+    authFetch(
+      `/api/xrpc/com/atproto/repo/listRecords?${params.toString()}`,
+      { signal: controller.signal },
+    )
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`listRecords failed: ${res.status}`)
+        const body = (await res.json()) as {
+          records?: Array<{
+            uri: string
+            cid: string
+            value?: { name?: unknown }
+          }>
+        }
+        const opts: MyLocation[] = (body.records ?? []).map((rec) => {
+          const rawName =
+            typeof rec.value?.name === "string" ? rec.value.name.trim() : ""
+          // Strip the Plus Code prefix so the dropdown reads as the
+          // human place ("Timbi-Madina, Guinée") not the code.
+          const split = rawName ? splitLocationName(rawName) : null
+          const display =
+            split?.name ||
+            rawName ||
+            rec.uri.split("/").pop() ||
+            "(unnamed location)"
+          return { ref: { uri: rec.uri, cid: rec.cid }, name: display }
+        })
+        opts.sort((a, b) => a.name.localeCompare(b.name))
+        setMyLocations(opts)
+      })
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === "AbortError") return
+        setMyLocationsError(
+          err instanceof Error ? err.message : "Failed to load locations",
+        )
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setMyLocationsLoading(false)
+      })
+    return () => controller.abort()
+  }, [ownDid])
 
   // ----- Submit state -----
   const [isSaving, setIsSaving] = useState(false)
@@ -1480,7 +1542,7 @@ function LocationPickerDialog({
   }
 
   const canSubmitNew = !!coords && !isSaving
-  const canSubmitExisting = uri.trim().startsWith("at://") && !isSaving
+  const canSubmitExisting = !!selectedExistingUri && !isSaving
 
   const handleSubmitNew = async () => {
     if (!coords) return
@@ -1502,38 +1564,12 @@ function LocationPickerDialog({
     }
   }
 
-  const handleSubmitExisting = async () => {
-    const trimmed = uri.trim()
-    if (!trimmed.startsWith("at://")) return
-    setIsSaving(true)
-    setSaveError(null)
-    try {
-      // readLocationStrongRef only consults the URI on the input —
-      // pass an empty cid placeholder, it'll be replaced with the
-      // real cid from the fetch response.
-      const resolved = await readLocationStrongRef({
-        uri: trimmed,
-        cid: "",
-      })
-      if (!resolved) {
-        throw new Error(
-          "Couldn't resolve that record — check the URI points at an app.certified.location",
-        )
-      }
-      onPick({
-        ref: { uri: resolved.uri, cid: resolved.cid },
-        name:
-          resolved.name ??
-          `${resolved.coords.lat}, ${resolved.coords.lng}`,
-      })
-    } catch (err) {
-      setSaveError(
-        err instanceof Error
-          ? err.message
-          : "Failed to resolve location URI",
-      )
-      setIsSaving(false)
-    }
+  const handleSubmitExisting = () => {
+    const chosen = myLocations.find(
+      (loc) => loc.ref.uri === selectedExistingUri,
+    )
+    if (!chosen) return
+    onPick(chosen)
   }
 
   const hasPin = !!coords
@@ -1548,7 +1584,10 @@ function LocationPickerDialog({
     <AppDialog
       ariaLabel="Add location"
       className="create-cert__loc-dialog"
-      maxWidth={620}
+      /* Same width as the "view location" modal on the cert detail
+         page (`CertLocationsMap` → AppDialog maxWidth=1100) so the
+         author flow and the reader flow share a frame size. */
+      maxWidth={1100}
       onClose={onClose}
     >
       <AppDialogHeader title="Add location" onClose={onClose} />
@@ -1582,7 +1621,7 @@ function LocationPickerDialog({
             }
             onClick={() => setMode("existing")}
           >
-            Existing URI
+            My locations
           </button>
         </div>
 
@@ -1591,7 +1630,7 @@ function LocationPickerDialog({
             <div className="create-cert__loc-combobox">
               <input
                 type="text"
-                className="cert-detail__meta-input"
+                className="cert-detail__meta-input create-cert__field--full"
                 value={name}
                 maxLength={256}
                 placeholder="Type a city or address…"
@@ -1688,21 +1727,37 @@ function LocationPickerDialog({
         ) : (
           <>
             <label
-              htmlFor="create-cert-loc-uri"
+              htmlFor="create-cert-loc-existing"
               className="create-cert__loc-uri-label"
             >
-              Paste an at:// URI of an existing{" "}
-              <code>app.certified.location</code> record:
+              Pick one of the locations you've already published:
             </label>
-            <input
-              id="create-cert-loc-uri"
-              type="text"
-              className="cert-detail__meta-input"
-              value={uri}
-              onChange={(e) => setUri(e.target.value)}
-              placeholder="at://did:plc:…/app.certified.location/…"
-              autoComplete="off"
-            />
+            {myLocationsLoading ? (
+              <p className="create-cert__loc-hint">Loading…</p>
+            ) : myLocationsError ? (
+              <p className="cert-detail__error-desc" role="alert">
+                {myLocationsError}
+              </p>
+            ) : myLocations.length === 0 ? (
+              <p className="create-cert__loc-hint">
+                You haven&apos;t published any locations yet. Add one
+                via the New tab and it will appear here on the next cert.
+              </p>
+            ) : (
+              <select
+                id="create-cert-loc-existing"
+                className="cert-detail__meta-input create-cert__field--full"
+                value={selectedExistingUri}
+                onChange={(e) => setSelectedExistingUri(e.target.value)}
+              >
+                <option value="">Select a location…</option>
+                {myLocations.map((loc) => (
+                  <option key={loc.ref.uri} value={loc.ref.uri}>
+                    {loc.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </>
         )}
 
