@@ -41,15 +41,25 @@
      Profile page keeps the original 296px-left / 1fr-right since it
      doesn't carry the `.cert-detail--wide` modifier.
      DOM order stays aside-first (semantic supplementary block);
-     CSS grid-column placement does the visual flip. */
+     CSS grid-column placement does the visual flip.
+
+     Both items pinned to `grid-row: 1` because aside is DOM-first
+     and explicit-placed in column 2 — without an explicit row, CSS
+     grid auto-placement leaves the cursor at row 1 / col 2 after
+     aside lands, then pushes main (which wants column 1) DOWN to
+     row 2 to "move forward" from the cursor. Result was the main
+     pane starting at the y-position where aside content ended.
+     Pinning both to row 1 keeps them side-by-side. */
   .cert-detail--wide.page-layout {
     grid-template-columns: minmax(0, 1fr) 296px;
   }
   .cert-detail--wide.page-layout > .cert-detail__aside {
     grid-column: 2;
+    grid-row: 1;
   }
   .cert-detail--wide.page-layout > .cert-detail__main {
     grid-column: 1;
+    grid-row: 1;
   }
 }
 
