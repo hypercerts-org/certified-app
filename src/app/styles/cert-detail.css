@@ -1254,24 +1254,33 @@
 }
 
 .cert-detail__headline-project-link {
+  /* Background-highlight on hover matches the Author cell —
+     same `overlay-weak` fill, same rounded chip, same
+     negative-margin trick so the highlight feels inset without
+     reflowing the row. */
   display: inline-flex;
   align-items: center;
   gap: 8px;
   color: var(--fg-primary);
   text-decoration: none;
   min-width: 0;
-  /* Underline on hover only, so the row reads as a compact label
-     by default and reveals affordance on intent. */
-  border-bottom: 1px solid transparent;
-  transition: border-color var(--transition-fast);
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border-radius: 6px;
+  transition: background var(--transition-fast);
 }
 
-.cert-detail__headline-project-link:hover {
-  border-bottom-color: var(--fg-primary);
+.cert-detail__headline-project-link:hover,
+.cert-detail__headline-project-link:focus-visible {
+  background: var(--overlay-weak);
 }
 
 .cert-detail__headline-project-link--static {
   cursor: default;
+}
+
+.cert-detail__headline-project-link--static:hover {
+  background: transparent;
 }
 
 .cert-detail__headline-project-thumb {

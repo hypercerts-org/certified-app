@@ -1218,20 +1218,6 @@ function CertHeadlineColumns({
   return (
     <div className="cert-detail__headline-cols">
       <div className="cert-detail__headline-col">
-        <span className="cert-detail__meta-label">
-          <Calendar size={11} strokeWidth={2} aria-hidden />
-          Date created
-        </span>
-        <time
-          dateTime={createdAt}
-          className="cert-detail__headline-col-value"
-          title={createdAt}
-        >
-          {formattedDate}
-        </time>
-      </div>
-
-      <div className="cert-detail__headline-col">
         <span className="cert-detail__meta-label">Author</span>
         {authorLoading || !info ? (
           <span
@@ -1269,6 +1255,20 @@ function CertHeadlineColumns({
             )
           })()
         )}
+      </div>
+
+      <div className="cert-detail__headline-col">
+        <span className="cert-detail__meta-label">
+          <Calendar size={11} strokeWidth={2} aria-hidden />
+          Date created
+        </span>
+        <time
+          dateTime={createdAt}
+          className="cert-detail__headline-col-value"
+          title={createdAt}
+        >
+          {formattedDate}
+        </time>
       </div>
 
       <div className="cert-detail__headline-col">
