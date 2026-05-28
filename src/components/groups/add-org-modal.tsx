@@ -1,8 +1,7 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useCallback } from "react"
-import { AppDialogHeader } from "@/components/ui/app-dialog"
-import { useFocusTrap } from "@/hooks/use-focus-trap"
+import React, { useState, useEffect, useRef } from "react"
+import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import { putMembership, listOrgMembers } from "@/lib/groups/api"
 import { authFetch } from "@/lib/auth/fetch"
 import { resolveHandle } from "@/lib/atproto/did"
@@ -20,7 +19,6 @@ interface AddOrgModalProps {
 }
 
 export default function AddOrgModal({ did, onClose, onAdded }: AddOrgModalProps) {
-  const focusTrapRef = useFocusTrap<HTMLDivElement>(true)
   const [input, setInput] = useState("")
   const [resolvedDid, setResolvedDid] = useState<string | null>(null)
   const [resolvedRole, setResolvedRole] = useState<OrgRole | null>(null)
@@ -112,25 +110,16 @@ export default function AddOrgModal({ did, onClose, onAdded }: AddOrgModalProps)
     }
   }
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === "Escape") onClose()
-  }, [onClose])
-
   return (
-    <div className="signin-modal__backdrop" role="presentation" onClick={onClose}>
-      <div
-        ref={focusTrapRef}
-        className="signin-modal app-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Add Existing Group"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={handleKeyDown}
-        style={{ maxWidth: 480 }}
-      >
-        <AppDialogHeader title="Add Existing Group" onClose={onClose} />
+    <AppDialog
+      ariaLabel="Add Existing Group"
+      maxWidth={480}
+      onClose={onClose}
+      disableBackdropClose={isAdding}
+    >
+      <AppDialogHeader title="Add Existing Group" onClose={onClose} disabled={isAdding} />
 
-        <div className="signin-modal__body">
+      <div className="signin-modal__body">
           <p className="dash-card__desc" style={{ marginBottom: 16 }}>
             If someone added you to a group, enter its handle or DID to link it to your account.
           </p>
@@ -185,7 +174,6 @@ export default function AddOrgModal({ did, onClose, onAdded }: AddOrgModalProps)
             </div>
           </div>
         </div>
-      </div>
-    </div>
+    </AppDialog>
   )
 }

@@ -1,9 +1,8 @@
 "use client"
 
-import React, { useCallback } from "react"
-import { AppDialogHeader } from "@/components/ui/app-dialog"
+import React from "react"
+import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
-import { useFocusTrap } from "@/hooks/use-focus-trap"
 
 export interface MembershipChange {
   groupDid: string
@@ -26,27 +25,20 @@ export default function MembershipSyncModal({
   onAcknowledge,
   onClose,
 }: MembershipSyncModalProps) {
-  const isOpen = true
-  const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen)
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === "Escape") onClose()
-  }, [onClose])
-
   return (
-    <div className="signin-modal__backdrop" onClick={onClose}>
-      <div
-        ref={focusTrapRef}
-        className="signin-modal app-modal"
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={handleKeyDown}
-        style={{ maxWidth: 500 }}
-      >
-        <AppDialogHeader title="Membership Changes Detected" onClose={onClose} />
+    <AppDialog
+      ariaLabel="Membership Changes Detected"
+      maxWidth={500}
+      onClose={onClose}
+      disableBackdropClose={isApplying}
+    >
+      <AppDialogHeader
+        title="Membership Changes Detected"
+        onClose={onClose}
+        disabled={isApplying}
+      />
 
-        <div className="signin-modal__body">
+      <div className="signin-modal__body">
           <p className="dash-card__desc" style={{ marginBottom: 16 }}>
             Your group memberships have changed since your last visit.
           </p>
@@ -82,7 +74,6 @@ export default function MembershipSyncModal({
             </Button>
           </div>
         </div>
-      </div>
-    </div>
+    </AppDialog>
   )
 }
