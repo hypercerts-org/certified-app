@@ -107,7 +107,6 @@ export const RATE_LIMITED_WRITE_COLLECTIONS: Record<
   "endorsement-issue"
 > = {
   "app.certified.badge.award": "endorsement-issue",
-  "app.certified.temp.graph.endorsement": "endorsement-issue",
 }
 
 // ============================================================================

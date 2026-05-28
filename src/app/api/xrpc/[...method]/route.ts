@@ -27,7 +27,6 @@ const ALLOWED_WRITE_COLLECTIONS = [
   "app.certified.actor.membership",
   "app.certified.actor.organization",
   "app.certified.location",
-  "app.certified.temp.graph.endorsement",
   // Badge lexicons (issue #65 tracks indexer-side support). `definition`
   // is written once per user the first time they endorse; `award` is the
   // endorsement itself; `response` is the recipient accept/reject (used

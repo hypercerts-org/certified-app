@@ -95,7 +95,6 @@ describe("/api/indexer trust boundary", () => {
         ["Followers", { did: "did:plc:abc" }],
         ["ReceivedEndorsements", { did: "did:plc:abc" }],
         ["EndorsementDefs", { dids: ["did:plc:abc"] }],
-        ["LegacyEndorsements", { authors: ["did:plc:abc"] }],
       ] as const
       for (const [op, vars] of allowlisted) {
         mockFetch.mockClear()

@@ -734,29 +734,6 @@ ${ACTIVITY_NODE_SELECTION}
     }
   `,
 
-  // Legacy temp endorsement records — pre-badge-migration. Kept for
-  // the read-side compatibility window. Drop when no longer referenced.
-  LegacyEndorsements: `
-    query LegacyEndorsements($authors: [String!]!, $first: Int!, $after: String) {
-      appCertifiedTempGraphEndorsement(
-        first: $first
-        after: $after
-        authors: $authors
-      ) {
-        edges {
-          cursor
-          node {
-            uri
-            did
-            subject { did }
-            createdAt
-          }
-        }
-        pageInfo { hasNextPage endCursor }
-      }
-    }
-  `,
-
   // Viewer-centric endorsement-graph closure — magic-indexer issue
   // #117. Returns DIDs reachable within `degree` hops of `viewer`
   // through active (non-rejected, endorsement-typed) badge awards,
@@ -1329,15 +1306,6 @@ function buildVariables(
       const did = readDid(vars.did)
       if (!did) return null
       return { did }
-    }
-    case "LegacyEndorsements": {
-      const authors = readDidList(vars.authors, MAX_DID_LIST)
-      if (!authors) return null
-      return {
-        authors,
-        first: clampFirst(vars.first, MAX_FIRST, 100),
-        after: readString(vars.after, MAX_AFTER_LEN),
-      }
     }
     case "EndorsementClosure": {
       // Viewer-centric BFS closure (magic-indexer #117). `viewer`
