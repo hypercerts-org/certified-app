@@ -88,12 +88,7 @@ export function Tabs({ value, onChange, children, className = "" }: TabsProps) {
   // its DOM node without re-rendering siblings on every render.
   return (
     <TabsContext.Provider value={ctx}>
-      <TabsRegistryContext.Provider
-        value={{
-          buttons: buttonsRef.current,
-          order: orderRef.current,
-        }}
-      >
+      <TabsRegistryContext.Provider value={{ buttonsRef, orderRef }}>
         <div className={className}>{children}</div>
       </TabsRegistryContext.Provider>
     </TabsContext.Provider>
@@ -101,8 +96,8 @@ export function Tabs({ value, onChange, children, className = "" }: TabsProps) {
 }
 
 interface TabsRegistry {
-  buttons: Map<string, HTMLButtonElement>;
-  order: string[];
+  buttonsRef: React.MutableRefObject<Map<string, HTMLButtonElement>>;
+  orderRef: React.MutableRefObject<string[]>;
 }
 
 const TabsRegistryContext = createContext<TabsRegistry | null>(null);
@@ -145,15 +140,15 @@ export function Tab({ value, children, className = "", ...props }: TabProps) {
   const handleRef = useCallback(
     (node: HTMLButtonElement | null) => {
       if (!registry) return;
-      if (node) registry.buttons.set(value, node);
-      else registry.buttons.delete(value);
+      if (node) registry.buttonsRef.current.set(value, node);
+      else registry.buttonsRef.current.delete(value);
     },
     [registry, value],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
     if (!registry) return;
-    const order = registry.order;
+    const order = registry.orderRef.current;
     const idx = order.indexOf(value);
     if (idx < 0) return;
     let next: number | null = null;

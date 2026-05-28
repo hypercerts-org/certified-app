@@ -166,13 +166,15 @@ export function PopoverContent({
   children,
   ...props
 }: PopoverContentProps) {
-  const ctx = usePopover("PopoverContent");
-  if (!ctx.open) return null;
+  // Pull ref + id out of the context locally — the React 19 strict-refs
+  // lint rule is overly cautious about accessing context-held refs in JSX.
+  const { open, contentRef, contentId } = usePopover("PopoverContent");
+  if (!open) return null;
 
   return (
     <div
-      ref={ctx.contentRef}
-      id={ctx.contentId}
+      ref={contentRef}
+      id={contentId}
       role="menu"
       className={`absolute top-full z-[40] mt-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded shadow-md p-1 ${alignClass[align]} ${className}`}
       style={{ minWidth, marginTop: offset, ...style }}

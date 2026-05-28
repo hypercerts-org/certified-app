@@ -544,3 +544,54 @@ Things an AI agent is likely to get wrong:
 7. **No new shadows on cards.** Cards communicate elevation via background color (`--bg-elevated` vs `--bg-canvas`), not box-shadow. Shadows are reserved for floating elements (modals, tooltips, dropdowns).
 8. **Test skeleton states.** Every new data-fetching component needs a skeleton. Match the geometry of the loaded state — rectangles where text will be, circles where avatars will be, same spacing.
 9. **Icon sizing follows context.** 14px for inline actions alongside text, 20–22px for navigation chrome, 24px for bottom nav. Don't mix these.
+
+---
+
+## 14. Design consolidation pass (2026-05-28)
+
+This section documents the changes from `feat/design-consolidation` (PR into `feat/positioning-redesign`). It supersedes any contradictions earlier in this file.
+
+### 14.1 New rules
+
+1. **All `border-radius` values are `var(--radius)` (2 px).** No exceptions. The previous `--radius: 2px` policy was being eroded by 116+ instances of 4 / 6 / 8 / 12 / 16 / 20 px corners; those are gone. Pills stay at `999px`, circles at `50%`. The sign-in modal is no longer a "hero exception" (was 20 px → 2 px).
+2. **Landing has proper dark mode.** The "landing palette kept invariant so /welcome always renders light-themed" policy is retired. The landing tokens (`--color-navy`, `--color-off-white`, `--color-light-gray`, `--color-mid-gray`, `--color-dark-gray`, `--color-surface`, `--color-surface-container-low`) flip in `[data-theme="dark"]`. `--color-primary` and `--color-white` remain invariant for systems that still depend on them (skip-nav, brand SVG).
+3. **Breakpoints: 800 / 1100 / 1300 only.** Previously `landing.css` used 768 (9 places) and `home/explore/workspace` used 760 (5 places). All migrated to `max-width: 799px` to match the existing "just below desktop" convention.
+4. **Form input padding follows the 4-px grid.** `12 × 14` and `7 × 12` arbitrary values were replaced with `12 × 16` / `8 × 12`.
+5. **Cert-detail / project-detail "wide" pages share the 1280 px fullbleed width** with profile / settings / workspace.
+
+### 14.2 New UI components
+
+| Component | File | Purpose |
+| --- | --- | --- |
+| `<Card variant="row\|elevated\|inset">` | `src/components/ui/card.tsx` | Canonical card with three shapes. Migrate `.feed-card`, `.dash-card`, `.explore-*-card`, `.app-card`, `.endorsements-v2__card` to it. |
+| `<Tabs>`, `<TabList>`, `<Tab>`, `<TabPanel>` | `src/components/ui/tabs.tsx` | Proper ARIA tab pattern with keyboard arrow navigation. Migrate `.profile-tabs__tab`, `.feed-tabs__tab`. |
+| `<Skeleton variant="line\|box\|circle\|text">` | `src/components/ui/skeleton.tsx` | Single primitive for all loading states. Migrate `ActivityCardSkeleton`, `NotificationRowSkeleton`, `.feed-card__author--skeleton`, etc. |
+| `<Popover>`, `<PopoverTrigger>`, `<PopoverContent>`, `<PopoverItem>` | `src/components/ui/popover.tsx` | Floating menus — click-outside, Esc, ARIA wired. Migrate `.feed-filter`, account switcher menu, workspace breadcrumb menu, `.response-menu__menu`. |
+
+### 14.3 Extended component APIs
+
+| Component | New API | What absorbed |
+| --- | --- | --- |
+| `<Button>` | `size="icon"` (40 × 40 square, requires `aria-label`) | `.desktop-top-bar__icon-btn` and similar icon-only buttons. Variant `accent` rejected; domain modal moved to `primary`. |
+| `<Input>` | `size="sm\|md\|lg"` (36 / 44 / 56 px), `variant="default\|underline\|inline-edit"` | `.signin-modal__input` (size=lg), `.delete-record-dialog__input` (variant=inline-edit). |
+| `<Badge>` | New variants: `tag`, `role`, `count`, `high-quality`, `standard`, `draft`, `test`. `compact` prop for the tighter 11 px chip. | `.feed-card__label*` (4 quality variants), `.org-list__item-role`. `FeedLabelPill` now composes Badge. |
+
+### 14.4 Modal hygiene
+
+`AddOrgModal` and `MembershipSyncModal` moved from hand-rolled backdrop/Esc/focus-trap implementations to the canonical `<AppDialog>`. `CustomDomainModal` migration is deferred (multi-step indicator needs visual review). `<ResponsiveModal>` extraction from `FeedbackModal` is deferred until a second consumer exists.
+
+### 14.5 Z-index tokens
+
+Added `--z-feedback: 10000` and `--z-feedback-above: 10001` to the token map. Hardcoded z-index values (`49`, `999`, `10000`, `10001`) in `layout.css` / `landing.css` / `components.css` are now token references.
+
+### 14.6 What didn't make it
+
+- Migration of every `.profile-tabs__tab` / `.feed-tabs__tab` to `<Tabs>` — primitive shipped, call sites stay until each is touched.
+- Migration of every CSS-based card to `<Card>` — same.
+- Migration of every CSS-based popover to `<Popover>` — same.
+- Migration of skeleton CSS to `<Skeleton>` — same.
+- `CustomDomainModal` → `<AppDialog>`.
+- `<ResponsiveModal>` extraction from `FeedbackModal`.
+- A stylelint rule that flags `border-radius: 6px` and raw hex outside `tokens.css`.
+
+These are documented as follow-on work in `docs/design-consolidation/plan.md`.
