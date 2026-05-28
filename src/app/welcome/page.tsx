@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     siteName: "Certified",
     images: [
       {
-        url: "https://certified.app/assets/certified-hero-1200x630.png",
+        url: "https://certified.app/assets/certs-hero-1200x630.png",
         width: 1200,
         height: 630,
         alt: "Certified — One account, any app",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     title: "Certified — One account, any app",
     description:
       "Create your Certified identity and use one account across partner apps. No passwords, no lock-in.",
-    images: ["https://certified.app/assets/certified-hero-1200x630.png"],
+    images: ["https://certified.app/assets/certs-hero-1200x630.png"],
   },
 };
 

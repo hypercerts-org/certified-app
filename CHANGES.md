@@ -42,4 +42,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/lib/atproto/__tests__/context-attachment.test.ts — fails before (javascript:/data: resolved), passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### bug-002 — OG/Twitter share image references a non-existent certified-hero file on 5 pages · IMPLEMENTED
+- **Why it's an improvement:** The most-shared landing URL (/welcome) and four legal pages served a 404 OG image, so social unfurls rendered with no preview; now they point at the real on-disk asset.
+- **Change:** Replaced the five `certified-hero-1200x630.png` strings with `certs-hero-1200x630.png` in welcome/terms/privacy/dsa/imprint, matching the file on disk plus layout.tsx and about/page.tsx.
+- **Test:** src/app/__tests__/metadata-og-image.test.ts — asserts every OG/Twitter image in each page's exported metadata resolves under public/; fails before (5 red), passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
