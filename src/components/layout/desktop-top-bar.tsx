@@ -168,7 +168,12 @@ export default function DesktopTopBar() {
     pathname === "/settings" || (pathname?.startsWith("/settings/") ?? false);
   // Cert / project detail pages get a thin row-2 with just a back
   // affordance so the navigation rhythm stays consistent across the app.
-  const isOnCertDetail = pathname?.startsWith("/activity/") ?? false;
+  // The cert *editor* (`/activity/<did>/<rkey>/edit`) is a single-page
+  // form like `/create` — no tab strip, no back row; the form's own
+  // Cancel button is the way out. Same exclusion logic as `/project/new`.
+  const isOnCertDetail =
+    (pathname?.startsWith("/activity/") ?? false) &&
+    !(pathname?.endsWith("/edit") ?? false);
   // `/project/new` is the create form, not a record detail page —
   // the second-row tabs (Description / Certs / Updates) only make
   // sense for an existing project.
