@@ -342,7 +342,7 @@ export default function EndorsementLists({
               onClick={() => setModalMode("create")}
             >
               <Plus size={14} strokeWidth={1.75} aria-hidden />
-              Create list
+              New list
             </Button>
           ) : null}
         </div>

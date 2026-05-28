@@ -44,7 +44,7 @@ export default function ProfileProjects({ did, viewerIsOwner }: ProfileProjectsP
       <Link href="/project/new">
         <Button variant="primary" size="sm">
           <Plus size={14} strokeWidth={1.75} aria-hidden />
-          Create new project
+          New project
         </Button>
       </Link>
     </div>

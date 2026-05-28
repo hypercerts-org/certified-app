@@ -91,7 +91,7 @@ export default function ProfileGroups({ did }: ProfileGroupsProps) {
             <Link href="/groups/create">
               <Button variant="primary" size="sm">
                 <Plus size={14} strokeWidth={1.75} aria-hidden />
-                Create new group
+                New group
               </Button>
             </Link>
           ) : null}

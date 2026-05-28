@@ -158,7 +158,7 @@ export default function ProfileCerts({ did, viewerIsOwner }: ProfileCertsProps) 
             <Link href="/create">
               <Button variant="primary" size="sm">
                 <Plus size={14} strokeWidth={1.75} aria-hidden />
-                Create new cert
+                New cert
               </Button>
             </Link>
           ) : null}
