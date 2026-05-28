@@ -260,8 +260,7 @@ export function peekCachedReceivedEndorsements(
  * Fetch every public endorsement award targeting `profileDid`, AND
  * filter out awards whose latest response (on the profile owner's
  * PDS) is `"rejected"`. Scoped to the badge.{definition,award,response}
- * lexicons — the legacy `app.certified.temp.graph.endorsement`
- * collection is NOT consulted (hard cutover per the migration plan).
+ * lexicons.
  *
  * Fetch shape:
  *   1. One indexer GraphQL query for awards-targeting-me (subject

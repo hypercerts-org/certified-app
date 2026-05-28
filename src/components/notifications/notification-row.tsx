@@ -55,12 +55,8 @@ export default function NotificationRow({ notification, wasUnreadOnMount }: Noti
   const relativeTime = formatRelativeTime(notification.sortAt)
 
   // Show response buttons only when the underlying record is a
-  // badge.award (the new lexicon). The notifications backend still
-  // emits "endorsement" reason for legacy temp.graph.endorsement
-  // records too; those can't be responded to via this control so
-  // we keep the row read-only for them. This is forward-compat:
-  // once the backend detects badge.award firehose events, those
-  // notifications will surface with the controls automatically.
+  // badge.award. Any other notification reason can't be responded to
+  // via this control, so we keep the row read-only for it.
   const isBadgeAward = notification.latestRecordUri.includes(
     `/${BADGE_AWARD_COLLECTION}/`,
   )
