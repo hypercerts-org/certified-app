@@ -25,6 +25,11 @@ export interface EditBannerProps {
   /** True while a save is in flight — disables both buttons and
    *  swaps the Save label to "Saving…". */
   isSaving?: boolean
+  /** When false, disables only the Save button (Cancel stays
+   *  active). Use for form-level validation gates — e.g. a
+   *  duplicate contributor on the cert editor — so the affordance
+   *  reads as "can't save yet" rather than silently no-op'ing. */
+  canSave?: boolean
   /** Cancel handler. Should revert in-flight drafts. */
   onCancel: () => void
   /** Save handler. */
@@ -38,6 +43,7 @@ export default function EditBanner({
   label,
   error = null,
   isSaving = false,
+  canSave = true,
   onCancel,
   onSave,
   saveLabel = "Save",
@@ -64,7 +70,7 @@ export default function EditBanner({
           type="button"
           className="edit-banner__btn edit-banner__btn--primary"
           onClick={onSave}
-          disabled={isSaving}
+          disabled={isSaving || !canSave}
         >
           {isSaving ? "Saving…" : saveLabel}
         </button>

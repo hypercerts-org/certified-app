@@ -17,6 +17,7 @@ import { useOrg } from "@/lib/groups/org-context"
 import { authFetch } from "@/lib/auth/fetch"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
+import EditBanner from "@/components/ui/edit-banner"
 import LeafletEditor from "@/components/leaflet/leaflet-editor"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
@@ -546,8 +547,7 @@ export default function ActivityEditPage() {
     datesValid &&
     !isSubmitting
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const doSave = async () => {
     if (!canSubmit) return
     if (!sessionDid || !did || !rkey || !mountSnapshot) return
 
@@ -765,8 +765,33 @@ export default function ActivityEditPage() {
     }
   }
 
+  const handleCancel = () => {
+    if (did && rkey) {
+      router.push(
+        `/activity/${encodeURIComponent(did)}/${encodeURIComponent(rkey)}`,
+      )
+    } else {
+      router.back()
+    }
+  }
+
   return (
-    <form onSubmit={handleSubmit}>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        void doSave()
+      }}
+    >
+      <EditBanner
+        label="Editing cert"
+        error={error}
+        isSaving={isSubmitting}
+        canSave={canSubmit}
+        onCancel={handleCancel}
+        onSave={() => {
+          void doSave()
+        }}
+      />
       <article className="page-layout cert-detail--wide create-cert">
         <aside className="cert-detail__aside" aria-label="Cert metadata">
           <div className="cert-detail__image cert-detail__image--editing">
@@ -1208,38 +1233,6 @@ export default function ActivityEditPage() {
             </div>
           </section>
 
-          {error ? (
-            <p className="cert-detail__error-desc" role="alert">
-              {error}
-            </p>
-          ) : null}
-
-          <div className="create-cert__actions">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                if (did && rkey) {
-                  router.push(
-                    `/activity/${encodeURIComponent(did)}/${encodeURIComponent(rkey)}`,
-                  )
-                } else {
-                  router.back()
-                }
-              }}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              loading={isSubmitting}
-              disabled={!canSubmit}
-            >
-              {isSubmitting ? "Saving…" : "Save"}
-            </Button>
-          </div>
         </div>
       </article>
 
