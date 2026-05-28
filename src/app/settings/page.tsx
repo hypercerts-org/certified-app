@@ -1,6 +1,7 @@
 "use client";
 
 import { useSession } from "@/hooks/use-session";
+import { useOrg } from "@/lib/groups/org-context";
 import {
   usePageTitle,
   usePageTitleBreadcrumb,
@@ -17,10 +18,18 @@ import SettingsPanel from "@/components/settings/settings-panel";
  * identical regardless of which URL the user lands on.
  */
 export default function SettingsPage() {
-  const { handle } = useSession();
+  const { handle: personalHandle } = useSession();
+  const { activeOrg } = useOrg();
+  // The breadcrumb above the settings panel shows whichever identity
+  // the user is currently acting as — so clicking it lands on the
+  // matching profile, not the personal one. Matches the chrome
+  // convention.
+  const activeHandle = activeOrg?.handle ?? personalHandle;
   usePageTitle("Settings");
   usePageTitleBreadcrumb(
-    handle ? { left: { text: handle, href: `/profile/${handle}` } } : null,
+    activeHandle
+      ? { left: { text: activeHandle, href: `/profile/${activeHandle}` } }
+      : null,
   );
   return <SettingsPanel />;
 }

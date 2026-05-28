@@ -23,7 +23,7 @@ import { useSession } from "@/hooks/use-session";
 import { useOrg } from "@/lib/groups/org-context";
 import { useOrgProfile } from "@/hooks/use-org-profile";
 import { useMounted } from "@/hooks/use-mounted";
-import { resolvePostSwitchPath } from "@/lib/groups/navigation";
+import { routeForActorSwitch } from "@/lib/groups/navigation";
 import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
 import AccountSwitcherList from "./account-switcher-list";
@@ -229,7 +229,7 @@ export default function DesktopTopBar() {
   const createRef = useRef<HTMLDivElement>(null);
   const createMenuRef = useRef<HTMLDivElement>(null);
   const [createAnchor, setCreateAnchor] = useState<{
-    right: number;
+    left: number;
     top: number;
   } | null>(null);
 
@@ -294,8 +294,12 @@ export default function DesktopTopBar() {
     const compute = () => {
       const rect = createRef.current?.getBoundingClientRect();
       if (!rect) return;
+      // Anchor the menu's LEFT edge to the trigger's left edge so it
+      // opens to the right of the "+" button (no chance of running off
+      // the viewport's left side when the button sits near the chrome's
+      // right edge — same affordance as GitHub's "+" menu).
       setCreateAnchor({
-        right: globalThis.innerWidth - rect.right,
+        left: rect.left,
         top: rect.bottom + 8,
       });
     };
@@ -639,7 +643,7 @@ export default function DesktopTopBar() {
               style={{
                 position: "fixed",
                 top: createAnchor.top,
-                right: createAnchor.right,
+                left: createAnchor.left,
                 width: 220,
               }}
             >
@@ -697,7 +701,11 @@ export default function DesktopTopBar() {
                 switchOrg={switchOrg}
                 onAfterSwitch={(next) => {
                   setSwitcherOpen(false);
-                  router.push(resolvePostSwitchPath(next));
+                  // Stay on the current page after the swap unless
+                  // it's a personal-only surface the new actor can't
+                  // visit (e.g. /create when switching personal →
+                  // group); the helper returns /home in that case.
+                  router.push(routeForActorSwitch(pathname, next));
                 }}
                 onSignOut={() => {
                   setSwitcherOpen(false);
