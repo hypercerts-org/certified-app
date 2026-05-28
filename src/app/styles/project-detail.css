@@ -325,7 +325,7 @@
      text and gives a consistent 5px gap between icon + label
      across every row (matches the cert-detail meta label rhythm
      and the create-project meta strip below). */
-  gap: 5px;
+  gap: 4px;
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -849,7 +849,7 @@
   color: var(--fg-primary);
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius);
   cursor: pointer;
   text-align: left;
   transition: background var(--transition-fast);

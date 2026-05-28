@@ -177,7 +177,7 @@
   line-height: 1.15;
   letter-spacing: -0.015em;
   border: 1.5px solid var(--border-hover);
-  border-radius: 6px;
+  border-radius: var(--radius);
   padding: 4px 10px;
   background: var(--bg-elevated);
 }
@@ -222,7 +222,7 @@
   line-height: 1.6;
   color: var(--fg-secondary);
   border: 1.5px solid var(--border-hover);
-  border-radius: 6px;
+  border-radius: var(--radius);
   padding: 10px 12px;
   background: var(--bg-elevated);
   resize: vertical;
@@ -281,7 +281,7 @@
   flex: 1;
   min-width: 0;
   padding: 6px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   text-decoration: none;
   color: inherit;
 }
@@ -306,7 +306,7 @@
 .cert-detail__project-thumb {
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   overflow: hidden;
   object-fit: cover;
   display: block;
@@ -633,7 +633,7 @@
   color: inherit;
   padding: 2px 4px;
   margin: -2px -4px;
-  border-radius: 6px;
+  border-radius: var(--radius);
 }
 
 .cert-detail__headline-author:hover,
@@ -737,7 +737,7 @@
   color: var(--fg-muted);
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 /* Time-period row hosts the "Add to list" 3-dot menu on the same
@@ -754,7 +754,7 @@
 .cert-detail__meta-label-text {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 .cert-detail__meta-value {
@@ -866,7 +866,7 @@
   color: var(--fg-secondary);
   text-decoration: none;
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 
@@ -977,7 +977,7 @@
   align-items: center;
   gap: 10px;
   padding: 6px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   min-width: 0;
 }
 
@@ -1197,7 +1197,7 @@
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
   min-width: 0;
 }
@@ -1241,7 +1241,7 @@
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
   min-width: 0;
 }
@@ -1345,7 +1345,7 @@
 .cert-detail__headline-col-value--skel {
   display: block;
   height: 32px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
 }
 
@@ -1372,7 +1372,7 @@
   min-width: 0;
   padding: 2px 4px;
   margin: -2px -4px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   transition: background var(--transition-fast);
 }
 
@@ -1644,7 +1644,7 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   border: 1px solid var(--border-default);
   background: var(--bg-elevated);
   color: var(--fg-secondary);
@@ -1693,7 +1693,7 @@
   max-height: 280px;
   overflow-y: auto;
   border: 1px solid var(--border-subtle);
-  border-radius: 6px;
+  border-radius: var(--radius);
   padding: 6px;
 }
 
@@ -1754,7 +1754,7 @@
   gap: 8px;
   padding: 8px 12px;
   background: var(--overlay-weak);
-  border-radius: 6px;
+  border-radius: var(--radius);
   min-width: 0;
 }
 
@@ -1817,7 +1817,7 @@
   gap: 6px;
   padding: 4px 6px;
   background: var(--overlay-weak);
-  border-radius: 6px;
+  border-radius: var(--radius);
   font-size: 0.8125rem;
   color: var(--fg-primary);
   min-width: 0;
@@ -1877,7 +1877,7 @@
   color: var(--fg-secondary);
   background: transparent;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius);
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast);
 }
@@ -1889,7 +1889,7 @@
 .create-cert__loc-tab--active {
   background: var(--bg-primary, var(--bg-base, #fff));
   color: var(--fg-primary);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Search field + Name field side-by-side above the map. Each
@@ -1965,7 +1965,7 @@
   background: var(--bg-primary, var(--bg-base, #fff));
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-md);
 }
 
 .create-cert__loc-suggestion {
@@ -2014,7 +2014,7 @@
   font-size: 0.8125rem;
   color: var(--fg-secondary);
   background: var(--overlay-weak);
-  border-radius: 6px;
+  border-radius: var(--radius);
 }
 
 .create-cert__loc-uri-label {
@@ -2063,7 +2063,7 @@
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border-default);
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--bg-elevated);
   color: var(--fg-primary);
   cursor: pointer;

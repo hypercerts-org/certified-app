@@ -554,7 +554,7 @@
   background: var(--bg-elevated);
   border: 1.5px solid var(--border-hover);
   border-radius: 999px;
-  padding: 5px 12px;
+  padding: 4px 12px;
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
 }
@@ -582,7 +582,7 @@
   color: var(--fg-primary);
   background: var(--bg-elevated);
   border: 1.5px solid var(--border-hover);
-  border-radius: 6px;
+  border-radius: var(--radius);
   padding: 6px 10px;
   margin-top: 4px;
   max-width: 360px;
@@ -602,7 +602,7 @@
   color: var(--fg-primary);
   background: var(--bg-elevated);
   border: 1.5px solid var(--border-hover);
-  border-radius: 6px;
+  border-radius: var(--radius);
   padding: 6px 10px;
   width: 100%;
   min-width: 0;

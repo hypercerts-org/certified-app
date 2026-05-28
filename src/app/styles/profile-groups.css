@@ -36,7 +36,7 @@
   bottom: -1px;
   height: 2px;
   background: var(--fg-primary);
-  border-radius: 1px;
+  border-radius: var(--radius);
 }
 
 .profile-groups__count {
@@ -146,7 +146,7 @@
   padding: 8px 10px;
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius);
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 0.875rem;
   color: var(--fg-primary);
@@ -229,7 +229,7 @@
   bottom: -1px;
   height: 2px;
   background: var(--fg-primary);
-  border-radius: 1px;
+  border-radius: var(--radius);
 }
 
 .profile-groups__subtab:focus-visible {
@@ -368,7 +368,7 @@
   padding: 0 10px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
-  border-radius: 6px;
+  border-radius: var(--radius);
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 0.8125rem;
   color: var(--fg-primary);

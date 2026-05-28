@@ -155,7 +155,8 @@
   --z-portal-sheet: 60;             /* bottom-sheet, mobile-sidebar drawer */
   --z-modal: 100;                   /* generic modals */
   --z-skip-nav: 9999;               /* skip-nav link */
-  /* --z-feedback: 10000 (existing feedback portal value, not migrated this PR) */
+  --z-feedback: 10000;              /* feedback modal portal (above skip-nav) */
+  --z-feedback-above: 10001;        /* feedback expanded variant */
 }
 
 /* Zero the bottom-nav height at desktop widths so any consumer of the

@@ -202,8 +202,8 @@
   min-width: 0;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
-  border-radius: 6px;
-  padding: 9px 12px;
+  border-radius: var(--radius);
+  padding: 8px 12px;
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 0.875rem;
   font-weight: 450;

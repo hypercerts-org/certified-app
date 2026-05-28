@@ -180,7 +180,7 @@ dialog.signin-modal.app-modal .signin-modal__close {
   right: 4px;
   width: 24px;
   height: 24px;
-  border-radius: 6px;
+  border-radius: var(--radius);
 }
 
 dialog.signin-modal.app-modal .signin-modal__body {
@@ -225,7 +225,7 @@ dialog.signin-modal.app-modal .signin-modal__body {
   color: var(--fg-primary);
   background: var(--bg-sunken);
   border: 1px solid var(--border-subtle);
-  border-radius: 6px;
+  border-radius: var(--radius);
   padding: 6px 10px;
   word-break: break-all;
 }
@@ -494,7 +494,7 @@ dialog.signin-modal.app-modal .signin-modal__body {
 .feedback-modal__backdrop {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: var(--z-feedback);
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
@@ -736,12 +736,12 @@ dialog.signin-modal.app-modal .signin-modal__body {
 
   .feedback-bottom-sheet__backdrop {
     display: block;
-    z-index: 10000;
+    z-index: var(--z-feedback);
   }
 
   .feedback-bottom-sheet {
     display: flex;
-    z-index: 10001;
+    z-index: var(--z-feedback-above);
   }
 
   .feedback-bottom-sheet .feedback-modal__textarea {

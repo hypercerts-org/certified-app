@@ -60,7 +60,7 @@
   bottom: -1px;
   height: 2px;
   background: var(--fg-primary);
-  border-radius: 1px;
+  border-radius: var(--radius);
 }
 
 .profile-endorsements-v2__subtab:focus-visible {
@@ -212,7 +212,7 @@
   padding: 8px 10px;
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius);
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 0.875rem;
   color: var(--fg-primary);
@@ -575,7 +575,7 @@
   height: 28px;
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius);
   color: var(--fg-secondary);
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast);
@@ -1017,7 +1017,7 @@
   color: var(--fg-primary);
   background: var(--bg-canvas);
   border: 1px solid var(--border-default);
-  border-radius: 6px;
+  border-radius: var(--radius);
   padding: 8px 12px;
 }
 
