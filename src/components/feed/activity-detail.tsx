@@ -210,10 +210,16 @@ export default function ActivityDetail({
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const tabParam = searchParams?.get("tab") ?? "overview"
-  const activeTab: "overview" | "description" | "contributors" | "updates" =
+  const activeTab:
+    | "overview"
+    | "description"
+    | "contributors"
+    | "updates"
+    | "record" =
     tabParam === "description" ||
     tabParam === "contributors" ||
-    tabParam === "updates"
+    tabParam === "updates" ||
+    tabParam === "record"
       ? tabParam
       : "overview"
 
@@ -1159,6 +1165,63 @@ export default function ActivityDetail({
               variant="full"
             />
           ) : null
+        ) : activeTab === "record" ? (
+          <section className="cert-detail__section cert-detail__record">
+            <div className="cert-detail__section-header">
+              <h2 className="cert-detail__section-title">Record</h2>
+            </div>
+            {/* Field/value table mirroring the
+                org.hypercerts.claim.activity schema. Scalars render
+                their stored value; complex fields (description,
+                image, contributors, locations) render a factual
+                summary. Absent optional fields read "Not set" so the
+                full schema is always visible. */}
+            <table className="cert-detail__record-table">
+              <tbody>
+                {(
+                  [
+                    [
+                      "$type",
+                      effectiveValue.$type ?? "org.hypercerts.claim.activity",
+                    ],
+                    ["title", effectiveValue.title || null],
+                    ["shortDescription", effectiveValue.shortDescription || null],
+                    ["createdAt", effectiveValue.createdAt || null],
+                    ["startDate", effectiveValue.startDate || null],
+                    ["endDate", effectiveValue.endDate || null],
+                    ["workScope", workScopeLabel || null],
+                    [
+                      "description",
+                      showFullDescription ? "Rich text document" : null,
+                    ],
+                    ["image", effectiveImageUrl ? "Image attached" : null],
+                    [
+                      "contributors",
+                      contributorCount > 0 ? String(contributorCount) : null,
+                    ],
+                    [
+                      "locations",
+                      locations.length > 0 ? String(locations.length) : null,
+                    ],
+                    ["rights", value.rights?.uri ?? null],
+                  ] as Array<[string, string | null]>
+                ).map(([field, val]) => (
+                  <tr key={field} className="cert-detail__record-row">
+                    <th scope="row" className="cert-detail__record-field">
+                      {field}
+                    </th>
+                    <td className="cert-detail__record-value">
+                      {val ? (
+                        val
+                      ) : (
+                        <span className="cert-detail__meta-aux">Not set</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
         ) : null}
       </div>
     </article>

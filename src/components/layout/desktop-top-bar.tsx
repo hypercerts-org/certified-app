@@ -93,6 +93,7 @@ const CERT_DETAIL_TABS: DetailTab[] = [
   { key: "description", label: "Description" },
   { key: "contributors", label: "Contributors" },
   { key: "updates", label: "Updates" },
+  { key: "record", label: "Record" },
 ];
 
 /** Project detail page subtabs. Same `?tab=` URL contract as the
