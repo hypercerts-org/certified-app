@@ -102,4 +102,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/hooks/__tests__/use-user-activities.test.tsx — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### risk-001 — XRPC proxy echoes un-redacted 4xx upstream messages to the client · IMPLEMENTED
+- **Why it's an improvement:** A 4xx from createRecord/putRecord/updateEmail/etc. can embed a JWT/DPoP/Bearer fragment in its message; the proxy now redacts it before returning to the browser, matching the canonical extractRouteError posture.
+- **Change:** In `xrpcError`, the 4xx branch now returns `redactSecrets(rawMessage)` instead of the raw upstream string (route.ts:111); 5xx/empty still collapse to "Internal server error".
+- **Test:** src/app/api/xrpc/[...method]/__tests__/xrpc-error.test.ts — fails before, passes after (asserts Bearer/JWT fragments are redacted in echoed 4xx; clean 4xx still echoed; 5xx still generic; discriminator preserved).
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
