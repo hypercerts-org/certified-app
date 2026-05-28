@@ -16,6 +16,7 @@ import type { OrgRole } from "@/lib/groups/types"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Button from "@/components/ui/button"
+import Badge from "@/components/ui/badge"
 import { getInitials } from "@/lib/utils/initials"
 
 type TabKey = "public" | "private"
@@ -113,7 +114,7 @@ export default function GroupsPage() {
             {org.handle}
           </p>
         </div>
-        <span className="org-list__item-role">{org.role}</span>
+        <Badge variant="role">{org.role}</Badge>
       </Link>
       <div className="org-list__item-actions">
         {org.accepted ? (

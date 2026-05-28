@@ -551,35 +551,8 @@
   flex-shrink: 0;
 }
 
-.feed-card__label {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 999px;
-  text-transform: capitalize;
-}
-
-.feed-card__label--high-quality {
-  color: var(--badge-success-fg);
-  background: var(--badge-success-bg);
-}
-
-.feed-card__label--standard {
-  color: var(--fg-secondary);
-  background: var(--bg-sunken);
-}
-
-.feed-card__label--draft {
-  color: var(--badge-warning-fg);
-  background: var(--badge-warning-bg);
-}
-
-.feed-card__label--test {
-  color: var(--fg-muted);
-  background: var(--bg-raised);
-}
+/* .feed-card__label* rules were retired — FeedLabelPill now composes
+   <Badge variant="high-quality|standard|draft|test"> instead. */
 
 /* ---- Load More ---- */
 
