@@ -96,4 +96,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/components/home/__tests__/cert-preview-location-icon.test.tsx — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### bug-011 — useUserActivities.loadMore appends stale-DID records after a profile switch · IMPLEMENTED
+- **Why it's an improvement:** After switching profiles, an in-flight loadMore for the previous DID no longer appends that DID's records to the reset list, and overlapping cursor-boundary edges no longer produce duplicate rows.
+- **Change:** Added a `generationRef` bumped on each initial load; `loadMore` captures its generation, bails when superseded, and dedups appended records by `uri` via a `seen` Set (mirrors use-explore / use-home-feed).
+- **Test:** src/hooks/__tests__/use-user-activities.test.tsx — fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
