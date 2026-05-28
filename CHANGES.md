@@ -114,4 +114,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/app/api/groups/register/__tests__/org-limit-log-safe.test.ts — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### risk-004 — groups/register does not server-side sanitize handle and forwards email unvalidated · IMPLEMENTED
+- **Why it's an improvement:** enforces AGENTS.md §17.6/§24.5 sanitize-at-the-boundary defense-in-depth so invisible-char/over-length handles and malformed emails can't be forwarded verbatim to the group service.
+- **Change:** run `sanitizeHandle(rawHandle)` and re-check the 253 cap on the sanitized result; validate the optional email with feedback/route.ts's regex + 254-char cap, rejecting with 400 on failure; forward the sanitized handle/validated email.
+- **Test:** src/app/api/groups/register/__tests__/register-sanitize.test.ts — fails before, passes after (ZWSP/leading-@ stripped; sanitized-handle 253 cap; invalid email rejected/omitted; valid email forwarded unchanged).
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
