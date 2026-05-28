@@ -2698,6 +2698,14 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   color: var(--fg-muted);
 }
 
+/* The "Endorsed by N" row sits directly under the followers/following
+   strip and reuses .profile-sidebar__followers for layout. Tighten
+   the top margin so the two rows read as a stat block rather than as
+   independent paragraphs. */
+.profile-sidebar__endorsed-by {
+  margin-top: -4px;
+}
+
 .profile-sidebar__details {
   list-style: none;
   margin: 0;

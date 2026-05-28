@@ -9,7 +9,6 @@ import {
   useProfileAboutAvailable,
   useProfileGroupsAvailable,
 } from "@/lib/navbar-context"
-import { useUserGroups } from "@/hooks/use-user-groups"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { useUserActivities } from "@/hooks/use-user-activities"
 import { useOrgMarker } from "@/hooks/use-org-marker"
@@ -134,7 +133,7 @@ export default function UserProfilePage() {
     if (did && !isOwnProfile) trackRecentlyViewed("user", did)
   }, [did, isOwnProfile])
 
-  const { activeOrg, groups, isLoading: orgGroupsLoading } = useOrg()
+  const { activeOrg, groups } = useOrg()
   const memberOrg = did ? groups.find((g) => g.groupDid === did) : undefined
   const isAdminOfThisGroup =
     !!memberOrg && (memberOrg.role === "owner" || memberOrg.role === "admin")
@@ -219,13 +218,11 @@ export default function UserProfilePage() {
     sidebarIsOrg &&
       (!!displayLongDescription || isViewerThisEntity || aboutEditingForOrg),
   )
-  // Gate the Groups tab: visible whenever the viewer is currently
-  // signed in as this entity (own profile, or acting-as this group),
-  // OR when the profile carries at least one public membership.
-  const viewedPublicGroups = useUserGroups(did)
-  const hasGroupTab =
-    isViewerThisEntity || (viewedPublicGroups.groups?.length ?? 0) > 0
-  useProfileGroupsAvailable(hasGroupTab)
+  // Gate the Groups tab: only visible on the viewer's own profile
+  // (own personal profile, or acting-as this group). Foreign viewers
+  // never see the Groups tab — membership is now sourced exclusively
+  // from the Certified Group Service, which is session-scoped.
+  useProfileGroupsAvailable(isViewerThisEntity)
 
   // Mobile <ProfileHeader> still uses the legacy edit pages as a
   // fallback (inline edit isn't wired on the compact mobile header
@@ -344,8 +341,6 @@ export default function UserProfilePage() {
             additionalUrls={effectiveAdditionalUrls}
             hasCertifiedProfile={hasCertifiedProfile}
             orgFoundedDate={displayFoundedDate}
-            groupsOverride={isOwnProfile ? groups : undefined}
-            groupsLoadingOverride={isOwnProfile ? orgGroupsLoading : undefined}
             canInlineEdit={canEditInline}
             isEditing={editing}
             drafts={drafts}

@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import {
-  ArrowRight,
   Calendar,
   Camera,
   Check,
@@ -26,11 +25,11 @@ import SmartLink from "@/components/ui/smart-link"
 import { getInitials } from "@/lib/utils/initials"
 import { formatMonthYear } from "@/lib/utils/format-date"
 import { useProfilePds } from "@/hooks/use-profile-pds"
-import { useUserGroups, type UserGroup } from "@/hooks/use-user-groups"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useFollowing } from "@/hooks/use-following"
 import { useFollowers } from "@/hooks/use-followers"
 import { useGivenEndorsements } from "@/hooks/use-endorsements"
+import { useReceivedEndorsements } from "@/hooks/use-received-endorsements"
 import { useEndorsementLists } from "@/hooks/use-endorsement-lists"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import EndorseReasonModal from "@/components/profile/endorse-reason-modal"
@@ -54,8 +53,9 @@ interface ProfileSidebarProps {
   avatarUrl: string | null
   handle: string | null
   did: string
-  /** Path of the current profile page (without query); used to build
-   *  "see all" links into the Groups tab. */
+  /** Path of the current profile page (without query); reserved for
+   *  future intra-profile links. Currently unused but kept on the
+   *  prop surface so the page-level call site stays stable. */
   basePath: string
   /** Edit-profile link, if the viewer can edit (own profile or group admin). */
   editHref?: string
@@ -76,12 +76,6 @@ interface ProfileSidebarProps {
    *  so the sidebar can skip the row entirely. When present this row
    *  replaces the generic "Joined ..." line below. */
   orgFoundedDate?: string | null
-  /** Pre-resolved groups. When provided, the sidebar uses these directly
-   *  (so an own-profile view can pass the same `useOrg().groups` the
-   *  account switcher renders). When omitted, falls back to
-   *  `useUserGroups(did)` (PDS memberships only). */
-  groupsOverride?: UserGroup[]
-  groupsLoadingOverride?: boolean
 
   /** True when the viewer can enter inline edit mode on this profile
    *  (own profile only). Independent of `editHref`, which is used for
@@ -103,8 +97,6 @@ interface ProfileSidebarProps {
   saveError?: string | null
 }
 
-const GROUPS_GRID_LIMIT = 12
-
 function formatJoined(iso?: string): string | null {
   if (!iso) return null
   const monthYear = formatMonthYear(iso)
@@ -115,8 +107,8 @@ function formatJoined(iso?: string): string | null {
  * Identity sidebar — GitHub profile-style left pane.
  *
  * Rendered on every profile tab so the avatar, name, DID, bio, edit
- * button, link list and groups grid persist as the viewer switches
- * between Overview / Certs / Projects / Endorsements.
+ * button, and link list persist as the viewer switches between
+ * Overview / Certs / Projects / Endorsements.
  *
  * Hidden below 800px via CSS — the mobile <ProfileHeader> at the top of
  * the page already carries identity on small viewports.
@@ -133,8 +125,6 @@ export default function ProfileSidebar({
   additionalUrls,
   hasCertifiedProfile = false,
   orgFoundedDate = null,
-  groupsOverride,
-  groupsLoadingOverride,
   canInlineEdit = false,
   isEditing = false,
   drafts,
@@ -150,11 +140,6 @@ export default function ProfileSidebar({
   const displayName = profile?.displayName || handle || "Anonymous"
   const initials = getInitials(profile?.displayName, did)
   const { isBskyHosted } = useProfilePds(did)
-  // Fall back to the PDS-only path when no override is provided
-  // (foreign profiles where the viewer can't fetch CGS memberships).
-  const fallback = useUserGroups(groupsOverride ? null : did)
-  const groups = groupsOverride ?? fallback.groups
-  const groupsLoading = groupsOverride ? !!groupsLoadingOverride : fallback.isLoading
 
   const joinedText = formatJoined(profile?.createdAt)
   // Inline edit takes precedence: when the viewer can inline-edit we
@@ -163,7 +148,6 @@ export default function ProfileSidebar({
   // group-admin-editing-someone-else case.
   const hasInline = canInlineEdit
   const hasEditLink = !hasInline && !!editHref
-  const previewGroups = groups.slice(0, GROUPS_GRID_LIMIT)
 
   // Follower / following counts for THIS profile (shown under the
   // action row). The Following count comes straight from the viewed
@@ -171,6 +155,12 @@ export default function ProfileSidebar({
   // `appCertifiedGraphFollow` connection with `subject.eq`.
   const viewedFollowing = useFollowing(did)
   const viewedFollowers = useFollowers(did)
+  // Received-endorsements count for THIS profile — drives the
+  // "Endorsed by N" row below the followers strip. Default
+  // (non-owner) call: rejected awards are filtered out for us by
+  // the hook so the count matches what foreign viewers see in the
+  // Endorsements tab's Received sub-tab.
+  const viewedReceived = useReceivedEndorsements(did)
 
   // Viewer's own following set — used to decide whether the Follow
   // button reads "Follow" or "Following" for foreign profiles. Skip
@@ -336,6 +326,23 @@ export default function ProfileSidebar({
         </span>
       </p>
 
+      <p
+        className="profile-sidebar__followers profile-sidebar__endorsed-by"
+        aria-label="Endorsed by"
+      >
+        <ThumbsUp size={16} strokeWidth={1.75} aria-hidden />
+        <Link
+          href={`${basePath}?tab=endorsements&sub=received`}
+          scroll={false}
+          className="profile-sidebar__followers-link"
+        >
+          Endorsed by{" "}
+          <span className="profile-sidebar__followers-count">
+            {formatGraphCount(viewedReceived.endorsements.length)}
+          </span>
+        </Link>
+      </p>
+
       <ul className="profile-sidebar__details">
         {/* Main website field. In edit mode we add an uppercase
             sub-header so the input has the same labelled shape as the
@@ -450,66 +457,6 @@ export default function ProfileSidebar({
         ) : null}
       </ul>
 
-      {/* Groups section is hidden entirely when the profile has none.
-          We still render it during the loading phase so the layout
-          doesn't pop in once the fetch resolves with a non-empty list.
-          Skipping rendering on `previewGroups.length === 0 &&
-          !groupsLoading` is intentional — no "No groups yet." empty
-          state in the sidebar; the Groups tab covers that surface. */}
-      {groupsLoading || previewGroups.length > 0 ? (
-        <section
-          className="profile-sidebar__groups"
-          aria-labelledby="profile-sidebar-groups-heading"
-        >
-          <div className="profile-sidebar__section-head">
-            <Link
-              id="profile-sidebar-groups-heading"
-              href={`${basePath}?tab=groups`}
-              scroll={false}
-              className="profile-sidebar__section-title profile-sidebar__section-title--link"
-            >
-              Groups
-            </Link>
-            {groups.length > GROUPS_GRID_LIMIT ? (
-              <Link
-                href={`${basePath}?tab=groups`}
-                scroll={false}
-                className="profile-sidebar__see-all"
-              >
-                See all <ArrowRight size={14} strokeWidth={1.75} aria-hidden />
-              </Link>
-            ) : null}
-          </div>
-
-          {groupsLoading ? (
-            <div className="profile-sidebar__loading"><LoadingSpinner size="sm" /></div>
-          ) : (
-            <ul className="profile-sidebar__groups-list">
-              {previewGroups.map((g) => {
-                const name = g.displayName || g.handle
-                return (
-                  <li key={g.groupDid}>
-                    <Link
-                      href={`/profile/${encodeURIComponent(g.handle)}`}
-                      className="profile-sidebar__group-row"
-                    >
-                      <Avatar
-                        size="sm"
-                        src={g.avatarUrl || undefined}
-                        fallbackInitials={getInitials(name)}
-                      />
-                      <span className="profile-sidebar__group-meta">
-                        <span className="profile-sidebar__group-name">{name}</span>
-                        <span className="profile-sidebar__group-handle">@{g.handle}</span>
-                      </span>
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </section>
-      ) : null}
     </aside>
   )
 }
