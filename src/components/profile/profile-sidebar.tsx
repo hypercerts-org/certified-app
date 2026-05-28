@@ -290,6 +290,7 @@ export default function ProfileSidebar({
         )}
       </div>
 
+      <div className="profile-sidebar__stats">
       <p className="profile-sidebar__followers" aria-label="Followers and following">
         <Users size={16} strokeWidth={1.75} aria-hidden />
         <span>
@@ -342,6 +343,7 @@ export default function ProfileSidebar({
           </span>
         </Link>
       </p>
+      </div>
 
       <ul className="profile-sidebar__details">
         {/* Main website field. In edit mode we add an uppercase
