@@ -25,7 +25,6 @@ import {
   fetchNetworkActors,
   fetchNetworkActorsByDids,
   fetchOrgDidsByLabel,
-  fetchOrganizationDids,
 } from "@/lib/atproto/workspace"
 import type { NetworkActor } from "@/lib/atproto/workspace"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
@@ -115,26 +114,24 @@ const EMPTY: InternalState = {
 
 const PAGE_SIZE = 50
 
-// Module-cached org-DID set — small, doesn't change often.
-let orgDidsCache: Set<string> | null = null
-let orgDidsInflight: Promise<Set<string>> | null = null
-function getOrgDids(): Promise<Set<string>> {
-  if (orgDidsCache) return Promise.resolve(orgDidsCache)
-  if (!orgDidsInflight) {
-    orgDidsInflight = fetchOrganizationDids(200)
-      .then((set) => {
-        orgDidsCache = set
-        return set
-      })
-      .catch((err) => {
-        console.warn("[explore] org-dids fetch failed:", err)
-        return new Set<string>()
-      })
-      .finally(() => {
-        orgDidsInflight = null
-      })
-  }
-  return orgDidsInflight
+/**
+ * Translate the People/Organizations/All sub-toggle into the
+ * `isOrganization` server-side filter on `fetchNetworkActors`
+ * (see certified-app#107 / magic-indexer#145).
+ *
+ *   - "people"        → isOrganization: false
+ *   - "organizations" → isOrganization: true
+ *   - anything else   → undefined (no filter, full mixed list)
+ *
+ * Replaces the previous client-side intersect against the first
+ * 200 org DIDs, which silently mis-classified orgs past the first
+ * page and broke People-pane pagination. `totalCount` / `hasMore`
+ * now reflect the per-kind count, so "Load more" pages correctly.
+ */
+function subToIsOrganization(sub: string): boolean | undefined {
+  if (sub === "people") return false
+  if (sub === "organizations") return true
+  return undefined
 }
 
 /**
@@ -727,9 +724,6 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
       seen.add(parsed.did)
       dids.push(parsed.did)
     }
-    const orgDids =
-      sub !== "all" ? await getOrgDids() : new Set<string>()
-    if (signal?.aborted) return EMPTY_PAGE
     let users: NetworkActor[] = dids.map((did) => ({
       did,
       displayName: null,
@@ -737,9 +731,15 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
       avatarUrl: null,
       createdAt: null,
     }))
-    if (sub === "people") users = users.filter((a) => !orgDids.has(a.did))
-    else if (sub === "organizations")
-      users = users.filter((a) => orgDids.has(a.did))
+    // No People/Organizations sub filter on the featured set: it
+    // comes from a curator's hand-picked list of projects (Ma Earth)
+    // and surfaces the corresponding authors. Layering the
+    // sub-toggle would need a separate isOrganization lookup per
+    // DID — and the curated set is almost entirely orgs anyway, so
+    // we surface every member as-is. The server-side
+    // `isOrganization` filter applies on the All / Follows / Recent
+    // / My-groups paths below where the actor set comes from
+    // `fetchNetworkActors`.
     if (search.trim().length > 0) {
       const q = search.trim().toLowerCase()
       users = users.filter((a) => a.did.includes(q))
@@ -769,9 +769,6 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
       const closureResult = await loadClosure({ viewerDid, degree, signal })
       if (signal?.aborted) return EMPTY_PAGE
       const closureMeta = closureResult.meta
-      const orgDids =
-        sub !== "all" ? await getOrgDids() : new Set<string>()
-      if (signal?.aborted) return EMPTY_PAGE
       // Build the actor list directly from the closure's inline
       // issuer block — magic-indexer #117 perf follow-up returns a
       // denormalised actor profile per closure DID, so we do NOT
@@ -785,9 +782,13 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
           actorFromClosureAccount,
         )
       }
-      if (sub === "people") scoped = scoped.filter((a) => !orgDids.has(a.did))
-      else if (sub === "organizations")
-        scoped = scoped.filter((a) => orgDids.has(a.did))
+      // The endorsement closure result does NOT carry an
+      // `isOrganization` flag (magic-indexer #117 returns inline
+      // issuer profiles only). Until that endpoint is extended,
+      // surface every closure actor regardless of the
+      // People/Organizations sub — the closure is conceptually a
+      // pre-filtered trust set, so applying the kind toggle on
+      // top is a future enhancement rather than a regression.
       if (search.trim().length > 0) {
         const q = search.trim().toLowerCase()
         scoped = scoped.filter(
@@ -800,10 +801,11 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
       scoped = await applyOrgExcludeFilter(scoped, excludeOrgLabels ?? null, signal)
       return { ...EMPTY_PAGE, users: scoped, endorsementClosure: closureMeta }
     }
-    const [page, orgDids] = await Promise.all([
-      fetchNetworkActors({ first: 100, signal: signal ?? undefined }),
-      sub !== "all" ? getOrgDids() : Promise.resolve(new Set<string>()),
-    ])
+    const page = await fetchNetworkActors({
+      first: 100,
+      isOrganization: subToIsOrganization(sub),
+      signal: signal ?? undefined,
+    })
     let scoped = page.actors
     if (filter === "follows") {
       if (!viewerDid) return EMPTY_PAGE
@@ -818,9 +820,6 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
         .filter((a) => recentSet.has(a.did))
         .sort((a, b) => recent.indexOf(a.did) - recent.indexOf(b.did))
     }
-    if (sub === "people") scoped = scoped.filter((a) => !orgDids.has(a.did))
-    else if (sub === "organizations")
-      scoped = scoped.filter((a) => orgDids.has(a.did))
     if (search.trim().length > 0) {
       const q = search.trim().toLowerCase()
       scoped = scoped.filter(
@@ -835,18 +834,17 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
   }
 
   // "all" / "new" — server-backed; paginate via NetworkActors.
-  const [page, orgDids] = await Promise.all([
-    fetchNetworkActors({
-      first: PAGE_SIZE,
-      after: cursor,
-      signal: signal ?? undefined,
-    }),
-    sub !== "all" ? getOrgDids() : Promise.resolve(new Set<string>()),
-  ])
+  // People/Organizations sub-toggle goes through the server-side
+  // `isOrganization` filter, so the result list paginates over
+  // a single kind without the old client-side intersect's silent
+  // truncation past the first 200 org DIDs.
+  const page = await fetchNetworkActors({
+    first: PAGE_SIZE,
+    after: cursor,
+    isOrganization: subToIsOrganization(sub),
+    signal: signal ?? undefined,
+  })
   let actors = page.actors
-  if (sub === "people") actors = actors.filter((a) => !orgDids.has(a.did))
-  else if (sub === "organizations")
-    actors = actors.filter((a) => orgDids.has(a.did))
   if (search.trim().length > 0) {
     const q = search.trim().toLowerCase()
     actors = actors.filter(

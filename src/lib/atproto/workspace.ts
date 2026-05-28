@@ -102,15 +102,38 @@ export interface NetworkActorsPage {
 }
 
 export async function fetchNetworkActors(
-  opts: { first?: number; after?: string | null; signal?: AbortSignal } = {},
+  opts: {
+    first?: number
+    after?: string | null
+    /**
+     * Server-side kind filter — when set, the upstream
+     * `appCertifiedActorProfile.where.isOrganization.eq` flag
+     * narrows the result to that kind only. `undefined` keeps the
+     * existing mixed-list behaviour. Backs the /explore Accounts
+     * People / Organizations sub-toggle (see certified-app#107):
+     * the page now paginates over a single kind, so the People tab
+     * doesn't under-show by being client-side filtered to one
+     * subset of a mixed page.
+     */
+    isOrganization?: boolean
+    signal?: AbortSignal
+  } = {},
 ): Promise<NetworkActorsPage> {
-  const { first = 30, after = null, signal } = opts
+  const { first = 30, after = null, isOrganization, signal } = opts
+  // Two upstream operations: the unfiltered `NetworkActors`, and
+  // `NetworkActorsByKind` which adds the `isOrganization` where-arg.
+  // graphql-go rejects an explicit `null` on the `eq` operator, so
+  // we have to omit the `where` arg entirely for the "all kinds"
+  // case — separate query strings is the simplest way to do that.
+  const useKindFilter = typeof isOrganization === "boolean"
   const res = await fetch(INDEXER_PROXY_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      operationName: "NetworkActors",
-      variables: { first, after },
+      operationName: useKindFilter ? "NetworkActorsByKind" : "NetworkActors",
+      variables: useKindFilter
+        ? { first, after, isOrganization }
+        : { first, after },
     }),
     signal,
   })
