@@ -80,6 +80,12 @@ interface ContributorRow {
   identity: string
   weight: string
   role: string
+  /** True once the identity is "committed" — pre-filled from the
+   *  loaded record, picked from the typeahead, or accepted via
+   *  Enter / blur. Drives the card-vs-input swap. New rows start
+   *  uncommitted so the typing flow doesn't prematurely lock in
+   *  intermediate matches (e.g. `alice.so` → `alice.social`). */
+  picked: boolean
 }
 
 function freshContributor(): ContributorRow {
@@ -88,6 +94,7 @@ function freshContributor(): ContributorRow {
     identity: "",
     weight: "",
     role: "",
+    picked: false,
   }
 }
 
@@ -124,6 +131,9 @@ function contributorRowFromRecord(
     identity: id.identity,
     weight,
     role,
+    // Pre-filled rows are committed by definition — they came from a
+    // saved record, so the card renders immediately on page load.
+    picked: true,
   }
 }
 
@@ -1060,13 +1070,18 @@ export default function ActivityEditPage() {
                     const n = normalizeIdentity(other.identity).toLowerCase()
                     if (n) otherIdentities.add(n)
                   }
-                  // Resolved + valid identity → swap the typeahead for
-                  // the avatar/name/handle card. Pre-filled contributor
-                  // rows from the loaded record show as cards
-                  // immediately; the input only appears for new rows
-                  // (empty identity) or rows the user has cleared.
+                  // Card vs typeahead input. Pre-filled rows arrive
+                  // with `picked: true` so they render as cards on
+                  // load; new rows start uncommitted and stay in
+                  // input mode until the user explicitly commits
+                  // (typeahead pick, Enter, or blur with a valid
+                  // identity). Without the picked gate, the input
+                  // would swap to a card mid-typing the moment the
+                  // value matched the handle regex (e.g. `alice.so`
+                  // matches; you couldn't reach `alice.social`).
                   const normalizedIdentity = normalizeIdentity(c.identity)
                   const showCard =
+                    c.picked &&
                     identityValid &&
                     !identityDuplicate &&
                     normalizedIdentity.length > 0 &&
@@ -1080,7 +1095,9 @@ export default function ActivityEditPage() {
                           onClear={() =>
                             setContributors((rows) =>
                               rows.map((r) =>
-                                r.key === c.key ? { ...r, identity: "" } : r,
+                                r.key === c.key
+                                  ? { ...r, identity: "", picked: false }
+                                  : r,
                               ),
                             )
                           }
@@ -1092,6 +1109,13 @@ export default function ActivityEditPage() {
                             setContributors((rows) =>
                               rows.map((r) =>
                                 r.key === c.key ? { ...r, identity: nextVal } : r,
+                              ),
+                            )
+                          }
+                          onCommit={() =>
+                            setContributors((rows) =>
+                              rows.map((r) =>
+                                r.key === c.key ? { ...r, picked: true } : r,
                               ),
                             )
                           }
@@ -1216,7 +1240,7 @@ export default function ActivityEditPage() {
                       onClick={() =>
                         setContributors((rows) => [
                           ...rows,
-                          { ...freshContributor(), identity: selfIdentity },
+                          { ...freshContributor(), identity: selfIdentity, picked: true },
                         ])
                       }
                       title={

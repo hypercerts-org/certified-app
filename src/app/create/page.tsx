@@ -94,6 +94,13 @@ interface ContributorRow {
   identity: string
   weight: string
   role: string
+  /** True once the identity has been "committed" — a typeahead pick,
+   *  Enter, or blur with a valid value. Drives whether the row
+   *  renders the read-only contributor card (true) or the typeahead
+   *  input (false). New rows start uncommitted so the user can keep
+   *  typing past intermediate matches like `alice.so` on the way to
+   *  `alice.social`. */
+  picked: boolean
 }
 
 function freshContributor(): ContributorRow {
@@ -102,6 +109,7 @@ function freshContributor(): ContributorRow {
     identity: "",
     weight: "",
     role: "",
+    picked: false,
   }
 }
 
@@ -898,12 +906,17 @@ export default function CreatePage() {
                     const n = normalizeIdentity(other.identity).toLowerCase()
                     if (n) otherIdentities.add(n)
                   }
-                  // Resolved + valid identity → swap the typeahead for
-                  // the avatar/name/handle card. Same identity-track
-                  // slot, so the row layout stays put across the
-                  // input → card swap.
+                  // Card vs typeahead input. The card only renders once
+                  // the row has been EXPLICITLY committed (typeahead
+                  // pick, Enter, or blur with a valid value) — typing
+                  // alone doesn't swap, so the user can transit through
+                  // intermediate matches like `alice.so` on the way to
+                  // `alice.social`. Duplicates always stay in input
+                  // mode so the inline "Already added" error stays
+                  // visible.
                   const normalizedIdentity = normalizeIdentity(c.identity)
                   const showCard =
+                    c.picked &&
                     identityValid &&
                     !identityDuplicate &&
                     normalizedIdentity.length > 0 &&
@@ -917,7 +930,9 @@ export default function CreatePage() {
                         onClear={() =>
                           setContributors((rows) =>
                             rows.map((r) =>
-                              r.key === c.key ? { ...r, identity: "" } : r,
+                              r.key === c.key
+                                ? { ...r, identity: "", picked: false }
+                                : r,
                             ),
                           )
                         }
@@ -929,6 +944,13 @@ export default function CreatePage() {
                           setContributors((rows) =>
                             rows.map((r) =>
                               r.key === c.key ? { ...r, identity: next } : r,
+                            ),
+                          )
+                        }
+                        onCommit={() =>
+                          setContributors((rows) =>
+                            rows.map((r) =>
+                              r.key === c.key ? { ...r, picked: true } : r,
                             ),
                           )
                         }
@@ -1062,6 +1084,7 @@ export default function CreatePage() {
                           {
                             ...freshContributor(),
                             identity: selfIdentity,
+                            picked: true,
                           },
                         ])
                       }

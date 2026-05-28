@@ -61,6 +61,18 @@ export interface ContributorIdentityFieldProps {
    *  on the list; the picker callback also short-circuits when the
    *  chosen actor is in this set. */
   excludeIdentities: Set<string>
+  /** Called when the value should be treated as a "committed"
+   *  identity — i.e. when the parent should consider this entry
+   *  finalised and swap the input out for the read-only contributor
+   *  card. Fires on:
+   *    - typeahead pick (suggestion click / Enter on focused row)
+   *    - bare Enter when the typed value is a valid atproto identity
+   *    - blur when the typed value is a valid atproto identity
+   *  Does NOT fire on every keystroke — that lets users keep typing
+   *  past intermediate states like `alice.so` on the way to
+   *  `alice.social` without the parent prematurely committing them
+   *  and hiding the input. */
+  onCommit?: (identity: string) => void
 }
 
 export function ContributorIdentityField({
@@ -70,6 +82,7 @@ export function ContributorIdentityField({
   idx,
   invalid,
   excludeIdentities,
+  onCommit,
 }: ContributorIdentityFieldProps) {
   const [results, setResults] = useState<Actor[]>([])
   const [isOpen, setIsOpen] = useState(false)
@@ -154,6 +167,7 @@ export function ContributorIdentityField({
     setIsOpen(false)
     setResults([])
     setFocusedIndex(-1)
+    onCommit?.(picked)
   }
 
   const visibleResults = results.filter((a) => {
@@ -185,8 +199,27 @@ export function ContributorIdentityField({
       } else if (visibleResults.length === 1) {
         e.preventDefault()
         handleSelect(visibleResults[0])
+      } else if (isContributorIdentityAcceptable(value) && value.trim().length > 0) {
+        // No dropdown match — but the typed value is a recognisable
+        // DID or handle. Treat Enter as "I'm done typing"; the
+        // parent swaps the input out for the contributor card.
+        e.preventDefault()
+        onCommit?.(value.trim())
       }
     }
+  }
+
+  const handleBlur = () => {
+    // Blur acts as an implicit commit when the typed value is a
+    // recognisable identity — same effect as picking from the
+    // typeahead, just without the dropdown round-trip. Empty / not-
+    // yet-valid values leave the input mode in place so a half-typed
+    // handle (e.g. `alice.so` mid-way to `alice.social`) doesn't
+    // commit just because the field briefly matched the handle regex.
+    const v = value.trim()
+    if (!v) return
+    if (!isContributorIdentityAcceptable(v)) return
+    onCommit?.(v)
   }
 
   return (
@@ -204,6 +237,7 @@ export function ContributorIdentityField({
         value={value}
         maxLength={1000}
         autoComplete="off"
+        onBlur={handleBlur}
         role="combobox"
         aria-expanded={isOpen}
         aria-controls={`create-cert-contrib-listbox-${idx}`}
