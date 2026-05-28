@@ -2706,6 +2706,14 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   margin-top: -4px;
 }
 
+/* In the Endorsed-by row the count lives INSIDE the link (whereas in
+   the followers row it sits outside), so override the count's primary
+   colour to inherit the link colour — that way the whole "Endorsed by
+   N" string reads as one link and lights up uniformly on hover. */
+.profile-sidebar__endorsed-by .profile-sidebar__followers-count {
+  color: inherit;
+}
+
 .profile-sidebar__details {
   list-style: none;
   margin: 0;
