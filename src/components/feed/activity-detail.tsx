@@ -1050,10 +1050,29 @@ export default function ActivityDetail({
                 parent doesn't stretch it to full width). */}
             {shortDescSection}
 
-            {/* Locations + map sit below the summary / read-full
-                link so the cert's narrative reads first, then the
-                where. Overview-only (the main pane is tab-gated);
-                the aside no longer carries a Locations row. */}
+            {/* Updates preview sits above Locations: after the cert's
+                narrative (summary / read-full link) the reader sees
+                the latest activity, then the where. Capped at one
+                card here — the "See all" link jumps to the dedicated
+                Updates tab for the rest. */}
+            {rkey ? (
+              <ContextUpdates
+                subjectUri={`at://${did}/org.hypercerts.claim.activity/${rkey}`}
+                variant="overview"
+                maxItems={1}
+                seeAllHref={pathname ? `${pathname}?tab=updates` : null}
+              />
+            ) : null}
+
+            {/* Locations + map. Overview-only (the main pane is
+                tab-gated); the aside no longer carries a Locations
+                row.
+                Contributors moved to the aside meta-list — see the
+                Contributors row above (`<dt>Contributors</dt>`).
+                Project association is surfaced in the three-column
+                byline below the title (see `<CertHeadlineColumns>`),
+                so the older full-width Projects section is gone — it
+                would have duplicated the headline Project column. */}
             {locations.length > 0 ? (
               <section className="cert-detail__section">
                 <span className="cert-detail__meta-label">
@@ -1065,23 +1084,6 @@ export default function ActivityDetail({
                 </span>
                 <CertLocationsMap locations={locations} />
               </section>
-            ) : null}
-
-            {/* Contributors moved to the aside meta-list — see the
-                Contributors row above (`<dt>Contributors</dt>`).
-                Project association is now surfaced in the
-                three-column byline below the title (see
-                `<CertHeadlineColumns>` in the headline above), so
-                the older full-width Projects section that used to
-                live here is gone — the row would have duplicated
-                the headline Project column. */}
-
-            {rkey ? (
-              <ContextUpdates
-                subjectUri={`at://${did}/org.hypercerts.claim.activity/${rkey}`}
-                variant="overview"
-                seeAllHref={pathname ? `${pathname}?tab=updates` : null}
-              />
             ) : null}
           </>
         ) : activeTab === "description" ? (
