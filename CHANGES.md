@@ -84,4 +84,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/app/__tests__/create-image-upload-error.test.tsx — fails before (unhandled rejection, no error surfaced), passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### bug-009 — Banner picker shows no live preview after selecting a file · IMPLEMENTED
+- **Why it's an improvement:** The banner control now previews the picked image immediately instead of showing the stale saved banner, matching AvatarUpload's behavior in the same form.
+- **Change:** BannerUpload self-previews via an object URL on pick (revoked on error/unmount), falling back to currentBannerUrl; this also fixes the group edit page, which uses BannerUpload directly.
+- **Test:** src/components/profile/__tests__/banner-upload-preview.test.tsx — fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->

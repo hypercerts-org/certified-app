@@ -32,11 +32,12 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
   isUploading,
   onRemove,
 }) => {
-  // The parent page owns the object-URL preview (see profile page's
-  // pendingBannerPreviewUrl). We just render whatever URL it passes in
-  // via `currentBannerUrl` — which already reflects the picked file
-  // synchronously — and report whether that image came from a fresh
-  // pick (via `hasPending`) so the button label can swap to "Replace".
+  // Self-preview the picked file (mirrors AvatarUpload): create an
+  // object URL on pick so the banner area shows the chosen image
+  // immediately, falling back to `currentBannerUrl` (the saved record)
+  // when nothing has been picked. `hasPending` also flips the button
+  // label to "Replace".
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [imgFailed, setImgFailed] = useState(false);
   const [hasPending, setHasPending] = useState(false);
@@ -62,18 +63,34 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
       return;
     }
 
+    // Optimistic preview — show the picked file before/while it uploads.
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+
     try {
       await onUpload(file);
       setHasPending(true);
     } catch (err) {
       console.error("Upload failed:", err);
       setError(err instanceof Error ? err.message : "Upload failed");
+      // Clear preview on error so the stale/saved banner shows again.
+      URL.revokeObjectURL(objectUrl);
+      setPreviewUrl(null);
     }
 
     e.target.value = "";
   };
 
-  const displayUrl = currentBannerUrl;
+  // Clean up the preview URL on unmount.
+  React.useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  const displayUrl = previewUrl || currentBannerUrl;
   const hasImage = !!displayUrl && !imgFailed;
 
   React.useEffect(() => {
