@@ -463,6 +463,31 @@ ${ACTIVITY_NODE_SELECTION}
     }
   `,
 
+  // "Of this DID set, which ones are organizations?" — a focused
+  // companion to NetworkActorsByDids that returns just the org-DID
+  // subset (no profile fields). Used by /explore Accounts to apply
+  // the People/Organizations sub-toggle on paths where the actor
+  // list comes from a known DID set rather than `fetchNetworkActors`:
+  //   - Featured (Ma Earth curated projects → author DIDs)
+  //   - Endorsed (closure result's inline issuer block)
+  // The server-side `isOrganization` filter on appCertifiedActorProfile
+  // can't run via fetchNetworkActors there because the actor list is
+  // already determined by a different upstream — but the same filter
+  // works keyed on a `did: { in: [...] }` predicate, which this op
+  // exposes. Returns at most 100 DIDs per call (MAX_FIRST cap on the
+  // upstream); callers chunk if their set is larger.
+  OrganizationDidsForSet: `
+    query OrganizationDidsForSet($dids: [String!]!) {
+      appCertifiedActorProfile(
+        first: 100
+        where: { did: { in: $dids }, isOrganization: { eq: true } }
+      ) {
+        edges { node { did } }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  `,
+
   // Per-actor counts of the major lexicons. One round-trip via
   // aliased connections — each branch shares the where: { did: $did }
   // filter so we get five small headers back in one fetch.
@@ -1255,6 +1280,14 @@ function buildVariables(
       // Reuse the author-list reader: same shape (DID list, ≤500),
       // same defensive truncation. Empty list is rejected — the
       // op is meaningless without a target set.
+      const dids = readAuthorList(vars.dids)
+      if (dids === null || dids.length === 0) return null
+      return { dids }
+    }
+    case "OrganizationDidsForSet": {
+      // Same shape as `NetworkActorsByDids`: a DID-set narrowing
+      // op. Returns just the org-DID subset; consumers chunk to
+      // stay under the upstream `first: 100` cap.
       const dids = readAuthorList(vars.dids)
       if (dids === null || dids.length === 0) return null
       return { dids }

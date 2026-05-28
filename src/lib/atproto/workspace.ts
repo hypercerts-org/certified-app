@@ -290,6 +290,48 @@ async function fetchOrgDidsByLabelUncached(opts: {
 }
 
 /**
+ * Returns the subset of `dids` that are organizations (per the
+ * indexer's `appCertifiedActorProfile.isOrganization` projection).
+ * Powers the /explore Accounts People/Organizations sub-toggle on
+ * paths where the actor list comes from a known DID set rather than
+ * `fetchNetworkActors` — Featured (curated project authors) and
+ * Endorsed (closure issuer list). Indexer's `first` is capped at 100
+ * per call, so we chunk the input set.
+ */
+export async function fetchOrganizationDidsForSet(
+  dids: readonly string[],
+  signal?: AbortSignal,
+): Promise<Set<string>> {
+  const result = new Set<string>()
+  if (dids.length === 0) return result
+  const CHUNK = 100
+  for (let i = 0; i < dids.length; i += CHUNK) {
+    const chunk = dids.slice(i, i + CHUNK)
+    const res = await fetch(INDEXER_PROXY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        operationName: "OrganizationDidsForSet",
+        variables: { dids: [...chunk] },
+      }),
+      signal,
+    })
+    if (!res.ok) continue
+    const json = (await res.json()) as {
+      data?: {
+        appCertifiedActorProfile?: {
+          edges: { node: { did: string } | null }[]
+        } | null
+      } | null
+    }
+    for (const edge of json.data?.appCertifiedActorProfile?.edges ?? []) {
+      if (edge.node?.did) result.add(edge.node.did)
+    }
+  }
+  return result
+}
+
+/**
  * Fetch actor profiles for a known set of DIDs. Bypasses the
  * `NetworkActors` 100-actor pagination cap — caller passes the
  * exact set they need, indexer returns up to 100 in one shot.

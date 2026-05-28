@@ -24,6 +24,7 @@ import {
 import {
   fetchNetworkActors,
   fetchNetworkActorsByDids,
+  fetchOrganizationDidsForSet,
   fetchOrgDidsByLabel,
 } from "@/lib/atproto/workspace"
 import type { NetworkActor } from "@/lib/atproto/workspace"
@@ -731,15 +732,22 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
       avatarUrl: null,
       createdAt: null,
     }))
-    // No People/Organizations sub filter on the featured set: it
-    // comes from a curator's hand-picked list of projects (Ma Earth)
-    // and surfaces the corresponding authors. Layering the
-    // sub-toggle would need a separate isOrganization lookup per
-    // DID — and the curated set is almost entirely orgs anyway, so
-    // we surface every member as-is. The server-side
-    // `isOrganization` filter applies on the All / Follows / Recent
-    // / My-groups paths below where the actor set comes from
-    // `fetchNetworkActors`.
+    // People/Organizations sub-toggle: the featured set is a fixed
+    // list of curator-picked project authors, so we can't use the
+    // pagination-time `isOrganization` server filter. Instead resolve
+    // the org subset of *this* DID set via
+    // `fetchOrganizationDidsForSet` and keep / drop accordingly.
+    const kind = subToIsOrganization(sub)
+    if (typeof kind === "boolean" && users.length > 0) {
+      const orgSet = await fetchOrganizationDidsForSet(
+        users.map((u) => u.did),
+        signal ?? undefined,
+      )
+      if (signal?.aborted) return EMPTY_PAGE
+      users = users.filter((u) =>
+        kind ? orgSet.has(u.did) : !orgSet.has(u.did),
+      )
+    }
     if (search.trim().length > 0) {
       const q = search.trim().toLowerCase()
       users = users.filter((a) => a.did.includes(q))
@@ -782,13 +790,24 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
           actorFromClosureAccount,
         )
       }
-      // The endorsement closure result does NOT carry an
-      // `isOrganization` flag (magic-indexer #117 returns inline
-      // issuer profiles only). Until that endpoint is extended,
-      // surface every closure actor regardless of the
-      // People/Organizations sub — the closure is conceptually a
-      // pre-filtered trust set, so applying the kind toggle on
-      // top is a future enhancement rather than a regression.
+      // People/Organizations sub-toggle: the closure response
+      // (magic-indexer #117) carries inline issuer profiles but
+      // no `isOrganization` flag, so apply the kind filter via a
+      // separate `fetchOrganizationDidsForSet` lookup over the
+      // closure-DID set. Server-side projection on
+      // appCertifiedActorProfile keeps this consistent with the
+      // All / Follows / Recent paths.
+      const kind = subToIsOrganization(sub)
+      if (typeof kind === "boolean" && scoped.length > 0) {
+        const orgSet = await fetchOrganizationDidsForSet(
+          scoped.map((a) => a.did),
+          signal ?? undefined,
+        )
+        if (signal?.aborted) return EMPTY_PAGE
+        scoped = scoped.filter((a) =>
+          kind ? orgSet.has(a.did) : !orgSet.has(a.did),
+        )
+      }
       if (search.trim().length > 0) {
         const q = search.trim().toLowerCase()
         scoped = scoped.filter(
