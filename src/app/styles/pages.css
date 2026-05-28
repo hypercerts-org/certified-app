@@ -201,17 +201,7 @@
   white-space: nowrap;
 }
 
-.org-list__item-role {
-  font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--fg-muted);
-  background: var(--bg-canvas);
-  padding: 4px 8px;
-  border-radius: var(--radius);
-  flex-shrink: 0;
-}
+/* .org-list__item-role retired — uses <Badge variant="role"> now. */
 
 .org-list__item-actions {
   display: flex;
@@ -829,7 +819,7 @@
     right: 0;
     max-height: 70vh;
     background: var(--bg-elevated);
-    border-radius: 16px 16px 0 0;
+    border-radius: var(--radius) var(--radius) 0 0;
     z-index: 71;
     animation: bottomSheetSlideUp 0.3s ease-out;
     overflow: hidden;
@@ -995,7 +985,7 @@
   width: 100%;
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: 16px;
+  border-radius: var(--radius);
   padding: 18px 20px 20px;
   text-decoration: none;
   color: inherit;

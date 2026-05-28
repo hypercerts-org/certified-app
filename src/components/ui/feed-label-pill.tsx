@@ -1,12 +1,13 @@
 import React from "react";
 import type { LabelValue } from "@/lib/atproto/labeller";
 import { LABEL_DISPLAY } from "@/lib/atproto/labeller";
+import Badge, { type BadgeVariant } from "@/components/ui/badge";
 
-const LABEL_CLASS: Record<LabelValue, string> = {
-  "high-quality": "feed-card__label--high-quality",
-  standard: "feed-card__label--standard",
-  draft: "feed-card__label--draft",
-  "likely-test": "feed-card__label--test",
+const LABEL_VARIANT: Record<LabelValue, BadgeVariant> = {
+  "high-quality": "high-quality",
+  standard: "standard",
+  draft: "draft",
+  "likely-test": "test",
 };
 
 export interface FeedLabelPillProps {
@@ -15,13 +16,14 @@ export interface FeedLabelPillProps {
 }
 
 /**
- * Colored pill badge indicating activity quality level.
- * Extracts the repeated label → class mapping from activity-card.tsx.
+ * Activity quality pill — thin wrapper that delegates to <Badge> so
+ * the four quality labels share the canonical Badge chrome instead of
+ * carrying their own .feed-card__label CSS class family.
  */
 export default function FeedLabelPill({ label, className = "" }: FeedLabelPillProps) {
   return (
-    <span className={`feed-card__label ${LABEL_CLASS[label]} ${className}`}>
+    <Badge variant={LABEL_VARIANT[label]} className={className}>
       {LABEL_DISPLAY[label]}
-    </span>
+    </Badge>
   );
 }

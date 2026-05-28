@@ -115,7 +115,7 @@
   width: 100%;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
-  border-radius: 20px;
+  border-radius: var(--radius);
   padding: 40px 40px 36px;
   box-shadow: var(--shadow-lg);
   display: flex;
@@ -180,7 +180,7 @@ dialog.signin-modal.app-modal .signin-modal__close {
   right: 4px;
   width: 24px;
   height: 24px;
-  border-radius: 6px;
+  border-radius: var(--radius);
 }
 
 dialog.signin-modal.app-modal .signin-modal__body {
@@ -225,7 +225,7 @@ dialog.signin-modal.app-modal .signin-modal__body {
   color: var(--fg-primary);
   background: var(--bg-sunken);
   border: 1px solid var(--border-subtle);
-  border-radius: 6px;
+  border-radius: var(--radius);
   padding: 6px 10px;
   word-break: break-all;
 }
@@ -236,7 +236,7 @@ dialog.signin-modal.app-modal .signin-modal__body {
   color: var(--fg-primary);
   background: var(--bg-elevated);
   border: 1.5px solid var(--border-hover);
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 8px 12px;
   width: 100%;
   min-width: 0;
@@ -296,7 +296,7 @@ dialog.signin-modal.app-modal .signin-modal__body {
   height: 56px;
   padding: 0 20px;
   border: 1.5px solid var(--border-default);
-  border-radius: 8px;
+  border-radius: var(--radius);
   font-size: 1rem;
   color: var(--fg-primary);
   background: var(--bg-elevated);
@@ -475,7 +475,7 @@ dialog.signin-modal.app-modal .signin-modal__body {
   }
   .signin-modal {
     padding: 32px 24px 28px;
-    border-radius: 20px;
+    border-radius: var(--radius);
   }
   .signin-modal__brandmark-wrap {
     margin-bottom: 24px;
@@ -494,7 +494,7 @@ dialog.signin-modal.app-modal .signin-modal__body {
 .feedback-modal__backdrop {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: var(--z-feedback);
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
@@ -736,12 +736,12 @@ dialog.signin-modal.app-modal .signin-modal__body {
 
   .feedback-bottom-sheet__backdrop {
     display: block;
-    z-index: 10000;
+    z-index: var(--z-feedback);
   }
 
   .feedback-bottom-sheet {
     display: flex;
-    z-index: 10001;
+    z-index: var(--z-feedback-above);
   }
 
   .feedback-bottom-sheet .feedback-modal__textarea {
@@ -1456,54 +1456,11 @@ dialog.signin-modal.app-modal .signin-modal__body {
   margin-top: 4px;
 }
 
-.domain-modal__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 18px;
-  border-radius: var(--radius);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  border: none;
-  min-height: 36px;
-}
-
-.domain-modal__btn--primary {
-  background: var(--color-accent);
-  color: var(--color-white);
-}
-
-.domain-modal__btn--primary:hover:not(:disabled) {
-  background: var(--color-accent-hover);
-}
-
-.domain-modal__btn--primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.domain-modal__btn--ghost {
-  background: none;
-  color: var(--fg-muted);
-}
-
-.domain-modal__btn--ghost:hover:not(:disabled) {
-  color: var(--fg-primary);
-  background: var(--bg-canvas);
-}
-
-.domain-modal__btn--ghost:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.domain-modal__btn:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
+/* The .domain-modal__btn* rules were retired — the modal now uses the
+   canonical <Button> with variant="primary"/"ghost" and size="sm".
+   The .domain-modal__spinner / @keyframes spin are kept because some
+   other code paths share the spinner animation; if you remove the last
+   consumer, drop the keyframe too. */
 
 .domain-modal__spinner {
   animation: spin 1s linear infinite;

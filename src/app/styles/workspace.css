@@ -79,7 +79,7 @@
   gap: 12px;
   padding: 20px;
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  border-radius: var(--radius);
   background: var(--bg-primary, transparent);
 }
 
@@ -115,7 +115,7 @@
   display: flex;
   flex-direction: column;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--bg-subtle);
 }
 
@@ -142,7 +142,7 @@
   align-items: center;
   gap: 4px;
   padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--fg-primary);
   color: var(--bg-primary, #fff);
   text-decoration: none;
@@ -192,7 +192,7 @@
   margin: 0 0 12px;
   padding: 6px;
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--bg-primary, var(--bg-subtle));
   max-width: 360px;
   max-height: 320px;
@@ -207,7 +207,7 @@
   width: 100%;
   padding: 6px 10px;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: none;
   text-align: left;
   font-size: 0.85rem;
@@ -240,7 +240,7 @@
   gap: 14px;
   padding: 10px;
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  border-radius: var(--radius);
   font-size: 0.85rem;
 }
 
@@ -266,10 +266,10 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 5px 8px;
+  padding: 4px 8px;
   background: none;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius);
   text-align: left;
   font-size: inherit;
   color: var(--fg-primary);
@@ -327,7 +327,7 @@
   gap: 6px;
   padding: 10px;
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  border-radius: var(--radius);
   font-size: 0.85rem;
 }
 
@@ -338,7 +338,7 @@
   width: 100%;
   padding: 8px 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: none;
   color: var(--fg-primary);
   font-size: inherit;
@@ -366,10 +366,10 @@
   align-items: center;
   gap: 6px;
   width: 100%;
-  padding: 5px 8px;
+  padding: 4px 8px;
   background: none;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius);
   text-align: left;
   font-size: inherit;
   color: var(--fg-primary);
@@ -419,7 +419,7 @@
   width: 100%;
   padding: 3px 8px;
   border: 0;
-  border-radius: 3px;
+  border-radius: var(--radius);
   background: none;
   text-align: left;
   font-size: 0.8rem;
@@ -501,11 +501,11 @@
   padding: 6px;
   background: var(--bg-primary, var(--bg-subtle));
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  border-radius: var(--radius);
   min-width: 280px;
   max-height: 360px;
   overflow-y: auto;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-md);
 }
 
 .wks-blue__menu-item {
@@ -516,7 +516,7 @@
   padding: 6px 10px;
   background: none;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius);
   text-align: left;
   font-size: 0.85rem;
   color: var(--fg-primary);
@@ -555,7 +555,7 @@
 .wks-slack__icon {
   width: 40px;
   height: 40px;
-  border-radius: 8px;
+  border-radius: var(--radius);
   border: 0;
   background: var(--bg-subtle);
   color: var(--fg-primary);
@@ -591,7 +591,7 @@
 .wks-slack__lexicons {
   padding: 10px;
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  border-radius: var(--radius);
   font-size: 0.85rem;
 }
 
@@ -617,9 +617,9 @@
 .wks-slack__lex {
   display: flex;
   width: 100%;
-  padding: 5px 8px;
+  padding: 4px 8px;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: none;
   text-align: left;
   font-size: inherit;
@@ -653,7 +653,7 @@
 
 /* ---------- Responsive ---------- */
 
-@media (max-width: 760px) {
+@media (max-width: 799px) {
   .wks-notion,
   .wks-mail,
   .wks-slack {

@@ -108,7 +108,7 @@
   margin-right: 8px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--radius);
   color: var(--fg-secondary);
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast);

@@ -445,7 +445,7 @@
 .feed-card__author-name-skel {
   width: 96px;
   height: 11px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
   animation: feed-author-skel-pulse 1.4s ease-in-out infinite;
 }
@@ -453,7 +453,7 @@
 .feed-card__author-handle-skel {
   width: 64px;
   height: 9px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
   animation: feed-author-skel-pulse 1.4s ease-in-out infinite;
 }
@@ -551,35 +551,8 @@
   flex-shrink: 0;
 }
 
-.feed-card__label {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 999px;
-  text-transform: capitalize;
-}
-
-.feed-card__label--high-quality {
-  color: var(--badge-success-fg);
-  background: var(--badge-success-bg);
-}
-
-.feed-card__label--standard {
-  color: var(--fg-secondary);
-  background: var(--bg-sunken);
-}
-
-.feed-card__label--draft {
-  color: var(--badge-warning-fg);
-  background: var(--badge-warning-bg);
-}
-
-.feed-card__label--test {
-  color: var(--fg-muted);
-  background: var(--bg-raised);
-}
+/* .feed-card__label* rules were retired — FeedLabelPill now composes
+   <Badge variant="high-quality|standard|draft|test"> instead. */
 
 /* ---- Load More ---- */
 
@@ -681,7 +654,7 @@
   }
 
   .feed-card__image-wrap {
-    border-radius: calc(var(--radius) * 2);
+    border-radius: var(--radius);
     margin-bottom: 16px;
   }
 
@@ -905,7 +878,7 @@
 .activity-detail__contributor-name-skel {
   width: 120px;
   height: 12px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--bg-elevated, rgba(128, 128, 128, 0.15));
   margin-bottom: 4px;
 }
@@ -913,7 +886,7 @@
 .activity-detail__contributor-handle-skel {
   width: 80px;
   height: 10px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--bg-elevated, rgba(128, 128, 128, 0.1));
 }
 
@@ -1115,7 +1088,7 @@
 .location-card--skeleton .location-card__name-skel {
   width: 60%;
   height: 12px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
   margin-bottom: 6px;
   animation: location-card-pulse 1.4s ease-in-out infinite;
@@ -1124,7 +1097,7 @@
 .location-card--skeleton .location-card__detail-skel {
   width: 40%;
   height: 10px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
   animation: location-card-pulse 1.4s ease-in-out infinite;
 }
@@ -1184,7 +1157,7 @@
 .certs-map .leaflet-bar {
   border: 1px solid var(--border-default);
   box-shadow: var(--shadow-md);
-  border-radius: 8px;
+  border-radius: var(--radius);
   overflow: hidden;
 }
 .certs-map .leaflet-bar a {
@@ -1208,7 +1181,7 @@
 .certs-map .leaflet-popup-content-wrapper {
   background: var(--bg-elevated);
   color: var(--fg-primary);
-  border-radius: 8px;
+  border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
 }
 .certs-map .leaflet-popup-content {
@@ -1381,7 +1354,7 @@
   cursor: pointer;
   padding: 4px;
   color: var(--fg-muted);
-  border-radius: 4px;
+  border-radius: var(--radius);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2025,7 +1998,7 @@
   cursor: pointer;
   padding: 4px;
   color: var(--fg-muted);
-  border-radius: 4px;
+  border-radius: var(--radius);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2292,7 +2265,7 @@
   margin: 12px 0 0;
   padding: 12px;
   background: var(--bg-sunken);
-  border-radius: 8px;
+  border-radius: var(--radius);
   font-size: 0.875rem;
   color: var(--fg-primary);
   white-space: pre-wrap;
@@ -2311,7 +2284,7 @@
   padding: 10px 14px;
   background: var(--bg-sunken);
   border-left: 3px solid var(--fg-muted);
-  border-radius: 4px;
+  border-radius: var(--radius);
   font-size: 0.875rem;
   color: var(--fg-primary);
 }
@@ -2328,7 +2301,7 @@
   margin: 24px 0;
   padding: 14px 16px;
   background: var(--bg-sunken);
-  border-radius: 8px;
+  border-radius: var(--radius);
   font-size: 0.875rem;
   color: var(--fg-muted);
 }

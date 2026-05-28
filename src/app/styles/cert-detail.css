@@ -113,7 +113,7 @@
   width: 100%;
   aspect-ratio: 1 / 1;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--bg-sunken);
   border: 1px solid var(--border-subtle);
   /* Center the placeholder icon (Award) when there's no <img>. The
@@ -177,7 +177,7 @@
   line-height: 1.15;
   letter-spacing: -0.015em;
   border: 1.5px solid var(--border-hover);
-  border-radius: 6px;
+  border-radius: var(--radius);
   padding: 4px 10px;
   background: var(--bg-elevated);
 }
@@ -222,7 +222,7 @@
   line-height: 1.6;
   color: var(--fg-secondary);
   border: 1.5px solid var(--border-hover);
-  border-radius: 6px;
+  border-radius: var(--radius);
   padding: 10px 12px;
   background: var(--bg-elevated);
   resize: vertical;
@@ -281,7 +281,7 @@
   flex: 1;
   min-width: 0;
   padding: 6px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   text-decoration: none;
   color: inherit;
 }
@@ -306,7 +306,7 @@
 .cert-detail__project-thumb {
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   overflow: hidden;
   object-fit: cover;
   display: block;
@@ -496,7 +496,7 @@
      which read as a different button family from the rest of the
      app. */
   padding: 6px 16px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   border: 1px solid var(--border-default);
   background: transparent;
   color: var(--fg-primary);
@@ -633,7 +633,7 @@
   color: inherit;
   padding: 2px 4px;
   margin: -2px -4px;
-  border-radius: 6px;
+  border-radius: var(--radius);
 }
 
 .cert-detail__headline-author:hover,
@@ -685,7 +685,7 @@
 .cert-detail__headline-name-skel {
   width: 90px;
   height: 10px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
   margin-bottom: 4px;
   display: block;
@@ -694,7 +694,7 @@
 .cert-detail__headline-handle-skel {
   width: 60px;
   height: 9px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
   display: block;
 }
@@ -737,7 +737,7 @@
   color: var(--fg-muted);
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 /* Time-period row hosts the "Add to list" 3-dot menu on the same
@@ -754,7 +754,7 @@
 .cert-detail__meta-label-text {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 .cert-detail__meta-value {
@@ -787,7 +787,7 @@
   color: var(--fg-primary);
   background: var(--bg-elevated);
   border: 1.5px solid var(--border-hover);
-  border-radius: 4px;
+  border-radius: var(--radius);
   padding: 2px 6px;
   min-width: 0;
   max-width: 100%;
@@ -866,7 +866,7 @@
   color: var(--fg-secondary);
   text-decoration: none;
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 
@@ -957,7 +957,7 @@
   font-weight: 500;
   color: var(--fg-secondary);
   text-decoration: none;
-  border-radius: 4px;
+  border-radius: var(--radius);
   transition: background var(--transition-fast),
     color var(--transition-fast);
 }
@@ -977,7 +977,7 @@
   align-items: center;
   gap: 10px;
   padding: 6px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   min-width: 0;
 }
 
@@ -1059,7 +1059,7 @@
 .cert-detail__contributor-name-skel {
   width: 100px;
   height: 10px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
   margin-bottom: 4px;
 }
@@ -1067,7 +1067,7 @@
 .cert-detail__contributor-handle-skel {
   width: 64px;
   height: 9px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
 }
 
@@ -1151,7 +1151,7 @@
 
 .cert-detail__map {
   width: 100%;
-  border-radius: 8px;
+  border-radius: var(--radius);
   overflow: hidden;
   border: 1px solid var(--border-subtle);
   background: var(--bg-sunken);
@@ -1197,7 +1197,7 @@
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
   min-width: 0;
 }
@@ -1241,7 +1241,7 @@
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
   min-width: 0;
 }
@@ -1278,7 +1278,7 @@
   flex-shrink: 0;
   padding: 1px 6px;
   border: 1px solid var(--border-default);
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: transparent;
   color: var(--fg-muted);
   font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
@@ -1345,7 +1345,7 @@
 .cert-detail__headline-col-value--skel {
   display: block;
   height: 32px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
 }
 
@@ -1372,7 +1372,7 @@
   min-width: 0;
   padding: 2px 4px;
   margin: -2px -4px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   transition: background var(--transition-fast);
 }
 
@@ -1400,7 +1400,7 @@
      headline byline) so the two glyphs read as a pair. */
   width: 24px;
   height: 24px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   overflow: hidden;
   background: var(--bg-sunken);
   border: 1px solid var(--border-subtle);
@@ -1683,7 +1683,7 @@
   flex-direction: column;
   gap: 1px;
   padding: 6px 10px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   cursor: pointer;
 }
 
@@ -1708,7 +1708,7 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   border: 1px solid var(--border-default);
   background: var(--bg-elevated);
   color: var(--fg-secondary);
@@ -1757,14 +1757,14 @@
   max-height: 280px;
   overflow-y: auto;
   border: 1px solid var(--border-subtle);
-  border-radius: 6px;
+  border-radius: var(--radius);
   padding: 6px;
 }
 
 .create-project__quick-pick-row {
   display: flex;
   align-items: center;
-  border-radius: 4px;
+  border-radius: var(--radius);
   transition: background var(--transition-fast);
 }
 
@@ -1818,7 +1818,7 @@
   gap: 8px;
   padding: 8px 12px;
   background: var(--overlay-weak);
-  border-radius: 6px;
+  border-radius: var(--radius);
   min-width: 0;
 }
 
@@ -1843,7 +1843,7 @@
   background: transparent;
   border: 0;
   color: var(--fg-muted);
-  border-radius: 4px;
+  border-radius: var(--radius);
   cursor: pointer;
   transition: background var(--transition-fast),
     color var(--transition-fast);
@@ -1860,7 +1860,7 @@
   font-size: 0.8125rem;
   color: var(--fg-secondary);
   background: var(--bg-sunken);
-  border-radius: 8px;
+  border-radius: var(--radius);
   border: 1px dashed var(--border-default);
 }
 
@@ -1881,7 +1881,7 @@
   gap: 6px;
   padding: 4px 6px;
   background: var(--overlay-weak);
-  border-radius: 6px;
+  border-radius: var(--radius);
   font-size: 0.8125rem;
   color: var(--fg-primary);
   min-width: 0;
@@ -1906,7 +1906,7 @@
   background: transparent;
   border: 0;
   color: var(--fg-muted);
-  border-radius: 4px;
+  border-radius: var(--radius);
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast);
 }
@@ -1930,7 +1930,7 @@
   gap: 2px;
   padding: 2px;
   background: var(--bg-sunken);
-  border-radius: 8px;
+  border-radius: var(--radius);
   align-self: flex-start;
 }
 
@@ -1941,7 +1941,7 @@
   color: var(--fg-secondary);
   background: transparent;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius);
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast);
 }
@@ -1953,7 +1953,7 @@
 .create-cert__loc-tab--active {
   background: var(--bg-primary, var(--bg-base, #fff));
   color: var(--fg-primary);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Search field + Name field side-by-side above the map. Each
@@ -2003,7 +2003,7 @@
   padding: 0;
   background: transparent;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius);
   color: var(--fg-muted);
   cursor: pointer;
   transition: background var(--transition-fast),
@@ -2028,8 +2028,8 @@
   overflow-y: auto;
   background: var(--bg-primary, var(--bg-base, #fff));
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
 }
 
 .create-cert__loc-suggestion {
@@ -2037,7 +2037,7 @@
   flex-direction: column;
   gap: 1px;
   padding: 6px 10px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   cursor: pointer;
 }
 
@@ -2058,7 +2058,7 @@
 
 .create-cert__loc-map {
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius);
   overflow: hidden;
 }
 
@@ -2078,7 +2078,7 @@
   font-size: 0.8125rem;
   color: var(--fg-secondary);
   background: var(--overlay-weak);
-  border-radius: 6px;
+  border-radius: var(--radius);
 }
 
 .create-cert__loc-uri-label {
@@ -2090,7 +2090,7 @@
   font-size: 0.75rem;
   background: var(--bg-sunken);
   padding: 1px 4px;
-  border-radius: 3px;
+  border-radius: var(--radius);
 }
 
 .create-cert__loc-actions {
@@ -2127,7 +2127,7 @@
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border-default);
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--bg-elevated);
   color: var(--fg-primary);
   cursor: pointer;

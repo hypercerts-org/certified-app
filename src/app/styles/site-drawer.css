@@ -9,7 +9,7 @@
   margin-right: 4px;
   background: none;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius);
   color: var(--fg-primary);
   cursor: pointer;
   transition: background var(--transition-fast);
@@ -87,7 +87,7 @@
   height: 36px;
   background: none;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius);
   color: var(--fg-secondary);
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast);
@@ -112,7 +112,7 @@
   padding: 10px 12px;
   background: none;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius);
   text-decoration: none;
   color: var(--fg-primary);
   font-size: 0.95rem;

@@ -27,7 +27,7 @@ export default function PrivacyPage() {
 
         <div className="prose prose-navy max-w-none space-y-8">
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">1. Introduction</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">1. Introduction</h2>
             <p>
               This Privacy Policy explains how the Hypercerts Foundation (&quot;Hypercerts
               Foundation&quot;, &quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) processes
@@ -58,7 +58,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">2. Data controller</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">2. Data controller</h2>
             <p>
               For the purposes of the EU General Data Protection Regulation (GDPR), the data
               controller is:
@@ -92,7 +92,7 @@ export default function PrivacyPage() {
               .
             </p>
 
-            <h3 className="font-headline text-lg text-[var(--fg-primary)] mt-6 mb-3">EU representative</h3>
+            <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">EU representative</h3>
             <p>
               In accordance with Article 27 of the GDPR, the Hypercerts Foundation has designated
               the following representative in the European Union:
@@ -117,14 +117,14 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               3. Personal data we process
             </h2>
             <p>
               The personal data processed by Certified depends on how you use the services.
             </p>
 
-            <h3 className="font-headline text-lg text-[var(--fg-primary)] mt-6 mb-3">Account information</h3>
+            <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">Account information</h3>
             <p>
               When you create or manage an account using certified.app, we may process:
             </p>
@@ -135,7 +135,7 @@ export default function PrivacyPage() {
               <li>configuration settings for your AT Protocol identity</li>
             </ul>
 
-            <h3 className="font-headline text-lg text-[var(--fg-primary)] mt-6 mb-3">
+            <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">
               Data stored on Personal Data Servers
             </h3>
             <p>
@@ -154,7 +154,7 @@ export default function PrivacyPage() {
               on how the user uses the service.
             </p>
 
-            <h3 className="font-headline text-lg text-[var(--fg-primary)] mt-6 mb-3">
+            <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">
               Technical and operational data
             </h3>
             <p>To operate the services, we may process:</p>
@@ -172,7 +172,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               4. How we use personal data
             </h2>
             <p>
@@ -194,17 +194,17 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               5. Legal basis for processing
             </h2>
             <p>
               Where the GDPR applies, personal data is processed on the following legal bases:
             </p>
 
-            <h3 className="font-headline text-lg text-[var(--fg-primary)] mt-6 mb-3">Contractual necessity</h3>
+            <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">Contractual necessity</h3>
             <p>Processing necessary to provide the services requested by the user.</p>
 
-            <h3 className="font-headline text-lg text-[var(--fg-primary)] mt-6 mb-3">Legitimate interests</h3>
+            <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">Legitimate interests</h3>
             <p>Processing necessary to:</p>
             <ul className="list-disc pl-6 mt-2 space-y-2">
               <li>maintain service security</li>
@@ -213,12 +213,12 @@ export default function PrivacyPage() {
               <li>ensure reliable system performance</li>
             </ul>
 
-            <h3 className="font-headline text-lg text-[var(--fg-primary)] mt-6 mb-3">Legal obligations</h3>
+            <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">Legal obligations</h3>
             <p>
               Processing required to comply with applicable laws or regulatory requirements.
             </p>
 
-            <h3 className="font-headline text-lg text-[var(--fg-primary)] mt-6 mb-3">Consent</h3>
+            <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">Consent</h3>
             <p>
               Where applicable, certain processing may be based on your consent. Where consent is
               the legal basis, you have the right to withdraw consent at any time. Withdrawal of
@@ -228,7 +228,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               6. Data storage and infrastructure
             </h2>
             <p>
@@ -247,7 +247,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               7. Federated network architecture
             </h2>
             <p>
@@ -276,7 +276,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">8. Data sharing</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">8. Data sharing</h2>
             <p>We do not sell personal data.</p>
             <p className="mt-4">
               Personal data may be shared only in limited circumstances, including:
@@ -305,7 +305,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               9. Cookies and tracking technologies
             </h2>
             <p>
@@ -341,7 +341,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">10. Data retention</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">10. Data retention</h2>
             <p>
               We retain personal data only for as long as necessary to operate the services and
               fulfill legal obligations.
@@ -373,7 +373,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">11. Security</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">11. Security</h2>
             <p>
               We implement reasonable technical and organizational measures to protect the security
               of the services and the data stored on them.
@@ -386,7 +386,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               12. Children&apos;s data
             </h2>
             <p>
@@ -403,7 +403,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">13. Your rights</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">13. Your rights</h2>
             <p>
               Where applicable under data protection laws such as the GDPR, individuals may have
               the right to:
@@ -448,7 +448,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               14. International users
             </h2>
             <p>
@@ -463,7 +463,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               15. Changes to this policy
             </h2>
             <p>We may update this Privacy Policy from time to time.</p>
@@ -478,7 +478,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">16. Contact</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">16. Contact</h2>
             <p>
               For privacy inquiries, data protection requests, or questions about this policy,
               contact:

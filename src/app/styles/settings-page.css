@@ -125,7 +125,7 @@
   width: 100%;
   padding: 6px 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: none;
   text-align: left;
   font-family: var(--font-inter), system-ui, sans-serif;
@@ -208,7 +208,7 @@
   /* Sticky top-bar offset + buffer. Includes row 2 so the freshly-
      jumped section's header sits below the full top bar. */
   scroll-margin-top: calc(var(--top-bar-row1) + var(--top-bar-row2) + 24px);
-  border-radius: 8px;
+  border-radius: var(--radius);
   transition: background var(--transition-fast), box-shadow var(--transition-fast);
 }
 
@@ -219,7 +219,7 @@
 .sx-section--flash .sx-section__title,
 .sx-section--flash h2:first-child {
   animation: sx-section-flash-heading 1.4s ease-out;
-  border-radius: 6px;
+  border-radius: var(--radius);
 }
 
 @keyframes sx-section-flash-heading {

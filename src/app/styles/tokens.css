@@ -37,12 +37,19 @@
   --color-accent: #5e5e5e;
   --color-accent-hover: #454747;
 
-  /* Landing-page palette — kept invariant so /welcome always renders
-     light-themed regardless of system colour scheme. */
+  /* Landing-page palette. Previously documented as "invariant so /welcome
+     always renders light-themed" — that policy is gone; landing now has
+     proper dark-mode support via the [data-theme="dark"] block below.
+     Three of these tokens (--color-light-gray, --color-mid-gray,
+     --color-surface) were referenced from landing.css but never
+     defined, resulting in inherited fallback colors. Now defined. */
   --color-navy: #111111;
   --color-off-white: #f9f9f9;
   --color-gray-100: #eeeeee;
+  --color-light-gray: #e5e5e5;
+  --color-mid-gray: #6b6263;
   --color-dark-gray: #4c4546;
+  --color-surface: #f9f9f9;
   --color-surface-container-low: #f3f3f3;
 
   /* ===== Semantic tokens (overridden in dark theme) ===== */
@@ -155,7 +162,8 @@
   --z-portal-sheet: 60;             /* bottom-sheet, mobile-sidebar drawer */
   --z-modal: 100;                   /* generic modals */
   --z-skip-nav: 9999;               /* skip-nav link */
-  /* --z-feedback: 10000 (existing feedback portal value, not migrated this PR) */
+  --z-feedback: 10000;              /* feedback modal portal (above skip-nav) */
+  --z-feedback-above: 10001;        /* feedback expanded variant */
 }
 
 /* Zero the bottom-nav height at desktop widths so any consumer of the
@@ -243,6 +251,19 @@
   /* Primary button inverts so it pops off the dark canvas */
   --btn-primary-bg: #f5f5f7;
   --btn-primary-fg: #0b0b0d;
+
+  /* Landing palette — dark mode. Built to mirror the rest of the
+     dark theme: near-black canvas, light-on-dark text, transparent
+     overlays for borders. The landing sections that previously held
+     a hard-coded near-white background now read as dark surfaces. */
+  --color-navy: #f5f5f7;            /* used as "ink" for headings — invert */
+  --color-off-white: #18181b;       /* hero / page surface — becomes the dark canvas */
+  --color-gray-100: #26262b;        /* mid surface */
+  --color-light-gray: rgba(255, 255, 255, 0.1);  /* faint divider */
+  --color-mid-gray: #8e8e93;        /* muted text */
+  --color-dark-gray: #c7c7cc;       /* secondary text */
+  --color-surface: #18181b;         /* hero background */
+  --color-surface-container-low: #111114; /* recessed section background */
 }
 
 a:focus-visible,

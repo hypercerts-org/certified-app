@@ -1,0 +1,1135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440" />
+<title>certified-app — divergence sheet</title>
+<style>
+/* ============================================================
+   Tokens (copied verbatim from src/app/styles/tokens.css).
+   Kept inline so this file is a portable audit artifact.
+   ============================================================ */
+:root {
+  color-scheme: light dark;
+  --color-primary: #111111;
+  --color-white: #FFFFFF;
+  --color-accent: #5e5e5e;
+  --color-accent-hover: #454747;
+  --color-navy: #111111;
+  --color-off-white: #f9f9f9;
+  --color-gray-100: #eeeeee;
+  --color-dark-gray: #4c4546;
+  --color-surface-container-low: #f3f3f3;
+
+  --bg-canvas: #f9f9f9;
+  --bg-sunken: #eeeeee;
+  --bg-raised: #f3f3f3;
+  --bg-elevated: #FFFFFF;
+
+  --fg-primary: #111111;
+  --fg-secondary: #4c4546;
+  --fg-muted: #6b6263;
+
+  --border-subtle: rgba(0, 0, 0, 0.04);
+  --border-light: rgba(0, 0, 0, 0.06);
+  --border-default: rgba(0, 0, 0, 0.08);
+  --border-medium: rgba(0, 0, 0, 0.1);
+  --border-hover: rgba(0, 0, 0, 0.15);
+  --border-hover-soft: rgba(0, 0, 0, 0.12);
+
+  --overlay-weak: rgba(0, 0, 0, 0.04);
+  --overlay-medium: rgba(0, 0, 0, 0.08);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.12);
+
+  --focus-ring: var(--color-accent);
+
+  --color-success: #2ECC71;
+  --color-success-text: #047857;
+  --color-warning: #F5A623;
+  --color-warning-bg: #fef9e7;
+  --color-warning-border: #f5d880;
+  --color-warning-text: #7a6420;
+  --color-error: #ba1a1a;
+
+  --badge-success-bg: #e8f5e9;
+  --badge-success-fg: #1b7a3d;
+  --badge-warning-bg: #fff3e0;
+  --badge-warning-fg: #b37100;
+  --badge-neutral-bg: #f5f5f5;
+  --badge-neutral-fg: #6b6263;
+  --badge-neutral-border: #e5e7eb;
+  --badge-count-bg: #b91c1c;
+  --badge-count-fg: #ffffff;
+
+  --btn-primary-bg: var(--color-primary);
+  --btn-primary-fg: var(--color-white);
+
+  --transition-fast: 150ms ease-out;
+  --transition-base: 250ms ease-out;
+  --transition-slow: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  --radius: 2px;
+
+  --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-headline: 'Noto Serif', Georgia, serif;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-canvas: #18181b;
+  --bg-sunken: #111114;
+  --bg-raised: #26262b;
+  --bg-elevated: #2d2d33;
+  --fg-primary: #f5f5f7;
+  --fg-secondary: #c7c7cc;
+  --fg-muted: #8e8e93;
+  --color-accent: #a0a0a8;
+  --color-accent-hover: #c7c7cc;
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --border-light: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.12);
+  --border-hover: rgba(255, 255, 255, 0.18);
+  --border-hover-soft: rgba(255, 255, 255, 0.14);
+  --overlay-weak: rgba(255, 255, 255, 0.04);
+  --overlay-medium: rgba(255, 255, 255, 0.08);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+  --focus-ring: #8e8e93;
+  --color-warning-bg: rgba(245, 166, 35, 0.1);
+  --color-warning-border: rgba(245, 166, 35, 0.3);
+  --color-warning-text: #fbbf24;
+  --color-success-text: #6ee7a7;
+  --color-error: #f87171;
+  --badge-success-bg: rgba(46, 204, 113, 0.15);
+  --badge-success-fg: #6ee7a7;
+  --badge-warning-bg: rgba(245, 166, 35, 0.15);
+  --badge-warning-fg: #fbbf24;
+  --badge-neutral-bg: rgba(255, 255, 255, 0.06);
+  --badge-neutral-fg: #8e8e93;
+  --badge-neutral-border: rgba(255, 255, 255, 0.1);
+  --badge-count-bg: #dc2626;
+  --badge-count-fg: #ffffff;
+  --btn-primary-bg: #f5f5f7;
+  --btn-primary-fg: #0b0b0d;
+}
+
+/* ============================================================
+   Sheet chrome (audit-only, not from the app)
+   ============================================================ */
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  background: var(--bg-canvas);
+  color: var(--fg-secondary);
+  font-family: var(--font-inter);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.sheet {
+  max-width: 1380px;
+  margin: 0 auto;
+  padding: 48px 32px 96px;
+}
+.sheet__hdr {
+  border-bottom: 1px solid var(--border-default);
+  padding-bottom: 24px;
+  margin-bottom: 32px;
+}
+.sheet__title {
+  font-family: var(--font-headline);
+  font-weight: 700;
+  font-size: 36px;
+  letter-spacing: -0.02em;
+  color: var(--fg-primary);
+  margin: 0 0 8px;
+}
+.sheet__sub {
+  color: var(--fg-muted);
+  font-size: 14px;
+  margin: 0;
+}
+.section {
+  margin: 0 0 56px;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+.section__hdr {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-raised);
+}
+.section__num {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  font-weight: 500;
+}
+.section__title {
+  margin: 4px 0 0;
+  font-family: var(--font-headline);
+  font-size: 22px;
+  color: var(--fg-primary);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.section__body { padding: 24px; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+}
+.cell {
+  padding: 24px 20px 20px;
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-canvas);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  min-height: 132px;
+  gap: 10px;
+}
+.cell--canonical {
+  border-style: solid;
+  border-color: var(--badge-success-fg);
+  background: color-mix(in srgb, var(--badge-success-bg) 35%, var(--bg-canvas));
+}
+.cell--divergent {
+  border-color: var(--color-warning);
+}
+.cell__tag {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--fg-muted);
+}
+.cell__tag--canon { color: var(--badge-success-fg); }
+.cell__tag--diverge { color: var(--color-warning-text); }
+.cell__label {
+  font-size: 12px;
+  color: var(--fg-primary);
+  font-weight: 600;
+  word-break: break-word;
+}
+.cell__src {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 10.5px;
+  color: var(--fg-muted);
+  word-break: break-all;
+}
+.cell__demo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: auto;
+  min-height: 48px;
+  padding-top: 8px;
+}
+
+/* ============================================================
+   Canonical Button (Tailwind classes rebuilt as a single rule for
+   the showcase only — visual equivalent of src/components/ui/button.tsx)
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-family: var(--font-inter);
+}
+.btn--sm  { padding: 6px 16px; font-size: 12px; }
+.btn--md  { padding: 10px 24px; }
+.btn--lg  { padding: 12px 32px; }
+.btn--primary {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-fg);
+}
+.btn--secondary {
+  background: transparent;
+  color: var(--fg-primary);
+  border-color: var(--border-default);
+}
+.btn--ghost {
+  background: transparent;
+  color: var(--fg-muted);
+}
+.btn--destructive {
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
+  color: var(--color-error);
+  border: 1px solid color-mix(in srgb, var(--color-error) 20%, transparent);
+}
+
+/* ============================================================
+   Divergent classes (copied verbatim from project CSS files)
+   ============================================================ */
+
+/* edit-banner — src/app/styles/profile-inline-edit.css:158 */
+.edit-banner__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+.edit-banner__btn--primary {
+  background: var(--fg-primary);
+  color: var(--bg-canvas);
+  border-color: var(--fg-primary);
+}
+
+/* domain-modal — src/app/styles/components.css:1459 */
+.domain-modal__btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 6px; padding: 8px 18px; border-radius: var(--radius);
+  font-size: 0.8125rem; font-weight: 500; cursor: pointer;
+  transition: all var(--transition-fast); border: none; min-height: 36px;
+}
+.domain-modal__btn--primary { background: var(--color-accent); color: var(--color-white); }
+.domain-modal__btn--ghost   { background: none; color: var(--fg-muted); }
+
+/* org-list — src/app/styles/pages.css:222 */
+.org-list__action-btn {
+  font-size: 0.75rem; font-weight: 500; padding: 6px 12px;
+  border: 1px solid var(--border-default); border-radius: var(--radius);
+  background: transparent; color: var(--fg-muted); cursor: pointer;
+}
+.org-list__action-btn--primary { color: var(--fg-primary); border-color: var(--fg-primary); }
+.org-list__action-btn--danger:hover { color: var(--color-error); border-color: var(--color-error); }
+.org-list__item-role {
+  font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--fg-muted);
+  background: var(--bg-canvas); padding: 4px 8px; border-radius: var(--radius);
+}
+
+/* response-buttons — src/app/styles/feed.css:1582 */
+.response-buttons__btn {
+  font-family: var(--font-inter); font-size: 0.75rem; font-weight: 500;
+  padding: 4px 10px; border-radius: var(--radius);
+  border: 1px solid var(--border-default); background: var(--bg-elevated);
+  color: var(--fg-secondary); cursor: pointer;
+}
+.response-buttons__btn--pressed {
+  background: var(--fg-primary); color: var(--bg-elevated); border-color: var(--fg-primary);
+}
+
+/* dashboard back — src/app/styles/components.css:1634 */
+.dashboard__back-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: var(--radius);
+  border: 1px solid var(--border-default); background: var(--bg-elevated);
+  font-size: 0.8125rem; font-weight: 500; color: var(--fg-primary);
+  cursor: pointer;
+}
+
+/* landing hero — src/app/styles/landing.css:80 */
+.hero__btn-primary {
+  display: inline-flex; align-items: center; gap: 12px;
+  padding: 18px 40px; font-size: 1.125rem; font-weight: 500;
+  color: var(--color-white); background: var(--color-primary);
+  border: none;
+  border-radius: 4px;          /* ⚠ DIVERGENT */
+  cursor: pointer; transition: all 200ms;
+}
+.hero__btn-secondary {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 18px 40px; font-size: 1.125rem; font-weight: 500;
+  color: var(--color-primary); background: transparent;
+  border: none; border-bottom: 2px solid transparent; cursor: pointer;
+}
+
+/* icon-only nav button (rebuilt from .desktop-top-bar__icon-btn) */
+.icon-btn {
+  width: 40px; height: 40px; display: inline-flex;
+  align-items: center; justify-content: center;
+  background: transparent; border: none; border-radius: var(--radius);
+  color: var(--fg-muted); cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.icon-btn:hover { background: var(--overlay-weak); color: var(--fg-primary); }
+
+/* leaflet editor button (rebuilt) */
+.leaflet-editor__btn {
+  width: 30px; height: 30px; display: inline-flex;
+  align-items: center; justify-content: center;
+  background: transparent; border: none; border-radius: var(--radius);
+  color: var(--fg-muted); cursor: pointer; font-weight: 600;
+}
+.leaflet-editor__btn--active { background: var(--fg-primary); color: var(--bg-elevated); }
+
+/* tab buttons (rebuilt to match .profile-tabs__tab / .feed-tabs__tab) */
+.tab-strip { display: inline-flex; gap: 16px; border-bottom: 1px solid var(--border-subtle); }
+.tab-btn {
+  background: transparent; border: none; padding: 12px 4px;
+  font-size: 13px; color: var(--fg-muted); cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.tab-btn--active { color: var(--fg-primary); border-bottom-color: var(--fg-primary); font-weight: 600; }
+
+/* ============================================================
+   Inputs
+   ============================================================ */
+/* canonical (rebuilt from src/components/ui/input.tsx) */
+.input {
+  height: 44px; width: 100%;
+  padding: 0 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
+  font-size: 14px;
+  font-family: var(--font-inter);
+}
+.input::placeholder { color: var(--fg-muted); }
+
+/* signin-modal — components.css:294 */
+.signin-modal__input {
+  width: 100%; height: 56px; padding: 0 20px;
+  border: 1.5px solid var(--border-default);
+  border-radius: 8px;   /* ⚠ DIVERGENT */
+  font-size: 1rem; color: var(--fg-primary);
+  background: var(--bg-elevated);
+}
+
+/* delete-record — components.css:233 */
+.delete-record-dialog__input {
+  font-size: 0.9375rem; color: var(--fg-primary);
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border-hover);
+  border-radius: 8px;   /* ⚠ DIVERGENT */
+  padding: 8px 12px; width: 100%;
+}
+
+/* handle-search — pages.css:15 */
+.handle-search__input {
+  width: 100%; height: 40px; padding: 0 12px;
+  border: none; border-bottom: 1px solid var(--border-medium);
+  border-radius: 0; font-size: 0.875rem;
+  color: var(--fg-primary); background: transparent;
+}
+
+/* profile inline-edit — profile-inline-edit.css */
+.profile-sidebar__name-input {
+  font-family: var(--font-headline); font-size: 1.125rem; font-weight: 600;
+  color: var(--fg-primary); background: transparent;
+  border: 1.5px solid var(--border-hover);
+  border-radius: var(--radius);
+  padding: 6px 10px; width: 100%;
+}
+
+/* create-form input — feed.css:51 */
+.create-form__input {
+  width: 100%;
+  padding: 12px 14px;     /* ⚠ off the 4-px grid */
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  font-size: 14px; color: var(--fg-primary);
+  font-family: var(--font-inter);
+}
+
+/* ============================================================
+   Cards
+   ============================================================ */
+.card-canonical {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+.feed-card {
+  background: transparent;
+  border: none; border-bottom: 1px solid var(--border-subtle);
+  padding: 20px 0; border-radius: 0;
+}
+.dash-card {
+  background: transparent;
+  border: none; border-bottom: 1px solid var(--border-light);
+  padding: 32px 0; border-radius: 0;
+}
+.explore-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;   /* ⚠ object-card 8px */
+  padding: 16px;
+}
+.app-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;   /* ⚠ object-card 8px */
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+}
+.endorsements-v2__card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;   /* ⚠ object-card 8px */
+  padding: 12px;
+}
+.card-bad-6 {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;   /* ⚠⚠ 6px offender */
+  padding: 16px;
+}
+
+/* ============================================================
+   Modals (visual mock — fixed-position dialog frames, not full overlays)
+   ============================================================ */
+.modal-mock {
+  position: relative;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-lg);
+  padding: 24px;
+  width: 100%;
+}
+.modal-mock--app   { border-radius: var(--radius); }
+.modal-mock--signin {
+  border-radius: 20px;   /* ⚠ documented hero exception */
+  padding: 40px;
+}
+.modal-mock--feedback { border-radius: var(--radius); padding: 16px; }
+.modal-mock__title {
+  font-family: var(--font-headline); font-size: 18px;
+  font-weight: 700; color: var(--fg-primary); margin: 0 0 4px;
+}
+.modal-mock__desc { color: var(--fg-muted); font-size: 13px; margin: 0 0 16px; }
+.modal-mock__width { font-size: 11px; color: var(--fg-muted); margin-top: 12px; font-family: ui-monospace, Menlo, monospace; }
+
+/* ============================================================
+   Radius drift demo
+   ============================================================ */
+.radius-tile {
+  width: 88px; height: 56px;
+  background: var(--fg-primary);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: 6px;
+  color: var(--bg-elevated); font-size: 11px; font-weight: 500;
+  font-family: ui-monospace, Menlo, monospace;
+}
+
+/* ============================================================
+   Badges
+   ============================================================ */
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 13px; font-weight: 500;
+}
+.badge--verified  { background: var(--badge-success-bg); color: var(--badge-success-fg); }
+.badge--pending   { background: var(--badge-warning-bg); color: var(--badge-warning-fg); }
+.badge--unverified{ background: var(--badge-neutral-bg); color: var(--badge-neutral-fg); border: 1px solid var(--badge-neutral-border); }
+.badge--count {
+  background: var(--badge-count-bg); color: var(--badge-count-fg);
+  border-radius: 999px; padding: 2px 8px; font-size: 11px; font-weight: 600;
+}
+.feed-card__label {
+  display: inline-flex; align-items: center; font-size: 0.6875rem;
+  font-weight: 600; padding: 2px 8px; border-radius: 999px;
+  text-transform: capitalize;
+}
+.feed-card__label--high-quality { color: var(--badge-success-fg); background: var(--badge-success-bg); }
+.feed-card__label--standard     { color: var(--fg-secondary);     background: var(--bg-sunken); }
+.feed-card__label--draft        { color: var(--badge-warning-fg); background: var(--badge-warning-bg); }
+.feed-card__label--test         { color: var(--fg-muted);         background: var(--bg-raised); }
+
+/* ============================================================
+   Shadow tiers
+   ============================================================ */
+.shadow-tile {
+  width: 100%; height: 80px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: var(--fg-muted);
+  font-family: ui-monospace, Menlo, monospace;
+}
+.shadow-sm { box-shadow: var(--shadow-sm); }
+.shadow-md { box-shadow: var(--shadow-md); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
+.shadow-ad-hoc { box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+
+/* ============================================================
+   Typography drift
+   ============================================================ */
+.canon-h1 { font-family: var(--font-headline); font-size: 2.25rem; line-height: 1.2; font-weight: 700; letter-spacing: -0.02em; color: var(--fg-primary); margin: 0; }
+.canon-h2 { font-family: var(--font-headline); font-size: 1.75rem; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; color: var(--fg-primary); margin: 0; }
+.canon-h3 { font-family: var(--font-headline); font-size: 1.375rem; line-height: 1.4; font-weight: 600; color: var(--fg-primary); margin: 0; }
+.canon-body { font-size: 1rem; line-height: 1.6; color: var(--fg-secondary); margin: 0; }
+
+.legal-h1 { font-size: 1.5rem; font-weight: 700; color: var(--fg-primary); margin: 0; font-family: var(--font-inter); } /* text-2xl */
+.legal-h2 { font-size: 1.25rem; font-weight: 600; color: var(--fg-primary); margin: 0; font-family: var(--font-inter); } /* text-xl */
+.legal-h3 { font-size: 1.125rem; font-weight: 600; color: var(--fg-primary); margin: 0; font-family: var(--font-inter); } /* text-lg */
+
+.row { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+.label-row { font-size: 11px; color: var(--fg-muted); margin-top: 8px; font-family: ui-monospace, Menlo, monospace; }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="sheet__hdr">
+    <h1 class="sheet__title">Visual divergence sheet</h1>
+    <p class="sheet__sub">certified-app · branch <code>feat/positioning-redesign</code> · companion to <code>component-audit.md</code>. Green = canonical, amber = divergent.</p>
+  </header>
+
+  <!-- ===================== 1. BUTTONS ===================== -->
+  <section class="section">
+    <div class="section__hdr">
+      <div class="section__num">§ 1 · Buttons</div>
+      <h2 class="section__title">Twelve button vocabularies, one canonical primitive</h2>
+    </div>
+    <div class="section__body">
+      <div class="grid">
+
+        <div class="cell cell--canonical">
+          <span class="cell__tag cell__tag--canon">canonical · primary</span>
+          <span class="cell__label">Button variant="primary"</span>
+          <span class="cell__src">src/components/ui/button.tsx</span>
+          <div class="cell__demo">
+            <button class="btn btn--primary btn--sm">sm</button>
+            <button class="btn btn--primary btn--md">md</button>
+            <button class="btn btn--primary btn--lg">lg</button>
+          </div>
+        </div>
+
+        <div class="cell cell--canonical">
+          <span class="cell__tag cell__tag--canon">canonical · secondary</span>
+          <span class="cell__label">Button variant="secondary"</span>
+          <span class="cell__src">button.tsx</span>
+          <div class="cell__demo">
+            <button class="btn btn--secondary btn--md">Secondary</button>
+          </div>
+        </div>
+
+        <div class="cell cell--canonical">
+          <span class="cell__tag cell__tag--canon">canonical · ghost</span>
+          <span class="cell__label">Button variant="ghost"</span>
+          <span class="cell__src">button.tsx</span>
+          <div class="cell__demo">
+            <button class="btn btn--ghost btn--md">Cancel</button>
+          </div>
+        </div>
+
+        <div class="cell cell--canonical">
+          <span class="cell__tag cell__tag--canon">canonical · destructive</span>
+          <span class="cell__label">Button variant="destructive"</span>
+          <span class="cell__src">button.tsx</span>
+          <div class="cell__demo">
+            <button class="btn btn--destructive btn--md">Delete</button>
+          </div>
+        </div>
+
+        <div class="cell cell--divergent">
+          <span class="cell__tag cell__tag--diverge">divergent · edit-banner</span>
+          <span class="cell__label">.edit-banner__btn{,--primary}</span>
+          <span class="cell__src">profile-inline-edit.css:158</span>
+          <div class="cell__demo">
+            <button class="edit-banner__btn">Cancel</button>
+            <button class="edit-banner__btn edit-banner__btn--primary">Save</button>
+          </div>
+        </div>
+
+        <div class="cell cell--divergent">
+          <span class="cell__tag cell__tag--diverge">divergent · domain modal</span>
+          <span class="cell__label">.domain-modal__btn (uses --color-accent, not primary)</span>
+          <span class="cell__src">components.css:1459</span>
+          <div class="cell__demo">
+            <button class="domain-modal__btn domain-modal__btn--ghost">Cancel</button>
+            <button class="domain-modal__btn domain-modal__btn--primary">Save changes</button>
+          </div>
+        </div>
+
+        <div class="cell cell--divergent">
+          <span class="cell__tag cell__tag--diverge">divergent · org-list</span>
+          <span class="cell__label">.org-list__action-btn{,--primary,--danger}</span>
+          <span class="cell__src">pages.css:222</span>
+          <div class="cell__demo">
+            <button class="org-list__action-btn">Settings</button>
+            <button class="org-list__action-btn org-list__action-btn--primary">Manage</button>
+            <button class="org-list__action-btn org-list__action-btn--danger">Leave</button>
+          </div>
+        </div>
+
+        <div class="cell cell--divergent">
+          <span class="cell__tag cell__tag--diverge">divergent · response toggle</span>
+          <span class="cell__label">.response-buttons__btn{,--pressed}</span>
+          <span class="cell__src">feed.css:1582</span>
+          <div class="cell__demo">
+            <button class="response-buttons__btn">Show</button>
+            <button class="response-buttons__btn response-buttons__btn--pressed">Hide</button>
+          </div>
+        </div>
+
+        <div class="cell cell--divergent">
+          <span class="cell__tag cell__tag--diverge">divergent · dashboard back</span>
+          <span class="cell__label">.dashboard__back-btn (404 / error)</span>
+          <span class="cell__src">components.css:1634</span>
+          <div class="cell__demo">
+            <button class="dashboard__back-btn">← Go home</button>
+          </div>
+        </div>
+
+        <div class="cell cell--divergent">
+          <span class="cell__tag cell__tag--diverge">divergent · icon-only</span>
+          <span class="cell__label">.desktop-top-bar__icon-btn · 40×40 square</span>
+          <span class="cell__src">layout.css (icon nav)</span>
+          <div class="cell__demo">
+            <button class="icon-btn" aria-label="search">⌕</button>
+            <button class="icon-btn" aria-label="grid">▦</button>
+            <button class="icon-btn" aria-label="bell">◔</button>
+          </div>
+        </div>
+
+        <div class="cell cell--divergent">
+          <span class="cell__tag cell__tag--diverge">divergent · leaflet toolbar</span>
+          <span class="cell__label">.leaflet-editor__btn{,--active}</span>
+          <span class="cell__src">leaflet.css:181</span>
+          <div class="cell__demo">
+            <button class="leaflet-editor__btn">B</button>
+            <button class="leaflet-editor__btn leaflet-editor__btn--active">I</button>
+            <button class="leaflet-editor__btn">U</button>
+          </div>
+        </div>
+
+        <div class="cell cell--divergent">
+          <span class="cell__tag cell__tag--diverge">divergent · tabs</span>
+          <span class="cell__label">.profile-tabs__tab / .feed-tabs__tab</span>
+          <span class="cell__src">profile.css:207 · feed.css:134</span>
+          <div class="cell__demo">
+            <div class="tab-strip">
+              <button class="tab-btn tab-btn--active">Overview</button>
+              <button class="tab-btn">Activity</button>
+              <button class="tab-btn">Endorsements</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="cell cell--divergent" style="grid-column: span 2; min-height: 200px;">
+          <span class="cell__tag cell__tag--diverge">divergent · landing hero · 4px radius, brand-specific scale</span>
+          <span class="cell__label">.hero__btn-primary / .hero__btn-secondary</span>
+          <span class="cell__src">landing.css:80, :113</span>
+          <div class="cell__demo">
+            <button class="hero__btn-primary">Sign in with Certified <span class="hero__btn-arrow">→</span></button>
+            <button class="hero__btn-secondary">Learn more</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 2. INPUTS ===================== -->
+  <section class="section">
+    <div class="section__hdr">
+      <div class="section__num">§ 2 · Inputs</div>
+      <h2 class="section__title">Six input shapes, no size system</h2>
+    </div>
+    <div class="section__body">
+      <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+
+        <div class="cell cell--canonical">
+          <span class="cell__tag cell__tag--canon">canonical</span>
+          <span class="cell__label">Input · 44 px height</span>
+          <span class="cell__src">src/components/ui/input.tsx</span>
+          <div class="cell__demo" style="width:100%;">
+            <input class="input" placeholder="email or handle" />
+          </div>
+        </div>
+
+        <div class="cell cell--divergent">
+          <span class="cell__tag cell__tag--diverge">divergent · sign-in modal</span>
+          <span class="cell__label">.signin-modal__input · 56 px · 8 px radius</span>
+          <span class="cell__src">components.css:294</span>
+          <div class="cell__demo" style="width:100%;">
+            <input class="signin-modal__input" placeholder="handle.bsky.social" />
+          </div>
+        </div>
+
+        <div class="cell cell--divergent">
+          <span class="cell__tag cell__tag--diverge">divergent · delete-record</span>
+          <span class="cell__label">.delete-record-dialog__input · 8 px radius · error focus</span>
+          <span class="cell__src">components.css:233</span>
+          <div class="cell__demo" style="width:100%;">
+            <input class="delete-record-dialog__input" placeholder="type record name to confirm" />
+          </div>
+        </div>
+
+        <div class="cell cell--divergent">
+          <span class="cell__tag cell__tag--diverge">divergent · handle search</span>
+          <span class="cell__label">.handle-search__input · underline only</span>
+          <span class="cell__src">pages.css:15</span>
+          <div class="cell__demo" style="width:100%;">
+            <input class="handle-search__input" placeholder="search handle…" />
+          </div>
+        </div>
+
+        <div class="cell cell--divergent">
+          <span class="cell__tag cell__tag--diverge">divergent · profile inline-edit</span>
+          <span class="cell__label">.profile-sidebar__name-input · 1.5 px hover border, serif</span>
+          <span class="cell__src">profile-inline-edit.css</span>
+          <div class="cell__demo" style="width:100%;">
+            <input class="profile-sidebar__name-input" value="Sam Carter" />
+          </div>
+        </div>
+
+        <div class="cell cell--divergent">
+          <span class="cell__tag cell__tag--diverge">divergent · create-form</span>
+          <span class="cell__label">.create-form__input · bg-raised · 12×14 padding</span>
+          <span class="cell__src">feed.css:51</span>
+          <div class="cell__demo" style="width:100%;">
+            <input class="create-form__input" placeholder="title of the certificate" />
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 3. CARDS ===================== -->
+  <section class="section">
+    <div class="section__hdr">
+      <div class="section__num">§ 3 · Cards</div>
+      <h2 class="section__title">Two card families coexist undocumented</h2>
+    </div>
+    <div class="section__body">
+
+      <div class="cell__tag" style="margin-bottom:12px;">List-divider rows (transparent bg, bottom-border only, no radius)</div>
+      <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">
+
+        <div class="cell cell--divergent" style="background: var(--bg-elevated);">
+          <span class="cell__tag cell__tag--diverge">.feed-card</span>
+          <span class="cell__src">feed.css:353</span>
+          <div class="cell__demo" style="width:100%; padding:0;">
+            <div class="feed-card">
+              <div style="font-family: var(--font-headline); font-weight:700; font-size:17px; color: var(--fg-primary);">Carbon offset reforestation</div>
+              <div style="color: var(--fg-muted); font-size:12px; margin-top:4px;">claimed · 2 weeks ago</div>
+            </div>
+            <div class="feed-card">
+              <div style="font-family: var(--font-headline); font-weight:700; font-size:17px; color: var(--fg-primary);">Soil regeneration cohort #3</div>
+              <div style="color: var(--fg-muted); font-size:12px; margin-top:4px;">verified · 3 days ago</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cell cell--divergent" style="background: var(--bg-elevated);">
+          <span class="cell__tag cell__tag--diverge">.dash-card</span>
+          <span class="cell__src">components.css:772</span>
+          <div class="cell__demo" style="width:100%; padding:0;">
+            <div class="dash-card">
+              <div style="font-size:11px; letter-spacing:0.15em; text-transform:uppercase; color:var(--fg-muted); font-weight:500;">EMAIL ADDRESS</div>
+              <div style="color: var(--fg-secondary); font-size:13px; margin-top:8px; line-height:1.6;">Receive notifications and recovery codes at this address.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="cell__tag" style="margin: 28px 0 12px;">Object cards (elevated bg, 8 px radius — ⚠ conflicts with --radius: 2px)</div>
+      <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+
+        <div class="cell cell--divergent" style="background: var(--bg-canvas);">
+          <span class="cell__tag cell__tag--diverge">.explore-user-card</span>
+          <span class="cell__src">explore.css:658</span>
+          <div class="cell__demo" style="width:100%;">
+            <div class="explore-card">
+              <div style="display:flex; gap:10px; align-items:center;">
+                <div style="width:36px; height:36px; border-radius:50%; background:var(--bg-sunken);"></div>
+                <div>
+                  <div style="font-weight:600; color:var(--fg-primary); font-size:13px;">@samcarter</div>
+                  <div style="color: var(--fg-muted); font-size:12px;">15 certs</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cell cell--divergent" style="background: var(--bg-canvas);">
+          <span class="cell__tag cell__tag--diverge">.app-card</span>
+          <span class="cell__src">layout.css:681</span>
+          <div class="cell__demo" style="width:100%;">
+            <div class="app-card">
+              <div style="font-size:10px; letter-spacing:0.15em; text-transform:uppercase; color:var(--fg-muted); margin-bottom:6px;">INTEGRATION</div>
+              <div style="font-weight:600; color:var(--fg-primary); font-size:14px;">Ma Earth</div>
+              <div style="color:var(--fg-muted); font-size:12px; margin-top:4px;">Collective funding…</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cell cell--divergent" style="background: var(--bg-canvas);">
+          <span class="cell__tag cell__tag--diverge">.endorsements-v2__card</span>
+          <span class="cell__src">profile-endorsements.css</span>
+          <div class="cell__demo" style="width:100%;">
+            <div class="endorsements-v2__card">
+              <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--fg-muted);">REGEN</div>
+              <div style="font-weight:600; color:var(--fg-primary); font-size:13px; margin-top:4px;">12 endorsements</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cell cell--canonical" style="background: var(--bg-canvas);">
+          <span class="cell__tag cell__tag--canon">canonical Card (unused)</span>
+          <span class="cell__src">src/components/ui/card.tsx</span>
+          <div class="cell__demo" style="width:100%;">
+            <div class="card-canonical">
+              <div style="font-family: var(--font-headline); font-weight:700; font-size:15px; color:var(--fg-primary);">Card</div>
+              <div style="color:var(--fg-muted); font-size:12px; margin-top:6px;">2 px radius · imported in &lt; 5 places</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 4. RADIUS DRIFT ===================== -->
+  <section class="section">
+    <div class="section__hdr">
+      <div class="section__num">§ 4 · Border-radius drift</div>
+      <h2 class="section__title">--radius: 2 px is the brand. Six other values exist in the wild.</h2>
+    </div>
+    <div class="section__body">
+      <div class="row">
+        <div>
+          <div class="radius-tile" style="border-radius: 1px;">1 px</div>
+          <div class="label-row">⚠ profile-groups.css (×2)</div>
+        </div>
+        <div>
+          <div class="radius-tile" style="border-radius: 2px;">2 px</div>
+          <div class="label-row">canonical · var(--radius)</div>
+        </div>
+        <div>
+          <div class="radius-tile" style="border-radius: 4px;">4 px</div>
+          <div class="label-row">landing hero buttons</div>
+        </div>
+        <div>
+          <div class="radius-tile" style="border-radius: 6px;">6 px</div>
+          <div class="label-row">⚠⚠ 20+ instances, 7 files</div>
+        </div>
+        <div>
+          <div class="radius-tile" style="border-radius: 8px;">8 px</div>
+          <div class="label-row">object cards · sign-in input</div>
+        </div>
+        <div>
+          <div class="radius-tile" style="border-radius: 10px;">10 px</div>
+          <div class="label-row">⚠ home.css:249 one-off</div>
+        </div>
+        <div>
+          <div class="radius-tile" style="border-radius: 20px;">20 px</div>
+          <div class="label-row">sign-in modal (documented)</div>
+        </div>
+        <div>
+          <div class="radius-tile" style="border-radius: 999px;">pill</div>
+          <div class="label-row">avatars · feed labels</div>
+        </div>
+      </div>
+      <p style="color: var(--fg-muted); font-size: 13px; margin-top: 24px; max-width: 720px;">
+        The 6 px values directly contradict the documented sharp-document aesthetic. The 8 px values are widespread on "object cards" (explore-user-card, app-card, endorsements-v2__card, sign-in input) and either need a token (<code>--radius-card: 8px</code>) or need to drop to 2 px.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===================== 5. MODALS ===================== -->
+  <section class="section">
+    <div class="section__hdr">
+      <div class="section__num">§ 5 · Modals</div>
+      <h2 class="section__title">Three hand-rolled modals reuse AppDialog's classes but not its component</h2>
+    </div>
+    <div class="section__body">
+      <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">
+
+        <div class="cell cell--canonical" style="background: var(--bg-canvas);">
+          <span class="cell__tag cell__tag--canon">canonical · ConfirmDialog</span>
+          <span class="cell__label">&lt;AppDialog&gt; · 440 px max-width</span>
+          <span class="cell__src">src/components/ui/confirm-dialog.tsx</span>
+          <div class="cell__demo" style="width:100%;">
+            <div class="modal-mock modal-mock--app" style="max-width:440px;">
+              <div class="modal-mock__title">Remove endorsement?</div>
+              <div class="modal-mock__desc">This will remove the endorsement from your profile and any lists that reference it.</div>
+              <div style="display:flex; gap:8px; justify-content:flex-end;">
+                <button class="btn btn--ghost btn--md">Cancel</button>
+                <button class="btn btn--destructive btn--md">Remove</button>
+              </div>
+              <div class="modal-mock__width">maxWidth=440 · radius=2 px</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cell cell--divergent" style="background: var(--bg-canvas);">
+          <span class="cell__tag cell__tag--diverge">divergent · custom-domain</span>
+          <span class="cell__label">CustomDomainModal · hand-rolled backdrop, --color-accent buttons</span>
+          <span class="cell__src">dashboard/custom-domain-modal.tsx</span>
+          <div class="cell__demo" style="width:100%;">
+            <div class="modal-mock modal-mock--app">
+              <div class="modal-mock__title">Custom domain</div>
+              <div class="modal-mock__desc">Point a domain at your Certified profile.</div>
+              <div style="display:flex; gap:8px; justify-content:flex-end;">
+                <button class="domain-modal__btn domain-modal__btn--ghost">Cancel</button>
+                <button class="domain-modal__btn domain-modal__btn--primary">Save changes</button>
+              </div>
+              <div class="modal-mock__width">⚠ rolls own backdrop, Esc, focus</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cell cell--divergent" style="background: var(--bg-canvas);">
+          <span class="cell__tag cell__tag--diverge">divergent · sign-in (intentional hero)</span>
+          <span class="cell__label">SignInModal · 20 px radius, 40 px padding, 56 px input</span>
+          <span class="cell__src">src/components/ui/sign-in-modal.tsx</span>
+          <div class="cell__demo" style="width:100%;">
+            <div class="modal-mock modal-mock--signin">
+              <div style="text-align:center; margin-bottom: 24px;">
+                <div style="font-family: var(--font-headline); font-weight:700; font-size:18px; color: var(--fg-primary);">Sign in</div>
+              </div>
+              <input class="signin-modal__input" placeholder="handle.bsky.social" />
+              <button class="btn btn--primary" style="width:100%; height:56px; margin-top:16px; border-radius:999px;">Continue</button>
+              <div class="modal-mock__width">documented hero exception</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 6. BADGES ===================== -->
+  <section class="section">
+    <div class="section__hdr">
+      <div class="section__num">§ 6 · Badges</div>
+      <h2 class="section__title">One Badge component, four ad-hoc pill families</h2>
+    </div>
+    <div class="section__body">
+
+      <div class="cell__tag" style="margin-bottom:12px;">Canonical &lt;Badge&gt; variants</div>
+      <div class="row" style="margin-bottom: 24px;">
+        <span class="badge badge--verified">✓ Verified</span>
+        <span class="badge badge--pending">◔ Pending</span>
+        <span class="badge badge--unverified">Unverified</span>
+      </div>
+
+      <div class="cell__tag" style="margin-bottom:12px;">Divergent · FeedLabelPill quality labels</div>
+      <div class="row" style="margin-bottom: 24px;">
+        <span class="feed-card__label feed-card__label--high-quality">High quality</span>
+        <span class="feed-card__label feed-card__label--standard">Standard</span>
+        <span class="feed-card__label feed-card__label--draft">Draft</span>
+        <span class="feed-card__label feed-card__label--test">Test</span>
+      </div>
+
+      <div class="cell__tag" style="margin-bottom:12px;">Divergent · inline notification count (no component)</div>
+      <div class="row" style="margin-bottom: 24px;">
+        <button class="icon-btn" aria-label="notifications" style="position:relative;">
+          ◔
+          <span class="badge--count" style="position:absolute; top:-2px; right:-4px;">3</span>
+        </button>
+      </div>
+
+      <div class="cell__tag" style="margin-bottom:12px;">Divergent · org-list role label (no component)</div>
+      <div class="row">
+        <span class="org-list__item-role">OWNER</span>
+        <span class="org-list__item-role">MODERATOR</span>
+        <span class="org-list__item-role">MEMBER</span>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===================== 7. SHADOWS ===================== -->
+  <section class="section">
+    <div class="section__hdr">
+      <div class="section__num">§ 7 · Elevation</div>
+      <h2 class="section__title">Three documented tiers + one ad-hoc fourth</h2>
+    </div>
+    <div class="section__body">
+      <div class="grid" style="grid-template-columns: repeat(4, minmax(180px, 1fr));">
+        <div>
+          <div class="shadow-tile shadow-sm">--shadow-sm</div>
+          <div class="label-row">subtle lift</div>
+        </div>
+        <div>
+          <div class="shadow-tile shadow-md">--shadow-md</div>
+          <div class="label-row">dropdowns · floating</div>
+        </div>
+        <div>
+          <div class="shadow-tile shadow-lg">--shadow-lg</div>
+          <div class="label-row">modals</div>
+        </div>
+        <div>
+          <div class="shadow-tile shadow-ad-hoc">⚠ 0 8 24 .08</div>
+          <div class="label-row">home.css · profile-lists.css · explore.css</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 8. TYPOGRAPHY ===================== -->
+  <section class="section">
+    <div class="section__hdr">
+      <div class="section__num">§ 8 · Typography</div>
+      <h2 class="section__title">Legal pages bypass the canonical heading scale</h2>
+    </div>
+    <div class="section__body">
+      <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 32px;">
+
+        <div class="cell cell--canonical" style="min-height:auto;">
+          <span class="cell__tag cell__tag--canon">canonical scale (Noto Serif)</span>
+          <span class="cell__src">tailwind.config.ts (display/h1/h2/h3/h4/body)</span>
+          <div class="cell__demo" style="flex-direction: column; align-items: flex-start; gap: 12px; min-height:auto;">
+            <div class="canon-h1">A network you can build on</div>
+            <div class="canon-h2">Built for trust</div>
+            <div class="canon-h3">How it works</div>
+            <p class="canon-body">Your identity and data — everywhere you go.</p>
+          </div>
+        </div>
+
+        <div class="cell cell--divergent" style="min-height:auto;">
+          <span class="cell__tag cell__tag--diverge">divergent · legal pages (Inter, text-xl/lg)</span>
+          <span class="cell__src">app/privacy/page.tsx · /terms · /dsa · /imprint</span>
+          <div class="cell__demo" style="flex-direction: column; align-items: flex-start; gap: 12px; min-height:auto;">
+            <div class="legal-h1">Privacy policy</div>
+            <div class="legal-h2">Information we collect</div>
+            <div class="legal-h3">Account data</div>
+            <p class="canon-body">~50 className instances of text-xl / text-lg replace the canonical scale.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <footer style="text-align:center; color: var(--fg-muted); font-size: 12px; padding-top:32px; border-top: 1px solid var(--border-subtle); margin-top: 48px;">
+    Visual divergence sheet · certified-app · companion to docs/design-audit/component-audit.md
+  </footer>
+</div>
+</body>
+</html>
