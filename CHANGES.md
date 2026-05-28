@@ -138,4 +138,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/app/project/[did]/[rkey]/edit/__tests__/save-reread-authfetch.test.tsx — fails before, passes after (drives a 409 write → conflict re-read 401 → asserts onUnauthorized fires).
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-001 — UserFeed component is dead code (never imported) · IMPLEMENTED
+- **Why it's an improvement:** removes ~30 lines of unreachable code that also masked bug-011's only reachable path and would have rendered broken bylines (empty `did`) if ever wired.
+- **Change:** deleted src/components/feed/user-feed.tsx after confirming 0 repo-wide importers (the only mention is a prose doc comment in feed-layout.tsx, untouched).
+- **Test:** refactor; no natural test — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
