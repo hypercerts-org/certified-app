@@ -2699,11 +2699,13 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 }
 
 /* The "Endorsed by N" row sits directly under the followers/following
-   strip and reuses .profile-sidebar__followers for layout. Tighten
-   the top margin so the two rows read as a stat block rather than as
-   independent paragraphs. */
+   strip and reuses .profile-sidebar__followers for layout. Pull it up
+   so the gap to followers/following matches the 6px gap the URL list
+   uses between rows — the two stat rows read as a single block, not
+   as two independent paragraphs. (Followers row owns a 12px bottom
+   margin, so -6px here lands the gap at exactly 6px.) */
 .profile-sidebar__endorsed-by {
-  margin-top: -4px;
+  margin-top: -6px;
 }
 
 /* In the Endorsed-by row the count lives INSIDE the link (whereas in
