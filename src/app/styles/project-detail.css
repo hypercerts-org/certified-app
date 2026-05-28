@@ -897,12 +897,18 @@
   margin-bottom: 24px;
 }
 
+/* Circular avatar dropzone. Important: the tile itself does NOT clip
+   its overflow — that would crop the bottom-right edit pill (which
+   sits outside the circle in the rectangular corner). The circular
+   silhouette comes from the inner image (which carries its own
+   `border-radius: 50%`) and from the dashed border on the placeholder
+   variant. The pill then sits in the bottom-right "corner gap"
+   between the circle and the bounding box, fully visible. */
 .create-group__avatar-tile {
   position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
   border-radius: 50%;
-  overflow: hidden;
   background: var(--bg-subtle);
   display: flex;
   align-items: center;
@@ -919,6 +925,9 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  /* Clip the image (not the tile) to the circular silhouette so the
+     bottom-right edit pill remains visible past the circle's edge. */
+  border-radius: 50%;
 }
 
 .create-group__avatar-placeholder-icon {
