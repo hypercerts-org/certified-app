@@ -860,3 +860,69 @@
   background: var(--overlay-weak);
   outline: none;
 }
+
+/* =====================================================================
+   /groups/create — identity row (avatar circle + banner side-by-side)
+   ===================================================================== */
+
+/* Top row that introduces the group visually: a square-aspect avatar
+   tile on the left (rendered as a circle via border-radius: 50%), and
+   the wide banner tile to the right that fills the remaining width.
+   Stacks vertically on narrow viewports so the banner doesn't compress
+   into a sliver. */
+.create-group__identity-row {
+  display: flex;
+  gap: 20px;
+  align-items: stretch;
+  margin-bottom: 24px;
+}
+
+.create-group__avatar-tile {
+  position: relative;
+  flex: 0 0 auto;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bg-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.create-group__avatar-tile--placeholder {
+  border: 1px dashed var(--border-subtle);
+  background: var(--bg-subtle);
+}
+
+.create-group__avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.create-group__avatar-placeholder-icon {
+  color: var(--fg-muted);
+}
+
+/* The banner tile inherits .project-detail__hero metrics from the
+   project-create form; this rule just lets it grow into the row's
+   remaining width and zeroes the bottom margin so the headline below
+   sits flush with the identity row. */
+.create-group__banner-tile {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+@media (max-width: 599px) {
+  .create-group__identity-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .create-group__avatar-tile {
+    width: 120px;
+    height: 120px;
+  }
+}
