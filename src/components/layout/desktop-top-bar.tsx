@@ -177,10 +177,12 @@ export default function DesktopTopBar() {
     !(pathname?.endsWith("/edit") ?? false);
   // `/project/new` is the create form, not a record detail page —
   // the second-row tabs (Description / Certs / Updates) only make
-  // sense for an existing project.
+  // sense for an existing project. `/project/<did>/<rkey>/edit` is
+  // the editor (mirrors /project/new) — same reasoning, no tab row.
   const isOnProjectDetail =
     (pathname?.startsWith("/project/") ?? false) &&
-    pathname !== "/project/new";
+    pathname !== "/project/new" &&
+    !(pathname?.endsWith("/edit") ?? false);
   const isOnExplore = pathname === "/explore";
   const showBackRow = isOnCertDetail || isOnProjectDetail;
   // Settings is its own standalone surface now (reachable from the

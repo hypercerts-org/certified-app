@@ -873,17 +873,15 @@ export default function ProjectDetail({
             <ActivityAuthor did={did} />
             {!editing && isOwner ? (
               <>
-                <button
-                  ref={editBtnRef}
-                  type="button"
+                <Link
+                  href={`/project/${encodeURIComponent(did)}/${encodeURIComponent(rkey ?? "")}/edit`}
                   className="project-detail__edit-btn"
                   aria-label="Edit project"
                   title="Edit project"
-                  onClick={handleEditClick}
                 >
                   <Pencil size={14} strokeWidth={1.75} aria-hidden />
                   Edit
-                </button>
+                </Link>
                 <button
                   type="button"
                   className="project-detail__delete-btn"
