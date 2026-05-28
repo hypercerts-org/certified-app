@@ -25,6 +25,7 @@ import { useOrgProfile } from "@/hooks/use-org-profile";
 import { useMounted } from "@/hooks/use-mounted";
 import { resolvePostSwitchPath } from "@/lib/groups/navigation";
 import Avatar from "@/components/ui/avatar";
+import Button from "@/components/ui/button";
 import { getInitials } from "@/lib/utils/initials";
 import AccountSwitcherList from "./account-switcher-list";
 import Brandmark from "@/components/ui/brandmark";
@@ -413,9 +414,10 @@ export default function DesktopTopBar() {
               ref={createRef}
               className="desktop-top-bar__create-wrap"
             >
-              <button
+              <Button
                 type="button"
-                className="desktop-top-bar__icon-btn"
+                variant="ghost"
+                size="icon"
                 onClick={() => setCreateOpen((v) => !v)}
                 aria-haspopup="menu"
                 aria-expanded={createOpen}
@@ -423,7 +425,7 @@ export default function DesktopTopBar() {
                 title="Create new"
               >
                 <Plus size={20} strokeWidth={1.75} aria-hidden />
-              </button>
+              </Button>
             </div>
           ) : null}
 

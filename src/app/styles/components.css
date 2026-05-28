@@ -1456,54 +1456,11 @@ dialog.signin-modal.app-modal .signin-modal__body {
   margin-top: 4px;
 }
 
-.domain-modal__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 18px;
-  border-radius: var(--radius);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  border: none;
-  min-height: 36px;
-}
-
-.domain-modal__btn--primary {
-  background: var(--color-accent);
-  color: var(--color-white);
-}
-
-.domain-modal__btn--primary:hover:not(:disabled) {
-  background: var(--color-accent-hover);
-}
-
-.domain-modal__btn--primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.domain-modal__btn--ghost {
-  background: none;
-  color: var(--fg-muted);
-}
-
-.domain-modal__btn--ghost:hover:not(:disabled) {
-  color: var(--fg-primary);
-  background: var(--bg-canvas);
-}
-
-.domain-modal__btn--ghost:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.domain-modal__btn:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
+/* The .domain-modal__btn* rules were retired — the modal now uses the
+   canonical <Button> with variant="primary"/"ghost" and size="sm".
+   The .domain-modal__spinner / @keyframes spin are kept because some
+   other code paths share the spinner animation; if you remove the last
+   consumer, drop the keyframe too. */
 
 .domain-modal__spinner {
   animation: spin 1s linear infinite;
