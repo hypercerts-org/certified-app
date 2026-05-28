@@ -218,11 +218,17 @@ export default function UserProfilePage() {
     sidebarIsOrg &&
       (!!displayLongDescription || isViewerThisEntity || aboutEditingForOrg),
   )
-  // Gate the Groups tab: only visible on the viewer's own profile
-  // (own personal profile, or acting-as this group). Foreign viewers
-  // never see the Groups tab — membership is now sourced exclusively
-  // from the Certified Group Service, which is session-scoped.
-  useProfileGroupsAvailable(isViewerThisEntity)
+  // Gate the Groups tab: only visible when the viewer's currently
+  // *active* identity matches the viewed profile. So the personal
+  // user sees it on their own profile only when no org is active;
+  // a group sees it on its own profile only while acting as that
+  // group. A user acting as a group must NOT see the Groups tab
+  // on their personal profile — the group is the active identity,
+  // and the CGS endpoint returns the group's memberships in that
+  // session, not the personal user's.
+  const isActiveIdentityThisProfile =
+    (isOwnProfile && !activeOrg) || isActingAsThisGroup
+  useProfileGroupsAvailable(isActiveIdentityThisProfile)
 
   // Mobile <ProfileHeader> still uses the legacy edit pages as a
   // fallback (inline edit isn't wired on the compact mobile header
@@ -435,7 +441,7 @@ export default function UserProfilePage() {
                 />
               </div>
             )}
-            {activeTab === "groups" && (
+            {activeTab === "groups" && isActiveIdentityThisProfile && (
               <div
                 role="tabpanel"
                 id="tabpanel-groups"
