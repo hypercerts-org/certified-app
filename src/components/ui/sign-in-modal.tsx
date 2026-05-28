@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react"
 import { useFocusTrap } from "@/hooks/use-focus-trap"
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock"
 import Brandmark from "@/components/ui/brandmark"
+import Input from "@/components/ui/input"
 
 interface SignInModalProps {
   isOpen: boolean
@@ -114,13 +115,13 @@ export default function SignInModal({
             <label className="signin-modal__heading" htmlFor={isCertified ? "email" : "username"}>
               {heading}
             </label>
-            <input
+            <Input
               ref={inputRef}
               id={isCertified ? "email" : "username"}
               name={isCertified ? "email" : "username"}
               type={isCertified ? "email" : "text"}
               inputMode={isCertified ? "email" : "text"}
-              className="signin-modal__input"
+              size="lg"
               placeholder={placeholder}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}

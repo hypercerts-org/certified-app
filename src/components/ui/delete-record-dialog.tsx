@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Button from "@/components/ui/button"
+import Input from "@/components/ui/input"
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 
 interface DeleteRecordDialogProps {
@@ -82,15 +83,18 @@ export default function DeleteRecordDialog({
           <code className="delete-record-dialog__target">
             {recordName}
           </code>
-          <input
+          <Input
             type="text"
-            className="delete-record-dialog__input"
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
             placeholder={recordName}
             autoComplete="off"
             autoFocus
             disabled={isDeleting}
+            // Show inline-edit chrome (1.5 px border) so the typed
+            // value reads as "currently editable"; the form-level
+            // error message handles destructive-action feedback.
+            variant="inline-edit"
           />
         </label>
         {errorMessage ? (
