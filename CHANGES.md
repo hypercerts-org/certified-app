@@ -90,4 +90,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/components/profile/__tests__/banner-upload-preview.test.tsx — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### bug-010 — Feed PreviewCard MapPin never renders when a date period is also present · IMPLEMENTED
+- **Why it's an improvement:** A cert with both a date period and locations now shows the location pin next to its "N locations" text, instead of dropping the pin whenever any other meta item is present.
+- **Change:** CertPreview now pushes a ReactNode meta entry (`<><MapPin/> N locations</>`) and PreviewCard's `meta` prop became `ReactNode[]` with `withLocationIcon` removed, mirroring ExploreListRow / CertListRow.
+- **Test:** src/components/home/__tests__/cert-preview-location-icon.test.tsx — fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->

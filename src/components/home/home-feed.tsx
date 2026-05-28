@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { Filter as FilterIcon, Inbox, MapPin, UserCheck, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
@@ -929,7 +929,7 @@ function certQualityTags(labels: readonly string[]): { key: string; label: strin
     .filter((x): x is { key: string; label: string; tone: "neutral" | "warn" } => !!x)
 }
 
-function CertPreview({
+export function CertPreview({
   record,
   uri,
   labels,
@@ -972,11 +972,13 @@ function CertPreview({
       description={description}
       meta={[
         period,
-        locationCount > 0
-          ? `${locationCount} location${locationCount === 1 ? "" : "s"}`
-          : null,
-      ].filter((s): s is string => !!s)}
-      withLocationIcon={locationCount > 0}
+        locationCount > 0 ? (
+          <>
+            <MapPin size={11} strokeWidth={1.75} aria-hidden />
+            {`${locationCount} location${locationCount === 1 ? "" : "s"}`}
+          </>
+        ) : null,
+      ].filter((m): m is NonNullable<typeof m> => m !== null && m !== undefined)}
     />
   )
 }
@@ -1093,15 +1095,13 @@ function PreviewCard({
   imageUrl,
   description,
   meta,
-  withLocationIcon = false,
 }: {
   href: string | null
   title: string
   tags?: { key: string; label: string; tone: string }[]
   imageUrl: string | null
   description: string | null
-  meta: string[]
-  withLocationIcon?: boolean
+  meta: ReactNode[]
 }) {
   const body = (
     <>
@@ -1130,9 +1130,6 @@ function PreviewCard({
           <span className="home-feed__preview-meta">
             {meta.map((m, i) => (
               <span key={i} className="home-feed__preview-meta-item">
-                {i === 0 && withLocationIcon && i === meta.length - 1 ? (
-                  <MapPin size={11} strokeWidth={1.75} aria-hidden />
-                ) : null}
                 {m}
               </span>
             ))}
