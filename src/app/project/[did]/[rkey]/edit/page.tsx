@@ -545,7 +545,7 @@ export default function ProjectEditPage() {
             collection: "org.hypercerts.collection",
             rkey,
           })
-          const res = await fetch(
+          const res = await authFetch(
             `/api/xrpc/com/atproto/repo/getRecord?${qs.toString()}`,
           )
           if (!res.ok) throw new Error(`Re-read failed (${res.status})`)

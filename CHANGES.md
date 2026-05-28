@@ -132,4 +132,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/app/__tests__/robots-app-only-disallow.test.ts — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### risk-008 — saveWithSwap `read` callbacks use raw `fetch` instead of `authFetch` · IMPLEMENTED
+- **Why it's an improvement:** the conflict re-read now routes through `authFetch`, so a 401 on the session-bearing `/api/xrpc/.../getRecord` route fires the `onUnauthorized` interceptor instead of being silently swallowed.
+- **Change:** swapped raw `fetch(` → `authFetch(` in the `read` callback of both project save flows (project-detail.tsx and the project edit page); `authFetch` was already imported in both.
+- **Test:** src/app/project/[did]/[rkey]/edit/__tests__/save-reread-authfetch.test.tsx — fails before, passes after (drives a 409 write → conflict re-read 401 → asserts onUnauthorized fires).
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
