@@ -60,4 +60,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/hooks/__tests__/use-profile-inline-edit.test.tsx — never-resolving `uploadAvatar`: asserts `putProfile` is never called with the stale `OLD_AVATAR` and Save can't complete; fails before, passes after. (Plus a resolve-path case asserting the NEW blob is persisted.)
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### bug-005 — Project location strongRef now resolves + displays · IMPLEMENTED
+- **Why it's an improvement:** The project Location meta row now renders the place name instead of silently disappearing (and never leaks `[object Object]`).
+- **Change:** In project-detail.tsx, resolve the `location` strongRef like the edit page (parse at:// → getRecord via authFetch → `splitLocationName(value.name)`) into a resolved label used by the meta row + `hasAnyMeta`, keeping the legacy inline-string path.
+- **Test:** src/components/project/__tests__/project-detail-location.test.tsx — fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->

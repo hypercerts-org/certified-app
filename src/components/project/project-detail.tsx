@@ -40,6 +40,8 @@ import { InvalidSwapError } from "@/lib/atproto/repo-write"
 import { saveWithSwap } from "@/lib/atproto/save-with-swap"
 import { saveDraft } from "@/lib/utils/swap-drafts"
 import { uploadBlob, type UploadedBlob } from "@/lib/atproto/profile"
+import { parseAtUri } from "@/lib/atproto/activity-uri"
+import { splitLocationName } from "@/lib/atproto/location"
 import { asLinearDocument, isEmptyLongDescription } from "@/lib/leaflet/guards"
 import { formatShortDate } from "@/lib/utils/format-date"
 import type { LinearDocument } from "@/lib/leaflet/types"
@@ -322,9 +324,65 @@ export default function ProjectDetail({
   const endDate = asString(
     (effectiveValue as Record<string, unknown>).endDate as unknown,
   )
-  const location = asString(
-    (effectiveValue as Record<string, unknown>).location as unknown,
-  )
+  // `location` persists as a `com.atproto.repo.strongRef` ({ uri, cid })
+  // pointing at an `app.certified.location` record (see create / edit
+  // pages). `asString` returns null for that object, so the legacy
+  // string path stays inline while the strongRef is resolved to its
+  // place name in the effect below — mirroring the edit page's
+  // hydration (parse at:// → getRecord → splitLocationName). The
+  // object shape is never rendered directly, so `[object Object]` can't
+  // leak into the Location row.
+  const rawLocation = (effectiveValue as Record<string, unknown>).location
+  const inlineLocation = asString(rawLocation)
+  const locationRef =
+    rawLocation && typeof rawLocation === "object"
+      ? (rawLocation as { uri?: unknown; cid?: unknown })
+      : null
+  const locationRefUri =
+    typeof locationRef?.uri === "string" ? locationRef.uri : null
+  const [resolvedLocationName, setResolvedLocationName] = useState<
+    string | null
+  >(null)
+
+  useEffect(() => {
+    // Legacy string locations render inline; nothing to resolve.
+    if (inlineLocation || !locationRefUri) {
+      setResolvedLocationName(null)
+      return
+    }
+    const parsed = parseAtUri(locationRefUri)
+    const fallback = locationRefUri.split("/").pop() || locationRefUri
+    if (!parsed) {
+      setResolvedLocationName(fallback)
+      return
+    }
+    let aborted = false
+    const qs = new URLSearchParams({
+      repo: parsed.did,
+      collection: parsed.collection,
+      rkey: parsed.rkey,
+    })
+    authFetch(`/api/xrpc/com/atproto/repo/getRecord?${qs.toString()}`)
+      .then(async (res) => {
+        if (aborted) return
+        if (!res.ok) {
+          setResolvedLocationName(fallback)
+          return
+        }
+        const data = (await res.json()) as { value?: { name?: string } }
+        const raw = data.value?.name?.trim() ?? ""
+        const split = splitLocationName(raw)
+        setResolvedLocationName(split.name || raw || fallback)
+      })
+      .catch(() => {
+        if (!aborted) setResolvedLocationName(fallback)
+      })
+    return () => {
+      aborted = true
+    }
+  }, [inlineLocation, locationRefUri])
+
+  const location = inlineLocation ?? resolvedLocationName
 
   const contributors = Array.isArray(
     (effectiveValue as Record<string, unknown>).contributors,
