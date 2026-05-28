@@ -488,6 +488,28 @@ ${ACTIVITY_NODE_SELECTION}
     }
   `,
 
+  // Parameterised "of this DID set, which match the given kind?".
+  // Replaces the complement-based approach (fetch ORG dids, then
+  // !has() for People) that silently inverted on the client when
+  // the call returned 0 results — caller couldn't distinguish
+  // "everyone is people" from "the call failed and the set is
+  // empty by mistake". With this op the result is unambiguous:
+  // returned DIDs ARE the matching kind, period.
+  DidsByKindInSet: `
+    query DidsByKindInSet(
+      $dids: [String!]!
+      $isOrganization: Boolean!
+    ) {
+      appCertifiedActorProfile(
+        first: 100
+        where: { did: { in: $dids }, isOrganization: { eq: $isOrganization } }
+      ) {
+        edges { node { did } }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  `,
+
   // Per-actor counts of the major lexicons. One round-trip via
   // aliased connections — each branch shares the where: { did: $did }
   // filter so we get five small headers back in one fetch.
@@ -1291,6 +1313,17 @@ function buildVariables(
       const dids = readAuthorList(vars.dids)
       if (dids === null || dids.length === 0) return null
       return { dids }
+    }
+    case "DidsByKindInSet": {
+      // DID-set narrowing + kind filter. Same validation as the
+      // OrganizationDidsForSet op above, plus a required boolean
+      // for the kind (graphql-go rejects `eq: null`, so we don't
+      // accept undefined here — callers pick "people" or
+      // "organizations" explicitly).
+      const dids = readAuthorList(vars.dids)
+      if (dids === null || dids.length === 0) return null
+      if (typeof vars.isOrganization !== "boolean") return null
+      return { dids, isOrganization: vars.isOrganization }
     }
     case "ActorWorkspaceCounts": {
       const did = readDid(vars.did)

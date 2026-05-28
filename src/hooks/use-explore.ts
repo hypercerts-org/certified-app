@@ -24,7 +24,7 @@ import {
 import {
   fetchNetworkActors,
   fetchNetworkActorsByDids,
-  fetchOrganizationDidsForSet,
+  fetchDidsByKindInSet,
   fetchOrgDidsByLabel,
 } from "@/lib/atproto/workspace"
 import type { NetworkActor } from "@/lib/atproto/workspace"
@@ -734,19 +734,26 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
     }))
     // People/Organizations sub-toggle: the featured set is a fixed
     // list of curator-picked project authors, so we can't use the
-    // pagination-time `isOrganization` server filter. Instead resolve
-    // the org subset of *this* DID set via
-    // `fetchOrganizationDidsForSet` and keep / drop accordingly.
+    // pagination-time `isOrganization` server filter. Instead query
+    // the indexer for the subset of these DIDs whose `isOrganization`
+    // projection matches the selected kind, then KEEP only those —
+    // no client-side complement. A network failure throws and lands
+    // an empty page rather than silently inverting the filter (the
+    // older complement approach kept the entire input set when the
+    // helper returned 0, swapping People ↔ Organizations visually).
     const kind = subToIsOrganization(sub)
     if (typeof kind === "boolean" && users.length > 0) {
-      const orgSet = await fetchOrganizationDidsForSet(
-        users.map((u) => u.did),
-        signal ?? undefined,
-      )
-      if (signal?.aborted) return EMPTY_PAGE
-      users = users.filter((u) =>
-        kind ? orgSet.has(u.did) : !orgSet.has(u.did),
-      )
+      try {
+        const keep = await fetchDidsByKindInSet(
+          users.map((u) => u.did),
+          kind,
+          signal ?? undefined,
+        )
+        if (signal?.aborted) return EMPTY_PAGE
+        users = users.filter((u) => keep.has(u.did))
+      } catch {
+        return EMPTY_PAGE
+      }
     }
     if (search.trim().length > 0) {
       const q = search.trim().toLowerCase()
@@ -791,22 +798,24 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
         )
       }
       // People/Organizations sub-toggle: the closure response
-      // (magic-indexer #117) carries inline issuer profiles but
-      // no `isOrganization` flag, so apply the kind filter via a
-      // separate `fetchOrganizationDidsForSet` lookup over the
-      // closure-DID set. Server-side projection on
-      // appCertifiedActorProfile keeps this consistent with the
-      // All / Follows / Recent paths.
+      // (magic-indexer #117) carries inline issuer profiles but no
+      // `isOrganization` flag, so query the indexer directly for
+      // the subset of closure DIDs that match the selected kind,
+      // then keep only those. Same shape as the Featured path —
+      // no complement, no silent inversion if the call fails.
       const kind = subToIsOrganization(sub)
       if (typeof kind === "boolean" && scoped.length > 0) {
-        const orgSet = await fetchOrganizationDidsForSet(
-          scoped.map((a) => a.did),
-          signal ?? undefined,
-        )
-        if (signal?.aborted) return EMPTY_PAGE
-        scoped = scoped.filter((a) =>
-          kind ? orgSet.has(a.did) : !orgSet.has(a.did),
-        )
+        try {
+          const keep = await fetchDidsByKindInSet(
+            scoped.map((a) => a.did),
+            kind,
+            signal ?? undefined,
+          )
+          if (signal?.aborted) return EMPTY_PAGE
+          scoped = scoped.filter((a) => keep.has(a.did))
+        } catch {
+          return EMPTY_PAGE
+        }
       }
       if (search.trim().length > 0) {
         const q = search.trim().toLowerCase()

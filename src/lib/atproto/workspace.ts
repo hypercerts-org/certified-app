@@ -290,13 +290,64 @@ async function fetchOrgDidsByLabelUncached(opts: {
 }
 
 /**
- * Returns the subset of `dids` that are organizations (per the
- * indexer's `appCertifiedActorProfile.isOrganization` projection).
- * Powers the /explore Accounts People/Organizations sub-toggle on
- * paths where the actor list comes from a known DID set rather than
- * `fetchNetworkActors` — Featured (curated project authors) and
- * Endorsed (closure issuer list). Indexer's `first` is capped at 100
- * per call, so we chunk the input set.
+ * Returns the subset of `dids` whose actor profile matches the given
+ * `isOrganization` flag. Powers the /explore Accounts People /
+ * Organizations sub-toggle on paths where the actor list comes from
+ * a known DID set rather than `fetchNetworkActors` — Featured
+ * (curated project authors) and Endorsed (closure issuer list).
+ *
+ * Replaces the older `fetchOrganizationDidsForSet` + client-side
+ * `!set.has(did)` complement, which silently inverted the filter
+ * when the network call returned 0 results: "People" then kept the
+ * full input set instead of returning empty. The new shape is
+ * unambiguous — the returned DIDs ARE the matching kind, the
+ * filtered set is exactly what to keep.
+ *
+ * Indexer's `first` is capped at 100 per call, so we chunk the
+ * input set. A failing chunk throws — callers are expected to
+ * catch and surface an empty page rather than silently mis-filter.
+ */
+export async function fetchDidsByKindInSet(
+  dids: readonly string[],
+  isOrganization: boolean,
+  signal?: AbortSignal,
+): Promise<Set<string>> {
+  const result = new Set<string>()
+  if (dids.length === 0) return result
+  const CHUNK = 100
+  for (let i = 0; i < dids.length; i += CHUNK) {
+    const chunk = dids.slice(i, i + CHUNK)
+    const res = await fetch(INDEXER_PROXY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        operationName: "DidsByKindInSet",
+        variables: { dids: [...chunk], isOrganization },
+      }),
+      signal,
+    })
+    if (!res.ok) {
+      throw new Error(`DidsByKindInSet failed: ${res.status}`)
+    }
+    const json = (await res.json()) as {
+      data?: {
+        appCertifiedActorProfile?: {
+          edges: { node: { did: string } | null }[]
+        } | null
+      } | null
+    }
+    for (const edge of json.data?.appCertifiedActorProfile?.edges ?? []) {
+      if (edge.node?.did) result.add(edge.node.did)
+    }
+  }
+  return result
+}
+
+/**
+ * @deprecated Use `fetchDidsByKindInSet` instead — the complement-
+ * based approach this exposes silently inverted the People /
+ * Organizations filter when the call returned 0 results. Kept for
+ * back-compat; new callers should not use it.
  */
 export async function fetchOrganizationDidsForSet(
   dids: readonly string[],
