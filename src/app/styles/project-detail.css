@@ -867,10 +867,18 @@
 
 /* Top row that introduces the group visually: a square-aspect avatar
    tile on the left (rendered as a circle via border-radius: 50%), and
-   the wide banner tile to the right that fills the remaining width.
-   Stacks vertically on narrow viewports so the banner doesn't compress
-   into a sliver. */
+   the banner tile to the right. Both tiles share the same height
+   (`--identity-tile-height`); their widths are derived from their
+   intrinsic aspect ratios — 1:1 for the avatar, 21:9 (16:9 below the
+   .project-detail__hero breakpoint) for the banner — so the two tiles
+   line up on top and bottom while keeping their natural proportions.
+   Stacks vertically below 600px so the banner doesn't compress into a
+   sliver next to the circle.
+
+   `--identity-tile-height` is the single knob to scale the row up or
+   down without having to compute both widths by hand. */
 .create-group__identity-row {
+  --identity-tile-height: 200px;
   display: flex;
   gap: 20px;
   align-items: stretch;
@@ -880,8 +888,10 @@
 .create-group__avatar-tile {
   position: relative;
   flex: 0 0 auto;
-  width: 140px;
-  height: 140px;
+  /* Square + fixed height → width follows automatically. */
+  height: var(--identity-tile-height);
+  aspect-ratio: 1 / 1;
+  width: auto;
   border-radius: 50%;
   overflow: hidden;
   background: var(--bg-subtle);
@@ -906,23 +916,22 @@
   color: var(--fg-muted);
 }
 
-/* The banner tile inherits .project-detail__hero metrics from the
-   project-create form; this rule just lets it grow into the row's
-   remaining width and zeroes the bottom margin so the headline below
-   sits flush with the identity row. */
+/* The banner tile inherits its aspect-ratio + chrome from
+   `.project-detail__hero`. We override its sizing so it pins to the
+   same height as the avatar and lets the aspect-ratio derive the
+   width (instead of stretching to fill the row). */
 .create-group__banner-tile {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
+  height: var(--identity-tile-height);
+  width: auto;
   margin: 0;
+  min-width: 0;
 }
 
 @media (max-width: 599px) {
   .create-group__identity-row {
     flex-direction: column;
     gap: 12px;
-  }
-  .create-group__avatar-tile {
-    width: 120px;
-    height: 120px;
+    --identity-tile-height: 140px;
   }
 }
