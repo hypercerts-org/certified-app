@@ -1556,6 +1556,70 @@
   min-width: 0;
 }
 
+/* Resolved-contributor card — the "picked" state of the row. Same
+   visual rhythm as the read-mode `activity-detail__contributor`
+   row: avatar + meta column + trailing clear button. Slots into
+   the same identity-track of the row grid as the typeahead input,
+   so the row's height/alignment stays put across the input → card
+   swap. */
+.create-cert__contrib-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 8px 4px 4px;
+  border: 1px solid var(--border-medium);
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  height: 32px;
+}
+
+.create-cert__contrib-card-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.1;
+  flex: 1;
+}
+
+.create-cert__contrib-card-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.create-cert__contrib-card-handle {
+  font-size: 0.6875rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.create-cert__contrib-card-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.create-cert__contrib-card-clear:hover,
+.create-cert__contrib-card-clear:focus-visible {
+  background: var(--bg-base);
+  color: var(--fg-primary);
+}
+
 .create-cert__contrib-id input {
   width: 100%;
 }

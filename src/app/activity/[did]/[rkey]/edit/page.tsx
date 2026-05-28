@@ -31,6 +31,8 @@ import {
   isContributorWeightAcceptable,
   normalizeIdentity,
 } from "@/components/create/contributor-identity-field"
+import { ContributorIdentityCard } from "@/components/create/contributor-identity-card"
+import { isAtprotoIdentity } from "@/hooks/use-contributor-info"
 import LocationPickerDialog, {
   type AddedLocation,
 } from "@/components/create/location-picker-dialog"
@@ -1033,22 +1035,47 @@ export default function ActivityEditPage() {
                     const n = normalizeIdentity(other.identity).toLowerCase()
                     if (n) otherIdentities.add(n)
                   }
+                  // Resolved + valid identity → swap the typeahead for
+                  // the avatar/name/handle card. Pre-filled contributor
+                  // rows from the loaded record show as cards
+                  // immediately; the input only appears for new rows
+                  // (empty identity) or rows the user has cleared.
+                  const normalizedIdentity = normalizeIdentity(c.identity)
+                  const showCard =
+                    identityValid &&
+                    !identityDuplicate &&
+                    normalizedIdentity.length > 0 &&
+                    isAtprotoIdentity(normalizedIdentity)
                   return (
                     <li key={c.key} className="create-cert__contrib-row">
-                      <ContributorIdentityField
-                        value={c.identity}
-                        onChange={(nextVal) =>
-                          setContributors((rows) =>
-                            rows.map((r) =>
-                              r.key === c.key ? { ...r, identity: nextVal } : r,
-                            ),
-                          )
-                        }
-                        ariaLabel={`Contributor ${idx + 1} identity`}
-                        idx={idx}
-                        invalid={!identityValid || identityDuplicate}
-                        excludeIdentities={otherIdentities}
-                      />
+                      {showCard ? (
+                        <ContributorIdentityCard
+                          identity={normalizedIdentity}
+                          ariaLabel={`Contributor ${idx + 1}`}
+                          onClear={() =>
+                            setContributors((rows) =>
+                              rows.map((r) =>
+                                r.key === c.key ? { ...r, identity: "" } : r,
+                              ),
+                            )
+                          }
+                        />
+                      ) : (
+                        <ContributorIdentityField
+                          value={c.identity}
+                          onChange={(nextVal) =>
+                            setContributors((rows) =>
+                              rows.map((r) =>
+                                r.key === c.key ? { ...r, identity: nextVal } : r,
+                              ),
+                            )
+                          }
+                          ariaLabel={`Contributor ${idx + 1} identity`}
+                          idx={idx}
+                          invalid={!identityValid || identityDuplicate}
+                          excludeIdentities={otherIdentities}
+                        />
+                      )}
                       <input
                         type="text"
                         className="cert-detail__meta-input"
