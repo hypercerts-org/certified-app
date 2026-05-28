@@ -113,7 +113,7 @@
   width: 100%;
   aspect-ratio: 1 / 1;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--bg-sunken);
   border: 1px solid var(--border-subtle);
   /* Center the placeholder icon (Award) when there's no <img>. The
@@ -496,7 +496,7 @@
      which read as a different button family from the rest of the
      app. */
   padding: 6px 16px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   border: 1px solid var(--border-default);
   background: transparent;
   color: var(--fg-primary);
@@ -685,7 +685,7 @@
 .cert-detail__headline-name-skel {
   width: 90px;
   height: 10px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
   margin-bottom: 4px;
   display: block;
@@ -694,7 +694,7 @@
 .cert-detail__headline-handle-skel {
   width: 60px;
   height: 9px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
   display: block;
 }
@@ -787,7 +787,7 @@
   color: var(--fg-primary);
   background: var(--bg-elevated);
   border: 1.5px solid var(--border-hover);
-  border-radius: 4px;
+  border-radius: var(--radius);
   padding: 2px 6px;
   min-width: 0;
   max-width: 100%;
@@ -957,7 +957,7 @@
   font-weight: 500;
   color: var(--fg-secondary);
   text-decoration: none;
-  border-radius: 4px;
+  border-radius: var(--radius);
   transition: background var(--transition-fast),
     color var(--transition-fast);
 }
@@ -1059,7 +1059,7 @@
 .cert-detail__contributor-name-skel {
   width: 100px;
   height: 10px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
   margin-bottom: 4px;
 }
@@ -1067,7 +1067,7 @@
 .cert-detail__contributor-handle-skel {
   width: 64px;
   height: 9px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
 }
 
@@ -1151,7 +1151,7 @@
 
 .cert-detail__map {
   width: 100%;
-  border-radius: 8px;
+  border-radius: var(--radius);
   overflow: hidden;
   border: 1px solid var(--border-subtle);
   background: var(--bg-sunken);
@@ -1278,7 +1278,7 @@
   flex-shrink: 0;
   padding: 1px 6px;
   border: 1px solid var(--border-default);
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: transparent;
   color: var(--fg-muted);
   font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
@@ -1400,7 +1400,7 @@
      headline byline) so the two glyphs read as a pair. */
   width: 24px;
   height: 24px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   overflow: hidden;
   background: var(--bg-sunken);
   border: 1px solid var(--border-subtle);
@@ -1619,7 +1619,7 @@
   flex-direction: column;
   gap: 1px;
   padding: 6px 10px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   cursor: pointer;
 }
 
@@ -1700,7 +1700,7 @@
 .create-project__quick-pick-row {
   display: flex;
   align-items: center;
-  border-radius: 4px;
+  border-radius: var(--radius);
   transition: background var(--transition-fast);
 }
 
@@ -1779,7 +1779,7 @@
   background: transparent;
   border: 0;
   color: var(--fg-muted);
-  border-radius: 4px;
+  border-radius: var(--radius);
   cursor: pointer;
   transition: background var(--transition-fast),
     color var(--transition-fast);
@@ -1796,7 +1796,7 @@
   font-size: 0.8125rem;
   color: var(--fg-secondary);
   background: var(--bg-sunken);
-  border-radius: 8px;
+  border-radius: var(--radius);
   border: 1px dashed var(--border-default);
 }
 
@@ -1842,7 +1842,7 @@
   background: transparent;
   border: 0;
   color: var(--fg-muted);
-  border-radius: 4px;
+  border-radius: var(--radius);
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast);
 }
@@ -1866,7 +1866,7 @@
   gap: 2px;
   padding: 2px;
   background: var(--bg-sunken);
-  border-radius: 8px;
+  border-radius: var(--radius);
   align-self: flex-start;
 }
 
@@ -1939,7 +1939,7 @@
   padding: 0;
   background: transparent;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius);
   color: var(--fg-muted);
   cursor: pointer;
   transition: background var(--transition-fast),
@@ -1964,7 +1964,7 @@
   overflow-y: auto;
   background: var(--bg-primary, var(--bg-base, #fff));
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius);
   box-shadow: var(--shadow-md);
 }
 
@@ -1973,7 +1973,7 @@
   flex-direction: column;
   gap: 1px;
   padding: 6px 10px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   cursor: pointer;
 }
 
@@ -1994,7 +1994,7 @@
 
 .create-cert__loc-map {
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius);
   overflow: hidden;
 }
 
@@ -2026,7 +2026,7 @@
   font-size: 0.75rem;
   background: var(--bg-sunken);
   padding: 1px 4px;
-  border-radius: 3px;
+  border-radius: var(--radius);
 }
 
 .create-cert__loc-actions {

@@ -431,7 +431,7 @@
   height: 24px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--radius);
   color: var(--fg-muted);
   cursor: pointer;
   transition:
@@ -514,7 +514,7 @@
   color: var(--color-text-primary);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 8px 12px;
   margin-top: 8px;
 }

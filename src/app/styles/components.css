@@ -115,7 +115,7 @@
   width: 100%;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
-  border-radius: 20px;
+  border-radius: var(--radius);
   padding: 40px 40px 36px;
   box-shadow: var(--shadow-lg);
   display: flex;
@@ -236,7 +236,7 @@ dialog.signin-modal.app-modal .signin-modal__body {
   color: var(--fg-primary);
   background: var(--bg-elevated);
   border: 1.5px solid var(--border-hover);
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 8px 12px;
   width: 100%;
   min-width: 0;
@@ -296,7 +296,7 @@ dialog.signin-modal.app-modal .signin-modal__body {
   height: 56px;
   padding: 0 20px;
   border: 1.5px solid var(--border-default);
-  border-radius: 8px;
+  border-radius: var(--radius);
   font-size: 1rem;
   color: var(--fg-primary);
   background: var(--bg-elevated);
@@ -475,7 +475,7 @@ dialog.signin-modal.app-modal .signin-modal__body {
   }
   .signin-modal {
     padding: 32px 24px 28px;
-    border-radius: 20px;
+    border-radius: var(--radius);
   }
   .signin-modal__brandmark-wrap {
     margin-bottom: 24px;

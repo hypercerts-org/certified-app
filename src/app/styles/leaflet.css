@@ -100,7 +100,7 @@ ol.leaflet-doc__list {
   height: auto;
   max-height: 520px;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--bg-sunken);
 }
 
@@ -117,7 +117,7 @@ ol.leaflet-doc__list {
 
 .leaflet-doc__image--placeholder {
   border: 1.5px dashed var(--border-hover);
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 24px;
   color: var(--fg-muted);
   text-align: center;
@@ -132,7 +132,7 @@ ol.leaflet-doc__list {
 .leaflet-doc__embed {
   position: relative;
   width: 100%;
-  border-radius: 8px;
+  border-radius: var(--radius);
   overflow: hidden;
   background: #000;
 }
@@ -215,7 +215,7 @@ ol.leaflet-doc__list {
 
 .leaflet-editor__content {
   border: 1.5px solid var(--border-hover);
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--bg-elevated);
   padding: 14px 16px;
   /* A roomier default — the textarea felt cramped at 96px. The
@@ -415,7 +415,7 @@ ol.leaflet-doc__list {
   color: var(--fg-primary);
   background: var(--bg-elevated);
   border: 1.5px solid var(--border-hover);
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 8px 12px;
   width: 100%;
   min-width: 0;
@@ -513,7 +513,7 @@ ol.leaflet-doc__list {
   /* Match the corner radius the other cards/dialogs in the design
      system use. 20px on a 720px-wide surface read as too chunky;
      this brings it in line with the card / dash-card family. */
-  border-radius: 14px;
+  border-radius: var(--radius);
 }
 
 .long-description-modal__title-block {

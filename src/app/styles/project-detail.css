@@ -447,7 +447,7 @@
 .project-detail__certs .feed-card {
   padding: 10px;
   border-bottom: none;
-  border-radius: 4px;
+  border-radius: var(--radius);
   display: flex;
   flex-direction: column;
   transition: background var(--transition-fast);

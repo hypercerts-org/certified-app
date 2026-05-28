@@ -208,7 +208,7 @@
   /* Sticky top-bar offset + buffer. Includes row 2 so the freshly-
      jumped section's header sits below the full top bar. */
   scroll-margin-top: calc(var(--top-bar-row1) + var(--top-bar-row2) + 24px);
-  border-radius: 8px;
+  border-radius: var(--radius);
   transition: background var(--transition-fast), box-shadow var(--transition-fast);
 }
 

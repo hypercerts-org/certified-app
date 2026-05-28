@@ -64,7 +64,7 @@
   padding: 0 12px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
-  border-radius: 8px;
+  border-radius: var(--radius);
   transition: border-color var(--transition-fast);
 }
 
@@ -109,7 +109,7 @@
   height: 36px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
-  border-radius: 8px;
+  border-radius: var(--radius);
   color: var(--fg-secondary);
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast);
@@ -133,7 +133,7 @@
   padding: 4px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
-  border-radius: 8px;
+  border-radius: var(--radius);
   box-shadow: var(--shadow-md);
   z-index: 30;
 }
@@ -178,7 +178,7 @@
 .profile-groups__error {
   padding: 10px 12px;
   margin-bottom: 12px;
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
   border: 1px solid var(--border-subtle);
   color: var(--fg-primary);
@@ -273,7 +273,7 @@
   padding: 12px;
   background: transparent;
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius);
   transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
