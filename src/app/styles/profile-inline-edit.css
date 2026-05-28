@@ -184,13 +184,23 @@
 }
 
 .edit-banner__btn--primary {
-  background: var(--fg-primary);
-  color: var(--bg-canvas);
-  border-color: var(--fg-primary);
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-fg);
+  border-color: var(--btn-primary-bg);
 }
 
+/* The base `.edit-banner__btn:hover` rule above sets background to
+   `--overlay-weak` for the ghost-button hover treatment. Without
+   restating background here, the primary's dark fill would be
+   replaced by that near-white overlay on hover — leaving white
+   text on a near-white background. Re-pin the background AND
+   border-color so the primary stays dark, with opacity for the
+   hover affordance (matches the canonical primary-button treatment
+   on the sign-in modal and feed actions). */
 .edit-banner__btn--primary:hover:not(:disabled) {
-  opacity: 0.9;
+  background: var(--btn-primary-bg);
+  border-color: var(--btn-primary-bg);
+  opacity: 0.92;
 }
 
 /* --- Overview banner in edit mode -----------------------------------
