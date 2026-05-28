@@ -1535,7 +1535,12 @@
      @handle + dropdown affordance. */
   grid-template-columns: 2fr 1.5fr 170px auto;
   gap: 8px;
-  align-items: start;
+  /* Center the role/weight/remove tracks against the identity slot
+     so the picked-contributor card (avatar + name + handle, 32px
+     tall) aligns its mid-line with the inputs and the trash button.
+     The per-row error message still grid-column-spans all tracks
+     below, so vertical centering doesn't pull errors out of place. */
+  align-items: center;
 }
 
 .create-cert__contrib-weight {
@@ -1568,9 +1573,9 @@
   gap: 8px;
   min-width: 0;
   padding: 4px 8px 4px 4px;
-  border: 1px solid var(--border-medium);
-  border-radius: 999px;
-  background: var(--bg-sunken);
+  border: none;
+  border-radius: 2px;
+  background: transparent;
   height: 32px;
 }
 
