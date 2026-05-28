@@ -126,4 +126,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/hooks/__tests__/use-profile-inline-edit-location-retry.test.tsx — fails before, passes after (putOrgMarker rejects once; asserts the retry's putLocationRecord reuses the minted rkey and allocates no new mint).
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### risk-006 — App-only surfaces crawlable (missing robots disallow) · IMPLEMENTED
+- **Why it's an improvement:** Keeps authenticated/app shells out of search indexes per AGENTS §18, while leaving public /profile and /project indexable.
+- **Change:** Added /home, /explore, /search, /activity, /activity/* to the robots.ts disallow array.
+- **Test:** src/app/__tests__/robots-app-only-disallow.test.ts — fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
