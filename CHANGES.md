@@ -120,4 +120,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/app/api/groups/register/__tests__/register-sanitize.test.ts — fails before, passes after (ZWSP/leading-@ stripped; sanitized-handle 253 cap; invalid email rejected/omitted; valid email forwarded unchanged).
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### risk-003 — Profile inline-edit save orphans a location record on retry · IMPLEMENTED
+- **Why it's an improvement:** a first-time location add followed by a failed marker write no longer re-mints a fresh orphan location record on each Save retry; the retry overwrites the same record in place.
+- **Change:** in `handleSave`, capture the rkey minted by the first `putLocationRecord` (createRecord) into a session-scoped `mintedLocationRkeyRef`, and reuse it as the `existingRkey` fallback when the marker has no persisted strongRef; cleared on edit-click / cancel / successful save.
+- **Test:** src/hooks/__tests__/use-profile-inline-edit-location-retry.test.tsx — fails before, passes after (putOrgMarker rejects once; asserts the retry's putLocationRecord reuses the minted rkey and allocates no new mint).
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->

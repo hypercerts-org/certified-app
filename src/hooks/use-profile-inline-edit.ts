@@ -315,6 +315,15 @@ export function useProfileInlineEdit(
   // edit-click, and on cancel.
   const avatarUploadRef = useRef<Promise<UploadedBlob> | null>(null)
   const bannerUploadRef = useRef<Promise<UploadedBlob> | null>(null)
+  // rkey minted for a first-time location record within this edit
+  // session. The save path mints a location record via createRecord
+  // (no rkey) only when the marker has no existing strongRef. If a
+  // later write in the same save (putOrgMarker) throws, that fresh
+  // record is orphaned and — without this — would be re-minted on every
+  // retry. Capturing the minted rkey lets a retry overwrite the same
+  // record (putRecord) instead of spawning another orphan. Cleared on
+  // edit-click / cancel / successful save so a new session starts fresh.
+  const mintedLocationRkeyRef = useRef<string | null>(null)
   // Local object-URL previews. Created the moment the user picks a
   // file (before the network upload completes) so the edit view shows
   // the new image immediately. On Save these get promoted to
@@ -463,6 +472,7 @@ export function useProfileInlineEdit(
     setPendingBannerBlob(null)
     avatarUploadRef.current = null
     bannerUploadRef.current = null
+    mintedLocationRkeyRef.current = null
     setPendingBannerRemoved(false)
     setSaveError(null)
     setHasInteracted(false)
@@ -475,6 +485,7 @@ export function useProfileInlineEdit(
     setPendingBannerBlob(null)
     avatarUploadRef.current = null
     bannerUploadRef.current = null
+    mintedLocationRkeyRef.current = null
     if (pendingAvatarPreviewUrl) URL.revokeObjectURL(pendingAvatarPreviewUrl)
     if (pendingBannerPreviewUrl) URL.revokeObjectURL(pendingBannerPreviewUrl)
     setPendingAvatarPreviewUrl(null)
@@ -679,9 +690,13 @@ export function useProfileInlineEdit(
         const hasCoords =
           drafts.locationLat !== null && drafts.locationLng !== null
         if (hasCoords) {
+          // Prefer the marker's persisted strongRef rkey. If there's
+          // none yet (first-time add), fall back to any rkey minted on
+          // a prior attempt in this edit session so a retry overwrites
+          // that record instead of orphaning a fresh one (risk-003).
           const existingRkey = inlineLocation.refUri
             ? (rkeyFromStrongRefUri(inlineLocation.refUri) ?? undefined)
-            : undefined
+            : (mintedLocationRkeyRef.current ?? undefined)
           const ref: StrongRef = await putLocationRecord(
             sessionDid,
             editTargetDid ?? sessionDid,
@@ -692,6 +707,10 @@ export function useProfileInlineEdit(
             trimmedName || null,
             { rkey: existingRkey },
           )
+          // Remember the rkey we just wrote so a retry after a later
+          // failure in this same save (e.g. putOrgMarker) reuses it.
+          mintedLocationRkeyRef.current =
+            rkeyFromStrongRefUri(ref.uri) ?? mintedLocationRkeyRef.current
           locationValue = ref
         } else if (trimmedName) {
           locationValue = trimmedName
@@ -748,6 +767,7 @@ export function useProfileInlineEdit(
       setPendingBannerBlob(null)
       avatarUploadRef.current = null
       bannerUploadRef.current = null
+      mintedLocationRkeyRef.current = null
       setPendingBannerRemoved(false)
       setHasInteracted(false)
       setIsEditing(false)
