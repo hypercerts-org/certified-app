@@ -66,4 +66,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/components/project/__tests__/project-detail-location.test.tsx — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### bug-006 — Audit-log result pill allowlist matches actual permitted/denied values · IMPLEMENTED
+- **Why it's an improvement:** Audit result chips now get their `--permitted`/`--denied` color class instead of always falling through to the unstyled `--unknown`.
+- **Change:** In org-settings.tsx, replaced the stale `["success","failure","error"]` allowlist with an exported `auditResultClassSuffix` helper mapping `AuditEntry.result` ("permitted"|"denied") to the matching class suffix (else "unknown").
+- **Test:** src/components/groups/__tests__/org-settings.test.ts — asserts permitted→permitted, denied→denied, other→unknown; fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->

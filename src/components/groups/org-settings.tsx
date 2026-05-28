@@ -63,6 +63,14 @@ const CATEGORIES: CategoryDef[] = [
 ]
 const DEFAULT_CATEGORY: CategoryKey = CATEGORIES[0].key
 
+// Map an audit entry's `result` to the CSS modifier suffix for its pill.
+// The allowlist must match `AuditEntry.result` ("permitted" | "denied")
+// and the only styled classes (`--permitted` / `--denied`); anything
+// else falls back to the neutral `--unknown` class.
+export function auditResultClassSuffix(result: string): "permitted" | "denied" | "unknown" {
+  return result === "permitted" || result === "denied" ? result : "unknown"
+}
+
 function readHashCategory(): CategoryKey | null {
   if (typeof window === "undefined") return null
   const raw = window.location.hash.replace(/^#/, "").toLowerCase()
@@ -585,7 +593,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                         <div className="org-audit__item-main">
                           <span className="org-audit__action">{entry.action}</span>
                           {(() => {
-                            const safeResult = ["success", "failure", "error"].includes(entry.result) ? entry.result : "unknown"
+                            const safeResult = auditResultClassSuffix(entry.result)
                             return (
                               <span
                                 className={`org-audit__result org-audit__result--${safeResult}`}
