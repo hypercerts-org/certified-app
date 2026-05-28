@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { Building2, Globe } from "lucide-react"
+import { Building2, Globe, Image as ImageIcon, Users } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useOrgCreationLimit } from "@/lib/groups/use-org-limit"
@@ -348,7 +348,7 @@ export default function CreateGroupPage() {
                   unoptimized
                 />
               ) : (
-                <Building2
+                <Users
                   size={36}
                   strokeWidth={1.25}
                   aria-hidden
@@ -380,7 +380,7 @@ export default function CreateGroupPage() {
                   unoptimized
                 />
               ) : (
-                <Building2
+                <ImageIcon
                   size={48}
                   strokeWidth={1.25}
                   aria-hidden

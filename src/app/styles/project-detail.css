@@ -916,7 +916,11 @@
 }
 
 .create-group__avatar-tile--placeholder {
-  border: 1px dashed var(--border-subtle);
+  /* Bump the dashed outline up from `--border-subtle` (4%) to
+     `--border-medium` (10%) and from 1px to 2px so the empty
+     dropzone reads as a clear "tap to add" affordance rather than
+     fading into the background. */
+  border: 2px dashed var(--border-medium);
   background: var(--bg-subtle);
 }
 
