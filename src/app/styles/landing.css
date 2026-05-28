@@ -77,70 +77,17 @@
   justify-content: center;
 }
 
-.hero__btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  padding: 18px 40px;
-  font-size: 1.125rem;
-  font-weight: 500;
-  color: var(--color-white);
-  background: var(--color-primary);
-  border: none;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: all 200ms;
-  text-decoration: none;
-}
-
-.hero__btn-primary:hover {
-  opacity: 0.9;
-}
-
-.hero__btn-primary:active {
-  transform: scale(0.97);
-}
-
-.hero__btn-primary:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-.hero__btn-arrow {
-  font-size: 1.25rem;
-}
-
-.hero__btn-secondary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 18px 40px;
-  font-size: 1.125rem;
-  font-weight: 500;
-  color: var(--color-primary);
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  text-decoration: none;
-}
-
-.hero__btn-secondary:hover {
-  border-bottom-color: var(--color-primary);
-}
-
-.hero__btn-secondary:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
+/* .hero__btn-primary, .hero__btn-secondary, .hero__btn-arrow rules
+   were removed — they were orphaned (no TSX referenced them). If
+   future landing iterations need text CTAs, use the canonical
+   <Button size="lg"> instead. */
 
 .hero__btn-signin {
   background: none;
   border: none;
   padding: 0;
   cursor: pointer;
-  transition: opacity 200ms, transform 200ms;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
 }
 
 .hero__btn-signin:hover {
