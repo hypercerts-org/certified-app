@@ -11,11 +11,7 @@ import { useSession } from "@/hooks/use-session";
 import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
 import { useOrg } from "@/lib/groups/org-context";
-import {
-  isRouteVisibleToActor,
-  pathnameToPersonalOnlyRoute,
-} from "@/lib/groups/personal-only";
-import type { Group } from "@/lib/groups/types";
+import { routeForActorSwitch } from "@/lib/groups/navigation";
 import { useOrgProfile } from "@/hooks/use-org-profile";
 import { useScrollHideNavbar } from "@/hooks/use-scroll-hide-navbar";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
@@ -28,26 +24,6 @@ import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints";
 
 const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
 
-/**
- * Decide where to go after the user switches actor (personal ↔ org).
- * Default: stay on the current path. Only redirect to /home when the
- * current route is personal-only AND the new actor is an org (so the
- * route would render its "this isn't visible to your org" empty
- * state instead of useful content).
- *
- * `resolvePostSwitchPath` (always-redirect-to-profile) is retained
- * for callers that explicitly want to land on the new persona's
- * profile after switching — not used in the post-switch redirect.
- */
-function routeForActorSwitch(pathname: string | null, next: Group | null): string {
-  if (!pathname) return "/home"
-  const routeKey = pathnameToPersonalOnlyRoute(pathname)
-  const nextIsOrg = !!next
-  if (routeKey && !isRouteVisibleToActor(routeKey, nextIsOrg)) {
-    return "/home"
-  }
-  return pathname
-}
 
 const Navbar: React.FC = () => {
   const { isLoading, isAuthenticated, did, openSignIn, signOut } = useAuth();
