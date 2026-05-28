@@ -116,6 +116,29 @@ describe("extractRouteError", () => {
     })
   })
 
+  describe("preserves the atproto error discriminator (code)", () => {
+    it("surfaces err.error as `code` on a 4xx (InvalidSwap)", () => {
+      const { status, message, code } = extractRouteError({
+        status: 400,
+        error: "InvalidSwap",
+        message: "Record was modified",
+      })
+      expect(status).toBe(400)
+      expect(message).toBe("Record was modified")
+      // The discriminator must survive so the client write seam can
+      // re-raise InvalidSwapError instead of a generic Error (bug-003).
+      expect(code).toBe("InvalidSwap")
+    })
+
+    it("omits `code` when the error carries no discriminator", () => {
+      const { code } = extractRouteError({
+        status: 400,
+        message: "Handle must be at least 3 characters",
+      })
+      expect(code).toBeUndefined()
+    })
+  })
+
   describe("status code → generic message table", () => {
     it.each([
       [400, "Bad request"],

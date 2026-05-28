@@ -48,4 +48,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/app/__tests__/metadata-og-image.test.ts — asserts every OG/Twitter image in each page's exported metadata resolves under public/; fails before (5 red), passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### bug-003 — InvalidSwap detection is dead for the group BFF write path · IMPLEMENTED
+- **Why it's an improvement:** Group admins' inline cert/project edits that lose a CID-precondition race now reach the conflict-rebase + drafts-recovery machinery instead of failing generically and silently dropping unsaved edits.
+- **Change:** `extractRouteError` now surfaces the atproto discriminator (`XRPCError.error`) as `code`, and the group activity/project routes echo it as `{ error, code }` — mirroring the XRPC proxy — so `writeToRepo` re-raises `InvalidSwapError`.
+- **Test:** src/lib/utils/__tests__/api.test.ts (extractRouteError surfaces `code: "InvalidSwap"`) — fails before, passes after; plus src/lib/atproto/__tests__/repo-write.test.ts (group-route InvalidSwap body → InvalidSwapError).
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->

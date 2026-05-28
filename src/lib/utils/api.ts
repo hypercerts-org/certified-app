@@ -15,11 +15,20 @@ import { logSafe, redactSecrets } from "./log-safe"
  * The status is clamped to the valid HTTP range (200..599); anything
  * outside collapses to 500 to avoid emitting non-standard codes that
  * caches/browsers handle weirdly.
+ *
+ * `code` carries the atproto error discriminator (`InvalidSwap`,
+ * `RecordNotFound`, …) when the upstream `@atproto/api` `XRPCError`
+ * exposes it on `.error`. The redacted human `message` is localised
+ * and never literally equals the discriminator, so callers that need
+ * to branch (the client write seam re-raising `InvalidSwapError`)
+ * must read `code` — see bug-003. Mirrors the XRPC proxy's
+ * `xrpcError`, which surfaces the same field. `undefined` when the
+ * error carries no discriminator.
  */
 export function extractRouteError(
   err: unknown,
   prefix = "[route] upstream error"
-): { status: number; message: string } {
+): { status: number; message: string; code?: string } {
   const raw = readRawStatus(err)
   const status = clampHttpStatus(raw)
   logSafe(prefix, err, { status })
@@ -27,7 +36,19 @@ export function extractRouteError(
     status >= 400 && status < 500
       ? messageFor4xx(err, status)
       : genericMessageFor(status)
-  return { status, message }
+  const code = readErrorCode(err)
+  return { status, message, ...(code ? { code } : {}) }
+}
+
+/** Read the atproto error discriminator (`XRPCError.error`) when the
+ *  caught error exposes it as a usable string. */
+function readErrorCode(err: unknown): string | undefined {
+  if (!err || typeof err !== "object") return undefined
+  const e = err as Record<string, unknown>
+  if (typeof e.error === "string" && e.error.trim().length > 0) {
+    return e.error
+  }
+  return undefined
 }
 
 function readRawStatus(err: unknown): number {
