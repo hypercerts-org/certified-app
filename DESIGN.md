@@ -1,5 +1,7 @@
 # DESIGN.md — Certs.social
 
+> **AI agents: read §14 first.** It locks in the post-consolidation rules (2026-05-28) and supersedes earlier sections where they contradict. Read the "Rules at a glance" callout in `AGENTS.md` §0 in parallel — it's the executive summary of what to do and not do.
+
 ## 1. Visual Theme & Atmosphere
 
 Certs.social feels like a notary's ledger reimagined as a mobile app — austere, monochrome, and quietly authoritative. The near-absence of color forces attention onto the content: serif headlines anchor each card like a document title, while the surrounding chrome recedes into warm grays. It's deliberately under-decorated — no gradients, no brand accent hue, no playful illustrations. The restraint *is* the brand.
@@ -538,7 +540,7 @@ Things an AI agent is likely to get wrong:
 1. **Start with CSS custom properties.** Never hard-code colors — use `var(--bg-canvas)`, `var(--fg-primary)`, etc. This ensures dark mode works automatically.
 2. **Default to `var(--radius)` (2px).** Only use 999px for pills (badges, avatars, sign-in submit) or 50% for circles.
 3. **Use the `<Button>` component.** Don't create new button styles in CSS — add variants to the component if needed.
-4. **Mobile-first CSS.** Write base styles for mobile, then use `@media (min-width: 769px)` for desktop overrides.
+4. **Mobile-first CSS.** Write base styles for mobile, then use `@media (min-width: 800px)` for desktop overrides. For "below desktop", use `max-width: 799px`. 768 / 760 / 640 are not canonical — see §14.1.
 5. **Check both themes.** Toggle `data-theme="dark"` and verify all text is readable, borders are visible, and the primary button inverts correctly.
 6. **Respect the type system.** Headlines → Noto Serif 700. Body → Inter 400. Labels → Inter 500–600 uppercase. Don't mix these roles.
 7. **No new shadows on cards.** Cards communicate elevation via background color (`--bg-elevated` vs `--bg-canvas`), not box-shadow. Shadows are reserved for floating elements (modals, tooltips, dropdowns).
@@ -549,7 +551,28 @@ Things an AI agent is likely to get wrong:
 
 ## 14. Design consolidation pass (2026-05-28)
 
-This section documents the changes from `feat/design-consolidation` (PR into `feat/positioning-redesign`). It supersedes any contradictions earlier in this file.
+This section documents the changes from `feat/design-consolidation` (PR #108, merged into `feat/positioning-redesign`). It supersedes any contradictions earlier in this file.
+
+The audit that drove the work: [`docs/design-audit/component-audit.md`](docs/design-audit/component-audit.md).
+The visual divergence sheet: [`docs/design-audit/visual-divergence.md`](docs/design-audit/visual-divergence.md).
+The implementation plan + decision log: [`docs/design-consolidation/plan.md`](docs/design-consolidation/plan.md).
+
+### 14.0 Rules at a glance (the agent quick-reference)
+
+The shortlist of rules that drift most often. Hold yourself to these on every UI change.
+
+| Rule | Quick test |
+| --- | --- |
+| `border-radius` is `var(--radius)` (2 px), pills `999px`, circles `50%`. No 4/6/8/12/16/20. | `grep -rEn "border-radius:\s+(4\|6\|8\|12\|16\|20)px" src/app/styles/` returns 0 |
+| No raw hex / rgb outside `tokens.css` (+ `landing.css` for the brand palette). | Search for `#[0-9a-fA-F]{3,8}` in your diff |
+| Canonical breakpoints are 800 / 1100 / 1300; "below desktop" is `max-width: 799px`. | `grep -E "@media.*?\((max\|min)-width:\s*(76[08]\|64[80])px\)"` returns 0 |
+| Shadows are `var(--shadow-sm\|md\|lg)`. No ad-hoc `box-shadow: 0 X Y rgba(...)`. | Search `box-shadow:` for non-token values |
+| Z-index is a `--z-*` token. | Search `z-index:\s+[0-9]+` for literals |
+| Headings use `text-h1`..`text-h4` + `font-headline`. Not `text-xl` / `text-lg`. | Search your diff for `font-headline text-(xl\|lg\|2xl)` |
+| Modals use `<AppDialog>`. No hand-rolled backdrops. | Search your diff for `signin-modal__backdrop` |
+| Icon-only buttons are `<Button size="icon" aria-label="…">`. | TypeScript enforces the label |
+| Dark mode must work. | Toggle `data-theme="dark"` and verify everything reads |
+| Reach for a `src/components/ui/` primitive before writing a new component or CSS class. | List the directory first |
 
 ### 14.1 New rules
 

@@ -37,9 +37,37 @@ This document is the canonical reference for coding agents working in this repos
 
 `PRODUCT.md` at the repo root is the strategic design brief: register, primary user, brand personality (confident, principled, plain), anti-references (anchored on "visibly not-a-wallet"), and design principles. Read it before any UI/UX work. The `/impeccable` skill loads it automatically; humans should open it for any design decision that goes beyond a one-line copy or token tweak.
 
-`DESIGN.md` is the visual companion: the "Notary's Ledger" North Star, a two-register layout doctrine (brand on `/welcome` and `/about`, product everywhere else with a centered narrow column up to ~1024px), the civic palette (Ink, Paper, Slate, Canvas, Sunken, Raised, Elevated, Annotation Green), Noto Serif and Instrument Serif italic typography with OpenType `tnum`/`case` directives, a three-step `--shadow-sm`/`md`/`lg` vocabulary on floating elements only, and twelve named rules across colors, typography, and elevation (No-Brand-Hue, Warm-Neutral, One-Voice-of-Color, Semantic-Token, Serif-Authority, One-Italic, 65-75ch, Weight-Ceiling-on-Inter, Uppercase-Plus-Tracking, Flat-By-Default, Floating-Only-Shadow, Hairline). Machine-readable tokens live in the YAML frontmatter; the sidecar at `.impeccable/design.json` carries shadows, motion, breakpoints, tonal ramps, and ready-to-render component snippets.
+`DESIGN.md` is the visual companion. Read **§14 — Design consolidation pass (2026-05-28)** first: it locks in the post-consolidation rules and supersedes earlier sections where they contradict. Then read §1–§13 for the underlying system (Notary's Ledger North Star, civic palette, typography, three-step shadows).
 
-DESIGN.md describes the **target state**. Two migrations are implied. **(a) Token refactor:** replace concrete `--color-*` tokens with the semantic two-layer system (`--bg-canvas`, `--fg-primary`, `--border-default`, `--btn-primary-bg`, `--shadow-sm`/`md`/`lg`). The current `--color-*` tokens become legacy aliases. **(b) Component canonicalization:** the components in `src/components/ui/` (`<Button>` 4 variants by 3 sizes, `<Badge>`, `<Avatar>`, `<Input>`, `<Textarea>`) are the source of truth; BEM-style classes in `globals.css` (`.signin-modal__submit`, `.hero__btn-primary`, `.feedback-modal__submit`, `.landing-cta__btn`) are legacy and should migrate. `tailwind.config.ts` also holds stale tokens from a prior visual system (`navy: #0F2544`, `accent: #60A1E2`, the `elevation-1`..`elevation-4` shadows) that should be removed in the same pass. The system is light-only today; the semantic layer is structured so a future `[data-theme="dark"]` is a value-flip, not a refactor.
+> **The token refactor and component canonicalization that earlier drafts of this file described as future work have landed** (PR #108, merged 2026-05-28 into `feat/positioning-redesign`). The audit + visual divergence sheet that drove the work live at `docs/design-audit/component-audit.md` and `docs/design-audit/visual-divergence.md`. The implementation plan + decision log is `docs/design-consolidation/plan.md`.
+
+### Rules at a glance — read before touching any UI
+
+These are the rules most often violated by drift. If your change touches CSS, JSX, or design tokens, hold yourself to them.
+
+1. **`border-radius` is `var(--radius)` (2 px) everywhere** — except pills (`999px`) and circles (`50%`). No `4px`, `6px`, `8px`, `12px`, `16px`, `20px`. Sign-in modal is not an exception anymore.
+2. **No raw hex / rgb colors** outside `src/app/styles/tokens.css`. Use semantic tokens (`--fg-primary`, `--bg-elevated`, `--border-default`, …) or, on landing, the theme-aware landing tokens (`--color-navy`, `--color-off-white`, `--color-light-gray`, `--color-mid-gray`, `--color-surface`). The two invariant primitives `--color-primary` and `--color-white` are reserved for systems that must not flip (skip-nav, brand SVG); don't reach for them on app surfaces.
+3. **No new breakpoints.** The only canonical breakpoints are 800 / 1100 / 1300 (tokens `--bp-gt-mobile`, `--bp-gt-narrow-desktop`, `--bp-gt-desktop`). For "below desktop" use `max-width: 799px`. Don't introduce 768 / 760 / 640.
+4. **No ad-hoc shadows.** Use `var(--shadow-sm)` / `var(--shadow-md)` / `var(--shadow-lg)`. Raw `box-shadow: 0 8px 24px rgba(...)` is a smell.
+5. **No ad-hoc z-index.** Use the tokens in `tokens.css` §"Z-index map" (`--z-rail`, `--z-popover`, `--z-navbar`, `--z-modal`, `--z-skip-nav`, `--z-feedback`).
+6. **Reach for the canonical UI primitive before writing a new BEM class.** The components in `src/components/ui/` are: `<Button>` (4 variants × 4 sizes including `size="icon"`), `<Input>` (3 sizes × 3 variants), `<Textarea>`, `<Badge>` (10 variants), `<Card>` (`row` / `elevated` / `inset`), `<Tabs>`/`<Tab>`/`<TabPanel>`, `<Skeleton>`, `<Popover>`, `<Avatar>`, `<AppDialog>`, `<ConfirmDialog>`, `<EmptyState>`, `<ErrorMessage>`, `<LoadingSpinner>`, `<EditBanner>`. If a divergent style already exists for the job (e.g. a `.foo__btn` class), do **not** add another — migrate the existing one toward the primitive or, if too risky, leave a TODO that references this file.
+7. **Headings use the `text-display` / `text-h1` / `text-h2` / `text-h3` / `text-h4` scale and `font-headline`** (Noto Serif). Body uses `text-body` / `text-body-sm` / `text-caption` + Inter. Do not use Tailwind's `text-xl` / `text-lg` / `text-2xl` for app headings.
+8. **All modals use `<AppDialog>` (or `<ConfirmDialog>` / `<DeleteRecordDialog>` which wrap it).** Don't hand-roll backdrop / Esc / focus-trap / scroll-lock — the `<dialog>` + `showModal()` pattern is centralized and has bug history. See `app-dialog.tsx:118` for the bug class it prevents.
+9. **Dark mode must work.** Toggle `data-theme="dark"` on `<html>` and verify all text is readable. Don't add new CSS that pins colors in a way that breaks the flip. Landing is now fully dark-mode-aware via the landing tokens; don't reintroduce hardcoded `var(--color-primary)` on landing surfaces.
+
+### Before adding a new component / CSS rule
+
+```bash
+# 1. Does a canonical primitive already do this job?
+ls src/components/ui/
+
+# 2. Does an existing BEM class do this job?
+grep -rn "button\b\|card\b\|modal\b\|menu\b" src/app/styles/ | grep <your-pattern>
+
+# 3. Are you sure?
+```
+
+If you decide the existing options don't fit, document why in the new component / CSS rule's leading comment so the next agent doesn't unwind your decision.
 
 ## 1. Project Overview
 
@@ -358,48 +386,89 @@ If you need to write a new collection, **add it to `ALLOWED_WRITE_COLLECTIONS`**
 
 ### Where styles live
 
-- `src/app/globals.css` — single 4,700-line file containing all custom CSS (BEM-like classes with component prefixes: `.dashboard__topbar`, `.signin-modal__backdrop`, `.org-list__item`, etc.).
-- Tailwind utilities are used freely *inside* JSX for one-off layout (`flex`, `mt-4`, `max-w-3xl`, etc.).
-- Tailwind theme overrides live in `tailwind.config.ts` (custom colors `navy`, `accent`, `sky`, `deep`; custom font sizes `display`, `h1`–`h4`; custom shadows `elevation-1` through `elevation-4`; custom radii `button: 6px`, `card: 4px`, `sm: 2px`).
+- `src/app/styles/` — a tree of feature-scoped CSS files, all imported by `src/app/globals.css`. The split is intentional; do not collapse it back to one file.
+  - `tokens.css` — design tokens (CSS custom properties + dark theme overrides). **The only place raw hex / rgba values live.**
+  - `components.css` — primitive component chrome (modals, app-card label, dash-card, error/empty states).
+  - `layout.css` — app shell, navbar, top-bar, bottom-nav, drawers, rails.
+  - Per-feature: `feed.css`, `profile-*.css`, `cert-detail.css`, `project-detail.css`, `explore.css`, `home.css`, `settings-page.css`, `workspace.css`, `notifications.css`, `landing.css`, `leaflet.css`, etc.
+- Tailwind utilities are used freely *inside* JSX for one-off layout (`flex`, `mt-4`, `max-w-3xl`, …).
+- Tailwind theme is small: `colors.{success, warning, error}` + `fontFamily.{sans, headline, mono}` + the `fontSize` heading scale + `boxShadow.{sm, md, lg}` aliasing the CSS vars + `borderRadius.DEFAULT: 2px`. See `tailwind.config.ts`.
 
-### CSS variables (declared in `:root`)
+### CSS variables — what to use
 
-- Colors: `--color-primary`, `--color-navy`, `--color-accent`, `--color-off-white`, `--color-gray-100`, `--color-light-gray`, `--color-mid-gray`, `--color-dark-gray`, `--color-surface`, `--color-surface-container`, `--color-surface-container-low`, `--color-surface-container-high`, `--color-accent-hover`.
-- Borders: `--border-subtle`, `--border-light`, `--border-default`, `--border-medium`, `--border-hover`, `--border-hover-soft`, `--border-strong`.
-- Overlays: `--navy-overlay-30`, `--navy-overlay-70`, `--navy-overlay-85`.
-- Semantic: `--color-success`, `--color-success-text`, `--color-warning`, `--color-error`, `--color-outline-variant`.
-- Warning surface: `--color-warning-bg`, `--color-warning-border`, `--color-warning-text`.
-- Focus / success accents: `--color-focus-green`, `--color-success-icon`.
-- Transitions: `--transition-fast` (150 ms), `--transition-base` (250 ms), `--transition-slow` (400 ms cubic-bezier).
-- Geometry: `--radius` (2px), `--navbar-height` (64px).
+Token catalog is the source of truth at `src/app/styles/tokens.css`. The most-used ones:
+
+- **Surfaces:** `--bg-canvas` (page) · `--bg-sunken` (recessed) · `--bg-raised` (slightly elevated) · `--bg-elevated` (cards, modals).
+- **Foreground:** `--fg-primary` (headings, primary text) · `--fg-secondary` (body) · `--fg-muted` (placeholders, captions).
+- **Borders:** `--border-subtle` (whisper, list dividers) · `--border-default` (input/card borders) · `--border-hover` (hover state) · plus `--border-light` / `--border-medium` / `--border-hover-soft` for in-between cases.
+- **Buttons:** `--btn-primary-bg` / `--btn-primary-fg` (these invert in dark).
+- **Badges:** `--badge-success-*`, `--badge-warning-*`, `--badge-neutral-*`, `--badge-count-*` paired bg/fg/border.
+- **Status:** `--color-error`, `--color-success`, `--color-warning` + their `-text` / `-bg` / `-border` companions for full-surface styling.
+- **Landing palette (theme-aware):** `--color-navy`, `--color-off-white`, `--color-gray-100`, `--color-light-gray`, `--color-mid-gray`, `--color-dark-gray`, `--color-surface`, `--color-surface-container-low`. These flip in `[data-theme="dark"]`. Use on landing surfaces only.
+- **Invariant primitives (don't use on app surfaces):** `--color-primary` (#111 always), `--color-white` (#fff always). Reserved for skip-nav, brand SVG, anything that must not flip.
+- **Motion:** `--transition-fast` (150 ms ease-out) · `--transition-base` (250 ms ease-out) · `--transition-slow` (400 ms spring).
+- **Geometry:** `--radius` (2 px) · `--navbar-height` (64 px) · `--top-bar-row1` / `--top-bar-row2` / `--top-bar-total` for desktop top-bar heights · `--bp-gt-mobile` (800) / `--bp-gt-narrow-desktop` (1100) / `--bp-gt-desktop` (1300) — informational; CSS `@media` queries hardcode the numbers because vanilla CSS can't `var()` inside `@media`.
+- **Z-index:** `--z-rail-sticky` (10) · `--z-rail` (30) · `--z-popover` (40) · `--z-navbar` / `--z-bottom-nav` (50) · `--z-portal-sheet` (60) · `--z-modal` (100) · `--z-skip-nav` (9999) · `--z-feedback` (10000) · `--z-feedback-above` (10001).
 
 ### Rules
 
-1. **No `100vw`.** It triggers horizontal overflow when a scrollbar is present. Use `100%` with the parent providing the layout context. (Confirmed: globals.css contains zero `100vw` rules.)
-2. **New components use BEM classes in `globals.css` for layout/structure**, Tailwind for in-component micro-adjustments. Don't reach for Tailwind utilities to recreate something a BEM class already covers.
-3. **Reuse the CSS variables** above; don't hard-code colors or transitions in new rules.
-4. **Skip-nav styles** are at the top of `globals.css`. Don't duplicate.
+1. **All `border-radius` is `var(--radius)`** (2 px). Pills use `999px`, circles use `50%`. No `4`/`6`/`8`/`12`/`16`/`20` px. To prevent regression: `grep -rEn "border-radius:\s+(4|6|8|12|16|20)px" src/app/styles/` should always return zero hits.
+2. **No raw hex / rgb / rgba colors outside `tokens.css` and `landing.css`** (landing has the invariant brand palette + theme-flippable landing tokens — that's where they belong). Use tokens.
+3. **No new breakpoints.** Canonical: 800 / 1100 / 1300. For "below desktop" use `max-width: 799px` (matches the existing convention in feed.css / settings-page.css / etc.).
+4. **No ad-hoc shadows.** Always `var(--shadow-sm|md|lg)`.
+5. **No ad-hoc z-index.** Always a `--z-*` token (add to tokens.css if a genuinely new layer is needed).
+6. **No `100vw`.** It triggers horizontal overflow when a scrollbar is present. Use `100%`.
+7. **Skip-nav styles** are at the top of `tokens.css`. Don't duplicate.
+8. **Prefer a UI primitive over a new BEM class** — see [§12](#12-component-conventions). New BEM classes are appropriate when the visual is genuinely unique (e.g., the leaflet editor toolbar's toggle state). Cosmetic styling that matches an existing primitive is not.
 
-### Modals — the radius rule
+### Modals
 
-Two-tier convention codified in DESIGN.md §11:
+Every modal renders via `<AppDialog>` (`src/components/ui/app-dialog.tsx`) or one of its specializations (`<ConfirmDialog>`, `<DeleteRecordDialog>`). The sign-in modal uses the same `<dialog>` chrome at the same 2 px radius — there is no longer a "hero exception."
 
-- **Sign-in modal** (`.signin-modal` only): 20px radius, hero padding — the **only** intentional exception to the 2px system. Reserved for the sign-in surface.
-- **Every other dialog**: `<dialog className="signin-modal app-modal …">`. The `.app-modal` class (in `components.css`) inherits the sign-in chrome (backdrop, animation, close X, focus styling) but overrides `border-radius: var(--radius)` and trims padding.
+`<AppDialog>` handles: native `<dialog>` + `showModal()`, backdrop click (gateable via `disableBackdropClose`), Esc, focus save / restore, prevention of the `InvalidStateError` documented at `app-dialog.tsx:118`. If you find yourself hand-rolling backdrop + focus-trap + body-scroll-lock for a new modal, you're reintroducing the class of bug that motivated `<AppDialog>`. Stop and refactor to use it.
 
-If you ship a new modal that extends `.signin-modal` without `.app-modal`, the dialog comes out comically rounded and breaks the visual system. Search for `className="signin-modal"` before merging.
+### Landing in dark mode
+
+`landing.css` consumes the theme-aware landing tokens (not `--color-primary` / `--color-white`). The "Built for trust" section is intentionally inverted from the surrounding sections — it stays inverted in dark mode (becomes a light band on dark page). That's the brand contrast, not a bug.
 
 ## 12. Component Conventions
 
+### Canonical UI primitives (`src/components/ui/`)
+
+Use these. Don't reimplement.
+
+| Primitive | API surface |
+| --- | --- |
+| `<Button>` | `variant: "primary" \| "secondary" \| "ghost" \| "destructive"` · `size: "sm" \| "md" \| "lg" \| "icon"`. `size="icon"` is a 40×40 square and **requires `aria-label`** (enforced via TypeScript discriminated union — you'll get a type error if you forget). `loading` prop renders a spinner. |
+| `<Input>` | `size: "sm" \| "md" \| "lg"` (36 / 44 / 56 px) · `variant: "default" \| "underline" \| "inline-edit"`. Use `lg` for hero inputs (sign-in modal). Use `underline` for inline typeahead. Use `inline-edit` for "currently editing" affordance (1.5 px hover-color border). Auto-wires `aria-describedby` / `aria-invalid` / `id` / `useId()` label associations. |
+| `<Textarea>` | Mirror of `<Input>` for multi-line. |
+| `<Badge>` | 10 variants: `verified` / `pending` / `unverified` (status, with icon) · `tag` / `role` / `count` (neutral chips) · `high-quality` / `standard` / `draft` / `test` (activity quality pills). `compact` prop forces the tighter 11 px chip shape on any variant. |
+| `<Card>` | `variant: "row" \| "elevated" \| "inset"` · `hoverable` · `unpadded` · `as: "div" \| "article" \| "li" \| "section"`. `row` for list-divider entries (transparent bg, bottom border only). `elevated` for object cards. `inset` for recessed sub-cards inside an elevated parent. |
+| `<Tabs>` + `<TabList>` + `<Tab>` + `<TabPanel>` | Controlled (`value` / `onChange`). Proper ARIA tablist + arrow-key navigation. `<TabPanel keepMounted>` if child state should survive switches. |
+| `<Skeleton>` | `variant: "line" \| "box" \| "circle" \| "text"`. `width` / `height` accept any CSS dimension. `text` accepts `lines={n}`. Honors `prefers-reduced-motion`. |
+| `<Popover>` + `<PopoverTrigger>` + `<PopoverContent>` + `<PopoverItem>` | Floating menu. Handles click-outside, Esc, focus restore, ARIA. `align: "start" \| "center" \| "end"`. Controlled (`open` / `onOpenChange`) or uncontrolled. |
+| `<Avatar>` | `size: "sm" \| "md" \| "lg" \| "xl"`. Pass `fallbackInitials={getInitials(name)}` from `src/lib/utils/initials.ts`. |
+| `<AppDialog>` + `<AppDialogHeader>` | The modal primitive. See [§11 Modals](#11-css-conventions). |
+| `<ConfirmDialog>`, `<DeleteRecordDialog>` | Specializations of AppDialog for destructive / type-to-confirm flows. |
+| `<EmptyState>` | Centered icon + title + description + actions. |
+| `<ErrorMessage>` | Title + message + retry button in an error-tinted card. |
+| `<LoadingSpinner>` | Pulsing Brandmark — used for full-page / section loading. For inline loading inside a Button, use the Button's `loading` prop instead. |
+| `<EditBanner>` | Sticky edit-mode chrome (Cancel + Save buttons) used by profile / project / cert edit pages. |
+| `<FeedbackModal>` | Dual-mode (desktop dialog ↔ mobile bottom-sheet). |
+| `<SignInModal>` | Auth flow. Don't reach for it directly; use `useAuth().openSignIn()`. |
+| `<Brandmark>`, `<CertIcon>`, `<FeedLabelPill>`, `<SmartLink>` | Brand / domain-specific primitives. |
+
+### General rules
+
+- **Search `src/components/ui/` before writing a new component.** If something *almost* matches, extend it (add a variant / size / prop) rather than forking. Use the variant-discriminated-union pattern from `Button` if a new variant has different required props (e.g., `size="icon"` requiring `aria-label`).
+- **Search the BEM classes before writing a new CSS rule.** `grep -rn '<your-pattern>' src/app/styles/`. Twelve button vocabularies and eight card families used to coexist undocumented — the consolidation merged them; don't restart that drift.
 - **Internal links:** `next/link`. Don't use `<a href>` for in-app routes.
 - **SVG icons / button graphics:** raw `<img>` (not `next/image`) for SVG assets. `next/image` is reserved for raster assets where the optimizer adds value (see `partner-apps.tsx` for an example using `Image`).
-- **Icons:** `lucide-react`. Don't import individual SVG icon files for new code.
-- **Form inputs:** Use the `Input` and `Textarea` components in `src/components/ui/`. They wire up `aria-describedby` + `aria-invalid` + `id` + `useId()`-derived label associations automatically. If you need a bare input, replicate the pattern from `input.tsx` line for line.
-- **Dropdown triggers:** `aria-haspopup` + `aria-expanded` (`navbar.tsx` has the canonical pattern).
-- **Modals:** wrap the panel with `useFocusTrap<HTMLElement>(active)` from `src/hooks/use-focus-trap.ts`. It both traps Tab/Shift+Tab and restores focus to the previously focused element on close. The trap selector is `a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])`.
+- **Icons:** `lucide-react`. The only `@tabler/icons-react` import in the codebase is the cert icon, wrapped by `src/components/ui/cert-icon.tsx` to expose a lucide-compatible `strokeWidth` prop. Don't import tabler directly elsewhere.
+- **Icon sizing follows context:** 14 px inline with text · 18–22 px nav chrome · 20 px Plus / Settings · 24 px bottom nav · 40 px empty-state. Stroke 1.5 (default) / 1.75 (active, cert-icon) / 2 (emphasis). The `strokeWidth={1.25}` + `size={11}` pattern appears in form dialogs only — don't use it as a general default.
+- **Dropdown triggers:** if it's a menu, use `<Popover>`. Roll-your-own should be a last resort; if you do, the trigger needs `aria-haspopup` + `aria-expanded` (`navbar.tsx` has the canonical pattern from before `<Popover>` existed).
 - **Skip-nav:** already wired in root layout (`<a href="#main-content" class="skip-nav">`). `<main id="main-content">` exists. Don't reintroduce.
-- **External user-controlled URLs (e.g. `profile.website`):** validate the scheme before using as an `href`. Only allow `http:`, `https:`, `mailto:`, `tel:`; reject anything else (including `javascript:`, `data:`, `vbscript:`, malformed). A shared helper for this is tracked as a follow-up.
-- **Avatars:** use `Avatar` from `src/components/ui/avatar.tsx` with `fallbackInitials={getInitials(name)}` from `src/lib/utils/initials.ts`.
+- **External user-controlled URLs (e.g. `profile.website`):** validate the scheme before using as an `href`. Only allow `http:`, `https:`, `mailto:`, `tel:`; reject anything else (including `javascript:`, `data:`, `vbscript:`, malformed).
 
 ## 13. Hooks Catalog
 
@@ -855,7 +924,10 @@ certified-app/
 13. **`100vw` in CSS** — causes horizontal scroll when a vertical scrollbar is present. Use `100%`.
 14. **Treating `next.config.ts`'s `serverExternalPackages: ["@atproto/oauth-client-node"]` as optional** — it's not. Without it, the OAuth client fails to bundle correctly for serverless.
 15. **`ATPROTO_PRIVATE_KEY` / JWKS coupling** — if you set `ATPROTO_PRIVATE_KEY`, the OAuth client switches to confidential auth and the published `oauth-client-metadata` includes a `jwks_uri`. Removing the var without updating the registered metadata can desync clients.
-16. **Forgetting `.app-modal` on a new dialog** — every modal except the sign-in surface needs `<dialog className="signin-modal app-modal …">`. See §11 modal radius rule. The 20px chunky-modal regression is the symptom.
+16. **Hand-rolling a modal instead of using `<AppDialog>`.** The pattern at `AddOrgModal` / `MembershipSyncModal` before the consolidation — manual `<div className="signin-modal__backdrop">` + `useFocusTrap` + `onKeyDown={e => e.key==="Escape" && onClose()}` — has produced an `InvalidStateError` bug (documented at `app-dialog.tsx:118`) and bypasses focus restore. Use `<AppDialog>`. The 2 px radius is now universal so the old "forgot `.app-modal`" 20 px regression no longer applies.
+16a. **Reintroducing `border-radius: 6px` (or 4 / 8 / 12 / 16 / 20).** The consolidation pass replaced 116+ instances; `var(--radius)` is now universal. Before merging CSS, run `grep -rEn "border-radius:\s+(4|6|8|12|16|20)px" src/app/styles/` and confirm zero hits.
+16b. **Using `text-xl` / `text-lg` for app headings.** The canonical scale is `text-display` / `text-h1` / `text-h2` / `text-h3` / `text-h4` from `tailwind.config.ts`, paired with `font-headline` (Noto Serif). Legal pages, `/about`, and `/privacy` were migrated; new pages should follow.
+16c. **Hardcoding `var(--color-primary)` on landing surfaces.** Use `--color-navy` / `--color-off-white` (theme-aware landing tokens). `--color-primary` is invariant and will leave a near-black blob on a dark canvas in dark mode.
 17. **Clearing optimistic state in `finally`** — see §15a "Optimistic state — the pattern". The parent's refetch lags the PDS write; clear via the parent-value-caught-up `useEffect` instead.
 18. **Reverting the PersonCard layout to right-aligned date** — Received/Given/Followers/Following cards intentionally stack name → @handle → date → listTitle. The previous "name on left, date on right" layout breaks the new `listTitle` row 4.
 19. **`listTitle` privacy leak** — `useReceivedEndorsements` returns `listTitle` to ALL viewers (the def title is public on the issuer's repo). That's fine for endorsements. Don't accidentally apply the same logic to private metadata.
@@ -877,11 +949,18 @@ When adding any non-trivial feature:
    - Allowlist URL schemes (`http:`, `https:`, `mailto:`, `tel:`) before rendering any user-controlled URL as `href`.
    - `safeRedirect()` for any redirect target returned from the server.
 5. **A11y:**
-   - Form inputs: use `Input` / `Textarea` (they wire up `aria-describedby`/`aria-invalid` for you).
-   - Modals: `useFocusTrap`.
-   - Dropdowns: `aria-haspopup` + `aria-expanded`.
+   - Form inputs: use `<Input>` / `<Textarea>` (they wire up `aria-describedby`/`aria-invalid` for you).
+   - Modals: use `<AppDialog>` (NOT a hand-rolled backdrop + `useFocusTrap`).
+   - Tabs: use `<Tabs>`/`<Tab>`/`<TabPanel>` for proper tablist ARIA + arrow-key nav.
+   - Dropdowns: use `<Popover>`. If hand-rolled, `aria-haspopup` + `aria-expanded` are required.
+   - Icon-only buttons: `<Button size="icon" aria-label="…">` (TypeScript enforces the label).
    - Skip-nav already present.
-6. **CSS:** prefer adding BEM classes to `globals.css` for layout, Tailwind utilities for fine-grained tweaks. Reuse CSS variables.
+6. **Design system:**
+   - Reach for an existing `src/components/ui/` primitive before writing a new component.
+   - Reuse CSS tokens (see [§11](#11-css-conventions)). No raw hex/rgb outside `tokens.css` and `landing.css`. No new breakpoints. All `border-radius` is `var(--radius)`.
+   - Verify dark mode: toggle `data-theme="dark"` on `<html>` and confirm readable text + visible borders + primary button inverts. The landing page must also flip cleanly.
+   - Headings: `text-h1/h2/h3/h4` + `font-headline`. Body: `text-body/body-sm/caption` + Inter.
+   - Pre-merge sanity: `grep -rEn "border-radius:\s+(4|6|8|12|16|20)px" src/app/styles/` should return zero hits.
 7. **SEO (public pages only):**
    - `metadata.title`, `description`, `alternates.canonical`, OG `url`+`images`.
    - Add to `src/app/sitemap.ts`.
