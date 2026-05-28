@@ -29,7 +29,11 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { useFollowing } from "@/hooks/use-following"
 import { useFollowers } from "@/hooks/use-followers"
 import { useGivenEndorsements } from "@/hooks/use-endorsements"
-import { useReceivedEndorsements } from "@/hooks/use-received-endorsements"
+import {
+  useReceivedEndorsements,
+  addOptimisticReceivedEndorsement,
+  removeOptimisticReceivedEndorsement,
+} from "@/hooks/use-received-endorsements"
 import { useEndorsementLists } from "@/hooks/use-endorsement-lists"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import EndorseReasonModal from "@/components/profile/endorse-reason-modal"
@@ -816,6 +820,17 @@ function EndorseButton({ viewerDid, subjectDid }: EndorseButtonProps) {
     setIsWriting(true)
     try {
       const award = await createEndorsementAward(viewerDid, subjectDid, note)
+      // Push into the shared overlay so the subject's "Endorsed by N"
+      // counter and the Endorsements tab reflect this immediately,
+      // ahead of the 5-min scan cache / indexer catching up.
+      addOptimisticReceivedEndorsement(subjectDid, {
+        uri: award.uri,
+        cid: award.cid,
+        issuerDid: viewerDid,
+        createdAt: new Date().toISOString(),
+        note: note || undefined,
+        responseState: null,
+      })
       if (listRkey) {
         // Best-effort: the endorsement itself already succeeded. If the
         // list append fails (network blip, PDS conflict on a concurrent
@@ -845,6 +860,7 @@ function EndorseButton({ viewerDid, subjectDid }: EndorseButtonProps) {
     setIsWriting(true)
     try {
       await deleteEndorsementAward(viewerDid, existing.rkey)
+      removeOptimisticReceivedEndorsement(subjectDid, existing.uri)
       await ownGiven.refetch()
       setConfirmRevoke(false)
     } catch (err) {

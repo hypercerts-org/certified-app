@@ -128,26 +128,11 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
   >("hide-rejected")
   const [filterOpen, setFilterOpen] = useState(false)
 
-  // Optimistic overlay on the received list so the viewer's own
-  // Endorse/Revoke action shows up immediately. The indexer-backed
-  // hook caches for 5 min and would otherwise lag. De-dup by URI
-  // covers the catch-up moment.
-  const [optimisticAdds, setOptimisticAdds] = useState<ReceivedEndorsement[]>([])
-  const [optimisticHides, setOptimisticHides] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  )
-  const displayReceived = useMemo(() => {
-    const real = received.endorsements.filter((e) => !optimisticHides.has(e.uri))
-    const seen = new Set<string>()
-    const merged: ReceivedEndorsement[] = []
-    for (const e of [...optimisticAdds, ...real]) {
-      if (seen.has(e.uri)) continue
-      seen.add(e.uri)
-      merged.push(e)
-    }
-    merged.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
-    return merged
-  }, [received.endorsements, optimisticAdds, optimisticHides])
+  // The optimistic overlay now lives in `useReceivedEndorsements` itself
+  // (a shared module store), so `received.endorsements` already reflects
+  // the viewer's own Endorse/Revoke action issued from the sidebar — no
+  // component-local overlay needed here.
+  const displayReceived = received.endorsements
 
   // Owner-only response filter on top of `displayReceived`. Foreign
   // viewers fall through with the full list unchanged — their hook
@@ -162,28 +147,6 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
       return state !== "rejected"
     })
   }, [displayReceived, viewerIsOwner, ownStates, responseFilter])
-
-  const handleEndorsed = useCallback((entry: ReceivedEndorsement) => {
-    setOptimisticHides((prev) => {
-      if (!prev.has(entry.uri)) return prev
-      const next = new Set(prev)
-      next.delete(entry.uri)
-      return next
-    })
-    setOptimisticAdds((prev) =>
-      prev.some((e) => e.uri === entry.uri) ? prev : [entry, ...prev],
-    )
-  }, [])
-
-  const handleRevoked = useCallback((uri: string) => {
-    setOptimisticAdds((prev) => prev.filter((e) => e.uri !== uri))
-    setOptimisticHides((prev) => {
-      if (prev.has(uri)) return prev
-      const next = new Set(prev)
-      next.add(uri)
-      return next
-    })
-  }, [])
 
   // Endorse-people modal (own-profile only). The viewer can search
   // for one or many people and write a batch of endorsements in a
@@ -444,10 +407,10 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
 
       {tab === "received" ? (
         <>
-          {/* The Endorse / Endorsed toggle moved to the profile
-              sidebar (next to Follow). The optimistic handlers
-              (`handleEndorsed` / `handleRevoked`) are still exported
-              to the sidebar via the optimistic-overlay state above. */}
+          {/* The Endorse / Endorsed toggle lives in the profile sidebar
+              (next to Follow). It writes into the shared optimistic
+              overlay in `useReceivedEndorsements`, so the list below
+              updates without a tab-local handler. */}
           {viewerIsOwner ? (
             <p className="profile-endorsements-v2__response-note">
               Endorsements with no response are shown on your profile by
@@ -962,115 +925,6 @@ function PersonCard({
         <div className="profile-endorsements-v2__card-menu">{menu}</div>
       ) : null}
     </li>
-  )
-}
-
-// ---------------------------- Endorse CTA ----------------------------
-
-/**
- * Endorse / Endorsed button shown on the top-right of the Received
- * tab when the viewer is signed in and is not the profile owner.
- * Behaviour is identical to the previous implementation — only the
- * placement and wrapper class names changed.
- */
-function EndorseShortcut({
-  viewerDid,
-  profileDid,
-  viewerIsOwner,
-  onEndorsed,
-  onRevoked,
-}: {
-  viewerDid: string | null
-  profileDid: string
-  viewerIsOwner: boolean
-  onEndorsed: (entry: ReceivedEndorsement) => void
-  onRevoked: (uri: string) => void
-}) {
-  const ownGiven = useGivenEndorsements(viewerDid)
-  const [isWriting, setIsWriting] = useState(false)
-  const [confirmRevoke, setConfirmRevoke] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const existing = ownGiven.endorsements.find((e) => e.subjectDid === profileDid)
-  const isEndorsed = !!existing
-
-  const handleEndorse = useCallback(async () => {
-    if (!viewerDid || isWriting) return
-    setIsWriting(true)
-    setError(null)
-    try {
-      const result = await createEndorsementAward(viewerDid, profileDid)
-      onEndorsed({
-        uri: result.uri,
-        cid: result.cid,
-        issuerDid: viewerDid,
-        createdAt: new Date().toISOString(),
-      })
-      await ownGiven.refetch()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to endorse")
-    } finally {
-      setIsWriting(false)
-    }
-  }, [viewerDid, profileDid, isWriting, ownGiven, onEndorsed])
-
-  const handleConfirmRevoke = useCallback(async () => {
-    if (!viewerDid || !existing || isWriting) return
-    setIsWriting(true)
-    setError(null)
-    try {
-      const awardUri = existing.uri
-      await deleteEndorsementAward(viewerDid, existing.rkey)
-      onRevoked(awardUri)
-      await ownGiven.refetch()
-      setConfirmRevoke(false)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to revoke endorsement")
-    } finally {
-      setIsWriting(false)
-    }
-  }, [viewerDid, existing, isWriting, ownGiven, onRevoked])
-
-  if (!viewerDid || viewerIsOwner) return null
-
-  const onClick = isEndorsed ? () => setConfirmRevoke(true) : handleEndorse
-
-  return (
-    <>
-      <button
-        type="button"
-        className={`profile-endorsements-v2__endorse-btn ${
-          isEndorsed ? "profile-endorsements-v2__endorse-btn--active" : ""
-        }`}
-        onClick={onClick}
-        disabled={isWriting || ownGiven.isLoading}
-        aria-label={isEndorsed ? "Revoke endorsement" : "Endorse this profile"}
-      >
-        {isEndorsed ? (
-          <Check size={14} aria-hidden="true" />
-        ) : (
-          <ThumbsUp size={14} aria-hidden="true" />
-        )}
-        <span>{isEndorsed ? "Endorsed" : "Endorse"}</span>
-      </button>
-      {error ? (
-        <span className="profile-endorsements-v2__endorse-error" role="alert">
-          {error}
-        </span>
-      ) : null}
-      {confirmRevoke ? (
-        <ConfirmDialog
-          title="Revoke endorsement?"
-          message="Your endorsement will be removed from this profile. You can endorse them again later."
-          confirmLabel="Revoke"
-          cancelLabel="Keep endorsement"
-          confirmVariant="destructive"
-          isConfirming={isWriting}
-          onConfirm={handleConfirmRevoke}
-          onCancel={() => !isWriting && setConfirmRevoke(false)}
-        />
-      ) : null}
-    </>
   )
 }
 

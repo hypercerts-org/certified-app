@@ -1,6 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 
 /**
  * One endorsement received: who endorsed me, when, and the optional
@@ -237,6 +244,88 @@ interface CacheEntry {
 
 const cache = new Map<string, CacheEntry>()
 
+// ---------------------------------------------------------------------------
+// Shared optimistic overlay, keyed by profileDid. Lets a mutation in one
+// component (e.g. the sidebar Endorse button) reflect immediately in every
+// other consumer of the same DID's received list — the sidebar "Endorsed by N"
+// counter AND the Endorsements tab — without waiting on the 5-min scan cache
+// or the indexer to catch up. Mirrors the module-store + useSyncExternalStore
+// pattern in endorsement-closure-cache.ts.
+//
+// Entries are deliberately NOT pruned once the real scan catches up: the merge
+// de-dups adds by URI against the scan result and a `hide` is a no-op once the
+// award is already gone, so a leftover overlay entry can't double-count or
+// resurrect anything. Bounded by user actions.
+// ---------------------------------------------------------------------------
+
+interface ReceivedOverlay {
+  adds: ReceivedEndorsement[]
+  hides: Set<string>
+}
+
+const overlays = new Map<string, ReceivedOverlay>()
+let overlayVersion = 0
+const overlaySubscribers = new Set<() => void>()
+
+function notifyOverlay(): void {
+  overlayVersion++
+  for (const s of overlaySubscribers) s()
+}
+
+function subscribeOverlay(cb: () => void): () => void {
+  overlaySubscribers.add(cb)
+  return () => {
+    overlaySubscribers.delete(cb)
+  }
+}
+
+function mergeOverlay(
+  profileDid: string,
+  base: ReceivedEndorsement[],
+): ReceivedEndorsement[] {
+  const o = overlays.get(profileDid)
+  if (!o || (o.adds.length === 0 && o.hides.size === 0)) return base
+  const filtered = base.filter((e) => !o.hides.has(e.uri))
+  const seen = new Set(filtered.map((e) => e.uri))
+  const merged = [...o.adds.filter((e) => !seen.has(e.uri)), ...filtered]
+  merged.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
+  return merged
+}
+
+/**
+ * Optimistically add a received endorsement for `profileDid` so every
+ * consumer of `useReceivedEndorsements(profileDid)` reflects it on the next
+ * render. Call from the success path of a write that issues an endorsement
+ * targeting `profileDid`. Idempotent by award URI.
+ */
+export function addOptimisticReceivedEndorsement(
+  profileDid: string,
+  entry: ReceivedEndorsement,
+): void {
+  const o = overlays.get(profileDid) ?? { adds: [], hides: new Set<string>() }
+  o.hides.delete(entry.uri)
+  if (!o.adds.some((e) => e.uri === entry.uri)) {
+    o.adds = [entry, ...o.adds]
+  }
+  overlays.set(profileDid, o)
+  notifyOverlay()
+}
+
+/**
+ * Optimistically remove a received endorsement (by award URI) for
+ * `profileDid`. Call from the success path of a revoke. Idempotent.
+ */
+export function removeOptimisticReceivedEndorsement(
+  profileDid: string,
+  uri: string,
+): void {
+  const o = overlays.get(profileDid) ?? { adds: [], hides: new Set<string>() }
+  o.adds = o.adds.filter((e) => e.uri !== uri)
+  o.hides.add(uri)
+  overlays.set(profileDid, o)
+  notifyOverlay()
+}
+
 /**
  * Read the cached scan result for a DID without triggering a
  * network fetch. Used by `usePendingAwardsCount` on the nav rail —
@@ -253,7 +342,7 @@ export function peekCachedReceivedEndorsements(
   const entry = cache.get(profileDid)
   if (!entry) return null
   if (Date.now() - entry.fetchedAt >= STALE_MS) return null
-  return entry.data
+  return mergeOverlay(profileDid, entry.data)
 }
 
 /**
@@ -371,11 +460,22 @@ export function useReceivedEndorsements(
   // privacy (rejected awards never leaving the indexer for non-owner
   // viewers) would require authenticated indexer queries — out of
   // scope per the round-1 review B5 resolution.
+  // Re-render whenever the shared optimistic overlay changes, so a write
+  // in a sibling component (e.g. the sidebar Endorse button) flows into
+  // this consumer's count/list immediately.
+  const overlaySnapshot = useSyncExternalStore(
+    subscribeOverlay,
+    () => overlayVersion,
+    () => overlayVersion,
+  )
+
   const includeRejected = opts?.includeRejected ?? false
   const endorsements = useMemo(() => {
-    if (includeRejected) return scanResult
-    return scanResult.filter((e) => e.responseState !== "rejected")
-  }, [scanResult, includeRejected])
+    void overlaySnapshot
+    const base = profileDid ? mergeOverlay(profileDid, scanResult) : scanResult
+    if (includeRejected) return base
+    return base.filter((e) => e.responseState !== "rejected")
+  }, [scanResult, includeRejected, profileDid, overlaySnapshot])
 
   return {
     endorsements,
