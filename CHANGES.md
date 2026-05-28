@@ -36,4 +36,10 @@ Holke's decision; see the matching section in `REVIEW.md`.
 
 One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED`.
 
+### bug-001 — Context-update attachment href scheme allowlist · IMPLEMENTED
+- **Why it's an improvement:** Closes a stored XSS — a federated PDS author could plant a `javascript:` uri that executed on click in the certified.app origin.
+- **Change:** `resolveAttachment` now rejects a uri attachment unless `safeHttpUrl(entry.uri)` is non-null, returning the normalized http(s) value; fixes all three render sinks at the source.
+- **Test:** src/lib/atproto/__tests__/context-attachment.test.ts — fails before (javascript:/data: resolved), passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
