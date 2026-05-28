@@ -47,7 +47,7 @@
   pointer-events: none;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 799px) {
   .explore__layout {
     grid-template-columns: 1fr;
     padding: 0 16px;
@@ -182,7 +182,7 @@
 }
 
 
-@media (max-width: 760px) {
+@media (max-width: 799px) {
   .explore__main {
     padding: 0;
   }
@@ -615,7 +615,7 @@
   text-align: right;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 799px) {
   .cert-list-row {
     grid-template-columns: 1fr;
     padding: 10px 12px;

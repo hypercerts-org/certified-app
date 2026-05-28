@@ -48,7 +48,7 @@
   pointer-events: none;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 799px) {
   .home-page::before {
     display: none;
   }
@@ -73,7 +73,7 @@
   min-width: 0;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 799px) {
   .home__sidebar {
     padding: 16px 12px 24px;
   }
@@ -229,7 +229,7 @@
   padding: 20px 24px 32px;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 799px) {
   .home__main {
     padding: 16px;
   }
@@ -534,7 +534,7 @@ a.home-feed__preview:hover {
   white-space: nowrap;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 799px) {
   .home-feed__row {
     grid-template-columns: 32px minmax(0, 1fr);
     gap: 10px;

@@ -653,7 +653,7 @@
 
 /* ---------- Responsive ---------- */
 
-@media (max-width: 760px) {
+@media (max-width: 799px) {
   .wks-notion,
   .wks-mail,
   .wks-slack {

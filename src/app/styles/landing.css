@@ -203,7 +203,7 @@
   min-height: 100vh;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 799px) {
   .hero {
     padding: calc(var(--navbar-height) + 32px) 20px 32px;
     min-height: auto;
@@ -268,7 +268,7 @@
   color: var(--color-primary);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 799px) {
   .landing-footer {
     padding: 24px 20px;
   }
@@ -485,7 +485,7 @@
   .signin-modal { animation: none; }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 799px) {
   .signin-modal {
     width: 100%;
     max-width: none;
@@ -719,7 +719,7 @@
   display: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 799px) {
   .feedback-trigger {
     bottom: 16px;
     right: 16px;
@@ -961,7 +961,7 @@
   opacity: 1;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 799px) {
   .landing-network {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1091,7 +1091,7 @@
   color: rgba(255, 255, 255, 0.5);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 799px) {
   .landing-section {
     padding: 64px 20px;
   }
@@ -1104,7 +1104,7 @@
   gap: 24px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 799px) {
   .landing-bento {
     grid-template-columns: 1fr;
   }
@@ -1407,7 +1407,7 @@
   opacity: 0.3;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 799px) {
   .landing-protocol__card-inner {
     padding: 24px;
     border-width: 8px;
@@ -1433,7 +1433,7 @@
   max-width: 1200px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 799px) {
   .landing-trust {
     grid-template-columns: 1fr;
     gap: 24px;
