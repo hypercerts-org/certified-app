@@ -326,11 +326,24 @@ export default function CreatePage() {
     // Route the blob upload to the group's repo when the active
     // identity is a group; otherwise the user's own.
     const targetDid = activeOrg ? activeOrg.groupDid : null
-    const blob = await uploadBlob(
-      file,
-      targetDid ? { targetDid } : undefined,
-    )
-    setPendingImageBlob(blob)
+    try {
+      const blob = await uploadBlob(
+        file,
+        targetDid ? { targetDid } : undefined,
+      )
+      setPendingImageBlob(blob)
+    } catch (err) {
+      // Surface the failure and clear the dangling optimistic preview so
+      // the form can't be published with an image that never uploaded.
+      setError(
+        err instanceof Error ? err.message : "Image upload failed",
+      )
+      setPendingImageBlob(null)
+      setPendingImagePreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev)
+        return null
+      })
+    }
   }, [activeOrg])
 
   const handleImageRemove = useCallback(() => {

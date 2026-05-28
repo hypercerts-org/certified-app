@@ -333,11 +333,24 @@ export default function ProjectEditPage() {
       })
       setBannerRemoved(false)
       const targetDid = activeOrg ? activeOrg.groupDid : null
-      const blob = await uploadBlob(
-        file,
-        targetDid ? { targetDid } : undefined,
-      )
-      setPendingBannerBlob(blob)
+      try {
+        const blob = await uploadBlob(
+          file,
+          targetDid ? { targetDid } : undefined,
+        )
+        setPendingBannerBlob(blob)
+      } catch (err) {
+        // Surface the failure and clear the dangling optimistic preview
+        // so the form can't be saved with a banner that never uploaded.
+        setError(
+          err instanceof Error ? err.message : "Image upload failed",
+        )
+        setPendingBannerBlob(null)
+        setPendingBannerPreviewUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev)
+          return null
+        })
+      }
     },
     [activeOrg],
   )

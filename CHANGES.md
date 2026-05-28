@@ -78,4 +78,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/app/__tests__/endorsements-received-rejected.test.tsx — mocks the hook to honor `includeRejected` and asserts the rejected row is absent before / renders after the fix; fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### bug-008 — Blob/image upload errors swallowed on cert/project forms · IMPLEMENTED
+- **Why it's an improvement:** A failed image upload now surfaces an error and clears the stale preview, so a cert/project can no longer publish silently without the previewed image.
+- **Change:** Wrapped each `uploadBlob` call (create, project/new, project edit, project-detail inline-edit) in try/catch that sets the page's error state and clears+revokes the dangling preview/blob.
+- **Test:** src/app/__tests__/create-image-upload-error.test.tsx — fails before (unhandled rejection, no error surfaced), passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->

@@ -616,11 +616,24 @@ export default function ProjectDetail({
         return previewUrl
       })
       setImageRemoved(false)
-      const blob = await uploadBlob(
-        file,
-        editTargetDid ? { targetDid: editTargetDid } : undefined,
-      )
-      setPendingImageBlob(blob)
+      try {
+        const blob = await uploadBlob(
+          file,
+          editTargetDid ? { targetDid: editTargetDid } : undefined,
+        )
+        setPendingImageBlob(blob)
+      } catch (err) {
+        // Surface the failure and clear the dangling optimistic preview
+        // so the edit can't be saved with an image that never uploaded.
+        setSaveError(
+          err instanceof Error ? err.message : "Image upload failed",
+        )
+        setPendingImageBlob(null)
+        setPendingImagePreviewUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev)
+          return null
+        })
+      }
     },
     [editTargetDid],
   )
