@@ -2699,6 +2699,32 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   color: var(--fg-muted);
 }
 
+/* Wrapper for the followers/following + Endorsed-by rows. The parent
+   .profile-sidebar uses gap: 12px between every direct child, which
+   would force a 12px gap between the two stat rows. Wrapping them in
+   their own flex column with a smaller gap lets the URL-list cadence
+   (6px between rows) carry through here, so the two rows read as a
+   single stats block instead of two independent paragraphs. The
+   wrapper itself sits on the parent's 12px rhythm, preserving the
+   visual break to the URL list below. */
+.profile-sidebar__stats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-sidebar__stats .profile-sidebar__followers {
+  margin: 0;
+}
+
+/* In the Endorsed-by row the count lives INSIDE the link (whereas in
+   the followers row it sits outside), so override the count's primary
+   colour to inherit the link colour — that way the whole "Endorsed by
+   N" string reads as one link and lights up uniformly on hover. */
+.profile-sidebar__endorsed-by .profile-sidebar__followers-count {
+  color: inherit;
+}
+
 .profile-sidebar__details {
   list-style: none;
   margin: 0;

@@ -9,7 +9,6 @@ import {
   useProfileAboutAvailable,
   useProfileGroupsAvailable,
 } from "@/lib/navbar-context"
-import { useUserGroups } from "@/hooks/use-user-groups"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { useUserActivities } from "@/hooks/use-user-activities"
 import { useOrgMarker } from "@/hooks/use-org-marker"
@@ -134,7 +133,7 @@ export default function UserProfilePage() {
     if (did && !isOwnProfile) trackRecentlyViewed("user", did)
   }, [did, isOwnProfile])
 
-  const { activeOrg, groups, isLoading: orgGroupsLoading } = useOrg()
+  const { activeOrg, groups } = useOrg()
   const memberOrg = did ? groups.find((g) => g.groupDid === did) : undefined
   const isAdminOfThisGroup =
     !!memberOrg && (memberOrg.role === "owner" || memberOrg.role === "admin")
@@ -219,13 +218,17 @@ export default function UserProfilePage() {
     sidebarIsOrg &&
       (!!displayLongDescription || isViewerThisEntity || aboutEditingForOrg),
   )
-  // Gate the Groups tab: visible whenever the viewer is currently
-  // signed in as this entity (own profile, or acting-as this group),
-  // OR when the profile carries at least one public membership.
-  const viewedPublicGroups = useUserGroups(did)
-  const hasGroupTab =
-    isViewerThisEntity || (viewedPublicGroups.groups?.length ?? 0) > 0
-  useProfileGroupsAvailable(hasGroupTab)
+  // Gate the Groups tab: only visible when the viewer's currently
+  // *active* identity matches the viewed profile. So the personal
+  // user sees it on their own profile only when no org is active;
+  // a group sees it on its own profile only while acting as that
+  // group. A user acting as a group must NOT see the Groups tab
+  // on their personal profile — the group is the active identity,
+  // and the CGS endpoint returns the group's memberships in that
+  // session, not the personal user's.
+  const isActiveIdentityThisProfile =
+    (isOwnProfile && !activeOrg) || isActingAsThisGroup
+  useProfileGroupsAvailable(isActiveIdentityThisProfile)
 
   // Mobile <ProfileHeader> still uses the legacy edit pages as a
   // fallback (inline edit isn't wired on the compact mobile header
@@ -344,8 +347,6 @@ export default function UserProfilePage() {
             additionalUrls={effectiveAdditionalUrls}
             hasCertifiedProfile={hasCertifiedProfile}
             orgFoundedDate={displayFoundedDate}
-            groupsOverride={isOwnProfile ? groups : undefined}
-            groupsLoadingOverride={isOwnProfile ? orgGroupsLoading : undefined}
             canInlineEdit={canEditInline}
             isEditing={editing}
             drafts={drafts}
@@ -440,7 +441,7 @@ export default function UserProfilePage() {
                 />
               </div>
             )}
-            {activeTab === "groups" && (
+            {activeTab === "groups" && isActiveIdentityThisProfile && (
               <div
                 role="tabpanel"
                 id="tabpanel-groups"

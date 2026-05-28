@@ -341,6 +341,54 @@ ${ACTIVITY_NODE_SELECTION}
     }
   `,
 
+  // Same shape as NetworkActors but server-side-filtered to a
+  // single kind via the indexer's `isOrganization` flag (see
+  // certified-app#107 / magic-indexer#145). Used by the /explore
+  // Accounts People / Organizations sub-toggle so the result list
+  // paginates over members of that kind only — replaces the
+  // previous "fetch a mixed page + intersect client-side against
+  // the first-200 org DIDs" path that silently dropped any org
+  // beyond the first page and produced under-shown People pages.
+  //
+  // Kept as a separate operation (rather than threading
+  // `$isOrganization: Boolean = null`) because graphql-go rejects
+  // explicit `null` on the `eq` operator — the only safe way to
+  // express "no filter" is to omit the `where` arg entirely, which
+  // means a different query string. Two operations is the smallest
+  // diff. The unfiltered case stays on the original NetworkActors
+  // op above.
+  NetworkActorsByKind: `
+    query NetworkActorsByKind(
+      $first: Int!
+      $after: String
+      $isOrganization: Boolean!
+    ) {
+      appCertifiedActorProfile(
+        first: $first
+        after: $after
+        where: { isOrganization: { eq: $isOrganization } }
+      ) {
+        totalCount
+        edges {
+          cursor
+          node {
+            uri
+            did
+            displayName
+            description
+            createdAt
+            avatar {
+              __typename
+              ... on OrgHypercertsDefsUri { uri }
+              ... on OrgHypercertsDefsSmallImage { image { ref mimeType } }
+            }
+          }
+        }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  `,
+
   // Just the DIDs of every actor that has published an
   // app.certified.actor.organization record. Used by the /explore
   // Users sub-category to split individuals from groups —
@@ -410,6 +458,31 @@ ${ACTIVITY_NODE_SELECTION}
             }
           }
         }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  `,
+
+  // "Of this DID set, which ones are organizations?" — a focused
+  // companion to NetworkActorsByDids that returns just the org-DID
+  // subset (no profile fields). Used by /explore Accounts to apply
+  // the People/Organizations sub-toggle on paths where the actor
+  // list comes from a known DID set rather than `fetchNetworkActors`:
+  //   - Featured (Ma Earth curated projects → author DIDs)
+  //   - Endorsed (closure result's inline issuer block)
+  // The server-side `isOrganization` filter on appCertifiedActorProfile
+  // can't run via fetchNetworkActors there because the actor list is
+  // already determined by a different upstream — but the same filter
+  // works keyed on a `did: { in: [...] }` predicate, which this op
+  // exposes. Returns at most 100 DIDs per call (MAX_FIRST cap on the
+  // upstream); callers chunk if their set is larger.
+  OrganizationDidsForSet: `
+    query OrganizationDidsForSet($dids: [String!]!) {
+      appCertifiedActorProfile(
+        first: 100
+        where: { did: { in: $dids }, isOrganization: { eq: true } }
+      ) {
+        edges { node { did } }
         pageInfo { hasNextPage endCursor }
       }
     }
@@ -1184,6 +1257,17 @@ function buildVariables(
         after: readString(vars.after, MAX_AFTER_LEN),
       }
     }
+    case "NetworkActorsByKind": {
+      // `isOrganization` is non-nullable on the upstream op (the
+      // indexer rejects `eq: null`); reject missing / non-boolean
+      // inputs so the route's contract matches the upstream's.
+      if (typeof vars.isOrganization !== "boolean") return null
+      return {
+        first: clampFirst(vars.first, MAX_FIRST, 20),
+        after: readString(vars.after, MAX_AFTER_LEN),
+        isOrganization: vars.isOrganization,
+      }
+    }
     case "OrganizationDidsByLabel": {
       return {
         first: clampFirst(vars.first, MAX_FIRST, 100),
@@ -1196,6 +1280,14 @@ function buildVariables(
       // Reuse the author-list reader: same shape (DID list, ≤500),
       // same defensive truncation. Empty list is rejected — the
       // op is meaningless without a target set.
+      const dids = readAuthorList(vars.dids)
+      if (dids === null || dids.length === 0) return null
+      return { dids }
+    }
+    case "OrganizationDidsForSet": {
+      // Same shape as `NetworkActorsByDids`: a DID-set narrowing
+      // op. Returns just the org-DID subset; consumers chunk to
+      // stay under the upstream `first: 100` cap.
       const dids = readAuthorList(vars.dids)
       if (dids === null || dids.length === 0) return null
       return { dids }

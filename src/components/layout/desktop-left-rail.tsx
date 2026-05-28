@@ -24,8 +24,8 @@ import { useSession } from "@/hooks/use-session";
 import { useOrg } from "@/lib/groups/org-context";
 import {
   isRouteVisibleToActor,
-  pathnameToPersonalOnlyRoute,
 } from "@/lib/groups/personal-only";
+import { routeForActorSwitch } from "@/lib/groups/navigation";
 import { useOrgProfile } from "@/hooks/use-org-profile";
 import { usePendingAwardsCount } from "@/hooks/use-pending-awards-count";
 import { useNotifications } from "@/lib/notifications-context";
@@ -367,17 +367,7 @@ export default function DesktopLeftRail() {
                 switchOrg={switchOrg}
                 onAfterSwitch={(next) => {
                   setSwitcherOpen(false);
-                  // Stay on the current pathname unless the route is
-                  // personal-only AND the new actor is an org (in
-                  // which case the new persona wouldn't have access
-                  // — redirect to /home).
-                  const routeKey = pathnameToPersonalOnlyRoute(pathname || "")
-                  const nextIsOrg = !!next
-                  const dest =
-                    routeKey && !isRouteVisibleToActor(routeKey, nextIsOrg)
-                      ? "/home"
-                      : pathname || "/home"
-                  router.push(dest);
+                  router.push(routeForActorSwitch(pathname, next));
                 }}
                 onSignOut={() => {
                   setSwitcherOpen(false);

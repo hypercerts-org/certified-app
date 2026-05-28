@@ -1,8 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { listMemberships } from "@/lib/groups/api"
 import { authFetch } from "@/lib/auth/fetch"
+import { fetchRemoteMemberships } from "@/lib/groups/api"
 
 export interface UserGroup {
   groupDid: string
@@ -23,17 +23,17 @@ interface ResolvedDid {
 }
 
 /**
- * Fetch the groups a given DID is a member of.
+ * Returns the groups the signed-in viewer belongs to, sourced
+ * directly from the Certified Group Service (CGS) — the single
+ * source of truth for membership. The PDS `app.certified.actor.
+ * membership` lexicon is deliberately ignored: there's no public/
+ * private split anymore, just one CGS-backed list.
  *
- * Source: `app.certified.actor.membership` records on the user's PDS.
- * This works for any user (signed-in viewer or not) because
- * `com.atproto.repo.listRecords` is a public read method that the xrpc
- * proxy routes to foreign PDSes for non-session DIDs.
- *
- * Each membership is hydrated with the group's display name / handle /
- * avatar URL via `/api/resolve-did` (Certs → Bluesky fallback).
+ * The CGS endpoint is session-authed and returns [] for any DID
+ * that isn't the signed-in viewer, so passing a foreign DID is
+ * safe but always empty. Callers gate rendering on own-profile.
  */
-export function useUserGroups(did: string | null): {
+export function useCgsMemberships(did: string | null): {
   groups: UserGroup[]
   isLoading: boolean
   error: string | null
@@ -57,25 +57,26 @@ export function useUserGroups(did: string | null): {
     const { signal } = controller
 
     async function run() {
-      // narrow for TS — the outer guard ensures did is non-null here
-      if (!did) return
       setIsLoading(true)
       setError(null)
       try {
-        const memberships = await listMemberships(did, signal)
+        const remote = await fetchRemoteMemberships(signal)
         if (signal.aborted) return
 
-        // Hydrate each membership's group profile. Use the cached
-        // resolve-did endpoint; failures fall back to the bare DID.
         const hydrated = await Promise.all(
-          memberships.map(async (m): Promise<UserGroup> => {
+          remote.map(async (m): Promise<UserGroup> => {
             try {
               const res = await authFetch(
                 `/api/resolve-did?did=${encodeURIComponent(m.groupDid)}`,
-                { signal }
+                { signal },
               )
               if (!res.ok) {
-                return { groupDid: m.groupDid, handle: m.groupDid, role: m.role, joinedAt: m.joinedAt }
+                return {
+                  groupDid: m.groupDid,
+                  handle: m.groupDid,
+                  role: m.role,
+                  joinedAt: m.joinedAt,
+                }
               }
               const data = (await res.json()) as ResolvedDid
               return {
@@ -88,13 +89,17 @@ export function useUserGroups(did: string | null): {
                 joinedAt: m.joinedAt,
               }
             } catch {
-              return { groupDid: m.groupDid, handle: m.groupDid, role: m.role, joinedAt: m.joinedAt }
+              return {
+                groupDid: m.groupDid,
+                handle: m.groupDid,
+                role: m.role,
+                joinedAt: m.joinedAt,
+              }
             }
-          })
+          }),
         )
         if (signal.aborted) return
 
-        // Sort by joinedAt descending (most-recent first), then by name.
         hydrated.sort((a, b) => {
           if (a.joinedAt && b.joinedAt && a.joinedAt !== b.joinedAt) {
             return a.joinedAt > b.joinedAt ? -1 : 1
@@ -107,8 +112,10 @@ export function useUserGroups(did: string | null): {
         setGroups(hydrated)
       } catch (err) {
         if (signal.aborted) return
-        console.error("Failed to fetch user groups:", err)
-        setError(err instanceof Error ? err.message : "Failed to fetch groups")
+        console.error("Failed to fetch CGS memberships:", err)
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch memberships",
+        )
         setGroups([])
       } finally {
         if (!signal.aborted) setIsLoading(false)

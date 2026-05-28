@@ -712,16 +712,15 @@ export default function ActivityDetail({
         )}
         {!editing && isCreator ? (
           <>
-            <button
-              type="button"
+            <Link
+              href={`/activity/${encodeURIComponent(did)}/${encodeURIComponent(rkey ?? "")}/edit`}
               className="cert-detail__edit-btn"
               aria-label="Edit cert"
               title="Edit cert"
-              onClick={handleEditClick}
             >
               <Pencil size={14} strokeWidth={1.75} aria-hidden />
               Edit
-            </button>
+            </Link>
             <button
               type="button"
               className="cert-detail__delete-btn"

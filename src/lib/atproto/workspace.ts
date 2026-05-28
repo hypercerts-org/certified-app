@@ -102,15 +102,38 @@ export interface NetworkActorsPage {
 }
 
 export async function fetchNetworkActors(
-  opts: { first?: number; after?: string | null; signal?: AbortSignal } = {},
+  opts: {
+    first?: number
+    after?: string | null
+    /**
+     * Server-side kind filter — when set, the upstream
+     * `appCertifiedActorProfile.where.isOrganization.eq` flag
+     * narrows the result to that kind only. `undefined` keeps the
+     * existing mixed-list behaviour. Backs the /explore Accounts
+     * People / Organizations sub-toggle (see certified-app#107):
+     * the page now paginates over a single kind, so the People tab
+     * doesn't under-show by being client-side filtered to one
+     * subset of a mixed page.
+     */
+    isOrganization?: boolean
+    signal?: AbortSignal
+  } = {},
 ): Promise<NetworkActorsPage> {
-  const { first = 30, after = null, signal } = opts
+  const { first = 30, after = null, isOrganization, signal } = opts
+  // Two upstream operations: the unfiltered `NetworkActors`, and
+  // `NetworkActorsByKind` which adds the `isOrganization` where-arg.
+  // graphql-go rejects an explicit `null` on the `eq` operator, so
+  // we have to omit the `where` arg entirely for the "all kinds"
+  // case — separate query strings is the simplest way to do that.
+  const useKindFilter = typeof isOrganization === "boolean"
   const res = await fetch(INDEXER_PROXY_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      operationName: "NetworkActors",
-      variables: { first, after },
+      operationName: useKindFilter ? "NetworkActorsByKind" : "NetworkActors",
+      variables: useKindFilter
+        ? { first, after, isOrganization }
+        : { first, after },
     }),
     signal,
   })
@@ -264,6 +287,48 @@ async function fetchOrgDidsByLabelUncached(opts: {
     cursor = conn.pageInfo.endCursor
   }
   return out
+}
+
+/**
+ * Returns the subset of `dids` that are organizations (per the
+ * indexer's `appCertifiedActorProfile.isOrganization` projection).
+ * Powers the /explore Accounts People/Organizations sub-toggle on
+ * paths where the actor list comes from a known DID set rather than
+ * `fetchNetworkActors` — Featured (curated project authors) and
+ * Endorsed (closure issuer list). Indexer's `first` is capped at 100
+ * per call, so we chunk the input set.
+ */
+export async function fetchOrganizationDidsForSet(
+  dids: readonly string[],
+  signal?: AbortSignal,
+): Promise<Set<string>> {
+  const result = new Set<string>()
+  if (dids.length === 0) return result
+  const CHUNK = 100
+  for (let i = 0; i < dids.length; i += CHUNK) {
+    const chunk = dids.slice(i, i + CHUNK)
+    const res = await fetch(INDEXER_PROXY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        operationName: "OrganizationDidsForSet",
+        variables: { dids: [...chunk] },
+      }),
+      signal,
+    })
+    if (!res.ok) continue
+    const json = (await res.json()) as {
+      data?: {
+        appCertifiedActorProfile?: {
+          edges: { node: { did: string } | null }[]
+        } | null
+      } | null
+    }
+    for (const edge of json.data?.appCertifiedActorProfile?.edges ?? []) {
+      if (edge.node?.did) result.add(edge.node.did)
+    }
+  }
+  return result
 }
 
 /**

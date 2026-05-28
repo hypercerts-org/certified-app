@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { Building2, Globe } from "lucide-react"
+import { Building2, Globe, Image as ImageIcon, Users } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useOrgCreationLimit } from "@/lib/groups/use-org-limit"
@@ -96,6 +96,10 @@ export default function CreateGroupPage() {
       setNameError("Name is required")
       return false
     }
+    if (value.trim().length < 5) {
+      setNameError("Name must be at least 5 characters")
+      return false
+    }
     if (value.length > 64) {
       setNameError("Name must be 64 characters or fewer")
       return false
@@ -109,8 +113,8 @@ export default function CreateGroupPage() {
       setHandleError("Handle is required")
       return false
     }
-    if (value.length < 2) {
-      setHandleError("Handle must be at least 2 characters")
+    if (value.length < 5) {
+      setHandleError("Handle must be at least 5 characters")
       return false
     }
     if (value.length > 32) {
@@ -319,38 +323,78 @@ export default function CreateGroupPage() {
     <form onSubmit={handleSubmit}>
       <article className="project-detail-page project-detail--wide create-project">
         <div className="project-detail">
-          {/* Banner image at top — same hero treatment + aspect
-              ratios as the project create form. */}
-          <div
-            className={
-              bannerPreviewUrl
-                ? "project-detail__hero create-project__hero"
-                : "project-detail__hero project-detail__hero--placeholder create-project__hero"
-            }
-          >
-            {bannerPreviewUrl ? (
-              <Image
-                src={bannerPreviewUrl}
-                alt=""
-                fill
-                className="project-detail__hero-img"
-                unoptimized
+          {/* Avatar (circular) on the left, banner image on the
+              right — both pickers sit on a single header row so the
+              identity inputs are introduced before the text fields.
+              The avatar is square-aspect inside its tile and given
+              `border-radius: 50%` so the preview reads as a circle
+              that matches how the avatar will render everywhere else
+              in the app. The banner keeps the project-form hero
+              aspect via `flex: 1`. */}
+          <div className="create-group__identity-row">
+            <div
+              className={
+                avatarPreviewUrl
+                  ? "create-group__avatar-tile"
+                  : "create-group__avatar-tile create-group__avatar-tile--placeholder"
+              }
+            >
+              {avatarPreviewUrl ? (
+                <Image
+                  src={avatarPreviewUrl}
+                  alt=""
+                  fill
+                  className="create-group__avatar-img"
+                  unoptimized
+                />
+              ) : (
+                <Users
+                  size={36}
+                  strokeWidth={1.25}
+                  aria-hidden
+                  className="create-group__avatar-placeholder-icon"
+                />
+              )}
+              <ImageEditOverlay
+                onFile={handleAvatarFile}
+                hasPending={!!avatarFile}
+                variant="with-remove"
+                onRemove={handleAvatarRemove}
+                hasImage={!!avatarFile}
               />
-            ) : (
-              <Building2
-                size={56}
-                strokeWidth={1.25}
-                aria-hidden
-                className="project-detail__hero-placeholder-icon"
+            </div>
+
+            <div
+              className={
+                bannerPreviewUrl
+                  ? "project-detail__hero create-project__hero create-group__banner-tile"
+                  : "project-detail__hero project-detail__hero--placeholder create-project__hero create-group__banner-tile"
+              }
+            >
+              {bannerPreviewUrl ? (
+                <Image
+                  src={bannerPreviewUrl}
+                  alt=""
+                  fill
+                  className="project-detail__hero-img"
+                  unoptimized
+                />
+              ) : (
+                <ImageIcon
+                  size={48}
+                  strokeWidth={1.25}
+                  aria-hidden
+                  className="project-detail__hero-placeholder-icon"
+                />
+              )}
+              <ImageEditOverlay
+                onFile={handleBannerFile}
+                hasPending={!!bannerFile}
+                variant="with-remove"
+                onRemove={handleBannerRemove}
+                hasImage={!!bannerFile}
               />
-            )}
-            <ImageEditOverlay
-              onFile={handleBannerFile}
-              hasPending={!!bannerFile}
-              variant="with-remove"
-              onRemove={handleBannerRemove}
-              hasImage={!!bannerFile}
-            />
+            </div>
           </div>
 
           <header className="cert-detail__headline">
@@ -474,44 +518,6 @@ export default function CreateGroupPage() {
                 placeholder="e.g. non-profit, cooperative, DAO (comma-separated)"
                 value={organizationType}
                 onChange={(e) => setOrganizationType(e.target.value)}
-              />
-            </div>
-          </section>
-
-          {/* Avatar — small square preview slot. Sits below the
-              meta strip so it doesn't compete with the wide banner
-              at the top; visually parallels the cert image slot on
-              the cert create page. */}
-          <section className="cert-detail__section">
-            <div className="cert-detail__section-header">
-              <h2 className="cert-detail__section-title">Avatar</h2>
-            </div>
-            <div
-              className="cert-detail__image cert-detail__image--editing"
-              style={{ maxWidth: 200 }}
-            >
-              {avatarPreviewUrl ? (
-                <Image
-                  src={avatarPreviewUrl}
-                  alt=""
-                  fill
-                  className="cert-detail__image-img"
-                  unoptimized
-                />
-              ) : (
-                <Building2
-                  size={48}
-                  strokeWidth={1.25}
-                  aria-hidden
-                  className="cert-detail__image-placeholder-icon"
-                />
-              )}
-              <ImageEditOverlay
-                onFile={handleAvatarFile}
-                hasPending={!!avatarFile}
-                variant="with-remove"
-                onRemove={handleAvatarRemove}
-                hasImage={!!avatarFile}
               />
             </div>
           </section>
