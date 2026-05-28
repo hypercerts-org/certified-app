@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
         )
       }
     } catch (err) {
-      console.error("Org creation limit check failed:", err)
+      logSafe("[groups/register] org-limit check failed", err)
       return NextResponse.json(
         { error: "Unable to verify group creation limit. Please try again." },
         { status: 503 }

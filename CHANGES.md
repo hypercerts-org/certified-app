@@ -108,4 +108,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/app/api/xrpc/[...method]/__tests__/xrpc-error.test.ts — fails before, passes after (asserts Bearer/JWT fragments are redacted in echoed 4xx; clean 4xx still echoed; 5xx still generic; discriminator preserved).
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### risk-002 — groups/register logs raw atproto error on org-limit path · IMPLEMENTED
+- **Why it's an improvement:** stops DPoP/Bearer tokens (on `err.cause`/`.stack`/`.message`) from leaking into logs on the org-limit check failure path.
+- **Change:** replaced `console.error("Org creation limit check failed:", err)` with `logSafe("[groups/register] org-limit check failed", err)`; kept the 503.
+- **Test:** src/app/api/groups/register/__tests__/org-limit-log-safe.test.ts — fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
