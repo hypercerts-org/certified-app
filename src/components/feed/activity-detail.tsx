@@ -1013,30 +1013,10 @@ export default function ActivityDetail({
             </div>
           ) : null}
 
-          {/* Locations row — peer of Created / Time period / Work
-              scope / Contributors so the dl's own `gap: 12px` rule
-              keeps the spacing consistent. NOT tab-gated: the aside
-              is identical on every cert tab. */}
-          {locations.length > 0 ? (
-            <div className="cert-detail__meta-row">
-              <dt className="cert-detail__meta-label">
-                <MapPin size={11} strokeWidth={2} aria-hidden />
-                Locations
-                <span className="cert-detail__meta-count">
-                  {locations.length}
-                </span>
-              </dt>
-              <dd className="cert-detail__meta-value">
-                <CertLocationsMap locations={locations} />
-              </dd>
-            </div>
-          ) : null}
-
-          {/* Rights row — moved BELOW Locations per the user's
-              ordering. The other meta rows are quick scalar facts;
-              Rights references an external record and reads as a
-              less-frequent reference, so it sits at the bottom of
-              the meta list. */}
+          {/* Rights row — sits at the bottom of the meta list. The
+              other meta rows are quick scalar facts; Rights
+              references an external record and reads as a
+              less-frequent reference. */}
           {value.rights ? (
             <div className="cert-detail__meta-row">
               <dt className="cert-detail__meta-label">
@@ -1070,6 +1050,23 @@ export default function ActivityDetail({
                 parent doesn't stretch it to full width). */}
             {shortDescSection}
 
+            {/* Locations + map sit below the summary / read-full
+                link so the cert's narrative reads first, then the
+                where. Overview-only (the main pane is tab-gated);
+                the aside no longer carries a Locations row. */}
+            {locations.length > 0 ? (
+              <section className="cert-detail__section">
+                <span className="cert-detail__meta-label">
+                  <MapPin size={11} strokeWidth={2} aria-hidden />
+                  Locations
+                  <span className="cert-detail__meta-count">
+                    {locations.length}
+                  </span>
+                </span>
+                <CertLocationsMap locations={locations} />
+              </section>
+            ) : null}
+
             {/* Contributors moved to the aside meta-list — see the
                 Contributors row above (`<dt>Contributors</dt>`).
                 Project association is now surfaced in the
@@ -1077,9 +1074,7 @@ export default function ActivityDetail({
                 `<CertHeadlineColumns>` in the headline above), so
                 the older full-width Projects section that used to
                 live here is gone — the row would have duplicated
-                the headline Project column.
-                Locations section + map: aside (see the Locations
-                meta-row above). */}
+                the headline Project column. */}
 
             {rkey ? (
               <ContextUpdates
