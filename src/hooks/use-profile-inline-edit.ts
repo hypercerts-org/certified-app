@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   putProfile,
   uploadAvatar,
@@ -307,6 +307,14 @@ export function useProfileInlineEdit(
     useState<UploadedBlob | null>(null)
   const [pendingBannerBlob, setPendingBannerBlob] =
     useState<UploadedBlob | null>(null)
+  // In-flight upload promises. The preview object-URL is set synchronously
+  // on file-pick, but the resolved blob lands only after the network
+  // upload completes. `handleSave` awaits these so a Save fired mid-upload
+  // writes the freshly-uploaded blob instead of silently falling back to
+  // the stale `base.avatar` / `base.banner`. Cleared on resolve, on
+  // edit-click, and on cancel.
+  const avatarUploadRef = useRef<Promise<UploadedBlob> | null>(null)
+  const bannerUploadRef = useRef<Promise<UploadedBlob> | null>(null)
   // Local object-URL previews. Created the moment the user picks a
   // file (before the network upload completes) so the edit view shows
   // the new image immediately. On Save these get promoted to
@@ -453,6 +461,8 @@ export function useProfileInlineEdit(
     })
     setPendingAvatarBlob(null)
     setPendingBannerBlob(null)
+    avatarUploadRef.current = null
+    bannerUploadRef.current = null
     setPendingBannerRemoved(false)
     setSaveError(null)
     setHasInteracted(false)
@@ -463,6 +473,8 @@ export function useProfileInlineEdit(
     setIsEditing(false)
     setPendingAvatarBlob(null)
     setPendingBannerBlob(null)
+    avatarUploadRef.current = null
+    bannerUploadRef.current = null
     if (pendingAvatarPreviewUrl) URL.revokeObjectURL(pendingAvatarPreviewUrl)
     if (pendingBannerPreviewUrl) URL.revokeObjectURL(pendingBannerPreviewUrl)
     setPendingAvatarPreviewUrl(null)
@@ -488,10 +500,17 @@ export function useProfileInlineEdit(
         return previewUrl
       })
       setHasInteracted(true)
-      const blob = await uploadAvatar(
+      const uploadPromise = uploadAvatar(
         file,
         editTargetDid ? { targetDid: editTargetDid } : undefined,
       )
+      avatarUploadRef.current = uploadPromise
+      const blob = await uploadPromise
+      // Only clear the ref if this is still the latest upload — a newer
+      // file-pick may have replaced it while this one was in flight.
+      if (avatarUploadRef.current === uploadPromise) {
+        avatarUploadRef.current = null
+      }
       setPendingAvatarBlob(blob)
     },
     [editTargetDid],
@@ -506,10 +525,15 @@ export function useProfileInlineEdit(
       })
       setPendingBannerRemoved(false)
       setHasInteracted(true)
-      const blob = await uploadBanner(
+      const uploadPromise = uploadBanner(
         file,
         editTargetDid ? { targetDid: editTargetDid } : undefined,
       )
+      bannerUploadRef.current = uploadPromise
+      const blob = await uploadPromise
+      if (bannerUploadRef.current === uploadPromise) {
+        bannerUploadRef.current = null
+      }
       setPendingBannerBlob(blob)
     },
     [editTargetDid],
@@ -531,6 +555,7 @@ export function useProfileInlineEdit(
       return null
     })
     setPendingBannerBlob(null)
+    bannerUploadRef.current = null
     setPendingBannerRemoved(true)
     setHasInteracted(true)
   }, [])
@@ -541,6 +566,35 @@ export function useProfileInlineEdit(
       return
     }
     const base = effectiveProfile ?? null
+
+    // Await any in-flight avatar/banner upload before composing the
+    // record. The object-URL preview is set synchronously on file-pick
+    // but the resolved blob lands only after the network upload finishes;
+    // without this await a Save fired mid-upload would read the still-null
+    // `pendingAvatarBlob` and silently re-persist the stale `base.avatar`
+    // while the UI shows the new preview as saved. Prefer the freshly
+    // resolved blob over the closed-over state (which may be stale within
+    // this handler's render snapshot).
+    let resolvedAvatarBlob: UploadedBlob | null = pendingAvatarBlob
+    let resolvedBannerBlob: UploadedBlob | null = pendingBannerBlob
+    try {
+      setIsSaving(true)
+      setSaveError(null)
+      if (avatarUploadRef.current) {
+        resolvedAvatarBlob = await avatarUploadRef.current
+      }
+      if (bannerUploadRef.current) {
+        resolvedBannerBlob = await bannerUploadRef.current
+      }
+    } catch (err) {
+      console.error("Failed to upload image:", err)
+      setSaveError(
+        err instanceof Error ? err.message : "Failed to upload image",
+      )
+      setIsSaving(false)
+      return
+    }
+
     const next: CertifiedProfile = {
       createdAt: base?.createdAt || new Date().toISOString(),
       ...(drafts.displayName.trim() && {
@@ -553,20 +607,20 @@ export function useProfileInlineEdit(
       ...(drafts.website.trim() && { website: drafts.website.trim() }),
     }
 
-    if (pendingAvatarBlob) {
+    if (resolvedAvatarBlob) {
       const avatarImage: HypercertsSmallImage = {
         $type: "org.hypercerts.defs#smallImage",
-        image: pendingAvatarBlob as unknown as BlobRef,
+        image: resolvedAvatarBlob as unknown as BlobRef,
       }
       next.avatar = avatarImage
     } else if (base?.avatar) {
       next.avatar = base.avatar
     }
 
-    if (pendingBannerBlob) {
+    if (resolvedBannerBlob) {
       const bannerImage: HypercertsLargeImage = {
         $type: "org.hypercerts.defs#largeImage",
-        image: pendingBannerBlob as unknown as BlobRef,
+        image: resolvedBannerBlob as unknown as BlobRef,
       }
       next.banner = bannerImage
     } else if (pendingBannerRemoved) {
@@ -576,8 +630,9 @@ export function useProfileInlineEdit(
     }
 
     try {
-      setIsSaving(true)
-      setSaveError(null)
+      // `isSaving` / `saveError` were already set before awaiting the
+      // in-flight uploads above; the record-write phase continues under
+      // the same flags.
       // TODO(#71-profile-swap): plumb swapRecord through the
       // profile + org-marker + location writes here. Blocked on
       // useUserProfile / useOrgMarker exposing the underlying
@@ -691,6 +746,8 @@ export function useProfileInlineEdit(
       setPendingBannerPreviewUrl(null)
       setPendingAvatarBlob(null)
       setPendingBannerBlob(null)
+      avatarUploadRef.current = null
+      bannerUploadRef.current = null
       setPendingBannerRemoved(false)
       setHasInteracted(false)
       setIsEditing(false)

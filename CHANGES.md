@@ -54,4 +54,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/lib/utils/__tests__/api.test.ts (extractRouteError surfaces `code: "InvalidSwap"`) — fails before, passes after; plus src/lib/atproto/__tests__/repo-write.test.ts (group-route InvalidSwap body → InvalidSwapError).
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### bug-004 — Inline-edit Save during in-flight avatar/banner upload dropped the new image · IMPLEMENTED
+- **Why it's an improvement:** Saving mid-upload no longer silently re-persists the stale `base.avatar`/`base.banner` while the UI shows the new image as saved.
+- **Change:** `handleSave` now tracks the in-flight avatar/banner upload promises in refs and awaits them before composing the record, then writes the freshly-resolved blob instead of the (stale) closed-over state.
+- **Test:** src/hooks/__tests__/use-profile-inline-edit.test.tsx — never-resolving `uploadAvatar`: asserts `putProfile` is never called with the stale `OLD_AVATAR` and Save can't complete; fails before, passes after. (Plus a resolve-path case asserting the NEW blob is persisted.)
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
