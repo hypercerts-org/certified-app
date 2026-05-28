@@ -142,10 +142,18 @@
 /* ---------- Hero banner ---------- */
 
 .project-detail__hero {
-  /* Positioning context for the absolute ImageEditOverlay pills. */
+  /* Positioning context for the absolute ImageEditOverlay pills.
+     Aspect ratio standardised to 3:1 across the app — the same
+     proportion the profile banner (`.profile-overview__banner`)
+     and onboarding banner (`.onboarding-step__banner`) use. Every
+     banner-shaped image renders at the same shape across surfaces,
+     so a banner uploaded once previews identically wherever it
+     lands. The earlier 16:9 / 21:9 "cinematic hero" treatment
+     cropped the bottom third when the same image rendered on the
+     profile-overview banner. */
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 3 / 1;
   overflow: hidden;
   border-radius: var(--radius);
   background: var(--bg-sunken);
@@ -155,8 +163,6 @@
 
 @media (min-width: 800px) {
   .project-detail__hero {
-    /* Slightly more cinematic on wide viewports — closer to a banner. */
-    aspect-ratio: 21 / 9;
     margin-bottom: 32px;
   }
 }
@@ -866,20 +872,26 @@
    ===================================================================== */
 
 /* Top row that introduces the group visually: a square-aspect avatar
-   tile on the left (rendered as a circle via border-radius: 50%), and
-   the banner tile to the right. Both tiles share the same height
-   (`--identity-tile-height`); their widths are derived from their
-   intrinsic aspect ratios — 1:1 for the avatar, 21:9 (16:9 below the
-   .project-detail__hero breakpoint) for the banner — so the two tiles
-   line up on top and bottom while keeping their natural proportions.
-   Stacks vertically below 600px so the banner doesn't compress into a
-   sliver next to the circle.
+   tile on the left (rendered as a circle), and a 3:1 banner tile on
+   the right. They share the same height at every viewport width and
+   together span the full pane width.
 
-   `--identity-tile-height` is the single knob to scale the row up or
-   down without having to compute both widths by hand. */
+   How the geometry works:
+     - Grid columns are 1fr 3fr.
+     - Avatar fills its column at aspect-ratio 1:1 → height = column
+       width.
+     - Banner fills its column at aspect-ratio 3:1 → height = column
+       width / 3.
+     - Because the banner column is 3x the avatar column, both tiles
+       resolve to the same pixel height. No fixed-height knob needed
+       — the row scales fluidly with the pane.
+
+   Keeping the row side-by-side at every breakpoint preserves the
+   identity composition; on narrow viewports the tiles just shrink
+   together. */
 .create-group__identity-row {
-  --identity-tile-height: 200px;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 3fr;
   gap: 20px;
   align-items: stretch;
   margin-bottom: 24px;
@@ -887,11 +899,8 @@
 
 .create-group__avatar-tile {
   position: relative;
-  flex: 0 0 auto;
-  /* Square + fixed height → width follows automatically. */
-  height: var(--identity-tile-height);
+  width: 100%;
   aspect-ratio: 1 / 1;
-  width: auto;
   border-radius: 50%;
   overflow: hidden;
   background: var(--bg-subtle);
@@ -916,22 +925,11 @@
   color: var(--fg-muted);
 }
 
-/* The banner tile inherits its aspect-ratio + chrome from
-   `.project-detail__hero`. We override its sizing so it pins to the
-   same height as the avatar and lets the aspect-ratio derive the
-   width (instead of stretching to fill the row). */
+/* Banner tile inherits its 3:1 aspect + chrome from
+   `.project-detail__hero`. Just zero the bottom margin so the
+   headline below sits flush with the identity row. */
 .create-group__banner-tile {
-  flex: 0 0 auto;
-  height: var(--identity-tile-height);
-  width: auto;
+  width: 100%;
   margin: 0;
   min-width: 0;
-}
-
-@media (max-width: 599px) {
-  .create-group__identity-row {
-    flex-direction: column;
-    gap: 12px;
-    --identity-tile-height: 140px;
-  }
 }

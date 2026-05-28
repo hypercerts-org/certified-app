@@ -857,7 +857,10 @@
 }
 
 .explore-project-card__image-wrap {
-  aspect-ratio: 16 / 9;
+  /* 3:1 to match the project page's banner aspect — the thumbnail
+     shows the same image after the same crop, so the explore card
+     never previews a region that gets cut on the detail page. */
+  aspect-ratio: 3 / 1;
   border-radius: 6px;
   overflow: hidden;
   background: var(--bg-subtle);
