@@ -72,4 +72,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/components/groups/__tests__/org-settings.test.ts — asserts permitted→permitted, denied→denied, other→unknown; fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### bug-007 — /endorsements Received tab hides rejected endorsements with no way to un-reject · IMPLEMENTED
+- **Why it's an improvement:** The owner's own inbox now surfaces already-rejected endorsements (with Accept/Reject controls), so a rejected award no longer vanishes with no way to un-reject it.
+- **Change:** In endorsements/page.tsx, `ReceivedEndorsementsList` now calls `useReceivedEndorsements(did, { includeRejected: true })` — matching the profile owner surface; §22.21 privacy holds since foreign viewers never reach this page.
+- **Test:** src/app/__tests__/endorsements-received-rejected.test.tsx — mocks the hook to honor `includeRejected` and asserts the rejected row is absent before / renders after the fix; fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
