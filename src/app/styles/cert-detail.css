@@ -1750,6 +1750,21 @@
   color: var(--fg-muted);
 }
 
+/* Inline link inside the "no certs yet" empty-state note under the
+   Certs section header. Keeps the link visually subtle (matches the
+   surrounding muted-grey copy) but underlined so the affordance
+   reads at a glance. */
+.create-project__inline-link {
+  color: var(--fg-secondary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.create-project__inline-link:hover,
+.create-project__inline-link:focus-visible {
+  color: var(--fg-primary);
+}
+
 .create-project__quick-pick-list {
   list-style: none;
   margin: 0 0 12px 0;

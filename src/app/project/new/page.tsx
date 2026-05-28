@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { MapPin, Plus, X, FolderGit2 } from "lucide-react"
 import Image from "next/image"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -542,7 +543,15 @@ export default function CreateProjectPage() {
                 user has no certs OR the active group has none. */}
             {ownCertsLoading ? (
               <p className="cert-detail__empty-line">Loading your certs…</p>
-            ) : ownCerts.length > 0 ? (
+            ) : ownCerts.length === 0 ? (
+              <p className="cert-detail__empty-line">
+                You don&rsquo;t have any certs yet.{" "}
+                <Link href="/create" className="create-project__inline-link">
+                  Create your first cert
+                </Link>
+                .
+              </p>
+            ) : (
               <>
                 <p className="create-project__quick-pick-label">
                   Add your certs:
@@ -582,7 +591,7 @@ export default function CreateProjectPage() {
                   })}
                 </ul>
               </>
-            ) : null}
+            )}
 
             {/* The "search for any cert" affordance is intentionally
                 gone for now — the quick-pick checklist above covers
