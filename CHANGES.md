@@ -510,4 +510,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/components/ui/__tests__/skeleton.test.tsx — fails before, passes after
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings (1 pre-existing error in onboarding-context.tsx, unrelated)
 
+### quality-056-ui-primitives-4 — Button icon-loading spinner + default type · IMPLEMENTED
+- **Why it's an improvement:** Prevents spinner/icon overlap in the 40x40 icon slot, and stops Buttons from implicitly submitting forms.
+- **Change:** Hide children when `loading && size==="icon"` (spinner only); add default `type="button"` (overridable via prop).
+- **Test:** src/components/ui/__tests__/button.test.tsx — fails before, passes after
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings (1 pre-existing error in onboarding-context.tsx, untouched)
+
 <!-- PHASE2-LOG-APPEND-POINT -->
