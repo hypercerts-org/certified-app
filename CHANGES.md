@@ -195,4 +195,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (config + npm script, testable=false) — full suite green
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-018 — No Node version pin (engines/.nvmrc) · IMPLEMENTED
+- **Why it's an improvement:** Pins the Node runtime so contributors/CI match Vercel's runtime (Next 16 requires Node >=20.9.0), avoiding "works on my machine" build discrepancies.
+- **Change:** Added `"engines": { "node": ">=20.9.0" }` to package.json and a `.nvmrc` pinned to `20.9.0`.
+- **Test:** refactor; no natural test (config files, testable=false) — full suite green
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
