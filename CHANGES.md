@@ -450,4 +450,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (comment-only) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-056-auth-csrf-doc-1 — CSRF missing-Origin-AND-Referer divergence from §8 · IMPLEMENTED
+- **Why it's an improvement:** Records that rejecting requests missing both Origin and Referer is a deliberate fail-closed choice, so it isn't "fixed" back to the laxer Origin-only behavior AGENTS §8 describes.
+- **Change:** Added a comment in csrf.ts above the `!rawOrigin` guard explaining the stricter behavior; no behavior change.
+- **Test:** refactor; no natural test (comment-only) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
