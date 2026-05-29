@@ -318,6 +318,12 @@ export default function ProjectDetail({
   }, [effectiveImageUrl])
 
   const createdAt = asString(effectiveValue.createdAt)
+  // `startDate` / `endDate` (below) and `contributors` (further down) are
+  // activity-only meta: the project create / edit forms never write them, so
+  // for records authored in-app these reads are always null/empty. They are
+  // kept — and rendered when present — to tolerate legacy records and foreign
+  // `app.certified.activity`-shaped records that do carry this meta, rather
+  // than silently dropping data this view can faithfully display.
   const startDate = asString(
     (effectiveValue as Record<string, unknown>).startDate as unknown,
   )

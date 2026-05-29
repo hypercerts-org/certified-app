@@ -474,4 +474,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (testable=false) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-056-cert-7 — Document activity-only meta reads in project-detail · IMPLEMENTED
+- **Why it's an improvement:** Prevents a future "dead read" cleanup from silently deleting startDate/endDate/contributors handling that intentionally tolerates legacy and foreign activity-shaped records.
+- **Change:** Added a clarifying comment in `project-detail.tsx` above the startDate/endDate reads noting these (and contributors) are activity-only meta the project forms never write, kept to render legacy/foreign records. Comment-only, behavior-preserving.
+- **Test:** doc/comment-only (testable=false); no natural test — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
