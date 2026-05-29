@@ -1262,14 +1262,21 @@ function PasteSubjectsModal({
 
 // ----------------------------- Sort util -----------------------------
 
-function sortLists(lists: EndorsementList[], sort: SortKey): EndorsementList[] {
+/** Exported for unit tests. Three-way `compareString` keeps the
+ *  createdAt sort stable: equal timestamps return 0, so same-second
+ *  lists preserve their incoming order instead of shuffling between
+ *  renders (quality-046). */
+export function sortLists(
+  lists: EndorsementList[],
+  sort: SortKey,
+): EndorsementList[] {
   const out = lists.slice()
   switch (sort) {
     case "created-desc":
-      out.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
+      out.sort((a, b) => compareString(b.createdAt, a.createdAt))
       break
     case "created-asc":
-      out.sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
+      out.sort((a, b) => compareString(a.createdAt, b.createdAt))
       break
     case "alpha-asc":
       out.sort((a, b) => a.title.localeCompare(b.title))
@@ -1279,4 +1286,8 @@ function sortLists(lists: EndorsementList[], sort: SortKey): EndorsementList[] {
       break
   }
   return out
+}
+
+function compareString(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0
 }
