@@ -313,13 +313,13 @@
 .popover__overlay {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: var(--z-popover);
 }
 
 .popover__menu {
   position: absolute;
   top: calc(100% + 4px);
-  z-index: 101;
+  z-index: var(--z-popover);
   display: flex;
   flex-direction: column;
   min-width: 200px;
