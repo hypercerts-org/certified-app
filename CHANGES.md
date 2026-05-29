@@ -201,4 +201,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (config files, testable=false) — full suite green
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-019 — config-5: No `typecheck` npm script · IMPLEMENTED
+- **Why it's an improvement:** The `tsc --noEmit` gate no longer depends on memory; it's an invokable, CI-wireable script.
+- **Change:** Added `"typecheck": "tsc --noEmit"` to package.json scripts.
+- **Test:** refactor; no natural test — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
