@@ -16,6 +16,15 @@ const LIMITER = makeLimiter("auth-login", 30, 60)
 
 const HANDLE_SCOPE = "atproto transition:generic identity:handle account:email"
 
+// judgment-001: `prompt` is forwarded into client.authorize and shapes the
+// external OAuth authorization request, but the request body is untrusted.
+// Coerce anything outside the allowlist to undefined (silent — no 400) so a
+// caller can't slip in prompt=none / select_account / consent. Pure + exported
+// for unit testing.
+export function coercePrompt(prompt: unknown): "login" | "create" | undefined {
+  return prompt === "login" || prompt === "create" ? prompt : undefined
+}
+
 // Two-fallback handle authorize: try the handle as-is, then with an
 // `https://` prefix (PDS URL typed by the user), then via .well-known
 // resolution for custom-domain handles without a DNS TXT record.
@@ -62,6 +71,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid mode" }, { status: 400 })
     }
 
+    const safePrompt = coercePrompt(prompt)
+
     const client = await getOAuthClient()
 
     // Silent-default: bounce straight to the Certified PDS authorization
@@ -72,7 +83,7 @@ export async function POST(request: NextRequest) {
     if (mode === "default") {
       const url = await client.authorize(PDS_URL, {
         scope: "atproto transition:generic identity:handle account:email",
-        ...(prompt ? { prompt } : {}),
+        ...(safePrompt ? { prompt: safePrompt } : {}),
       })
       return NextResponse.json({ url: url.href })
     }
@@ -90,7 +101,7 @@ export async function POST(request: NextRequest) {
     if (mode === "email") {
       const url = await client.authorize(PDS_URL, {
         scope: "atproto transition:generic identity:handle account:email",
-        ...(prompt ? { prompt } : {}),
+        ...(safePrompt ? { prompt: safePrompt } : {}),
       })
       url.searchParams.set("login_hint", input)
       return NextResponse.json({ url: url.href })
