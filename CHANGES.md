@@ -291,4 +291,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 ### quality-033 — useBskyPosts.loadMore can append a superseded page on handle change · BLOCKED
 - **Reason:** Could not reproduce the race in a faithful failing test: on every handle change the effect synchronously clears the cursor (blocking a new loadMore via the `!cursor` guard) and calls fetchPage, bumping the shared requestIdRef past any in-flight loadMore, so a stale loadMore's fetchPage returns null and never appends — both interleavings probed stay green. Per the LOW-CONFIDENCE coordination note, blocking rather than making a speculative change.
 
+### quality-034 — useEndorsementLists mutation callbacks read stale lists via closure · IMPLEMENTED
+- **Why it's an improvement:** A concurrent refetch landing during a mutation's await is no longer clobbered by an optimistic merge built from a pre-await snapshot.
+- **Change:** Added a `listsRef` mirror; mutation callbacks now read the current list from `listsRef.current` and build update/remove merges off the live state inside the functional updater, and `lists` was dropped from their deps.
+- **Test:** src/hooks/__tests__/use-endorsement-lists-stale-closure.test.tsx — fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->

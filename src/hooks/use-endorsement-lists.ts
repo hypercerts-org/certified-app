@@ -130,6 +130,14 @@ export function useEndorsementLists(did: string | null): {
   const [error, setError] = useState<string | null>(null)
   const didRef = useRef(did)
   didRef.current = did
+  // Mirror `lists` into a ref so the mutation callbacks can read the
+  // CURRENT list set after their `await`, rather than the closure
+  // snapshot captured at render time. Without this, a concurrent
+  // refetch landing during the await is clobbered by an optimistic
+  // merge built from the pre-await snapshot. Keeps the callbacks off
+  // the `lists` dep so they don't rebind on every list change.
+  const listsRef = useRef(lists)
+  listsRef.current = lists
 
   const doFetch = useCallback(
     async (targetDid: string | null, signal?: AbortSignal, force = false) => {
@@ -258,22 +266,29 @@ export function useEndorsementLists(did: string | null): {
     ): Promise<EndorsementList> => {
       const targetDid = didRef.current
       if (!targetDid) throw new Error("No active DID for updateList")
-      const existing = lists.find((l) => l.rkey === rkey)
+      const existing = listsRef.current.find((l) => l.rkey === rkey)
       if (!existing) throw new Error("List not found")
       await updateEndorsementListCollection(targetDid, rkey, title, description)
-      const updated: EndorsementList = {
-        ...existing,
-        title: title.trim(),
-        description: description?.trim() || undefined,
-      }
+      // Apply the title/description change on top of whatever the list
+      // looks like NOW (a concurrent refetch may have reshaped items[]),
+      // not the pre-await `existing` snapshot.
+      let updated: EndorsementList = existing
       setLists((prev) => {
-        const next = prev.map((l) => (l.rkey === rkey ? updated : l))
+        const next = prev.map((l) => {
+          if (l.rkey !== rkey) return l
+          updated = {
+            ...l,
+            title: title.trim(),
+            description: description?.trim() || undefined,
+          }
+          return updated
+        })
         cache.set(targetDid, { lists: next, fetchedAt: Date.now() })
         return next
       })
       return updated
     },
-    [lists],
+    [],
   )
 
   // Owner-only. Removes the collection record only — awards survive.
@@ -282,7 +297,7 @@ export function useEndorsementLists(did: string | null): {
     async (rkey: string): Promise<void> => {
       const targetDid = didRef.current
       if (!targetDid) throw new Error("No active DID for deleteList")
-      const existing = lists.find((l) => l.rkey === rkey)
+      const existing = listsRef.current.find((l) => l.rkey === rkey)
       if (!existing) throw new Error("List not found")
       await deleteEndorsementListCollection(targetDid, rkey)
       setLists((prev) => {
@@ -291,7 +306,7 @@ export function useEndorsementLists(did: string | null): {
         return next
       })
     },
-    [lists],
+    [],
   )
 
   // Owner-only. Ensures an award exists for `subjectDid` then appends
@@ -308,7 +323,7 @@ export function useEndorsementLists(did: string | null): {
     async (rkey: string, subjectDid: string): Promise<EndorsementList> => {
       const targetDid = didRef.current
       if (!targetDid) throw new Error("No active DID for addSubjectToList")
-      const existing = lists.find((l) => l.rkey === rkey)
+      const existing = listsRef.current.find((l) => l.rkey === rkey)
       if (!existing) throw new Error("List not found")
       const alreadyInList = existing.items.some(
         (a) => extractAwardSubjectDid(a.value.subject) === subjectDid,
@@ -324,12 +339,12 @@ export function useEndorsementLists(did: string | null): {
       // shape; rather than fake one and risk drift, just refetch on
       // success. Optimistic insert isn't worth the divergence.
       await refetch()
-      const refreshed = (cache.get(targetDid)?.lists ?? lists).find(
+      const refreshed = (cache.get(targetDid)?.lists ?? listsRef.current).find(
         (l) => l.rkey === rkey,
       )
       return refreshed ?? existing
     },
-    [lists, refetch],
+    [refetch],
   )
 
   // Owner-only bulk variant of addSubjectToList. Mirrors the typed-list
@@ -349,7 +364,7 @@ export function useEndorsementLists(did: string | null): {
     }> => {
       const targetDid = didRef.current
       if (!targetDid) throw new Error("No active DID for addManySubjectsToList")
-      const existing = lists.find((l) => l.rkey === rkey)
+      const existing = listsRef.current.find((l) => l.rkey === rkey)
       if (!existing) throw new Error("List not found")
 
       // Dedupe-before-create. Subjects already in the list (or
@@ -439,7 +454,7 @@ export function useEndorsementLists(did: string | null): {
       await refetch()
       return { added: addedSubjects, skippedAlreadyIn, awardFailed }
     },
-    [lists, refetch],
+    [refetch],
   )
 
   // Owner-only. Drops the item from the list. Award is NOT deleted.
@@ -447,21 +462,31 @@ export function useEndorsementLists(did: string | null): {
     async (rkey: string, awardUri: string): Promise<EndorsementList> => {
       const targetDid = didRef.current
       if (!targetDid) throw new Error("No active DID for removeSubjectFromList")
-      const existing = lists.find((l) => l.rkey === rkey)
+      const existing = listsRef.current.find((l) => l.rkey === rkey)
       if (!existing) throw new Error("List not found")
       await removeItemFromList(targetDid, rkey, awardUri)
-      const updated: EndorsementList = {
+      // Drop the item from whatever the list looks like NOW (a
+      // concurrent refetch may have reshaped items[]), not the pre-await
+      // `existing` snapshot.
+      let updated: EndorsementList = {
         ...existing,
         items: existing.items.filter((a) => a.uri !== awardUri),
       }
       setLists((prev) => {
-        const next = prev.map((l) => (l.rkey === rkey ? updated : l))
+        const next = prev.map((l) => {
+          if (l.rkey !== rkey) return l
+          updated = {
+            ...l,
+            items: l.items.filter((a) => a.uri !== awardUri),
+          }
+          return updated
+        })
         cache.set(targetDid, { lists: next, fetchedAt: Date.now() })
         return next
       })
       return updated
     },
-    [lists],
+    [],
   )
 
   return useMemo(
