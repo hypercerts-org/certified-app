@@ -255,4 +255,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/lib/atproto/__tests__/location.test.ts — fails before, passes after (4-segment uri → `readLocationStrongRef` returns null, no fetch).
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-029 — parseNotificationsPage trusts indexer node shape · IMPLEMENTED
+- **Why it's an improvement:** A partial indexer edge no longer surfaces as a fully-typed Notification with `count: undefined`, which fed NaN row text and a `.includes` throw in NotificationRow.
+- **Change:** Extended the malformed-edge guard to also require `count` (number), `latestRecordUri`, `latestRecordCid`, and `latestAuthor`; such edges are skipped with the existing console warning.
+- **Test:** src/lib/atproto/__tests__/notifications.test.ts — fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
