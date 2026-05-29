@@ -612,4 +612,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/app/api/groups/register/__tests__/org-limit-member-walk.test.ts — fails before (member.list called twice), passes after (once).
 - **Gate:** vitest green · tsc 0 errors · lint 67 warnings
 
+### quality-056-notif-row-1 — notification-row dedupes truncateDid + getInitials · IMPLEMENTED
+- **Why it's an improvement:** Removes a drifted local copy of truncateDid and a hand-rolled initials helper in favor of the shared utils, ending divergence (the local copy showed only 4 trailing DID chars vs the shared 6).
+- **Change:** Added a canonical `truncateDid` to `src/lib/utils/did.ts` and switched notification-row to it plus `getInitials` from `src/lib/utils/initials.ts`, deleting the local truncateDid and the inline `fallbackInitials` expression.
+- **Test:** refactor; no natural test — full suite green (425 tests).
+- **Gate:** vitest green · tsc 0 errors · lint 67 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
