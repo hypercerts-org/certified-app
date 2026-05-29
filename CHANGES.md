@@ -582,4 +582,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 67 warnings
 
+### quality-056-landing-darkmode-1 — legal/marketing pages use theme-aware link/text tokens · IMPLEMENTED
+- **Why it's an improvement:** raw `text-blue-600/-800` and `text-gray-500` are pinned light-mode colors that don't flip, so links and the "Last updated" line rendered low-contrast/wrong in dark mode (CLAUDE.md rules 2/9).
+- **Change:** in about/terms/privacy/dsa/imprint, replaced link classes with `text-[var(--color-accent)] hover:text-[var(--color-accent-hover)]` and the muted line with `text-[var(--fg-muted)]`, and dropped the inert `prose-navy` class.
+- **Test:** refactor; no natural test (testable=false) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 67 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
