@@ -408,4 +408,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-013 — onboarding step-profile creates object URLs in render without revoking · IMPLEMENTED
+- **Why it's an improvement:** Stops StepProfile leaking a fresh avatar+banner blob URL on every re-render (e.g. each keystroke); blob URLs are now revoked on change/unmount.
+- **Change:** Moved `URL.createObjectURL` for replacement avatar/banner into `useMemo` keyed on the File and added cleanup effects that revoke the previous URL, mirroring use-profile-inline-edit / avatar-upload.
+- **Test:** refactor; no natural test (testable=false) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
