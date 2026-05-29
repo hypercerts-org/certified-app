@@ -540,4 +540,7 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor (dead-code deletion); no natural test — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings (1 pre-existing error in untouched safe-redirect-test-env.test.tsx, unchanged by this commit)
 
+### quality-056-groups-5 — AddOrgModal invariant-token inline styles · SKIPPED
+- **Reason:** resolved by quality-056-groups-4 — file deleted
+
 <!-- PHASE2-LOG-APPEND-POINT -->
