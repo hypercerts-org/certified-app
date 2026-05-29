@@ -321,4 +321,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (testable=no) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-040 — useBottomSheetDrag dismiss timeout can fire after unmount · IMPLEMENTED
+- **Why it's an improvement:** Prevents the drag-to-dismiss onClose callback from firing 250ms after the sheet unmounts, removing a sharp edge for non-state callers.
+- **Change:** Store the dismiss setTimeout id in a `dismissTimeout` ref and clearTimeout it in an unmount cleanup effect.
+- **Test:** refactor; no natural test (testable=false) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->

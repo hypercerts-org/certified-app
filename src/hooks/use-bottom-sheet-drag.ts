@@ -29,7 +29,18 @@ export function useBottomSheetDrag({
   const [sheetExpanded, setSheetExpanded] = useState(false)
   const dragStartY = useRef(0)
   const isDragging = useRef(false)
+  const dismissTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { isDesktop } = useLayoutBreakpoints()
+
+  // Clear any pending dismiss timeout on unmount so onClose can't fire after
+  // the component is gone.
+  useEffect(() => {
+    return () => {
+      if (dismissTimeout.current !== null) {
+        clearTimeout(dismissTimeout.current)
+      }
+    }
+  }, [])
 
   // Reset sheet expanded state when closed
   useEffect(() => {
@@ -117,7 +128,7 @@ export function useBottomSheetDrag({
 
     if (dy > 80) {
       sheetRef.current.style.transform = "translateY(100%)"
-      setTimeout(() => onClose(), 250)
+      dismissTimeout.current = setTimeout(() => onClose(), 250)
     } else if (dy < -40) {
       setSheetExpanded(true)
     } else if (dy > 20 && sheetExpanded) {
