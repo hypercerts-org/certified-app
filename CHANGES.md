@@ -261,4 +261,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/lib/atproto/__tests__/notifications.test.ts — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-030 — resolveHandle returns alsoKnownAs verbatim · IMPLEMENTED
+- **Why it's an improvement:** A non-handle (e.g. `example.com/some/path` from an attacker-controllable did:web doc) no longer leaks through as a handle.
+- **Change:** After stripping `at://`, resolveHandle now rejects values that are empty, lack a dot, or contain a slash/whitespace, returning null instead.
+- **Test:** src/lib/atproto/__tests__/resolve-handle.test.ts — fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
