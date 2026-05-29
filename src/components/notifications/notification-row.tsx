@@ -9,14 +9,11 @@ import { useOwnResponseStates } from "@/hooks/use-own-response-states"
 import { activityDetailHrefFromUri } from "@/lib/atproto/activity-uri"
 import { formatRelativeTime } from "@/lib/atproto/activity"
 import { BADGE_AWARD_COLLECTION } from "@/lib/atproto/badges"
+import { truncateDid } from "@/lib/utils/did"
+import { getInitials } from "@/lib/utils/initials"
 import Avatar from "@/components/ui/avatar"
 import ResponseButtons from "@/components/badges/response-buttons"
 import { useAuth } from "@/lib/auth/auth-context"
-
-function truncateDid(did: string): string {
-  if (did.length <= 24) return did
-  return `${did.slice(0, 16)}…${did.slice(-4)}`
-}
 
 function reasonText(
   notification: Notification,
@@ -49,7 +46,7 @@ export default function NotificationRow({ notification, wasUnreadOnMount }: Noti
   const { info } = useAuthorInfo(notification.latestAuthor)
   const hasHandle = Boolean(info?.handle)
   const displayName = info?.handle || truncateDid(notification.latestAuthor)
-  const fallbackInitials = info?.displayName?.slice(0, 2) || info?.handle?.slice(0, 2) || "??"
+  const fallbackInitials = getInitials(info?.displayName || info?.handle, notification.latestAuthor)
   const href = activityDetailHrefFromUri(notification.latestRecordUri)
   const absoluteTime = new Date(notification.sortAt).toLocaleString()
   const relativeTime = formatRelativeTime(notification.sortAt)

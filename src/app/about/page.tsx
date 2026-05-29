@@ -22,7 +22,7 @@ export default function AboutPage() {
     <div className="app-page legal-page">
       <PageTitle title="About" />
       <div className="app-page__inner">
-        <div className="prose prose-navy max-w-none space-y-8">
+        <div className="prose max-w-none space-y-8">
           <section>
             <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">What is Certified?</h2>
             <p>
@@ -31,7 +31,7 @@ export default function AboutPage() {
                 href="https://atproto.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 AT Protocol
               </a>
@@ -111,7 +111,7 @@ export default function AboutPage() {
                 href="https://github.com/hypercerts-org"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 GitHub
               </a>
@@ -132,11 +132,11 @@ export default function AboutPage() {
             </p>
             <p className="mt-4">
               For more details, see our{" "}
-              <Link href="/privacy" className="text-blue-600 underline hover:text-blue-800">
+              <Link href="/privacy" className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]">
                 Privacy Policy
               </Link>{" "}
               and{" "}
-              <Link href="/dsa" className="text-blue-600 underline hover:text-blue-800">
+              <Link href="/dsa" className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]">
                 DSA Compliance
               </Link>{" "}
               page.
@@ -153,7 +153,7 @@ export default function AboutPage() {
                 href="https://hypercerts.org"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 Hypercerts Foundation
               </a>
@@ -185,7 +185,7 @@ export default function AboutPage() {
               Email:{" "}
               <a
                 href="mailto:support@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 support@hypercerts.org
               </a>
@@ -195,7 +195,7 @@ export default function AboutPage() {
                 href="https://bsky.app/profile/hypercerts.org"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 Bluesky
               </a>
@@ -204,7 +204,7 @@ export default function AboutPage() {
                 href="https://x.com/hypercerts"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 Twitter/X
               </a>
@@ -213,7 +213,7 @@ export default function AboutPage() {
                 href="https://www.linkedin.com/company/hypercerts"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 LinkedIn
               </a>
@@ -222,7 +222,7 @@ export default function AboutPage() {
                 href="https://github.com/hypercerts-org"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 GitHub
               </a>

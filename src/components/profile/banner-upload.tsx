@@ -32,14 +32,16 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
   isUploading,
   onRemove,
 }) => {
-  // The parent page owns the object-URL preview (see profile page's
-  // pendingBannerPreviewUrl). We just render whatever URL it passes in
-  // via `currentBannerUrl` — which already reflects the picked file
-  // synchronously — and report whether that image came from a fresh
-  // pick (via `hasPending`) so the button label can swap to "Replace".
+  // Self-preview the picked file (mirrors AvatarUpload): create an
+  // object URL on pick so the banner area shows the chosen image
+  // immediately, falling back to `currentBannerUrl` (the saved record)
+  // when nothing has been picked. The displayed image (`displayUrl` /
+  // `hasImage`) is the single source of truth — the button label and
+  // Remove pill derive from it, so they can't desync the way the old
+  // write-once `hasPending` boolean did.
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [imgFailed, setImgFailed] = useState(false);
-  const [hasPending, setHasPending] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleClick = () => {
@@ -62,18 +64,45 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
       return;
     }
 
+    // Optimistic preview — show the picked file before/while it uploads.
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+
     try {
       await onUpload(file);
-      setHasPending(true);
     } catch (err) {
       console.error("Upload failed:", err);
       setError(err instanceof Error ? err.message : "Upload failed");
+      // Clear preview on error so the stale/saved banner shows again.
+      URL.revokeObjectURL(objectUrl);
+      setPreviewUrl(null);
     }
 
     e.target.value = "";
   };
 
-  const displayUrl = currentBannerUrl;
+  // Clean up the preview URL on unmount.
+  React.useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  // When the parent's banner reference changes — e.g. the inline-edit
+  // flow's Remove clears `currentBannerUrl` to null, or the saved record
+  // refetches a new URL — release the local preview so the displayed
+  // image follows the parent's truth instead of pinning the now-stale
+  // picked file. (Mirrors the parent hook's quality-036 mirror-clear.)
+  React.useEffect(() => {
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+  }, [currentBannerUrl]);
+
+  const displayUrl = previewUrl || currentBannerUrl;
   const hasImage = !!displayUrl && !imgFailed;
 
   React.useEffect(() => {
@@ -112,8 +141,14 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
             ) : (
               <>
                 <Camera size={16} strokeWidth={1.75} aria-hidden />
+                {/* Label is derived straight from the displayed image
+                    (the single source of truth): "Replace" while a
+                    banner is shown, "Change" when the box is empty. This
+                    can't desync the way the old write-once `hasPending`
+                    boolean did, which stayed stuck at "Replace" after
+                    the parent cleared the banner (inline-edit Remove). */}
                 <span className="profile-banner-upload__btn-label">
-                  {hasPending ? "Replace banner" : "Change banner"}
+                  {hasImage ? "Replace banner" : "Change banner"}
                 </span>
               </>
             )}

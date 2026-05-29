@@ -83,9 +83,11 @@ export async function writeToRepo<T>(
   if (!res.ok) {
     // Try to detect an InvalidSwap response and rethrow as the
     // typed error before falling back to a generic Error. The XRPC
-    // proxy + the 5 group BFF routes both surface upstream PDS
-    // errors with the discriminator in `data.code` (preserved
-    // verbatim from the @atproto/api error body).
+    // proxy and the group BFF write routes (activity/project) both
+    // surface upstream PDS errors with the discriminator in
+    // `data.code` (preserved verbatim from the @atproto/api error
+    // body's `.error`); the redacted human `message` is localised
+    // and never literally equals the discriminator.
     if (res.status === 400) {
       try {
         const cloned = res.clone()

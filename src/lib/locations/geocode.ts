@@ -28,30 +28,9 @@ export interface ReverseGeocodeResult {
   displayName: string
 }
 
-export async function forwardGeocode(
-  query: string,
-  signal?: AbortSignal,
-): Promise<ForwardGeocodeResult | null> {
-  const trimmed = query.trim()
-  if (trimmed.length === 0) return null
-  try {
-    const res = await authFetch(
-      `/api/geocode?q=${encodeURIComponent(trimmed)}`,
-      { signal, headers: { Accept: "application/json" } },
-    )
-    if (!res.ok) return null
-    const body = (await res.json()) as { result: ForwardGeocodeResult | null }
-    return body.result ?? null
-  } catch {
-    return null
-  }
-}
-
 /**
  * Forward-geocode but return up to `limit` matching hits. Used by
- * the location-picker autocomplete dropdown — the legacy
- * `forwardGeocode` (single-hit, no `limit` param) stays available
- * for any callsite that just wants the top match.
+ * the location-picker autocomplete dropdown.
  */
 export async function suggestForwardGeocode(
   query: string,

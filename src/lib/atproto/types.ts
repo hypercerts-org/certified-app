@@ -35,11 +35,6 @@ export function getBlobRefLink(ref: unknown): string {
   return String(ref);
 }
 
-/** Helper alias for callers that have a typed BlobRef and want to read its CID. */
-export function getBlobRefLinkFromBlob(ref: BlobRef["ref"]): string {
-  return getBlobRefLink(ref);
-}
-
 /** Matches org.hypercerts.defs#uri */
 export interface HypercertsUri {
   $type: "org.hypercerts.defs#uri";

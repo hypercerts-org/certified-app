@@ -11,7 +11,7 @@ export const metadata: Metadata = {
       "Digital Services Act compliance information for Certified, operated by the Hypercerts Foundation.",
     url: "https://certified.app/dsa",
     type: "website",
-    images: [{ url: "/assets/certified-hero-1200x630.png", width: 1200, height: 630, alt: "Certified — One account, any app" }],
+    images: [{ url: "/assets/certs-hero-1200x630.png", width: 1200, height: 630, alt: "Certified — One account, any app" }],
   },
 };
 
@@ -23,9 +23,9 @@ export default function DsaPage() {
           Digital Services Act — Compliance Information
         </h1>
 
-        <p className="text-sm text-gray-500 mb-8">Last updated: May 6, 2026</p>
+        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: May 6, 2026</p>
 
-        <div className="prose prose-navy max-w-none space-y-8">
+        <div className="prose max-w-none space-y-8">
           <section>
             <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">1. About this page</h2>
             <p>
@@ -59,7 +59,7 @@ export default function DsaPage() {
               Contact:{" "}
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 legal@hypercerts.org
               </a>
@@ -81,7 +81,7 @@ export default function DsaPage() {
               <br />
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 legal@hypercerts.org
               </a>
@@ -98,7 +98,7 @@ export default function DsaPage() {
             <p className="mt-4">
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 legal@hypercerts.org
               </a>
@@ -127,7 +127,7 @@ export default function DsaPage() {
             <p className="mt-2">
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 legal@hypercerts.org
               </a>
@@ -195,7 +195,7 @@ export default function DsaPage() {
             </h2>
             <p>
               As described in the{" "}
-              <a href="/terms" className="text-blue-600 underline hover:text-blue-800">
+              <a href="/terms" className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]">
                 Terms of Service
               </a>
               , the Hypercerts Foundation may restrict access to content or suspend accounts in
@@ -259,7 +259,7 @@ export default function DsaPage() {
             <p className="mt-4">
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 legal@hypercerts.org
               </a>

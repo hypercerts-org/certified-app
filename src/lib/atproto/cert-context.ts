@@ -230,34 +230,49 @@ async function listAndFilter(
   signal?: AbortSignal,
 ): Promise<CertContextItem[]> {
   const meta = CONTEXT_LEXICON_META[lexicon]
-  const params = new URLSearchParams({
-    repo: authorDid,
-    collection: meta.nsid,
-    limit: "50",
-    reverse: "true",
-  })
+  // Walk the cursor like the sibling readers (fetchTypedLists /
+  // listEndorsementListCollections) so we see every record on the
+  // author's PDS, not just the first page — the in-memory subject
+  // filter can otherwise miss matches that live past page one.
+  const out: CertContextItem[] = []
+  let cursor: string | undefined
+  while (true) {
+    const params = new URLSearchParams({
+      repo: authorDid,
+      collection: meta.nsid,
+      limit: "100",
+      reverse: "true",
+    })
+    if (cursor) params.set("cursor", cursor)
 
-  const res = await authFetch(
-    `/api/xrpc/com/atproto/repo/listRecords?${params.toString()}`,
-    signal ? { signal } : undefined,
-  )
-
-  if (!res.ok) {
-    // 400/404 = the repo has never written one of these. Empty list,
-    // not an error.
-    if (res.status === 400 || res.status === 404) return []
-    throw new Error(
-      `Failed to list ${meta.nsid} for ${authorDid}: ${res.status}`,
+    const res = await authFetch(
+      `/api/xrpc/com/atproto/repo/listRecords?${params.toString()}`,
+      signal ? { signal } : undefined,
     )
+
+    if (!res.ok) {
+      // 400/404 = the repo has never written one of these. Empty list,
+      // not an error.
+      if (res.status === 400 || res.status === 404) break
+      throw new Error(
+        `Failed to list ${meta.nsid} for ${authorDid}: ${res.status}`,
+      )
+    }
+
+    const data = (await res.json()) as {
+      records?: PdsListRecord[]
+      cursor?: string
+    }
+    for (const r of data.records ?? []) {
+      if (recordPointsToSubject(lexicon, r.value, subjectUri)) {
+        out.push(normalize(lexicon, r))
+      }
+    }
+    if (!data.cursor) break
+    cursor = data.cursor
   }
 
-  const data = (await res.json()) as { records?: PdsListRecord[] }
-  const records = data.records ?? []
-  const matches = records.filter((r) =>
-    recordPointsToSubject(lexicon, r.value, subjectUri),
-  )
-
-  return matches.map((r) => normalize(lexicon, r))
+  return out
 }
 
 /**

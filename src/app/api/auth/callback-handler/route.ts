@@ -27,7 +27,10 @@ export async function GET(request: NextRequest) {
     const client = await getOAuthClient()
     const { session } = await client.callback(params)
 
-    // Invalidate any existing session to prevent session fixation
+    // Invalidate any existing session to prevent session fixation.
+    // Swallowing the failure is safe: createSession below overwrites the
+    // session cookie, so a failed deleteSession can only orphan a TTL'd
+    // Redis key (which expires on its own) — not leave a fixable session.
     await deleteSession().catch((err) =>
       logSafe("[auth] old session cleanup failed", err)
     )

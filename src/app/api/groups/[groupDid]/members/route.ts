@@ -6,6 +6,7 @@ import {
 import { checkCsrf } from "@/lib/auth/csrf"
 import { isValidDid } from "@/lib/utils/did"
 import { extractRouteError, parseJsonBody } from "@/lib/utils/api"
+import { isAssignableRole } from "@/lib/groups/constants"
 
 /**
  * GET /api/groups/[groupDid]/members
@@ -74,7 +75,7 @@ export async function POST(
       )
     }
 
-    if (role && !["member", "admin"].includes(role)) {
+    if (role && !isAssignableRole(role)) {
       return NextResponse.json(
         { error: "role must be 'member' or 'admin'" },
         { status: 400 }

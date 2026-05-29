@@ -146,7 +146,14 @@ function ReceivedRow({
 
 function ReceivedEndorsementsList() {
   const { did } = useAuth()
-  const { endorsements, isLoading, error } = useReceivedEndorsements(did)
+  // This page is always the viewer's OWN management inbox (it renders
+  // Accept/Reject controls), so opt into seeing rejected awards —
+  // otherwise an already-rejected endorsement vanishes with no UI to
+  // un-reject it. §22.21 privacy is preserved: foreign viewers never
+  // reach this surface, so they never see rejected awards.
+  const { endorsements, isLoading, error } = useReceivedEndorsements(did, {
+    includeRejected: true,
+  })
   const ownStates = useOwnResponseStates()
 
   if (isLoading) {

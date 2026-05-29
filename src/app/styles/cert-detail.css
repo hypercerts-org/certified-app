@@ -2210,8 +2210,13 @@
   padding: 0 20px 20px;
 }
 
+/* Height is viewport-relative so it tracks resize / rotation while
+   the modal is open (replaces a one-shot window.innerHeight read in
+   cert-locations-map.tsx). Mirrors the old min(720, 70% viewport)
+   clamp; the inner <Map> fills this with height="100%". */
 .cert-detail__map--modal {
   width: 100%;
+  height: min(720px, 70vh);
 }
 
 /* ---------- Mobile tweaks ---------- */

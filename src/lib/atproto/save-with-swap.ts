@@ -1,5 +1,5 @@
 import { InvalidSwapError } from "@/lib/atproto/repo-write"
-import { computeDirtyFields } from "@/lib/utils/swap-drafts"
+import { computeDirtyFields, shallowEqual } from "@/lib/utils/swap-drafts"
 
 /**
  * Generic swap-aware save loop for inline-edit handlers. Wraps a
@@ -91,7 +91,16 @@ export type SaveWithSwapResult<TSnapshot> =
 
 export async function saveWithSwap<
   TSnapshot extends Record<string, unknown>,
-  TDrafts extends Record<string, unknown>,
+  // `TDrafts` MUST be a subset of `TSnapshot`'s shape: every draft key
+  // is also a snapshot key with a compatible value type. This makes
+  // the cross-shape contract the conflict-detection step relies on
+  // (quality-025) explicit at compile time — a draft carrying a key
+  // absent from `TSnapshot` is rejected here rather than silently
+  // excluded from conflict detection and auto-rebased over a
+  // concurrent server change. The invariant also holds for `read()`:
+  // its returned `value` is a full `TSnapshot`, so indexing it by a
+  // draft key below is always type-safe.
+  TDrafts extends Partial<TSnapshot>,
 >(
   opts: SaveWithSwapOptions<TSnapshot, TDrafts>,
 ): Promise<SaveWithSwapResult<TSnapshot>> {
@@ -120,15 +129,16 @@ export async function saveWithSwap<
       // user touched a field AND the fresh server value differs
       // from the mount snapshot on that same field. Disjoint
       // changes auto-rebase silently.
-      const dirty = computeDirtyFields(
-        opts.mountSnapshot as Record<string, unknown>,
-        opts.drafts as Record<string, unknown>,
+      // `TDrafts extends Partial<TSnapshot>` guarantees every draft key
+      // is a snapshot key, so the dirty set is keyed by `keyof TSnapshot`
+      // and indexing `mountSnapshot` / `fresh.value` (both `TSnapshot`)
+      // by those keys is type-safe without casts.
+      const dirty = computeDirtyFields<Partial<TSnapshot>>(
+        opts.mountSnapshot,
+        opts.drafts,
       ) as (keyof TSnapshot)[]
       const conflictingFields = dirty.filter((key) => {
-        return !shallowEqual(
-          opts.mountSnapshot[key],
-          (fresh.value as Record<string, unknown>)[key as string],
-        )
+        return !shallowEqual(opts.mountSnapshot[key], fresh.value[key])
       })
 
       if (conflictingFields.length > 0) {
@@ -151,16 +161,4 @@ export async function saveWithSwap<
   // Unreachable — the while-loop's exit conditions above always
   // return. Belt-and-suspenders.
   return { ok: false, reason: "livelock", attempts }
-}
-
-function shallowEqual(a: unknown, b: unknown): boolean {
-  if (a === b) return true
-  if (a == null || b == null) return false
-  if (typeof a !== typeof b) return false
-  if (typeof a !== "object") return false
-  try {
-    return JSON.stringify(a) === JSON.stringify(b)
-  } catch {
-    return false
-  }
 }

@@ -42,6 +42,7 @@ import LocationPickerDialog, {
 import type { HypercertsSmallImage } from "@/lib/atproto/types"
 import type { StrongRef } from "@/lib/atproto/location"
 import { usePageTitle } from "@/lib/navbar-context"
+import { countGraphemes } from "@/lib/utils/graphemes"
 
 /**
  * `/create` — new cert. Mirrors the visual language of the cert detail
@@ -271,22 +272,6 @@ export default function CreatePage() {
     return () => controller.abort()
   }, [])
 
-  // Grapheme counter — the lexicon caps shortDescription at 300
-  // graphemes (not bytes). Intl.Segmenter is the right tool;
-  // older browsers fall back to `Array.from(str).length` which
-  // counts code points (close enough at the 300-cap range and
-  // never overestimates). Reused for the title counter too so
-  // both fields count "visible characters" rather than raw code
-  // units — emoji + grapheme clusters then count as one.
-  const countGraphemes = useCallback((s: string): number => {
-    if (typeof Intl !== "undefined" && "Segmenter" in Intl) {
-      const seg = new Intl.Segmenter(undefined, { granularity: "grapheme" })
-      let count = 0
-      for (const _ of seg.segment(s)) count++
-      return count
-    }
-    return Array.from(s).length
-  }, [])
   const titleCount = countGraphemes(title)
   const shortDescCount = countGraphemes(shortDescription)
   // Lexicon caps: title.maxLength = 256 (bytes), shortDescription
@@ -326,11 +311,24 @@ export default function CreatePage() {
     // Route the blob upload to the group's repo when the active
     // identity is a group; otherwise the user's own.
     const targetDid = activeOrg ? activeOrg.groupDid : null
-    const blob = await uploadBlob(
-      file,
-      targetDid ? { targetDid } : undefined,
-    )
-    setPendingImageBlob(blob)
+    try {
+      const blob = await uploadBlob(
+        file,
+        targetDid ? { targetDid } : undefined,
+      )
+      setPendingImageBlob(blob)
+    } catch (err) {
+      // Surface the failure and clear the dangling optimistic preview so
+      // the form can't be published with an image that never uploaded.
+      setError(
+        err instanceof Error ? err.message : "Image upload failed",
+      )
+      setPendingImageBlob(null)
+      setPendingImagePreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev)
+        return null
+      })
+    }
   }, [activeOrg])
 
   const handleImageRemove = useCallback(() => {

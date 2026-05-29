@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react"
 import { resolveHandleToDid } from "@/lib/atproto/did"
+import { useClickOutsideClose } from "@/hooks/use-click-outside-close"
 import { parseSubjectInput } from "@/lib/utils/parse-subject-input"
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import Avatar from "@/components/ui/avatar"
@@ -115,28 +116,8 @@ export default function EndorsementLists({
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
-  const sortBtnRef = useRef<HTMLButtonElement>(null)
-  const sortMenuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!sortOpen) return
-    const onMouseDown = (e: MouseEvent) => {
-      const t = e.target
-      if (!(t instanceof Node)) return
-      if (sortBtnRef.current?.contains(t)) return
-      if (sortMenuRef.current?.contains(t)) return
-      setSortOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSortOpen(false)
-    }
-    document.addEventListener("mousedown", onMouseDown)
-    document.addEventListener("keydown", onKey)
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown)
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [sortOpen])
+  const sortWrapRef = useRef<HTMLDivElement>(null)
+  useClickOutsideClose(sortOpen, sortWrapRef, () => setSortOpen(false))
 
   const sortedLists = useMemo(() => sortLists(lists, sort), [lists, sort])
   const selectedList = useMemo(
@@ -290,9 +271,8 @@ export default function EndorsementLists({
           ) : null}
         </h2>
         <div className="endorsement-lists__actions">
-          <div className="endorsement-lists__sort-wrap">
+          <div className="endorsement-lists__sort-wrap" ref={sortWrapRef}>
             <button
-              ref={sortBtnRef}
               type="button"
               className="endorsement-lists__sort-btn"
               onClick={() => setSortOpen((v) => !v)}
@@ -305,7 +285,6 @@ export default function EndorsementLists({
             </button>
             {sortOpen ? (
               <div
-                ref={sortMenuRef}
                 className="endorsement-lists__sort-menu"
                 role="menu"
               >
@@ -1283,14 +1262,21 @@ function PasteSubjectsModal({
 
 // ----------------------------- Sort util -----------------------------
 
-function sortLists(lists: EndorsementList[], sort: SortKey): EndorsementList[] {
+/** Exported for unit tests. Three-way `compareString` keeps the
+ *  createdAt sort stable: equal timestamps return 0, so same-second
+ *  lists preserve their incoming order instead of shuffling between
+ *  renders (quality-046). */
+export function sortLists(
+  lists: EndorsementList[],
+  sort: SortKey,
+): EndorsementList[] {
   const out = lists.slice()
   switch (sort) {
     case "created-desc":
-      out.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
+      out.sort((a, b) => compareString(b.createdAt, a.createdAt))
       break
     case "created-asc":
-      out.sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
+      out.sort((a, b) => compareString(a.createdAt, b.createdAt))
       break
     case "alpha-asc":
       out.sort((a, b) => a.title.localeCompare(b.title))
@@ -1300,4 +1286,8 @@ function sortLists(lists: EndorsementList[], sort: SortKey): EndorsementList[] {
       break
   }
   return out
+}
+
+function compareString(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0
 }

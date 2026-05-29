@@ -157,7 +157,7 @@ export function computeDirtyFields<T extends Record<string, unknown>>(
  * caller's discretion; this helper treats them as opaque (returns
  * `false` for object identity mismatch which means "changed").
  */
-function shallowEqual(a: unknown, b: unknown): boolean {
+export function shallowEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true
   if (a == null || b == null) return false
   if (typeof a !== typeof b) return false

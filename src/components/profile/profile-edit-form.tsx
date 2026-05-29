@@ -383,9 +383,16 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                   validateDisplayName(e.target.value);
                 }}
                 aria-invalid={displayNameError ? true : undefined}
+                aria-describedby={
+                  displayNameError ? `${displayNameId}-error` : undefined
+                }
               />
               {displayNameError ? (
-                <p className="pe__field-error" role="alert">
+                <p
+                  id={`${displayNameId}-error`}
+                  className="pe__field-error"
+                  role="alert"
+                >
                   {displayNameError}
                 </p>
               ) : null}
@@ -411,9 +418,16 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                     validatePronouns(e.target.value);
                   }}
                   aria-invalid={pronounsError ? true : undefined}
+                  aria-describedby={
+                    pronounsError ? `${pronounsId}-error` : undefined
+                  }
                 />
                 {pronounsError ? (
-                  <p className="pe__field-error" role="alert">
+                  <p
+                    id={`${pronounsId}-error`}
+                    className="pe__field-error"
+                    role="alert"
+                  >
                     {pronounsError}
                   </p>
                 ) : null}
@@ -457,9 +471,16 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                 validateDescription(e.target.value);
               }}
               aria-invalid={descriptionError ? true : undefined}
+              aria-describedby={
+                descriptionError ? `${descriptionId}-error` : undefined
+              }
             />
             {descriptionError ? (
-              <p className="pe__field-error" role="alert">
+              <p
+                id={`${descriptionId}-error`}
+                className="pe__field-error"
+                role="alert"
+              >
                 {descriptionError}
               </p>
             ) : null}
@@ -495,13 +516,22 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                 validateWebsite(e.target.value);
               }}
               aria-invalid={websiteError ? true : undefined}
+              aria-describedby={
+                websiteError ? `${websiteId}-error` : `${websiteId}-help`
+              }
             />
             {websiteError ? (
-              <p className="pe__field-error" role="alert">
+              <p
+                id={`${websiteId}-error`}
+                className="pe__field-error"
+                role="alert"
+              >
                 {websiteError}
               </p>
             ) : (
-              <p className="pe__field-help">Include https://.</p>
+              <p id={`${websiteId}-help`} className="pe__field-help">
+                Include https://.
+              </p>
             )}
           </div>
         </div>
@@ -538,6 +568,10 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                           value={row.url}
                           placeholder="https://example.com"
                           aria-label="URL"
+                          aria-invalid={row.error ? true : undefined}
+                          aria-describedby={
+                            row.error ? `${row.id}-error` : undefined
+                          }
                           onChange={(e) =>
                             updateUrlRow(row.id, { url: e.target.value })
                           }
@@ -563,7 +597,11 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                         </button>
                       </div>
                       {row.error ? (
-                        <p className="pe__field-error" role="alert">
+                        <p
+                          id={`${row.id}-error`}
+                          className="pe__field-error"
+                          role="alert"
+                        >
                           {row.error}
                         </p>
                       ) : null}

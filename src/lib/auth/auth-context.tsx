@@ -23,13 +23,14 @@ import {
 
 /**
  * Validate and navigate to a URL returned by the auth API.
- * Only allows https: URLs (and http: in development). Prevents protocol injection.
+ * Only allows https: URLs (and http: outside production, i.e. dev/test).
+ * Prevents protocol injection.
  * Note: this intentionally allows cross-origin redirects because the OAuth flow
  * redirects to external PDS authorization servers.
  */
 const safeRedirect = (url: string) => {
   const parsed = new URL(url);
-  const allowHttp = process.env.NODE_ENV === "development";
+  const allowHttp = process.env.NODE_ENV !== "production";
   if (parsed.protocol !== "https:" && !(allowHttp && parsed.protocol === "http:")) {
     throw new Error("Invalid redirect URL");
   }

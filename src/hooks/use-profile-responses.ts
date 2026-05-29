@@ -173,18 +173,28 @@ export function useProfileResponses(did: string | null): UseProfileResponsesResu
     return () => controller.abort()
   }, [did])
 
-  // Window-focus revalidate when stale.
+  // Window-focus revalidate when stale. The focus fetch gets its own
+  // ref'd AbortController so it's actually cancellable — aborted on the
+  // next focus and on effect cleanup/unmount, so loadInto's
+  // `if (signal?.aborted)` guard can fire instead of being dead code
+  // (quality-032).
   useEffect(() => {
+    let focusController: AbortController | null = null
     const onFocus = () => {
       const target = didRef.current
       if (!target) return
       const c = store.get(target)
       if (!c || Date.now() - c.fetchedAt >= STALE_MS) {
-        loadInto(target)
+        focusController?.abort()
+        focusController = new AbortController()
+        loadInto(target, focusController.signal)
       }
     }
     window.addEventListener("focus", onFocus)
-    return () => window.removeEventListener("focus", onFocus)
+    return () => {
+      window.removeEventListener("focus", onFocus)
+      focusController?.abort()
+    }
   }, [])
 
   const refetch = useCallback(async () => {

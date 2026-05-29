@@ -272,6 +272,28 @@ describe("/api/indexer trust boundary", () => {
       expect(res.status).toBe(413)
       expect(mockFetch).not.toHaveBeenCalled()
     })
+
+    it("returns 413 when UTF-8 byte size exceeds MAX_BODY_SIZE despite a smaller UTF-16 length", async () => {
+      // quality-017: the cap is documented as 32KB *bytes*, but the
+      // post-read check used `text.length` (UTF-16 code units). A body
+      // of multi-byte characters can stay under 32768 code units while
+      // carrying ~3x that many bytes. Each "あ" is 1 UTF-16 unit but 3
+      // UTF-8 bytes, so this body is ~11KB by `.length` but ~33KB on
+      // the wire — over the cap. No Content-Length header is set here
+      // (the helper builds a Request whose body is a stream), so the
+      // pre-read header check is skipped and this exercises the
+      // post-read byte check directly.
+      const multibyte = "あ".repeat(11_000)
+      const body = JSON.stringify({
+        operationName: "Activities",
+        variables: { search: multibyte },
+      })
+      expect(body.length).toBeLessThan(32 * 1024)
+      expect(Buffer.byteLength(body, "utf8")).toBeGreaterThan(32 * 1024)
+      const res = await postIndexer(body)
+      expect(res.status).toBe(413)
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
   })
 
   describe("upstream forwarding", () => {

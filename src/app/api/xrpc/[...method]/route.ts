@@ -96,7 +96,7 @@ const SAME_SESSION_LIST_HEADERS = {
 } as const
 
 /** Extract a usable HTTP status + message from an unknown XRPC error. */
-function xrpcError(err: unknown): {
+export function xrpcError(err: unknown): {
   status: number
   message: string
   code?: string
@@ -106,9 +106,18 @@ function xrpcError(err: unknown): {
   }
   const e = err as Record<string, unknown>
   const statusRaw = typeof e.status === "number" ? e.status : e.statusCode
-  const status = typeof statusRaw === "number" ? statusRaw : 500
+  const statusNum = typeof statusRaw === "number" ? statusRaw : 500
+  // Clamp to the valid HTTP range. An upstream status of 0, a negative
+  // number, >599, or a non-integer would throw a RangeError when passed
+  // straight to NextResponse.json(..., { status }) — surfacing an opaque
+  // framework 500 instead of our masked error. Mirrors clampHttpStatus
+  // in src/lib/utils/api.ts.
+  const status =
+    Number.isInteger(statusNum) && statusNum >= 200 && statusNum <= 599
+      ? statusNum
+      : 500
   const rawMessage = asString(e.message)
-  const message = status >= 500 || !rawMessage ? "Internal server error" : rawMessage
+  const message = status >= 500 || !rawMessage ? "Internal server error" : redactSecrets(rawMessage)
   // Preserve the atproto error discriminator (`InvalidSwap`,
   // `RecordNotFound`, etc.) so the client can branch on it
   // without re-parsing a localised human-readable string. The

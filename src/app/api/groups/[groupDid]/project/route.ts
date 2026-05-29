@@ -268,8 +268,15 @@ export async function PUT(
     }
     return NextResponse.json(ref)
   } catch (err: unknown) {
-    const { status, message } = extractRouteError(err)
-    return NextResponse.json({ error: message }, { status })
+    // Preserve the atproto error discriminator (`InvalidSwap`, …) in
+    // `code` so the client write seam re-raises the typed error and
+    // its conflict-rebase machinery runs — bug-003. The redacted
+    // `message` is localised and never equals the discriminator.
+    const { status, message, code } = extractRouteError(err)
+    return NextResponse.json(
+      { error: message, ...(code ? { code } : {}) },
+      { status },
+    )
   }
 }
 
@@ -322,7 +329,14 @@ export async function DELETE(
     )
     return NextResponse.json({ ok: true })
   } catch (err: unknown) {
-    const { status, message } = extractRouteError(err)
-    return NextResponse.json({ error: message }, { status })
+    // Preserve the atproto error discriminator (`InvalidSwap`, …) in
+    // `code` so the client write seam re-raises the typed error and
+    // its conflict-rebase machinery runs — bug-003. The redacted
+    // `message` is localised and never equals the discriminator.
+    const { status, message, code } = extractRouteError(err)
+    return NextResponse.json(
+      { error: message, ...(code ? { code } : {}) },
+      { status },
+    )
   }
 }

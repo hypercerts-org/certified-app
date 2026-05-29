@@ -30,6 +30,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       size = "md",
       loading = false,
       disabled,
+      type = "button",
       className = "",
       children,
       ...props
@@ -63,12 +64,15 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         ref={ref}
+        type={type}
         disabled={disabled || loading}
         className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${disabledStyles} ${className}`}
         {...props}
       >
         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-        {children}
+        {/* For icon-size, the 40x40 slot fits one glyph: while loading, show
+            only the spinner so it doesn't overlap the icon child. */}
+        {!(loading && size === "icon") && children}
       </button>
     );
   }
