@@ -189,4 +189,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (new CI config file, testable=false) — full suite green
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-010 — tsconfig excludes test files from tsc · IMPLEMENTED
+- **Why it's an improvement:** The main tsc gate never type-checked the 33 `__tests__` files, so tests could call renamed/removed exports and still report "0 errors"; a dedicated test typecheck makes those errors visible.
+- **Change:** Added `tsconfig.test.json` (extends base, un-excludes `src/**/__tests__/**`) and a `typecheck:test` npm script; the main `tsconfig.json` exclude is left intact so `npx tsc --noEmit` stays the 0-error production gate. Per the coordination note, the new step surfaces 12 pre-existing test-file type errors (across 6 files) that quality-009's CI should triage before gating on it.
+- **Test:** refactor; no natural test (config + npm script, testable=false) — full suite green
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
