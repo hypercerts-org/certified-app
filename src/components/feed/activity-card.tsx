@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { memo, useEffect, useState } from "react"
 import Link from "next/link"
 import CertIcon from "@/components/ui/cert-icon"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
@@ -18,7 +18,10 @@ interface ActivityCardProps {
   label?: LabelValue
 }
 
-export default function ActivityCard({ record, did, label }: ActivityCardProps) {
+// Memoized: loadMore replaces the activities array with a new identity, so
+// every prior card would otherwise re-render. Props are stable per URI, so
+// React.memo lets unchanged cards bail out of reconciliation on long lists.
+function ActivityCard({ record, did, label }: ActivityCardProps) {
   const { value } = record
 
   const imageUrl = value.image
@@ -103,3 +106,5 @@ export default function ActivityCard({ record, did, label }: ActivityCardProps) 
     </article>
   )
 }
+
+export default memo(ActivityCard)

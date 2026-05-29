@@ -420,4 +420,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/components/feed/__tests__/activity-card-image-reset.test.tsx — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-055 — ActivityCard not memoized; loadMore re-renders all cards · IMPLEMENTED
+- **Why it's an improvement:** loadMore swaps the activities array identity, so prior cards re-rendered needlessly; memoizing lets unchanged cards bail out on long lists.
+- **Change:** Wrapped the default-exported ActivityCard in React.memo (props are stable per URI).
+- **Test:** refactor; no natural test — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
