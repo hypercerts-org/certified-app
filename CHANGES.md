@@ -177,4 +177,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test — full suite green
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-051 — FeedLayout stale doc comments · IMPLEMENTED
+- **Why it's an improvement:** JSDoc now names the real consumers instead of phantom GlobalFeed/PersonalFeed/UserFeed components that no longer exist, so future readers aren't misled.
+- **Change:** Rewrote the FeedLayout component JSDoc and the getDid prop comment to reference profile-certs and project-detail; dropped the non-existent feed-source names.
+- **Test:** refactor; no natural test — full suite green
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
