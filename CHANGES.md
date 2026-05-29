@@ -522,4 +522,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (filter never active today) — full suite green
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings (1 pre-existing error in untouched onboarding-context.tsx, unchanged by this commit)
 
+### quality-056-explore-3 — Sort + quality popover triggers expose aria-haspopup · IMPLEMENTED
+- **Why it's an improvement:** Screen readers now learn the Sort and quality-filter buttons open a popup, matching the sibling sub-prefix dropdown trigger (and home-feed menus) that already announce one.
+- **Change:** Added `aria-haspopup="menu"` to the Sort trigger (explore.tsx ~671) and the quality-filter trigger (~726), the only two popover triggers in the file that lacked it.
+- **Test:** src/components/explore-page/__tests__/explore-popover-haspopup.test.tsx — fails before, passes after
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings (1 pre-existing error in untouched onboarding-context.tsx, unchanged by this commit)
+
 <!-- PHASE2-LOG-APPEND-POINT -->

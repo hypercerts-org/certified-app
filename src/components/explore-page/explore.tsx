@@ -668,6 +668,7 @@ export default function Explore() {
                     className="explore__chrome-btn"
                     onClick={() => setSortOpen((v) => !v)}
                     aria-expanded={sortOpen}
+                    aria-haspopup="menu"
                   >
                     <ArrowUpDown
                       size={13}
@@ -723,6 +724,7 @@ export default function Explore() {
                       }`}
                       onClick={() => setQualityOpen((v) => !v)}
                       aria-expanded={qualityOpen}
+                      aria-haspopup="menu"
                       aria-label={`Filter by quality${
                         (kind === "certs" && !qualityIsDefault) ||
                         !orgQualityIsDefault
