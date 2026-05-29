@@ -4,7 +4,7 @@ export default function ProviderRedirectOverlay() {
   return (
     <div
       className="loading-screen"
-      style={{ position: "fixed", inset: 0, zIndex: 9999 }}
+      style={{ position: "fixed", inset: 0, zIndex: "var(--z-skip-nav)" }}
     >
       <div className="loading-screen__inner">
         <Brandmark title="" className="loading-screen__logo" />

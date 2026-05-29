@@ -498,4 +498,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (testable=false) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings (pre-existing baseline error in onboarding-context.tsx, untouched)
 
+### quality-056-ui-primitives-2 — ProviderRedirectOverlay hardcodes zIndex:9999 · IMPLEMENTED
+- **Why it's an improvement:** Removes a literal z-index (CLAUDE.md rule 5) and ties the overlay's stacking to the shared scale, so future z-index reshuffles stay coherent.
+- **Change:** Replaced `zIndex: 9999` with `zIndex: "var(--z-skip-nav)"` in provider-redirect-overlay.tsx (9999 is exactly the `--z-skip-nav` token value — behavior-preserving).
+- **Test:** refactor; no natural test (testable=false) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings (pre-existing baseline error in onboarding-context.tsx, untouched)
+
 <!-- PHASE2-LOG-APPEND-POINT -->
