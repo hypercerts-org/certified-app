@@ -468,4 +468,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/lib/utils/__tests__/graphemes.test.ts — fails before (module missing), passes after; asserts ASCII / multi-code-unit emoji / ZWJ sequence / combining-mark single-grapheme counting.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-056-cert-6 — Extract own-certs quick-pick fetch into useOwnCerts · IMPLEMENTED
+- **Why it's an improvement:** Removes a ~55-line listRecords fetch effect copied verbatim between /project/new and the project edit page — one shared hook means the quick-pick fetch (collection, sort, best-effort error handling, abort) lives in a single place.
+- **Change:** Added `src/hooks/use-own-certs.ts` exporting `useOwnCerts(did)` (reads `activeOrg` via useOrg internally, same source-DID logic), and replaced the local ownCerts state + fetch useEffect in both project pages with the hook call. Behavior-preserving.
+- **Test:** refactor; no natural test (testable=false) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
