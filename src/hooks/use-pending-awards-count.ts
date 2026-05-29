@@ -59,7 +59,7 @@ export function usePendingAwardsCount(): number | null {
     return () => window.removeEventListener("focus", onFocus)
   }, [did])
 
-  if (!isAuthenticated || !did) return 0
+  if (!isAuthenticated || !did) return null
   if (!scanResult || respLoading) return null
 
   let count = 0

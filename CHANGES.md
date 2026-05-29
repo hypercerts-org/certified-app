@@ -309,4 +309,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (testable: false) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-038 — usePendingAwardsCount returns 0 not null when logged out · IMPLEMENTED
+- **Why it's an improvement:** Aligns the hook with its JSDoc contract so a future consumer that distinguishes null (hide) from 0 (loaded-but-empty) won't misbehave.
+- **Change:** The logged-out / no-did early return now yields `null` instead of `0`, matching the cold-cache and loading branches.
+- **Test:** src/hooks/__tests__/use-pending-awards-count-logged-out.test.tsx — fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
