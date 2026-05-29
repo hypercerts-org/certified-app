@@ -402,4 +402,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/app/api/indexer/__tests__/route.test.ts — new case posts >32KB of multi-byte chars with no Content-Length and asserts 413; fails before (200), passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-008 — Popover content uses --z-popover token, not z-[40] · IMPLEMENTED
+- **Why it's an improvement:** Restores token-driven stacking so re-tiering the z-map can't silently break every popover consumer (CLAUDE.md hard rule 5).
+- **Change:** Swapped the hardcoded `z-[40]` for `z-[var(--z-popover)]` in `PopoverContent`'s className.
+- **Test:** refactor; no natural test — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->

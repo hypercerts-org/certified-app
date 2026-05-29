@@ -176,7 +176,7 @@ export function PopoverContent({
       ref={contentRef}
       id={contentId}
       role="menu"
-      className={`absolute top-full z-[40] mt-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded shadow-md p-1 ${alignClass[align]} ${className}`}
+      className={`absolute top-full z-[var(--z-popover)] mt-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded shadow-md p-1 ${alignClass[align]} ${className}`}
       style={{ minWidth, marginTop: offset, ...style }}
       {...props}
     >
