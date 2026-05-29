@@ -171,4 +171,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-050 — LocationCard dead code · IMPLEMENTED
+- **Why it's an improvement:** Removes an unused component and fixes a comment that referenced it, reducing dead code and doc drift.
+- **Change:** Deleted src/components/feed/location-card.tsx and dropped the stale `+ LocationCard` mention from the doc comment in cert-locations-map.tsx.
+- **Test:** refactor; no natural test — full suite green
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->

@@ -77,8 +77,8 @@ interface ResolvedLocation {
  * silently.
  *
  * We reuse the existing Leaflet-based map at `@/components/map/map`
- * (already pulled in by the activity-creation flow + LocationCard) so
- * this doesn't add a new dependency.
+ * (already pulled in by the activity-creation flow) so this doesn't
+ * add a new dependency.
  */
 export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
   const [resolved, setResolved] = useState<ResolvedLocation[]>([])
