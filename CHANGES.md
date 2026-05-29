@@ -438,4 +438,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (testable=no) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-056-auth-redirect-1 — safeRedirect http: gate matches module's !=="production" · IMPLEMENTED
+- **Why it's an improvement:** http loopback redirects no longer fail-closed under NODE_ENV="test"; gate now matches the rest of the module (still https-only in prod).
+- **Change:** `safeRedirect` http: allowance changed from `NODE_ENV === "development"` to `NODE_ENV !== "production"` (and aligned the doc comment).
+- **Test:** src/lib/auth/__tests__/safe-redirect-test-env.test.tsx — fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
