@@ -165,4 +165,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (testable=false; pure dead-code deletion) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-049 — CertHeadlineByline dead — delete · IMPLEMENTED
+- **Why it's an improvement:** Removes dead, unimported code that duplicates author-byline logic now living inline in ActivityDetail (CertHeadlineColumns).
+- **Change:** Deleted src/components/feed/cert-headline-byline.tsx (0 importers; shared CSS classes left intact as they're used by activity-detail.tsx).
+- **Test:** refactor; no natural test — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
