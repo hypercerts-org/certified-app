@@ -20,6 +20,13 @@ export interface EndorseReasonConfirmDeps {
   listRkey: string | null
   /** Creates the endorsement award; resolves to its strong ref. */
   createAward: (note: string) => Promise<{ uri: string; cid: string }>
+  /**
+   * Optional hook fired the instant the award lands (before the given-set
+   * refetch and any list-append). PR #110 uses it to push the award into
+   * the shared received-endorsements optimistic overlay so the subject's
+   * counter and Received tab update immediately. Never throws the flow.
+   */
+  onAwardCreated?: (award: { uri: string; cid: string }) => void
   /** Appends the award to the chosen list. May throw on conflict. */
   appendToList: (
     listRkey: string,
@@ -40,6 +47,7 @@ export async function runEndorseReasonConfirm(
     note,
     listRkey,
     createAward,
+    onAwardCreated,
     appendToList,
     refetchGiven,
     refetchLists,
@@ -57,6 +65,12 @@ export async function runEndorseReasonConfirm(
     setOptimistic(null)
     throw err
   }
+
+  // The award is authoritative the moment it lands. Surface it to the
+  // shared received-overlay (if wired) before anything that can throw,
+  // so the subject's counter/Received tab update even if the optional
+  // list-append below fails.
+  onAwardCreated?.(award)
 
   // The award succeeded and is now authoritative. Refetch the given set
   // BEFORE the optional list-append so a failing append can't snap the

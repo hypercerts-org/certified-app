@@ -96,4 +96,38 @@ describe("runEndorseReasonConfirm", () => {
     expect(deps.refetchLists).not.toHaveBeenCalled()
     expect(deps.setOptimistic).not.toHaveBeenCalledWith(null)
   })
+
+  // PR #110: the sidebar pushes the new award into the shared
+  // received-endorsements overlay the instant it lands, via onAwardCreated.
+  it("fires onAwardCreated with the award before the given-set refetch", async () => {
+    const order: string[] = []
+    const deps = makeDeps({
+      onAwardCreated: vi.fn(() => {
+        order.push("onAwardCreated")
+      }),
+      refetchGiven: vi.fn(async () => {
+        order.push("refetchGiven")
+      }),
+    })
+
+    await runEndorseReasonConfirm(deps)
+
+    expect(deps.onAwardCreated).toHaveBeenCalledTimes(1)
+    expect(deps.onAwardCreated).toHaveBeenCalledWith(award)
+    // The optimistic overlay push must happen before the refetch so the
+    // counter/Received tab update immediately, not after the slow scan.
+    expect(order).toEqual(["onAwardCreated", "refetchGiven"])
+  })
+
+  it("does not fire onAwardCreated when the award itself fails", async () => {
+    const deps = makeDeps({
+      createAward: vi.fn(async () => {
+        throw new Error("award failed")
+      }),
+      onAwardCreated: vi.fn(),
+    })
+
+    await expect(runEndorseReasonConfirm(deps)).rejects.toThrow("award failed")
+    expect(deps.onAwardCreated).not.toHaveBeenCalled()
+  })
 })

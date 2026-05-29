@@ -126,6 +126,10 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
   >("hide-rejected")
   const [filterOpen, setFilterOpen] = useState(false)
 
+  // The optimistic overlay now lives in `useReceivedEndorsements` itself
+  // (a shared module store), so `received.endorsements` already reflects
+  // the viewer's own Endorse/Revoke action issued from the sidebar — no
+  // component-local overlay needed here.
   const displayReceived = received.endorsements
 
   // Owner-only response filter on top of `displayReceived`. Foreign

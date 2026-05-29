@@ -29,7 +29,11 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { useFollowing } from "@/hooks/use-following"
 import { useFollowers } from "@/hooks/use-followers"
 import { useGivenEndorsements } from "@/hooks/use-endorsements"
-import { useReceivedEndorsements } from "@/hooks/use-received-endorsements"
+import {
+  useReceivedEndorsements,
+  addOptimisticReceivedEndorsement,
+  removeOptimisticReceivedEndorsement,
+} from "@/hooks/use-received-endorsements"
 import { useEndorsementLists } from "@/hooks/use-endorsement-lists"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import EndorseReasonModal from "@/components/profile/endorse-reason-modal"
@@ -825,6 +829,19 @@ function EndorseButton({ viewerDid, subjectDid }: EndorseButtonProps) {
         note,
         listRkey,
         createAward: (n) => createEndorsementAward(viewerDid, subjectDid, n),
+        // PR #110: as soon as the award lands, push it into the shared
+        // received-endorsements overlay so the subject's "Endorsed by N"
+        // counter and the Endorsements tab reflect it immediately, ahead
+        // of the 5-min scan cache / indexer catching up.
+        onAwardCreated: (award) =>
+          addOptimisticReceivedEndorsement(subjectDid, {
+            uri: award.uri,
+            cid: award.cid,
+            issuerDid: viewerDid,
+            createdAt: new Date().toISOString(),
+            note: note || undefined,
+            responseState: null,
+          }),
         appendToList: (rkey, award) => appendItemToList(viewerDid, rkey, award),
         refetchGiven: () => ownGiven.refetch(),
         refetchLists: () => ownLists.refetch(),
@@ -847,6 +864,7 @@ function EndorseButton({ viewerDid, subjectDid }: EndorseButtonProps) {
     setIsWriting(true)
     try {
       await deleteEndorsementAward(viewerDid, existing.rkey)
+      removeOptimisticReceivedEndorsement(subjectDid, existing.uri)
       await ownGiven.refetch()
       setConfirmRevoke(false)
     } catch (err) {
