@@ -56,6 +56,23 @@ const ALLOWED_BLOB_CONTENT_TYPES = [
 
 const MAX_BLOB_SIZE = 4 * 1024 * 1024 // 4MB — Vercel serverless functions have a ~4.5MB request body limit
 
+// Ceiling for foreign-DID blob reads. An allowlisted-but-hostile PDS
+// could otherwise stream an arbitrarily large body for an attacker-
+// chosen DID's CID through our proxy. We only short-circuit on a
+// declared Content-Length over this cap; a missing/lying length is
+// out of scope (we don't wrap the stream to count bytes).
+const MAX_FOREIGN_BLOB_SIZE = 10 * 1024 * 1024 // 10MB
+
+/**
+ * Fixed Cache-Control for foreign-DID blob reads. CIDs are content-
+ * addressed and immutable, so we own the directive rather than
+ * forwarding the upstream PDS's (which an attacker-chosen, hostile
+ * PDS controls). Mirrors the FOREIGN_READ_CACHE_HEADERS pattern.
+ */
+const FOREIGN_BLOB_CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=3600, immutable",
+} as const
+
 function asString(v: unknown): string | undefined {
   return typeof v === "string" ? v : undefined
 }
@@ -356,12 +373,26 @@ export async function GET(
                 { status: upstream.status }
               )
             }
+            // Trust posture: short-circuit a *declared* oversize before
+            // streaming. A missing/lying Content-Length is out of scope
+            // (we don't wrap the stream to enforce the cap byte-by-byte).
+            const upstreamLength = upstream.headers.get("content-length")
+            if (
+              upstreamLength &&
+              Number(upstreamLength) > MAX_FOREIGN_BLOB_SIZE
+            ) {
+              return NextResponse.json(
+                { error: "Payload too large" },
+                { status: 413 }
+              )
+            }
             return new NextResponse(upstream.body, {
               status: 200,
               headers: {
                 "Content-Type":
                   upstream.headers.get("content-type") || "application/octet-stream",
-                "Cache-Control": upstream.headers.get("cache-control") || "public, max-age=3600",
+                // Server-controlled directive — don't forward upstream's.
+                ...FOREIGN_BLOB_CACHE_HEADERS,
                 "X-Content-Type-Options": "nosniff",
                 "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
               },
