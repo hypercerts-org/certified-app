@@ -588,4 +588,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (testable=false) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 67 warnings
 
+### quality-056-approot-global-error-tokens — global-error.tsx radius 6px → 2px + justifying comment · IMPLEMENTED
+- **Why it's an improvement:** Brings the root error boundary's radius into visual parity with `var(--radius)` (2px) and documents why tokens are intentionally inlined there.
+- **Change:** Changed both `borderRadius: "6px"` to `"2px"` in global-error.tsx and added a comment noting tokens (and the CSS-token stylesheet) are unavailable in the root error boundary, justifying the inline raw hex.
+- **Test:** refactor; no natural test (testable=false; root error boundary, behavior-preserving) — full suite green
+- **Gate:** vitest green · tsc 0 errors · lint 67 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
