@@ -207,4 +207,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-020 — lint script `--ext` no-op under flat config · IMPLEMENTED
+- **Why it's an improvement:** Removes a dead/misleading flag that does nothing under ESLint 9 flat config, where file selection is governed by `files`/`ignores`.
+- **Change:** Changed the `lint` script in package.json from `eslint src/ --ext .ts,.tsx` to `eslint src/`.
+- **Test:** refactor; no natural test — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
