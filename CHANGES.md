@@ -159,4 +159,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (testable=false; pure dead-code deletion) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-011 — Dead exports in workspace.ts · IMPLEMENTED
+- **Why it's an improvement:** removes never-imported public API, including a `@deprecated` function carrying a known filter-inversion bug, shrinking the surface callers can misuse.
+- **Change:** deleted `fetchOrganizationDids`, the `@deprecated fetchOrganizationDidsForSet`, and the now-unused `OrganizationDidsGraphQLResponse` type (all zero importers).
+- **Test:** refactor; no natural test (testable=false; pure dead-code deletion) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
