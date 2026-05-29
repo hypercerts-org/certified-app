@@ -345,4 +345,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/components/profile/__tests__/project-item-row.test.tsx — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-044 — replace hand-rolled outside-click/Escape with useClickOutsideClose · IMPLEMENTED
+- **Why it's an improvement:** Removes three duplicated mousedown/keydown effects in favor of the shared hook, gaining its onClose-ref optimization (no listener re-attach on re-render).
+- **Change:** Replaced the inline outside-click + Escape effects in profile-endorsements.tsx (sort + filter dropdowns) and endorsement-lists.tsx (sort dropdown) with `useClickOutsideClose` anchored on each existing `*__sort-wrap` div.
+- **Test:** refactor; no natural test — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->

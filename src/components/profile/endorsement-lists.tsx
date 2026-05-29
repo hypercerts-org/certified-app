@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react"
 import { resolveHandleToDid } from "@/lib/atproto/did"
+import { useClickOutsideClose } from "@/hooks/use-click-outside-close"
 import { parseSubjectInput } from "@/lib/utils/parse-subject-input"
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import Avatar from "@/components/ui/avatar"
@@ -115,28 +116,8 @@ export default function EndorsementLists({
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
-  const sortBtnRef = useRef<HTMLButtonElement>(null)
-  const sortMenuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!sortOpen) return
-    const onMouseDown = (e: MouseEvent) => {
-      const t = e.target
-      if (!(t instanceof Node)) return
-      if (sortBtnRef.current?.contains(t)) return
-      if (sortMenuRef.current?.contains(t)) return
-      setSortOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSortOpen(false)
-    }
-    document.addEventListener("mousedown", onMouseDown)
-    document.addEventListener("keydown", onKey)
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown)
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [sortOpen])
+  const sortWrapRef = useRef<HTMLDivElement>(null)
+  useClickOutsideClose(sortOpen, sortWrapRef, () => setSortOpen(false))
 
   const sortedLists = useMemo(() => sortLists(lists, sort), [lists, sort])
   const selectedList = useMemo(
@@ -290,9 +271,8 @@ export default function EndorsementLists({
           ) : null}
         </h2>
         <div className="endorsement-lists__actions">
-          <div className="endorsement-lists__sort-wrap">
+          <div className="endorsement-lists__sort-wrap" ref={sortWrapRef}>
             <button
-              ref={sortBtnRef}
               type="button"
               className="endorsement-lists__sort-btn"
               onClick={() => setSortOpen((v) => !v)}
@@ -305,7 +285,6 @@ export default function EndorsementLists({
             </button>
             {sortOpen ? (
               <div
-                ref={sortMenuRef}
                 className="endorsement-lists__sort-menu"
                 role="menu"
               >

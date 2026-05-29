@@ -1,7 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import { useUrlParam } from "@/hooks/use-url-param"
+import { useClickOutsideClose } from "@/hooks/use-click-outside-close"
 import {
   ArrowUpDown,
   Check,
@@ -153,53 +154,14 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
     [ownGivenForModal.endorsements],
   )
 
-  const sortBtnRef = useRef<HTMLButtonElement>(null)
-  const sortMenuRef = useRef<HTMLDivElement>(null)
-  const filterBtnRef = useRef<HTMLButtonElement>(null)
-  const filterMenuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!sortOpen) return
-    const onMouseDown = (e: MouseEvent) => {
-      const t = e.target
-      if (!(t instanceof Node)) return
-      if (sortBtnRef.current?.contains(t)) return
-      if (sortMenuRef.current?.contains(t)) return
-      setSortOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSortOpen(false)
-    }
-    document.addEventListener("mousedown", onMouseDown)
-    document.addEventListener("keydown", onKey)
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown)
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [sortOpen])
+  const sortWrapRef = useRef<HTMLDivElement>(null)
+  useClickOutsideClose(sortOpen, sortWrapRef, () => setSortOpen(false))
 
   // Same outside-click + Escape contract for the response-filter
-  // menu. Identical shape to the sort handler — kept as a separate
-  // effect so each dropdown's lifecycle is independent.
-  useEffect(() => {
-    if (!filterOpen) return
-    const onMouseDown = (e: MouseEvent) => {
-      const t = e.target
-      if (!(t instanceof Node)) return
-      if (filterBtnRef.current?.contains(t)) return
-      if (filterMenuRef.current?.contains(t)) return
-      setFilterOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setFilterOpen(false)
-    }
-    document.addEventListener("mousedown", onMouseDown)
-    document.addEventListener("keydown", onKey)
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown)
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [filterOpen])
+  // menu — anchored on its own `*__sort-wrap` div so each dropdown's
+  // lifecycle is independent.
+  const filterWrapRef = useRef<HTMLDivElement>(null)
+  useClickOutsideClose(filterOpen, filterWrapRef, () => setFilterOpen(false))
 
   // The DID set to hydrate names for — issuers for the Received tab,
   // recipients for the Given tab. Sort + search both read from the
@@ -305,9 +267,11 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
               `includeRejected: true` for owners) so flipping the
               filter is purely client-side. */}
           {viewerIsOwner && tab === "received" ? (
-            <div className="profile-endorsements-v2__sort-wrap">
+            <div
+              className="profile-endorsements-v2__sort-wrap"
+              ref={filterWrapRef}
+            >
               <button
-                ref={filterBtnRef}
                 type="button"
                 className="profile-endorsements-v2__sort-btn"
                 onClick={() => setFilterOpen((v) => !v)}
@@ -320,7 +284,6 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
               </button>
               {filterOpen ? (
                 <div
-                  ref={filterMenuRef}
                   className="profile-endorsements-v2__sort-menu"
                   role="menu"
                 >
@@ -352,9 +315,8 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
             </div>
           ) : null}
 
-          <div className="profile-endorsements-v2__sort-wrap">
+          <div className="profile-endorsements-v2__sort-wrap" ref={sortWrapRef}>
             <button
-              ref={sortBtnRef}
               type="button"
               className="profile-endorsements-v2__sort-btn"
               onClick={() => setSortOpen((v) => !v)}
@@ -367,7 +329,6 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
             </button>
             {sortOpen ? (
               <div
-                ref={sortMenuRef}
                 className="profile-endorsements-v2__sort-menu"
                 role="menu"
               >
