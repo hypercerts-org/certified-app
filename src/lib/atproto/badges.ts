@@ -333,15 +333,25 @@ async function ensureEndorsementDefinitionInner(
  * post-create. If list-style customisation ever lands on it the
  * invariant flips and the canonical choice must be revisited.
  */
-function resolveCanonicalEndorsementDef(
+export function resolveCanonicalEndorsementDef(
   defs: BadgeDefinitionRecord[],
 ): { canonical: BadgeDefinitionRecord; duplicates: BadgeDefinitionRecord[] } | null {
   const matches = defs
     .filter((d) => d.value.badgeType === ENDORSEMENT_BADGE_TYPE)
     .slice()
-    .sort((a, b) =>
-      (a.value.createdAt ?? "") < (b.value.createdAt ?? "") ? -1 : 1,
-    )
+    .sort((a, b) => {
+      // Sort ascending by createdAt so the OLDEST def is canonical.
+      // A def missing createdAt sorts to the END (treated as latest)
+      // so a malformed def can never win canonical and schedule the
+      // well-formed defs for background deletion.
+      const aHas = typeof a.value.createdAt === "string" && a.value.createdAt !== ""
+      const bHas = typeof b.value.createdAt === "string" && b.value.createdAt !== ""
+      if (!aHas && !bHas) return 0
+      if (!aHas) return 1
+      if (!bHas) return -1
+      if (a.value.createdAt === b.value.createdAt) return 0
+      return a.value.createdAt < b.value.createdAt ? -1 : 1
+    })
   if (matches.length === 0) return null
   const [canonical, ...duplicates] = matches
   return { canonical, duplicates }

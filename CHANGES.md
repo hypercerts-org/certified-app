@@ -243,4 +243,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/lib/atproto/__tests__/save-with-swap.test.ts — refactor (dedup); no natural red-before test since both copies already agreed on observable output, so the added case is a regression guard asserting cross-step agreement; full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-027 — resolveCanonicalEndorsementDef treats missing createdAt as earliest · IMPLEMENTED
+- **Why it's an improvement:** a malformed endorsement def lacking `createdAt` can no longer win canonical and schedule the well-formed defs for background deletion; the self-heal logic now keeps the real def.
+- **Change:** the canonical sort now treats a missing/empty `createdAt` as latest (sorts to the END) instead of as `""` (earliest); exported the helper so it is directly testable.
+- **Test:** src/lib/atproto/__tests__/badges.test.ts — added `resolveCanonicalEndorsementDef` cases; the two malformed-def cases fail before, pass after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
