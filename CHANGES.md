@@ -624,4 +624,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 67 warnings
 
+### quality-056-deadcode-6 — delete dead exports (getBlobRefLinkFromBlob / clearRecentlyViewed / ORG_PROFILE_COLLECTION) · IMPLEMENTED
+- **Why it's an improvement:** removes three unreferenced exports, shrinking the public surface and dead code.
+- **Change:** deleted `getBlobRefLinkFromBlob` (types.ts), `clearRecentlyViewed` (recently-viewed.ts), and `ORG_PROFILE_COLLECTION` (groups/constants.ts) after confirming 0 importers each.
+- **Test:** refactor; no natural test — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 67 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
