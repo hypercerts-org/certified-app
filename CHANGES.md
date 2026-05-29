@@ -366,4 +366,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (testable=false) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-048 — sidebar EndorseButton snaps back to Endorse on list-append failure · IMPLEMENTED
+- **Why it's an improvement:** A failed list-append no longer rolls back the already-persisted award's optimistic "Endorsed" state, removing a duplicate-endorsement nudge.
+- **Change:** Extracted the reason-confirm orchestration into `runEndorseReasonConfirm`, which refetches the given set before the list-append and, on append failure, keeps optimistic=true while surfacing only the attribution error.
+- **Test:** src/components/profile/__tests__/endorse-reason-confirm.test.ts — fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
