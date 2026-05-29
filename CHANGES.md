@@ -303,4 +303,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (testable: false) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-036 — Promoted object-URL preview never revoked after save · IMPLEMENTED
+- **Why it's an improvement:** The avatar/banner blob: preview promoted into the local mirror on save no longer leaks for the page lifetime; it is revoked once the canonical CDN URL catches up or on unmount.
+- **Change:** Track promoted localAvatarUrl/localBannerUrl in refs via coordinated tracked setters; clear+revoke the mirror in effects keyed on the avatarUrl/bannerUrl props (refetch caught up) and revoke any held blob URL on unmount.
+- **Test:** refactor; no natural test (testable: false) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->

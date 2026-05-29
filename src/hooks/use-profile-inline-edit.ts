@@ -303,6 +303,14 @@ export function useProfileInlineEdit(
   )
   const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null>(null)
   const [localBannerUrl, setLocalBannerUrl] = useState<string | null>(null)
+  // Mirror the blob: object-URLs promoted into localAvatarUrl/localBannerUrl
+  // on save so the revoke-on-refetch effects (and unmount cleanup) below can
+  // free them without re-subscribing to the state setters. Without this the
+  // promoted blob URL leaks for the page lifetime: localAvatarUrl wins in
+  // `effectiveAvatarUrl` and is never cleared once the canonical prop catches
+  // up. (quality-036)
+  const localAvatarUrlRef = useRef<string | null>(null)
+  const localBannerUrlRef = useRef<string | null>(null)
   const [pendingAvatarBlob, setPendingAvatarBlob] =
     useState<UploadedBlob | null>(null)
   const [pendingBannerBlob, setPendingBannerBlob] =
@@ -346,6 +354,50 @@ export function useProfileInlineEdit(
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [hasInteracted, setHasInteracted] = useState(false)
+
+  // Set localAvatarUrl/localBannerUrl while keeping the revoke-tracking ref
+  // in sync. When replacing a previously-promoted object-URL with a new value
+  // (or null), revoke the old one so it doesn't leak. The promoted preview is
+  // a blob: URL we own, so revoking on replacement is always safe. (quality-036)
+  const setLocalAvatarUrlTracked = useCallback((url: string | null) => {
+    const prev = localAvatarUrlRef.current
+    if (prev && prev !== url) URL.revokeObjectURL(prev)
+    localAvatarUrlRef.current = url
+    setLocalAvatarUrl(url)
+  }, [])
+  const setLocalBannerUrlTracked = useCallback((url: string | null) => {
+    const prev = localBannerUrlRef.current
+    if (prev && prev !== url) URL.revokeObjectURL(prev)
+    localBannerUrlRef.current = url
+    setLocalBannerUrl(url)
+  }, [])
+
+  // Once the canonical avatar/banner prop catches up (the post-save
+  // resolve-did refetch returned the CDN URL), the local object-URL mirror is
+  // stale: it still wins in `effectiveAvatarUrl`/`effectiveBannerUrl` and the
+  // promoted blob: URL would otherwise leak for the page lifetime. Clear the
+  // mirror (revoking the held blob URL) when the prop changes. (quality-036)
+  useEffect(() => {
+    if (localAvatarUrlRef.current) setLocalAvatarUrlTracked(null)
+  }, [avatarUrl, setLocalAvatarUrlTracked])
+  useEffect(() => {
+    if (localBannerUrlRef.current) setLocalBannerUrlTracked(null)
+  }, [bannerUrl, setLocalBannerUrlTracked])
+
+  // Revoke any still-held promoted blob URL on unmount so it doesn't leak
+  // when the page tears down before the canonical prop catches up. (quality-036)
+  useEffect(() => {
+    return () => {
+      if (localAvatarUrlRef.current) {
+        URL.revokeObjectURL(localAvatarUrlRef.current)
+        localAvatarUrlRef.current = null
+      }
+      if (localBannerUrlRef.current) {
+        URL.revokeObjectURL(localBannerUrlRef.current)
+        localBannerUrlRef.current = null
+      }
+    }
+  }, [])
 
   // -------------------------------------------------------------------
   // Effective values
@@ -746,18 +798,18 @@ export function useProfileInlineEdit(
         refreshOrgMarker()
       }
       if (pendingAvatarPreviewUrl) {
-        setLocalAvatarUrl(pendingAvatarPreviewUrl)
+        setLocalAvatarUrlTracked(pendingAvatarPreviewUrl)
       } else if (pendingAvatarBlob) {
-        setLocalAvatarUrl(null)
+        setLocalAvatarUrlTracked(null)
       }
       if (pendingBannerPreviewUrl) {
-        setLocalBannerUrl(pendingBannerPreviewUrl)
+        setLocalBannerUrlTracked(pendingBannerPreviewUrl)
         setBannerCleared(false)
       } else if (pendingBannerRemoved) {
-        setLocalBannerUrl(null)
+        setLocalBannerUrlTracked(null)
         setBannerCleared(true)
       } else if (pendingBannerBlob) {
-        setLocalBannerUrl(null)
+        setLocalBannerUrlTracked(null)
         setBannerCleared(false)
       }
 
@@ -795,6 +847,8 @@ export function useProfileInlineEdit(
     effectiveOrgMarker,
     refreshOrgMarker,
     inlineLocation.refUri,
+    setLocalAvatarUrlTracked,
+    setLocalBannerUrlTracked,
   ])
 
   // -------------------------------------------------------------------
