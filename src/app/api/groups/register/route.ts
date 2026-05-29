@@ -122,7 +122,9 @@ export async function POST(request: NextRequest) {
           batch.map(async (g) => {
             try {
               const groupAgent = createGroupAgent(auth.agent, g.groupDid)
-              const allMembers: { did: string; addedBy: string }[] = []
+              // We only need to know whether the caller's OWN entry was
+              // self-added, so stop paginating the member list as soon as that
+              // entry is found — no later page can change the boolean answer.
               let memberCursor: string | undefined
               do {
                 const params: Record<string, unknown> = { limit: 100 }
@@ -132,12 +134,13 @@ export async function POST(request: NextRequest) {
                   params
                 )
                 const page = data as { members?: { did: string; addedBy: string }[]; cursor?: string }
-                allMembers.push(...(page.members || []))
+                const selfAdded = (page.members || []).some(
+                  (m) => m.did === ownerDid && m.addedBy === ownerDid
+                )
+                if (selfAdded) return true
                 memberCursor = page.cursor
               } while (memberCursor)
-              return allMembers.some(
-                (m) => m.did === ownerDid && m.addedBy === ownerDid
-              )
+              return false
             } catch {
               return false
             }

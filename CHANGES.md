@@ -606,4 +606,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/lib/groups/__tests__/roles.test.ts — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 67 warnings
 
+### quality-056-authz-repo-4 — register org-limit member walk early-exit · IMPLEMENTED
+- **Why it's an improvement:** the org-creation-limit check is a per-group existence test (caller's own self-added entry), so paginating every member page of every group was wasted work that scaled with group size — an availability/perf smell against large groups.
+- **Change:** in `src/app/api/groups/register/route.ts` the inner member-list walk now returns as soon as a `did === ownerDid && addedBy === ownerDid` entry is found, instead of buffering all members and `.some(...)` after exhausting every page. Fail-closed-on-CGS-error 503 and the outer batch early-exit are unchanged.
+- **Test:** src/app/api/groups/register/__tests__/org-limit-member-walk.test.ts — fails before (member.list called twice), passes after (once).
+- **Gate:** vitest green · tsc 0 errors · lint 67 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
