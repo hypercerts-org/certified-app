@@ -213,4 +213,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-021 — lint scope is `src/` only; root configs/scripts unlinted · IMPLEMENTED
+- **Why it's an improvement:** Root configs (next.config.ts, scripts/*.mjs, build configs) are now linted, not just `src/`.
+- **Change:** `lint` script now runs `eslint .`; flat-config `ignores` widened to `**/.next/`, `**/node_modules/`, `**/coverage/`, `.claude/` (the new anonymous-default-export warning on the config was cleared by naming the export).
+- **Test:** refactor; no natural test — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
