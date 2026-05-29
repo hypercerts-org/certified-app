@@ -13,6 +13,29 @@ For testable behavior, a failing test is written first (and confirmed red) befor
 tests are never modified to make a change pass; new tests may be added. If the gate can't be made
 green within the item's scope, the change is reverted and the item is logged with status `BLOCKED`.
 
+**Final result (Phase 2 complete):** 106 commits on `overnight-review`. Of the actioned items:
+**98 IMPLEMENTED, 3 BLOCKED, 3 SKIPPED** (see the Log below). All 11 bugs and 6 actionable risks
+landed. Final gate: vitest **474 passing**, `tsc --noEmit` **0 errors**, `npm run lint`
+**0 errors / 67 warnings** (down from 69; lint now also covers root configs + scripts via `eslint .`).
+No baseline test was modified except an import-line expansion in `badges.test.ts` (additions only —
+no assertion weakened). `main` is untouched; branch left unmerged.
+
+**Blocked (reverted, left for you):**
+- **quality-002** — delete dead `cert-context.ts`. Its REVIEW.md recommendation is conditional on no
+  in-flight branch reintroducing the Explore aggregate; 4 remote branches import this exact module, so
+  deletion was held. (quality-003 still fixed the module's pagination gap.)
+- **quality-033** — `useBskyPosts.loadMore` race. Not reproducible: the existing `requestIdRef` bump +
+  cursor reset on handle change already prevent the mis-attribution. No change made.
+- **quality-045** — extract a shared list-modal shell. The two surfaces diverge in user-visible
+  behavior (focus/select, error copy, maxLength, labels, CSS), so no *pure* extraction exists →
+  escalated to judgment.
+
+**Known follow-up surfaced (not a gate; for your decision):** `quality-010` added `tsconfig.test.json`
++ a `typecheck:test` script. Running it reveals **~21 pre-existing type errors in test files** (mostly
+`src/lib/atproto/__tests__/notifications.test.ts`) that were never type-checked before. CI (`ci.yml`)
+intentionally runs only the main `tsc --noEmit` (which excludes tests) so CI stays green; cleaning up
+the test-file type errors is a separate effort.
+
 ---
 
 ## Held — not auto-implemented
@@ -29,6 +52,15 @@ Holke's decision; see the matching section in `REVIEW.md`.
   route. Adds new API surface. The behavior-preserving doc note may be applied; the API change is held.
 - **quality-024** — add `autoprefixer` to the PostCSS chain. Identical change to **judgment-007**. Held under judgment-007.
 - **quality-042** — `useProfilePds` IIFE alignment. Underlying bug refuted; report recommends skipping. Skipped.
+- **quality-004** — reconcile/delete the dead `src/config/trusted-evaluators.ts`. The clean fix
+  requires either deleting an existing test file (forbidden — never modify the test suite) or
+  reconciling a 3-vs-4 DID divergence (a behavior change about which evaluators are trusted). Both are
+  human calls. Held.
+- **quality-056 · approot-sitemap-public-gap** — add `/welcome` + `/apps` to `sitemap.ts`/robots. The
+  `/welcome` half is coupled to the unresolved canonical-URL decision **judgment-005**. Held.
+- **quality-056 · quality-overexport-1** — de-export pervasively over-exported internal helpers. Too
+  broad/vague to auto-apply safely (risk of breaking re-exports/tests); better as a focused
+  human-guided cleanup. Held.
 
 ---
 
