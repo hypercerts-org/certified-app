@@ -267,4 +267,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/lib/atproto/__tests__/resolve-handle.test.ts — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-006 — useOrgProfile module-level cache · IMPLEMENTED
+- **Why it's an improvement:** The hook is mounted in 4 layout components on every authenticated page; a shared cache + in-flight map collapses 3-4 concurrent identical fan-outs (incl. an off-app plc.directory resolve) per navigation into one.
+- **Change:** Added a module-level bounded cache keyed by `activeOrg.groupDid` plus an in-flight `Map` (mirroring use-org-marker / use-author-info); state is seeded from cache and refetch() stays as a cache-evicting force path. Behavior-preserving for the only consumed output (`orgAvatarUrl`).
+- **Test:** refactor; no natural test (testable=false) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
