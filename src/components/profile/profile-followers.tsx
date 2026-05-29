@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowUpDown,
@@ -14,16 +13,14 @@ import {
 } from "lucide-react"
 import { useFollowers, type FollowerEntry } from "@/hooks/use-followers"
 import { useFollowing } from "@/hooks/use-following"
-import { useAuthorInfo, type AuthorInfo } from "@/hooks/use-author-info"
+import { useAuthorInfo } from "@/hooks/use-author-info"
+import { useAuthorNamesMap } from "@/hooks/use-author-names-map"
 import { useAuth } from "@/lib/auth/auth-context"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { deleteFollow } from "@/lib/atproto/follow"
-import { authFetch } from "@/lib/auth/fetch"
-import Avatar from "@/components/ui/avatar"
+import PersonCard from "@/components/profile/person-card"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import { formatShortDate } from "@/lib/utils/format-date"
-import { getInitials } from "@/lib/utils/initials"
 import type { FollowRecord } from "@/lib/atproto/follow"
 
 interface ProfileFollowersProps {
@@ -541,128 +538,6 @@ function UnfollowButton({
       ) : null}
     </>
   )
-}
-
-// ---------------------------- Shared card ----------------------------
-
-function PersonCard({
-  did,
-  info,
-  isLoadingInfo,
-  createdAt,
-  menu,
-}: {
-  did: string
-  info: AuthorInfo | null
-  isLoadingInfo: boolean
-  createdAt: string
-  /** Top-right action slot — used by the Following grid to plug in
-   *  the unfollow × on the owner's view. */
-  menu?: React.ReactNode
-}) {
-  const displayName = info?.displayName || info?.handle || did
-  const handle = info?.handle && info.handle !== info.did ? info.handle : null
-  const initials = getInitials(info?.displayName, did)
-  const href = `/profile/${encodeURIComponent(info?.handle || did)}`
-
-  return (
-    <li className="profile-endorsements-v2__card">
-      <Link href={href} className="profile-endorsements-v2__card-link">
-        {isLoadingInfo && !info ? (
-          <div
-            className="profile-endorsements-v2__card-avatar-skel"
-            aria-hidden="true"
-          />
-        ) : (
-          <Avatar
-            size="md"
-            src={info?.avatarUrl || undefined}
-            alt=""
-            fallbackInitials={initials}
-          />
-        )}
-        {/* Vertical stack: name (row 1), @handle (row 2), date
-            (row 3). Mirrors the endorsement PersonCard so both
-            surfaces read identically. */}
-        <div className="profile-endorsements-v2__card-body">
-          <span className="profile-endorsements-v2__card-name">
-            {displayName}
-          </span>
-          {handle ? (
-            <span className="profile-endorsements-v2__card-handle">
-              @{handle}
-            </span>
-          ) : null}
-          <time
-            dateTime={createdAt}
-            className="profile-endorsements-v2__card-date"
-            title={new Date(createdAt).toLocaleString()}
-          >
-            {formatShortDate(createdAt)}
-          </time>
-        </div>
-      </Link>
-      {menu ? (
-        <div className="profile-endorsements-v2__card-menu">{menu}</div>
-      ) : null}
-    </li>
-  )
-}
-
-// ---------------------- Author-name batch hook ----------------------
-
-// Same shape as `profile-endorsements.tsx` — module-level cache so the
-// sort/search functions can read names synchronously while resolution
-// happens in the background.
-const nameCache = new Map<string, string>()
-const namePromises = new Map<string, Promise<string>>()
-
-function fetchName(did: string): Promise<string> {
-  const cached = namePromises.get(did)
-  if (cached) return cached
-  const p = authFetch(`/api/resolve-did?did=${encodeURIComponent(did)}`)
-    .then((res) => {
-      if (!res.ok) throw new Error("resolve failed")
-      return res.json() as Promise<{
-        handle?: string
-        displayName?: string
-      }>
-    })
-    .then((data) => {
-      const name = (data.displayName || data.handle || did).toLowerCase()
-      nameCache.set(did, name)
-      return name
-    })
-    .catch(() => {
-      nameCache.set(did, did.toLowerCase())
-      return did.toLowerCase()
-    })
-  namePromises.set(did, p)
-  return p
-}
-
-function useAuthorNamesMap(dids: string[]): Map<string, string> {
-  const [, setTick] = useState(0)
-
-  useEffect(() => {
-    let cancelled = false
-    const missing = dids.filter((d) => !nameCache.has(d))
-    if (missing.length === 0) return
-    Promise.all(missing.map((d) => fetchName(d))).then(() => {
-      if (!cancelled) setTick((n) => n + 1)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [dids])
-
-  return useMemo(() => {
-    const out = new Map<string, string>()
-    for (const d of dids) {
-      out.set(d, nameCache.get(d) ?? d.toLowerCase())
-    }
-    return out
-  }, [dids])
 }
 
 // ----------------------- Filter + sort helpers -----------------------

@@ -333,4 +333,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/hooks/__tests__/use-org-marker-refresh-inflight.test.tsx — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-012 — Extract shared PersonCard + name-cache hook · IMPLEMENTED
+- **Why it's an improvement:** removes a copy-pasted PersonCard and two duplicate module-scoped name caches across the profile endorsements/followers tabs, leaving one source of truth.
+- **Change:** extracted the superset PersonCard into `src/components/profile/person-card.tsx` (note?/listTitle? optional) and the duplicated `useAuthorNamesMap` batch hook into `src/hooks/use-author-names-map.ts`; both profile tabs now import the shared versions (pure, behavior-preserving).
+- **Test:** `src/components/profile/__tests__/person-card.test.tsx` — fails before (no module), passes after; asserts name/handle/date rows match with and without the optional note/list rows.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
