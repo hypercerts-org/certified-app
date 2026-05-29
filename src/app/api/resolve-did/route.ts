@@ -5,9 +5,89 @@ import { extractRouteError } from "@/lib/utils/api"
 import { getSessionDid } from "@/lib/auth/session"
 import { enforceRateLimitMulti, makeLimiter } from "@/lib/auth/rate-limit"
 import { clientIp } from "@/lib/utils/ip"
+import {
+  buildAvatarUrlFromCid,
+  buildBannerUrlFromCid,
+} from "@/lib/atproto/profile"
 
 const CERTS_PROFILE_COLLECTION = "app.certified.actor.profile"
 const CERTS_PROFILE_RKEY = "self"
+
+/**
+ * Optional indexer fast-path (default OFF). When enabled, the route
+ * reads identity (handle + the bsky profile block) from the magic-
+ * indexer's `actorProfile(did)` query instead of fanning out to
+ * `resolveHandle` + `app.bsky.actor.getProfile` for DIDs the indexer
+ * has already backfilled. The certs lookup is unchanged and always runs
+ * in parallel. Fully backward-compatible: with the flag off the route is
+ * byte-identical to the legacy three-upstream fan-out, and even with the
+ * flag on every indexer miss falls back to the legacy path per-field, so
+ * resolve-did never regresses against an un-deployed / un-indexed
+ * upstream. See magic-indexer #151 / #153 / #154.
+ */
+const USE_INDEXER = process.env.RESOLVE_DID_USE_INDEXER === "true"
+
+/**
+ * Upstream indexer GraphQL endpoint. Mirrors the resolution in
+ * `/api/indexer` (INDEXER_URL → NEXT_PUBLIC_INDEXER_URL → the railway
+ * prod fallback) so the server-side `actorProfile` query targets the
+ * same instance as the proxied client ops.
+ */
+const UPSTREAM_INDEXER_URL =
+  process.env.INDEXER_URL ||
+  process.env.NEXT_PUBLIC_INDEXER_URL ||
+  "https://magic-indexer-prod.up.railway.app/graphql"
+
+const RESOLVE_ACTOR_PROFILE_QUERY = `query ResolveActorProfile($did:String!){ actorProfile(did:$did){ did handle displayName description avatarCid bannerCid } }`
+
+type IndexerActorProfile = {
+  did?: string | null
+  handle?: string | null
+  displayName?: string | null
+  description?: string | null
+  avatarCid?: string | null
+  bannerCid?: string | null
+}
+
+/**
+ * Server-side `actorProfile(did)` lookup against the magic-indexer.
+ * POSTs the fixed GraphQL query with an 8s timeout, attaching the
+ * rate-limit bypass header only when `INDEXER_RATELIMIT_BYPASS_KEY` is
+ * set. Returns the `actorProfile` object or null on any error, non-OK
+ * status, GraphQL error, or empty payload — every failure mode collapses
+ * to null so the caller cleanly falls back to the legacy path.
+ */
+async function fetchIndexerActorProfile(
+  did: string
+): Promise<IndexerActorProfile | null> {
+  try {
+    const bypassKey = process.env.INDEXER_RATELIMIT_BYPASS_KEY
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    }
+    if (bypassKey) headers["X-RateLimit-Bypass"] = bypassKey
+
+    const res = await fetch(UPSTREAM_INDEXER_URL, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        operationName: "ResolveActorProfile",
+        query: RESOLVE_ACTOR_PROFILE_QUERY,
+        variables: { did },
+      }),
+      signal: AbortSignal.timeout(8_000),
+    })
+    if (!res.ok) return null
+    const data = (await res.json()) as {
+      data?: { actorProfile?: IndexerActorProfile | null }
+      errors?: unknown
+    }
+    if (data.errors) return null
+    return data.data?.actorProfile ?? null
+  } catch {
+    return null
+  }
+}
 
 // 60/min. Mirrors search-actors (judgment-002): this route is
 // unauthenticated and issues up to 3 outbound fetches per request, so
@@ -151,6 +231,86 @@ async function fetchBskyAppViewProfile(did: string): Promise<{
   }
 }
 
+/** The bsky identity block fed into the downstream per-field merge —
+ *  the same shape whether it originated from the indexer's
+ *  `actorProfile` or the appView's `app.bsky.actor.getProfile`. */
+type BskyIdentity = {
+  displayName?: string
+  description?: string
+  avatar?: string
+  banner?: string
+}
+
+/**
+ * Resolve the `{ handle, bsky }` identity for a DID — the part of the
+ * lookup the indexer fast-path can replace. Two modes:
+ *
+ *   - Legacy (flag OFF, or the indexer query failed entirely): the
+ *     original `resolveHandle(did)` + `fetchBskyAppViewProfile(did)`
+ *     fan-out, run in parallel.
+ *   - Indexer (flag ON + a non-null `actorProfile`): handle comes from
+ *     `actorProfile.handle ?? resolveHandle(did)`; the bsky block is
+ *     built from the indexer's denormalised fields when the indexer
+ *     HAS a bsky profile for this DID (signalled by a displayName or
+ *     avatarCid), otherwise it falls back to `fetchBskyAppViewProfile`
+ *     for an un-backfilled / un-observed DID.
+ *
+ * The certs lookup is intentionally NOT handled here — it always runs
+ * in parallel in the GET handler and its precedence (certs → bsky) is
+ * unchanged.
+ */
+async function resolveIdentity(did: string): Promise<{
+  handle: string | null
+  bsky: BskyIdentity | null
+}> {
+  // Legacy fan-out, also the universal fallback when the flag is off.
+  const legacy = async (): Promise<{
+    handle: string | null
+    bsky: BskyIdentity | null
+  }> => {
+    const [handleResult, bskyResult] = await Promise.allSettled([
+      resolveHandle(did),
+      fetchBskyAppViewProfile(did),
+    ])
+    return {
+      handle: handleResult.status === "fulfilled" ? handleResult.value : null,
+      bsky: bskyResult.status === "fulfilled" ? bskyResult.value : null,
+    }
+  }
+
+  if (!USE_INDEXER) return legacy()
+
+  const actor = await fetchIndexerActorProfile(did)
+  // Indexer query failed / returned nothing → full legacy fallback so
+  // the route never regresses against an un-deployed indexer schema.
+  if (!actor) return legacy()
+
+  // handle: prefer the indexer's denormalised handle, else resolve it.
+  const handle =
+    actor.handle ??
+    (await resolveHandle(did).catch(() => null))
+
+  // The indexer HAS a bsky profile for this DID when it carries a
+  // displayName or an avatarCid — build the bsky block from its
+  // denormalised fields. Otherwise the DID is un-backfilled / not
+  // observed, so fall back to the appView for the bsky block only.
+  const indexerHasBsky = !!(actor.displayName || actor.avatarCid)
+  if (indexerHasBsky) {
+    return {
+      handle,
+      bsky: {
+        displayName: actor.displayName ?? undefined,
+        description: actor.description ?? undefined,
+        avatar: buildAvatarUrlFromCid(did, actor.avatarCid) ?? undefined,
+        banner: buildBannerUrlFromCid(did, actor.bannerCid) ?? undefined,
+      },
+    }
+  }
+
+  const bsky = await fetchBskyAppViewProfile(did)
+  return { handle, bsky }
+}
+
 /**
  * GET /api/resolve-did?did=<did>
  * GET /api/resolve-did?handle=<handle>
@@ -205,21 +365,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid DID" }, { status: 400 })
     }
 
-    // Run handle resolution and both profile lookups in parallel.
-    // Each is independently allowed to fail — we combine whatever
-    // succeeds.
-    const [handleResult, certsResult, bskyResult] = await Promise.allSettled([
-      resolveHandle(did),
+    // Run the certs lookup and the identity (handle + bsky) resolution
+    // in parallel. `resolveIdentity` is the adaptive layer: with the
+    // indexer flag off it's the original `resolveHandle` +
+    // `fetchBskyAppViewProfile` fan-out; with the flag on it reads
+    // identity from the indexer's `actorProfile(did)` with per-field
+    // fallback. Certs ALWAYS comes from its own PDS lookup and its
+    // precedence over bsky below is unchanged. Each branch is allowed
+    // to fail independently — we combine whatever succeeds.
+    const [identityResult, certsResult] = await Promise.allSettled([
+      resolveIdentity(did),
       getCertsProfile(did),
-      fetchBskyAppViewProfile(did),
     ])
 
-    const handle =
-      handleResult.status === "fulfilled" ? handleResult.value : null
+    const identity =
+      identityResult.status === "fulfilled"
+        ? identityResult.value
+        : { handle: null, bsky: null }
+    const handle = identity.handle
+    const bsky = identity.bsky
     const certs =
       certsResult.status === "fulfilled" ? certsResult.value : null
-    const bsky =
-      bskyResult.status === "fulfilled" ? bskyResult.value : null
 
     const displayName = certs?.displayName || bsky?.displayName || undefined
     const description = certs?.description || bsky?.description || undefined

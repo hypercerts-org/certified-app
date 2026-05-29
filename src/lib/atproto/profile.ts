@@ -259,6 +259,21 @@ export function buildAvatarUrlFromCid(
 }
 
 /**
+ * Build a banner URL from the indexer's denormalised `(did, bannerCid)`
+ * pair. A banner blob is fetched through the exact same getBlob-by-cid
+ * proxy path as an avatar — the only difference is which CID — so this
+ * delegates to `buildAvatarUrlFromCid` and exists purely for naming
+ * clarity at call sites that resolve a banner (e.g. the resolve-did
+ * indexer fast-path consuming `actorProfile(did) { bannerCid }`).
+ */
+export function buildBannerUrlFromCid(
+  did: string | null | undefined,
+  cid: string | null | undefined,
+): string | null {
+  return buildAvatarUrlFromCid(did, cid)
+}
+
+/**
  * Get the URL for a profile banner
  * @param profile - The profile record
  * @param did - The DID of the user
