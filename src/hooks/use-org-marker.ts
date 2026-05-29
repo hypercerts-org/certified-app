@@ -163,8 +163,14 @@ export function useOrgMarker(did: string | null): {
       return
     }
     // When the refresh tick changes, evict the cache so fetchOrgMarker
-    // hits the network instead of returning the stale entry.
-    if (refreshTick > 0) cache.delete(did)
+    // hits the network instead of returning the stale entry. Also drop any
+    // in-flight promise for this DID: a concurrent mount's pending fetch
+    // resolves to the pre-refresh value, and without clearing the dedupe
+    // fetchOrgMarker would re-use it instead of issuing a fresh request.
+    if (refreshTick > 0) {
+      cache.delete(did)
+      inFlight.delete(did)
+    }
     const cached = cache.get(did)
     if (cached && refreshTick === 0) {
       setResult(cached)

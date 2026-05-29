@@ -327,4 +327,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (testable=false) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-041 — useOrgMarker.refresh stale value during concurrent fetch · IMPLEMENTED
+- **Why it's an improvement:** A post-save refresh on a page with a concurrent in-flight mount can no longer re-read the pre-save record.
+- **Change:** On refresh (refreshTick > 0) the effect now also `inFlight.delete(did)` alongside `cache.delete(did)`, so the stale in-flight promise can't satisfy the refetch.
+- **Test:** src/hooks/__tests__/use-org-marker-refresh-inflight.test.tsx — fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
