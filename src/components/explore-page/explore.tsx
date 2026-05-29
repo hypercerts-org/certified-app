@@ -23,6 +23,12 @@ import {
   type OrglabelTier,
 } from "@/lib/atproto/labels"
 import CertIcon from "@/components/ui/cert-icon"
+import {
+  Popover as UiPopover,
+  PopoverContent,
+  PopoverItem,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import SharedLoadMoreSentinel from "@/components/ui/load-more-sentinel"
@@ -659,17 +665,9 @@ export default function Explore() {
                   <LayoutGrid size={14} strokeWidth={1.75} aria-hidden />
                 </button>
               </div>
-              <Popover
-                open={sortOpen}
-                onClose={() => setSortOpen(false)}
-                trigger={
-                  <button
-                    type="button"
-                    className="explore__chrome-btn"
-                    onClick={() => setSortOpen((v) => !v)}
-                    aria-expanded={sortOpen}
-                    aria-haspopup="menu"
-                  >
+              <UiPopover open={sortOpen} onOpenChange={setSortOpen}>
+                <PopoverTrigger>
+                  <button type="button" className="explore__chrome-btn">
                     <ArrowUpDown
                       size={13}
                       strokeWidth={1.75}
@@ -677,31 +675,31 @@ export default function Explore() {
                     />
                     Sort: {SORT_LABEL[sort]}
                   </button>
-                }
-              >
-                {(["newest", "oldest", "alphabetical"] as SortOrder[]).map(
-                  (s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      className={`popover__item${sort === s ? " popover__item--active" : ""}`}
-                      data-sort-key={s}
-                      onClick={onSortOptionClick}
-                    >
-                      {SORT_LABEL[s]}
-                    </button>
-                  ),
-                )}
-                <hr className="popover__divider" aria-hidden="true" />
-                <button
-                  type="button"
-                  className="popover__reset-btn"
-                  onClick={onResetSort}
-                  disabled={sort === "newest"}
-                >
-                  Reset to default
-                </button>
-              </Popover>
+                </PopoverTrigger>
+                <PopoverContent align="end">
+                  {(["newest", "oldest", "alphabetical"] as SortOrder[]).map(
+                    (s) => (
+                      <PopoverItem
+                        key={s}
+                        className={sort === s ? "font-medium" : ""}
+                        data-sort-key={s}
+                        onClick={onSortOptionClick}
+                      >
+                        {SORT_LABEL[s]}
+                      </PopoverItem>
+                    ),
+                  )}
+                  <hr className="popover__divider" aria-hidden="true" />
+                  <button
+                    type="button"
+                    className="popover__reset-btn"
+                    onClick={onResetSort}
+                    disabled={sort === "newest"}
+                  >
+                    Reset to default
+                  </button>
+                </PopoverContent>
+              </UiPopover>
 
               {/* Labeler-tier quality popover. On certs, shows both
                   Cert quality (Hyperlabel tiers) and Account quality
@@ -990,41 +988,31 @@ function SubPrefixDropdown({
   if (options.length === 0) return null
   const active = options.find((o) => o.key === sub) ?? options[0]
   return (
-    <Popover
-      open={open}
-      onClose={() => setOpen(false)}
-      align="left"
-      trigger={
-        <button
-          type="button"
-          className="explore__sub-dropdown-trigger"
-          onClick={() => setOpen(!open)}
-          aria-expanded={open}
-          aria-haspopup="menu"
-        >
+    <UiPopover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger>
+        <button type="button" className="explore__sub-dropdown-trigger">
           <span className="explore__sub-dropdown-label">{active.label}</span>
           <ChevronDown size={13} strokeWidth={1.75} aria-hidden />
         </button>
-      }
-    >
-      {options.map((opt) => {
-        const disabled = opt.requiresAuth && !viewerDid
-        return (
-          <button
-            key={opt.key}
-            type="button"
-            role="menuitem"
-            disabled={disabled}
-            title={disabled ? "Sign in to filter by your role" : undefined}
-            className={`popover__item${sub === opt.key ? " popover__item--active" : ""}`}
-            data-sub-key={opt.key}
-            onClick={onSelect}
-          >
-            {opt.label}
-          </button>
-        )
-      })}
-    </Popover>
+      </PopoverTrigger>
+      <PopoverContent align="start">
+        {options.map((opt) => {
+          const disabled = opt.requiresAuth && !viewerDid
+          return (
+            <PopoverItem
+              key={opt.key}
+              disabled={disabled}
+              title={disabled ? "Sign in to filter by your role" : undefined}
+              className={sub === opt.key ? "font-medium" : ""}
+              data-sub-key={opt.key}
+              onClick={onSelect}
+            >
+              {opt.label}
+            </PopoverItem>
+          )
+        })}
+      </PopoverContent>
+    </UiPopover>
   )
 }
 

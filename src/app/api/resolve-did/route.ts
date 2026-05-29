@@ -3,9 +3,19 @@ import { resolveHandle, resolveHandleToDid, resolvePdsUrl } from "@/lib/atproto/
 import { isValidDid } from "@/lib/utils/did"
 import { extractRouteError } from "@/lib/utils/api"
 import { getSessionDid } from "@/lib/auth/session"
+import { enforceRateLimitMulti, makeLimiter } from "@/lib/auth/rate-limit"
+import { clientIp } from "@/lib/utils/ip"
 
 const CERTS_PROFILE_COLLECTION = "app.certified.actor.profile"
 const CERTS_PROFILE_RKEY = "self"
+
+// 60/min. Mirrors search-actors (judgment-002): this route is
+// unauthenticated and issues up to 3 outbound fetches per request, so
+// rate-limit on DID **and** IP simultaneously — a session-DID rotation
+// would otherwise bypass the limit, and we don't want to flood the
+// upstream PDS / appView we proxy.
+const LIMITER_DID = makeLimiter("resolve-did-did", 60, 60)
+const LIMITER_IP = makeLimiter("resolve-did-ip", 60, 60)
 
 /** Bluesky's public appView — serves `app.bsky.actor.getProfile`
  *  unauthenticated. */
@@ -167,6 +177,17 @@ async function fetchBskyAppViewProfile(did: string): Promise<{
  */
 export async function GET(request: NextRequest) {
   try {
+    // Rate-limit first — this route is unauthenticated and fans out to
+    // up to 3 upstream fetches, so block floods before any work. DID
+    // **and** IP, mirroring search-actors (judgment-002). fail-OPEN on
+    // a limiter backend error (handled inside enforceRateLimitMulti).
+    const sessionDid = await getSessionDid()
+    const rateDenied = await enforceRateLimitMulti([
+      { limit: LIMITER_DID, identifier: sessionDid ?? "anon" },
+      { limit: LIMITER_IP, identifier: clientIp(request) },
+    ])
+    if (rateDenied) return rateDenied
+
     let did = request.nextUrl.searchParams.get("did") || ""
     const handleParam = request.nextUrl.searchParams.get("handle") || ""
 
@@ -239,8 +260,8 @@ export async function GET(request: NextRequest) {
     // right after putRecord to evict the entry explicitly — that
     // path is what guarantees the freshly-saved values show on the
     // very next page load. Foreign lookups (feed bylines, handle
-    // search, etc.) keep the longer cache.
-    const sessionDid = await getSessionDid()
+    // search, etc.) keep the longer cache. `sessionDid` was resolved
+    // once at the top for the rate limiter; reuse it here.
     const cacheControl =
       sessionDid && sessionDid === did
         ? "private, max-age=10"
