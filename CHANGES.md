@@ -432,4 +432,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (testable=false) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-054 — expanded locations map height now viewport-relative · IMPLEMENTED
+- **Why it's an improvement:** Modal map now tracks resize/rotation instead of a stale one-shot window.innerHeight read.
+- **Change:** Drive `.cert-detail__map--modal` height from CSS `min(720px, 70vh)` and pass `height="100%"` to the inner Map (removes the JS innerHeight calc).
+- **Test:** refactor; no natural test (testable=no) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->

@@ -279,15 +279,16 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
           <div className="cert-detail__map-modal-body">
             {hasShapes ? (
               <div className="cert-detail__map cert-detail__map--modal">
+                {/* Height comes from the `.cert-detail__map--modal`
+                    container (min(720px, 70vh) in cert-detail.css), so
+                    it tracks viewport resize / rotation while the modal
+                    is open instead of a one-shot window.innerHeight
+                    read. The map fills that box via height="100%". */}
                 <Map
                   pins={pins}
                   polygons={polygons}
                   zoom={pins.length + polygons.length === 1 ? 10 : 4}
-                  height={Math.round(
-                    typeof window !== "undefined"
-                      ? Math.min(720, window.innerHeight * 0.7)
-                      : 720,
-                  )}
+                  height="100%"
                 />
               </div>
             ) : (
