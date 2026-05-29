@@ -56,15 +56,20 @@ const Skeleton: React.FC<SkeletonProps> = ({
 
   if (variant === "text") {
     return (
-      <div className={`flex flex-col gap-2 ${className}`} {...props}>
+      <div
+        aria-hidden
+        className={`flex flex-col gap-2 ${className}`}
+        {...props}
+      >
         {Array.from({ length: lines }).map((_, i) => {
-          // Last line is 60% to avoid the "newspaper paragraph" look.
-          const w = i === lines - 1 ? "60%" : "100%";
+          // Last line is 60% to avoid the "newspaper paragraph" look;
+          // earlier lines honor the documented `width` prop (default 100%).
+          const w = i === lines - 1 ? "60%" : (width ?? "100%");
           return (
             <div
               key={i}
               className={`${baseClass} ${noAnimate ? "!animate-none" : ""}`}
-              style={{ width: w, height: height ?? 12, ...style }}
+              style={{ ...style, width: w, height: height ?? 12 }}
             />
           );
         })}

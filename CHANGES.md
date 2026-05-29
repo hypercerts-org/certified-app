@@ -504,4 +504,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (testable=false) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings (pre-existing baseline error in onboarding-context.tsx, untouched)
 
+### quality-056-ui-primitives-3 — Skeleton text variant aria-hidden + honors width · IMPLEMENTED
+- **Why it's an improvement:** Decorative text-skeleton lines are now hidden from assistive tech and the documented `width` prop is no longer silently ignored.
+- **Change:** Added `aria-hidden` to the text-variant container, honored `width` on non-last lines (last stays 60%), and moved `...style` before the computed width so width isn't overridden.
+- **Test:** src/components/ui/__tests__/skeleton.test.tsx — fails before, passes after
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings (1 pre-existing error in onboarding-context.tsx, unrelated)
+
 <!-- PHASE2-LOG-APPEND-POINT -->
