@@ -81,6 +81,11 @@
   --navy-overlay-30: rgba(0, 0, 0, 0.3);
   --navy-overlay-70: rgba(0, 0, 0, 0.7);
 
+  /* Media letterbox — opaque backdrop behind embedded video / iframe
+     content. Intentionally invariant (not overridden in dark mode): a
+     player surround reads as black in both themes. */
+  --media-letterbox: #000000;
+
   /* Navbar + sheets */
   --navbar-bg: rgba(255, 255, 255, 0.8);
   --navbar-border: rgba(0, 0, 0, 0.05);

@@ -222,7 +222,14 @@ export async function resolveHandle(did: string): Promise<string | null> {
     const atUri = doc.alsoKnownAs.find((aka) => typeof aka === "string" && aka.startsWith("at://"));
     if (!atUri) return null;
 
-    return atUri.replace("at://", "");
+    const handle = atUri.replace("at://", "");
+    // The DID document (especially for attacker-controllable did:web)
+    // can carry an arbitrary at:// value like `at://example.com/some/path`.
+    // Sanity-check the stripped value actually looks like a handle so a
+    // non-handle (path, empty, or whitespace-bearing string) doesn't leak.
+    if (!handle || !handle.includes(".") || /[/\s]/.test(handle)) return null;
+
+    return handle;
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") return null;
     console.warn(`resolveHandle failed for ${did}:`, err);

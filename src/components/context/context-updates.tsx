@@ -45,6 +45,12 @@ interface ContextUpdatesProps {
    * jump to (e.g. `?tab=updates`).
    */
   seeAllHref?: string | null
+  /**
+   * Cap the number of update cards rendered. The count badge still
+   * reflects the true total, so the "See all" link reads correctly.
+   * Unset = render every update.
+   */
+  maxItems?: number
 }
 
 /**
@@ -60,8 +66,11 @@ export default function ContextUpdates({
   heading = "Updates",
   variant = "full",
   seeAllHref = null,
+  maxItems,
 }: ContextUpdatesProps) {
   const { updates, isLoading, error } = useContextUpdates(subjectUri)
+  const visibleUpdates =
+    typeof maxItems === "number" ? updates.slice(0, maxItems) : updates
 
   if (isLoading) {
     return (
@@ -139,7 +148,7 @@ export default function ContextUpdates({
         ) : null}
       </header>
       <ul className="context-updates__list">
-        {updates.map((u) => (
+        {visibleUpdates.map((u) => (
           // Clamp in both variants — the dedicated Updates subtab gets
           // the same Read more / Show less affordance as the overview
           // preview, so a single long update doesn't dominate the tab.

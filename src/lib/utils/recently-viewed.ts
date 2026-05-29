@@ -88,14 +88,3 @@ export function removeRecentlyViewed(
   all[kind] = all[kind].filter((v) => !drop.has(v))
   writeAll(all)
 }
-
-export function clearRecentlyViewed(kind?: RecentlyViewedKind): void {
-  if (!isBrowser()) return
-  if (!kind) {
-    localStorage.removeItem(STORAGE_KEY)
-    return
-  }
-  const all = readAll()
-  all[kind] = []
-  writeAll(all)
-}

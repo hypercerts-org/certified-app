@@ -424,39 +424,6 @@ export async function fetchUserIndexerActivities(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Endorsement records
-// ---------------------------------------------------------------------------
-
-export interface IndexerEndorsementRecord {
-  uri: string
-  author: string
-  subject: string
-  createdAt: string
-}
-
-export interface FetchEndorsementsOptions {
-  authors: string[]
-  signal?: AbortSignal
-}
-
-interface EndorsementGraphQLResponse {
-  data?: {
-    appCertifiedTempGraphEndorsement?: {
-      edges: {
-        node: {
-          uri: string
-          did: string
-          subject: { did: string } | null
-          createdAt: string
-        } | null
-      }[]
-      pageInfo: { hasNextPage: boolean; endCursor: string | null }
-    } | null
-  } | null
-  errors?: { message: string }[]
-}
-
 // ----------------------------- Endorsement closure (BFS) ---------------------
 //
 // Viewer-centric endorsement-graph closure (magic-indexer issue #117).
@@ -611,66 +578,6 @@ function clampClosureDegree(d: number): 1 | 2 | 3 {
   if (d === 1) return 1
   if (d === 2) return 2
   return 3
-}
-
-/**
- * Fetch all endorsement records authored by the given evaluator DIDs,
- * paginating through the indexer until the connection is exhausted or
- * the safety cap is hit.
- *
- * Returns [] if authors is empty (short-circuits without a network call).
- */
-export async function fetchEndorsements(
-  options: FetchEndorsementsOptions,
-): Promise<IndexerEndorsementRecord[]> {
-  if (options.authors.length === 0) return []
-
-  const PAGE_SIZE = 100
-  const SAFETY_CAP = 10_000
-
-  const all: IndexerEndorsementRecord[] = []
-  let cursor: string | null = null
-
-  while (all.length < SAFETY_CAP) {
-    const res = await fetch(INDEXER_PROXY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        operationName: "LegacyEndorsements",
-        variables: {
-          authors: options.authors,
-          first: PAGE_SIZE,
-          after: cursor,
-        },
-      }),
-      signal: options.signal,
-    })
-    if (!res.ok) {
-      throw new Error(`Indexer request failed: ${res.status}`)
-    }
-    const json = (await res.json()) as EndorsementGraphQLResponse
-    if (!json.data?.appCertifiedTempGraphEndorsement) {
-      if (json.errors?.length) {
-        console.warn("[Indexer] Endorsement GraphQL error:", json.errors[0].message)
-      }
-      break
-    }
-    const connection = json.data.appCertifiedTempGraphEndorsement
-    for (const edge of connection.edges) {
-      if (!edge.node?.subject) continue
-      all.push({
-        uri: edge.node.uri,
-        author: edge.node.did,
-        subject: edge.node.subject.did,
-        createdAt: edge.node.createdAt,
-      })
-    }
-    if (!connection.pageInfo.hasNextPage) break
-    cursor = connection.pageInfo.endCursor
-    if (!cursor) break
-  }
-
-  return all
 }
 
 // ============================================================================

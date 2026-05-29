@@ -231,6 +231,13 @@ export function useHomeFeed(
   const stateRef = useRef(state)
   stateRef.current = state
 
+  // Holds the AbortController for the INVALID_CURSOR recovery load that
+  // loadMore kicks off. Tracked here (rather than as a local in the
+  // catch branch) so the effect cleanup can abort it on unmount —
+  // otherwise an unmount mid-recovery leaves the load() uncancelled and
+  // it setState()s after unmount.
+  const recoveryControllerRef = useRef<AbortController | null>(null)
+
   // Snapshot the filter so the existing load() / loadMore() callbacks
   // (which deliberately have empty deps for stability) can read the
   // latest value without re-binding.
@@ -351,7 +358,12 @@ export function useHomeFeed(
         if (err instanceof FollowerEventsError && err.code === "INVALID_CURSOR") {
           console.warn("[home-feed] cursor invalidated; refetching from head")
           setState((prev) => ({ ...prev, isLoadingMore: false, cursor: null }))
+          // Abort any prior recovery still in flight, then track this
+          // one in the ref so the effect cleanup can cancel it on
+          // unmount (preventing a setState-after-unmount).
+          recoveryControllerRef.current?.abort()
           const controller = new AbortController()
+          recoveryControllerRef.current = controller
           void load(controller.signal)
           return
         }
@@ -378,7 +390,14 @@ export function useHomeFeed(
     }
     const controller = new AbortController()
     load(controller.signal)
-    return () => controller.abort()
+    return () => {
+      controller.abort()
+      // Cancel any loadMore-triggered INVALID_CURSOR recovery still in
+      // flight so it can't setState after unmount (or after a fresh
+      // effect-driven reload supersedes it).
+      recoveryControllerRef.current?.abort()
+      recoveryControllerRef.current = null
+    }
     // followedKey covers follow-set changes; excludeKey covers filter
     // toggles — both should retrigger a from-the-head fetch. load is
     // stable (useCallback with []).

@@ -225,7 +225,7 @@ export async function POST(request: NextRequest) {
     // so the client treats it as a backend issue, not a signout.
     // Preserve 429 + Retry-After for rate limits.
     if (!upstream.ok) {
-      console.warn(`[Notifications] upstream ${upstream.status}:`, responseBody.slice(0, 500))
+      console.warn(`[Notifications] upstream ${upstream.status}`)
       const clientStatus =
         upstream.status === 401 || upstream.status === 403 ? 502 : upstream.status
       const headers: Record<string, string> = { "Cache-Control": "no-store" }

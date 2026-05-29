@@ -31,6 +31,8 @@ import type { CollectionValue } from "@/lib/atproto/collection"
 import { asLinearDocument, isEmptyLongDescription } from "@/lib/leaflet/guards"
 import { splitLocationName } from "@/lib/atproto/location"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
+import { countGraphemes } from "@/lib/utils/graphemes"
+import { useOwnCerts } from "@/hooks/use-own-certs"
 
 /**
  * `/project/[did]/[rkey]/edit` — full-page project editor. Mirrors
@@ -114,8 +116,7 @@ export default function ProjectEditPage() {
   const [bannerRemoved, setBannerRemoved] = useState(false)
 
   // Author's own certs — quick-pick list. Same fetch as /project/new.
-  const [ownCerts, setOwnCerts] = useState<SelectedCert[]>([])
-  const [ownCertsLoading, setOwnCertsLoading] = useState(true)
+  const { ownCerts, isLoading: ownCertsLoading } = useOwnCerts(sessionDid)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -245,51 +246,6 @@ export default function ProjectEditPage() {
     }
   }, [project])
 
-  // Author's own certs (quick-pick checklist). Same fetch /project/new uses.
-  useEffect(() => {
-    const sourceDid = activeOrg ? activeOrg.groupDid : sessionDid
-    if (!sourceDid) return
-    const controller = new AbortController()
-    setOwnCertsLoading(true)
-    const qs = new URLSearchParams({
-      repo: sourceDid,
-      collection: "org.hypercerts.claim.activity",
-      limit: "50",
-    })
-    authFetch(`/api/xrpc/com/atproto/repo/listRecords?${qs.toString()}`, {
-      signal: controller.signal,
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`listRecords failed: ${res.status}`)
-        const body = (await res.json()) as {
-          records?: Array<{
-            uri: string
-            cid: string
-            value?: { title?: unknown; createdAt?: unknown }
-          }>
-        }
-        const records = (body.records ?? []).map((rec) => ({
-          uri: rec.uri,
-          cid: rec.cid,
-          title:
-            typeof rec.value?.title === "string" && rec.value.title.trim()
-              ? rec.value.title.trim()
-              : rec.uri.split("/").pop() ?? "(untitled cert)",
-          createdAt:
-            typeof rec.value?.createdAt === "string" ? rec.value.createdAt : "",
-        }))
-        records.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        setOwnCerts(records.map(({ uri, cid, title }) => ({ uri, cid, title })))
-      })
-      .catch(() => {
-        // Quick-pick is best-effort.
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setOwnCertsLoading(false)
-      })
-    return () => controller.abort()
-  }, [sessionDid, activeOrg])
-
   // Revoke object URL on unmount.
   useEffect(() => {
     return () => {
@@ -297,15 +253,6 @@ export default function ProjectEditPage() {
     }
   }, [pendingBannerPreviewUrl])
 
-  const countGraphemes = useCallback((s: string): number => {
-    if (typeof Intl !== "undefined" && "Segmenter" in Intl) {
-      const seg = new Intl.Segmenter(undefined, { granularity: "grapheme" })
-      let count = 0
-      for (const _ of seg.segment(s)) count++
-      return count
-    }
-    return Array.from(s).length
-  }, [])
   const titleCount = countGraphemes(title)
   const shortDescCount = countGraphemes(shortDescription)
   const TITLE_MIN = 5
@@ -333,11 +280,24 @@ export default function ProjectEditPage() {
       })
       setBannerRemoved(false)
       const targetDid = activeOrg ? activeOrg.groupDid : null
-      const blob = await uploadBlob(
-        file,
-        targetDid ? { targetDid } : undefined,
-      )
-      setPendingBannerBlob(blob)
+      try {
+        const blob = await uploadBlob(
+          file,
+          targetDid ? { targetDid } : undefined,
+        )
+        setPendingBannerBlob(blob)
+      } catch (err) {
+        // Surface the failure and clear the dangling optimistic preview
+        // so the form can't be saved with a banner that never uploaded.
+        setError(
+          err instanceof Error ? err.message : "Image upload failed",
+        )
+        setPendingBannerBlob(null)
+        setPendingBannerPreviewUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev)
+          return null
+        })
+      }
     },
     [activeOrg],
   )
@@ -532,7 +492,7 @@ export default function ProjectEditPage() {
             collection: "org.hypercerts.collection",
             rkey,
           })
-          const res = await fetch(
+          const res = await authFetch(
             `/api/xrpc/com/atproto/repo/getRecord?${qs.toString()}`,
           )
           if (!res.ok) throw new Error(`Re-read failed (${res.status})`)

@@ -19,6 +19,13 @@ export function checkCsrf(request: NextRequest): NextResponse | null {
 
   const rawOrigin = origin || (referer ? extractOrigin(referer) : null)
 
+  // Deliberate divergence from AGENTS §8 (which describes the older
+  // "absent Origin is allowed" behavior): we reject when BOTH Origin AND
+  // Referer are missing, rather than waving the request through. A
+  // browser-issued same-origin POST always carries at least one of these
+  // headers, so the only requests lacking both are non-browser / scripted
+  // clients, for which fail-closed is the safer default. Keep this stricter
+  // check — do NOT "fix" it back to Origin-only by deleting this guard.
   if (!rawOrigin) {
     return NextResponse.json({ error: "Forbidden: missing origin" }, { status: 403 })
   }

@@ -7,7 +7,13 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
-const SHEET = "file://" + join(ROOT, "docs/design-audit/divergence-sheet.html");
+// This sheet is a static file, not a dev-server route. BASE, when set, points
+// the capture at a served origin; the file:// path is the default fallback so
+// the script keeps working with no dev server running. (process.env.BASE is
+// the same knob the other audit scripts read; default origin is :3000 there.)
+const SHEET = process.env.BASE
+  ? process.env.BASE + "/docs/design-audit/divergence-sheet.html"
+  : "file://" + join(ROOT, "docs/design-audit/divergence-sheet.html");
 const OUT = join(ROOT, "docs/design-audit/divergence");
 
 await mkdir(OUT, { recursive: true });

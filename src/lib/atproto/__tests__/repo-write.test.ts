@@ -115,6 +115,29 @@ describe("writeToRepo", () => {
       ).rejects.toThrow("Handle must be at least 3 characters")
     })
 
+    it("rethrows InvalidSwapError for the group route's InvalidSwap body", async () => {
+      // bug-003: on the group BFF write path (targetDid !== ownDid) a
+      // CID-precondition failure must surface as InvalidSwapError so
+      // saveWithSwap's conflict-rebase machinery runs. The fixed group
+      // route preserves the atproto discriminator in `code` alongside
+      // the redacted human `error` string.
+      const { InvalidSwapError } = await import("../repo-write")
+      mockAuthFetch.mockResolvedValueOnce(
+        err(400, { error: "Record was modified", code: "InvalidSwap" }),
+      )
+      const writeToRepo = await importHelper()
+
+      await expect(
+        writeToRepo({
+          ownDid: "did:plc:viewer",
+          targetDid: "did:plc:group",
+          ownPath: { url: "/own", method: "POST", body: {} },
+          groupPath: { url: "/api/groups/did:plc:group/activity", method: "PUT", body: {} },
+          errorFallback: "Save failed",
+        }),
+      ).rejects.toBeInstanceOf(InvalidSwapError)
+    })
+
     it("falls back when upstream returns non-JSON", async () => {
       mockAuthFetch.mockResolvedValueOnce(
         new Response("not json", { status: 502 }),

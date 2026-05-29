@@ -12,8 +12,8 @@ type LabelMap = Map<string, LabelValue>
 
 export interface FeedLayoutProps {
   activities: ActivityRecord[]
-  /** Map from activity URI to author DID. For single-user feeds this
-   *  can just ignore its argument and return the user's DID. */
+  /** Map from activity URI to author DID. Consumers back this with a
+   *  per-URI lookup and fall back to the surface's primary DID. */
   getDid: (uri: string) => string
   labels?: LabelMap
   isLoading: boolean
@@ -26,14 +26,13 @@ export interface FeedLayoutProps {
 }
 
 /**
- * Shared feed renderer used by every feed surface (home "for-you"
- * global feed, home "following" personal feed, and user profile feed).
- * Handles loading skeletons, empty state, error state, and the
- * infinite-scroll intersection observer at the bottom of the list.
+ * Shared feed renderer used by the cert-list surfaces (profile-certs
+ * and project-detail). Handles loading skeletons, empty state, error
+ * state, and the infinite-scroll intersection observer at the bottom of
+ * the list.
  *
- * Exported so each feed source (GlobalFeed / PersonalFeed / UserFeed)
- * only has to worry about data fetching and can funnel through the
- * same rendering path.
+ * Exported so each consumer only has to worry about data fetching and
+ * can funnel through the same rendering path.
  */
 export default function FeedLayout({
   activities,

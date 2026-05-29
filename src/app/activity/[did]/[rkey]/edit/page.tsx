@@ -53,6 +53,7 @@ import { InvalidSwapError } from "@/lib/atproto/repo-write"
 import { saveWithSwap } from "@/lib/atproto/save-with-swap"
 import { splitLocationName } from "@/lib/atproto/location"
 import { usePageTitle } from "@/lib/navbar-context"
+import { countGraphemes } from "@/lib/utils/graphemes"
 
 /**
  * `/activity/[did]/[rkey]/edit` — full-page cert editor. Same visual
@@ -385,16 +386,6 @@ export default function ActivityEditPage() {
     }
   }, [pendingImagePreviewUrl])
 
-  // Grapheme counter — same Intl.Segmenter path /create uses.
-  const countGraphemes = useCallback((s: string): number => {
-    if (typeof Intl !== "undefined" && "Segmenter" in Intl) {
-      const seg = new Intl.Segmenter(undefined, { granularity: "grapheme" })
-      let count = 0
-      for (const _ of seg.segment(s)) count++
-      return count
-    }
-    return Array.from(s).length
-  }, [])
   const titleCount = countGraphemes(title)
   const shortDescCount = countGraphemes(shortDescription)
   const TITLE_MIN = 5

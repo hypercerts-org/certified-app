@@ -1,5 +1,27 @@
 import { describe, it, expect } from "vitest"
-import { extractAwardSubjectDid } from "../badges"
+import {
+  extractAwardSubjectDid,
+  resolveCanonicalEndorsementDef,
+  ENDORSEMENT_BADGE_TYPE,
+  type BadgeDefinitionRecord,
+} from "../badges"
+
+function makeDef(
+  rkey: string,
+  createdAt: string | undefined,
+): BadgeDefinitionRecord {
+  return {
+    uri: `at://did:plc:test/app.certified.badge.definition/${rkey}`,
+    cid: `cid-${rkey}`,
+    rkey,
+    value: {
+      badgeType: ENDORSEMENT_BADGE_TYPE,
+      title: "Endorsement",
+      // Intentionally allow undefined to model a malformed record.
+      createdAt: createdAt as string,
+    },
+  }
+}
 
 describe("extractAwardSubjectDid", () => {
   it("returns null for null / undefined subject", () => {
@@ -87,5 +109,38 @@ describe("extractAwardSubjectDid", () => {
   it("returns null for primitive (non-string, non-object) subjects", () => {
     expect(extractAwardSubjectDid(123 as never)).toBeNull()
     expect(extractAwardSubjectDid(true as never)).toBeNull()
+  })
+})
+
+describe("resolveCanonicalEndorsementDef", () => {
+  it("returns null when no endorsement def matches", () => {
+    expect(resolveCanonicalEndorsementDef([])).toBeNull()
+  })
+
+  it("picks the oldest by createdAt as canonical", () => {
+    const older = makeDef("older", "2024-01-01T00:00:00.000Z")
+    const newer = makeDef("newer", "2025-01-01T00:00:00.000Z")
+    const result = resolveCanonicalEndorsementDef([newer, older])
+    expect(result?.canonical.rkey).toBe("older")
+    expect(result?.duplicates.map((d) => d.rkey)).toEqual(["newer"])
+  })
+
+  it("does NOT let a def missing createdAt win canonical", () => {
+    // Regression: a malformed def lacking createdAt must sort to the
+    // END (treated as latest), so the well-formed def stays canonical
+    // and the malformed one is the duplicate scheduled for cleanup.
+    const wellFormed = makeDef("good", "2024-06-01T00:00:00.000Z")
+    const malformed = makeDef("bad", undefined)
+    const result = resolveCanonicalEndorsementDef([malformed, wellFormed])
+    expect(result?.canonical.rkey).toBe("good")
+    expect(result?.duplicates.map((d) => d.rkey)).toEqual(["bad"])
+  })
+
+  it("treats an empty-string createdAt as latest too", () => {
+    const wellFormed = makeDef("good", "2024-06-01T00:00:00.000Z")
+    const empty = makeDef("empty", "")
+    const result = resolveCanonicalEndorsementDef([empty, wellFormed])
+    expect(result?.canonical.rkey).toBe("good")
+    expect(result?.duplicates.map((d) => d.rkey)).toEqual(["empty"])
   })
 })

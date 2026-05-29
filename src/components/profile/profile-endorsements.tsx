@@ -1,8 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import Link from "next/link"
+import { useCallback, useMemo, useRef, useState } from "react"
 import { useUrlParam } from "@/hooks/use-url-param"
+import { useClickOutsideClose } from "@/hooks/use-click-outside-close"
 import {
   ArrowUpDown,
   Check,
@@ -20,9 +20,9 @@ import {
 } from "@/hooks/use-received-endorsements"
 import { useOwnResponseStates } from "@/hooks/use-own-response-states"
 import { useAuthorInfo, type AuthorInfo } from "@/hooks/use-author-info"
+import { useAuthorNamesMap } from "@/hooks/use-author-names-map"
 import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 import { useAuth } from "@/lib/auth/auth-context"
-import { authFetch } from "@/lib/auth/fetch"
 import {
   createEndorsementAward,
   deleteEndorsementAward,
@@ -30,12 +30,10 @@ import {
 import ResponseMenu from "@/components/badges/response-menu"
 import EndorsementLists from "@/components/profile/endorsement-lists"
 import EndorsePeopleModal from "@/components/profile/endorse-people-modal"
-import Avatar from "@/components/ui/avatar"
+import PersonCard from "@/components/profile/person-card"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import { formatShortDate } from "@/lib/utils/format-date"
-import { getInitials } from "@/lib/utils/initials"
 
 interface ProfileEndorsementsProps {
   /** DID of the profile being viewed. */
@@ -160,53 +158,14 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
     [ownGivenForModal.endorsements],
   )
 
-  const sortBtnRef = useRef<HTMLButtonElement>(null)
-  const sortMenuRef = useRef<HTMLDivElement>(null)
-  const filterBtnRef = useRef<HTMLButtonElement>(null)
-  const filterMenuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!sortOpen) return
-    const onMouseDown = (e: MouseEvent) => {
-      const t = e.target
-      if (!(t instanceof Node)) return
-      if (sortBtnRef.current?.contains(t)) return
-      if (sortMenuRef.current?.contains(t)) return
-      setSortOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSortOpen(false)
-    }
-    document.addEventListener("mousedown", onMouseDown)
-    document.addEventListener("keydown", onKey)
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown)
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [sortOpen])
+  const sortWrapRef = useRef<HTMLDivElement>(null)
+  useClickOutsideClose(sortOpen, sortWrapRef, () => setSortOpen(false))
 
   // Same outside-click + Escape contract for the response-filter
-  // menu. Identical shape to the sort handler — kept as a separate
-  // effect so each dropdown's lifecycle is independent.
-  useEffect(() => {
-    if (!filterOpen) return
-    const onMouseDown = (e: MouseEvent) => {
-      const t = e.target
-      if (!(t instanceof Node)) return
-      if (filterBtnRef.current?.contains(t)) return
-      if (filterMenuRef.current?.contains(t)) return
-      setFilterOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setFilterOpen(false)
-    }
-    document.addEventListener("mousedown", onMouseDown)
-    document.addEventListener("keydown", onKey)
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown)
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [filterOpen])
+  // menu — anchored on its own `*__sort-wrap` div so each dropdown's
+  // lifecycle is independent.
+  const filterWrapRef = useRef<HTMLDivElement>(null)
+  useClickOutsideClose(filterOpen, filterWrapRef, () => setFilterOpen(false))
 
   // The DID set to hydrate names for — issuers for the Received tab,
   // recipients for the Given tab. Sort + search both read from the
@@ -312,9 +271,11 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
               `includeRejected: true` for owners) so flipping the
               filter is purely client-side. */}
           {viewerIsOwner && tab === "received" ? (
-            <div className="profile-endorsements-v2__sort-wrap">
+            <div
+              className="profile-endorsements-v2__sort-wrap"
+              ref={filterWrapRef}
+            >
               <button
-                ref={filterBtnRef}
                 type="button"
                 className="profile-endorsements-v2__sort-btn"
                 onClick={() => setFilterOpen((v) => !v)}
@@ -327,7 +288,6 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
               </button>
               {filterOpen ? (
                 <div
-                  ref={filterMenuRef}
                   className="profile-endorsements-v2__sort-menu"
                   role="menu"
                 >
@@ -359,9 +319,8 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
             </div>
           ) : null}
 
-          <div className="profile-endorsements-v2__sort-wrap">
+          <div className="profile-endorsements-v2__sort-wrap" ref={sortWrapRef}>
             <button
-              ref={sortBtnRef}
               type="button"
               className="profile-endorsements-v2__sort-btn"
               onClick={() => setSortOpen((v) => !v)}
@@ -374,7 +333,6 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
             </button>
             {sortOpen ? (
               <div
-                ref={sortMenuRef}
                 className="profile-endorsements-v2__sort-menu"
                 role="menu"
               >
@@ -407,10 +365,6 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
 
       {tab === "received" ? (
         <>
-          {/* The Endorse / Endorsed toggle lives in the profile sidebar
-              (next to Follow). It writes into the shared optimistic
-              overlay in `useReceivedEndorsements`, so the list below
-              updates without a tab-local handler. */}
           {viewerIsOwner ? (
             <p className="profile-endorsements-v2__response-note">
               Endorsements with no response are shown on your profile by
@@ -841,158 +795,6 @@ function RevokeGivenButton({
       ) : null}
     </>
   )
-}
-
-// ---------------------------- Shared card ----------------------------
-
-function PersonCard({
-  did,
-  info,
-  isLoadingInfo,
-  createdAt,
-  note,
-  listTitle,
-  menu,
-}: {
-  did: string
-  info: AuthorInfo | null
-  isLoadingInfo: boolean
-  createdAt: string
-  note?: string
-  /** Optional name of the list this endorsement was awarded under.
-   *  When set, renders as a 4th row in the card. Omitted for default
-   *  "Endorsement" awards (and for surfaces that ARE a list view,
-   *  where the context is implicit). */
-  listTitle?: string
-  menu?: React.ReactNode
-}) {
-  const displayName = info?.displayName || info?.handle || did
-  const handle = info?.handle && info.handle !== info.did ? info.handle : null
-  const initials = getInitials(info?.displayName, did)
-  const href = `/profile/${encodeURIComponent(info?.handle || did)}`
-
-  return (
-    <li className="profile-endorsements-v2__card">
-      <Link href={href} className="profile-endorsements-v2__card-link">
-        {isLoadingInfo && !info ? (
-          <div
-            className="profile-endorsements-v2__card-avatar-skel"
-            aria-hidden="true"
-          />
-        ) : (
-          <Avatar
-            size="md"
-            src={info?.avatarUrl || undefined}
-            alt=""
-            fallbackInitials={initials}
-          />
-        )}
-        {/* Vertical stack — name (row 1), @handle (row 2), date
-            (row 3), list name (row 4 when present). The previous
-            layout pinned the date to the right of the name; lifting
-            it into its own row keeps the card visually scannable
-            even when the list-name row appears below it. */}
-        <div className="profile-endorsements-v2__card-body">
-          <span className="profile-endorsements-v2__card-name">
-            {displayName}
-          </span>
-          {handle ? (
-            <span className="profile-endorsements-v2__card-handle">
-              @{handle}
-            </span>
-          ) : null}
-          <time
-            dateTime={createdAt}
-            className="profile-endorsements-v2__card-date"
-            title={new Date(createdAt).toLocaleString()}
-          >
-            {formatShortDate(createdAt)}
-          </time>
-          {listTitle ? (
-            <span
-              className="profile-endorsements-v2__card-list"
-              title={`From list: ${listTitle}`}
-            >
-              {listTitle}
-            </span>
-          ) : null}
-          {note ? (
-            <p className="profile-endorsements-v2__card-note">{note}</p>
-          ) : null}
-        </div>
-      </Link>
-      {menu ? (
-        <div className="profile-endorsements-v2__card-menu">{menu}</div>
-      ) : null}
-    </li>
-  )
-}
-
-// ---------------------- Author-name batch hook ----------------------
-
-/**
- * Resolve a batch of DIDs to display-name-or-handle strings via the
- * same `/api/resolve-did` endpoint `useAuthorInfo` uses, but
- * collected in one place so sort/search can read a synchronous map.
- *
- * Results hydrate over time — the grid re-orders as names land. DIDs
- * that haven't resolved yet fall back to the raw DID for sort
- * comparison, which keeps unresolved items grouped consistently
- * instead of jumping around as each one resolves.
- */
-const nameCache = new Map<string, string>()
-const namePromises = new Map<string, Promise<string>>()
-
-function fetchName(did: string): Promise<string> {
-  const cached = namePromises.get(did)
-  if (cached) return cached
-  const p = authFetch(`/api/resolve-did?did=${encodeURIComponent(did)}`)
-    .then((res) => {
-      if (!res.ok) throw new Error("resolve failed")
-      return res.json() as Promise<{
-        handle?: string
-        displayName?: string
-      }>
-    })
-    .then((data) => {
-      const name = (data.displayName || data.handle || did).toLowerCase()
-      nameCache.set(did, name)
-      return name
-    })
-    .catch(() => {
-      // On failure cache the DID itself so we don't retry forever.
-      nameCache.set(did, did.toLowerCase())
-      return did.toLowerCase()
-    })
-  namePromises.set(did, p)
-  return p
-}
-
-function useAuthorNamesMap(dids: string[]): Map<string, string> {
-  const [, setTick] = useState(0)
-
-  useEffect(() => {
-    let cancelled = false
-    const missing = dids.filter((d) => !nameCache.has(d))
-    if (missing.length === 0) return
-    Promise.all(missing.map((d) => fetchName(d))).then(() => {
-      if (!cancelled) setTick((n) => n + 1)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [dids])
-
-  // Return a fresh Map view from the global cache, restricted to the
-  // requested DIDs so consumers don't accidentally read stale entries
-  // for DIDs not in the current tab.
-  return useMemo(() => {
-    const out = new Map<string, string>()
-    for (const d of dids) {
-      out.set(d, nameCache.get(d) ?? d.toLowerCase())
-    }
-    return out
-  }, [dids])
 }
 
 // ----------------------- Filter + sort helpers -----------------------

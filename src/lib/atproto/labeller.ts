@@ -24,31 +24,9 @@
 
 export type LabelValue = "high-quality" | "standard" | "draft" | "likely-test"
 
-export type FilterValue = LabelValue | "unlabelled"
-
 export const LABEL_DISPLAY: Record<LabelValue, string> = {
   "high-quality": "High Quality",
   standard: "Standard",
   draft: "Draft",
   "likely-test": "Likely Test",
-}
-
-export const DEFAULT_SELECTED_FILTERS: FilterValue[] = ["standard", "high-quality", "unlabelled"]
-
-export const ALL_LABELS: LabelValue[] = ["high-quality", "standard", "draft", "likely-test"]
-
-/**
- * Pick the first known LabelValue from a list of label strings
- * (as returned by the indexer's `labels` field on a record). If
- * the record has no labels or no recognised labels, returns
- * undefined — the UI treats that as "unlabelled".
- */
-export function pickKnownLabel(labels: readonly string[] | undefined): LabelValue | undefined {
-  if (!labels) return undefined
-  for (const l of labels) {
-    if ((ALL_LABELS as readonly string[]).includes(l)) {
-      return l as LabelValue
-    }
-  }
-  return undefined
 }

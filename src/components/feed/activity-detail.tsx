@@ -210,10 +210,16 @@ export default function ActivityDetail({
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const tabParam = searchParams?.get("tab") ?? "overview"
-  const activeTab: "overview" | "description" | "contributors" | "updates" =
+  const activeTab:
+    | "overview"
+    | "description"
+    | "contributors"
+    | "updates"
+    | "record" =
     tabParam === "description" ||
     tabParam === "contributors" ||
-    tabParam === "updates"
+    tabParam === "updates" ||
+    tabParam === "record"
       ? tabParam
       : "overview"
 
@@ -1013,30 +1019,10 @@ export default function ActivityDetail({
             </div>
           ) : null}
 
-          {/* Locations row — peer of Created / Time period / Work
-              scope / Contributors so the dl's own `gap: 12px` rule
-              keeps the spacing consistent. NOT tab-gated: the aside
-              is identical on every cert tab. */}
-          {locations.length > 0 ? (
-            <div className="cert-detail__meta-row">
-              <dt className="cert-detail__meta-label">
-                <MapPin size={11} strokeWidth={2} aria-hidden />
-                Locations
-                <span className="cert-detail__meta-count">
-                  {locations.length}
-                </span>
-              </dt>
-              <dd className="cert-detail__meta-value">
-                <CertLocationsMap locations={locations} />
-              </dd>
-            </div>
-          ) : null}
-
-          {/* Rights row — moved BELOW Locations per the user's
-              ordering. The other meta rows are quick scalar facts;
-              Rights references an external record and reads as a
-              less-frequent reference, so it sits at the bottom of
-              the meta list. */}
+          {/* Rights row — sits at the bottom of the meta list. The
+              other meta rows are quick scalar facts; Rights
+              references an external record and reads as a
+              less-frequent reference. */}
           {value.rights ? (
             <div className="cert-detail__meta-row">
               <dt className="cert-detail__meta-label">
@@ -1070,23 +1056,40 @@ export default function ActivityDetail({
                 parent doesn't stretch it to full width). */}
             {shortDescSection}
 
-            {/* Contributors moved to the aside meta-list — see the
-                Contributors row above (`<dt>Contributors</dt>`).
-                Project association is now surfaced in the
-                three-column byline below the title (see
-                `<CertHeadlineColumns>` in the headline above), so
-                the older full-width Projects section that used to
-                live here is gone — the row would have duplicated
-                the headline Project column.
-                Locations section + map: aside (see the Locations
-                meta-row above). */}
-
+            {/* Updates preview sits above Locations: after the cert's
+                narrative (summary / read-full link) the reader sees
+                the latest activity, then the where. Capped at one
+                card here — the "See all" link jumps to the dedicated
+                Updates tab for the rest. */}
             {rkey ? (
               <ContextUpdates
                 subjectUri={`at://${did}/org.hypercerts.claim.activity/${rkey}`}
                 variant="overview"
+                maxItems={1}
                 seeAllHref={pathname ? `${pathname}?tab=updates` : null}
               />
+            ) : null}
+
+            {/* Locations + map. Overview-only (the main pane is
+                tab-gated); the aside no longer carries a Locations
+                row.
+                Contributors moved to the aside meta-list — see the
+                Contributors row above (`<dt>Contributors</dt>`).
+                Project association is surfaced in the three-column
+                byline below the title (see `<CertHeadlineColumns>`),
+                so the older full-width Projects section is gone — it
+                would have duplicated the headline Project column. */}
+            {locations.length > 0 ? (
+              <section className="cert-detail__section">
+                <span className="cert-detail__meta-label">
+                  <MapPin size={11} strokeWidth={2} aria-hidden />
+                  Locations
+                  <span className="cert-detail__meta-count">
+                    {locations.length}
+                  </span>
+                </span>
+                <CertLocationsMap locations={locations} />
+              </section>
             ) : null}
           </>
         ) : activeTab === "description" ? (
@@ -1162,6 +1165,63 @@ export default function ActivityDetail({
               variant="full"
             />
           ) : null
+        ) : activeTab === "record" ? (
+          <section className="cert-detail__section cert-detail__record">
+            <div className="cert-detail__section-header">
+              <h2 className="cert-detail__section-title">Record</h2>
+            </div>
+            {/* Field/value table mirroring the
+                org.hypercerts.claim.activity schema. Scalars render
+                their stored value; complex fields (description,
+                image, contributors, locations) render a factual
+                summary. Absent optional fields read "Not set" so the
+                full schema is always visible. */}
+            <table className="cert-detail__record-table">
+              <tbody>
+                {(
+                  [
+                    [
+                      "$type",
+                      effectiveValue.$type ?? "org.hypercerts.claim.activity",
+                    ],
+                    ["title", effectiveValue.title || null],
+                    ["shortDescription", effectiveValue.shortDescription || null],
+                    ["createdAt", effectiveValue.createdAt || null],
+                    ["startDate", effectiveValue.startDate || null],
+                    ["endDate", effectiveValue.endDate || null],
+                    ["workScope", workScopeLabel || null],
+                    [
+                      "description",
+                      showFullDescription ? "Rich text document" : null,
+                    ],
+                    ["image", effectiveImageUrl ? "Image attached" : null],
+                    [
+                      "contributors",
+                      contributorCount > 0 ? String(contributorCount) : null,
+                    ],
+                    [
+                      "locations",
+                      locations.length > 0 ? String(locations.length) : null,
+                    ],
+                    ["rights", value.rights?.uri ?? null],
+                  ] as Array<[string, string | null]>
+                ).map(([field, val]) => (
+                  <tr key={field} className="cert-detail__record-row">
+                    <th scope="row" className="cert-detail__record-field">
+                      {field}
+                    </th>
+                    <td className="cert-detail__record-value">
+                      {val ? (
+                        val
+                      ) : (
+                        <span className="cert-detail__meta-aux">Not set</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
         ) : null}
       </div>
     </article>

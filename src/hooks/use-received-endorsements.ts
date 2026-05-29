@@ -349,8 +349,7 @@ export function peekCachedReceivedEndorsements(
  * Fetch every public endorsement award targeting `profileDid`, AND
  * filter out awards whose latest response (on the profile owner's
  * PDS) is `"rejected"`. Scoped to the badge.{definition,award,response}
- * lexicons — the legacy `app.certified.temp.graph.endorsement`
- * collection is NOT consulted (hard cutover per the migration plan).
+ * lexicons.
  *
  * Fetch shape:
  *   1. One indexer GraphQL query for awards-targeting-me (subject
@@ -432,18 +431,28 @@ export function useReceivedEndorsements(
     return () => controller.abort()
   }, [profileDid, doScan])
 
-  // Focus-revalidate when stale.
+  // Focus-revalidate when stale. The focus scan gets its own ref'd
+  // AbortController so it's actually cancellable — aborted on the next
+  // focus and on effect cleanup/unmount, so doScan's
+  // `if (signal?.aborted)` guards can fire and we never setState on an
+  // unmounted hook (quality-032).
   useEffect(() => {
+    let focusController: AbortController | null = null
     const onFocus = () => {
       const did = profileDidRef.current
       if (!did) return
       const c = cache.get(did)
       if (!c || Date.now() - c.fetchedAt >= STALE_MS) {
-        doScan(did)
+        focusController?.abort()
+        focusController = new AbortController()
+        doScan(did, focusController.signal)
       }
     }
     window.addEventListener("focus", onFocus)
-    return () => window.removeEventListener("focus", onFocus)
+    return () => {
+      window.removeEventListener("focus", onFocus)
+      focusController?.abort()
+    }
   }, [doScan])
 
   // Filter out awards whose latest response is "rejected" — unless

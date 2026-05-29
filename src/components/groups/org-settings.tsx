@@ -63,6 +63,22 @@ const CATEGORIES: CategoryDef[] = [
 ]
 const DEFAULT_CATEGORY: CategoryKey = CATEGORIES[0].key
 
+// Map an audit entry's `result` to the CSS modifier suffix for its pill.
+// The allowlist must match `AuditEntry.result` ("permitted" | "denied")
+// and the only styled classes (`--permitted` / `--denied`); anything
+// else falls back to the neutral `--unknown` class.
+export function auditResultClassSuffix(result: string): "permitted" | "denied" | "unknown" {
+  return result === "permitted" || result === "denied" ? result : "unknown"
+}
+
+// groups-6: when the add-members loop fails part-way through, the members
+// before `failedIndex` were already accepted by the service. Re-staging the
+// whole list would double-add them, so keep only the failing member onward
+// (the one that failed plus any not-yet-attempted).
+export function remainingAfterAddIndex<T>(members: T[], failedIndex: number): T[] {
+  return members.slice(failedIndex)
+}
+
 function readHashCategory(): CategoryKey | null {
   if (typeof window === "undefined") return null
   const raw = window.location.hash.replace(/^#/, "").toLowerCase()
@@ -185,14 +201,22 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
     setIsAdding(true)
     setAddError(null)
     try {
-      for (const m of pendingMembers) {
-        await addOrgMember(groupDid, m.did, newMemberRole)
+      for (let i = 0; i < pendingMembers.length; i++) {
+        try {
+          await addOrgMember(groupDid, pendingMembers[i].did, newMemberRole)
+        } catch (err) {
+          // Partial failure: members before `i` were already added. Re-stage
+          // only the failing member onward so a retry doesn't double-add them.
+          setPendingMembers(remainingAfterAddIndex(pendingMembers, i))
+          setAddError(
+            err instanceof Error ? err.message : "Failed to add member"
+          )
+          return
+        }
       }
       setPendingMembers([])
       setNewMemberRole("member")
       await Promise.all([fetchMembers(), fetchAudit()])
-    } catch (err) {
-      setAddError(err instanceof Error ? err.message : "Failed to add member")
     } finally {
       setIsAdding(false)
     }
@@ -585,7 +609,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                         <div className="org-audit__item-main">
                           <span className="org-audit__action">{entry.action}</span>
                           {(() => {
-                            const safeResult = ["success", "failure", "error"].includes(entry.result) ? entry.result : "unknown"
+                            const safeResult = auditResultClassSuffix(entry.result)
                             return (
                               <span
                                 className={`org-audit__result org-audit__result--${safeResult}`}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { enforceRateLimitMulti, makeLimiter } from "@/lib/auth/rate-limit"
 import { clientIp } from "@/lib/utils/ip"
 import { getSessionDid } from "@/lib/auth/session"
+import { logSafe } from "@/lib/utils/log-safe"
 
 const PUBLIC_BSKY_APPVIEW = "https://public.api.bsky.app"
 
@@ -100,7 +101,7 @@ export async function GET(request: NextRequest) {
       }
     )
   } catch (err: unknown) {
-    console.error("[search-actors]", err)
+    logSafe("[search-actors] upstream error", err)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

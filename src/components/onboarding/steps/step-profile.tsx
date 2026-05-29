@@ -1,6 +1,6 @@
 "use client"
 
-import { useId } from "react"
+import { useEffect, useId, useMemo } from "react"
 
 /**
  * Draft state for the onboarding profile step. Held entirely in the
@@ -47,12 +47,35 @@ export default function StepProfile({
   const descriptionId = useId()
   const websiteId = useId()
 
-  const previewAvatarUrl = draft.replacementAvatarFile
-    ? URL.createObjectURL(draft.replacementAvatarFile)
-    : draft.sourceAvatarUrl
-  const previewBannerUrl = draft.replacementBannerFile
-    ? URL.createObjectURL(draft.replacementBannerFile)
-    : draft.sourceBannerUrl
+  // Object URLs for replacement files are memoized on the File and revoked
+  // on change/unmount, so re-renders (e.g. on every keystroke) don't leak a
+  // fresh blob URL each time.
+  const avatarObjectUrl = useMemo(
+    () =>
+      draft.replacementAvatarFile
+        ? URL.createObjectURL(draft.replacementAvatarFile)
+        : null,
+    [draft.replacementAvatarFile],
+  )
+  const bannerObjectUrl = useMemo(
+    () =>
+      draft.replacementBannerFile
+        ? URL.createObjectURL(draft.replacementBannerFile)
+        : null,
+    [draft.replacementBannerFile],
+  )
+
+  useEffect(() => {
+    if (!avatarObjectUrl) return
+    return () => URL.revokeObjectURL(avatarObjectUrl)
+  }, [avatarObjectUrl])
+  useEffect(() => {
+    if (!bannerObjectUrl) return
+    return () => URL.revokeObjectURL(bannerObjectUrl)
+  }, [bannerObjectUrl])
+
+  const previewAvatarUrl = avatarObjectUrl ?? draft.sourceAvatarUrl
+  const previewBannerUrl = bannerObjectUrl ?? draft.sourceBannerUrl
 
   const update = <K extends keyof ProfileDraft>(
     key: K,

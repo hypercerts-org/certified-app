@@ -11,7 +11,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
 const OUT = join(ROOT, "docs/design-audit/screenshots");
 
-const BASE = process.env.BASE || "http://localhost:3001";
+const BASE = process.env.BASE || "http://localhost:3000";
 
 const SURFACES = [
   { name: "01-root", url: "/", note: "Root entry point" },

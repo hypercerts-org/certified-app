@@ -1,5 +1,6 @@
 import { authFetch } from "@/lib/auth/fetch"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
+import { safeHttpUrl } from "@/lib/utils/safe-url"
 
 export const CONTEXT_ATTACHMENT_COLLECTION = "org.hypercerts.context.attachment"
 
@@ -212,7 +213,12 @@ export function resolveAttachment(
 ): ResolvedAttachment | null {
   if (entry.$type === "org.hypercerts.defs#uri") {
     if (typeof entry.uri !== "string" || entry.uri.length === 0) return null
-    return { kind: "uri", uri: entry.uri }
+    // Records come from a federated PDS, so the author controls this
+    // string. Reject anything that isn't http(s) so render sinks can't
+    // emit `<a href="javascript:…">` (stored XSS). See AGENTS.md §17.6.
+    const safe = safeHttpUrl(entry.uri)
+    if (!safe) return null
+    return { kind: "uri", uri: safe }
   }
 
   // Treat anything else with a resolvable blob as a blob attachment.

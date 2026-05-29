@@ -3,7 +3,7 @@
 import React, { useCallback, useState, useMemo } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { Plus, LogOut } from "lucide-react"
+import { Plus } from "lucide-react"
 import { useOrg } from "@/lib/groups/org-context"
 import { useAuth } from "@/lib/auth/auth-context"
 import { usePageTitle } from "@/lib/navbar-context"
@@ -15,8 +15,8 @@ import {
 import type { OrgRole } from "@/lib/groups/types"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import Button from "@/components/ui/button"
 import Badge from "@/components/ui/badge"
+import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { getInitials } from "@/lib/utils/initials"
 
 type TabKey = "public" | "private"
@@ -252,29 +252,15 @@ export default function GroupsPage() {
       </div>
 
       {leaveOrg && (
-        <div className="signin-modal__backdrop" role="presentation" onClick={() => setLeaveOrg(null)}>
-          <div className="signin-modal app-modal" role="dialog" aria-modal="true" aria-label="Leave Group" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
-            <div className="signin-modal__header">
-              <span className="signin-modal__title">Leave Group</span>
-              <button className="signin-modal__close" onClick={() => setLeaveOrg(null)} aria-label="Close">
-                <LogOut size={18} />
-              </button>
-            </div>
-            <div className="signin-modal__body">
-              <p className="dash-card__desc" style={{ marginBottom: 20 }}>
-                Are you sure you want to leave <strong>{leaveOrg.name}</strong>? You will lose access to this group. An admin will need to re-invite you if you want to rejoin.
-              </p>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                <Button variant="ghost" onClick={() => setLeaveOrg(null)} disabled={isLeaving}>
-                  Cancel
-                </Button>
-                <Button variant="destructive" onClick={handleLeaveOrg} loading={isLeaving} disabled={isLeaving}>
-                  Leave
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title="Leave Group"
+          message={`Are you sure you want to leave ${leaveOrg.name}? You will lose access to this group. An admin will need to re-invite you if you want to rejoin.`}
+          confirmLabel="Leave"
+          confirmVariant="destructive"
+          isConfirming={isLeaving}
+          onCancel={() => setLeaveOrg(null)}
+          onConfirm={handleLeaveOrg}
+        />
       )}
     </div>
   )

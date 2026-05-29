@@ -63,38 +63,6 @@ function avatarUrlFromUnion(
   return null
 }
 
-interface OrganizationDidsGraphQLResponse {
-  data?: {
-    appCertifiedActorOrganization?: {
-      edges: { node: { did: string } | null }[]
-    } | null
-  } | null
-}
-
-/** Set of every DID that has published an
- *  `app.certified.actor.organization` record. Used to split actors
- *  into individuals vs groups in the /explore Users view. */
-export async function fetchOrganizationDids(
-  first = 100,
-  signal?: AbortSignal,
-): Promise<Set<string>> {
-  const res = await fetch(INDEXER_PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      operationName: "OrganizationDids",
-      variables: { first, after: null },
-    }),
-    signal,
-  })
-  const json = (await res.json()) as OrganizationDidsGraphQLResponse
-  const set = new Set<string>()
-  for (const edge of json.data?.appCertifiedActorOrganization?.edges ?? []) {
-    if (edge.node?.did) set.add(edge.node.did)
-  }
-  return set
-}
-
 export interface NetworkActorsPage {
   actors: NetworkActor[]
   endCursor: string | null
@@ -329,45 +297,6 @@ export async function fetchDidsByKindInSet(
     if (!res.ok) {
       throw new Error(`DidsByKindInSet failed: ${res.status}`)
     }
-    const json = (await res.json()) as {
-      data?: {
-        appCertifiedActorProfile?: {
-          edges: { node: { did: string } | null }[]
-        } | null
-      } | null
-    }
-    for (const edge of json.data?.appCertifiedActorProfile?.edges ?? []) {
-      if (edge.node?.did) result.add(edge.node.did)
-    }
-  }
-  return result
-}
-
-/**
- * @deprecated Use `fetchDidsByKindInSet` instead — the complement-
- * based approach this exposes silently inverted the People /
- * Organizations filter when the call returned 0 results. Kept for
- * back-compat; new callers should not use it.
- */
-export async function fetchOrganizationDidsForSet(
-  dids: readonly string[],
-  signal?: AbortSignal,
-): Promise<Set<string>> {
-  const result = new Set<string>()
-  if (dids.length === 0) return result
-  const CHUNK = 100
-  for (let i = 0; i < dids.length; i += CHUNK) {
-    const chunk = dids.slice(i, i + CHUNK)
-    const res = await fetch(INDEXER_PROXY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        operationName: "OrganizationDidsForSet",
-        variables: { dids: [...chunk] },
-      }),
-      signal,
-    })
-    if (!res.ok) continue
     const json = (await res.json()) as {
       data?: {
         appCertifiedActorProfile?: {

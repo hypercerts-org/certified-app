@@ -440,7 +440,7 @@ function ListDetail({
             </div>
           ) : null}
           <ul className="profile-lists__items">
-            {list.items.map((item) => {
+            {list.items.map((item, index) => {
               const uri = item.itemIdentifier.uri
               return (
                 <li key={uri} className="profile-lists__items-row">
@@ -451,7 +451,7 @@ function ListDetail({
                       checked={selected.has(uri)}
                       onChange={() => toggleOne(uri)}
                       disabled={bulkDeleting}
-                      aria-label={`Select ${uri}`}
+                      aria-label={`Select item ${index + 1}`}
                     />
                   ) : null}
                   <div className="profile-lists__items-row-body">
@@ -610,7 +610,7 @@ function CertItemRow({
   )
 }
 
-function ProjectItemRow({
+export function ProjectItemRow({
   uri,
   canRemove,
   onRemove,
@@ -626,7 +626,7 @@ function ProjectItemRow({
   // While the project record is still loading, render a slim
   // placeholder shell so the row doesn't collapse and shift the
   // surrounding layout. Real height of `cert-list-row` is ~60px.
-  if (!project) {
+  if (isLoading) {
     return (
       <div className="profile-lists__project profile-lists__project--loading">
         <span className="profile-lists__project-skel" aria-hidden />
@@ -635,13 +635,34 @@ function ProjectItemRow({
             type="button"
             className="profile-lists__item-remove"
             onClick={handleRemove}
-            disabled={removing || isLoading}
+            disabled={removing}
             aria-label="Remove project"
           >
             <X size={14} strokeWidth={2} aria-hidden />
           </button>
         ) : null}
       </div>
+    )
+  }
+
+  // Loading finished but the record didn't resolve (404 / error /
+  // malformed URI). Instead of a permanent skeleton, show a terminal
+  // fallback row — the URI's rkey tail if we have one, else a generic
+  // label — and keep the remove button so owners can still drop the
+  // dangling reference. Mirrors the cert/account variants' "Untitled
+  // cert" / "Unknown" fallbacks.
+  if (!project) {
+    return (
+      <ItemRowShell
+        href={null}
+        avatar={
+          <span className="profile-lists__thumb profile-lists__thumb--placeholder" />
+        }
+        title={parsed?.rkey ?? "Project unavailable"}
+        subtitle={null}
+        canRemove={canRemove}
+        onRemove={onRemove}
+      />
     )
   }
 

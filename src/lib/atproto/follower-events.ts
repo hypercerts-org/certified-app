@@ -456,9 +456,8 @@ export async function hydrateFeedEvents(
       case "update.create":
         attachmentUris.push(ev.subjectUri)
         break
-      // legacy.endorsement and unknown kinds skip hydration —
-      // appCertifiedTempGraphEndorsement isn't on the schema, and
-      // the new server doesn't emit `legacy.endorsement` anyway.
+      // Unknown kinds skip hydration — the dispatch site renders a
+      // fallback card for each without a round-trip.
     }
   }
 

@@ -33,8 +33,8 @@ interface ProxyResponse<T> {
 }
 
 /** Safely parse a notifications GraphQL response into a page. Skips
- *  malformed edges with a console warning. */
-function parseNotificationsPage(json: ProxyResponse<{
+ *  malformed edges with a console warning. Exported for unit testing. */
+export function parseNotificationsPage(json: ProxyResponse<{
   notifications?: {
     edges: { cursor: string; node: Notification | null }[]
     pageInfo: { hasNextPage: boolean; endCursor: string | null }
@@ -50,7 +50,21 @@ function parseNotificationsPage(json: ProxyResponse<{
   const records: Notification[] = []
   for (const edge of connection.edges) {
     const n = edge.node
-    if (!n || typeof n.reason !== "string" || !n.sortAt || !n.id) {
+    // Validate every load-bearing field the UI dereferences without a
+    // guard (NotificationRow reads count arithmetically and calls
+    // .includes on latestRecordUri). A partial edge that only carried
+    // reason/sortAt/id would otherwise surface as count: undefined or
+    // throw when the row touches latestRecordUri, so skip it instead.
+    if (
+      !n ||
+      typeof n.reason !== "string" ||
+      !n.sortAt ||
+      !n.id ||
+      typeof n.count !== "number" ||
+      !n.latestRecordUri ||
+      !n.latestRecordCid ||
+      !n.latestAuthor
+    ) {
       console.warn("[Notifications] skipping malformed edge")
       continue
     }

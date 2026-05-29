@@ -11,7 +11,7 @@ export const metadata: Metadata = {
       "Terms of Service for Certified, the identity platform operated by the Hypercerts Foundation.",
     url: "https://certified.app/terms",
     type: "website",
-    images: [{ url: "/assets/certified-hero-1200x630.png", width: 1200, height: 630, alt: "Certified — One account, any app" }],
+    images: [{ url: "/assets/certs-hero-1200x630.png", width: 1200, height: 630, alt: "Certified — One account, any app" }],
   },
 };
 
@@ -23,9 +23,9 @@ export default function TermsPage() {
           Terms of Service — Certified
         </h1>
 
-        <p className="text-sm text-gray-500 mb-8">Last updated: May 6, 2026</p>
+        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: May 6, 2026</p>
 
-        <div className="prose prose-navy max-w-none space-y-8">
+        <div className="prose max-w-none space-y-8">
           <section>
             <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">1. About Certified</h2>
             <p>
@@ -301,7 +301,7 @@ export default function TermsPage() {
             <p className="mt-4">
               Reports of illegal content may be submitted in accordance with the notice-and-action
               procedure described in our{" "}
-              <a href="/dsa" className="text-blue-600 underline hover:text-blue-800">
+              <a href="/dsa" className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]">
                 DSA Compliance Page
               </a>
               .
@@ -310,7 +310,7 @@ export default function TermsPage() {
               Reports and legal notices may also be sent to:{" "}
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 legal@hypercerts.org
               </a>
@@ -358,7 +358,7 @@ export default function TermsPage() {
               If you believe your account has been compromised, you must notify us promptly at{" "}
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 legal@hypercerts.org
               </a>
@@ -382,7 +382,7 @@ export default function TermsPage() {
               To delete your account, contact us at{" "}
               <a
                 href="mailto:support@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 support@hypercerts.org
               </a>
@@ -606,7 +606,7 @@ export default function TermsPage() {
             <p className="mt-4">
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 legal@hypercerts.org
               </a>

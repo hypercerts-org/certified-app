@@ -21,6 +21,8 @@ import {
 } from "@/lib/atproto/profile"
 import type { HypercertsLargeImage } from "@/lib/atproto/types"
 import { usePageTitle } from "@/lib/navbar-context"
+import { countGraphemes } from "@/lib/utils/graphemes"
+import { useOwnCerts } from "@/hooks/use-own-certs"
 import LocationPickerDialog, {
   type AddedLocation,
 } from "@/components/create/location-picker-dialog"
@@ -92,8 +94,7 @@ export default function CreateProjectPage() {
   // toggle entries straight from a checklist without first typing
   // into the CertSearch typeahead. The typeahead stays below for
   // finding certs that aren't theirs.
-  const [ownCerts, setOwnCerts] = useState<SelectedCert[]>([])
-  const [ownCertsLoading, setOwnCertsLoading] = useState(true)
+  const { ownCerts, isLoading: ownCertsLoading } = useOwnCerts(did)
 
   const [pendingBannerBlob, setPendingBannerBlob] =
     useState<UploadedBlob | null>(null)
@@ -109,76 +110,6 @@ export default function CreateProjectPage() {
     }
   }, [pendingBannerPreviewUrl])
 
-  // Fetch the author's own certs once so the quick-pick row below
-  // can render immediately when the user opens the form. Sourced
-  // from the same repo a fresh cert would be written to (group or
-  // personal), so the list always matches the publish target. 50 is
-  // listRecords' default page size; covers the typical use case
-  // without pagination plumbing.
-  useEffect(() => {
-    const sourceDid = activeOrg ? activeOrg.groupDid : did
-    if (!sourceDid) return
-    const controller = new AbortController()
-    setOwnCertsLoading(true)
-    const params = new URLSearchParams({
-      repo: sourceDid,
-      collection: "org.hypercerts.claim.activity",
-      limit: "50",
-    })
-    authFetch(
-      `/api/xrpc/com/atproto/repo/listRecords?${params.toString()}`,
-      { signal: controller.signal },
-    )
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`listRecords failed: ${res.status}`)
-        const body = (await res.json()) as {
-          records?: Array<{
-            uri: string
-            cid: string
-            value?: { title?: unknown; createdAt?: unknown }
-          }>
-        }
-        const records = (body.records ?? []).map((rec) => ({
-          uri: rec.uri,
-          cid: rec.cid,
-          title:
-            typeof rec.value?.title === "string" && rec.value.title.trim()
-              ? rec.value.title.trim()
-              : rec.uri.split("/").pop() ?? "(untitled cert)",
-          createdAt:
-            typeof rec.value?.createdAt === "string"
-              ? rec.value.createdAt
-              : "",
-        }))
-        // Newest first so the most recently authored certs land at
-        // the top of the list — closest to what the user expects to
-        // see when they open the project form right after writing
-        // a cert.
-        records.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        setOwnCerts(
-          records.map(({ uri, cid, title }) => ({ uri, cid, title })),
-        )
-      })
-      .catch((err: unknown) => {
-        if (err instanceof Error && err.name === "AbortError") return
-        // Silently — quick-pick is best-effort; the user can still
-        // use the CertSearch typeahead to find their certs.
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setOwnCertsLoading(false)
-      })
-    return () => controller.abort()
-  }, [did, activeOrg])
-
-  const countGraphemes = useCallback((s: string): number => {
-    if (typeof Intl !== "undefined" && "Segmenter" in Intl) {
-      const seg = new Intl.Segmenter(undefined, { granularity: "grapheme" })
-      let count = 0
-      for (const _ of seg.segment(s)) count++
-      return count
-    }
-    return Array.from(s).length
-  }, [])
   const titleCount = countGraphemes(title)
   const shortDescCount = countGraphemes(shortDescription)
   // Lexicon caps from `org.hypercerts.collection`:
@@ -210,11 +141,25 @@ export default function CreateProjectPage() {
         return previewUrl
       })
       const targetDid = activeOrg ? activeOrg.groupDid : null
-      const blob = await uploadBlob(
-        file,
-        targetDid ? { targetDid } : undefined,
-      )
-      setPendingBannerBlob(blob)
+      try {
+        const blob = await uploadBlob(
+          file,
+          targetDid ? { targetDid } : undefined,
+        )
+        setPendingBannerBlob(blob)
+      } catch (err) {
+        // Surface the failure and clear the dangling optimistic preview
+        // so the form can't be published with a banner that never
+        // uploaded.
+        setError(
+          err instanceof Error ? err.message : "Image upload failed",
+        )
+        setPendingBannerBlob(null)
+        setPendingBannerPreviewUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev)
+          return null
+        })
+      }
     },
     [activeOrg],
   )

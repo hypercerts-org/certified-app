@@ -7,6 +7,11 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // Styles are inlined with raw hex + literal radius on purpose: this is the
+  // root error boundary, which renders when the root layout (and thus the
+  // CSS-token stylesheet) may have failed to load, so design tokens
+  // (var(--radius), --bg-canvas, …) are not reliably available here. The 2px
+  // radius mirrors var(--radius).
   return (
     <html lang="en">
       <body
@@ -35,7 +40,7 @@ export default function GlobalError({
               style={{
                 padding: "0.5rem 1.25rem",
                 border: "1px solid #555",
-                borderRadius: "6px",
+                borderRadius: "2px",
                 background: "#222",
                 color: "#eee",
                 cursor: "pointer",
@@ -50,7 +55,7 @@ export default function GlobalError({
               style={{
                 padding: "0.5rem 1.25rem",
                 border: "1px solid #555",
-                borderRadius: "6px",
+                borderRadius: "2px",
                 background: "#222",
                 color: "#eee",
                 textDecoration: "none",

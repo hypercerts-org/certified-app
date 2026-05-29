@@ -92,7 +92,10 @@ Certified is a passwordless identity platform built on **AT Protocol** (atproto)
 | React | 19.x |
 | Language | TypeScript 5 (strict, `paths: { "@/*": ["./src/*"] }`) |
 | Styling | Tailwind CSS 3.4 (utilities only) + custom CSS in `globals.css` (BEM-like) |
-| Atproto SDK | `@atproto/api` 0.19, `@atproto/oauth-client-node` 0.3, `@atproto/jwk-jose` 0.1 (`@atproto/oauth-client` 0.6 pulled in transitively) |
+| Theming | `next-themes` 0.4 (light/dark via `data-theme` on `<html>`) |
+| Atproto SDK | `@atproto/api` 0.13, `@atproto/oauth-client-node` 0.3, `@atproto/jwk-jose` 0.1 (`@atproto/oauth-client` 0.6 pulled in transitively) |
+| Rich text | `@tiptap/react` 3.x (+ `starter-kit`, `extension-link`, `extension-placeholder`, `pm`) |
+| Maps | `leaflet` 1.9 + `react-leaflet` 5.x |
 | Session/State store | Upstash Redis (`@upstash/redis`) — REST-based, serverless-safe |
 | Server actions | None — all server work is in route handlers (`src/app/api/**`) |
 | Wallets | `wagmi` 2.x + `viem` 2.x + `@tanstack/react-query` (mounted only on `/settings/wallet`) |
@@ -642,7 +645,7 @@ These rules are mandatory. Treat any deviation as a regression.
 6. **Sanitize input twice** — client AND server (defense in depth). Use `stripInvisible`, `sanitizeEmail`, `sanitizeHandle` from `src/lib/utils/sanitize.ts`. The regex is `/[​-‏ - ⁠-⁯﻿­͏؜᠎]/g`.
 7. **Sanitize 5xx errors.** Never echo `err.message` from upstream PDS errors when status ≥ 500 — return `"Internal server error"` (or a route-specific generic). The XRPC proxy and `/api/groups/register` both do this; copy the pattern. (4xx errors *can* echo upstream messages — those are usually validation errors a user can act on.)
 8. **Repo ownership on writes** — for `createRecord`/`putRecord`/`deleteRecord`, `body.repo` must equal the session DID. Cross-repo writes are 403.
-9. **Collection allowlist** — only the four `ALLOWED_WRITE_COLLECTIONS` can be written through the XRPC proxy. Add to that array consciously, not implicitly.
+9. **Collection allowlist** — only the eleven `ALLOWED_WRITE_COLLECTIONS` can be written through the XRPC proxy. Add to that array consciously, not implicitly.
 10. **Blob limits** — 4 MB cap (image MIME types only) on `/api/xrpc/[...method]` for `uploadBlob`; 5 MB on the group blob route. Both check `Content-Length` and the actual buffer size. Vercel has a hard ~4.5 MB body cap that constrains the XRPC proxy.
 11. **Service-auth tokens are short-lived and per-LXM** — `getServiceAuthToken(agent, lxm)` issues a token bound to a single method. Don't cache or reuse.
 

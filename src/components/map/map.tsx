@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useMemo, useRef } from "react"
-import { useTheme } from "next-themes"
 import L from "leaflet"
 import {
   MapContainer,
@@ -71,9 +70,9 @@ export interface MapProps {
 }
 
 /**
- * Reusable interactive map component. Renders pins on Leaflet tiles,
- * with theme-reactive tile layer (Stadia Alidade Smooth / Alidade
- * Smooth Dark) and optional click-to-place interaction for pickers.
+ * Reusable interactive map component. Renders pins on Leaflet
+ * tiles (Esri World Imagery + Boundaries reference overlay) and
+ * optional click-to-place interaction for pickers.
  *
  * This file is client-only — always import via `./map-dynamic` so
  * Next.js doesn't try to render it on the server. Leaflet touches
@@ -132,7 +131,7 @@ export default function Map({
         keyboard={interactive}
         style={{ width: "100%", height: "100%" }}
       >
-        <ThemeReactiveTiles />
+        <BaseTiles />
         <FitBoundsOnShapes pins={pins} polygons={polygons} />
         {onMapClick ? <ClickHandler onClick={onMapClick} /> : null}
         {pins.map((p, i) => (
@@ -152,6 +151,11 @@ export default function Map({
             <Polygon
               key={`poly-${i}`}
               positions={positions}
+              // Documented exception to the "tokens only" rule (CLAUDE.md
+              // rule 2): Leaflet styles SVG paths from JS and cannot read
+              // CSS custom properties, so these literals can't be tokens.
+              // They mirror --color-accent (#5e5e5e) in tokens.css — keep
+              // the two in sync by hand if the accent changes.
               pathOptions={{
                 color: "#5e5e5e",
                 weight: 1.5,
@@ -169,34 +173,28 @@ export default function Map({
 }
 
 /**
- * Tile layer that swaps its URL when the theme changes. Uses
- * `useTheme()` from next-themes, which returns `resolvedTheme` —
- * the actual applied mode after resolving "system".
+ * Base tile layers. Esri World Imagery is a satellite raster that
+ * looks identical in light and dark mode, so the tiles don't react
+ * to the theme.
+ *
+ * Two layers stacked: the Imagery raster underneath, the
+ * Boundaries-and-Places reference overlay (transparent PNG tiles)
+ * on top so political borders + place names render legibly against
+ * the satellite background. Leaflet z-orders by mount order: the
+ * second `<TileLayer>` paints over the first.
  */
-function ThemeReactiveTiles() {
-  const { resolvedTheme } = useTheme()
-  const theme = resolvedTheme === "dark" ? "dark" : "light"
-  const config = getTileConfig(theme)
+function BaseTiles() {
+  const config = getTileConfig(undefined)
   const overlay = getOverlayTileConfig()
 
-  // `key` forces React Leaflet to recreate the layer when the URL
-  // changes. Simpler than imperatively calling tileLayer.setUrl().
-  //
-  // Two layers stacked: the Imagery raster underneath, the
-  // Boundaries-and-Places reference overlay (transparent PNG tiles)
-  // on top so political borders + place names render legibly
-  // against the satellite background. Leaflet z-orders by mount
-  // order: the second `<TileLayer>` paints over the first.
   return (
     <>
       <TileLayer
-        key={config.url}
         url={config.url}
         attribution={config.attribution}
         detectRetina
       />
       <TileLayer
-        key={overlay.url}
         url={overlay.url}
         attribution={overlay.attribution}
         detectRetina

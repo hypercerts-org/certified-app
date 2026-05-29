@@ -37,6 +37,7 @@ import {
 import { useEndorsementLists } from "@/hooks/use-endorsement-lists"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import EndorseReasonModal from "@/components/profile/endorse-reason-modal"
+import { runEndorseReasonConfirm } from "@/components/profile/endorse-reason-confirm"
 import { createFollow, deleteFollow, listFollowing } from "@/lib/atproto/follow"
 import {
   createEndorsementAward,
@@ -819,35 +820,38 @@ function EndorseButton({ viewerDid, subjectDid }: EndorseButtonProps) {
     setOptimistic(true)
     setIsWriting(true)
     try {
-      const award = await createEndorsementAward(viewerDid, subjectDid, note)
-      // Push into the shared overlay so the subject's "Endorsed by N"
-      // counter and the Endorsements tab reflect this immediately,
-      // ahead of the 5-min scan cache / indexer catching up.
-      addOptimisticReceivedEndorsement(subjectDid, {
-        uri: award.uri,
-        cid: award.cid,
-        issuerDid: viewerDid,
-        createdAt: new Date().toISOString(),
-        note: note || undefined,
-        responseState: null,
+      // quality-048: orchestration (create → refetch-given → optional
+      // list-append) lives in `runEndorseReasonConfirm` so the ordering
+      // and its error handling are unit-testable. It refetches the
+      // given set BEFORE the list-append and, on append failure, keeps
+      // optimistic=true while rethrowing the attribution error.
+      await runEndorseReasonConfirm({
+        note,
+        listRkey,
+        createAward: (n) => createEndorsementAward(viewerDid, subjectDid, n),
+        // PR #110: as soon as the award lands, push it into the shared
+        // received-endorsements overlay so the subject's "Endorsed by N"
+        // counter and the Endorsements tab reflect it immediately, ahead
+        // of the 5-min scan cache / indexer catching up.
+        onAwardCreated: (award) =>
+          addOptimisticReceivedEndorsement(subjectDid, {
+            uri: award.uri,
+            cid: award.cid,
+            issuerDid: viewerDid,
+            createdAt: new Date().toISOString(),
+            note: note || undefined,
+            responseState: null,
+          }),
+        appendToList: (rkey, award) => appendItemToList(viewerDid, rkey, award),
+        refetchGiven: () => ownGiven.refetch(),
+        refetchLists: () => ownLists.refetch(),
+        setOptimistic,
       })
-      if (listRkey) {
-        // Best-effort: the endorsement itself already succeeded. If the
-        // list append fails (network blip, PDS conflict on a concurrent
-        // edit, …) we'd rather let the user know than silently lose the
-        // attribution to the list — surface and let them retry from the
-        // list page.
-        await appendItemToList(viewerDid, listRkey, {
-          uri: award.uri,
-          cid: award.cid,
-        })
-        await ownLists.refetch()
-      }
-      await ownGiven.refetch()
       setReasonOpen(false)
     } catch (err) {
-      console.error("Endorse failed:", err)
-      setOptimistic(null)
+      // The optimistic flag is managed inside the orchestrator: cleared
+      // on an award failure, kept on a list-append failure. Just rethrow
+      // so the modal surfaces the error and stays open.
       throw err
     } finally {
       setIsWriting(false)
