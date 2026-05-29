@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Certified",
     short_name: "Certified",
     description: "Your identity, everywhere.",
-    start_url: "/",
+    start_url: "/welcome",
     display: "standalone",
     theme_color: "#f9f9f6",
     background_color: "#f9f9f6",

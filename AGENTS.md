@@ -107,7 +107,7 @@ Certified is a passwordless identity platform built on **AT Protocol** (atproto)
 | Lint | ESLint flat config extending `next/core-web-vitals` and `next/typescript` |
 | Test runner | **None.** The "quality gate" is `next build` + `tsc --noEmit`. A behavioral plan lives at `tests/groups.test-plan.md`. |
 
-> Note: Next.js 16 renamed `middleware.ts` to `proxy.ts`. The proxy handler is at `src/proxy.ts`.
+> Note: Next.js 16 renamed `middleware.ts` to `proxy.ts`. This app ships **no** edge proxy/middleware — the `/` redirect is client-side (`HomeClient`).
 
 ## 3. Quick Reference
 
@@ -211,7 +211,7 @@ Scoped providers (mounted only where used):
 
 | Route | Type | Auth | Notes |
 |---|---|---|---|
-| `/` | client redirector (`HomeClient`) | mixed | Sends unauth → `/welcome`; sends auth → `/profile/{did}` (or `{activeOrg.groupDid}` if a group is active). The middleware (`src/proxy.ts`) also redirects unauth → `/welcome` at the edge so a noscript browser still bounces correctly. |
+| `/` | client redirector (`HomeClient`) | mixed | Sends unauth → `/welcome`; sends auth → `/profile/{did}` (or `{activeOrg.groupDid}` if a group is active). The redirect is client-side only — there is no edge proxy/middleware. The canonical landing for crawlers is `/welcome` (priority-1 in `sitemap.ts`, allowed in `robots.ts`). |
 | `/welcome` | server | public | Landing page. Sets transparent navbar variant. JSON-LD: SoftwareApplication + FAQPage. |
 | `/about` | server | public | About page. |
 | `/terms` | server | public | Terms of Service. |
@@ -239,13 +239,7 @@ Permanent redirects (in `next.config.ts`):
 - `/settings/account` → `/settings`
 - `/settings/connected-apps` → `/connected-apps`
 
-**Edge proxy / middleware** — `src/proxy.ts`:
-
-```ts
-export const config = { matcher: ["/"] }
-```
-
-Only `/` runs through the proxy. If `certified_session` cookie is missing it 307-redirects to `/welcome`. All other auth-gated pages rely on `AuthGuard` client-side. The redirect happens before React renders, so SSR / SEO crawlers always see `/welcome` for unauthenticated visits.
+**Edge proxy / middleware** — none. There is no `src/proxy.ts` (nor `middleware.ts`). The `/` route redirect runs entirely client-side via `HomeClient` (unauth → `/welcome`, auth → `/profile/{did}`). All auth-gated pages rely on `AuthGuard` client-side. Because there is no edge redirect, SEO crawlers should be pointed at the canonical landing directly: `/welcome` is the priority-1 entry in `sitemap.ts` and is allowed in `robots.ts`.
 
 ## 8. Authentication Flow
 
@@ -675,8 +669,8 @@ Don't override these per-route unless you have a specific reason.
 - **Title template:** `default: "Certified"`, `template: "%s — Certified"`. Pages export their own `title` via `metadata`.
 - **OG / Twitter:** root defaults in `layout.tsx` (`/assets/certified-hero-1200x630.png`, `@hypercerts`). Pages override per-route. `metadataBase` is `https://certified.app`.
 - **Canonical URLs:** every public page exports `alternates: { canonical: "https://certified.app/<path>" }`. Authenticated pages set `robots: { index: false, follow: false }` and don't bother with canonicals.
-- **`robots.ts`** — allows `/`, `/welcome`, `/about`, `/terms`, `/privacy`, `/dsa`; disallows `/settings/*`, `/groups/*`, `/connected-apps`, `/oauth/*`, `/api/*`. Sitemap pointer at `https://certified.app/sitemap.xml`.
-- **`sitemap.ts`** — five public URLs with `lastModified` dates (currently 2026-03-15 / 2026-04-01 / 2026-04-07).
+- **`robots.ts`** — allows `/`, `/welcome`, `/apps`, `/about`, `/terms`, `/privacy`, `/dsa`, `/imprint`; disallows the app-only surfaces (`/home`, `/explore`, `/search`, `/activity/*`, `/settings/*`, `/groups/*`, `/oauth/*`, `/api/*`, …). Sitemap pointer at `https://certified.app/sitemap.xml`.
+- **`sitemap.ts`** — public URLs with `lastModified` dates. `/welcome` is the priority-1 canonical landing (bare `/` is not listed); `/apps` is included as a public page.
 - **`manifest.ts`** — PWA manifest. `start_url: "/welcome"`, `theme_color: "#f9f9f6"`, brandmark icons at 192/512.
 - **`public/llms.txt`** — Markdown index for AI crawlers (similar to robots/sitemap but in prose).
 - **`/.well-known/oauth-client-metadata`** — also an SEO-adjacent contract: changing `client_id` or `redirect_uris` invalidates existing OAuth sessions.
@@ -723,7 +717,6 @@ certified-app/
 │   └── email/
 │       └── otp-email-template.html     # Branded OTP email (referenced from oauth-client-metadata)
 └── src/
-    ├── proxy.ts                        # Next 16 proxy (was middleware.ts in 15) — redirects `/` → `/welcome` when no session cookie
     ├── app/
     │   ├── layout.tsx                  # Root layout: providers, JSON-LD, fonts, skip-nav, navbar/main/footer/feedback
     │   ├── globals.css                 # ALL custom CSS (~4.7k lines, BEM-like)
