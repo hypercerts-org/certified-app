@@ -486,4 +486,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (testable=false) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-056-map-4 — Delete dead forwardGeocode export · IMPLEMENTED
+- **Why it's an improvement:** Removes a dead single-hit export with zero importers (callers use suggestForwardGeocode), shrinking the surface and ending stale doc-drift.
+- **Change:** Deleted the unused `forwardGeocode` function from src/lib/locations/geocode.ts and dropped the now-stale "legacy forwardGeocode stays available" line from the suggestForwardGeocode doc comment.
+- **Test:** refactor; no natural test (testable=false) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings (pre-existing baseline error in onboarding-context.tsx, untouched)
+
 <!-- PHASE2-LOG-APPEND-POINT -->
