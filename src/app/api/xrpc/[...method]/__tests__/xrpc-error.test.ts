@@ -91,4 +91,20 @@ describe("xrpcError", () => {
     expect(code).toBe("InvalidSwap")
     expect(message).not.toContain("eyJabc.def.ghi")
   })
+
+  it("clamps out-of-range upstream statuses to 500 (quality-016)", async () => {
+    const { xrpcError } = await import("../route")
+    // An upstream status of 0, a negative number, a >599 code, or a
+    // non-integer would throw a RangeError when passed straight to
+    // NextResponse.json(..., { status }); collapse them to 500.
+    expect(xrpcError({ status: 0 }).status).toBe(500)
+    expect(xrpcError({ status: -1 }).status).toBe(500)
+    expect(xrpcError({ status: 1000 }).status).toBe(500)
+    expect(xrpcError({ status: 199 }).status).toBe(500)
+    expect(xrpcError({ status: 600 }).status).toBe(500)
+    expect(xrpcError({ status: 404.5 }).status).toBe(500)
+    // In-range statuses pass through unchanged.
+    expect(xrpcError({ status: 404, message: "nope" }).status).toBe(404)
+    expect(xrpcError({ status: 599 }).status).toBe(599)
+  })
 })

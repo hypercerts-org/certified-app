@@ -390,4 +390,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (testable: no) — full suite green
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-016 — xrpcError clamps upstream status to valid HTTP range · IMPLEMENTED
+- **Why it's an improvement:** An out-of-range upstream status (0, -1, 1000, non-integer) no longer throws a RangeError inside the terminal catch and collapses to a clean masked 500 instead of an opaque framework 500.
+- **Change:** In `xrpcError` (route.ts), clamp the resolved status inline — `Number.isInteger(s) && s>=200 && s<=599 ? s : 500` — before it reaches `NextResponse.json(..., { status })`.
+- **Test:** src/app/api/xrpc/[...method]/__tests__/xrpc-error.test.ts — new case "clamps out-of-range upstream statuses to 500 (quality-016)"; fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
