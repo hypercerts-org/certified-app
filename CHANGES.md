@@ -480,4 +480,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** doc/comment-only (testable=false); no natural test — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-056-map-3 — Drop dead theme reactivity in map tiles · IMPLEMENTED
+- **Why it's an improvement:** Removes a no-op `useTheme` subscription and URL-keyed remount logic that implied theme-reactive tiles, even though the Esri satellite tile URLs are theme-invariant — eliminating a misleading comment and an unnecessary render dependency.
+- **Change:** In `map.tsx`, removed the `useTheme` import + `resolvedTheme` read, renamed `ThemeReactiveTiles` to `BaseTiles`, dropped the `key={config.url}`/`key={overlay.url}` props (keys never changed), and rewrote the misleading "swaps its URL when the theme changes" comments to state the satellite raster is theme-invariant. Behavior-preserving.
+- **Test:** refactor; no natural test (testable=false) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
