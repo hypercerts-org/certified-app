@@ -21,6 +21,7 @@ import {
 } from "@/lib/atproto/profile"
 import type { HypercertsLargeImage } from "@/lib/atproto/types"
 import { usePageTitle } from "@/lib/navbar-context"
+import { countGraphemes } from "@/lib/utils/graphemes"
 import LocationPickerDialog, {
   type AddedLocation,
 } from "@/components/create/location-picker-dialog"
@@ -170,15 +171,6 @@ export default function CreateProjectPage() {
     return () => controller.abort()
   }, [did, activeOrg])
 
-  const countGraphemes = useCallback((s: string): number => {
-    if (typeof Intl !== "undefined" && "Segmenter" in Intl) {
-      const seg = new Intl.Segmenter(undefined, { granularity: "grapheme" })
-      let count = 0
-      for (const _ of seg.segment(s)) count++
-      return count
-    }
-    return Array.from(s).length
-  }, [])
   const titleCount = countGraphemes(title)
   const shortDescCount = countGraphemes(shortDescription)
   // Lexicon caps from `org.hypercerts.collection`:

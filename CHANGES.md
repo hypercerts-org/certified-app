@@ -462,4 +462,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** doc-only (testable=false); AGENTS.md isn't linted/typechecked — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-056-cert-5 — Extract duplicated countGraphemes to src/lib/utils · IMPLEMENTED
+- **Why it's an improvement:** Removes a verbatim 9-line grapheme counter copied across 4 form pages — one canonical helper means a single place to fix or extend the character-counting logic.
+- **Change:** Added `src/lib/utils/graphemes.ts` exporting `countGraphemes` (verbatim body) and imported it in create, project/new, project edit, and activity edit pages, deleting each local `useCallback` copy. Behavior-preserving.
+- **Test:** src/lib/utils/__tests__/graphemes.test.ts — fails before (module missing), passes after; asserts ASCII / multi-code-unit emoji / ZWJ sequence / combining-mark single-grapheme counting.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->

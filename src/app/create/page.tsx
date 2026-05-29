@@ -42,6 +42,7 @@ import LocationPickerDialog, {
 import type { HypercertsSmallImage } from "@/lib/atproto/types"
 import type { StrongRef } from "@/lib/atproto/location"
 import { usePageTitle } from "@/lib/navbar-context"
+import { countGraphemes } from "@/lib/utils/graphemes"
 
 /**
  * `/create` — new cert. Mirrors the visual language of the cert detail
@@ -271,22 +272,6 @@ export default function CreatePage() {
     return () => controller.abort()
   }, [])
 
-  // Grapheme counter — the lexicon caps shortDescription at 300
-  // graphemes (not bytes). Intl.Segmenter is the right tool;
-  // older browsers fall back to `Array.from(str).length` which
-  // counts code points (close enough at the 300-cap range and
-  // never overestimates). Reused for the title counter too so
-  // both fields count "visible characters" rather than raw code
-  // units — emoji + grapheme clusters then count as one.
-  const countGraphemes = useCallback((s: string): number => {
-    if (typeof Intl !== "undefined" && "Segmenter" in Intl) {
-      const seg = new Intl.Segmenter(undefined, { granularity: "grapheme" })
-      let count = 0
-      for (const _ of seg.segment(s)) count++
-      return count
-    }
-    return Array.from(s).length
-  }, [])
   const titleCount = countGraphemes(title)
   const shortDescCount = countGraphemes(shortDescription)
   // Lexicon caps: title.maxLength = 256 (bytes), shortDescription

@@ -31,6 +31,7 @@ import type { CollectionValue } from "@/lib/atproto/collection"
 import { asLinearDocument, isEmptyLongDescription } from "@/lib/leaflet/guards"
 import { splitLocationName } from "@/lib/atproto/location"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
+import { countGraphemes } from "@/lib/utils/graphemes"
 
 /**
  * `/project/[did]/[rkey]/edit` — full-page project editor. Mirrors
@@ -297,15 +298,6 @@ export default function ProjectEditPage() {
     }
   }, [pendingBannerPreviewUrl])
 
-  const countGraphemes = useCallback((s: string): number => {
-    if (typeof Intl !== "undefined" && "Segmenter" in Intl) {
-      const seg = new Intl.Segmenter(undefined, { granularity: "grapheme" })
-      let count = 0
-      for (const _ of seg.segment(s)) count++
-      return count
-    }
-    return Array.from(s).length
-  }, [])
   const titleCount = countGraphemes(title)
   const shortDescCount = countGraphemes(shortDescription)
   const TITLE_MIN = 5
