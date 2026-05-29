@@ -288,4 +288,7 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/hooks/__tests__/focus-revalidate-abort.test.tsx — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-033 — useBskyPosts.loadMore can append a superseded page on handle change · BLOCKED
+- **Reason:** Could not reproduce the race in a faithful failing test: on every handle change the effect synchronously clears the cursor (blocking a new loadMore via the `!cursor` guard) and calls fetchPage, bumping the shared requestIdRef past any in-flight loadMore, so a stale loadMore's fetchPage returns null and never appends — both interleavings probed stay green. Per the LOW-CONFIDENCE coordination note, blocking rather than making a speculative change.
+
 <!-- PHASE2-LOG-APPEND-POINT -->
