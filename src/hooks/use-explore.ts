@@ -262,11 +262,17 @@ export function useExploreData(opts: {
   // Track the latest controller so loadMore can short-circuit if a
   // fresh filter-change has superseded it mid-fetch.
   const generationRef = useRef(0)
+  // The AbortController owned by the current generation's initial
+  // fetch. loadMore reuses its signal so a filter change (which aborts
+  // this controller in the effect cleanup) also cancels an in-flight
+  // page instead of fetching-then-discarding it.
+  const controllerRef = useRef<AbortController | null>(null)
 
   // Initial fetch — runs on every state-resetting input change.
   useEffect(() => {
     const generation = ++generationRef.current
     const controller = new AbortController()
+    controllerRef.current = controller
     setState({ ...EMPTY, isLoading: true })
 
     async function run() {
@@ -338,6 +344,11 @@ export function useExploreData(opts: {
       if (prev.cursor === null) return prev
       const generation = generationRef.current
       const cursor = prev.cursor
+      // Tie the page fetch to the current generation's controller so a
+      // filter change (which aborts it via the effect cleanup) cancels
+      // the in-flight page rather than fetching-then-discarding it. The
+      // generation guard still protects state if the abort races.
+      const signal = controllerRef.current?.signal ?? null
 
       void (async () => {
         try {
@@ -350,7 +361,7 @@ export function useExploreData(opts: {
             followedDids,
             myGroupDids,
             cursor,
-            signal: null,
+            signal,
             degree,
             noEndorsementRings,
             excludeCertLabels: excludeCertLabels ?? null,

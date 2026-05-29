@@ -297,4 +297,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/hooks/__tests__/use-endorsement-lists-stale-closure.test.tsx — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-035 — useExploreData loadMore passes signal:null · IMPLEMENTED
+- **Why it's an improvement:** A filter change now cancels the in-flight loadMore page instead of fetching-then-discarding it, saving wasted network on this network-heavy route.
+- **Change:** loadMore now passes the current generation's AbortController signal into loadPage (via a controllerRef the initial-fetch effect populates) instead of `null`; the effect cleanup's existing abort cancels it.
+- **Test:** refactor; no natural test (testable: false) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
