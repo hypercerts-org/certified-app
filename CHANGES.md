@@ -576,4 +576,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-056-landing-deadcode-1 — delete dead orbiting-logos component · IMPLEMENTED
+- **Why it's an improvement:** Removes 354 lines of unreferenced dead code whose embedded raw rgba/box-shadow/zIndex (token-rule violations) vanish with the file.
+- **Change:** Deleted src/components/landing/orbiting-logos.tsx after confirming 0 importers (grep for OrbitingLogos / orbiting-logos).
+- **Test:** refactor; no natural test — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 67 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
