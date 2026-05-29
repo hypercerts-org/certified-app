@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { saveWithSwap } from "../save-with-swap"
 import { InvalidSwapError } from "../repo-write"
+import { computeDirtyFields } from "@/lib/utils/swap-drafts"
 
 /**
  * quality-025: saveWithSwap's cross-shape contract.
@@ -118,5 +119,49 @@ describe("saveWithSwap drafts/snapshot type contract", () => {
         read: async () => ({ value: { title: "x", body: "y" }, cid: "c" }),
       })
     expect(typeof guard).toBe("function")
+  })
+})
+
+describe("saveWithSwap shares one shallowEqual with the dirty-set step (quality-026)", () => {
+  // Both halves of the save flow — the dirty-set computation
+  // (computeDirtyFields in swap-drafts) and the conflict detection
+  // (saveWithSwap) — must classify an array-vs-object edge the SAME
+  // way. They previously used two divergent shallowEqual copies; the
+  // fix exports one array-guarded variant and reuses it in both, so
+  // the array-vs-object edge can never be classified inconsistently
+  // between the two steps.
+  type ListSnap = { tags: unknown }
+
+  it("treats [] vs {} consistently across the dirty-set and conflict steps", async () => {
+    // 1) Dirty-set step: snapshot tags=[] , drafts tags={} -> dirty.
+    const dirty = computeDirtyFields<ListSnap>(
+      { tags: [] },
+      { tags: {} },
+    )
+    expect(dirty).toContain("tags")
+
+    // 2) Conflict step: the user touched `tags` ([] -> {}), and the
+    //    fresh server value for `tags` ALSO diverges from the mount
+    //    snapshot ([] -> {}). Because both steps share the same
+    //    array-guarded comparator, the [] -> {} move is recognized as a
+    //    real change and surfaces as a same-field conflict — it must
+    //    not be silently swallowed.
+    const mountSnapshot: ListSnap = { tags: [] }
+    const result = await saveWithSwap<ListSnap, ListSnap>({
+      mountSnapshot,
+      initialCid: "cid-at-mount",
+      drafts: { tags: {} },
+      computeNext: (_server, drafts) => drafts,
+      write: async () => {
+        throw new InvalidSwapError()
+      },
+      read: async () => ({ value: { tags: {} }, cid: "cid-fresh" }),
+    })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) throw new Error("expected conflict")
+    expect(result.reason).toBe("conflict")
+    if (result.reason !== "conflict") throw new Error("expected conflict")
+    expect(result.conflictingFields).toContain("tags")
   })
 })

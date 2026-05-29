@@ -237,4 +237,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/lib/atproto/__tests__/save-with-swap.test.ts — type-contract case fails before (TS2578 unused `@ts-expect-error` under tsconfig.test.json), passes after; runtime conflict/rebase cases lock behavior.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-026 — unify the two divergent shallowEqual implementations · IMPLEMENTED
+- **Why it's an improvement:** the dirty-set step and the conflict step in the same save flow now share one array-guarded comparator, so an array-vs-object edge can never be classified inconsistently between them.
+- **Change:** exported the array-guarded `shallowEqual` from `swap-drafts.ts` and imported it into `save-with-swap.ts`, deleting that file's unguarded copy.
+- **Test:** src/lib/atproto/__tests__/save-with-swap.test.ts — refactor (dedup); no natural red-before test since both copies already agreed on observable output, so the added case is a regression guard asserting cross-step agreement; full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->

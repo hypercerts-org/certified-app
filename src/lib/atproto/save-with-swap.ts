@@ -1,5 +1,5 @@
 import { InvalidSwapError } from "@/lib/atproto/repo-write"
-import { computeDirtyFields } from "@/lib/utils/swap-drafts"
+import { computeDirtyFields, shallowEqual } from "@/lib/utils/swap-drafts"
 
 /**
  * Generic swap-aware save loop for inline-edit handlers. Wraps a
@@ -161,16 +161,4 @@ export async function saveWithSwap<
   // Unreachable — the while-loop's exit conditions above always
   // return. Belt-and-suspenders.
   return { ok: false, reason: "livelock", attempts }
-}
-
-function shallowEqual(a: unknown, b: unknown): boolean {
-  if (a === b) return true
-  if (a == null || b == null) return false
-  if (typeof a !== typeof b) return false
-  if (typeof a !== "object") return false
-  try {
-    return JSON.stringify(a) === JSON.stringify(b)
-  } catch {
-    return false
-  }
 }
