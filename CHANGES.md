@@ -276,4 +276,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 ### quality-037 — useOrgProfile.refetch exposes fetchData directly · SKIPPED
 - **Reason:** Already fixed by quality-006 (commit fde4b18) — `refetch` is now a no-arg `useCallback(async (): Promise<void> => …, [groupDid])` that calls `fetchOrgProfileData(groupDid)` only; the typed return is `() => Promise<void>` and no MouseEvent can reach getOrgProfile's AbortSignal param. Applying the literal Recommendation would drop quality-006's cache-eviction/refresh-tick logic (a regression), so no production change is warranted; a test-first guard could not go red.
 
+### quality-031 — useHomeFeed INVALID_CURSOR recovery controller now tracked · IMPLEMENTED
+- **Why it's an improvement:** Prevents a setState-after-unmount when the hook unmounts during an INVALID_CURSOR recovery reload.
+- **Change:** Store the recovery `AbortController` in a ref that the effect cleanup aborts (aborting any prior recovery first), instead of an untracked local.
+- **Test:** src/hooks/__tests__/use-home-feed-invalid-cursor.test.tsx — fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
