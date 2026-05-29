@@ -618,4 +618,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test — full suite green (425 tests).
 - **Gate:** vitest green · tsc 0 errors · lint 67 warnings
 
+### quality-056-deadcode-4 — dead exports in labeller.ts · IMPLEMENTED
+- **Why it's an improvement:** removes unused vocabulary/helpers so the constants-only module reflects its actual surface; less to read and maintain.
+- **Change:** deleted `pickKnownLabel`, `DEFAULT_SELECTED_FILTERS`, `FilterValue`, and `ALL_LABELS` from `src/lib/atproto/labeller.ts` (0 importers each; `ALL_LABELS` was only used by `pickKnownLabel`). Kept `LabelValue` and `LABEL_DISPLAY` (still imported).
+- **Test:** refactor; no natural test — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 67 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
