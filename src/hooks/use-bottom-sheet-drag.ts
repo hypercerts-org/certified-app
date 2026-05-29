@@ -61,21 +61,31 @@ export function useBottomSheetDrag({
     const vv = globalThis.visualViewport
     if (!vv) return
 
+    const sheet = sheetRef.current
+
     const handleResize = () => {
-      if (sheetRef.current) {
+      if (sheet) {
         const keyboardHeight = globalThis.innerHeight - vv.height
         if (keyboardHeight > 100) {
-          sheetRef.current.style.maxHeight = `${vv.height - 20}px`
-          sheetRef.current.style.bottom = `${keyboardHeight}px`
+          sheet.style.maxHeight = `${vv.height - 20}px`
+          sheet.style.bottom = `${keyboardHeight}px`
         } else {
-          sheetRef.current.style.maxHeight = ""
-          sheetRef.current.style.bottom = "0"
+          sheet.style.maxHeight = ""
+          sheet.style.bottom = "0"
         }
       }
     }
 
     vv.addEventListener("resize", handleResize)
-    return () => vv.removeEventListener("resize", handleResize)
+    return () => {
+      vv.removeEventListener("resize", handleResize)
+      // Reset inline styles so a reused/reopened sheet node doesn't flash a
+      // stale clamped height/offset until the next resize event fires.
+      if (sheet) {
+        sheet.style.maxHeight = ""
+        sheet.style.bottom = ""
+      }
+    }
   }, [isOpen, isDesktop])
 
   const onHandleTouchStart = useCallback((e: React.TouchEvent) => {

@@ -315,4 +315,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/hooks/__tests__/use-pending-awards-count-logged-out.test.tsx — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-039 — useBottomSheetDrag visualViewport styles not reset on cleanup · IMPLEMENTED
+- **Why it's an improvement:** A reused/reopened sheet node no longer flashes a stale clamped maxHeight/bottom until the next resize event.
+- **Change:** The visualViewport effect cleanup now resets `maxHeight=''` and `bottom=''` (capturing the node in a local to satisfy exhaustive-deps).
+- **Test:** refactor; no natural test (testable=no) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
