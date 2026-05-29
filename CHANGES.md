@@ -339,4 +339,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** `src/components/profile/__tests__/person-card.test.tsx` — fails before (no module), passes after; asserts name/handle/date rows match with and without the optional note/list rows.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-043 — ProjectItemRow permanent skeleton on load failure · IMPLEMENTED
+- **Why it's an improvement:** a failed/404 project no longer shows an eternal grey skeleton; viewers get a terminal fallback row and owners can still remove the dangling reference.
+- **Change:** gated the skeleton on `isLoading`; when `!project && !isLoading`, render a fallback `ItemRowShell` (URI rkey tail or "Project unavailable", remove button preserved for owners).
+- **Test:** src/components/profile/__tests__/project-item-row.test.tsx — fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
