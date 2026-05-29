@@ -456,4 +456,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (comment-only) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-056-api-trust-5 — AGENTS allowlist count: "four" → "eleven" · IMPLEMENTED
+- **Why it's an improvement:** Removes doc drift — §17.9 said "the four" `ALLOWED_WRITE_COLLECTIONS` but the array in the XRPC route holds 11, so the security-rules doc no longer understates the write surface.
+- **Change:** AGENTS.md §17.9 wording updated from "the four" to "the eleven"; code array untouched (`app.certified.badge.response` write-enablement confirmed intentional per the array's inline comment). §22.5 cross-reference has no count, so left as-is.
+- **Test:** doc-only (testable=false); AGENTS.md isn't linted/typechecked — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
