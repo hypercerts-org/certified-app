@@ -570,4 +570,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/components/profile/__tests__/banner-upload-pending-desync.test.tsx — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-056-profile-edit-4 — avatar overlay raw colors → tokens · IMPLEMENTED
+- **Why it's an improvement:** The avatar hover overlay no longer pins raw `bg-black`/`bg-opacity-50`/`text-white` (CLAUDE.md hard rule 2), so the dark scrim and light icon now flow from theme tokens that adapt in dark mode like the sibling image-edit overlay.
+- **Change:** Replaced `bg-black bg-opacity-50` with `bg-[var(--navy-overlay-70)]` (the canonical dark-scrim token used for modal/image overlays) and `text-white` with `text-[var(--color-white)]` on the Camera icon in avatar-upload.tsx; dark-translucent-overlay-with-light-icon parity preserved.
+- **Test:** refactor; no natural test — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
