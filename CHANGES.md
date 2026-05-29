@@ -225,4 +225,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (scripts are dev-only Playwright tooling, testable=false) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-023 — .gitignore `core` pattern unanchored · IMPLEMENTED
+- **Why it's an improvement:** Bare `core` ignored any file/dir named `core` at any depth; a future `src/lib/core/` or `core.ts` would be silently untracked.
+- **Change:** Anchored the pattern to `/core` so it only matches the root coredump file.
+- **Test:** refactor; no natural test — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
