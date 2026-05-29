@@ -273,4 +273,7 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (testable=false) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-037 — useOrgProfile.refetch exposes fetchData directly · SKIPPED
+- **Reason:** Already fixed by quality-006 (commit fde4b18) — `refetch` is now a no-arg `useCallback(async (): Promise<void> => …, [groupDid])` that calls `fetchOrgProfileData(groupDid)` only; the typed return is `() => Promise<void>` and no MouseEvent can reach getOrgProfile's AbortSignal param. Applying the literal Recommendation would drop quality-006's cache-eviction/refresh-tick logic (a regression), so no production change is warranted; a test-first guard could not go red.
+
 <!-- PHASE2-LOG-APPEND-POINT -->
