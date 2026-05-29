@@ -555,4 +555,7 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/components/groups/__tests__/org-settings-pending.test.ts — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-056-profile-edit-2 — BannerUpload onRemove dead in edit flow · SKIPPED
+- **Reason:** Take-the-DROP-path coordination note says SKIP if `onRemove` is now actually used. It is: `BannerUpload.onRemove` is wired live through the inline-edit flow — profile/[handle]/page.tsx:375 passes `onBannerRemove={handleRemoveBanner}` -> profile-overview.tsx:164 `onRemove={onBannerRemove}` -> banner-upload.tsx:138-149 renders the working "Remove" pill. Only the dedicated edit-profile route (profile-edit-form.tsx:344-348) omits it; the prop/branch is not dead on the component. Dropping it would delete the shipping in-place banner-remove feature (behavior regression), not remove dead code.
+
 <!-- PHASE2-LOG-APPEND-POINT -->
