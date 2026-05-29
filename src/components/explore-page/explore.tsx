@@ -223,14 +223,6 @@ export default function Explore() {
   const showsDegreeControl = isEndorsementFilter(kind, filter)
   const { did: viewerDid } = useAuth()
 
-  // Client-side filter chip(s) — kind-specific simple boolean attributes
-  // captured in URL as a comma-separated list under `attrs=`.
-  const attrsParam = searchParams?.get("attrs") ?? ""
-  const attrs = useMemo(
-    () => new Set(attrsParam.split(",").filter(Boolean)),
-    [attrsParam],
-  )
-
   // Cert-quality filter — URL-backed `Set<HyperlabelTier>` of
   // INCLUDED tiers. Missing param falls back to the same default as
   // the home feed (`high-quality` + `standard`), so first-load on
@@ -830,7 +822,6 @@ export default function Explore() {
             kind={kind}
             data={data}
             sort={sort}
-            attrs={attrs}
             view={view}
             degrees={showsDegreeControl ? degrees : null}
           />
@@ -1100,19 +1091,17 @@ function Popover({
 }
 
 /** Render whatever the data hook returned, applying client-side sort
- *  + attribute filters and routing through the right card. */
+ *  and routing through the right card. */
 function ResultsArea({
   kind,
   data,
   sort,
-  attrs,
   view,
   degrees,
 }: {
   kind: ExploreKind
   data: ReturnType<typeof useExploreData>
   sort: SortOrder
-  attrs: Set<string>
   view: ListGalleryView
   /** Non-null only when the active filter is endorsement-based.
    *  When present, rows whose author's degree isn't in the set are
@@ -1141,10 +1130,6 @@ function ResultsArea({
   if (kind === "accounts") {
     let actors = data.users
     if (degrees) actors = actors.filter((a) => degreeMatches(a.did))
-    if (attrs.has("has-avatar"))
-      actors = actors.filter((a) => !!a.avatarUrl)
-    if (attrs.has("has-description"))
-      actors = actors.filter((a) => !!a.description)
     actors = sortUsers(actors, sort)
     if (actors.length === 0) return <EmptyResults kind={kind} />
     if (view === "list") {
@@ -1176,14 +1161,6 @@ function ResultsArea({
     let projects = data.projects
     if (degrees)
       projects = projects.filter((p) => degreeMatches(projectAuthorDid(p)))
-    if (attrs.has("has-banner"))
-      projects = projects.filter((p) => !!p.value.banner || !!p.value.image)
-    if (attrs.has("has-items"))
-      projects = projects.filter(
-        (p) =>
-          Array.isArray(p.value.items) &&
-          (p.value.items as unknown[]).length > 0,
-      )
     projects = sortProjects(projects, sort)
     if (projects.length === 0) return <EmptyResults kind={kind} />
     if (view === "list") {
@@ -1222,12 +1199,6 @@ function ResultsArea({
   const certDids = data.certDids
   if (degrees)
     certs = certs.filter((c) => degreeMatches(certDids.get(c.uri) ?? null))
-  if (attrs.has("has-image"))
-    certs = certs.filter((c) => !!c.value.image)
-  if (attrs.has("has-shortDescription"))
-    certs = certs.filter(
-      (c) => typeof c.value.shortDescription === "string" && c.value.shortDescription.length > 0,
-    )
   certs = sortCerts(certs, sort)
   if (certs.length === 0) return <EmptyResults kind={kind} />
 

@@ -516,4 +516,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/components/ui/__tests__/button.test.tsx — fails before, passes after
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings (1 pre-existing error in onboarding-context.tsx, untouched)
 
+### quality-056-explore-1 — Delete dead ?attrs= filter in explore · IMPLEMENTED
+- **Why it's an improvement:** Removes read+applied filter logic that no UI ever writes (the `attrs` Set is always empty), so the code carried unreachable branches and a misleading comment.
+- **Change:** Deleted the `?attrs=` URL read (explore.tsx ~227-232), the `attrs` prop on `ResultsArea` (pass + param + type), and the six `attrs.has(...)` filter branches across accounts/projects/certs; left `degrees` filtering and sorting untouched.
+- **Test:** refactor; no natural test (filter never active today) — full suite green
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings (1 pre-existing error in untouched onboarding-context.tsx, unchanged by this commit)
+
 <!-- PHASE2-LOG-APPEND-POINT -->
