@@ -231,4 +231,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-025 — saveWithSwap untyped cross-shape contract · IMPLEMENTED
+- **Why it's an improvement:** Constrains `TDrafts extends Partial<TSnapshot>` so a draft key that collides with the snapshot under an incompatible type is a compile error instead of being silently excluded from conflict detection and auto-rebased over a concurrent server change.
+- **Change:** Tightened the `TDrafts` generic bound and removed the `as Record<string, unknown>` casts in the conflict-detection block; documented the `read().value`-shape invariant.
+- **Test:** src/lib/atproto/__tests__/save-with-swap.test.ts — type-contract case fails before (TS2578 unused `@ts-expect-error` under tsconfig.test.json), passes after; runtime conflict/rebase cases lock behavior.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
