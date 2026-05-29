@@ -183,4 +183,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test — full suite green
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-009 — Add CI workflow (ci.yml) · IMPLEMENTED
+- **Why it's an improvement:** Enforces the documented lint/tsc/test baseline on every PR into staging/main, so regressions Vercel's `next build` can't catch are now gated.
+- **Change:** Added `.github/workflows/ci.yml` running `npm ci` → `npm run lint` → `npx tsc --noEmit` → `npm test` on pull_request into staging and main, with Node pinned to 20.9.0 (aligns with quality-018).
+- **Test:** refactor; no natural test (new CI config file, testable=false) — full suite green
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
