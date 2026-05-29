@@ -564,4 +564,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/components/profile/__tests__/profile-edit-form-aria-describedby.test.tsx — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-056-profile-edit-5 — BannerUpload hasPending write-once boolean can desync · IMPLEMENTED
+- **Why it's an improvement:** After the inline-edit Remove clears the banner, BannerUpload no longer keeps showing the stale picked preview or a stuck "Replace banner" label — the displayed image is now the single source of truth.
+- **Change:** Dropped the write-once `hasPending` state; the button label derives from `hasImage`, and a new effect releases the local preview when the parent's `currentBannerUrl` changes (e.g. Remove → null), mirroring the inline-edit hook's quality-036 mirror-clear. bug-009 self-preview and profile-edit-2's Remove pill are preserved.
+- **Test:** src/components/profile/__tests__/banner-upload-pending-desync.test.tsx — fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->

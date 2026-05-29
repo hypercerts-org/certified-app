@@ -35,12 +35,13 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
   // Self-preview the picked file (mirrors AvatarUpload): create an
   // object URL on pick so the banner area shows the chosen image
   // immediately, falling back to `currentBannerUrl` (the saved record)
-  // when nothing has been picked. `hasPending` also flips the button
-  // label to "Replace".
+  // when nothing has been picked. The displayed image (`displayUrl` /
+  // `hasImage`) is the single source of truth — the button label and
+  // Remove pill derive from it, so they can't desync the way the old
+  // write-once `hasPending` boolean did.
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [imgFailed, setImgFailed] = useState(false);
-  const [hasPending, setHasPending] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleClick = () => {
@@ -69,7 +70,6 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
 
     try {
       await onUpload(file);
-      setHasPending(true);
     } catch (err) {
       console.error("Upload failed:", err);
       setError(err instanceof Error ? err.message : "Upload failed");
@@ -89,6 +89,18 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
       }
     };
   }, [previewUrl]);
+
+  // When the parent's banner reference changes — e.g. the inline-edit
+  // flow's Remove clears `currentBannerUrl` to null, or the saved record
+  // refetches a new URL — release the local preview so the displayed
+  // image follows the parent's truth instead of pinning the now-stale
+  // picked file. (Mirrors the parent hook's quality-036 mirror-clear.)
+  React.useEffect(() => {
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+  }, [currentBannerUrl]);
 
   const displayUrl = previewUrl || currentBannerUrl;
   const hasImage = !!displayUrl && !imgFailed;
@@ -129,8 +141,14 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
             ) : (
               <>
                 <Camera size={16} strokeWidth={1.75} aria-hidden />
+                {/* Label is derived straight from the displayed image
+                    (the single source of truth): "Replace" while a
+                    banner is shown, "Change" when the box is empty. This
+                    can't desync the way the old write-once `hasPending`
+                    boolean did, which stayed stuck at "Replace" after
+                    the parent cleared the banner (inline-edit Remove). */}
                 <span className="profile-banner-upload__btn-label">
-                  {hasPending ? "Replace banner" : "Change banner"}
+                  {hasImage ? "Replace banner" : "Change banner"}
                 </span>
               </>
             )}
