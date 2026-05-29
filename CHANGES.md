@@ -282,4 +282,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/hooks/__tests__/use-home-feed-invalid-cursor.test.tsx — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-032 — window-focus revalidation handlers now pass an abortable signal · IMPLEMENTED
+- **Why it's an improvement:** A focus event near unmount could setState on an unmounted hook because the focus fetch carried no signal, so the existing `if (signal?.aborted)` guard was dead code.
+- **Change:** Each focus handler (useReceivedEndorsements, useProfileResponses, useBlueskyFollows) now owns a ref'd AbortController aborted on next focus and on effect cleanup/unmount, and passes its signal into the fetch path.
+- **Test:** src/hooks/__tests__/focus-revalidate-abort.test.tsx — fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->

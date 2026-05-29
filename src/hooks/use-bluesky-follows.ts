@@ -133,17 +133,27 @@ export function useBlueskyFollows(did: string | null) {
     return () => controller.abort()
   }, [did, doFetch])
 
-  // Refetch on window focus when stale
+  // Refetch on window focus when stale. The focus fetch gets its own
+  // ref'd AbortController so it's actually cancellable — aborted on the
+  // next focus and on effect cleanup/unmount, so doFetch's
+  // `if (signal?.aborted)` guard can fire and we never setState on an
+  // unmounted hook (quality-032).
   useEffect(() => {
+    let focusController: AbortController | null = null
     const handleFocus = () => {
       const currentDid = didRef.current
       if (!currentDid) return
       if (!cache || cache.did !== currentDid || Date.now() - cache.fetchedAt >= STALE_TIME) {
-        doFetch(currentDid)
+        focusController?.abort()
+        focusController = new AbortController()
+        doFetch(currentDid, focusController.signal)
       }
     }
     window.addEventListener("focus", handleFocus)
-    return () => window.removeEventListener("focus", handleFocus)
+    return () => {
+      window.removeEventListener("focus", handleFocus)
+      focusController?.abort()
+    }
   }, [doFetch])
 
   return { followedDids, truncated, isLoading, error }
