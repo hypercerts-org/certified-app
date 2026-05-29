@@ -534,4 +534,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/app/groups/__tests__/leave-group-confirm-dialog.test.tsx — fails before (modal was a `div role="dialog"`, no `alertdialog`/`<dialog>`), passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings (1 pre-existing error in untouched safe-redirect-test-env.test.tsx, unchanged by this commit)
 
+### quality-056-groups-4 — Delete dead AddOrgModal + MembershipSyncModal · IMPLEMENTED
+- **Why it's an improvement:** Removes two unreferenced (0-importer) components, shrinking the surface; this also resolves groups-5 since the invariant-token inline styles (`--color-primary`/`--color-mid-gray` on an app surface) vanish with the deleted AddOrgModal file.
+- **Change:** Deleted `src/components/groups/add-org-modal.tsx` and `src/components/groups/membership-sync-modal.tsx` (confirmed 0 external importers via grep for AddOrgModal/MembershipSyncModal/MembershipChange).
+- **Test:** refactor (dead-code deletion); no natural test — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings (1 pre-existing error in untouched safe-redirect-test-env.test.tsx, unchanged by this commit)
+
 <!-- PHASE2-LOG-APPEND-POINT -->
