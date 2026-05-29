@@ -219,4 +219,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-022 — audit scripts disagree on dev-server port · IMPLEMENTED
+- **Why it's an improvement:** all three audit scripts now point at the same default dev-server origin, so audit-screenshots no longer silently skips every route against a default `next dev` (:3000).
+- **Change:** unified the port default to `process.env.BASE || "http://localhost:3000"` — fixed audit-screenshots' :3001 default, replaced recapture-landing's three hardcoded :3000 URLs with a BASE constant, and made capture-divergence-sheet honor BASE (file:// fallback preserved when unset).
+- **Test:** refactor; no natural test (scripts are dev-only Playwright tooling, testable=false) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
