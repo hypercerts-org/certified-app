@@ -6,6 +6,7 @@ import {
 import { checkCsrf } from "@/lib/auth/csrf"
 import { isValidDid } from "@/lib/utils/did"
 import { extractRouteError, parseJsonBody } from "@/lib/utils/api"
+import { isOrgRole } from "@/lib/groups/constants"
 
 /**
  * PUT /api/groups/[groupDid]/role
@@ -41,7 +42,7 @@ export async function PUT(
       )
     }
 
-    if (!["member", "admin", "owner"].includes(role)) {
+    if (!isOrgRole(role)) {
       return NextResponse.json(
         { error: "role must be member, admin, or owner" },
         { status: 400 }

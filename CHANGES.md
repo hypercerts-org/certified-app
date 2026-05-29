@@ -600,4 +600,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (doc-only, AGENTS.md is not linted/typechecked) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 67 warnings
 
+### quality-056-authz-repo-3 — role allowlists derived from one ORG_ROLES source · IMPLEMENTED
+- **Why it's an improvement:** the members-POST {member,admin} and role-PUT {member,admin,owner} allowlists were two bare arrays in separate route files that could silently drift; both now derive from a single source of truth.
+- **Change:** added `ORG_ROLES` + derived `ORG_ASSIGNABLE_ROLES` (= ORG_ROLES minus owner) and `isOrgRole`/`isAssignableRole` guards to `src/lib/groups/constants.ts`; members/route.ts uses `isAssignableRole`, role/route.ts uses `isOrgRole`. Exact sets preserved (members POST excludes owner).
+- **Test:** src/lib/groups/__tests__/roles.test.ts — fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 67 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
