@@ -284,6 +284,7 @@ export function osmUrl({ lat, lng }: LatLng, zoom = 14): string {
 
 import { authFetch } from "@/lib/auth/fetch"
 import { writeToRepo } from "@/lib/atproto/repo-write"
+import { parseAtUri } from "@/lib/atproto/activity-uri"
 
 const LOCATION_COLLECTION = "app.certified.location"
 const LP_VERSION = "v0.1.0"
@@ -437,19 +438,6 @@ export async function readLocationStrongRef(
  *  every save). */
 export function rkeyFromStrongRefUri(uri: string): string | null {
   return parseAtUri(uri)?.rkey ?? null
-}
-
-interface ParsedAtUri {
-  did: string
-  collection: string
-  rkey: string
-}
-
-function parseAtUri(uri: string): ParsedAtUri | null {
-  if (typeof uri !== "string" || !uri.startsWith("at://")) return null
-  const parts = uri.slice("at://".length).split("/")
-  if (parts.length < 3) return null
-  return { did: parts[0], collection: parts[1], rkey: parts[2] }
 }
 
 /** Plain-text fallback label for location types we don't parse into lat/lng. */

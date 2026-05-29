@@ -249,4 +249,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/lib/atproto/__tests__/badges.test.ts — added `resolveCanonicalEndorsementDef` cases; the two malformed-def cases fail before, pass after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-028 — location.ts uses shared strict parseAtUri · IMPLEMENTED
+- **Why it's an improvement:** A single, tested at:// parser is used everywhere; malformed URIs with trailing segments are now rejected consistently instead of being silently accepted.
+- **Change:** Deleted the private lenient `parseAtUri` (and its `ParsedAtUri` type) in location.ts and imported the shared strict parser from `@/lib/atproto/activity-uri`.
+- **Test:** src/lib/atproto/__tests__/location.test.ts — fails before, passes after (4-segment uri → `readLocationStrongRef` returns null, no fetch).
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
