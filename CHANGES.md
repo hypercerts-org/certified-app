@@ -492,4 +492,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (testable=false) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings (pre-existing baseline error in onboarding-context.tsx, untouched)
 
+### quality-056-map-5 — Raw hex in map polygon pathOptions + #000 in leaflet.css · IMPLEMENTED
+- **Why it's an improvement:** Removes a raw-hex token violation (CLAUDE.md rule 2) from leaflet.css and documents the unavoidable JS-literal exception so it isn't "fixed" incorrectly later.
+- **Change:** Added invariant `--media-letterbox` token in tokens.css and pointed `.leaflet-doc__embed` background at it; left the Leaflet `pathOptions` hex literals (Leaflet can't read CSS vars from JS) with a justifying comment.
+- **Test:** refactor; no natural test (testable=false) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings (pre-existing baseline error in onboarding-context.tsx, untouched)
+
 <!-- PHASE2-LOG-APPEND-POINT -->

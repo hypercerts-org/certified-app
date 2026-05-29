@@ -134,7 +134,7 @@ ol.leaflet-doc__list {
   width: 100%;
   border-radius: var(--radius);
   overflow: hidden;
-  background: #000;
+  background: var(--media-letterbox);
 }
 
 .leaflet-doc__embed iframe {

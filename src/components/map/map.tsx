@@ -151,6 +151,11 @@ export default function Map({
             <Polygon
               key={`poly-${i}`}
               positions={positions}
+              // Documented exception to the "tokens only" rule (CLAUDE.md
+              // rule 2): Leaflet styles SVG paths from JS and cannot read
+              // CSS custom properties, so these literals can't be tokens.
+              // They mirror --color-accent (#5e5e5e) in tokens.css — keep
+              // the two in sync by hand if the accent changes.
               pathOptions={{
                 color: "#5e5e5e",
                 weight: 1.5,
