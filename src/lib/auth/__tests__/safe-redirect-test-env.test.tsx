@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, act, cleanup, waitFor } from "@testing-library/react";
+import { renderHook, act, cleanup, waitFor } from "@testing-library/react";
 import React from "react";
 
 // `safeRedirect` (auth-context.tsx) is module-private, so it is exercised
@@ -32,11 +32,8 @@ import { AuthProvider, useAuth } from "@/lib/auth/auth-context";
 
 const HTTP_REDIRECT = "http://127.0.0.1:9999/oauth/authorize?x=1";
 
-// Child that exposes the auth context to the test harness.
-let captured: ReturnType<typeof useAuth> | null = null;
-function Capture() {
-  captured = useAuth();
-  return null;
+function wrapper({ children }: { children: React.ReactNode }) {
+  return <AuthProvider>{children}</AuthProvider>;
 }
 
 describe("safeRedirect http allowance under NODE_ENV=test", () => {
@@ -47,7 +44,6 @@ describe("safeRedirect http allowance under NODE_ENV=test", () => {
     expect(process.env.NODE_ENV).toBe("test");
 
     hrefSetTo = null;
-    captured = null;
 
     // Capture writes to window.location.href without navigating jsdom.
     Object.defineProperty(window, "location", {
@@ -91,25 +87,20 @@ describe("safeRedirect http allowance under NODE_ENV=test", () => {
   });
 
   it("permits an http: redirect URL (no 'Invalid redirect URL' error)", async () => {
-    render(
-      <AuthProvider>
-        <Capture />
-      </AuthProvider>,
-    );
+    const { result } = renderHook(() => useAuth(), { wrapper });
 
     // Wait for the mount-time refreshSession to settle.
     await waitFor(() => {
-      expect(captured).not.toBeNull();
-      expect(captured!.isLoading).toBe(false);
+      expect(result.current.isLoading).toBe(false);
     });
 
     await act(async () => {
-      await captured!.submitEmail("user@example.com");
+      await result.current.submitEmail("user@example.com");
     });
 
     // After the fix: http: is allowed under NODE_ENV=test, so the redirect
     // is performed and no error is surfaced.
     expect(hrefSetTo).toBe(HTTP_REDIRECT);
-    expect(captured!.error).toBeNull();
+    expect(result.current.error).toBeNull();
   });
 });

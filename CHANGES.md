@@ -543,4 +543,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 ### quality-056-groups-5 — AddOrgModal invariant-token inline styles · SKIPPED
 - **Reason:** resolved by quality-056-groups-4 — file deleted
 
+### quality-056-auth-redirect-1 (follow-up) — clear lint error in the new safe-redirect test · IMPLEMENTED
+- **Why it's an improvement:** Restores the 0-errors lint gate. The original test for this item introduced a React-Compiler lint error (`Cannot reassign variables declared outside of the component/hook`) by reassigning a module-level `captured` var inside a render component; the wave's agents misattributed it as pre-existing and committed through it (lint went 69→70 with 1 error).
+- **Change:** Rewrote `src/lib/auth/__tests__/safe-redirect-test-env.test.tsx` to use `renderHook(() => useAuth(), { wrapper })` instead of a module-level-reassigning `Capture` component. Same assertions (http: redirect permitted under NODE_ENV=test, no error).
+- **Test:** the test itself (unchanged assertions, still green).
+- **Gate:** vitest green · tsc 0 errors · lint 0 errors / 69 warnings (regression cleared).
+
 <!-- PHASE2-LOG-APPEND-POINT -->
