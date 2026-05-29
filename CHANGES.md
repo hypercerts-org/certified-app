@@ -549,4 +549,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** the test itself (unchanged assertions, still green).
 - **Gate:** vitest green · tsc 0 errors · lint 0 errors / 69 warnings (regression cleared).
 
+### quality-056-groups-6 — add-members partial failure leaves added members staged · IMPLEMENTED
+- **Why it's an improvement:** A retry after a partial add-members failure no longer re-adds members the group service already accepted.
+- **Change:** `handleAddMembers` now catches per-iteration and re-stages only the failing member onward via a new exported `remainingAfterAddIndex` helper (org-settings.tsx).
+- **Test:** src/components/groups/__tests__/org-settings-pending.test.ts — fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
