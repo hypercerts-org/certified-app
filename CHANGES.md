@@ -444,4 +444,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/lib/auth/__tests__/safe-redirect-test-env.test.tsx — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-056-auth-session-fixation-1 — document why swallowed deleteSession is safe · IMPLEMENTED
+- **Why it's an improvement:** Clarifies that the swallowed deleteSession failure is not a session-fixation hole, so a future reader doesn't "harden" it back into failing sign-in.
+- **Change:** Added a one-line comment in callback-handler/route.ts noting createSession overwrites the cookie, so a failed deleteSession can only orphan a TTL'd Redis key.
+- **Test:** refactor; no natural test (comment-only) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
