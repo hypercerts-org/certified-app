@@ -630,4 +630,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 67 warnings
 
+### quality-056-utils-tests-2 — did.ts validators untested · IMPLEMENTED
+- **Why it's an improvement:** Locks in the behavior of `isValidDid`/`isDid` that gate ~10 security-sensitive route guards, so future edits to the DID regex/prefix check can't silently regress.
+- **Change:** Added a co-located test file for `src/lib/utils/did.ts`; no production change.
+- **Test:** src/lib/utils/__tests__/did.test.ts — pure test addition (no defect to fix), passes against current behavior; full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 67 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
