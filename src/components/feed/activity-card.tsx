@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import CertIcon from "@/components/ui/cert-icon"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
@@ -25,6 +25,17 @@ export default function ActivityCard({ record, did, label }: ActivityCardProps) 
     ? resolveActivityImageUrl(value.image, did)
     : null
   const [imageFailed, setImageFailed] = useState(false)
+  // Reset the failure flag when the image URL changes so a reused
+  // instance (record mutated in place, no remount) retries the new
+  // image instead of staying on the placeholder. Mirrors the same
+  // reset-on-dep-change effect in ActivityDetail / ProjectDetail.
+  // The unconditional setState here is the documented false-positive
+  // case for `set-state-in-effect` (see eslint.config.mjs); the sibling
+  // ActivityDetail effect isn't flagged, so suppress this one to match.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setImageFailed(false)
+  }, [imageUrl])
 
   // Derive the detail-page URL from the record's at:// URI. We prefer
   // the URI over the `did` prop because it encodes the rkey too.

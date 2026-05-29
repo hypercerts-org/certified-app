@@ -414,4 +414,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (testable=false) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-052 — ActivityCard never resets imageFailed when imageUrl changes · IMPLEMENTED
+- **Why it's an improvement:** A reused ActivityCard whose record/image URL mutates in place (no remount) no longer stays stuck on the placeholder after a prior load failure; the new URL is retried.
+- **Change:** Added `useEffect(() => setImageFailed(false), [imageUrl])`, mirroring the existing reset-on-dep-change effect in ActivityDetail/ProjectDetail.
+- **Test:** src/components/feed/__tests__/activity-card-image-reset.test.tsx — fails before, passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
