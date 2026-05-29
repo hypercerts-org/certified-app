@@ -372,4 +372,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/components/profile/__tests__/endorse-reason-confirm.test.ts — fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-007 — Security-critical sanitize.ts has no unit tests · IMPLEMENTED
+- **Why it's an improvement:** Locks in the pinned invisible-char regex and whitespace/@/lowercase rules at the login/feedback boundary, so a future regex edit that narrows the allowlisted code-point ranges fails CI instead of silently regressing.
+- **Change:** Added a co-located test file for `stripInvisible`/`sanitizeEmail`/`sanitizeHandle`; no production change.
+- **Test:** src/lib/utils/__tests__/sanitize.test.ts — pure test addition (no defect to fix); asserts current correct behavior, full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
