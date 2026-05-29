@@ -101,14 +101,14 @@ function NewsPost({ post }: { post: BskyPost }) {
           className={gridClass}
           aria-label="View post on Bluesky"
         >
-          {images.slice(0, 4).map((img, i) => {
+          {images.slice(0, 4).map((img) => {
             const ratio = img.aspectRatio
               ? `${img.aspectRatio.width} / ${img.aspectRatio.height}`
               : undefined
             return (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
-                key={i}
+                key={img.thumb}
                 src={img.thumb}
                 alt={img.alt}
                 loading="lazy"

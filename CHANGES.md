@@ -426,4 +426,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-053 — News post images use array index as React key · IMPLEMENTED
+- **Why it's an improvement:** Index keys break reconciliation on reorder/filter; keying by the unique CDN URL gives each image a stable identity.
+- **Change:** Keyed the sliced news image map by `img.thumb` instead of the array index in news-section.tsx.
+- **Test:** refactor; no natural test (testable=false) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
