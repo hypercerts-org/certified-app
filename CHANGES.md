@@ -378,4 +378,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/lib/utils/__tests__/sanitize.test.ts — pure test addition (no defect to fix); asserts current correct behavior, full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-014 — search-actors logs raw error via logSafe · IMPLEMENTED
+- **Why it's an improvement:** Adopts the repo-wide logSafe convention so the catch-all error log is redaction-safe and won't leak if the upstream becomes authenticated.
+- **Change:** Replaced `console.error("[search-actors]", err)` with `logSafe("[search-actors] upstream error", err)` and added the import.
+- **Test:** refactor; no natural test — full suite green
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
