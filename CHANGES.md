@@ -351,4 +351,7 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-045 — three near-identical CreateListModal / bulk-paste modals duplicated · BLOCKED
+- **Reason:** escalate-to-judgment — the two CreateListModals diverge in user-visible behavior (focus+select vs focus, silent-return vs "Title is required", maxLength 120/500 vs 256/1000, separate CSS class families) and the two paste modals have entirely different state machines + action rows (PasteProgress vs showCloseOnly/showTryAgain), so a single shared dialog/shell cannot be a pure behavior-preserving extraction; it would either change behavior on one surface or require a large flag surface that doesn't reduce complexity.
+
 <!-- PHASE2-LOG-APPEND-POINT -->
