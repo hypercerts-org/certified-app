@@ -697,7 +697,7 @@ certified-app/
 ├── tsconfig.json                       # strict, paths { "@/*": ["./src/*"] }, ES2017, react-jsx
 ├── tailwind.config.ts                  # Theme: navy/accent/sky/deep colors, h1-h4, elevation shadows
 ├── eslint.config.mjs                   # next/core-web-vitals + next/typescript
-├── postcss.config.mjs                  # tailwindcss + autoprefixer
+├── postcss.config.mjs                  # tailwindcss only — autoprefixer intentionally omitted (no browserslist); vendor prefixes are hand-maintained
 ├── .env.local.example                  # Env var template
 ├── tests/
 │   └── groups.test-plan.md             # Manual behavioral test plan (no automated tests)
