@@ -153,4 +153,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (module is dead today — quality-002 — and tsconfig excludes __tests__) — full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-005 — Dead EndorseShortcut + inert received-grid optimistic overlay · IMPLEMENTED
+- **Why it's an improvement:** removes ~140 lines of unreachable code and a false comment from the largest profile file; `EndorseShortcut` was never rendered and the optimistic overlay was permanently inert (its only setters were never wired to any child), so deleting it eliminates dead state and a misleading claim about sidebar handoff.
+- **Change:** removed `EndorseShortcut`, the `optimisticAdds`/`optimisticHides` state + the de-dup `displayReceived` memo (collapsed `displayReceived` to `received.endorsements`), the unused `handleEndorsed`/`handleRevoked` callbacks, and the misleading "exported to the sidebar" comment.
+- **Test:** refactor; no natural test (testable=false; pure dead-code deletion) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
