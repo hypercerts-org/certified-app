@@ -384,4 +384,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test — full suite green
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-015 — notifications upstream error log includes up to 500 chars of the response body · IMPLEMENTED
+- **Why it's an improvement:** Stops writing the user's own notification data (DIDs, record URIs) into server logs — removes a PII-in-logs smell.
+- **Change:** Changed the non-2xx `console.warn` to log only `upstream.status`, dropping the `responseBody.slice(0, 500)` argument.
+- **Test:** refactor; no natural test (testable: no) — full suite green
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
