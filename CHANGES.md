@@ -528,4 +528,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/components/explore-page/__tests__/explore-popover-haspopup.test.tsx — fails before, passes after
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings (1 pre-existing error in untouched onboarding-context.tsx, unchanged by this commit)
 
+### quality-056-groups-3 — Leave Group modal now uses ConfirmDialog · IMPLEMENTED
+- **Why it's an improvement:** Routes the Leave-Group modal through the shared `<ConfirmDialog>`/`<AppDialog>` (CLAUDE.md hard rule 7 / §22.16), gaining native `<dialog>` Esc-close, scroll-lock, and focus restore instead of a hand-rolled `signin-modal__backdrop`.
+- **Change:** Replaced the bespoke backdrop div in `src/app/groups/page.tsx` with `<ConfirmDialog>` (preserving the Leave action, destructive variant, in-flight gating, and warning copy); dropped the now-unused `LogOut`/`Button` imports.
+- **Test:** src/app/groups/__tests__/leave-group-confirm-dialog.test.tsx — fails before (modal was a `div role="dialog"`, no `alertdialog`/`<dialog>`), passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings (1 pre-existing error in untouched safe-redirect-test-env.test.tsx, unchanged by this commit)
+
 <!-- PHASE2-LOG-APPEND-POINT -->
