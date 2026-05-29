@@ -396,4 +396,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/app/api/xrpc/[...method]/__tests__/xrpc-error.test.ts — new case "clamps out-of-range upstream statuses to 500 (quality-016)"; fails before, passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-017 — indexer body-size cap measures UTF-16 length not bytes · IMPLEMENTED
+- **Why it's an improvement:** The documented 32KB body cap is now enforced in bytes, so a multi-byte body can no longer slip ~3x the byte limit past the post-read check.
+- **Change:** Replaced `text.length > MAX_BODY_SIZE` with `Buffer.byteLength(text, "utf8") > MAX_BODY_SIZE` in the indexer route's post-read size check.
+- **Test:** src/app/api/indexer/__tests__/route.test.ts — new case posts >32KB of multi-byte chars with no Content-Length and asserts 413; fails before (200), passes after.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
