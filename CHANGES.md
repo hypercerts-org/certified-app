@@ -360,4 +360,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/components/profile/__tests__/endorsement-lists-sort.test.ts — fails before (sortLists not exported), passes after.
 - **Gate:** vitest green · tsc 0 errors · lint 69 warnings
 
+### quality-047 — Raw at-URI used as the accessible label for item checkboxes · IMPLEMENTED
+- **Why it's an improvement:** Screen readers no longer announce the full DID+collection+rkey at-URI for each select checkbox; they get a concise positional label instead.
+- **Change:** In profile-lists.tsx the item checkbox `aria-label` now uses the 1-based row index (`Select item ${index + 1}`) rather than the raw at-URI.
+- **Test:** refactor; no natural test (testable=false) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->

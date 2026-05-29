@@ -440,7 +440,7 @@ function ListDetail({
             </div>
           ) : null}
           <ul className="profile-lists__items">
-            {list.items.map((item) => {
+            {list.items.map((item, index) => {
               const uri = item.itemIdentifier.uri
               return (
                 <li key={uri} className="profile-lists__items-row">
@@ -451,7 +451,7 @@ function ListDetail({
                       checked={selected.has(uri)}
                       onChange={() => toggleOne(uri)}
                       disabled={bulkDeleting}
-                      aria-label={`Select ${uri}`}
+                      aria-label={`Select item ${index + 1}`}
                     />
                   ) : null}
                   <div className="profile-lists__items-row-body">
