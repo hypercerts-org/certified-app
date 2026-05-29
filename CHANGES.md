@@ -147,4 +147,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 ### quality-002 — cert-context.ts dead module (304 lines) — delete · BLOCKED
 - **Reason:** escalate-to-judgment: the Recommendation's explicit precondition ("confirm no in-flight branch reintroduces the Explore aggregate first") fails — four in-flight branches (origin/feat/88-follower-events-feed, /89-feed-enhancements, /quality-pass-rebased, /wider-sidebar-and-navbar-border) reintroduce the Explore aggregate via src/hooks/use-cert-context.ts + src/components/explore/* and import fetchAllCertContext / CertContextItem from this exact module; deleting now would conflict with that in-flight work.
 
+### quality-003 — fetchAllCertContext pagination · IMPLEMENTED
+- **Why it's an improvement:** `listAndFilter` now follows the listRecords cursor, so it sees every record on the author's PDS instead of only the first 50 — matches that live past page one are no longer silently dropped, honoring the "All"/"every" naming.
+- **Change:** rewrote `listAndFilter` to walk the cursor in a `while (true)` loop (limit 100, same 400/404→empty handling), filtering + normalizing each page, mirroring `fetchTypedLists` / `listEndorsementListCollections`.
+- **Test:** refactor; no natural test (module is dead today — quality-002 — and tsconfig excludes __tests__) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 69 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
