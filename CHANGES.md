@@ -636,4 +636,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** src/lib/utils/__tests__/did.test.ts — pure test addition (no defect to fix), passes against current behavior; full suite green.
 - **Gate:** vitest green · tsc 0 errors · lint 67 warnings
 
+### quality-056-utils-tests-3 — bounded-cache / format-date / ip / recently-viewed tests · IMPLEMENTED
+- **Why it's an improvement:** Locks in the branchy/security-relevant behavior of four previously-untested utils (cache eviction/cap, UTC date formatting, trusted-IP header parsing, recently-viewed dedupe/cap) so regressions are caught.
+- **Change:** Added four co-located test files; no production change. clientIp confirmed in ip.ts; clearRecentlyViewed already removed by deadcode-6, so only the remaining exports are tested.
+- **Test:** src/lib/utils/__tests__/{bounded-cache,format-date,ip,recently-viewed}.test.ts — pure test addition (no defect to fix), 35 cases pass against current behavior; full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 67 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
