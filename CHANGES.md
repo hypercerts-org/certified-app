@@ -594,4 +594,10 @@ One entry per item, in implementation order. Status is `IMPLEMENTED` or `BLOCKED
 - **Test:** refactor; no natural test (testable=false; root error boundary, behavior-preserving) — full suite green
 - **Gate:** vitest green · tsc 0 errors · lint 67 warnings
 
+### quality-056-approot-agents-dep-version-drift — AGENTS §2 stale dependency versions · IMPLEMENTED
+- **Why it's an improvement:** AGENTS §2 tech-stack table now matches package.json, so agents reading it don't act on stale/missing dependency facts.
+- **Change:** Corrected `@atproto/api` 0.19→0.13 and added Theming (next-themes), Rich text (tiptap) and Maps (leaflet/react-leaflet) rows to the §2 table.
+- **Test:** refactor; no natural test (doc-only, AGENTS.md is not linted/typechecked) — full suite green.
+- **Gate:** vitest green · tsc 0 errors · lint 67 warnings
+
 <!-- PHASE2-LOG-APPEND-POINT -->
