@@ -296,13 +296,28 @@ async function resolveIdentity(did: string): Promise<{
   // observed, so fall back to the appView for the bsky block only.
   const indexerHasBsky = !!(actor.displayName || actor.avatarCid)
   if (indexerHasBsky) {
+    const indexerAvatar = buildAvatarUrlFromCid(did, actor.avatarCid)
+    const indexerBanner = buildBannerUrlFromCid(did, actor.bannerCid)
+
+    // PER-FIELD fallback: a displayName-set-but-avatarCid-null indexer row
+    // used to render a sticky blank avatar (the read-side amplifier of the
+    // data-loss bug) because `indexerHasBsky` skipped the appView wholesale.
+    // When the indexer is missing a needed image field, lazily hit the
+    // appView ONCE and fill ONLY the gaps — the indexer stays authoritative
+    // for whatever it does carry, and the fast path stays fast (no appView
+    // fetch) whenever the avatar+banner CIDs are present.
+    let appView: BskyIdentity | null = null
+    if (!actor.avatarCid || !actor.bannerCid) {
+      appView = await fetchBskyAppViewProfile(did)
+    }
+
     return {
       handle,
       bsky: {
-        displayName: actor.displayName ?? undefined,
-        description: actor.description ?? undefined,
-        avatar: buildAvatarUrlFromCid(did, actor.avatarCid) ?? undefined,
-        banner: buildBannerUrlFromCid(did, actor.bannerCid) ?? undefined,
+        displayName: actor.displayName ?? appView?.displayName ?? undefined,
+        description: actor.description ?? appView?.description ?? undefined,
+        avatar: indexerAvatar ?? appView?.avatar ?? undefined,
+        banner: indexerBanner ?? appView?.banner ?? undefined,
       },
     }
   }
