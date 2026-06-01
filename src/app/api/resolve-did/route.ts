@@ -296,13 +296,28 @@ async function resolveIdentity(did: string): Promise<{
   // observed, so fall back to the appView for the bsky block only.
   const indexerHasBsky = !!(actor.displayName || actor.avatarCid)
   if (indexerHasBsky) {
+    const indexerAvatar = buildAvatarUrlFromCid(did, actor.avatarCid)
+    const indexerBanner = buildBannerUrlFromCid(did, actor.bannerCid)
+
+    // PER-FIELD fallback: a displayName-set-but-avatarCid-null indexer row
+    // used to render a sticky blank avatar (the read-side amplifier of the
+    // data-loss bug) because `indexerHasBsky` skipped the appView wholesale.
+    // When the indexer is missing a needed image field, lazily hit the
+    // appView ONCE and fill ONLY the gaps — the indexer stays authoritative
+    // for whatever it does carry, and the fast path stays fast (no appView
+    // fetch) whenever the avatar+banner CIDs are present.
+    let appView: BskyIdentity | null = null
+    if (!actor.avatarCid || !actor.bannerCid) {
+      appView = await fetchBskyAppViewProfile(did)
+    }
+
     return {
       handle,
       bsky: {
-        displayName: actor.displayName ?? undefined,
-        description: actor.description ?? undefined,
-        avatar: buildAvatarUrlFromCid(did, actor.avatarCid) ?? undefined,
-        banner: buildBannerUrlFromCid(did, actor.bannerCid) ?? undefined,
+        displayName: actor.displayName ?? appView?.displayName ?? undefined,
+        description: actor.description ?? appView?.description ?? undefined,
+        avatar: indexerAvatar ?? appView?.avatar ?? undefined,
+        banner: indexerBanner ?? appView?.banner ?? undefined,
       },
     }
   }
@@ -387,20 +402,48 @@ export async function GET(request: NextRequest) {
     const certs =
       certsResult.status === "fulfilled" ? certsResult.value : null
 
-    const displayName = certs?.displayName || bsky?.displayName || undefined
-    const description = certs?.description || bsky?.description || undefined
+    // ALL-OR-NOTHING fallback rule (maintainer product decision):
+    // the Bluesky profile is only a wholesale fallback. We use the
+    // Bluesky fields ONLY when the user has no Certified profile, or
+    // a completely empty one. The moment a Certified profile carries
+    // ANY meaningful content, we treat it as authoritative and use
+    // ITS fields exclusively — a blank field in a partly-filled certs
+    // profile is assumed to be INTENTIONALLY blank, so we must NOT
+    // backfill it from Bluesky per-field (e.g. someone who set a
+    // display name but deliberately cleared their avatar should get
+    // no avatar, not their old bsky one).
+    //
+    // `certsHasContent` is the single gate: a certs record exists AND
+    // at least one displayed profile field is non-empty. A stub record
+    // that only carries {$type, createdAt} therefore counts as empty,
+    // so the bsky fallback still applies to it.
+    const certsHasContent = !!(
+      certs &&
+      (certs.displayName ||
+        certs.description ||
+        certs.avatarUrl ||
+        certs.bannerUrl ||
+        certs.pronouns ||
+        certs.website)
+    )
+    const displayName = certsHasContent
+      ? certs?.displayName
+      : bsky?.displayName
+    const description = certsHasContent
+      ? certs?.description
+      : bsky?.description
     const pronouns = certs?.pronouns
     const website = certs?.website
-    const avatar = certs?.avatarUrl ?? bsky?.avatar ?? undefined
-    const banner = certs?.bannerUrl ?? bsky?.banner ?? undefined
+    const avatar = certsHasContent ? certs?.avatarUrl : bsky?.avatar
+    const banner = certsHasContent ? certs?.bannerUrl : bsky?.banner
     const createdAt = certs?.createdAt
-    // True when an app.certified.actor.profile record exists with a
-    // displayName populated. Surfaced to the client so the profile
-    // sidebar / header can render the "Bluesky profile" tag only
-    // when the user has NOT authored a Certified profile (i.e. the
-    // displayName + other fields we're showing all originate from
+    // True when the user has a non-empty app.certified.actor.profile
+    // (the same `certsHasContent` gate above). Surfaced to the client
+    // so the profile sidebar / header can render the "Bluesky profile"
+    // tag only when the user has NOT authored a Certified profile
+    // (i.e. the fields we're showing all originate from
     // app.bsky.actor.profile). Issue #74.
-    const hasCertifiedProfile = !!certs?.displayName
+    const hasCertifiedProfile = certsHasContent
     // True when an app.bsky.actor.profile is reachable + populated.
     // Used by the first-signin onboarding gate so the import modal
     // only opens for users who actually have bsky content worth

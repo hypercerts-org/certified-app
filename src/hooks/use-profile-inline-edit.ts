@@ -170,8 +170,20 @@ export interface UseProfileInlineEditInput {
   editTargetDid: string | undefined
   /** True when the viewed profile is an org (has an org marker). */
   sidebarIsOrg: boolean
-  /** Snapshot of the profile record from useUserProfile. */
+  /** Snapshot of the profile record. For the editable case the caller
+   *  sources this from the RAW certs record via `getProfileWithCid(did)`
+   *  so it carries the existing avatar/banner blob refs — the preserve
+   *  branches in `handleSave` copy them onto `next` when there's no fresh
+   *  upload. The avatar-LESS useUserProfile snapshot must NOT be passed
+   *  here for editable views or a text-only save drops the blobs. */
   profile: CertifiedProfile | null
+  /** CID of the raw profile record at mount, from `getProfileWithCid`.
+   *  Captured as a swap precondition at `handleEditClick` and threaded
+   *  into the putProfile write so a concurrent edit (other tab/device)
+   *  surfaces as an InvalidSwap error instead of silently clobbering.
+   *  `null`/`undefined` when there's no existing record (brand-new user)
+   *  or the CID couldn't be read — the write then proceeds unconditioned. */
+  profileCid?: string | null
   /** Snapshot of the avatar URL from useUserProfile. */
   avatarUrl: string | null
   /** Snapshot of the banner URL from useUserProfile. */
@@ -265,6 +277,7 @@ export function useProfileInlineEdit(
     editTargetDid,
     sidebarIsOrg,
     profile,
+    profileCid,
     avatarUrl,
     bannerUrl,
     orgMarker,
@@ -332,6 +345,14 @@ export function useProfileInlineEdit(
   // record (putRecord) instead of spawning another orphan. Cleared on
   // edit-click / cancel / successful save so a new session starts fresh.
   const mintedLocationRkeyRef = useRef<string | null>(null)
+  // CID of the profile record captured when the edit session opened
+  // (handleEditClick). Threaded as `swapRecord` into the putProfile
+  // write so the PDS rejects the write with InvalidSwap if the record
+  // moved underneath us (another tab/device) since edit-start. Null
+  // when there's no existing record (brand-new user) — the write then
+  // proceeds unconditioned, which is correct. Reset on cancel /
+  // successful save so a fresh session re-snapshots. (judgment-006 / #71)
+  const profileSwapCidRef = useRef<string | null>(null)
   // Local object-URL previews. Created the moment the user picks a
   // file (before the network upload completes) so the edit view shows
   // the new image immediately. On Save these get promoted to
@@ -525,11 +546,19 @@ export function useProfileInlineEdit(
     avatarUploadRef.current = null
     bannerUploadRef.current = null
     mintedLocationRkeyRef.current = null
+    // Snapshot the record CID at edit-start as the swap precondition.
+    profileSwapCidRef.current = profileCid ?? null
     setPendingBannerRemoved(false)
     setSaveError(null)
     setHasInteracted(false)
     setIsEditing(true)
-  }, [effectiveProfile, effectiveOrgMarker, effectiveOrgUrls, resolvedLocationRef])
+  }, [
+    effectiveProfile,
+    effectiveOrgMarker,
+    effectiveOrgUrls,
+    resolvedLocationRef,
+    profileCid,
+  ])
 
   const handleCancelEdit = useCallback(() => {
     setIsEditing(false)
@@ -538,6 +567,7 @@ export function useProfileInlineEdit(
     avatarUploadRef.current = null
     bannerUploadRef.current = null
     mintedLocationRkeyRef.current = null
+    profileSwapCidRef.current = null
     if (pendingAvatarPreviewUrl) URL.revokeObjectURL(pendingAvatarPreviewUrl)
     if (pendingBannerPreviewUrl) URL.revokeObjectURL(pendingBannerPreviewUrl)
     setPendingAvatarPreviewUrl(null)
@@ -696,25 +726,20 @@ export function useProfileInlineEdit(
       // `isSaving` / `saveError` were already set before awaiting the
       // in-flight uploads above; the record-write phase continues under
       // the same flags.
-      // TODO(#71-profile-swap): plumb swapRecord through the
-      // profile + org-marker + location writes here. Blocked on
-      // useUserProfile / useOrgMarker exposing the underlying
-      // record CIDs (they currently synthesize via /api/resolve-did
-      // which doesn't surface the CID). Once that lands:
-      //   - take `profileCid` + `orgMarkerCid` (+ `locationCid`?)
-      //     as additional UseProfileInlineEditInput fields
-      //   - capture them as the mountSnapshot at handleEditClick
-      //   - use saveWithSwap (lib/atproto/save-with-swap.ts) here
-      //     with the same hybrid C+A conflict UX as project-detail
-      //     and activity-detail.
-      // The dual-path write helpers (putProfile, putOrgMarker,
-      // putLocationRecord) already accept opts.swapRecord; only
-      // the caller wiring is missing. Tracked as a follow-up.
-      await putProfile(
-        sessionDid,
-        next,
-        editTargetDid ? { targetDid: editTargetDid } : undefined,
-      )
+      // Thread the mount-time profile CID as `swapRecord` so the PDS
+      // rejects the write with InvalidSwap when the record moved
+      // underneath us since edit-start (another tab / device). The
+      // generic catch below surfaces that as `saveError`. When there's
+      // no snapshot CID (brand-new user / unreadable CID) the write
+      // proceeds unconditioned. The org-marker + location writes below
+      // are still unconditioned — only the profile record (the avatar/
+      // banner carrier, i.e. the data-loss surface) is guarded here.
+      // (judgment-006 / #71)
+      const profileSwapCid = profileSwapCidRef.current
+      await putProfile(sessionDid, next, {
+        ...(editTargetDid ? { targetDid: editTargetDid } : {}),
+        ...(profileSwapCid ? { swapRecord: profileSwapCid } : {}),
+      })
 
       let nextMarker: GroupMetadata | null = null
       if (sidebarIsOrg) {
@@ -820,6 +845,7 @@ export function useProfileInlineEdit(
       avatarUploadRef.current = null
       bannerUploadRef.current = null
       mintedLocationRkeyRef.current = null
+      profileSwapCidRef.current = null
       setPendingBannerRemoved(false)
       setHasInteracted(false)
       setIsEditing(false)

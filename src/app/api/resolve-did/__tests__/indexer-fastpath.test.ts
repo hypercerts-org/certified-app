@@ -229,6 +229,146 @@ describe("/api/resolve-did indexer fast-path", () => {
       expect(resolveHandle).toHaveBeenCalled()
     })
 
+    it("(e) per-field fallback: displayName set but avatarCid null → avatar comes from the appView, not undefined", async () => {
+      // The read-side amplifier of the data-loss bug: the indexer has a
+      // displayName (so indexerHasBsky is true) but a null avatarCid. The
+      // appView fallback must run per-field and fill the missing avatar
+      // rather than leaving it undefined (a sticky blank avatar).
+      mockFetch.mockImplementation((url: string) => {
+        if (String(url) === INDEXER_URL) {
+          return Promise.resolve(
+            jsonResponse({
+              data: {
+                actorProfile: {
+                  did: VALID_DID,
+                  handle: "indexed.test",
+                  displayName: "Indexed Name",
+                  description: "from the indexer",
+                  avatarCid: null,
+                  bannerCid: null,
+                },
+              },
+            }),
+          )
+        }
+        if (String(url).includes("public.api.bsky.app")) {
+          return Promise.resolve(
+            jsonResponse({
+              displayName: "AppView Name",
+              description: "from the appview",
+              avatar: "https://cdn.bsky.app/recovered-avatar.jpg",
+              banner: "https://cdn.bsky.app/recovered-banner.jpg",
+            }),
+          )
+        }
+        return Promise.resolve(new Response("", { status: 404 }))
+      })
+
+      const res = await getResolve(VALID_DID)
+      expect(res.status).toBe(200)
+      const body = await res.json()
+
+      // displayName is authoritative from the indexer.
+      expect(body.displayName).toBe("Indexed Name")
+      expect(body.description).toBe("from the indexer")
+      // The missing avatar/banner are recovered from the appView — NOT
+      // undefined.
+      expect(body.avatar).toBe("https://cdn.bsky.app/recovered-avatar.jpg")
+      expect(body.banner).toBe("https://cdn.bsky.app/recovered-banner.jpg")
+      expect(body.handle).toBe("indexed.test")
+
+      expect(indexerWasCalled()).toBe(true)
+      // The missing-field condition gated a single appView fetch.
+      expect(appViewWasCalled()).toBe(true)
+    })
+
+    it("(f) avatarCid + bannerCid present → appView is NOT fetched; avatar from the CID", async () => {
+      mockFetch.mockImplementation((url: string) => {
+        if (String(url) === INDEXER_URL) {
+          return Promise.resolve(
+            jsonResponse({
+              data: {
+                actorProfile: {
+                  did: VALID_DID,
+                  handle: "indexed.test",
+                  displayName: "Indexed Name",
+                  avatarCid: "avatarcid123",
+                  bannerCid: "bannercid456",
+                },
+              },
+            }),
+          )
+        }
+        return Promise.resolve(new Response("", { status: 404 }))
+      })
+
+      const res = await getResolve(VALID_DID)
+      expect(res.status).toBe(200)
+      const body = await res.json()
+
+      // avatar is built from the indexer CID.
+      expect(body.avatar).toBe(
+        "/api/xrpc/com/atproto/sync/getBlob?did=" +
+          encodeURIComponent(VALID_DID) +
+          "&cid=avatarcid123",
+      )
+      expect(body.banner).toBe(
+        "/api/xrpc/com/atproto/sync/getBlob?did=" +
+          encodeURIComponent(VALID_DID) +
+          "&cid=bannercid456",
+      )
+
+      expect(indexerWasCalled()).toBe(true)
+      // The fast path stays fast: both image CIDs present → no appView.
+      expect(appViewWasCalled()).toBe(false)
+    })
+
+    it("(g) neither displayName nor avatarCid → the full legacy appView fallback path is used", async () => {
+      mockFetch.mockImplementation((url: string) => {
+        if (String(url) === INDEXER_URL) {
+          return Promise.resolve(
+            jsonResponse({
+              data: {
+                actorProfile: {
+                  did: VALID_DID,
+                  handle: "handleonly.test",
+                  displayName: null,
+                  description: null,
+                  avatarCid: null,
+                  bannerCid: null,
+                },
+              },
+            }),
+          )
+        }
+        if (String(url).includes("public.api.bsky.app")) {
+          return Promise.resolve(
+            jsonResponse({
+              displayName: "AppView Name",
+              description: "from the appview",
+              avatar: "https://cdn.bsky.app/avatar.jpg",
+              banner: "https://cdn.bsky.app/banner.jpg",
+            }),
+          )
+        }
+        return Promise.resolve(new Response("", { status: 404 }))
+      })
+
+      const res = await getResolve(VALID_DID)
+      expect(res.status).toBe(200)
+      const body = await res.json()
+
+      // indexerHasBsky is false → the existing full legacy fallback path
+      // produces the entire bsky block from the appView.
+      expect(body.handle).toBe("handleonly.test")
+      expect(body.displayName).toBe("AppView Name")
+      expect(body.avatar).toBe("https://cdn.bsky.app/avatar.jpg")
+      expect(body.banner).toBe("https://cdn.bsky.app/banner.jpg")
+
+      expect(indexerWasCalled()).toBe(true)
+      expect(appViewWasCalled()).toBe(true)
+    })
+
     it("certs precedence still wins over the indexer bsky block", async () => {
       // A certified profile exists with a displayName → it must win the
       // merge even though the indexer supplied a bsky displayName.

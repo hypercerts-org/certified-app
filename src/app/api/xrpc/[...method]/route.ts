@@ -21,6 +21,8 @@ import {
   RATE_LIMITED_WRITE_COLLECTIONS,
 } from "@/lib/auth/rate-limit"
 
+// INVARIANT: `app.bsky.actor.profile` must NEVER be added to this allowlist
+// (certified-app invariant) — writing it clobbers the user's Bluesky profile.
 const ALLOWED_WRITE_COLLECTIONS = [
   "org.impactindexer.link.attestation",
   "app.certified.actor.profile",

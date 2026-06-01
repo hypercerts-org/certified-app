@@ -10,6 +10,8 @@ import {
   useProfileGroupsAvailable,
 } from "@/lib/navbar-context"
 import { useUserProfile } from "@/hooks/use-user-profile"
+import { getProfileWithCid } from "@/lib/atproto/profile"
+import type { CertifiedProfile } from "@/lib/atproto/types"
 import { useUserActivities } from "@/hooks/use-user-activities"
 import { useOrgMarker } from "@/hooks/use-org-marker"
 import { useOrg } from "@/lib/groups/org-context"
@@ -156,6 +158,60 @@ export default function UserProfilePage() {
   const editTargetDid = isActingAsThisGroup ? did : undefined
 
   // -------------------------------------------------------------------
+  // Editable-base source for inline edit.
+  //
+  // `useUserProfile` resolves the DISPLAY profile via /api/resolve-did,
+  // which carries no avatar/banner blob refs (only resolved URLs). If
+  // that avatar-less snapshot were fed to useProfileInlineEdit, a
+  // TEXT-ONLY save (no fresh upload) would write the profile record
+  // WITHOUT the existing avatar/banner blobs — silently deleting them
+  // (the data-loss bug). The /settings/edit-profile surface avoids this
+  // by sourcing its base from the RAW certs record via getProfile(did),
+  // which DOES carry the blob refs; we mirror that here.
+  //
+  // Gated behind `canEditInline` so foreign / read-only views don't pay
+  // for the extra getRecord. A 404 (brand-new user with no certs record)
+  // yields null — fine, there's no avatar to preserve. We also capture
+  // the record CID as the swapRecord precondition (judgment-006 / #71).
+  // State holds the LAST successful fetch for the currently-eligible
+  // (did, canEditInline) pair. We never synchronously reset it inside
+  // the effect (that trips the set-state-in-effect lint rule); instead
+  // we track which DID the held value belongs to and gate consumption
+  // below so a stale value from a previous DID / view is never used.
+  const [editBaseFetch, setEditBaseFetch] = useState<{
+    did: string
+    profile: CertifiedProfile | null
+    cid: string | null
+  } | null>(null)
+  useEffect(() => {
+    if (!canEditInline || !did) return
+    const controller = new AbortController()
+    const targetDid = did
+    getProfileWithCid(targetDid, controller.signal)
+      .then((res) => {
+        if (controller.signal.aborted) return
+        setEditBaseFetch({
+          did: targetDid,
+          profile: res?.value ?? null,
+          cid: res?.cid ?? null,
+        })
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return
+        setEditBaseFetch({ did: targetDid, profile: null, cid: null })
+      })
+    return () => controller.abort()
+  }, [canEditInline, did])
+  // Only honor the held fetch when it matches the currently-viewed DID
+  // and the view is editable — otherwise treat the base as not-yet-known
+  // (null), so a foreign / read-only view never sees a previous editable
+  // record's blob refs or CID.
+  const editBaseValid =
+    canEditInline && !!did && editBaseFetch?.did === did
+  const editBaseProfile = editBaseValid ? editBaseFetch!.profile : null
+  const editBaseProfileCid = editBaseValid ? editBaseFetch!.cid : null
+
+  // -------------------------------------------------------------------
   // Inline edit state — owned by useProfileInlineEdit. The hook holds
   // drafts, pending uploads, post-save local mirrors, the two-write
   // save path (profile + org marker + location), and installs a
@@ -170,7 +226,13 @@ export default function UserProfilePage() {
     canEditInline,
     editTargetDid,
     sidebarIsOrg,
-    profile,
+    // Editable views feed the RAW certs record (carries avatar/banner
+    // blob refs) so a text-only save preserves them; read-only views
+    // keep the resolved useUserProfile snapshot for display. While the
+    // raw fetch is in flight we fall back to the resolved profile so the
+    // edit button isn't disabled (handleEditClick no-ops on a null base).
+    profile: canEditInline ? (editBaseProfile ?? profile) : profile,
+    profileCid: canEditInline ? editBaseProfileCid : null,
     avatarUrl,
     bannerUrl,
     orgMarker,
