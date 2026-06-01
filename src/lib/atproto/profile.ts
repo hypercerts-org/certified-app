@@ -33,6 +33,26 @@ export async function getProfile(
   did: string,
   signal?: AbortSignal
 ): Promise<CertifiedProfile | null> {
+  const res = await getProfileWithCid(did, signal);
+  return res ? res.value : null;
+}
+
+/**
+ * Get a user's profile record together with the record CID.
+ *
+ * The `com.atproto.repo.getRecord` response carries both the record
+ * `value` and its `cid`. `getProfile` (above) discards the CID for the
+ * common read path; this sibling preserves it so inline-edit can capture
+ * a mount-time CID snapshot and thread it as the `swapRecord`
+ * precondition on the subsequent putProfile (judgment-006 / #71).
+ *
+ * @param did - The DID of the user whose profile to fetch
+ * @returns `{ value, cid }` or null when the record doesn't exist.
+ */
+export async function getProfileWithCid(
+  did: string,
+  signal?: AbortSignal
+): Promise<{ value: CertifiedProfile; cid: string | null } | null> {
   const res = await authFetch(
     xrpcGetRecordPath({ repo: did, collection: COLLECTION, rkey: RKEY }),
     { signal }
@@ -41,8 +61,11 @@ export async function getProfile(
     if (res.status === 400 || res.status === 404) return null;
     throw new Error(`Failed to get profile: ${res.statusText}`);
   }
-  const data = await res.json();
-  return data.value as CertifiedProfile;
+  const data = (await res.json()) as { value?: CertifiedProfile; cid?: string };
+  return {
+    value: data.value as CertifiedProfile,
+    cid: typeof data.cid === "string" ? data.cid : null,
+  };
 }
 
 /**
