@@ -12,7 +12,7 @@ import { renderHook, act, cleanup } from "@testing-library/react"
 // branches keep the refs when the base carries them, and would drop
 // them when it doesn't (the old, buggy sourcing).
 
-const putProfile = vi.fn(async () => undefined)
+const putProfile = vi.fn(async (..._args: unknown[]) => undefined)
 const uploadAvatar = vi.fn()
 const uploadBanner = vi.fn()
 const uploadBlob = vi.fn()

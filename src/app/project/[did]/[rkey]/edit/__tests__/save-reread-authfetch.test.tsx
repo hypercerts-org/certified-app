@@ -59,7 +59,7 @@ vi.mock("@/hooks/use-project-items", () => ({
 }))
 
 // First write attempt 409s (InvalidSwap), which makes saveWithSwap re-read.
-const putProjectRecord = vi.fn(async () => {
+const putProjectRecord = vi.fn(async (..._args: unknown[]) => {
   throw new InvalidSwapError()
 })
 vi.mock("@/lib/atproto/project", () => ({

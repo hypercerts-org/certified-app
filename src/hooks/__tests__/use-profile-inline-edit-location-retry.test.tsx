@@ -9,7 +9,7 @@ import { renderHook, act, cleanup } from "@testing-library/react"
 // record: it must reuse the rkey minted by the first attempt so the
 // write overwrites in place.
 
-const putProfile = vi.fn(async () => undefined)
+const putProfile = vi.fn(async (..._args: unknown[]) => undefined)
 const uploadAvatar = vi.fn()
 const uploadBanner = vi.fn()
 const uploadBlob = vi.fn()
@@ -21,7 +21,7 @@ vi.mock("@/lib/atproto/profile", () => ({
   uploadBlob: (...args: unknown[]) => uploadBlob(...args),
 }))
 
-const putOrgMarker = vi.fn(async () => undefined)
+const putOrgMarker = vi.fn(async (..._args: unknown[]) => undefined)
 vi.mock("@/lib/groups/org-marker", () => ({
   putOrgMarker: (...args: unknown[]) => putOrgMarker(...args),
 }))

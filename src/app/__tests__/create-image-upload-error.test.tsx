@@ -48,9 +48,7 @@ beforeEach(() => {
   cleanup()
   uploadBlob.mockReset()
   // jsdom doesn't implement object URLs — stub so the preview logic runs.
-  // @ts-expect-error — test shim
   URL.createObjectURL = vi.fn(() => "blob:preview-url")
-  // @ts-expect-error — test shim
   URL.revokeObjectURL = vi.fn()
 })
 

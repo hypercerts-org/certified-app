@@ -30,8 +30,8 @@ vi.mock("@/lib/auth/session", () => ({
   getSessionDid: vi.fn(async () => null),
 }))
 
-const resolveHandle = vi.fn(async () => "legacy-handle.test")
-const resolvePdsUrl = vi.fn(async () => "https://pds.example")
+const resolveHandle = vi.fn(async (..._args: unknown[]) => "legacy-handle.test")
+const resolvePdsUrl = vi.fn(async (..._args: unknown[]) => "https://pds.example")
 
 vi.mock("@/lib/atproto/did", () => ({
   resolveHandle: (...args: unknown[]) => resolveHandle(...args),

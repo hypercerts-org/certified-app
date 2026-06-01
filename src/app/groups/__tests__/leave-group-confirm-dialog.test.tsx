@@ -74,7 +74,7 @@ function polyfillDialog() {
   }
   proto.close = function () {
     ;(this as unknown as { open: boolean }).open = false
-    this.dispatchEvent(new Event("close"))
+    ;(this as unknown as HTMLDialogElement).dispatchEvent(new Event("close"))
   }
 }
 

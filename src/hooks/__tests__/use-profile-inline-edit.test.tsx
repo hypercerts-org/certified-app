@@ -7,7 +7,7 @@ import { renderHook, act, cleanup } from "@testing-library/react"
 // writes. Everything else the hook imports is stubbed to inert no-ops so
 // the hook can mount under jsdom.
 
-const putProfile = vi.fn(async () => undefined)
+const putProfile = vi.fn(async (..._args: unknown[]) => undefined)
 const uploadAvatar = vi.fn()
 const uploadBanner = vi.fn()
 const uploadBlob = vi.fn()

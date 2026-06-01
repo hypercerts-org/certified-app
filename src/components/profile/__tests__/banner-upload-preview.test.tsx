@@ -11,9 +11,7 @@ import BannerUpload from "../banner-upload"
 beforeEach(() => {
   cleanup()
   // jsdom doesn't implement object URLs — stub so the preview logic runs.
-  // @ts-expect-error — test shim
   URL.createObjectURL = vi.fn(() => "blob:banner-preview-url")
-  // @ts-expect-error — test shim
   URL.revokeObjectURL = vi.fn()
 })
 

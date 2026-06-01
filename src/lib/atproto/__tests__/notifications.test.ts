@@ -25,7 +25,7 @@ function pageWith(nodes: unknown[]) {
         pageInfo: { hasNextPage: false, endCursor: null },
       },
     },
-  }
+  } as Parameters<typeof parseNotificationsPage>[0]
 }
 
 describe("parseNotificationsPage — load-bearing field validation", () => {
