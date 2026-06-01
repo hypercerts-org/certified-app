@@ -1467,10 +1467,21 @@ export async function POST(request: NextRequest) {
   )
   const signal = AbortSignal.any([request.signal, timeoutController.signal])
 
+  // Bypass the indexer's per-IP `/graphql` rate limiter (magic-indexer
+  // R-7): the app's own proxied traffic should never be throttled.
+  // Mirrors `resolve-did`; the header is only attached when
+  // `INDEXER_RATELIMIT_BYPASS_KEY` is set, so the public default stays
+  // limiter-eligible and unset envs are a no-op.
+  const bypassKey = process.env.INDEXER_RATELIMIT_BYPASS_KEY
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  }
+  if (bypassKey) headers["X-RateLimit-Bypass"] = bypassKey
+
   try {
     const upstream = await fetch(UPSTREAM_INDEXER_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ query, variables, operationName }),
       signal,
     })
