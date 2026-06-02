@@ -4,6 +4,7 @@ import { useState } from "react"
 import Button from "@/components/ui/button"
 import Input from "@/components/ui/input"
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
+import { DIALOG_FOOTER_ACTIONS_CLASS } from "@/components/ui/form-dialog"
 
 interface DeleteRecordDialogProps {
   /** Modal title — e.g. "Delete this cert" / "Delete this project". */
@@ -102,7 +103,7 @@ export default function DeleteRecordDialog({
             {errorMessage}
           </p>
         ) : null}
-        <div className="delete-record-dialog__actions">
+        <div className={DIALOG_FOOTER_ACTIONS_CLASS}>
           <Button
             type="button"
             variant="ghost"
