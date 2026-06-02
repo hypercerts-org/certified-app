@@ -16,6 +16,7 @@ import { useFollowing } from "@/hooks/use-following"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useAuthorNamesMap } from "@/hooks/use-author-names-map"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useOrg } from "@/lib/groups/org-context"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { deleteFollow } from "@/lib/atproto/follow"
 import PersonCard from "@/components/profile/person-card"
@@ -74,6 +75,11 @@ export default function ProfileFollowers({ did }: ProfileFollowersProps) {
   // the signed-in viewer's DID to the profile's DID to decide
   // whether the per-card × renders on the Following sub-tab.
   const { did: viewerDid } = useAuth()
+  // When acting as a group, follow deletes must route to the group's
+  // repo via the BFF. The unfollow × only renders on the own-profile
+  // Following list (which, when delegating, is the group's profile), so
+  // the records being revoked live in the group's repo.
+  const { activeOrg } = useOrg()
   const isOwnProfile = !!viewerDid && viewerDid === did
 
   // Sub-tab is read from the URL (`?sub=followers|following`) so the
@@ -273,6 +279,7 @@ export default function ProfileFollowers({ did }: ProfileFollowersProps) {
           names={names}
           canUnfollow={isOwnProfile}
           viewerDid={viewerDid}
+          targetDid={activeOrg?.groupDid}
           onAfterUnfollow={() => following.refetch()}
         />
       )}
@@ -376,6 +383,9 @@ interface FollowingGridProps {
    *  — controls whether the per-card × renders. */
   canUnfollow: boolean
   viewerDid: string | null
+  /** When set (acting-as-group), unfollow writes route to the group's
+   *  repo via the BFF instead of the viewer's personal PDS. */
+  targetDid?: string
   onAfterUnfollow: () => void | Promise<void>
 }
 
@@ -388,6 +398,7 @@ function FollowingGrid({
   names,
   canUnfollow,
   viewerDid,
+  targetDid,
   onAfterUnfollow,
 }: FollowingGridProps) {
   const visible = useMemo(
@@ -432,6 +443,7 @@ function FollowingGrid({
           record={r}
           canUnfollow={canUnfollow && !!viewerDid}
           viewerDid={viewerDid}
+          targetDid={targetDid}
           onAfterUnfollow={onAfterUnfollow}
         />
       ))}
@@ -443,11 +455,13 @@ function FollowingCard({
   record,
   canUnfollow,
   viewerDid,
+  targetDid,
   onAfterUnfollow,
 }: {
   record: FollowRecord
   canUnfollow: boolean
   viewerDid: string | null
+  targetDid?: string
   onAfterUnfollow: () => void | Promise<void>
 }) {
   const { info, isLoading } = useAuthorInfo(record.value.subject)
@@ -462,6 +476,7 @@ function FollowingCard({
           <UnfollowButton
             viewerDid={viewerDid}
             rkey={record.rkey}
+            targetDid={targetDid}
             subjectDisplay={
               info?.displayName || info?.handle || record.value.subject
             }
@@ -482,11 +497,13 @@ function FollowingCard({
 function UnfollowButton({
   viewerDid,
   rkey,
+  targetDid,
   subjectDisplay,
   onAfterUnfollow,
 }: {
   viewerDid: string
   rkey: string
+  targetDid?: string
   subjectDisplay: string
   onAfterUnfollow: () => void | Promise<void>
 }) {
@@ -497,7 +514,7 @@ function UnfollowButton({
     if (isRevoking) return
     setIsRevoking(true)
     try {
-      await deleteFollow(viewerDid, rkey)
+      await deleteFollow(viewerDid, rkey, { targetDid })
       await onAfterUnfollow()
       setConfirmOpen(false)
     } catch (err) {

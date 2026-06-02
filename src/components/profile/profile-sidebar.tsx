@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import {
-  ArrowLeftRight,
   Calendar,
   Camera,
   Check,
@@ -27,7 +26,9 @@ import { getInitials } from "@/lib/utils/initials"
 import { formatMonthYear } from "@/lib/utils/format-date"
 import { useProfilePds } from "@/hooks/use-profile-pds"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useSession } from "@/hooks/use-session"
 import { useOrg } from "@/lib/groups/org-context"
+import type { Group } from "@/lib/groups/types"
 import { useFollowing } from "@/hooks/use-following"
 import { useFollowers } from "@/hooks/use-followers"
 import { useGivenEndorsements } from "@/hooks/use-endorsements"
@@ -38,7 +39,9 @@ import {
 } from "@/hooks/use-received-endorsements"
 import { useEndorsementLists } from "@/hooks/use-endorsement-lists"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import EndorseReasonModal from "@/components/profile/endorse-reason-modal"
+import EndorseReasonModal, {
+  type EndorseReasonActingAs,
+} from "@/components/profile/endorse-reason-modal"
 import { runEndorseReasonConfirm } from "@/components/profile/endorse-reason-confirm"
 import { createFollow, deleteFollow, listFollowing } from "@/lib/atproto/follow"
 import {
@@ -174,17 +177,24 @@ export default function ProfileSidebar({
   // when the viewer is signed out or when they're looking at their
   // own profile (no Follow button to render in either case).
   const { did: viewerDid, isAuthenticated } = useAuth()
-  // Acting-as-group context. Follow / Endorse / Add-to-list write to the
-  // viewer's PERSONAL repo (createFollow + createEndorsementAward are
-  // keyed to the signed-in DID, and there is no group endorse path nor a
-  // group *unfollow* route). So while acting as a group we must NOT render
-  // the live buttons — doing so silently authored personal-repo records
-  // while the rest of the UI claimed the user was the group. Guard them
-  // and offer a one-tap return to personal instead.
-  const { activeOrg, switchOrg } = useOrg()
+  const { handle: operatorHandle } = useSession()
+  // Acting-as-group context. With the group BFF write paths in place
+  // (createFollow / createEndorsementAward / deleteFollow all accept a
+  // `targetDid` that routes the write to the group's repo), Follow /
+  // Endorse now act AS the active group: the operator authors the record
+  // on the group's behalf instead of their personal repo. The DID whose
+  // follow / given-endorsement set drives button state therefore tracks
+  // the group when one is active, and the viewer otherwise.
+  const { activeOrg } = useOrg()
   const isOwnProfile = !!viewerDid && viewerDid === did
+  // The repo we're acting as — the active group, or the viewer when
+  // personal. Drives the Follow / Endorse button state below.
+  const actingDid = activeOrg?.groupDid ?? viewerDid
+  // The acting repo's "following" set. Note this is keyed to `actingDid`
+  // (the group when delegating) — NOT the foreign profile — so the
+  // Follow button reflects whether the GROUP already follows the subject.
   const viewerFollowing = useFollowing(
-    isAuthenticated && !isOwnProfile ? viewerDid : null,
+    isAuthenticated && !isOwnProfile ? actingDid : null,
   )
 
   // Local avatar uploading flag — toggled around the parent's upload
@@ -269,38 +279,45 @@ export default function ProfileSidebar({
             <Pencil size={14} strokeWidth={1.75} aria-hidden />
             Edit profile
           </Link>
-        ) : isAuthenticated && viewerDid && activeOrg ? (
-          <ActingAsGroupNotice
-            groupName={activeOrg.displayName || activeOrg.handle}
-            onSwitchToPersonal={() => switchOrg(null)}
-          />
-        ) : isAuthenticated && viewerDid ? (
+        ) : isAuthenticated && viewerDid && actingDid ? (
           <>
             <FollowButton
               viewerDid={viewerDid}
               subjectDid={did}
+              targetDid={activeOrg?.groupDid}
               isFollowing={viewerFollowing.subjects.has(did)}
               isLoading={viewerFollowing.isLoading}
               onFollowed={(uri, cid) => {
-                // Both surfaces update instantly: the viewer's
+                // Both surfaces update instantly: the acting repo's
                 // "following" set gains the subject; the foreign
                 // profile's follower list (count + grid) gains the
-                // viewer. Real server-side data refreshes on the next
-                // tab-mount / focus-revalidate.
+                // acting repo (group when delegating, viewer otherwise).
+                // Real server-side data refreshes on the next tab-mount
+                // / focus-revalidate.
                 viewerFollowing.addFollow(did, uri, cid)
-                viewedFollowers.addFollower(viewerDid, uri, cid)
+                viewedFollowers.addFollower(actingDid, uri, cid)
               }}
               onUnfollowed={() => {
                 viewerFollowing.removeFollow(did)
-                viewedFollowers.removeFollower(viewerDid)
+                viewedFollowers.removeFollower(actingDid)
               }}
             />
-            <EndorseButton viewerDid={viewerDid} subjectDid={did} />
-            <AddToListMenu
-              targetUri={`at://${did}/app.certified.actor.profile/self`}
-              targetCid=""
-              targetType={LIST_ACCOUNTS_TYPE}
+            <EndorseButton
+              viewerDid={viewerDid}
+              subjectDid={did}
+              actingDid={actingDid}
+              activeOrg={activeOrg}
+              operatorHandle={operatorHandle}
             />
+            {/* Endorsement lists are personal-only — the Add-to-list
+                affordance is hidden while acting as a group. */}
+            {activeOrg ? null : (
+              <AddToListMenu
+                targetUri={`at://${did}/app.certified.actor.profile/self`}
+                targetCid=""
+                targetType={LIST_ACCOUNTS_TYPE}
+              />
+            )}
           </>
         ) : (
           <Button variant="primary" size="sm" disabled>
@@ -680,42 +697,12 @@ function AvatarEditOverlay({ onFile, isUploading, hasPending }: AvatarEditOverla
  * the viewer's follow list so the true state catches up.
  */
 
-/**
- * Shown in the action slot of a foreign profile while the viewer is
- * acting as a group. Follow / Endorse / Add-to-list are personal-only
- * actions (no group write path exists for them), so rather than letting
- * a click misattribute a record to the personal repo, we explain the
- * state and offer a one-tap return to personal. Mirrors the personal-only
- * nav-gating philosophy in lib/groups/personal-only.ts.
- */
-function ActingAsGroupNotice({
-  groupName,
-  onSwitchToPersonal,
-}: {
-  groupName: string
-  onSwitchToPersonal: () => void
-}) {
-  return (
-    <div className="profile-sidebar__acting-note" role="note">
-      <p className="profile-sidebar__acting-note-text">
-        Acting as <strong>{groupName}</strong>. Follow and endorse are
-        personal actions.
-      </p>
-      <button
-        type="button"
-        className="profile-sidebar__acting-note-switch"
-        onClick={onSwitchToPersonal}
-      >
-        <ArrowLeftRight size={14} strokeWidth={1.75} aria-hidden />
-        Switch to personal
-      </button>
-    </div>
-  )
-}
-
 interface FollowButtonProps {
   viewerDid: string
   subjectDid: string
+  /** When set (acting-as-group), the follow write routes to the group's
+   *  repo via the BFF instead of the viewer's personal PDS. */
+  targetDid?: string
   isFollowing: boolean
   isLoading: boolean
   /** Fired after a successful createFollow with the new record's
@@ -731,6 +718,7 @@ interface FollowButtonProps {
 function FollowButton({
   viewerDid,
   subjectDid,
+  targetDid,
   isFollowing,
   isLoading,
   onFollowed,
@@ -738,6 +726,10 @@ function FollowButton({
 }: FollowButtonProps) {
   const [isWriting, setIsWriting] = useState(false)
   const disabled = isLoading || isWriting
+  // The repo the follow record lives in — the group when delegating, the
+  // viewer otherwise. Drives both the rkey lookup (list the right repo)
+  // and which repo's follows we delete from.
+  const actingRepo = targetDid ?? viewerDid
 
   const handleClick = async () => {
     if (disabled) return
@@ -745,15 +737,16 @@ function FollowButton({
     setIsWriting(true)
     try {
       if (next) {
-        const result = await createFollow(viewerDid, subjectDid)
-        // Hand the new ref to the parent so the viewer's following
+        const result = await createFollow(viewerDid, subjectDid, { targetDid })
+        // Hand the new ref to the parent so the acting repo's following
         // set and the subject's follower list update instantly.
         onFollowed(result.uri, result.cid)
       } else {
-        // Unfollow path: walk the viewer's follows to find the rkey
+        // Unfollow path: walk the acting repo's follows to find the rkey
         // targeting this subject. Fetched fresh here to handle the
         // duplicate-follow edge case (delete the most recent record).
-        const { records } = await listFollowing(viewerDid, undefined, {
+        // When acting as a group, the records live in the group's repo.
+        const { records } = await listFollowing(actingRepo, undefined, {
           noCache: true,
         })
         const match = records
@@ -762,7 +755,7 @@ function FollowButton({
             a.value.createdAt < b.value.createdAt ? 1 : -1,
           )[0]
         if (match) {
-          await deleteFollow(viewerDid, match.rkey)
+          await deleteFollow(viewerDid, match.rkey, { targetDid })
         }
         onUnfollowed()
       }
@@ -823,11 +816,32 @@ function formatGraphCount(
 interface EndorseButtonProps {
   viewerDid: string
   subjectDid: string
+  /** The DID the endorsement is authored AS — the active group when
+   *  delegating, the viewer otherwise. Drives the given-endorsements
+   *  set that decides Endorse / Endorsed and the revoke rkey lookup. */
+  actingDid: string
+  /** The active group, when the viewer is acting as one. `null` for the
+   *  personal path. Used to route the write to the group's repo and to
+   *  name the parties in the reason modal. */
+  activeOrg: Group | null
+  /** The signed-in operator's handle, surfaced in the delegation header
+   *  of the reason modal. */
+  operatorHandle: string | null
 }
 
-function EndorseButton({ viewerDid, subjectDid }: EndorseButtonProps) {
-  const ownGiven = useGivenEndorsements(viewerDid)
-  const ownLists = useEndorsementLists(viewerDid)
+function EndorseButton({
+  viewerDid,
+  subjectDid,
+  actingDid,
+  activeOrg,
+  operatorHandle,
+}: EndorseButtonProps) {
+  // Acting-as-group flag + the group DID the write routes to.
+  const targetDid = activeOrg?.groupDid
+  const ownGiven = useGivenEndorsements(actingDid)
+  // Endorsement lists are personal-only — never load or surface them
+  // while acting as a group (the reason modal hides the picker too).
+  const ownLists = useEndorsementLists(activeOrg ? null : viewerDid)
   const { info: subjectInfo } = useAuthorInfo(subjectDid)
   const subjectLabel =
     subjectInfo?.displayName || subjectInfo?.handle || subjectDid
@@ -876,16 +890,18 @@ function EndorseButton({ viewerDid, subjectDid }: EndorseButtonProps) {
       await runEndorseReasonConfirm({
         note,
         listRkey,
-        createAward: (n) => createEndorsementAward(viewerDid, subjectDid, n),
+        createAward: (n) =>
+          createEndorsementAward(viewerDid, subjectDid, n, { targetDid }),
         // PR #110: as soon as the award lands, push it into the shared
         // received-endorsements overlay so the subject's "Endorsed by N"
         // counter and the Endorsements tab reflect it immediately, ahead
-        // of the 5-min scan cache / indexer catching up.
+        // of the 5-min scan cache / indexer catching up. The issuer is
+        // the acting repo (the group when delegating).
         onAwardCreated: (award) =>
           addOptimisticReceivedEndorsement(subjectDid, {
             uri: award.uri,
             cid: award.cid,
-            issuerDid: viewerDid,
+            issuerDid: actingDid,
             createdAt: new Date().toISOString(),
             note: note || undefined,
             responseState: null,
@@ -911,7 +927,7 @@ function EndorseButton({ viewerDid, subjectDid }: EndorseButtonProps) {
     setOptimistic(false)
     setIsWriting(true)
     try {
-      await deleteEndorsementAward(viewerDid, existing.rkey)
+      await deleteEndorsementAward(viewerDid, existing.rkey, { targetDid })
       removeOptimisticReceivedEndorsement(subjectDid, existing.uri)
       await ownGiven.refetch()
       setConfirmRevoke(false)
@@ -922,6 +938,17 @@ function EndorseButton({ viewerDid, subjectDid }: EndorseButtonProps) {
       setIsWriting(false)
     }
   }
+
+  // Delegation naming for the reason modal — names the group, the
+  // operator, and the subject when acting as a group. `null` on the
+  // personal path leaves the modal in its default single-party shape.
+  const actingAs: EndorseReasonActingAs | undefined = activeOrg
+    ? {
+        orgName: activeOrg.displayName || activeOrg.handle,
+        orgHandle: activeOrg.handle,
+        operatorHandle: operatorHandle ?? "you",
+      }
+    : undefined
 
   return (
     <>
@@ -942,6 +969,7 @@ function EndorseButton({ viewerDid, subjectDid }: EndorseButtonProps) {
       {reasonOpen ? (
         <EndorseReasonModal
           subjectLabel={subjectLabel}
+          actingAs={actingAs}
           lists={ownLists.lists.map((l) => ({ rkey: l.rkey, title: l.title }))}
           onConfirm={handleReasonConfirm}
           onClose={() => setReasonOpen(false)}

@@ -101,11 +101,37 @@ export async function createFollow(
   return { uri: data.uri, cid: data.cid }
 }
 
-/** Delete a follow record by rkey on the viewer's own PDS. */
+/**
+ * Delete a follow record by rkey.
+ *
+ * Routing (mirrors `createFollow`):
+ *   - Default: deletes on `ownDid`'s personal PDS via the XRPC proxy.
+ *   - With `targetDid` (acting-as-group): the follow lives on the
+ *     group's repo, so the delete goes through the group BFF route's
+ *     DELETE handler at `/api/groups/<targetDid>/follow`.
+ */
 export async function deleteFollow(
   ownDid: string,
   rkey: string,
+  opts?: { targetDid?: string },
 ): Promise<void> {
+  const targetDid = opts?.targetDid ?? ownDid
+  if (targetDid !== ownDid) {
+    const res = await authFetch(
+      `/api/groups/${encodeURIComponent(targetDid)}/follow`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rkey }),
+      },
+    )
+    if (!res.ok) {
+      throw new Error(
+        await extractError(res, "Failed to delete follow on group"),
+      )
+    }
+    return
+  }
   const res = await authFetch("/api/xrpc/com/atproto/repo/deleteRecord", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

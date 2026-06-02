@@ -31,7 +31,7 @@ const OrgContext = createContext<OrgContextValue | undefined>(undefined)
 
 function loadPersistedOrg(): Group | null {
   try {
-    const raw = localStorage.getItem(ACTIVE_ORG_KEY)
+    const raw = window.sessionStorage.getItem(ACTIVE_ORG_KEY)
     if (!raw) return null
     return JSON.parse(raw) as Group
   } catch {
@@ -42,12 +42,12 @@ function loadPersistedOrg(): Group | null {
 function persistOrg(org: Group | null) {
   try {
     if (org) {
-      localStorage.setItem(ACTIVE_ORG_KEY, JSON.stringify(org))
+      window.sessionStorage.setItem(ACTIVE_ORG_KEY, JSON.stringify(org))
     } else {
-      localStorage.removeItem(ACTIVE_ORG_KEY)
+      window.sessionStorage.removeItem(ACTIVE_ORG_KEY)
     }
   } catch {
-    // ignore — localStorage may be unavailable
+    // ignore — sessionStorage may be unavailable
   }
 }
 
@@ -74,7 +74,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
   const fetchOrgs = useCallback(
     async (signal?: AbortSignal) => {
       // Don't clear state while auth is still loading — the persisted org
-      // from localStorage should survive until auth resolves
+      // from sessionStorage should survive until auth resolves
       if (authLoading) return
       if (!isAuthenticated || !did) {
         setGroups([])

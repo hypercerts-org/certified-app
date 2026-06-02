@@ -7,28 +7,23 @@ import { checkCsrf } from "@/lib/auth/csrf"
 import { isValidDid } from "@/lib/utils/did"
 import { extractRecordRef, extractRouteError, parseJsonBody } from "@/lib/utils/api"
 
-const FOLLOW_COLLECTION = "app.certified.graph.follow"
+const BADGE_RESPONSE_COLLECTION = "app.certified.badge.response"
 
 /**
- * POST /api/groups/[groupDid]/follow
+ * POST /api/groups/[groupDid]/response
  *
- * Create an `app.certified.graph.follow` record on a GROUP's repo
- * (record's `subject` is the foreign account being followed). Used
- * by the sync flow when an owner/admin acts as a group and wants
- * the group itself to follow accounts — without this BFF route the
- * client-side `createFollow` writes to the personal repo instead.
+ * Create an `app.certified.badge.response` record on a GROUP's repo so the
+ * group itself accepts/rejects an endorsement it received. Used when an
+ * owner/admin acts as a group — without this BFF route the client-side
+ * `createResponse` writes the response to the personal repo instead, which
+ * would never affect the group's profile.
  *
  * Body shape:
- *   { subjectDid: string, createdAt?: string }
+ *   { award: { uri: string, cid: string }, response: "accepted" | "rejected",
+ *     weight?: string }
  *
- * `createdAt` is optional. When present it must be a valid ISO-8601
- * timestamp; the route passes it through unchanged so the
- * social-graph sync flow can preserve the user's original follow
- * timestamp from Bluesky. When absent the server stamps the record
- * with the current time.
- *
- * Returns `{ uri, cid }` so the client can mirror the new commit
- * locally without a re-read.
+ * Returns `{ uri, cid }` so the client can mirror the new commit locally
+ * without a re-read.
  */
 export async function POST(
   request: NextRequest,
@@ -47,32 +42,42 @@ export async function POST(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
 
-    const parsed = await parseJsonBody(request, "[groups/follow]")
+    const parsed = await parseJsonBody(request, "[groups/response]")
     if (!parsed.ok) return parsed.response
     const body = (parsed.body ?? {}) as Record<string, unknown>
-    const subjectDid = typeof body.subjectDid === "string" ? body.subjectDid : null
-    if (!subjectDid || !isValidDid(subjectDid)) {
+
+    // Validate the award strongRef `{ uri, cid }` shape before forwarding so
+    // a malformed reference returns a clean 400 instead of trusting upstream.
+    const awardRaw = body.award
+    const award =
+      awardRaw && typeof awardRaw === "object"
+        ? (awardRaw as Record<string, unknown>)
+        : null
+    const awardUri = award && typeof award.uri === "string" ? award.uri : null
+    const awardCid = award && typeof award.cid === "string" ? award.cid : null
+    if (!awardUri || !awardCid) {
       return NextResponse.json(
-        { error: "subjectDid is required and must be a valid DID" },
+        { error: "award is required and must be a { uri, cid } strong ref" },
         { status: 400 },
       )
     }
 
-    // Accept and validate an optional client-supplied createdAt.
-    // Sync flow uses it to preserve the original Bluesky follow
-    // time; absent → stamp now. Validate as a parseable ISO-8601
-    // string so a junk value doesn't end up on the group's repo.
-    const createdAtRaw =
-      typeof body.createdAt === "string" ? body.createdAt : null
-    const createdAt =
-      createdAtRaw && !Number.isNaN(Date.parse(createdAtRaw))
-        ? createdAtRaw
-        : new Date().toISOString()
+    const response = body.response
+    if (response !== "accepted" && response !== "rejected") {
+      return NextResponse.json(
+        { error: 'response must be "accepted" or "rejected"' },
+        { status: 400 },
+      )
+    }
+
+    const weight = typeof body.weight === "string" ? body.weight : undefined
 
     const record = {
-      $type: FOLLOW_COLLECTION,
-      subject: subjectDid,
-      createdAt,
+      $type: BADGE_RESPONSE_COLLECTION,
+      badgeAward: { uri: awardUri, cid: awardCid },
+      response,
+      ...(weight ? { weight } : {}),
+      createdAt: new Date().toISOString(),
     }
 
     const groupAgent = createGroupAgent(auth.agent, groupDid)
@@ -81,7 +86,7 @@ export async function POST(
       {},
       {
         repo: groupDid,
-        collection: FOLLOW_COLLECTION,
+        collection: BADGE_RESPONSE_COLLECTION,
         record,
       },
       { encoding: "application/json" },
@@ -102,13 +107,11 @@ export async function POST(
 }
 
 /**
- * DELETE /api/groups/[groupDid]/follow
+ * DELETE /api/groups/[groupDid]/response
  *
- * Removes an `app.certified.graph.follow` record from the group's repo via
- * `app.certified.group.repo.deleteRecord`. Used when an owner/admin acting
- * as a group unfollows an account — mirrors the POST above on the unfollow
- * side so the group's social graph is editable without writing to the
- * personal repo.
+ * Removes an `app.certified.badge.response` record from the group's repo
+ * (reset-to-default). The authenticated viewer must be an owner / admin of
+ * the group.
  *
  * Body shape: `{ rkey: string }`.
  */
@@ -129,22 +132,19 @@ export async function DELETE(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
 
-    const parsed = await parseJsonBody(request, "[groups/follow DELETE]")
+    const parsed = await parseJsonBody(request, "[groups/response DELETE]")
     if (!parsed.ok) return parsed.response
     const body = (parsed.body ?? {}) as Record<string, unknown>
     const rkey = typeof body.rkey === "string" ? body.rkey : null
     if (!rkey) {
-      return NextResponse.json(
-        { error: "rkey is required" },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: "rkey is required" }, { status: 400 })
     }
 
     const groupAgent = createGroupAgent(auth.agent, groupDid)
     await groupAgent.call(
       "app.certified.group.repo.deleteRecord",
       {},
-      { repo: groupDid, collection: FOLLOW_COLLECTION, rkey },
+      { repo: groupDid, collection: BADGE_RESPONSE_COLLECTION, rkey },
       { encoding: "application/json" },
     )
     return NextResponse.json({ ok: true })

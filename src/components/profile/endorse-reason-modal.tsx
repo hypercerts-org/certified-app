@@ -13,11 +13,29 @@ export interface EndorseReasonListOption {
   title: string
 }
 
+/** Naming for the three parties involved when the endorsement is
+ *  delegated — the viewer is acting AS a group rather than themselves.
+ *  When present the modal swaps its prompt for a delegation header and
+ *  hides the list picker (endorsement lists are personal-only). */
+export interface EndorseReasonActingAs {
+  /** Display name of the group authoring the endorsement. */
+  orgName: string
+  /** Handle of the group (without the leading @). */
+  orgHandle: string
+  /** Handle of the signed-in operator acting on the group's behalf. */
+  operatorHandle: string
+}
+
 interface EndorseReasonModalProps {
   /** Display name / handle of the person being endorsed, surfaced in
    *  the subtitle so the issuer is reminded who they're writing
    *  about. */
   readonly subjectLabel: string
+  /** Set when the viewer is acting AS a group. Names all three parties
+   *  (group, operator, subject) in a header line so the delegation is
+   *  explicit, and suppresses the list picker since endorsement lists
+   *  are personal-only. */
+  readonly actingAs?: EndorseReasonActingAs
   /** Optional viewer-owned endorsement lists. When non-empty the
    *  modal surfaces an "Add to list" picker; selecting one appends
    *  the new award to that list after creation. Empty / undefined
@@ -51,6 +69,7 @@ const NOTE_MAX = 500
  */
 export default function EndorseReasonModal({
   subjectLabel,
+  actingAs,
   lists,
   onConfirm,
   onClose,
@@ -86,7 +105,10 @@ export default function EndorseReasonModal({
     [isWriting, note, selectedListRkey, onConfirm],
   )
 
-  const showListPicker = !!lists && lists.length > 0
+  // Endorsement lists are personal-only — never surface the picker
+  // while the viewer is acting as a group, even if their personal repo
+  // has lists.
+  const showListPicker = !actingAs && !!lists && lists.length > 0
 
   const remaining = NOTE_MAX - note.length
 
@@ -105,6 +127,13 @@ export default function EndorseReasonModal({
       />
 
         <form className="signin-modal__body endorse-reason-modal__body" onSubmit={handleSubmit}>
+          {actingAs ? (
+            <p className="endorse-reason-modal__acting-as" role="note">
+              <b>{actingAs.orgName}</b> will endorse {subjectLabel}. You (@
+              {actingAs.operatorHandle}) are acting as an admin.
+            </p>
+          ) : null}
+
           <label className="endorse-reason-modal__field">
             <span className="endorse-reason-modal__prompt">
               Briefly explain your endorsement, e.g. do you know them

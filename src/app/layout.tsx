@@ -15,6 +15,7 @@ import FeedbackModal from "@/components/ui/feedback-modal";
 import { FeedbackProvider } from "@/lib/feedback-context";
 import { NotificationsProvider } from "@/lib/notifications-context";
 import BottomNav from "@/components/layout/bottom-nav";
+import ActingAsBar from "@/components/layout/acting-as-bar";
 import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
@@ -152,6 +153,7 @@ export default function RootLayout({
               <NavbarProvider>
                 <FeedbackProvider>
                 <a href="#main-content" className="skip-nav">Skip to main content</a>
+                <ActingAsBar />
                 <Navbar />
                 {/* Suspense is required because DesktopTopBar reads
                     useSearchParams() to highlight the active profile tab.

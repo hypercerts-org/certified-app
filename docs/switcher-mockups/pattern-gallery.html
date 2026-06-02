@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Identity-switching patterns — applied to Certified (mobile + desktop)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Serif:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --color-primary:#111111; --color-white:#FFFFFF;
+    --bg-canvas:#f9f9f9; --bg-sunken:#eeeeee; --bg-raised:#f3f3f3; --bg-elevated:#FFFFFF;
+    --fg-primary:#111111; --fg-secondary:#4c4546; --fg-muted:#6b6263;
+    --border-default:rgba(0,0,0,0.08); --border-hover:rgba(0,0,0,0.15); --border-strong:rgba(0,0,0,0.22);
+    --shadow-md:0 4px 12px rgba(0,0,0,0.08);
+    --radius:2px; --serif:'Noto Serif',Georgia,serif; --ui:'Inter',system-ui,sans-serif; --stage:#dcdcd8;
+  }
+  .dark{
+    --bg-canvas:#18181b; --bg-sunken:#111114; --bg-raised:#26262b; --bg-elevated:#2d2d33;
+    --fg-primary:#f5f5f7; --fg-secondary:#c7c7cc; --fg-muted:#8e8e93;
+    --border-default:rgba(255,255,255,0.08); --border-hover:rgba(255,255,255,0.18); --border-strong:rgba(255,255,255,0.28);
+    --stage:#0c0c0e;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:var(--ui);background:var(--stage);color:var(--fg-primary);-webkit-font-smoothing:antialiased;}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:20px 30px;}
+  .top h1{font-family:var(--serif);font-weight:600;font-size:22px;margin:0;}
+  .top h1 small{font-family:var(--ui);font-weight:500;font-size:12.5px;color:var(--fg-muted);margin-left:10px;}
+  .toggle{font-size:12.5px;font-weight:500;color:var(--fg-primary);background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:999px;padding:7px 14px;cursor:pointer;}
+  .wrap{max-width:1320px;margin:0 auto;padding:0 30px 70px;}
+  .intro{font-size:14px;line-height:1.6;color:var(--fg-secondary);max-width:900px;margin:0 0 8px;}
+  .intro b{color:var(--fg-primary);}
+
+  .pat{border-top:1px solid var(--border-hover);padding:26px 0 30px;}
+  .pat-head{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+  .pat-head .idx{font-family:var(--serif);font-weight:600;font-size:15px;color:var(--fg-muted);width:26px;}
+  .pat-head h2{font-family:var(--serif);font-weight:600;font-size:19px;margin:0;}
+  .verdict{margin-left:6px;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:3px 9px;border-radius:999px;border:1px solid var(--border-strong);color:var(--fg-secondary);}
+  .verdict.cur{background:var(--color-primary);color:var(--color-white);border-color:var(--color-primary);}
+  .dark .verdict.cur{background:var(--color-white);color:var(--color-primary);}
+  .verdict.strong{border-color:var(--fg-primary);color:var(--fg-primary);}
+  .verdict.weak{opacity:.7;}
+  .pat-desc{font-size:13px;line-height:1.5;color:var(--fg-secondary);margin:2px 0 16px;max-width:900px;}
+  .pat-desc b{color:var(--fg-primary);font-weight:600;}
+
+  .frames{display:grid;grid-template-columns:248px 1fr 270px;gap:24px;align-items:start;}
+  .flabel{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-muted);margin-bottom:8px;}
+
+  /* phone */
+  .phone{width:240px;background:var(--bg-canvas);border:1px solid var(--border-hover);border-radius:13px;overflow:hidden;box-shadow:0 10px 26px rgba(0,0,0,.14);}
+  .pnav{height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 11px;background:var(--bg-elevated);border-bottom:1px solid var(--border-default);}
+  .pbody{padding:12px 11px 14px;min-height:96px;}
+
+  /* browser */
+  .win{border:1px solid var(--border-hover);border-radius:10px;overflow:hidden;box-shadow:0 12px 30px rgba(0,0,0,.15);background:var(--bg-canvas);}
+  .wchrome{height:30px;display:flex;align-items:center;gap:10px;padding:0 11px;background:var(--bg-sunken);border-bottom:1px solid var(--border-default);}
+  .wdots{display:flex;gap:5px;} .wdots i{width:8px;height:8px;border-radius:50%;background:#cfcfca;display:block;} .dark .wdots i{background:#3a3a40;}
+  .wurl{font-size:10.5px;color:var(--fg-muted);}
+  .wbar{height:46px;display:flex;align-items:center;gap:12px;padding:0 14px;background:var(--bg-elevated);border-bottom:1px solid var(--border-default);}
+  .wbody{padding:14px;min-height:92px;}
+
+  .brand{font-family:var(--serif);font-weight:600;font-size:15px;}
+  .brand.sm{font-size:14px;}
+  .burger{color:var(--fg-secondary);display:grid;place-items:center;}
+  .spacer{flex:1;}
+  .wtabs{display:flex;gap:3px;} .wtabs a{font-size:11.5px;color:var(--fg-muted);padding:4px 8px;text-decoration:none;border-radius:var(--radius);} .wtabs a.on{color:var(--fg-primary);font-weight:600;background:var(--bg-sunken);}
+  .chev{color:var(--fg-muted);font-size:10px;}
+
+  .av{border-radius:50%;display:grid;place-items:center;font-weight:600;color:#fff;flex:none;}
+  .av.green{background:#3d5a45;} .av.blue{background:#3a4a63;} .av.plum{background:#5a3d52;}
+  .av-20{width:20px;height:20px;font-size:8px;} .av-24{width:24px;height:24px;font-size:9px;} .av-26{width:26px;height:26px;font-size:10px;} .av-28{width:28px;height:28px;font-size:10px;}
+  .av.ring{box-shadow:0 0 0 1.5px var(--bg-elevated),0 0 0 3px var(--fg-primary);}
+
+  .trig{display:flex;align-items:center;gap:5px;}
+  .id2{display:flex;flex-direction:column;line-height:1.15;} .id2 .n{font-size:11.5px;font-weight:600;} .id2 .h{font-size:10px;color:var(--fg-muted);}
+
+  /* generic helpers */
+  .pill{display:inline-flex;align-items:center;gap:5px;height:23px;padding:0 9px 0 6px;border:1px solid var(--border-strong);border-radius:999px;font-size:10.5px;font-weight:500;color:var(--fg-secondary);background:var(--bg-raised);}
+  .pill .dot{width:5px;height:5px;border-radius:50%;background:var(--fg-primary);} .pill .who{color:var(--fg-primary);font-weight:600;}
+  .invbar{display:flex;align-items:center;gap:8px;padding:7px 11px;background:var(--color-primary);color:var(--color-white);font-size:11px;}
+  .dark .invbar{background:var(--color-white);color:var(--color-primary);}
+  .invbar .who{font-weight:600;} .invbar .lead{opacity:.6;} .invbar .x{margin-left:auto;border:1px solid rgba(255,255,255,.34);border-radius:999px;padding:2px 7px;font-size:10px;}
+  .dark .invbar .x{border-color:rgba(0,0,0,.25);}
+  .acct{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:var(--radius);}
+  .acct.on{background:var(--bg-sunken);} .acct .m{flex:1;line-height:1.2;} .acct .m .n{font-size:12px;font-weight:600;} .acct .m .h{font-size:10px;color:var(--fg-muted);}
+  .badge{font-size:9px;font-weight:700;color:#fff;background:#b33;border-radius:999px;min-width:16px;height:16px;display:grid;place-items:center;padding:0 4px;}
+  .dark .badge{background:#c55;}
+  .sectit{font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-muted);padding:3px 2px 5px;}
+  .menucard{border:1px solid var(--border-default);border-radius:8px;background:var(--bg-elevated);box-shadow:var(--shadow-md);padding:5px;}
+  .scopebtn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px solid var(--border-default);border-radius:var(--radius);background:var(--bg-elevated);font-size:12px;font-weight:500;}
+  .scopebtn .lab{color:var(--fg-muted);font-weight:400;}
+  .fld{height:30px;border:1px solid var(--border-default);border-radius:var(--radius);background:var(--bg-elevated);display:flex;align-items:center;padding:0 9px;font-size:11px;color:var(--fg-muted);margin-top:7px;}
+  .gobtn{margin-top:9px;height:34px;border-radius:var(--radius);background:var(--color-primary);color:var(--color-white);display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:12px;font-weight:600;padding:0 14px;}
+  .dark .gobtn{background:var(--color-white);color:var(--color-primary);}
+  .gobtn .as{font-weight:500;opacity:.78;display:inline-flex;align-items:center;gap:4px;}
+  .splitbtn{display:inline-flex;border:1px solid var(--color-primary);border-radius:var(--radius);overflow:hidden;font-size:12px;font-weight:600;}
+  .splitbtn .main{background:var(--color-primary);color:#fff;padding:6px 11px;} .splitbtn .as{padding:6px 8px;color:var(--fg-primary);background:var(--bg-elevated);border-left:1px solid var(--border-default);display:flex;align-items:center;gap:4px;}
+  .leftrail{width:44px;background:var(--bg-sunken);border-right:1px solid var(--border-default);display:flex;flex-direction:column;align-items:center;gap:9px;padding:10px 0;}
+  .leftrail .ri{position:relative;} .leftrail .ri.on::before{content:"";position:absolute;left:-10px;top:2px;bottom:2px;width:3px;border-radius:0 2px 2px 0;background:var(--fg-primary);}
+  .h2serif{font-family:var(--serif);font-weight:600;font-size:14px;margin:0 0 6px;}
+  .muted{font-size:11px;color:var(--fg-muted);line-height:1.45;}
+
+  .cap{font-size:12px;line-height:1.5;}
+  .cap .r{margin-bottom:8px;} .cap .r b{color:var(--fg-primary);font-weight:600;}
+  .cap .pro b{color:var(--fg-primary);}
+  svg{display:block;}
+  @media(max-width:1000px){.frames{grid-template-columns:1fr;}}
+
+  /* --- candidates / insight / recommendation --- */
+  .bigsec{border-top:2px solid var(--fg-primary);margin-top:40px;padding-top:10px;}
+  .bigsec .kicker{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-muted);}
+  .bigsec h2.big{font-family:var(--serif);font-weight:600;font-size:24px;margin:4px 0 6px;}
+  .cands{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:18px;}
+  .optcard{border:1px solid var(--border-default);border-radius:10px;background:var(--bg-elevated);overflow:hidden;display:flex;flex-direction:column;}
+  .optcard .ohead{padding:15px 16px 12px;}
+  .optcard .obadge{font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#fff;background:var(--color-primary);padding:3px 9px;border-radius:999px;}
+  .dark .optcard .obadge{background:var(--color-white);color:var(--color-primary);}
+  .optcard h3{font-family:var(--serif);font-weight:600;font-size:16.5px;margin:9px 0 5px;}
+  .optcard .od{font-size:12.5px;line-height:1.5;color:var(--fg-secondary);}
+  .optcard .ofig{background:var(--bg-canvas);border-top:1px solid var(--border-default);border-bottom:1px solid var(--border-default);padding:16px;display:flex;justify-content:center;}
+  .optcard .ofoot{padding:11px 16px;font-size:11.5px;}
+  .optcard .ofoot a{color:var(--fg-secondary);} .optcard .verdict2{color:var(--fg-muted);}
+  @media(max-width:980px){.cands{grid-template-columns:1fr;}}
+
+  .insight .grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:14px;}
+  .insight .ibox{border:1px solid var(--border-default);border-radius:10px;background:var(--bg-elevated);padding:18px 20px;}
+  .insight .ibox h4{font-family:var(--serif);font-weight:600;font-size:15px;margin:0 0 8px;}
+  .insight .ibox p{font-size:13px;line-height:1.55;color:var(--fg-secondary);margin:0;} .insight .ibox p b{color:var(--fg-primary);}
+  @media(max-width:980px){.insight .grid2{grid-template-columns:1fr;}}
+
+  .rec{margin-top:40px;border:1.5px solid var(--fg-primary);border-radius:12px;padding:26px;background:var(--bg-elevated);}
+  .rec .kicker{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-muted);}
+  .rec h2{font-family:var(--serif);font-weight:600;font-size:23px;margin:4px 0 8px;}
+  .rec .lede2{font-size:14px;line-height:1.6;color:var(--fg-secondary);max-width:840px;margin:0;} .rec .lede2 b{color:var(--fg-primary);}
+  .conds{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:14px;}
+  .cond{border:1px solid var(--border-default);border-radius:8px;padding:14px 15px;background:var(--bg-raised);}
+  .cond .cn{font-size:13px;font-weight:600;margin-bottom:5px;} .cond .cb{font-size:12px;line-height:1.5;color:var(--fg-secondary);}
+  @media(max-width:980px){.conds{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+  <div class="top">
+    <h1>Identity-switching patterns <small>applied to Certified &middot; mobile + desktop</small></h1>
+    <button class="toggle" id="themeBtn">Dark mode</button>
+  </div>
+  <div class="wrap">
+    <p class="intro">How should one person act for the orgs they own or admin? This is the whole picture in one place: <b>the design space</b> (seven patterns, immediately below), <b>the three candidates we built</b>, <b>the deciding insight</b>, and <b>the recommendation</b>. (e) is what the app does today. Toggle dark mode to check the monochrome behaviour.</p>
+
+    <!-- (a) -->
+    <section class="pat">
+      <div class="pat-head"><span class="idx">(a)</span><h2>Separate logins</h2><span class="verdict weak">Weak fit</span></div>
+      <p class="pat-desc">No in-app switch at all. One identity per session; each group would be its own login you sign out and into. <b>Hard isolation, high friction.</b></p>
+      <div class="frames">
+        <div><div class="flabel">Mobile</div>
+          <div class="phone">
+            <div class="pnav"><span class="brand sm">Certified</span><div class="trig"><div class="av plum av-24">YO</div><span class="chev">&#9662;</span></div></div>
+            <div class="pbody"><div class="menucard">
+              <div class="acct on"><div class="av plum av-28">YO</div><div class="m"><div class="n">You</div><div class="h">@holke.certified.app</div></div></div>
+              <div style="height:1px;background:var(--border-default);margin:4px 0;"></div>
+              <div class="acct"><span style="color:var(--fg-secondary);font-size:11.5px;">&#9099; Sign out</span></div>
+            </div><p class="muted" style="margin-top:8px;">Groups are separate accounts. Sign out to switch.</p></div>
+          </div>
+        </div>
+        <div><div class="flabel">Desktop</div>
+          <div class="win">
+            <div class="wchrome"><div class="wdots"><i></i><i></i><i></i></div><span class="wurl">certified.app/home</span></div>
+            <div class="wbar"><span class="brand">Certified</span><span class="spacer"></span><div class="trig"><div class="av plum av-26">YO</div><div class="id2"><span class="n">You</span><span class="h">@holke.certified.app</span></div><span class="chev">&#9662;</span></div></div>
+            <div class="wbody"><p class="muted">No "act as" concept. The whole session is one DID. To operate a group you sign in as that group. Closest to raw atproto, but groups stop feeling like shared entities.</p></div>
+          </div>
+        </div>
+        <div class="cap"><div class="flabel">Trade-off</div>
+          <div class="r pro"><b>+</b> Zero cross-post risk; one principal per session.</div>
+          <div class="r"><b>&minus;</b> Re-auth to switch; groups become separate accounts, not memberships.</div>
+          <div class="r"><b>Fit:</b> wrong model for a membership-based group feature.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- (b) -->
+    <section class="pat">
+      <div class="pat-head"><span class="idx">(b)</span><h2>Multi-account switcher</h2><span class="verdict">Workable</span></div>
+      <p class="pat-desc">Personal and each group are <b>peers</b> in one list, switched instantly with per-account unread badges (Slack / Google style). On desktop, a left icon rail keeps all identities partly visible.</p>
+      <div class="frames">
+        <div><div class="flabel">Mobile</div>
+          <div class="phone">
+            <div class="pnav"><span class="brand sm">Certified</span><div class="trig"><div class="av green av-24">AC</div><span class="chev">&#9662;</span></div></div>
+            <div class="pbody"><div class="menucard">
+              <div class="acct"><div class="av plum av-28">YO</div><div class="m"><div class="n">You</div><div class="h">@holke</div></div><span class="badge">2</span></div>
+              <div class="acct on"><div class="av green av-28">AC</div><div class="m"><div class="n">Acme Collective</div><div class="h">@acme</div></div><span class="badge">5</span></div>
+              <div class="acct"><div class="av blue av-28">RF</div><div class="m"><div class="n">Rainforest Fund</div><div class="h">@rainforest</div></div></div>
+            </div></div>
+          </div>
+        </div>
+        <div><div class="flabel">Desktop</div>
+          <div class="win"><div class="wchrome"><div class="wdots"><i></i><i></i><i></i></div><span class="wurl">certified.app/home</span></div>
+            <div style="display:flex;">
+              <div class="leftrail"><div class="ri"><div class="av plum av-28">YO</div></div><div class="ri on"><div class="av green av-28">AC</div></div><div class="ri"><div class="av blue av-28">RF</div></div></div>
+              <div style="flex:1;"><div class="wbar" style="border-bottom:1px solid var(--border-default);"><span class="brand">Certified</span><span class="muted" style="margin-left:6px;">&middot; Acme Collective</span></div><div class="wbody"><p class="muted">Each identity is its own "account" with its own badges. Switching swaps the whole app. The active one is marked on the rail.</p></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="cap"><div class="flabel">Trade-off</div>
+          <div class="r pro"><b>+</b> Fast; aggregated awareness via badges; great for many identities.</div>
+          <div class="r"><b>&minus;</b> Frames "me" and "the org" as equals, weakening the "I am acting FOR a group" idea; heavier model.</div>
+          <div class="r"><b>Fit:</b> good if a user juggles many groups daily.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- (c) -->
+    <section class="pat">
+      <div class="pat-head"><span class="idx">(c)</span><h2>Workspace switcher</h2><span class="verdict">Workable</span></div>
+      <p class="pat-desc">You are always <b>inside exactly one space</b>; the space name is the switcher (top-left), and the whole app is scoped to it. Personal is just another space (Notion / Linear style).</p>
+      <div class="frames">
+        <div><div class="flabel">Mobile</div>
+          <div class="phone">
+            <div class="pnav"><div class="trig"><div class="av green av-24">AC</div><span class="brand sm" style="font-size:13px;">Acme Collective</span><span class="chev">&#9662;</span></div><div class="av plum av-20">YO</div></div>
+            <div class="pbody"><div class="muted">Feed, certs, projects &mdash; all Acme's. The space name in the corner is both the label and the switcher.</div></div>
+          </div>
+        </div>
+        <div><div class="flabel">Desktop</div>
+          <div class="win"><div class="wchrome"><div class="wdots"><i></i><i></i><i></i></div><span class="wurl">certified.app</span></div>
+            <div class="wbar"><div class="trig"><div class="av green av-26">AC</div><span class="brand" style="font-size:15px;">Acme Collective</span><span class="chev">&#9662;</span></div><span class="spacer"></span><div class="av plum av-26">YO</div></div>
+            <div class="wbody"><p class="muted">The space name replaces the brandmark as the primary anchor. Clicking it lists spaces (You, Acme, Rainforest). Strong, unambiguous scoping.</p></div>
+          </div>
+        </div>
+        <div class="cap"><div class="flabel">Trade-off</div>
+          <div class="r pro"><b>+</b> Crystal-clear scope; symmetric treatment of personal + groups; no separate "mode".</div>
+          <div class="r"><b>&minus;</b> "Personal as a workspace" is slightly odd for a social identity; brandmark gives way to the space name.</div>
+          <div class="r"><b>Fit:</b> strong if groups become the primary unit of work.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- (d) -->
+    <section class="pat">
+      <div class="pat-head"><span class="idx">(d)</span><h2>Namespace scope dropdown</h2><span class="verdict strong">Strong fit</span></div>
+      <p class="pat-desc">No global mode. You stay <b>you</b> everywhere; a small scope selector on the relevant surface sets who a record is for (GitHub "owner" dropdown). Your feed and profile never change identity.</p>
+      <div class="frames">
+        <div><div class="flabel">Mobile</div>
+          <div class="phone">
+            <div class="pnav"><span class="brand sm">New cert</span><div class="av plum av-24">YO</div></div>
+            <div class="pbody"><div class="muted" style="margin-bottom:6px;">Owner</div><div class="scopebtn"><div class="av green av-20">AC</div>Acme Collective<span class="chev">&#9662;</span></div><div class="fld">Title</div><div class="gobtn" style="margin-top:8px;">Create</div></div>
+          </div>
+        </div>
+        <div><div class="flabel">Desktop</div>
+          <div class="win"><div class="wchrome"><div class="wdots"><i></i><i></i><i></i></div><span class="wurl">certified.app/create</span></div>
+            <div class="wbar"><span class="brand">Certified</span><span class="spacer"></span><div class="trig"><div class="av plum av-26">YO</div><div class="id2"><span class="n">You</span><span class="h">@holke.certified.app</span></div></div></div>
+            <div class="wbody"><div class="muted" style="margin-bottom:6px;">Owner of this certificate</div><div class="scopebtn"><div class="av green av-20">AC</div>Acme Collective<span class="chev">&#9662;</span></div><p class="muted" style="margin-top:10px;">Chrome stays "You". Only this record's owner is scoped. No sticky mode to forget.</p></div>
+          </div>
+        </div>
+        <div class="cap"><div class="flabel">Trade-off</div>
+          <div class="r pro"><b>+</b> No global mode &rarr; no stale-mode errors; your feed/profile stay yours.</div>
+          <div class="r"><b>&minus;</b> Set the scope per surface; doesn't give you the group's feed/library in one move.</div>
+          <div class="r"><b>Fit:</b> strong if "acting as a group" mostly means authoring records, not browsing as them.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- (e) -->
+    <section class="pat">
+      <div class="pat-head"><span class="idx">(e)</span><h2>Act-as persona <span style="font-weight:400;color:var(--fg-muted);font-size:13px;">(today &middot; Options 1 &amp; 2)</span></h2><span class="verdict cur">Current</span></div>
+      <p class="pat-desc">A sticky, app-wide "acting as &lt;group&gt;" mode that re-scopes reads and writes. This is what Certified does now; Options 1 (persistent bar) and 2 (per-action identity) make the mode legible. <b>See the dedicated files.</b></p>
+      <div class="frames">
+        <div><div class="flabel">Mobile</div>
+          <div class="phone">
+            <div class="pnav"><span class="brand sm">Certified</span><div class="trig"><div class="av green av-24 ring">AC</div><span class="chev">&#9662;</span></div></div>
+            <div class="invbar"><div class="av green av-20 ring">AC</div><span class="lead">Acting as </span><span class="who">Acme</span><span class="x">Switch back</span></div>
+            <div class="pbody"><div class="muted">Whole app scoped to Acme until you switch back.</div></div>
+          </div>
+        </div>
+        <div><div class="flabel">Desktop</div>
+          <div class="win"><div class="wchrome"><div class="wdots"><i></i><i></i><i></i></div><span class="wurl">certified.app/home</span></div>
+            <div class="wbar"><span class="brand">Certified</span><span class="spacer"></span><div class="trig"><div class="av green av-26 ring">AC</div><div class="id2"><span class="n">Acme Collective</span><span class="h">@acme.certified.app</span></div><span class="chev">&#9662;</span></div></div>
+            <div class="invbar" style="padding:8px 14px;"><div class="av green av-24 ring">AC</div><span class="lead">Acting as </span><span class="who">Acme Collective</span><span class="x">&#8617; Switch back to You</span></div>
+            <div class="wbody"><p class="muted">Persistent bar = Option 1. Per-action "as Acme" buttons = Option 2.</p></div>
+          </div>
+        </div>
+        <div class="cap"><div class="flabel">Trade-off</div>
+          <div class="r pro"><b>+</b> One move re-scopes the whole app to the group; natural for "I run this group".</div>
+          <div class="r"><b>&minus;</b> Sticky mode can be forgotten; needs a loud indicator (the whole point of Options 1/2).</div>
+          <div class="r"><b>Fit:</b> good with the safety recipe; today's bare-avatar version is the risk.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- (f) -->
+    <section class="pat">
+      <div class="pat-head"><span class="idx">(f)</span><h2>Per-action identity picker</h2><span class="verdict strong">Strong fit</span></div>
+      <p class="pat-desc">No ambient mode whatsoever. Chrome is always <b>you</b>; each write action carries its own inline "as &#9662;" picker (LinkedIn post-as, Buffer). Option 2 is a hybrid of this with a light ambient chip.</p>
+      <div class="frames">
+        <div><div class="flabel">Mobile</div>
+          <div class="phone">
+            <div class="pnav"><span class="brand sm">Jane Rivera</span><div class="av plum av-24">YO</div></div>
+            <div class="pbody"><div class="muted" style="margin-bottom:7px;">Follow this profile</div><div class="splitbtn"><span class="main">Follow</span><span class="as"><div class="av plum av-20">YO</div>as You &#9662;</span></div><p class="muted" style="margin-top:9px;">Tap "as" to follow as Acme instead.</p></div>
+          </div>
+        </div>
+        <div><div class="flabel">Desktop</div>
+          <div class="win"><div class="wchrome"><div class="wdots"><i></i><i></i><i></i></div><span class="wurl">certified.app/create</span></div>
+            <div class="wbar"><span class="brand">Certified</span><span class="spacer"></span><div class="trig"><div class="av plum av-26">YO</div><div class="id2"><span class="n">You</span><span class="h">@holke.certified.app</span></div></div></div>
+            <div class="wbody"><div class="muted" style="margin-bottom:6px;">Author</div><div class="scopebtn"><div class="av plum av-20">YO</div>You <span class="lab">&mdash; change &#9662;</span></div><p class="muted" style="margin-top:10px;">Default is you; pick a group per action. The chrome never enters a "mode".</p></div>
+          </div>
+        </div>
+        <div class="cap"><div class="flabel">Trade-off</div>
+          <div class="r pro"><b>+</b> Impossible to be in a stale mode; identity is reasserted at every write.</div>
+          <div class="r"><b>&minus;</b> Friction per action; your feed/library never show the group's view.</div>
+          <div class="r"><b>Fit:</b> strong, and composes with a light ambient cue (that's Option 2).</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- (g) -->
+    <section class="pat">
+      <div class="pat-head"><span class="idx">(g)</span><h2>Profile-as-place</h2><span class="verdict">Niche</span></div>
+      <p class="pat-desc">No switching anywhere. You are always you. Group actions live <b>on the group's own page</b> ("Manage", "+ Post as this group"); there is no global persona to enter or exit.</p>
+      <div class="frames">
+        <div><div class="flabel">Mobile</div>
+          <div class="phone">
+            <div class="pnav"><span class="brand sm">Acme Collective</span><div class="av plum av-24">YO</div></div>
+            <div class="pbody"><div style="display:flex;align-items:center;gap:9px;"><div class="av green av-28">AC</div><div><div style="font-size:12px;font-weight:600;">Acme Collective</div><div class="muted">You're an owner</div></div></div>
+              <div style="display:flex;gap:6px;margin-top:10px;"><div class="gobtn" style="margin:0;flex:1;">+ Post as Acme</div><div class="scopebtn" style="height:34px;">Manage</div></div></div>
+          </div>
+        </div>
+        <div><div class="flabel">Desktop</div>
+          <div class="win"><div class="wchrome"><div class="wdots"><i></i><i></i><i></i></div><span class="wurl">certified.app/groups/acme</span></div>
+            <div class="wbar"><span class="brand">Certified</span><span class="spacer"></span><div class="trig"><div class="av plum av-26">YO</div><div class="id2"><span class="n">You</span><span class="h">@holke.certified.app</span></div></div></div>
+            <div class="wbody"><div style="display:flex;align-items:center;gap:11px;"><div class="av green av-28">AC</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;font-family:var(--serif);">Acme Collective</div><div class="muted">You are an owner of this group</div></div><div class="scopebtn">Manage</div><div class="gobtn" style="margin:0;">+ Post as Acme</div></div><p class="muted" style="margin-top:11px;">Everywhere else you're simply you. Group power lives on its page.</p></div>
+          </div>
+        </div>
+        <div class="cap"><div class="flabel">Trade-off</div>
+          <div class="r pro"><b>+</b> Simplest mental model; no mode, no mis-attribution surface.</div>
+          <div class="r"><b>&minus;</b> Group actions only reachable from the group page; clumsy for heavy admins.</div>
+          <div class="r"><b>Fit:</b> niche; fine if group activity is occasional, weak for power users.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= CANDIDATES ======================= -->
+    <section class="bigsec">
+      <div class="kicker">The three we built and evaluated</div>
+      <h2 class="big">Candidates</h2>
+      <p class="intro" style="margin-bottom:0;">All three refine the design space above. Options 1 and 2 keep the act-as model (pattern e) and make it legible; Option 3 drops the global mode for GitHub-style per-action identity (d + f). Full interactive mocks are in the sibling files.</p>
+      <div class="cands">
+        <div class="optcard">
+          <div class="ohead"><span class="obadge">Option 1</span><h3>Act-as + persistent bar</h3><div class="od">The sticky mode made loud: an inverted bar on every screen names the group with an inline exit.</div></div>
+          <div class="ofig">
+            <div class="phone" style="width:212px;">
+              <div class="pnav"><span class="brand sm">Certified</span><div class="trig"><div class="av green av-24">AC</div><span class="chev">&#9662;</span></div></div>
+              <div class="invbar"><div class="av green av-20">AC</div><span class="lead">Acting as </span><span class="who">Acme</span><span class="x">Switch back</span></div>
+              <div class="pbody" style="min-height:48px;"><div class="muted">Whole app scoped to Acme.</div></div>
+            </div>
+          </div>
+          <div class="ofoot"><span class="verdict2">Ships on UI alone; mitigates the mode risk</span><br><a href="option-1-sticky-bar.html">mobile</a> &middot; <a href="option-1-desktop.html">desktop</a></div>
+        </div>
+        <div class="optcard">
+          <div class="ohead"><span class="obadge">Option 2</span><h3>Act-as + per-action labels</h3><div class="od">A quiet chip, plus the identity inside each write button ("Create cert as Acme") and a confirm on high-stakes writes.</div></div>
+          <div class="ofig">
+            <div class="phone" style="width:212px;">
+              <div class="pnav"><span class="pill"><span class="dot"></span>Acting as <span class="who">Acme</span></span><div class="av green av-24">AC</div></div>
+              <div class="pbody" style="min-height:72px;"><div class="muted" style="margin-bottom:9px;">New certificate</div><div class="gobtn" style="font-size:11px;height:30px;margin-top:0;">Create cert as &#9737; Acme</div></div>
+            </div>
+          </div>
+          <div class="ofoot"><span class="verdict2">Reasserts identity at the write</span><br><a href="option-2-hybrid.html">mobile</a> &middot; <a href="option-2-desktop.html">desktop</a></div>
+        </div>
+        <div class="optcard">
+          <div class="ohead"><span class="obadge">Option 3</span><h3>GitHub model</h3><div class="od">No global mode. You are always you; a split button picks the actor per action ("Endorse as &#9662;"), default You.</div></div>
+          <div class="ofig">
+            <div class="phone" style="width:212px;">
+              <div class="pnav"><span class="brand sm">Certified</span><div class="trig"><div class="av plum av-24">YO</div><span class="chev">&#9662;</span></div></div>
+              <div class="pbody" style="min-height:72px;"><div class="muted" style="margin-bottom:9px;">Jane Rivera</div><div class="splitbtn"><span class="main">Endorse</span><span class="as">as You &#9662;</span></div></div>
+            </div>
+          </div>
+          <div class="ofoot"><span class="verdict2">Kills the mode bug; needs org-endorse backend</span><br><a href="option-3-github-model.html">mobile + desktop</a></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= INSIGHT ======================= -->
+    <section class="bigsec insight">
+      <div class="kicker">The deciding insight</div>
+      <h2 class="big">An org is a full account, not a namespace</h2>
+      <p class="intro" style="margin-bottom:0;">Two kinds of "org" run through these patterns, and they take opposite models.</p>
+      <div class="grid2">
+        <div class="ibox"><h4>Namespace-orgs &rarr; per-action scope</h4><p>A GitHub org or a Medium publication can't be logged into. They are containers you attach records to. Per-action scoping (Option 3) fits because there is no account to "be".</p></div>
+        <div class="ibox"><h4>Account-orgs &rarr; act-as / delegation</h4><p>An <b>atproto org is its own account</b>: its own DID, handle, repo, profile, follow graph. You could log into Bluesky <i>as</i> Acme directly. X and YouTube brand accounts work the same way, and both use "operate the account", not a per-action tag.</p></div>
+      </div>
+      <p style="font-size:13.5px;line-height:1.6;color:var(--fg-secondary);margin-top:16px;max-width:900px;">A Certified org is the second kind. So Option 3, by framing the org as an owner you tag onto a record, <b style="color:var(--fg-primary)">hides what the org actually is</b> and breaks consistency with the rest of atproto. The act-as model tells the truth: the org is an account you operate. And doing it in-app is <b style="color:var(--fg-primary)">delegation</b>, which beats "log in as Acme" directly: no credential sharing, you stay accountable as the operator, and you never log out of yourself. That delegation gap is exactly what raw atproto lacks and Certified can fill.</p>
+    </section>
+
+    <!-- ======================= RECOMMENDATION ======================= -->
+    <section class="rec">
+      <div class="kicker">Suggestion</div>
+      <h2>Act-as, framed as delegation</h2>
+      <p class="lede2">Keep the act-as model (it is the honest one for an account-org and it bridges to Bluesky), but treat the safety layer as mandatory, not optional. One line states who you are operating and who you are:</p>
+      <div style="margin:16px 0;">
+        <div class="invbar" style="border-radius:var(--radius);padding:12px 16px;max-width:540px;">
+          <div class="av green av-26">AC</div>
+          <span>Operating <span class="who">Acme Collective</span> as @holke <span style="opacity:.62;">(admin)</span></span>
+          <span class="x" style="margin-left:auto;">Switch to personal</span>
+        </div>
+      </div>
+      <div class="conds">
+        <div class="cond"><div class="cn">1 &middot; Persistent indicator</div><div class="cb">That bar on every screen, with the inline exit. It names the org (the account) and you (the operator) at once.</div></div>
+        <div class="cond"><div class="cn">2 &middot; Confirm the high-stakes write</div><div class="cb">Endorsing as the org gets a confirm naming endorser, operator, and subject. Following is one click.</div></div>
+        <div class="cond"><div class="cn">3 &middot; Session-scoped, not forever</div><div class="cb">The mode lasts the session, not indefinitely in localStorage, so you cannot be silently delegated days later.</div></div>
+      </div>
+      <p style="font-size:13px;line-height:1.6;color:var(--fg-secondary);margin-top:18px;max-width:900px;">Why not Option 3: it is safest by construction, but it buys that safety by pretending the org is a namespace. For an atproto identity product, telling the truth that the org is a real account matters more, and the mis-attribution risk is answerable with the three conditions above. The org-endorse backend (group badge route + per-group endorsement definition + unfollow route) is needed either way, so it is not a reason to prefer one model over the other.</p>
+    </section>
+
+  </div>
+<script>
+  document.getElementById('themeBtn').addEventListener('click',e=>{const on=document.body.classList.toggle('dark');e.target.textContent=on?'Light mode':'Dark mode';});
+</script>
+</body>
+</html>

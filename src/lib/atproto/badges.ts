@@ -439,6 +439,55 @@ async function createEndorsementDefinition(ownDid: string): Promise<StrongRef> {
 }
 
 /**
+ * Find or create a GROUP's `endorsement` badge definition.
+ *
+ * The group-acting analogue of `ensureEndorsementDefinition`: when the
+ * viewer acts as a group, the award must reference a definition owned
+ * by the GROUP's repo, not the operator's. Reads the group's existing
+ * definitions through the same federated `listDefinitions` path (the
+ * XRPC proxy reads any repo by DID), resolves the canonical
+ * endorsement def, and returns its strong ref unchanged if found.
+ * Otherwise creates one via the group BFF route
+ * `/api/groups/<groupDid>/endorsement-definition`, which proxies the
+ * createRecord through the operator's OAuth session to the group's
+ * service auth.
+ *
+ * Unlike the personal path there's no Web-Lock / inflight dedupe here:
+ * group definition creation goes through one operator at a time and
+ * the read-then-create is cheap; duplicates self-heal on the next read
+ * via `resolveCanonicalEndorsementDef` (oldest wins), same as personal.
+ */
+export async function ensureGroupEndorsementDefinition(
+  groupDid: string,
+): Promise<StrongRef> {
+  const existing = await listDefinitions(groupDid)
+  const matched = resolveCanonicalEndorsementDef(existing)
+  if (matched) {
+    return { uri: matched.canonical.uri, cid: matched.canonical.cid }
+  }
+  const res = await authFetch(
+    `/api/groups/${encodeURIComponent(groupDid)}/endorsement-definition`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    },
+  )
+  const data = (await res.json().catch(() => ({}))) as {
+    uri?: string
+    cid?: string
+    error?: string
+  }
+  if (!res.ok || !data.uri || !data.cid) {
+    throw new Error(
+      data.error ||
+        `Failed to create group endorsement definition: ${res.status}`,
+    )
+  }
+  return { uri: data.uri, cid: data.cid }
+}
+
+/**
  * List badge awards from any user's PDS. Returns the raw records;
  * callers narrow to endorsement awards by resolving each record's
  * `badge` strongRef and filtering on the definition's `badgeType`.
@@ -580,12 +629,49 @@ async function writeBadgeAward(
  * answer lands in `app.certified.badge.award.note`). Empty / blank
  * notes are dropped before the write so the field is omitted entirely
  * for endorsements without a reason.
+ *
+ * Routing:
+ *   - Default: writes against the issuer's DEFAULT endorsement def on
+ *     `ownDid`'s personal PDS via the XRPC proxy (unchanged).
+ *   - With `opts.targetDid` (acting-as-group): the award is issued BY
+ *     the group. Ensures the GROUP's endorsement def, then writes the
+ *     award through the group BFF route `/api/groups/<targetDid>/endorse`,
+ *     which proxies via the operator's OAuth session to the group's
+ *     service auth. Mirrors `createFollow`'s group path.
  */
 export async function createEndorsementAward(
   ownDid: string,
   subjectDid: string,
   note?: string,
+  opts?: { targetDid?: string },
 ): Promise<{ uri: string; cid: string }> {
+  const targetDid = opts?.targetDid
+  if (targetDid && targetDid !== ownDid) {
+    const badge = await ensureGroupEndorsementDefinition(targetDid)
+    const res = await authFetch(
+      `/api/groups/${encodeURIComponent(targetDid)}/endorse`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject: subjectDid, badge, note }),
+      },
+    )
+    const data = (await res.json().catch(() => ({}))) as {
+      uri?: string
+      cid?: string
+      error?: string
+    }
+    if (!res.ok || !data.uri || !data.cid) {
+      throw new Error(
+        data.error ||
+          `Failed to create group endorsement award: ${res.status}`,
+      )
+    }
+    // Bust the endorsement-closure cache — same rationale as the
+    // personal path below.
+    invalidateEndorsementClosure()
+    return { uri: data.uri, cid: data.cid }
+  }
   const badge = await ensureEndorsementDefinition(ownDid)
   const result = await writeBadgeAward(ownDid, subjectDid, badge, "endorsement award", note)
   // Bust the endorsement-closure cache (certified-app #84). Cheap
@@ -603,11 +689,43 @@ export async function createEndorsementAward(
  * is best-effort (errors logged in dev, swallowed in prod) — the
  * read path drops unresolved list items silently, so a partial
  * failure delays cleanup but doesn't corrupt anything.
+ *
+ * Routing:
+ *   - Default: deletes the award on `ownDid`'s personal PDS via the
+ *     XRPC proxy (unchanged).
+ *   - With `opts.targetDid` (acting-as-group): the award lives on the
+ *     GROUP's repo, so the delete goes through the group BFF route
+ *     `/api/groups/<targetDid>/endorse`. Endorsement lists are
+ *     personal, so the group path skips `purgeAwardFromLists` (the
+ *     group has no lists referencing this award) but still busts both
+ *     caches for parity with the personal path.
  */
 export async function deleteEndorsementAward(
   ownDid: string,
   rkey: string,
+  opts?: { targetDid?: string },
 ): Promise<void> {
+  const targetDid = opts?.targetDid
+  if (targetDid && targetDid !== ownDid) {
+    const res = await authFetch(
+      `/api/groups/${encodeURIComponent(targetDid)}/endorse`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rkey }),
+      },
+    )
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      throw new Error(
+        data.error ||
+          `Failed to delete group endorsement award: ${res.status}`,
+      )
+    }
+    invalidateEndorsementClosure()
+    invalidateEndorsementLists()
+    return
+  }
   const awardUri = `at://${ownDid}/${BADGE_AWARD_COLLECTION}/${rkey}`
   await purgeAwardFromLists(ownDid, awardUri)
   const res = await authFetch("/api/xrpc/com/atproto/repo/deleteRecord", {
@@ -698,8 +816,35 @@ export async function createResponse(
   ownDid: string,
   badgeAward: StrongRef,
   response: "accepted" | "rejected",
-  weight?: string,
+  opts?: { targetDid?: string; weight?: string },
 ): Promise<{ uri: string; cid: string }> {
+  const weight = opts?.weight
+  // Acting as a group (recipient): route the response to the GROUP's repo
+  // via the BFF so the group's own profile reflects the accept/reject.
+  // Personal path (no targetDid) is unchanged below.
+  if (opts?.targetDid && opts.targetDid !== ownDid) {
+    const res = await authFetch(
+      `/api/groups/${encodeURIComponent(opts.targetDid)}/response`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ award: badgeAward, response, weight }),
+      },
+    )
+    const data = (await res.json().catch(() => ({}))) as {
+      uri?: string
+      cid?: string
+      error?: string
+    }
+    if (!res.ok || !data.uri || !data.cid) {
+      throw new Error(
+        data.error || `Failed to create group badge response: ${res.status}`,
+      )
+    }
+    invalidateEndorsementClosure()
+    return { uri: data.uri, cid: data.cid }
+  }
+
   const body = {
     repo: ownDid,
     collection: BADGE_RESPONSE_COLLECTION,
@@ -747,7 +892,26 @@ export async function createResponse(
 export async function deleteResponse(
   ownDid: string,
   rkey: string,
+  opts?: { targetDid?: string },
 ): Promise<void> {
+  // Acting as a group: delete the response from the GROUP's repo via the BFF.
+  if (opts?.targetDid && opts.targetDid !== ownDid) {
+    const res = await authFetch(
+      `/api/groups/${encodeURIComponent(opts.targetDid)}/response`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rkey }),
+      },
+    )
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      throw new Error(
+        data.error || `Failed to delete group badge response: ${res.status}`,
+      )
+    }
+    return
+  }
   const res = await authFetch("/api/xrpc/com/atproto/repo/deleteRecord", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -831,12 +995,13 @@ export async function deleteAllResponsesForAward(
   ownDid: string,
   awardUri: string,
   allResponses: BadgeResponseRecord[],
+  opts?: { targetDid?: string },
 ): Promise<number> {
   const matching = allResponses.filter(
     (r) => r.value.badgeAward?.uri === awardUri,
   )
   for (const r of matching) {
-    await deleteResponse(ownDid, r.rkey)
+    await deleteResponse(ownDid, r.rkey, opts)
   }
   return matching.length
 }

@@ -23,6 +23,7 @@ import { useAuthorInfo, type AuthorInfo } from "@/hooks/use-author-info"
 import { useAuthorNamesMap } from "@/hooks/use-author-names-map"
 import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useOrg } from "@/lib/groups/org-context"
 import {
   createEndorsementAward,
   deleteEndorsementAward,
@@ -88,15 +89,28 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
   const { did: viewerDid } = useAuth()
   const viewerIsOwner = !!viewerDid && viewerDid === did
 
+  // Acting AS this group: when an owner/admin operates a group (delegation)
+  // and is viewing the group's own profile, the give, revoke-given, AND
+  // received accept/reject actions author the record on the GROUP's repo
+  // via `manageTargetDid` instead of the personal one. `canManage` gates
+  // every owner-side affordance; foreign viewers (neither owner nor an
+  // admin acting as this group) get the read-only view.
+  const { activeOrg } = useOrg()
+  const actingAsThisGroup = !!activeOrg && activeOrg.groupDid === did
+  const canManage = viewerIsOwner || actingAsThisGroup
+  const manageTargetDid = actingAsThisGroup ? did : undefined
+
   const given = useGivenEndorsements(did)
   // Owner-side surfaces see ALL received endorsements (including
   // the rejected ones) so the filter dropdown below can offer
   // "Show only rejected" / "Show all". Foreign viewers stay on the
   // default (rejected filtered out at the hook).
   const received = useReceivedEndorsements(did, {
-    includeRejected: viewerIsOwner,
+    includeRejected: canManage,
   })
-  const ownStates = useOwnResponseStates()
+  // Read the GROUP's responses when acting as it on its own profile, so the
+  // Received-tab accept/reject state reflects the group, not the operator.
+  const ownStates = useOwnResponseStates(actingAsThisGroup ? did : undefined)
 
   // Toolbar state — default to Received per spec. Declared up here
   // (above the data memos) because `filteredReceived` reads
@@ -137,21 +151,21 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
   // call already strips rejected entries server-side via the
   // `includeRejected: false` default. Default = hide rejected.
   const filteredReceived = useMemo(() => {
-    if (!viewerIsOwner) return displayReceived
+    if (!canManage) return displayReceived
     return displayReceived.filter((e) => {
       const { state } = ownStates.resolve(e.uri)
       if (responseFilter === "show-all") return true
       if (responseFilter === "only-rejected") return state === "rejected"
       return state !== "rejected"
     })
-  }, [displayReceived, viewerIsOwner, ownStates, responseFilter])
+  }, [displayReceived, canManage, ownStates, responseFilter])
 
   // Endorse-people modal (own-profile only). The viewer can search
   // for one or many people and write a batch of endorsements in a
   // single pass.
   const [isEndorseModalOpen, setIsEndorseModalOpen] = useState(false)
   const ownGivenForModal = useGivenEndorsements(
-    viewerIsOwner ? viewerDid : null,
+    canManage ? did : null,
   )
   const ownAlreadyEndorsedDids = useMemo(
     () => new Set(ownGivenForModal.endorsements.map((e) => e.subjectDid)),
@@ -235,7 +249,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
         </nav>
 
         <div className="profile-endorsements-v2__controls">
-          {viewerIsOwner ? (
+          {canManage ? (
             <button
               type="button"
               className="profile-endorsements-v2__endorse-add"
@@ -270,7 +284,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
               contains rejected entries (the hook was called with
               `includeRejected: true` for owners) so flipping the
               filter is purely client-side. */}
-          {viewerIsOwner && tab === "received" ? (
+          {canManage && tab === "received" ? (
             <div
               className="profile-endorsements-v2__sort-wrap"
               ref={filterWrapRef}
@@ -365,7 +379,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
 
       {tab === "received" ? (
         <>
-          {viewerIsOwner ? (
+          {canManage ? (
             <p className="profile-endorsements-v2__response-note">
               Endorsements with no response are shown on your profile by
               default. Rejected endorsements are hidden from your profile.
@@ -378,8 +392,9 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
             query={query}
             sort={sort}
             names={names}
-            viewerIsOwner={viewerIsOwner}
+            viewerIsOwner={canManage}
             viewerDid={viewerDid}
+            targetDid={manageTargetDid}
             responseFilter={responseFilter}
             resolve={ownStates.resolve}
             allResponses={ownStates.responses}
@@ -397,19 +412,22 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
           query={query}
           sort={sort}
           names={names}
-          viewerIsOwner={viewerIsOwner}
+          viewerIsOwner={canManage}
           viewerDid={viewerDid}
+          targetDid={manageTargetDid}
           onAfterRevoke={() => given.refetch()}
         />
       )}
 
-      {isEndorseModalOpen && viewerIsOwner && viewerDid ? (
+      {isEndorseModalOpen && canManage && viewerDid ? (
         <EndorsePeopleModal
           viewerDid={viewerDid}
           alreadyEndorsedDids={ownAlreadyEndorsedDids}
           requireReason
           onEndorse={(subjectDid, note) =>
-            createEndorsementAward(viewerDid, subjectDid, note)
+            createEndorsementAward(viewerDid, subjectDid, note, {
+              targetDid: manageTargetDid,
+            })
           }
           onClose={() => setIsEndorseModalOpen(false)}
           onCompleted={async () => {
@@ -444,6 +462,9 @@ interface ReceivedGridProps {
   names: Map<string, string>
   viewerIsOwner: boolean
   viewerDid: string | null
+  /** Group DID when acting AS this group — accept/reject responses route
+   *  to the group's repo. Undefined for personal responses. */
+  targetDid?: string
   /** Active response filter — used by the empty-state copy so a
    *  zero-results "Show only rejected" view says "No rejected
    *  endorsements yet" instead of the generic "No endorsements
@@ -463,6 +484,7 @@ function ReceivedGrid({
   names,
   viewerIsOwner,
   viewerDid,
+  targetDid,
   responseFilter,
   resolve,
   allResponses,
@@ -526,6 +548,7 @@ function ReceivedGrid({
           endorsement={e}
           viewerIsOwner={viewerIsOwner}
           viewerDid={viewerDid}
+          targetDid={targetDid}
           resolve={resolve}
           allResponses={allResponses}
           onAfterWrite={onAfterWrite}
@@ -539,6 +562,7 @@ function ReceivedCard({
   endorsement,
   viewerIsOwner,
   viewerDid,
+  targetDid,
   resolve,
   allResponses,
   onAfterWrite,
@@ -546,6 +570,7 @@ function ReceivedCard({
   endorsement: ReceivedEndorsement
   viewerIsOwner: boolean
   viewerDid: string | null
+  targetDid?: string
   resolve: ReturnType<typeof useOwnResponseStates>["resolve"]
   allResponses: ReturnType<typeof useOwnResponseStates>["responses"]
   onAfterWrite: () => void | Promise<void>
@@ -596,6 +621,7 @@ function ReceivedCard({
               info?.displayName || info?.handle || endorsement.issuerDid
             }
             ownerDid={viewerDid}
+            targetDid={targetDid}
             state={resolve(endorsement.uri).state}
             allResponses={allResponses}
             onAfterWrite={onAfterWrite}
@@ -620,6 +646,9 @@ interface GivenGridProps {
    *  issued. Controls whether the per-card revoke `×` renders. */
   viewerIsOwner: boolean
   viewerDid: string | null
+  /** Group DID when the viewer is acting AS this group — revokes route
+   *  to the group repo. Undefined for personal revokes. */
+  targetDid?: string
   onAfterRevoke: () => void | Promise<void>
 }
 
@@ -632,6 +661,7 @@ function GivenGrid({
   names,
   viewerIsOwner,
   viewerDid,
+  targetDid,
   onAfterRevoke,
 }: GivenGridProps) {
   const visible = useMemo(
@@ -680,6 +710,7 @@ function GivenGrid({
           endorsement={e}
           canRevoke={viewerIsOwner && !!viewerDid}
           viewerDid={viewerDid}
+          targetDid={targetDid}
           onAfterRevoke={onAfterRevoke}
         />
       ))}
@@ -691,11 +722,13 @@ function GivenCard({
   endorsement,
   canRevoke,
   viewerDid,
+  targetDid,
   onAfterRevoke,
 }: {
   endorsement: GivenEndorsement
   canRevoke: boolean
   viewerDid: string | null
+  targetDid?: string
   onAfterRevoke: () => void | Promise<void>
 }) {
   const { info, isLoading } = useAuthorInfo(endorsement.subjectDid)
@@ -712,6 +745,7 @@ function GivenCard({
           <RevokeGivenButton
             viewerDid={viewerDid}
             rkey={endorsement.rkey}
+            targetDid={targetDid}
             subjectDisplay={
               info?.displayName || info?.handle || endorsement.subjectDid
             }
@@ -732,11 +766,13 @@ function GivenCard({
 function RevokeGivenButton({
   viewerDid,
   rkey,
+  targetDid,
   subjectDisplay,
   onAfterRevoke,
 }: {
   viewerDid: string
   rkey: string
+  targetDid?: string
   subjectDisplay: string
   onAfterRevoke: () => void | Promise<void>
 }) {
@@ -749,7 +785,7 @@ function RevokeGivenButton({
     setIsRevoking(true)
     setError(null)
     try {
-      await deleteEndorsementAward(viewerDid, rkey)
+      await deleteEndorsementAward(viewerDid, rkey, { targetDid })
       await onAfterRevoke()
       setConfirmOpen(false)
     } catch (err) {

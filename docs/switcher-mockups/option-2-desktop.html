@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Switcher — Option 2 (desktop): Hybrid, quiet ambient + per-action identity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Serif:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --color-primary:#111111; --color-white:#FFFFFF;
+    --bg-canvas:#f9f9f9; --bg-sunken:#eeeeee; --bg-raised:#f3f3f3; --bg-elevated:#FFFFFF;
+    --fg-primary:#111111; --fg-secondary:#4c4546; --fg-muted:#6b6263;
+    --border-default:rgba(0,0,0,0.08); --border-hover:rgba(0,0,0,0.15); --border-strong:rgba(0,0,0,0.22);
+    --shadow-md:0 4px 12px rgba(0,0,0,0.08); --shadow-lg:0 18px 50px rgba(0,0,0,0.20);
+    --radius:2px; --serif:'Noto Serif',Georgia,serif; --ui:'Inter',system-ui,sans-serif; --stage:#dcdcd8;
+  }
+  .dark{
+    --bg-canvas:#18181b; --bg-sunken:#111114; --bg-raised:#26262b; --bg-elevated:#2d2d33;
+    --fg-primary:#f5f5f7; --fg-secondary:#c7c7cc; --fg-muted:#8e8e93;
+    --border-default:rgba(255,255,255,0.08); --border-hover:rgba(255,255,255,0.18); --border-strong:rgba(255,255,255,0.28);
+    --shadow-lg:0 18px 50px rgba(0,0,0,0.6); --stage:#0c0c0e;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:var(--ui);background:var(--stage);color:var(--fg-primary);-webkit-font-smoothing:antialiased;}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;}
+  .top .t{font-family:var(--serif);font-weight:600;font-size:17px;}
+  .top .t small{font-family:var(--ui);font-weight:500;font-size:12px;color:var(--fg-muted);margin-left:8px;}
+  .toggle{font-size:12.5px;font-weight:500;color:var(--fg-primary);background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:999px;padding:7px 14px;cursor:pointer;}
+  .wrap{max-width:1340px;margin:0 auto;padding:6px 28px 50px;}
+  .lede{font-size:14px;line-height:1.55;color:var(--fg-secondary);max-width:880px;margin:0 0 20px;}
+
+  .browser{border-radius:12px;overflow:hidden;box-shadow:0 22px 60px rgba(0,0,0,.22);border:1px solid var(--border-hover);background:var(--bg-canvas);position:relative;}
+  .chrome{height:40px;display:flex;align-items:center;gap:14px;padding:0 14px;background:var(--bg-sunken);border-bottom:1px solid var(--border-default);}
+  .dots{display:flex;gap:7px;} .dots i{width:11px;height:11px;border-radius:50%;display:block;background:#cfcfca;} .dark .dots i{background:#3a3a40;}
+  .url{flex:1;max-width:520px;height:24px;border-radius:999px;background:var(--bg-elevated);border:1px solid var(--border-default);display:flex;align-items:center;padding:0 12px;font-size:12px;color:var(--fg-muted);}
+
+  .appbar{height:56px;display:flex;align-items:center;gap:16px;padding:0 20px;background:color-mix(in srgb,var(--bg-elevated) 90%,transparent);border-bottom:1px solid var(--border-default);}
+  .burger{color:var(--fg-secondary);} .brand{font-family:var(--serif);font-weight:600;font-size:18px;}
+  .tabs{display:flex;gap:4px;margin-left:10px;} .tabs a{font-size:13px;color:var(--fg-muted);padding:6px 10px;text-decoration:none;border-radius:var(--radius);} .tabs a.on{color:var(--fg-primary);font-weight:600;background:var(--bg-sunken);}
+  .spacer{flex:1;}
+  .chip{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px 0 8px;border:1px solid var(--border-strong);border-radius:999px;font-size:12px;font-weight:500;color:var(--fg-secondary);background:var(--bg-raised);}
+  .chip .dot{width:6px;height:6px;border-radius:50%;background:var(--fg-primary);} .chip .who{color:var(--fg-primary);font-weight:600;}
+  .switch{display:flex;align-items:center;gap:9px;padding:5px 8px 5px 6px;border:1px solid var(--border-default);border-radius:999px;background:var(--bg-elevated);cursor:pointer;}
+  .switch .w{display:flex;flex-direction:column;line-height:1.15;} .switch .w .n{font-size:12.5px;font-weight:600;} .switch .w .h{font-size:11px;color:var(--fg-muted);}
+  .chev{color:var(--fg-muted);font-size:11px;}
+
+  .av{border-radius:50%;display:grid;place-items:center;font-weight:600;color:#fff;flex:none;}
+  .av.green{background:#3d5a45;} .av.blue{background:#3a4a63;}
+  .av-22{width:22px;height:22px;font-size:9px;} .av-28{width:28px;height:28px;font-size:11px;} .av-30{width:30px;height:30px;font-size:11px;}
+
+  /* create surface (centered, desktop) */
+  .stagearea{padding:40px 0 56px;display:flex;justify-content:center;}
+  .form{width:560px;}
+  .form h1{font-family:var(--serif);font-weight:600;font-size:24px;margin:0 0 4px;}
+  .form .subtitle{font-size:13px;color:var(--fg-muted);margin:0 0 22px;}
+  .label{font-size:12px;font-weight:600;color:var(--fg-secondary);margin:16px 0 6px;}
+  .field{width:100%;height:42px;border:1px solid var(--border-default);border-radius:var(--radius);background:var(--bg-elevated);display:flex;align-items:center;padding:0 13px;font-size:13.5px;color:var(--fg-muted);}
+  .field.tall{height:88px;align-items:flex-start;padding-top:11px;}
+  .as-btn{margin-top:26px;height:46px;padding:0 22px;border-radius:var(--radius);background:var(--color-primary);color:var(--color-white);border:none;display:inline-flex;align-items:center;gap:9px;font-size:14px;font-weight:600;cursor:pointer;}
+  .dark .as-btn{background:var(--color-white);color:var(--color-primary);}
+  .as-btn .as{display:inline-flex;align-items:center;gap:6px;font-weight:500;opacity:.78;}
+  .as-btn .as .av{box-shadow:0 0 0 1.5px rgba(255,255,255,.55);} .dark .as-btn .as .av{box-shadow:0 0 0 1.5px rgba(0,0,0,.45);}
+
+  /* centered modal confirm (AppDialog style) */
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,.46);display:flex;align-items:center;justify-content:center;}
+  .dialog{width:420px;background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:8px;box-shadow:var(--shadow-lg);padding:22px;}
+  .dialog h3{font-family:var(--serif);font-weight:600;font-size:18px;margin:0 0 6px;}
+  .dialog p{font-size:13px;color:var(--fg-muted);line-height:1.45;margin:0 0 16px;}
+  .idrow{display:flex;align-items:center;gap:11px;padding:12px;border:1px solid var(--border-default);border-radius:var(--radius);background:var(--bg-raised);margin-bottom:20px;}
+  .idrow .meta{flex:1;line-height:1.25;} .idrow .meta .n{font-size:14px;font-weight:600;} .idrow .meta .h{font-size:12px;color:var(--fg-muted);}
+  .idrow .badge{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--fg-muted);}
+  .drow{display:flex;justify-content:flex-end;gap:10px;}
+  .btn{height:38px;padding:0 16px;border-radius:var(--radius);font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border-default);background:var(--bg-elevated);color:var(--fg-primary);}
+  .btn.primary{background:var(--color-primary);color:var(--color-white);border-color:var(--color-primary);} .dark .btn.primary{background:var(--color-white);color:var(--color-primary);border-color:var(--color-white);}
+
+  .annos{display:flex;gap:26px;margin-top:18px;flex-wrap:wrap;}
+  .anno{font-size:12.5px;line-height:1.5;color:var(--fg-secondary);padding-left:15px;position:relative;max-width:380px;}
+  .anno::before{content:"";position:absolute;left:0;top:7px;width:6px;height:6px;border-radius:50%;background:var(--fg-primary);}
+  .anno b{color:var(--fg-primary);font-weight:600;}
+  svg{display:block;}
+  .hint{font-size:12px;color:var(--fg-muted);margin-top:10px;}
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="t">Option 2 — desktop <small>Hybrid: quiet ambient + per-action identity</small></div>
+    <button class="toggle" id="themeBtn">Dark mode</button>
+  </div>
+  <div class="wrap">
+    <p class="lede">On desktop the ambient chip sits in the top bar next to the switcher, so reading and navigation stay quiet. The identity returns inside the write button on the wide create surface ("Create cert as Acme Collective"), and the high-stakes confirm is a centered modal (desktop convention) that names the author again. Click "Create cert as Acme" to open it.</p>
+
+    <div class="browser" id="browser">
+      <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">certified.app/create</div></div>
+      <div class="appbar">
+        <span class="burger"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></span>
+        <span class="brand">Certified</span>
+        <nav class="tabs"><a href="#">Home</a><a href="#">Explore</a><a href="#" class="on">Create</a></nav>
+        <span class="spacer"></span>
+        <span class="chip"><span class="dot"></span>Acting as <span class="who">Acme</span></span>
+        <div class="switch"><div class="av green av-30">AC</div><div class="w"><span class="n">Acme Collective</span><span class="h">@acme.certified.app</span></div><span class="chev">&#9662;</span></div>
+      </div>
+
+      <div class="stagearea">
+        <div class="form">
+          <h1>New certificate</h1>
+          <p class="subtitle">Certificates are public, signed records. They can be endorsed by others.</p>
+          <div class="label">Title</div>
+          <div class="field">Reforestation milestone, Q2 2026</div>
+          <div class="label">Recipient</div>
+          <div class="field">@jane.bsky.social</div>
+          <div class="label">Description</div>
+          <div class="field tall">Completed the second-quarter planting target across three sites&hellip;</div>
+          <button class="as-btn" id="createBtn">Create cert <span class="as">as <span class="av green av-22">AC</span> Acme Collective</span></button>
+        </div>
+      </div>
+
+      <div class="overlay" id="overlay" style="display:none;">
+        <div class="dialog">
+          <h3>Publish certificate?</h3>
+          <p>This record will be authored by the group and signed into its repo. It cannot be edited anonymously later.</p>
+          <div class="idrow">
+            <div class="av green av-28">AC</div>
+            <div class="meta"><div class="n">Acme Collective</div><div class="h">@acme.certified.app</div></div>
+            <span class="badge">Author</span>
+          </div>
+          <div class="drow">
+            <button class="btn" id="cancelBtn">Cancel</button>
+            <button class="btn primary">Publish as Acme</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="hint">The same guarded baseline applies on profiles: Follow / Endorse stay personal-only while acting as a group.</div>
+
+    <div class="annos">
+      <div class="anno"><b>Ambient chip in the top bar</b> sits beside the switcher: a quiet, always-present "Acting as Acme" without claiming a full strip of chrome.</div>
+      <div class="anno"><b>Identity in the button</b> on the wide write surface: "Create cert as Acme Collective", reasserted exactly where the record is authored.</div>
+      <div class="anno"><b>Centered modal confirm</b> (desktop convention, not a bottom sheet) names the author one more time before a high-stakes write.</div>
+    </div>
+  </div>
+<script>
+  document.getElementById('themeBtn').addEventListener('click',e=>{const on=document.body.classList.toggle('dark');e.target.textContent=on?'Light mode':'Dark mode';});
+  const ov=document.getElementById('overlay');
+  document.getElementById('createBtn').addEventListener('click',()=>ov.style.display='flex');
+  document.getElementById('cancelBtn').addEventListener('click',()=>ov.style.display='none');
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.style.display='none';});
+</script>
+</body>
+</html>

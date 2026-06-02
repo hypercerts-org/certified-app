@@ -1378,6 +1378,57 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   }
 }
 
+/* Acting-as-group delegation bar. Mounted above all page chrome whenever
+   the viewer is operating a group, so the elevated, inverted treatment
+   reads as a persistent "you are not yourself right now" reminder.
+   Mirrors the primary button: dark bg / light text in light theme, and
+   inverts under [data-theme="dark"] via the same --btn-primary-* tokens.
+   Scrolls with the page (no sticky) so it never overlaps fixed chrome. */
+.acting-as-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+  padding: 8px 16px;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-fg);
+}
+
+.acting-as-bar__text {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.acting-as-bar__text b {
+  font-weight: 600;
+}
+
+/* Outlined control that stays legible against the inverted bar — borrows
+   the bar's own foreground for border + text so it tracks the theme flip. */
+.acting-as-bar__switch {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--btn-primary-fg);
+  background: transparent;
+  border: 1px solid var(--btn-primary-fg);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.acting-as-bar__switch:hover {
+  opacity: 0.8;
+}
+
 /* Logged-out sign-in card. At narrow rail widths (800-1299) the card
    chrome (padding, border, background) collapses away and the title
    + body text are hidden, leaving just the 44×44 icon-only button so
@@ -2613,52 +2664,6 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
      anchored while the user is in edit mode (the "Edit profile" button
      is hidden but its slot remains as whitespace). */
   min-height: 36px;
-}
-
-/* Acting-as-group guard shown in place of the Follow/Endorse cluster on
-   foreign profiles while the viewer is acting as a group. Those actions
-   write to the personal repo, so we explain the state instead of letting
-   a click misattribute the record. */
-.profile-sidebar__acting-note {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  width: 100%;
-}
-
-.profile-sidebar__acting-note-text {
-  margin: 0;
-  font-size: 0.8125rem;
-  line-height: 1.45;
-  color: var(--fg-muted);
-}
-
-.profile-sidebar__acting-note-text strong {
-  color: var(--fg-secondary);
-  font-weight: 600;
-}
-
-.profile-sidebar__acting-note-switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 10px;
-  font-family: inherit;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--fg-primary);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-}
-
-.profile-sidebar__acting-note-switch:hover {
-  background: var(--bg-sunken);
-  border-color: var(--border-hover);
 }
 
 .profile-sidebar__action-primary {

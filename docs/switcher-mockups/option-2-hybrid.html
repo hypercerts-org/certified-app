@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Switcher — Option 2: Hybrid (quiet ambient + per-action identity)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Serif:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --color-primary:#111111; --color-white:#FFFFFF;
+    --bg-canvas:#f9f9f9; --bg-sunken:#eeeeee; --bg-raised:#f3f3f3; --bg-elevated:#FFFFFF;
+    --fg-primary:#111111; --fg-secondary:#4c4546; --fg-muted:#6b6263;
+    --border-default:rgba(0,0,0,0.08); --border-hover:rgba(0,0,0,0.15); --border-strong:rgba(0,0,0,0.22);
+    --shadow-sm:0 1px 2px rgba(0,0,0,0.05); --shadow-md:0 4px 12px rgba(0,0,0,0.08);
+    --radius:2px;
+    --serif:'Noto Serif',Georgia,serif; --ui:'Inter',system-ui,sans-serif;
+    --stage:#e7e7e4;
+  }
+  .dark{
+    --bg-canvas:#18181b; --bg-sunken:#111114; --bg-raised:#26262b; --bg-elevated:#2d2d33;
+    --fg-primary:#f5f5f7; --fg-secondary:#c7c7cc; --fg-muted:#8e8e93;
+    --border-default:rgba(255,255,255,0.08); --border-hover:rgba(255,255,255,0.18); --border-strong:rgba(255,255,255,0.28);
+    --shadow-md:0 4px 12px rgba(0,0,0,0.5);
+    --stage:#0e0e10;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:var(--ui);background:var(--stage);color:var(--fg-primary);-webkit-font-smoothing:antialiased;transition:background .2s;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 28px;border-bottom:1px solid var(--border-default);position:sticky;top:0;background:var(--stage);z-index:5;}
+  .topbar .t{font-family:var(--serif);font-weight:600;font-size:18px;}
+  .topbar .t small{font-family:var(--ui);font-weight:500;font-size:12px;color:var(--fg-muted);margin-left:8px;}
+  .toggle{font-size:12.5px;font-weight:500;color:var(--fg-primary);background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:999px;padding:7px 14px;cursor:pointer;}
+  .wrap{max-width:1140px;margin:0 auto;padding:30px 28px 64px;}
+  .lede{font-size:14.5px;line-height:1.6;color:var(--fg-secondary);max-width:780px;margin:0 0 28px;}
+  .row{display:flex;gap:34px;flex-wrap:wrap;align-items:flex-start;}
+  .col{display:flex;flex-direction:column;gap:14px;}
+  .screen-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-muted);}
+
+  .phone{width:368px;background:var(--bg-canvas);border:1px solid var(--border-hover);border-radius:16px;overflow:hidden;box-shadow:0 16px 40px rgba(0,0,0,.18);position:relative;}
+  .nav{display:flex;align-items:center;justify-content:space-between;height:54px;padding:0 12px;background:color-mix(in srgb,var(--bg-elevated) 86%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--border-default);}
+  .nav-ico{width:30px;height:30px;display:grid;place-items:center;color:var(--fg-secondary);}
+  .trigger{display:flex;align-items:center;gap:5px;}
+  .chev{color:var(--fg-muted);font-size:11px;}
+
+  .av{border-radius:50%;display:grid;place-items:center;font-weight:600;color:#fff;flex:none;}
+  .av.green{background:#3d5a45;} .av.blue{background:#3a4a63;} .av.plum{background:#5a3d52;}
+  .av-30{width:30px;height:30px;font-size:11px;} .av-22{width:22px;height:22px;font-size:9px;}
+  .av-28{width:28px;height:28px;font-size:11px;} .av-76{width:76px;height:76px;font-size:27px;}
+
+  /* the quiet ambient chip */
+  .chip{display:inline-flex;align-items:center;gap:6px;height:27px;padding:0 10px 0 7px;border:1px solid var(--border-strong);border-radius:999px;font-size:11.5px;font-weight:500;color:var(--fg-secondary);background:var(--bg-raised);}
+  .chip .dot{width:6px;height:6px;border-radius:50%;background:var(--fg-primary);}
+  .chip .who{color:var(--fg-primary);font-weight:600;}
+
+  .body{padding:18px 16px 22px;}
+  .prof{display:flex;flex-direction:column;align-items:center;text-align:center;}
+  .prof .nm{font-family:var(--serif);font-weight:600;font-size:20px;margin-top:10px;}
+  .prof .hd{font-size:13px;color:var(--fg-muted);margin-top:2px;}
+  .note{width:100%;margin-top:16px;display:flex;flex-direction:column;gap:9px;align-items:flex-start;}
+  .note p{margin:0;font-size:12.5px;line-height:1.45;color:var(--fg-muted);}
+  .note p b{color:var(--fg-secondary);font-weight:600;}
+  .note .sw{display:inline-flex;align-items:center;gap:6px;height:31px;padding:0 11px;font-size:12.5px;font-weight:500;color:var(--fg-primary);background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:var(--radius);cursor:pointer;}
+
+  .ttl{font-family:var(--serif);font-weight:600;font-size:17px;margin:0 0 4px;}
+  .field{width:100%;height:38px;border:1px solid var(--border-default);border-radius:var(--radius);background:var(--bg-elevated);display:flex;align-items:center;padding:0 11px;font-size:13px;color:var(--fg-muted);margin-top:10px;}
+  /* identity-in-the-button */
+  .as-btn{width:100%;height:44px;margin-top:14px;border-radius:var(--radius);background:var(--color-primary);color:var(--color-white);border:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:13.5px;font-weight:600;cursor:pointer;}
+  .dark .as-btn{background:var(--color-white);color:var(--color-primary);}
+  .as-btn .as{display:inline-flex;align-items:center;gap:5px;font-weight:500;opacity:.78;}
+  .as-btn .as .av{box-shadow:0 0 0 1.5px rgba(255,255,255,.55);}
+  .dark .as-btn .as .av{box-shadow:0 0 0 1.5px rgba(0,0,0,.45);}
+
+  /* confirm overlay */
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,.42);display:none;align-items:flex-end;}
+  .overlay.open{display:flex;}
+  .sheet{width:100%;background:var(--bg-elevated);border-top-left-radius:14px;border-top-right-radius:14px;padding:18px 16px 20px;}
+  .sheet .ct{font-family:var(--serif);font-weight:600;font-size:16px;margin:0 0 3px;}
+  .sheet .cs{font-size:12.5px;color:var(--fg-muted);margin:0 0 12px;line-height:1.45;}
+  .idrow{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border-default);border-radius:var(--radius);background:var(--bg-raised);margin-bottom:14px;}
+  .idrow .meta{line-height:1.2;flex:1;} .idrow .meta .n{font-size:13.5px;font-weight:600;} .idrow .meta .h{font-size:11.5px;color:var(--fg-muted);}
+  .idrow .badge{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--fg-muted);}
+  .row2{display:flex;gap:8px;}
+  .btn{flex:1;height:38px;border-radius:var(--radius);font-size:13px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;border:1px solid var(--border-default);background:var(--bg-elevated);color:var(--fg-primary);}
+  .btn.primary{background:var(--color-primary);color:var(--color-white);border-color:var(--color-primary);}
+  .dark .btn.primary{background:var(--color-white);color:var(--color-primary);border-color:var(--color-white);}
+
+  .notes{max-width:520px;display:flex;flex-direction:column;gap:12px;margin-top:6px;}
+  .anno{font-size:13px;line-height:1.55;color:var(--fg-secondary);padding-left:16px;position:relative;}
+  .anno::before{content:"";position:absolute;left:0;top:7px;width:6px;height:6px;border-radius:50%;background:var(--fg-primary);}
+  .anno b{color:var(--fg-primary);font-weight:600;}
+  .hint{font-size:12px;color:var(--fg-muted);}
+  svg{display:block;}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="t">Option 2 <small>Hybrid: quiet ambient + per-action identity</small></div>
+    <button class="toggle" id="themeBtn">Dark mode</button>
+  </div>
+  <div class="wrap">
+    <p class="lede">A small chip in the chrome handles reading and navigation; the active identity then moves into the verb at every consequential write ("Create cert as Acme Collective"), with a confirm that names the author one more time on high-stakes actions. Lighter than a full bar, and it reasserts identity exactly where a record is authored. Click "Create cert as Acme" to see the confirm.</p>
+
+    <div class="row">
+      <div class="col">
+        <div class="screen-label">Reading / nav — a quiet chip, no bar</div>
+        <div class="phone">
+          <div class="nav">
+            <div class="nav-ico">&#9776;</div>
+            <span class="chip"><span class="dot"></span>Acting as <span class="who">Acme</span></span>
+            <div class="trigger"><div class="av green av-30">AC</div><span class="chev">&#9662;</span></div>
+          </div>
+          <div class="body">
+            <div class="prof">
+              <div class="av blue av-76">JR</div>
+              <div class="nm">Jane Rivera</div>
+              <div class="hd">@jane.bsky.social</div>
+              <div class="note">
+                <p>Acting as <b>Acme</b>. Follow and endorse are personal actions.</p>
+                <button class="sw">&#8646; Switch to personal</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="hint">Same guarded baseline for personal-only actions.</div>
+      </div>
+
+      <div class="col">
+        <div class="screen-label">A write surface — identity is in the button</div>
+        <div class="phone" id="phone2">
+          <div class="nav">
+            <div class="nav-ico">&#9776;</div>
+            <span class="chip"><span class="dot"></span>Acting as <span class="who">Acme</span></span>
+            <div class="trigger"><div class="av green av-30">AC</div><span class="chev">&#9662;</span></div>
+          </div>
+          <div class="body">
+            <div class="ttl">New certificate</div>
+            <div class="field">Title</div>
+            <div class="field">Recipient</div>
+            <div class="field">Description</div>
+            <button class="as-btn" id="createBtn">Create cert <span class="as">as <span class="av green av-22">AC</span> Acme Collective</span></button>
+          </div>
+          <!-- confirm -->
+          <div class="overlay" id="overlay">
+            <div class="sheet">
+              <p class="ct">Publish certificate?</p>
+              <p class="cs">This record will be authored by the group and signed into its repo.</p>
+              <div class="idrow">
+                <div class="av green av-28">AC</div>
+                <div class="meta"><div class="n">Acme Collective</div><div class="h">@acme.certified.app</div></div>
+                <span class="badge">Author</span>
+              </div>
+              <div class="row2">
+                <button class="btn" id="cancelBtn">Cancel</button>
+                <button class="btn primary">Publish as Acme</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="hint">High-stakes writes confirm and name the author again.</div>
+      </div>
+
+      <div class="col">
+        <div class="notes">
+          <div class="anno"><b>Quiet ambient chip</b> in the chrome instead of a full bar: lighter, less fatiguing for users who switch often.</div>
+          <div class="anno"><b>Identity in the verb:</b> "Create cert as Acme Collective". The active identity is reasserted exactly where the record is authored, the cheapest defence against mode errors.</div>
+          <div class="anno"><b>Confirm on high-stakes writes</b> names the author one more time. "Create cert as Acme" works today; extending this to Follow / Endorse needs a group write path (separate backend work). Until then those stay guarded.</div>
+          <div class="anno"><b>Trade-off:</b> the ambient signal is quieter than Option 1's bar, so it leans on the per-action labels to carry awareness. Strongest when most risk lives in a few explicit write actions.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  document.getElementById('themeBtn').addEventListener('click',e=>{
+    const on=document.body.classList.toggle('dark');
+    e.target.textContent=on?'Light mode':'Dark mode';
+  });
+  const ov=document.getElementById('overlay');
+  document.getElementById('createBtn').addEventListener('click',()=>ov.classList.add('open'));
+  document.getElementById('cancelBtn').addEventListener('click',()=>ov.classList.remove('open'));
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('open');});
+</script>
+</body>
+</html>
