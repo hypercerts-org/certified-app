@@ -21,12 +21,14 @@ import {
   RATE_LIMITED_WRITE_COLLECTIONS,
 } from "@/lib/auth/rate-limit"
 
+// INVARIANT: `app.bsky.actor.profile` must NEVER be added to this allowlist
+// (certified-app invariant) — writing it clobbers the user's Bluesky profile.
 const ALLOWED_WRITE_COLLECTIONS = [
   "org.impactindexer.link.attestation",
   "app.certified.actor.profile",
   "app.certified.actor.membership",
   "app.certified.actor.organization",
-  "app.certified.temp.graph.endorsement",
+  "app.certified.location",
   // Badge lexicons (issue #65 tracks indexer-side support). `definition`
   // is written once per user the first time they endorse; `award` is the
   // endorsement itself; `response` is the recipient accept/reject (used
@@ -34,7 +36,17 @@ const ALLOWED_WRITE_COLLECTIONS = [
   "app.certified.badge.definition",
   "app.certified.badge.award",
   "app.certified.badge.response",
+  // Certified social graph — follow records live on the viewer's PDS;
+  // the followers view is served by the magic-indexer via the
+  // `appCertifiedGraphFollow` connection.
+  "app.certified.graph.follow",
   "org.hypercerts.claim.activity",
+  // Project records (and other curated collections like favorites /
+  // portfolio / program — same NSID, distinguished by `type` field).
+  // Used by the project detail inline-edit (issue #67) for own-DID
+  // writes; group-owned project writes go through the BFF route at
+  // `/api/groups/[groupDid]/project`.
+  "org.hypercerts.collection",
 ]
 
 const ALLOWED_BLOB_CONTENT_TYPES = [
@@ -45,6 +57,23 @@ const ALLOWED_BLOB_CONTENT_TYPES = [
 ]
 
 const MAX_BLOB_SIZE = 4 * 1024 * 1024 // 4MB — Vercel serverless functions have a ~4.5MB request body limit
+
+// Ceiling for foreign-DID blob reads. An allowlisted-but-hostile PDS
+// could otherwise stream an arbitrarily large body for an attacker-
+// chosen DID's CID through our proxy. We only short-circuit on a
+// declared Content-Length over this cap; a missing/lying length is
+// out of scope (we don't wrap the stream to count bytes).
+const MAX_FOREIGN_BLOB_SIZE = 10 * 1024 * 1024 // 10MB
+
+/**
+ * Fixed Cache-Control for foreign-DID blob reads. CIDs are content-
+ * addressed and immutable, so we own the directive rather than
+ * forwarding the upstream PDS's (which an attacker-chosen, hostile
+ * PDS controls). Mirrors the FOREIGN_READ_CACHE_HEADERS pattern.
+ */
+const FOREIGN_BLOB_CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=3600, immutable",
+} as const
 
 function asString(v: unknown): string | undefined {
   return typeof v === "string" ? v : undefined
@@ -86,24 +115,42 @@ const SAME_SESSION_LIST_HEADERS = {
 } as const
 
 /** Extract a usable HTTP status + message from an unknown XRPC error. */
-function xrpcError(err: unknown): { status: number; message: string } {
+export function xrpcError(err: unknown): {
+  status: number
+  message: string
+  code?: string
+} {
   if (!err || typeof err !== "object") {
     return { status: 500, message: "Internal server error" }
   }
   const e = err as Record<string, unknown>
   const statusRaw = typeof e.status === "number" ? e.status : e.statusCode
-  const status = typeof statusRaw === "number" ? statusRaw : 500
+  const statusNum = typeof statusRaw === "number" ? statusRaw : 500
+  // Clamp to the valid HTTP range. An upstream status of 0, a negative
+  // number, >599, or a non-integer would throw a RangeError when passed
+  // straight to NextResponse.json(..., { status }) — surfacing an opaque
+  // framework 500 instead of our masked error. Mirrors clampHttpStatus
+  // in src/lib/utils/api.ts.
+  const status =
+    Number.isInteger(statusNum) && statusNum >= 200 && statusNum <= 599
+      ? statusNum
+      : 500
   const rawMessage = asString(e.message)
-  const message = status >= 500 || !rawMessage ? "Internal server error" : rawMessage
+  const message = status >= 500 || !rawMessage ? "Internal server error" : redactSecrets(rawMessage)
+  // Preserve the atproto error discriminator (`InvalidSwap`,
+  // `RecordNotFound`, etc.) so the client can branch on it
+  // without re-parsing a localised human-readable string. The
+  // @atproto/api `XRPCError` carries it on `.error`.
+  const code = asString(e.error) ?? undefined
   // Server-side log so the masked-to-client message can still be diagnosed
   // from Vercel logs. Client never sees the original PDS error body.
   console.error("[xrpc] upstream error", {
     name: asString(e.name),
     status,
-    error: asString(e.error),
+    error: code,
     message: rawMessage ? redactSecrets(rawMessage) : undefined,
   })
-  return { status, message }
+  return { status, message, code }
 }
 
 /** Clamp and validate a limit query param. */
@@ -328,12 +375,26 @@ export async function GET(
                 { status: upstream.status }
               )
             }
+            // Trust posture: short-circuit a *declared* oversize before
+            // streaming. A missing/lying Content-Length is out of scope
+            // (we don't wrap the stream to enforce the cap byte-by-byte).
+            const upstreamLength = upstream.headers.get("content-length")
+            if (
+              upstreamLength &&
+              Number(upstreamLength) > MAX_FOREIGN_BLOB_SIZE
+            ) {
+              return NextResponse.json(
+                { error: "Payload too large" },
+                { status: 413 }
+              )
+            }
             return new NextResponse(upstream.body, {
               status: 200,
               headers: {
                 "Content-Type":
                   upstream.headers.get("content-type") || "application/octet-stream",
-                "Cache-Control": upstream.headers.get("cache-control") || "public, max-age=3600",
+                // Server-controlled directive — don't forward upstream's.
+                ...FOREIGN_BLOB_CACHE_HEADERS,
                 "X-Content-Type-Options": "nosniff",
                 "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
               },
@@ -365,8 +426,11 @@ export async function GET(
         )
     }
   } catch (err: unknown) {
-    const { status, message } = xrpcError(err)
-    return NextResponse.json({ error: message }, { status })
+    const { status, message, code } = xrpcError(err)
+    return NextResponse.json(
+      code ? { error: message, code } : { error: message },
+      { status },
+    )
   }
 }
 
@@ -553,7 +617,10 @@ export async function POST(
         )
     }
   } catch (err: unknown) {
-    const { status, message } = xrpcError(err)
-    return NextResponse.json({ error: message }, { status })
+    const { status, message, code } = xrpcError(err)
+    return NextResponse.json(
+      code ? { error: message, code } : { error: message },
+      { status },
+    )
   }
 }

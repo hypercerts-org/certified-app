@@ -1,16 +1,21 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Inter, Noto_Serif } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth/auth-context";
 import { NavbarProvider } from "@/lib/navbar-context";
 import Navbar from "@/components/layout/navbar";
+import DesktopTopBar from "@/components/layout/desktop-top-bar";
 import { Providers } from "@/lib/providers";
 import AppShell from "@/components/layout/app-shell";
 import { OrgProvider } from "@/lib/groups/org-context";
+import { OnboardingProvider } from "@/lib/onboarding/onboarding-context";
+import OnboardingModal from "@/components/onboarding/onboarding-modal";
 import FeedbackModal from "@/components/ui/feedback-modal";
 import { FeedbackProvider } from "@/lib/feedback-context";
 import { NotificationsProvider } from "@/lib/notifications-context";
 import BottomNav from "@/components/layout/bottom-nav";
+import ActingAsBar from "@/components/layout/acting-as-bar";
 import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
@@ -143,19 +148,31 @@ export default function RootLayout({
         <Providers>
           <AuthProvider>
             <OrgProvider>
+              <OnboardingProvider>
               <NotificationsProvider>
               <NavbarProvider>
                 <FeedbackProvider>
                 <a href="#main-content" className="skip-nav">Skip to main content</a>
+                <ActingAsBar />
                 <Navbar />
+                {/* Suspense is required because DesktopTopBar reads
+                    useSearchParams() to highlight the active profile tab.
+                    Without a boundary, statically-rendered pages (e.g.
+                    /dsa, /terms, /privacy) deopt and fail the build with
+                    missing-suspense-with-csr-bailout. */}
+                <Suspense fallback={<div className="desktop-top-bar desktop-top-bar--placeholder" aria-hidden />}>
+                  <DesktopTopBar />
+                </Suspense>
                 <main id="main-content" className="flex-1">
                   <AppShell>{children}</AppShell>
                 </main>
                 <BottomNav />
                 <FeedbackModal />
+                <OnboardingModal />
                 </FeedbackProvider>
               </NavbarProvider>
               </NotificationsProvider>
+              </OnboardingProvider>
             </OrgProvider>
           </AuthProvider>
         </Providers>

@@ -1,8 +1,17 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from "react"
-import { UserPlus, Trash2, ChevronDown } from "lucide-react"
+import React, { useState, useEffect, useCallback, useRef } from "react"
+import {
+  AtSign,
+  ChevronDown,
+  ScrollText,
+  Share2,
+  Trash2,
+  UserPlus,
+  Users,
+} from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
+import SyncSocialGraphSection from "@/components/settings/sync-social-graph-section"
 import {
   listOrgMembers,
   addOrgMember,
@@ -17,6 +26,65 @@ import ConfirmDialog from "@/components/ui/confirm-dialog"
 import HandleSearch from "@/components/groups/handle-search"
 import ErrorMessage from "@/components/ui/error-message"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+
+type CategoryKey = "handle" | "members" | "activity" | "social-graph"
+type CategoryDef = {
+  key: CategoryKey
+  label: string
+  description: string
+  Icon: typeof AtSign
+}
+const CATEGORIES: CategoryDef[] = [
+  {
+    key: "handle",
+    label: "Handle",
+    description: "The group's handle on the network.",
+    Icon: AtSign,
+  },
+  {
+    key: "social-graph",
+    label: "Sync social graph",
+    description:
+      "Compare this group's Certified follows with its Bluesky follows and import any that are missing.",
+    Icon: Share2,
+  },
+  {
+    key: "members",
+    label: "Members & Roles",
+    description: "Manage who can act on behalf of this group.",
+    Icon: Users,
+  },
+  {
+    key: "activity",
+    label: "Activity Log",
+    description: "Recent actions performed within this group.",
+    Icon: ScrollText,
+  },
+]
+const DEFAULT_CATEGORY: CategoryKey = CATEGORIES[0].key
+
+// Map an audit entry's `result` to the CSS modifier suffix for its pill.
+// The allowlist must match `AuditEntry.result` ("permitted" | "denied")
+// and the only styled classes (`--permitted` / `--denied`); anything
+// else falls back to the neutral `--unknown` class.
+export function auditResultClassSuffix(result: string): "permitted" | "denied" | "unknown" {
+  return result === "permitted" || result === "denied" ? result : "unknown"
+}
+
+// groups-6: when the add-members loop fails part-way through, the members
+// before `failedIndex` were already accepted by the service. Re-staging the
+// whole list would double-add them, so keep only the failing member onward
+// (the one that failed plus any not-yet-attempted).
+export function remainingAfterAddIndex<T>(members: T[], failedIndex: number): T[] {
+  return members.slice(failedIndex)
+}
+
+function readHashCategory(): CategoryKey | null {
+  if (typeof window === "undefined") return null
+  const raw = window.location.hash.replace(/^#/, "").toLowerCase()
+  const match = CATEGORIES.find((c) => c.key === raw)
+  return match ? match.key : null
+}
 
 interface ResolvedMember extends OrgMember {
   handle?: string
@@ -133,14 +201,22 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
     setIsAdding(true)
     setAddError(null)
     try {
-      for (const m of pendingMembers) {
-        await addOrgMember(groupDid, m.did, newMemberRole)
+      for (let i = 0; i < pendingMembers.length; i++) {
+        try {
+          await addOrgMember(groupDid, pendingMembers[i].did, newMemberRole)
+        } catch (err) {
+          // Partial failure: members before `i` were already added. Re-stage
+          // only the failing member onward so a retry doesn't double-add them.
+          setPendingMembers(remainingAfterAddIndex(pendingMembers, i))
+          setAddError(
+            err instanceof Error ? err.message : "Failed to add member"
+          )
+          return
+        }
       }
       setPendingMembers([])
       setNewMemberRole("member")
       await Promise.all([fetchMembers(), fetchAudit()])
-    } catch (err) {
-      setAddError(err instanceof Error ? err.message : "Failed to add member")
     } finally {
       setIsAdding(false)
     }
@@ -174,27 +250,188 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
     }
   }
 
+  // ----- Scroll-spy nav (mirrors <SettingsPanel> for personal accounts) -----
+  const [active, setActive] = useState<CategoryKey>(DEFAULT_CATEGORY)
+  const sectionRefs = useRef<Map<CategoryKey, HTMLElement>>(new Map())
+
+  useEffect(() => {
+    const initial = readHashCategory()
+    if (initial) {
+      setActive(initial)
+      requestAnimationFrame(() => {
+        const el = sectionRefs.current.get(initial)
+        if (el) el.scrollIntoView({ block: "start", behavior: "auto" })
+      })
+    }
+  }, [])
+
+  useEffect(() => {
+    const els = Array.from(sectionRefs.current.entries())
+    if (els.length === 0) return
+    const observer = new IntersectionObserver(
+      () => {
+        let best: { key: CategoryKey; top: number } | null = null
+        for (const [key, el] of sectionRefs.current.entries()) {
+          const rect = el.getBoundingClientRect()
+          if (rect.top <= 120) {
+            if (!best || rect.top > best.top) best = { key, top: rect.top }
+          }
+        }
+        if (best) setActive(best.key)
+        else setActive(CATEGORIES[0].key)
+      },
+      { rootMargin: "-15% 0px -60% 0px", threshold: [0, 0.1, 0.5, 1] },
+    )
+    for (const [, el] of els) observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  const onMenuClick = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>, key: CategoryKey) => {
+      if (
+        e.button !== 0 ||
+        e.metaKey ||
+        e.ctrlKey ||
+        e.shiftKey ||
+        e.altKey
+      )
+        return
+      e.preventDefault()
+      const el = sectionRefs.current.get(key)
+      if (el) {
+        el.scrollIntoView({ block: "start", behavior: "smooth" })
+        el.classList.remove("sx-section--flash")
+        void el.offsetWidth
+        el.classList.add("sx-section--flash")
+        window.setTimeout(() => el.classList.remove("sx-section--flash"), 1500)
+      }
+      if (typeof window !== "undefined") {
+        const next = `#${key}`
+        if (window.location.hash !== next) {
+          window.history.replaceState(null, "", next)
+        }
+      }
+      setActive(key)
+    },
+    [],
+  )
+
+  const setSectionRef = useCallback(
+    (key: CategoryKey) => (el: HTMLElement | null) => {
+      if (el) sectionRefs.current.set(key, el)
+      else sectionRefs.current.delete(key)
+    },
+    [],
+  )
+
   return (
-    <div className="dashboard">
-      <div className="dashboard__body dashboard__body--single">
-        <div className="dashboard__main">
-          {/* Handle section (read-only — group service doesn't support handle changes after registration) */}
-          <div className="dash-card">
-            <h2 className="dash-card__title">Handle</h2>
-            <p className="dash-card__desc">
-              The group&apos;s handle on the network. Set during registration. Function to edit the handle coming soon.
-            </p>
-            <p className="username-card__value">@{org.handle}</p>
-          </div>
+    <div className="sx">
+      <h1 className="sx__heading sr-only">Group settings</h1>
 
-          {/* Members section */}
-          <div className="dash-card">
-            <h2 className="dash-card__title">Members &amp; Roles</h2>
-            <p className="dash-card__desc">
-              Manage who can access and act on behalf of this group.
-            </p>
+      <div className="page-layout">
+        <aside className="sx__menu">
+          <nav aria-label="Group settings sections">
+            <ul className="sx-menu">
+              {CATEGORIES.map((cat) => {
+                const isActive = cat.key === active
+                const Icon = cat.Icon
+                return (
+                  <li key={cat.key}>
+                    <a
+                      href={`#${cat.key}`}
+                      aria-current={isActive ? "true" : undefined}
+                      className={`sx-menu__item${isActive ? " sx-menu__item--active" : ""}`}
+                      onClick={(e) => onMenuClick(e, cat.key)}
+                    >
+                      <span className="sx-menu__icon" aria-hidden>
+                        <Icon size={16} strokeWidth={1.75} />
+                      </span>
+                      <span className="sx-menu__label">{cat.label}</span>
+                    </a>
+                  </li>
+                )
+              })}
+            </ul>
+          </nav>
+        </aside>
 
-            {membersLoading ? (
+        <div className="page-layout__main sx__panel">
+          {/* Handle — read-only; group service doesn't support
+              handle changes after registration. */}
+          <section
+            id="handle"
+            ref={setSectionRef("handle")}
+            className="sx-section"
+            aria-labelledby="sx-section-handle-title"
+          >
+            <header className="sx-panel__header">
+              <h2
+                id="sx-section-handle-title"
+                className="sx-panel__title"
+              >
+                Handle
+              </h2>
+              <p className="sx-panel__desc">
+                The group&apos;s handle on the network. Set during
+                registration; editing coming soon.
+              </p>
+            </header>
+            <div className="sx-panel__body">
+              <p className="username-card__value">@{org.handle}</p>
+            </div>
+          </section>
+
+          <section
+            id="social-graph"
+            ref={setSectionRef("social-graph")}
+            className="sx-section"
+            aria-labelledby="sx-section-social-graph-title"
+          >
+            <header className="sx-panel__header">
+              <h2
+                id="sx-section-social-graph-title"
+                className="sx-panel__title"
+              >
+                Sync social graph
+              </h2>
+              <p className="sx-panel__desc">
+                Compare this group&apos;s Certified follows with its Bluesky
+                follows and import any that are missing.
+              </p>
+            </header>
+            <div className="sx-panel__body">
+              {did ? (
+                <SyncSocialGraphSection
+                  did={groupDid}
+                  ownDid={did}
+                  targetDid={groupDid}
+                />
+              ) : (
+                <p className="settings__note">Sign in to sync this group.</p>
+              )}
+            </div>
+          </section>
+
+          {/* Members — list + role controls + add affordance. */}
+          <section
+            id="members"
+            ref={setSectionRef("members")}
+            className="sx-section"
+            aria-labelledby="sx-section-members-title"
+          >
+            <header className="sx-panel__header">
+              <h2
+                id="sx-section-members-title"
+                className="sx-panel__title"
+              >
+                Members &amp; Roles
+              </h2>
+              <p className="sx-panel__desc">
+                Manage who can access and act on behalf of this group.
+              </p>
+            </header>
+            <div className="sx-panel__body">
+              {membersLoading ? (
               <div className="org-members__loading">
                 <LoadingSpinner size="sm" />
               </div>
@@ -328,15 +565,28 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                 )}
               </>
             )}
-          </div>
+            </div>
+          </section>
 
-          {/* Activity Log */}
-          <div className="dash-card">
-            <h2 className="dash-card__title">Activity Log</h2>
-            <p className="dash-card__desc">
-              Recent actions performed within this group.
-            </p>
-
+          {/* Activity Log section */}
+          <section
+            id="activity"
+            ref={setSectionRef("activity")}
+            className="sx-section"
+            aria-labelledby="sx-section-activity-title"
+          >
+            <header className="sx-panel__header">
+              <h2
+                id="sx-section-activity-title"
+                className="sx-panel__title"
+              >
+                Activity Log
+              </h2>
+              <p className="sx-panel__desc">
+                Recent actions performed within this group.
+              </p>
+            </header>
+            <div className="sx-panel__body">
             {!isAdmin ? (
               <p className="settings__note">Only admins and owners can view the activity log.</p>
             ) : auditLoading ? (
@@ -359,7 +609,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                         <div className="org-audit__item-main">
                           <span className="org-audit__action">{entry.action}</span>
                           {(() => {
-                            const safeResult = ["success", "failure", "error"].includes(entry.result) ? entry.result : "unknown"
+                            const safeResult = auditResultClassSuffix(entry.result)
                             return (
                               <span
                                 className={`org-audit__result org-audit__result--${safeResult}`}
@@ -434,6 +684,8 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                 </>
               )}
             </div>
+          </section>
+
         </div>
       </div>
 

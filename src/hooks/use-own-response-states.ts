@@ -23,7 +23,13 @@ import {
  * own profile pages consume it; non-owner profile views don't
  * receive the per-award state at all.
  */
-export function useOwnResponseStates(): {
+export function useOwnResponseStates(
+  /** Override the responder DID. Defaults to the authenticated viewer.
+   *  Pass a group DID when acting AS that group on its own profile so the
+   *  Received-tab response controls reflect the GROUP's accept/reject state,
+   *  not the operator's personal one. */
+  responderDid?: string,
+): {
   /** Returns the latest response state for a given award URI. */
   resolve: (awardUri: string) => {
     state: ResponseState
@@ -41,7 +47,8 @@ export function useOwnResponseStates(): {
    *  drop. Combine: `invalidate(); await refetch();`. */
   refetch: () => Promise<void>
 } {
-  const { did } = useAuth()
+  const { did: authedDid } = useAuth()
+  const did = responderDid ?? authedDid
   const { responses, isLoading, refetch } = useProfileResponses(did)
 
   const resolve = useCallback(

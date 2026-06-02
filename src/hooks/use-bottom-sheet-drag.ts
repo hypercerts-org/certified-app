@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useLayoutBreakpoints } from "@/lib/hooks/use-layout-breakpoints"
+import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
 
 interface UseBottomSheetDragOptions {
   isOpen: boolean
@@ -29,7 +29,18 @@ export function useBottomSheetDrag({
   const [sheetExpanded, setSheetExpanded] = useState(false)
   const dragStartY = useRef(0)
   const isDragging = useRef(false)
+  const dismissTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { isDesktop } = useLayoutBreakpoints()
+
+  // Clear any pending dismiss timeout on unmount so onClose can't fire after
+  // the component is gone.
+  useEffect(() => {
+    return () => {
+      if (dismissTimeout.current !== null) {
+        clearTimeout(dismissTimeout.current)
+      }
+    }
+  }, [])
 
   // Reset sheet expanded state when closed
   useEffect(() => {
@@ -61,21 +72,31 @@ export function useBottomSheetDrag({
     const vv = globalThis.visualViewport
     if (!vv) return
 
+    const sheet = sheetRef.current
+
     const handleResize = () => {
-      if (sheetRef.current) {
+      if (sheet) {
         const keyboardHeight = globalThis.innerHeight - vv.height
         if (keyboardHeight > 100) {
-          sheetRef.current.style.maxHeight = `${vv.height - 20}px`
-          sheetRef.current.style.bottom = `${keyboardHeight}px`
+          sheet.style.maxHeight = `${vv.height - 20}px`
+          sheet.style.bottom = `${keyboardHeight}px`
         } else {
-          sheetRef.current.style.maxHeight = ""
-          sheetRef.current.style.bottom = "0"
+          sheet.style.maxHeight = ""
+          sheet.style.bottom = "0"
         }
       }
     }
 
     vv.addEventListener("resize", handleResize)
-    return () => vv.removeEventListener("resize", handleResize)
+    return () => {
+      vv.removeEventListener("resize", handleResize)
+      // Reset inline styles so a reused/reopened sheet node doesn't flash a
+      // stale clamped height/offset until the next resize event fires.
+      if (sheet) {
+        sheet.style.maxHeight = ""
+        sheet.style.bottom = ""
+      }
+    }
   }, [isOpen, isDesktop])
 
   const onHandleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -107,7 +128,7 @@ export function useBottomSheetDrag({
 
     if (dy > 80) {
       sheetRef.current.style.transform = "translateY(100%)"
-      setTimeout(() => onClose(), 250)
+      dismissTimeout.current = setTimeout(() => onClose(), 250)
     } else if (dy < -40) {
       setSheetExpanded(true)
     } else if (dy > 20 && sheetExpanded) {

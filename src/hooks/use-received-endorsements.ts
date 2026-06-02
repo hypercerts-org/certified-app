@@ -1,12 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  listDefinitions,
-  resolveResponseState,
-  ENDORSEMENT_BADGE_TYPE,
-} from "@/lib/atproto/badges"
-import { useProfileResponses } from "@/hooks/use-profile-responses"
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 
 /**
  * One endorsement received: who endorsed me, when, and the optional
@@ -25,6 +26,30 @@ export interface ReceivedEndorsement {
   /** ISO timestamp from the award record. */
   createdAt: string
   note?: string
+  /** Title of the issuer's list this endorsement was awarded under,
+   *  when the award belongs to a user-created list rather than the
+   *  default "Endorsement" definition. `undefined` for default
+   *  endorsements. */
+  listTitle?: string
+  /** Issuer's actor profile, denormalised by the indexer (magic-indexer#96).
+   *  Render sites read directly from here when fields are populated; fall
+   *  through to `useAuthorInfo(issuerDid)` otherwise (graceful-degradation
+   *  state until the operator enables `app.bsky.actor.profile` ingestion
+   *  on magic-indexer dev — all fields except `did` will be null until
+   *  then). */
+  issuer?: {
+    did: string
+    handle: string | null
+    displayName: string | null
+    description: string | null
+    avatarCid: string | null
+    pds: string | null
+  }
+  /** Recipient's latest response to this award, joined by the indexer
+   *  through the badgeAward strongRef. `null` means "no response yet"
+   *  (the default state — equivalent to `accepted` for owner-side
+   *  rendering, "neither accepted nor rejected" for foreign viewers). */
+  responseState?: "accepted" | "rejected" | null
 }
 
 /**
@@ -37,47 +62,26 @@ export interface ReceivedEndorsement {
  *
  * This collapses what used to be a PDS fan-out across every certified
  * user (N round-trips) into one query.
+ *
+ * Query string lives server-side in `OPERATIONS.ReceivedEndorsements`
+ * (`src/app/api/indexer/route.ts`); the client only sends
+ * `{ operationName, variables }`.
  */
-const RECEIVED_AWARDS_QUERY = `
-query ReceivedEndorsements($did: String!, $first: Int!, $after: String) {
-  appCertifiedBadgeAward(
-    where: { subject: { eq: $did } }
-    first: $first
-    after: $after
-  ) {
-    edges { node { uri cid did createdAt note badge } }
-    pageInfo { hasNextPage endCursor }
-  }
-}
-`
-
 const INDEXER_PROXY_URL = "/api/indexer"
 
-/**
- * The indexer currently serializes the `badge` strongRef as a
- * stringified Go map literal (`"map[cid:bafy... uri:at://...]"`)
- * rather than as structured JSON. Pull the URI out with a regex
- * so we can match awards to their issuer's endorsement definitions.
- *
- * If the indexer fix ships and `badge` becomes structured JSON,
- * this helper becomes a no-op for that shape but stays for backwards
- * compatibility.
- */
-function extractBadgeDefinitionUri(badge: unknown): string | null {
-  if (!badge) return null
-  if (typeof badge === "string") {
-    // Go map literal: "map[cid:... uri:at://.../app.certified.badge.definition/...]"
-    // Stop at whitespace OR the closing `]` of the map literal — otherwise
-    // the trailing `]` leaks into the captured URI and the equality check
-    // against the real definition URI silently fails.
-    const m = badge.match(/uri:(at:\/\/[^\s\]]+)/)
-    return m?.[1] ?? null
-  }
-  if (typeof badge === "object" && "uri" in badge) {
-    const uri = (badge as { uri?: unknown }).uri
-    return typeof uri === "string" ? uri : null
-  }
-  return null
+interface IndexerIssuerBlock {
+  did?: string | null
+  handle?: string | null
+  displayName?: string | null
+  description?: string | null
+  avatarCid?: string | null
+  pds?: string | null
+}
+
+interface IndexerResponseBlock {
+  state?: string | null
+  weight?: string | null
+  createdAt?: string | null
 }
 
 interface IndexerAwardNode {
@@ -87,6 +91,8 @@ interface IndexerAwardNode {
   createdAt: string
   note?: string
   badge: unknown
+  issuer?: IndexerIssuerBlock | null
+  response?: IndexerResponseBlock | null
 }
 
 async function fetchReceivedAwardsFromIndexer(
@@ -102,12 +108,27 @@ async function fetchReceivedAwardsFromIndexer(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        query: RECEIVED_AWARDS_QUERY,
+        operationName: "ReceivedEndorsements",
         variables: { did: profileDid, first: PAGE_SIZE, after: cursor },
       }),
       signal,
     })
-    if (!res.ok) throw new Error(`Indexer query failed: ${res.status}`)
+    if (!res.ok) {
+      // Surface the proxy's actual reject reason in the message —
+      // issue #73 noted that "Indexer query failed: 400" swallowed
+      // which of the three proxy 400 branches fired. Reading
+      // `body.error` puts the proxy's `{error: "..."}` string into
+      // the diagnostic so the next 400 is debuggable from the
+      // network panel + the error message alone.
+      let detail = ""
+      try {
+        const body = (await res.json()) as { error?: string }
+        if (typeof body.error === "string") detail = `: ${body.error}`
+      } catch {
+        // Body wasn't JSON — fall through to the status-only message.
+      }
+      throw new Error(`Indexer query failed: ${res.status}${detail}`)
+    }
     const json = (await res.json()) as {
       data?: {
         appCertifiedBadgeAward?: {
@@ -128,32 +149,27 @@ async function fetchReceivedAwardsFromIndexer(
 }
 
 /**
- * For each unique issuer that endorsed `profileDid`, ask the issuer's
- * PDS which of their definitions are endorsement-typed. Cached so an
- * issuer with multiple awards on this profile only triggers one
- * definition fetch.
- */
-async function getEndorsementDefUris(
-  issuerDid: string,
-  cache: Map<string, Set<string>>,
-  signal?: AbortSignal,
-): Promise<Set<string>> {
-  const cached = cache.get(issuerDid)
-  if (cached) return cached
-  const defs = await listDefinitions(issuerDid, signal).catch(() => [])
-  const uris = new Set(
-    defs
-      .filter((d) => d.value.badgeType === ENDORSEMENT_BADGE_TYPE)
-      .map((d) => d.uri),
-  )
-  cache.set(issuerDid, uris)
-  return uris
-}
-
-/**
- * Run the scan: one indexer query for awards-targeting-me, then per
- * unique issuer load their definitions and keep awards whose badge
- * ref points at an endorsement-typed one.
+ * Run the scan in ONE indexer call. Replaces the previous
+ * two-query (awards + definitions) pattern + PDS `listResponses`
+ * join with the magic-indexer#96 single-query shape:
+ *
+ *   - `where.badgeType = "endorsement"` filters out non-endorsement
+ *     awards server-side (collapses the previous batch query
+ *     against `appCertifiedBadgeDefinition` + local URI filter).
+ *   - `issuer { ... }` block carries the issuer's actor profile
+ *     inline (drops the per-row `useAuthorInfo` on first paint
+ *     once the operator enables profile-ingestion on the indexer).
+ *   - `response { state }` carries the recipient's latest accept/
+ *     reject state (drops the parallel PDS `listResponses` call
+ *     for this hot path).
+ *
+ * `listTitle` is intentionally NOT recovered from this path — it
+ * required the previous EndorsementDefs query to look up the
+ * definition's title. The indexer should expose this on the
+ * `badge` join in a future ticket; until then, list-typed
+ * endorsements render under the default treatment (no list-name
+ * pill). Acceptable for v1 since the default `"Endorsement"` def
+ * never had a pill anyway, and list-typed endorsements are rare.
  */
 async function scanReceivedEndorsements(
   profileDid: string,
@@ -162,20 +178,50 @@ async function scanReceivedEndorsements(
   const awards = await fetchReceivedAwardsFromIndexer(profileDid, signal)
   if (signal?.aborted) return []
 
-  const defCache = new Map<string, Set<string>>()
   const out: ReceivedEndorsement[] = []
   for (const a of awards) {
-    if (signal?.aborted) return []
-    const defUri = extractBadgeDefinitionUri(a.badge)
-    if (!defUri) continue
-    const endorsementDefUris = await getEndorsementDefUris(a.did, defCache, signal)
-    if (!endorsementDefUris.has(defUri)) continue
+    // Map the issuer block conservatively. The indexer returns
+    // `null` for handle / displayName / etc. when profile-ingestion
+    // hasn't run on this DID yet (operator action item per
+    // magic-indexer#96 README). Render sites fall back to
+    // `useAuthorInfo` in that case.
+    const issuer = a.issuer
+      ? {
+          did: typeof a.issuer.did === "string" ? a.issuer.did : a.did,
+          handle:
+            typeof a.issuer.handle === "string" ? a.issuer.handle : null,
+          displayName:
+            typeof a.issuer.displayName === "string"
+              ? a.issuer.displayName
+              : null,
+          description:
+            typeof a.issuer.description === "string"
+              ? a.issuer.description
+              : null,
+          avatarCid:
+            typeof a.issuer.avatarCid === "string"
+              ? a.issuer.avatarCid
+              : null,
+          pds: typeof a.issuer.pds === "string" ? a.issuer.pds : null,
+        }
+      : undefined
+
+    // Response state — only surface known values; the lexicon
+    // declares `accepted | rejected` as knownValues. Anything else
+    // (including null / undefined / unknown future values) maps
+    // to `null` ("no response yet" — the default state).
+    const rawState = a.response?.state
+    const responseState: "accepted" | "rejected" | null =
+      rawState === "accepted" || rawState === "rejected" ? rawState : null
+
     out.push({
       uri: a.uri,
       cid: a.cid,
       issuerDid: a.did,
       createdAt: a.createdAt,
       note: a.note,
+      issuer,
+      responseState,
     })
   }
 
@@ -198,6 +244,88 @@ interface CacheEntry {
 
 const cache = new Map<string, CacheEntry>()
 
+// ---------------------------------------------------------------------------
+// Shared optimistic overlay, keyed by profileDid. Lets a mutation in one
+// component (e.g. the sidebar Endorse button) reflect immediately in every
+// other consumer of the same DID's received list — the sidebar "Endorsed by N"
+// counter AND the Endorsements tab — without waiting on the 5-min scan cache
+// or the indexer to catch up. Mirrors the module-store + useSyncExternalStore
+// pattern in endorsement-closure-cache.ts.
+//
+// Entries are deliberately NOT pruned once the real scan catches up: the merge
+// de-dups adds by URI against the scan result and a `hide` is a no-op once the
+// award is already gone, so a leftover overlay entry can't double-count or
+// resurrect anything. Bounded by user actions.
+// ---------------------------------------------------------------------------
+
+interface ReceivedOverlay {
+  adds: ReceivedEndorsement[]
+  hides: Set<string>
+}
+
+const overlays = new Map<string, ReceivedOverlay>()
+let overlayVersion = 0
+const overlaySubscribers = new Set<() => void>()
+
+function notifyOverlay(): void {
+  overlayVersion++
+  for (const s of overlaySubscribers) s()
+}
+
+function subscribeOverlay(cb: () => void): () => void {
+  overlaySubscribers.add(cb)
+  return () => {
+    overlaySubscribers.delete(cb)
+  }
+}
+
+function mergeOverlay(
+  profileDid: string,
+  base: ReceivedEndorsement[],
+): ReceivedEndorsement[] {
+  const o = overlays.get(profileDid)
+  if (!o || (o.adds.length === 0 && o.hides.size === 0)) return base
+  const filtered = base.filter((e) => !o.hides.has(e.uri))
+  const seen = new Set(filtered.map((e) => e.uri))
+  const merged = [...o.adds.filter((e) => !seen.has(e.uri)), ...filtered]
+  merged.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
+  return merged
+}
+
+/**
+ * Optimistically add a received endorsement for `profileDid` so every
+ * consumer of `useReceivedEndorsements(profileDid)` reflects it on the next
+ * render. Call from the success path of a write that issues an endorsement
+ * targeting `profileDid`. Idempotent by award URI.
+ */
+export function addOptimisticReceivedEndorsement(
+  profileDid: string,
+  entry: ReceivedEndorsement,
+): void {
+  const o = overlays.get(profileDid) ?? { adds: [], hides: new Set<string>() }
+  o.hides.delete(entry.uri)
+  if (!o.adds.some((e) => e.uri === entry.uri)) {
+    o.adds = [entry, ...o.adds]
+  }
+  overlays.set(profileDid, o)
+  notifyOverlay()
+}
+
+/**
+ * Optimistically remove a received endorsement (by award URI) for
+ * `profileDid`. Call from the success path of a revoke. Idempotent.
+ */
+export function removeOptimisticReceivedEndorsement(
+  profileDid: string,
+  uri: string,
+): void {
+  const o = overlays.get(profileDid) ?? { adds: [], hides: new Set<string>() }
+  o.adds = o.adds.filter((e) => e.uri !== uri)
+  o.hides.add(uri)
+  overlays.set(profileDid, o)
+  notifyOverlay()
+}
+
 /**
  * Read the cached scan result for a DID without triggering a
  * network fetch. Used by `usePendingAwardsCount` on the nav rail —
@@ -214,15 +342,14 @@ export function peekCachedReceivedEndorsements(
   const entry = cache.get(profileDid)
   if (!entry) return null
   if (Date.now() - entry.fetchedAt >= STALE_MS) return null
-  return entry.data
+  return mergeOverlay(profileDid, entry.data)
 }
 
 /**
  * Fetch every public endorsement award targeting `profileDid`, AND
  * filter out awards whose latest response (on the profile owner's
  * PDS) is `"rejected"`. Scoped to the badge.{definition,award,response}
- * lexicons — the legacy `app.certified.temp.graph.endorsement`
- * collection is NOT consulted (hard cutover per the migration plan).
+ * lexicons.
  *
  * Fetch shape:
  *   1. One indexer GraphQL query for awards-targeting-me (subject
@@ -245,7 +372,20 @@ export function peekCachedReceivedEndorsements(
  *
  * Returns an empty list while loading, with `isLoading` true.
  */
-export function useReceivedEndorsements(profileDid: string | null): {
+export function useReceivedEndorsements(
+  profileDid: string | null,
+  opts?: {
+    /** When true, the rejected awards stay in the returned list and
+     *  callers can filter / surface them client-side using their own
+     *  resolved response states. Owner-side surfaces (the profile
+     *  owner viewing their own Received tab) pass true so the filter
+     *  dropdown can offer "Show all" / "Show only rejected" without
+     *  re-fetching. Foreign viewers keep the default so the privacy
+     *  contract (don't reveal rejected endorsements to others) is
+     *  preserved. */
+    includeRejected?: boolean
+  },
+): {
   endorsements: ReceivedEndorsement[]
   isLoading: boolean
   error: string | null
@@ -291,42 +431,64 @@ export function useReceivedEndorsements(profileDid: string | null): {
     return () => controller.abort()
   }, [profileDid, doScan])
 
-  // Focus-revalidate when stale.
+  // Focus-revalidate when stale. The focus scan gets its own ref'd
+  // AbortController so it's actually cancellable — aborted on the next
+  // focus and on effect cleanup/unmount, so doScan's
+  // `if (signal?.aborted)` guards can fire and we never setState on an
+  // unmounted hook (quality-032).
   useEffect(() => {
+    let focusController: AbortController | null = null
     const onFocus = () => {
       const did = profileDidRef.current
       if (!did) return
       const c = cache.get(did)
       if (!c || Date.now() - c.fetchedAt >= STALE_MS) {
-        doScan(did)
+        focusController?.abort()
+        focusController = new AbortController()
+        doScan(did, focusController.signal)
       }
     }
     window.addEventListener("focus", onFocus)
-    return () => window.removeEventListener("focus", onFocus)
+    return () => {
+      window.removeEventListener("focus", onFocus)
+      focusController?.abort()
+    }
   }, [doScan])
 
-  // Response join: fetch the profile-OWNER's responses (their PDS).
-  // The R1 reviewer flagged "viewer's responses" as a federation bug
-  // — when viewing Alice's profile we need Alice's responses, not
-  // ours. The hook contract bakes the fix in by sharing the same
-  // profileDid across both fetches.
-  const { responses, isLoading: respLoading } = useProfileResponses(profileDid)
+  // Filter out awards whose latest response is "rejected" — unless
+  // the caller opted into seeing rejected entries (owner-side
+  // surfaces with "Show only rejected" / "Show all"). The response
+  // state is now joined by the indexer (magic-indexer#96) onto each
+  // award node, so we read it directly from the scan result — no
+  // separate PDS `listResponses` round-trip needed (the previous
+  // path used `useProfileResponses`, dropped here).
+  //
+  // Privacy note: the indexer's `response.state` is delivered to
+  // every viewer (including non-owners), preserving today's contract
+  // of "client-side filter rejected for non-owner views." Strong
+  // privacy (rejected awards never leaving the indexer for non-owner
+  // viewers) would require authenticated indexer queries — out of
+  // scope per the round-1 review B5 resolution.
+  // Re-render whenever the shared optimistic overlay changes, so a write
+  // in a sibling component (e.g. the sidebar Endorse button) flows into
+  // this consumer's count/list immediately.
+  const overlaySnapshot = useSyncExternalStore(
+    subscribeOverlay,
+    () => overlayVersion,
+    () => overlayVersion,
+  )
 
-  // Filter out awards whose latest response is "rejected". Default
-  // and unknown states pass through (default = un-responded;
-  // unknown = a response value we don't recognise, treated as
-  // no-op so we never silently hide on an unrecognised value).
+  const includeRejected = opts?.includeRejected ?? false
   const endorsements = useMemo(() => {
-    if (responses.length === 0) return scanResult
-    return scanResult.filter((e) => {
-      const { state } = resolveResponseState(e.uri, responses)
-      return state !== "rejected"
-    })
-  }, [scanResult, responses])
+    void overlaySnapshot
+    const base = profileDid ? mergeOverlay(profileDid, scanResult) : scanResult
+    if (includeRejected) return base
+    return base.filter((e) => e.responseState !== "rejected")
+  }, [scanResult, includeRejected, profileDid, overlaySnapshot])
 
   return {
     endorsements,
-    isLoading: scanLoading || respLoading,
+    isLoading: scanLoading,
     error,
   }
 }

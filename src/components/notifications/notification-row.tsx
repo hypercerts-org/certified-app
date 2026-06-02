@@ -9,14 +9,12 @@ import { useOwnResponseStates } from "@/hooks/use-own-response-states"
 import { activityDetailHrefFromUri } from "@/lib/atproto/activity-uri"
 import { formatRelativeTime } from "@/lib/atproto/activity"
 import { BADGE_AWARD_COLLECTION } from "@/lib/atproto/badges"
+import { truncateDid } from "@/lib/utils/did"
+import { getInitials } from "@/lib/utils/initials"
 import Avatar from "@/components/ui/avatar"
 import ResponseButtons from "@/components/badges/response-buttons"
 import { useAuth } from "@/lib/auth/auth-context"
-
-function truncateDid(did: string): string {
-  if (did.length <= 24) return did
-  return `${did.slice(0, 16)}…${did.slice(-4)}`
-}
+import { useOrg } from "@/lib/groups/org-context"
 
 function reasonText(
   notification: Notification,
@@ -46,21 +44,21 @@ interface NotificationRowProps {
 
 export default function NotificationRow({ notification, wasUnreadOnMount }: NotificationRowProps) {
   const { did: ownerDid } = useAuth()
+  // Notifications are the personal account's. While delegated (acting as a
+  // group) the accept/reject control is hidden — responding to your personal
+  // endorsements while "being" the org is a confusing cross-identity action.
+  const { activeOrg } = useOrg()
   const { info } = useAuthorInfo(notification.latestAuthor)
   const hasHandle = Boolean(info?.handle)
   const displayName = info?.handle || truncateDid(notification.latestAuthor)
-  const fallbackInitials = info?.displayName?.slice(0, 2) || info?.handle?.slice(0, 2) || "??"
+  const fallbackInitials = getInitials(info?.displayName || info?.handle, notification.latestAuthor)
   const href = activityDetailHrefFromUri(notification.latestRecordUri)
   const absoluteTime = new Date(notification.sortAt).toLocaleString()
   const relativeTime = formatRelativeTime(notification.sortAt)
 
   // Show response buttons only when the underlying record is a
-  // badge.award (the new lexicon). The notifications backend still
-  // emits "endorsement" reason for legacy temp.graph.endorsement
-  // records too; those can't be responded to via this control so
-  // we keep the row read-only for them. This is forward-compat:
-  // once the backend detects badge.award firehose events, those
-  // notifications will surface with the controls automatically.
+  // badge.award. Any other notification reason can't be responded to
+  // via this control, so we keep the row read-only for it.
   const isBadgeAward = notification.latestRecordUri.includes(
     `/${BADGE_AWARD_COLLECTION}/`,
   )
@@ -125,7 +123,7 @@ export default function NotificationRow({ notification, wasUnreadOnMount }: Noti
   return (
     <div className={className}>
       {content}
-      {isBadgeAward ? (
+      {isBadgeAward && !activeOrg ? (
         <ResponseButtons
           awardUri={notification.latestRecordUri}
           awardCid={notification.latestRecordCid}

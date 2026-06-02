@@ -3,38 +3,77 @@ import { getAuthenticatedAgent, getServiceAuthToken, createGroupAgent } from "@/
 import { GROUP_SERVICE, GROUP_SERVICE_DID, MAX_SELF_CREATED_ORGS } from "@/lib/groups/constants"
 import { checkCsrf } from "@/lib/auth/csrf"
 import { extractRouteError, parseJsonBody } from "@/lib/utils/api"
+import { sanitizeHandle } from "@/lib/utils/sanitize"
 import { logSafe } from "@/lib/utils/log-safe"
+import { enforceRateLimit, makeLimiter } from "@/lib/auth/rate-limit"
+
+// 5 / 10 min by session DID. Group registration is a privileged
+// write (CGS-side state); cap per-DID. The route is auth-gated so
+// IP-level enforcement is redundant.
+const LIMITER = makeLimiter("groups-register", 5, 600)
 
 export async function POST(request: NextRequest) {
-  const csrfError = checkCsrf(request)
-  if (csrfError) return csrfError
-
   try {
     const auth = await getAuthenticatedAgent()
     if (!auth)
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
 
+    // Rate-limit BEFORE CSRF — DID is known after auth, so RL keys
+    // off the session DID. (Pre-auth check would have no identifier
+    // for an authenticated route.)
+    const rateDenied = await enforceRateLimit(LIMITER, auth.did)
+    if (rateDenied) return rateDenied
+
+    const csrfError = checkCsrf(request)
+    if (csrfError) return csrfError
+
     const parsed = await parseJsonBody(request, "[groups/register]")
     if (!parsed.ok) return parsed.response
-    const { handle, ownerDid, email } = (parsed.body ?? {}) as {
+    const { handle: rawHandle, ownerDid, email: rawEmail } = (parsed.body ?? {}) as {
       handle?: string
       ownerDid?: string
       email?: string
     }
 
-    if (!handle || !ownerDid) {
+    if (!rawHandle || !ownerDid) {
       return NextResponse.json(
         { error: "handle and ownerDid are required" },
         { status: 400 }
       )
     }
 
-    // AT Protocol handles are max 253 chars (DNS hostname limit)
+    // Sanitize at the boundary (AGENTS.md §17.6/§24.5): strip invisible
+    // chars / whitespace / leading @ even though the client also sanitizes.
+    const handle = sanitizeHandle(rawHandle)
+
+    if (!handle) {
+      return NextResponse.json(
+        { error: "handle and ownerDid are required" },
+        { status: 400 }
+      )
+    }
+
+    // AT Protocol handles are max 253 chars (DNS hostname limit). Re-check
+    // the cap on the SANITIZED result so strippable padding can't smuggle an
+    // over-length handle past the length guard.
     if (handle.length > 253) {
       return NextResponse.json(
         { error: "Handle too long (max 253 characters)" },
         { status: 400 }
       )
+    }
+
+    // Validate the optional email (feedback/route.ts's regex + 254-char cap).
+    // Reject malformed input rather than forwarding it verbatim.
+    let email: string | undefined
+    if (typeof rawEmail === "string" && rawEmail.length > 0) {
+      if (rawEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail)) {
+        return NextResponse.json(
+          { error: "Invalid email address" },
+          { status: 400 }
+        )
+      }
+      email = rawEmail
     }
 
     // Ensure the caller can only register groups they own
@@ -83,7 +122,9 @@ export async function POST(request: NextRequest) {
           batch.map(async (g) => {
             try {
               const groupAgent = createGroupAgent(auth.agent, g.groupDid)
-              const allMembers: { did: string; addedBy: string }[] = []
+              // We only need to know whether the caller's OWN entry was
+              // self-added, so stop paginating the member list as soon as that
+              // entry is found — no later page can change the boolean answer.
               let memberCursor: string | undefined
               do {
                 const params: Record<string, unknown> = { limit: 100 }
@@ -93,12 +134,13 @@ export async function POST(request: NextRequest) {
                   params
                 )
                 const page = data as { members?: { did: string; addedBy: string }[]; cursor?: string }
-                allMembers.push(...(page.members || []))
+                const selfAdded = (page.members || []).some(
+                  (m) => m.did === ownerDid && m.addedBy === ownerDid
+                )
+                if (selfAdded) return true
                 memberCursor = page.cursor
               } while (memberCursor)
-              return allMembers.some(
-                (m) => m.did === ownerDid && m.addedBy === ownerDid
-              )
+              return false
             } catch {
               return false
             }
@@ -114,7 +156,7 @@ export async function POST(request: NextRequest) {
         )
       }
     } catch (err) {
-      console.error("Org creation limit check failed:", err)
+      logSafe("[groups/register] org-limit check failed", err)
       return NextResponse.json(
         { error: "Unable to verify group creation limit. Please try again." },
         { status: 503 }

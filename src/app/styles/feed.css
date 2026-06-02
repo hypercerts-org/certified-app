@@ -391,10 +391,23 @@
 
 .feed-card__author-meta {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
   min-width: 0;
   overflow: hidden;
+  line-height: 1.2;
+}
+
+/* Holds the display name + optional inline suffix (e.g. /explore's
+ * endorsement-degree pill). Inline flex so the pill sits on the same
+ * baseline as the name without forcing it onto the next line. */
+.feed-card__author-name-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .feed-card__author-name {
@@ -404,7 +417,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 14ch;
+  max-width: 100%;
 }
 
 .feed-card__author-handle {
@@ -413,7 +426,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
+  max-width: 100%;
 }
 
 .feed-card__author--skeleton {
@@ -432,16 +445,15 @@
 .feed-card__author-name-skel {
   width: 96px;
   height: 11px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
   animation: feed-author-skel-pulse 1.4s ease-in-out infinite;
-  margin-bottom: 4px;
 }
 
 .feed-card__author-handle-skel {
   width: 64px;
   height: 9px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
   animation: feed-author-skel-pulse 1.4s ease-in-out infinite;
 }
@@ -474,6 +486,23 @@
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.feed-card__image-wrap--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(
+      135deg,
+      var(--bg-sunken) 0%,
+      var(--overlay-weak) 100%
+    );
+}
+
+.feed-card__image-placeholder-icon {
+  color: var(--fg-muted);
+  opacity: 0.6;
 }
 
 .feed-card__title {
@@ -522,62 +551,8 @@
   flex-shrink: 0;
 }
 
-.feed-card__badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  color: var(--fg-secondary);
-  background: var(--bg-sunken);
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
-.feed-card__label {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 999px;
-  text-transform: capitalize;
-}
-
-.feed-card__label--high-quality {
-  color: var(--badge-success-fg);
-  background: var(--badge-success-bg);
-}
-
-.feed-card__label--standard {
-  color: var(--fg-secondary);
-  background: var(--bg-sunken);
-}
-
-.feed-card__label--draft {
-  color: var(--badge-warning-fg);
-  background: var(--badge-warning-bg);
-}
-
-.feed-card__label--test {
-  color: var(--fg-muted);
-  background: var(--bg-raised);
-}
-
-.feed-card__scope {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  color: var(--color-accent);
-  background: var(--bg-raised);
-  padding: 2px 8px;
-  border-radius: 999px;
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+/* .feed-card__label* rules were retired — FeedLabelPill now composes
+   <Badge variant="high-quality|standard|draft|test"> instead. */
 
 /* ---- Load More ---- */
 
@@ -679,7 +654,7 @@
   }
 
   .feed-card__image-wrap {
-    border-radius: calc(var(--radius) * 2);
+    border-radius: var(--radius);
     margin-bottom: 16px;
   }
 
@@ -903,7 +878,7 @@
 .activity-detail__contributor-name-skel {
   width: 120px;
   height: 12px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--bg-elevated, rgba(128, 128, 128, 0.15));
   margin-bottom: 4px;
 }
@@ -911,7 +886,7 @@
 .activity-detail__contributor-handle-skel {
   width: 80px;
   height: 10px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--bg-elevated, rgba(128, 128, 128, 0.1));
 }
 
@@ -1113,7 +1088,7 @@
 .location-card--skeleton .location-card__name-skel {
   width: 60%;
   height: 12px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
   margin-bottom: 6px;
   animation: location-card-pulse 1.4s ease-in-out infinite;
@@ -1122,7 +1097,7 @@
 .location-card--skeleton .location-card__detail-skel {
   width: 40%;
   height: 10px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--overlay-weak);
   animation: location-card-pulse 1.4s ease-in-out infinite;
 }
@@ -1182,7 +1157,7 @@
 .certs-map .leaflet-bar {
   border: 1px solid var(--border-default);
   box-shadow: var(--shadow-md);
-  border-radius: 8px;
+  border-radius: var(--radius);
   overflow: hidden;
 }
 .certs-map .leaflet-bar a {
@@ -1206,7 +1181,7 @@
 .certs-map .leaflet-popup-content-wrapper {
   background: var(--bg-elevated);
   color: var(--fg-primary);
-  border-radius: 8px;
+  border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
 }
 .certs-map .leaflet-popup-content {
@@ -1379,7 +1354,7 @@
   cursor: pointer;
   padding: 4px;
   color: var(--fg-muted);
-  border-radius: 4px;
+  border-radius: var(--radius);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1671,6 +1646,104 @@
   cursor: not-allowed;
 }
 
+/* State-aware trigger glyph (#77): when the recipient has
+   accepted or rejected an endorsement, the kebab is replaced by
+   a status-coloured checkmark / X. Click still opens the menu so
+   the user can change their mind or reset. */
+.response-menu__trigger--accepted {
+  color: var(--color-success, #2c8a3e);
+}
+
+.response-menu__trigger--rejected {
+  color: var(--color-warning, #b04a2a);
+}
+
+.response-menu__trigger--accepted:hover:not(:disabled),
+.response-menu__trigger--rejected:hover:not(:disabled) {
+  /* Keep the status colour on hover; just add background so the
+     pressable affordance is unmistakable. */
+  background: var(--overlay-weak);
+}
+
+/* Quick accept/reject buttons (#77): rendered inline when the
+   endorsement has no response yet (`state === "default"`). One
+   click writes the response — no kebab → menu → menuitem
+   indirection. Two small pill buttons side-by-side. */
+.response-menu__quick-actions {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.response-menu__quick-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  border-radius: var(--radius);
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.response-menu__quick-btn--accept:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-success, #2c8a3e) 12%, transparent);
+  border-color: var(--color-success, #2c8a3e);
+  color: var(--color-success, #2c8a3e);
+}
+
+.response-menu__quick-btn--reject:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-warning, #b04a2a) 12%, transparent);
+  border-color: var(--color-warning, #b04a2a);
+  color: var(--color-warning, #b04a2a);
+}
+
+/* Active state — filled background + white glyph so the
+   recipient's current decision is unambiguous at a glance.
+   Clicking the active button toggles back to default (the
+   handler in response-menu.tsx swaps `writeResponse` for
+   `resetToDefault` when the button matches the current state). */
+.response-menu__quick-btn--accept.response-menu__quick-btn--active {
+  background: var(--color-success, #2c8a3e);
+  border-color: var(--color-success, #2c8a3e);
+  color: var(--bg-canvas, #fff);
+}
+
+.response-menu__quick-btn--accept.response-menu__quick-btn--active:hover:not(:disabled) {
+  /* Slightly darker on hover to surface the "click to reset"
+     affordance without losing the filled-active read. */
+  background: color-mix(in srgb, var(--color-success, #2c8a3e) 85%, black);
+  border-color: color-mix(in srgb, var(--color-success, #2c8a3e) 85%, black);
+  color: var(--bg-canvas, #fff);
+}
+
+.response-menu__quick-btn--reject.response-menu__quick-btn--active {
+  background: var(--color-warning, #b04a2a);
+  border-color: var(--color-warning, #b04a2a);
+  color: var(--bg-canvas, #fff);
+}
+
+.response-menu__quick-btn--reject.response-menu__quick-btn--active:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-warning, #b04a2a) 85%, black);
+  border-color: color-mix(in srgb, var(--color-warning, #b04a2a) 85%, black);
+  color: var(--bg-canvas, #fff);
+}
+
+.response-menu__quick-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.response-menu__quick-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .response-menu__menu {
   position: absolute;
   top: calc(100% + 4px);
@@ -1696,6 +1769,10 @@
   background: transparent;
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 0.8125rem;
+  /* Normal weight regardless of the surrounding context's
+     font-weight (the kebab trigger can sit inside semibold
+     labels). */
+  font-weight: 400;
   color: var(--fg-primary);
   text-align: left;
   cursor: pointer;
@@ -1881,7 +1958,7 @@
 
 .endorsement-multi-row__error {
   font-size: 0.75rem;
-  color: var(--danger, #d44);
+  color: var(--color-error);
   margin-top: 2px;
 }
 
@@ -1907,7 +1984,7 @@
 }
 
 .endorsement-multi-row__status--error {
-  background: var(--danger, #d44);
+  background: var(--color-error);
   color: white;
 }
 
@@ -1921,7 +1998,7 @@
   cursor: pointer;
   padding: 4px;
   color: var(--fg-muted);
-  border-radius: 4px;
+  border-radius: var(--radius);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2011,7 +2088,7 @@
 .profile-endorsements__endorse-error {
   display: block;
   font-size: 0.75rem;
-  color: var(--danger, #d44);
+  color: var(--color-error);
   margin-top: 4px;
 }
 
@@ -2135,4 +2212,105 @@
   .create-form__textarea {
     font-size: 16px;
   }
+}
+
+/* ==========================================================================
+   Follower-events home feed — issue #88
+   Builds on .feed and .feed-card primitives above; the additions here
+   are author-row chrome (avatar + name + inline time), the per-kind
+   action line, and the feed-shell decorations (warning, hint, sentinel).
+   ========================================================================== */
+
+.feed-card__author-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.feed-card__time--inline {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.feed-card__action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.feed-card__action svg {
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+
+.feed-card__action-subject {
+  color: var(--fg-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.feed-card__action-subject:hover {
+  text-decoration: underline;
+}
+
+.feed-card__note {
+  margin: 12px 0 0;
+  padding: 12px;
+  background: var(--bg-sunken);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.feed-card__desc--unknown {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  word-break: break-all;
+}
+
+.feed__warning {
+  margin: 12px 0;
+  padding: 10px 14px;
+  background: var(--bg-sunken);
+  border-left: 3px solid var(--fg-muted);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+}
+
+.feed__sentinel {
+  height: 1px;
+  width: 100%;
+}
+
+.feed__hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 24px 0;
+  padding: 14px 16px;
+  background: var(--bg-sunken);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+}
+
+.feed__hint svg {
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+
+.feed__hint p {
+  margin: 0;
 }

@@ -5,8 +5,22 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/about", "/terms", "/privacy", "/dsa", "/imprint"],
+        allow: [
+          "/",
+          "/welcome",
+          "/apps",
+          "/about",
+          "/terms",
+          "/privacy",
+          "/dsa",
+          "/imprint",
+        ],
         disallow: [
+          "/home",
+          "/explore",
+          "/search",
+          "/activity",
+          "/activity/*",
           "/settings",
           "/settings/*",
           "/create",

@@ -1,5 +1,7 @@
 # DESIGN.md — Certs.social
 
+> **AI agents: read §14 first.** It locks in the post-consolidation rules (2026-05-28) and supersedes earlier sections where they contradict. Read the "Rules at a glance" callout in `AGENTS.md` §0 in parallel — it's the executive summary of what to do and not do.
+
 ## 1. Visual Theme & Atmosphere
 
 Certs.social feels like a notary's ledger reimagined as a mobile app — austere, monochrome, and quietly authoritative. The near-absence of color forces attention onto the content: serif headlines anchor each card like a document title, while the surrounding chrome recedes into warm grays. It's deliberately under-decorated — no gradients, no brand accent hue, no playful illustrations. The restraint *is* the brand.
@@ -211,7 +213,14 @@ All icons from **Lucide React**. Conventions:
 
 ### Modals
 
-**Standard modal** (sign-in, domain): Centered on desktop, full-width on mobile. `bg-elevated`, 1px `border-default`, `shadow-lg`. Entry animation: `modalFadeIn` (backdrop 200ms) + `modalSlideUp` (content 300ms, spring easing). Sign-in modal uses 20px radius — the only intentional exception to the 2px system.
+**Standard sign-in modal** (`.signin-modal` only): Centered on desktop, full-width on mobile. `bg-elevated`, 1px `border-default`, `shadow-lg`. Entry animation: `modalFadeIn` (backdrop 200ms) + `modalSlideUp` (content 300ms, spring easing). 20px radius + 40px hero padding. This shape is **reserved for the sign-in surface** — it's an intentional exception to the 2px system because sign-in is a once-per-session, branded surface.
+
+**App modals** (every other in-app dialog — endorse-people, create-list, sync-social-graph, future): use `<dialog className="signin-modal app-modal …">`. The `.app-modal` modifier inherits the sign-in chrome (backdrop / animation / close button / focus styling) but overrides:
+
+- `border-radius: var(--radius)` (2px — matches cards, dropdowns, inputs).
+- Padding trimmed to `16px 20px 12px` header / `0 20px 20px` body — denser than the sign-in surface, which is right for form-style and list-style modals.
+
+If you're building a new modal that isn't the sign-in flow, **always** add `app-modal` alongside `signin-modal`. Forgetting it makes the dialog read as a chunky sign-in surface and breaks the 2px system everywhere else.
 
 **Bottom sheet** (mobile account switcher, mobile feedback): Fixed to bottom, draggable handle, swipe-down-to-dismiss. `bg-elevated`, top border-radius. Expandable via swipe-up.
 
@@ -531,9 +540,81 @@ Things an AI agent is likely to get wrong:
 1. **Start with CSS custom properties.** Never hard-code colors — use `var(--bg-canvas)`, `var(--fg-primary)`, etc. This ensures dark mode works automatically.
 2. **Default to `var(--radius)` (2px).** Only use 999px for pills (badges, avatars, sign-in submit) or 50% for circles.
 3. **Use the `<Button>` component.** Don't create new button styles in CSS — add variants to the component if needed.
-4. **Mobile-first CSS.** Write base styles for mobile, then use `@media (min-width: 769px)` for desktop overrides.
+4. **Mobile-first CSS.** Write base styles for mobile, then use `@media (min-width: 800px)` for desktop overrides. For "below desktop", use `max-width: 799px`. 768 / 760 / 640 are not canonical — see §14.1.
 5. **Check both themes.** Toggle `data-theme="dark"` and verify all text is readable, borders are visible, and the primary button inverts correctly.
 6. **Respect the type system.** Headlines → Noto Serif 700. Body → Inter 400. Labels → Inter 500–600 uppercase. Don't mix these roles.
 7. **No new shadows on cards.** Cards communicate elevation via background color (`--bg-elevated` vs `--bg-canvas`), not box-shadow. Shadows are reserved for floating elements (modals, tooltips, dropdowns).
 8. **Test skeleton states.** Every new data-fetching component needs a skeleton. Match the geometry of the loaded state — rectangles where text will be, circles where avatars will be, same spacing.
 9. **Icon sizing follows context.** 14px for inline actions alongside text, 20–22px for navigation chrome, 24px for bottom nav. Don't mix these.
+
+---
+
+## 14. Design consolidation pass (2026-05-28)
+
+This section documents the changes from `feat/design-consolidation` (PR #108, merged into `feat/positioning-redesign`). It supersedes any contradictions earlier in this file.
+
+The audit that drove the work: [`docs/design-audit/component-audit.md`](docs/design-audit/component-audit.md).
+The visual divergence sheet: [`docs/design-audit/visual-divergence.md`](docs/design-audit/visual-divergence.md).
+The implementation plan + decision log: [`docs/design-consolidation/plan.md`](docs/design-consolidation/plan.md).
+
+### 14.0 Rules at a glance (the agent quick-reference)
+
+The shortlist of rules that drift most often. Hold yourself to these on every UI change.
+
+| Rule | Quick test |
+| --- | --- |
+| `border-radius` is `var(--radius)` (2 px), pills `999px`, circles `50%`. No 4/6/8/12/16/20. | `grep -rEn "border-radius:\s+(4\|6\|8\|12\|16\|20)px" src/app/styles/` returns 0 |
+| No raw hex / rgb outside `tokens.css` (+ `landing.css` for the brand palette). | Search for `#[0-9a-fA-F]{3,8}` in your diff |
+| Canonical breakpoints are 800 / 1100 / 1300; "below desktop" is `max-width: 799px`. | `grep -E "@media.*?\((max\|min)-width:\s*(76[08]\|64[80])px\)"` returns 0 |
+| Shadows are `var(--shadow-sm\|md\|lg)`. No ad-hoc `box-shadow: 0 X Y rgba(...)`. | Search `box-shadow:` for non-token values |
+| Z-index is a `--z-*` token. | Search `z-index:\s+[0-9]+` for literals |
+| Headings use `text-h1`..`text-h4` + `font-headline`. Not `text-xl` / `text-lg`. | Search your diff for `font-headline text-(xl\|lg\|2xl)` |
+| Modals use `<AppDialog>`. No hand-rolled backdrops. | Search your diff for `signin-modal__backdrop` |
+| Icon-only buttons are `<Button size="icon" aria-label="…">`. | TypeScript enforces the label |
+| Dark mode must work. | Toggle `data-theme="dark"` and verify everything reads |
+| Reach for a `src/components/ui/` primitive before writing a new component or CSS class. | List the directory first |
+
+### 14.1 New rules
+
+1. **All `border-radius` values are `var(--radius)` (2 px).** No exceptions. The previous `--radius: 2px` policy was being eroded by 116+ instances of 4 / 6 / 8 / 12 / 16 / 20 px corners; those are gone. Pills stay at `999px`, circles at `50%`. The sign-in modal is no longer a "hero exception" (was 20 px → 2 px).
+2. **Landing has proper dark mode.** The "landing palette kept invariant so /welcome always renders light-themed" policy is retired. The landing tokens (`--color-navy`, `--color-off-white`, `--color-light-gray`, `--color-mid-gray`, `--color-dark-gray`, `--color-surface`, `--color-surface-container-low`) flip in `[data-theme="dark"]`. `--color-primary` and `--color-white` remain invariant for systems that still depend on them (skip-nav, brand SVG).
+3. **Breakpoints: 800 / 1100 / 1300 only.** Previously `landing.css` used 768 (9 places) and `home/explore/workspace` used 760 (5 places). All migrated to `max-width: 799px` to match the existing "just below desktop" convention.
+4. **Form input padding follows the 4-px grid.** `12 × 14` and `7 × 12` arbitrary values were replaced with `12 × 16` / `8 × 12`.
+5. **Cert-detail / project-detail "wide" pages share the 1280 px fullbleed width** with profile / settings / workspace.
+
+### 14.2 New UI components
+
+| Component | File | Purpose |
+| --- | --- | --- |
+| `<Card variant="row\|elevated\|inset">` | `src/components/ui/card.tsx` | Canonical card with three shapes. Migrate `.feed-card`, `.dash-card`, `.explore-*-card`, `.app-card`, `.endorsements-v2__card` to it. |
+| `<Tabs>`, `<TabList>`, `<Tab>`, `<TabPanel>` | `src/components/ui/tabs.tsx` | Proper ARIA tab pattern with keyboard arrow navigation. Migrate `.profile-tabs__tab`, `.feed-tabs__tab`. |
+| `<Skeleton variant="line\|box\|circle\|text">` | `src/components/ui/skeleton.tsx` | Single primitive for all loading states. Migrate `ActivityCardSkeleton`, `NotificationRowSkeleton`, `.feed-card__author--skeleton`, etc. |
+| `<Popover>`, `<PopoverTrigger>`, `<PopoverContent>`, `<PopoverItem>` | `src/components/ui/popover.tsx` | Floating menus — click-outside, Esc, ARIA wired. Migrate `.feed-filter`, account switcher menu, workspace breadcrumb menu, `.response-menu__menu`. |
+
+### 14.3 Extended component APIs
+
+| Component | New API | What absorbed |
+| --- | --- | --- |
+| `<Button>` | `size="icon"` (40 × 40 square, requires `aria-label`) | `.desktop-top-bar__icon-btn` and similar icon-only buttons. Variant `accent` rejected; domain modal moved to `primary`. |
+| `<Input>` | `size="sm\|md\|lg"` (36 / 44 / 56 px), `variant="default\|underline\|inline-edit"` | `.signin-modal__input` (size=lg), `.delete-record-dialog__input` (variant=inline-edit). |
+| `<Badge>` | New variants: `tag`, `role`, `count`, `high-quality`, `standard`, `draft`, `test`. `compact` prop for the tighter 11 px chip. | `.feed-card__label*` (4 quality variants), `.org-list__item-role`. `FeedLabelPill` now composes Badge. |
+
+### 14.4 Modal hygiene
+
+`AddOrgModal` and `MembershipSyncModal` moved from hand-rolled backdrop/Esc/focus-trap implementations to the canonical `<AppDialog>`. `CustomDomainModal` migration is deferred (multi-step indicator needs visual review). `<ResponsiveModal>` extraction from `FeedbackModal` is deferred until a second consumer exists.
+
+### 14.5 Z-index tokens
+
+Added `--z-feedback: 10000` and `--z-feedback-above: 10001` to the token map. Hardcoded z-index values (`49`, `999`, `10000`, `10001`) in `layout.css` / `landing.css` / `components.css` are now token references.
+
+### 14.6 What didn't make it
+
+- Migration of every `.profile-tabs__tab` / `.feed-tabs__tab` to `<Tabs>` — primitive shipped, call sites stay until each is touched.
+- Migration of every CSS-based card to `<Card>` — same.
+- Migration of every CSS-based popover to `<Popover>` — same.
+- Migration of skeleton CSS to `<Skeleton>` — same.
+- `CustomDomainModal` → `<AppDialog>`.
+- `<ResponsiveModal>` extraction from `FeedbackModal`.
+- A stylelint rule that flags `border-radius: 6px` and raw hex outside `tokens.css`.
+
+These are documented as follow-on work in `docs/design-consolidation/plan.md`.

@@ -83,7 +83,13 @@ function loadInto(did: string, signal?: AbortSignal, opts?: { force?: boolean })
 
   const promise = (async () => {
     try {
-      const data = await listResponses(did, signal)
+      // Forced refetches (callers explicitly invalidated and
+      // re-asked) bypass the XRPC proxy's 5s Cache-Control window
+      // — otherwise the just-written response wouldn't appear in
+      // the next list and the rendered state would lag by a click.
+      const data = await listResponses(did, signal, {
+        noCache: !!opts?.force,
+      })
       if (signal?.aborted) return
       setEntry(did, {
         data,
@@ -167,18 +173,28 @@ export function useProfileResponses(did: string | null): UseProfileResponsesResu
     return () => controller.abort()
   }, [did])
 
-  // Window-focus revalidate when stale.
+  // Window-focus revalidate when stale. The focus fetch gets its own
+  // ref'd AbortController so it's actually cancellable — aborted on the
+  // next focus and on effect cleanup/unmount, so loadInto's
+  // `if (signal?.aborted)` guard can fire instead of being dead code
+  // (quality-032).
   useEffect(() => {
+    let focusController: AbortController | null = null
     const onFocus = () => {
       const target = didRef.current
       if (!target) return
       const c = store.get(target)
       if (!c || Date.now() - c.fetchedAt >= STALE_MS) {
-        loadInto(target)
+        focusController?.abort()
+        focusController = new AbortController()
+        loadInto(target, focusController.signal)
       }
     }
     window.addEventListener("focus", onFocus)
-    return () => window.removeEventListener("focus", onFocus)
+    return () => {
+      window.removeEventListener("focus", onFocus)
+      focusController?.abort()
+    }
   }, [])
 
   const refetch = useCallback(async () => {

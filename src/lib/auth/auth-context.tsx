@@ -14,17 +14,23 @@ import { sanitizeEmail, sanitizeHandle } from "@/lib/utils/sanitize";
 import SignInModal from "@/components/ui/sign-in-modal";
 import ProviderRedirectOverlay from "@/components/ui/provider-redirect-overlay";
 import { setOnUnauthorized } from "./fetch";
-import { clearSessionCache } from "@/hooks/use-session";
+import { clearAllDraftsForViewer } from "@/lib/utils/swap-drafts";
+import { clearSessionCache, peekSessionHandle } from "@/hooks/use-session";
+import {
+  recordPreSigninLocation,
+  resolvePostSigninPath,
+} from "./post-signin";
 
 /**
  * Validate and navigate to a URL returned by the auth API.
- * Only allows https: URLs (and http: in development). Prevents protocol injection.
+ * Only allows https: URLs (and http: outside production, i.e. dev/test).
+ * Prevents protocol injection.
  * Note: this intentionally allows cross-origin redirects because the OAuth flow
  * redirects to external PDS authorization servers.
  */
 const safeRedirect = (url: string) => {
   const parsed = new URL(url);
-  const allowHttp = process.env.NODE_ENV === "development";
+  const allowHttp = process.env.NODE_ENV !== "production";
   if (parsed.protocol !== "https:" && !(allowHttp && parsed.protocol === "http:")) {
     throw new Error("Invalid redirect URL");
   }
@@ -93,6 +99,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         await refreshSession();
+        // Route the user back to where they were before sign-in. The
+        // `/profile/<old-handle>` segment (if present in the saved
+        // path) gets rewritten to the new identity's DID so the URL
+        // resolves to the new viewer rather than rendering blank
+        // panels (e.g. the settings tab, gated on isViewerThisEntity).
+        const newSub = typeof event.data?.sub === "string" ? event.data.sub : null;
+        const target = resolvePostSigninPath(newSub);
+        if (target && target !== "/") {
+          window.location.assign(target);
+        }
       } catch (err) {
         console.error("Session refresh error:", err);
         setError(
@@ -157,10 +173,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("message", handleSwitchProvider);
   }, [handleLoginResponse]);
 
-  const openSignIn = useCallback(() => {
-    setError(null);
-    setIsModalOpen(true);
-  }, []);
+  // Silent-default OAuth bounce: POST to /api/auth/login with no email
+  // or handle. The server calls client.authorize(PDS_URL, ...) without
+  // a login_hint, so the PDS's authorization server can return a code
+  // immediately if the browser already has a session at the PDS (e.g.
+  // from another partner app). Otherwise it shows its own login UI.
+  // On any failure we fall back to opening the modal so the user can
+  // still type an email or handle by hand.
+  const submitDefault = useCallback(async () => {
+    try {
+      setError(null);
+      setIsRedirectingToProvider(true);
+      setIsModalOpen(false);
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "default" }),
+      });
+      await handleLoginResponse(res);
+    } catch (err) {
+      console.error("Default sign-in error:", err);
+      setIsRedirectingToProvider(false);
+      setError(err instanceof Error ? err.message : "Failed to sign in");
+      setIsModalOpen(true);
+    }
+  }, [handleLoginResponse]);
+
+  const openSignIn = useCallback(async () => {
+    // Stash the current pathname + handle so the post-signin handler
+    // (iframe message OR `/oauth/callback` redirect) can put the user
+    // back where they were instead of dropping them at `/`. Reading
+    // the handle synchronously via the use-session cache avoids
+    // having to thread it through every call site.
+    recordPreSigninLocation(peekSessionHandle());
+    await submitDefault();
+  }, [submitDefault]);
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
@@ -226,6 +273,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Server-side session cleanup is best-effort; the client should always
     // clear its local state even if the fetch throws.
     clearSessionCache();
+    // Purge any same-field-conflict drafts the viewer left in
+    // localStorage (issue #71). Without this, a different user
+    // signing in on the same browser would see the previous
+    // viewer's pending drafts on the "Restore draft" affordance.
+    const previousDid = did;
+    if (previousDid) {
+      clearAllDraftsForViewer(previousDid);
+    }
     setIsAuthenticated(false);
     setDid(null);
     setPdsUrl(null);
@@ -235,7 +290,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Sign out error (server-side cleanup failed):", err);
       // Local state already cleared — user is signed out client-side.
     }
-  }, []);
+  }, [did]);
 
   // Register the 401 interceptor so authFetch can clear auth state on session expiry
   useEffect(() => {

@@ -32,6 +32,39 @@
   margin-top: 20px;
 }
 
+/* ========== "More" link ==========
+
+   Shared affordance used wherever a truncated / summarised piece
+   of content links to its full view (project / cert short
+   description → long description tab, etc.). Right-aligned to the
+   content edge so it sits at the predictable "continue reading"
+   spot. Quiet underlined text — never a button. */
+.more-link-row {
+  /* Sits flush against the preceding paragraph (no top margin) so
+     "more" is the immediate next line under the truncated content.
+     Bottom margin creates the breathing room before whatever
+     section follows. */
+  margin: 0 0 16px;
+  font-size: 0.875rem;
+  text-align: right;
+}
+
+.more-link {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.more-link:hover {
+  text-decoration-thickness: 2px;
+}
+
+.more-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 /* ========== Micro-interactions ========== */
 
 /* Press feedback — applied to interactive cards and buttons via utility class */
@@ -82,7 +115,7 @@
   width: 100%;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
-  border-radius: 20px;
+  border-radius: var(--radius);
   padding: 40px 40px 36px;
   box-shadow: var(--shadow-lg);
   display: flex;
@@ -109,34 +142,129 @@ dialog.signin-modal::backdrop {
   background: var(--navy-overlay-70);
 }
 
-.signin-modal__close {
+/* App-wide modal shape. Add this class ALONGSIDE `.signin-modal` on
+   any non-sign-in dialog (`<dialog className="signin-modal app-modal">`)
+   so the radius drops from the sign-in surface's intentional 20px
+   down to the design system's 2px (`var(--radius)`). Padding is also
+   trimmed since dense form/list modals don't need the sign-in
+   surface's hero spacing. See DESIGN.md §11 — Modals. */
+dialog.signin-modal.app-modal {
+  border-radius: var(--radius);
+  padding: 0;
+  /* `<dialog>` doesn't ship with a positioned ancestor by default —
+     set one explicitly so the absolute-positioned close button below
+     is anchored to the modal corner, not the page. */
+  position: relative;
+}
+
+dialog.signin-modal.app-modal .signin-modal__header {
+  /* Right padding reserves space for the absolute-positioned X
+     (24px button inset 4px from the modal corner + 12px breathing
+     room = 40px). Without this the title would slide under the
+     close button on narrow modals. */
+  padding: 20px 40px 12px 24px;
+}
+
+/* Close button — the 18px `<X>` glyph sits in exactly the same
+   place it did when the button was 32×32 flush in the corner
+   (centre at 16px / 16px from the modal's top-right corner) but
+   the hover highlight is a smaller 24×24 chip inset 4px from the
+   corner. A 24×24 button centres an 18px icon at the same screen
+   position (button top 4 + icon offset 3 + icon centre 9 = 16,
+   matching the previous button top 0 + icon offset 7 + icon
+   centre 9 = 16). The radius is a uniform 6px now that the chip
+   no longer touches the modal's rounded corner. */
+dialog.signin-modal.app-modal .signin-modal__close {
   position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 44px;
-  height: 44px;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius);
+}
+
+dialog.signin-modal.app-modal .signin-modal__body {
+  padding: 0 20px 20px;
+}
+
+/* ---------- Type-to-confirm delete dialog ---------- */
+
+.delete-record-dialog__warning {
+  margin: 0 0 16px 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--fg-secondary);
+}
+
+.delete-record-dialog__warning strong {
+  color: var(--color-error, #b91c1c);
+}
+
+.delete-record-dialog__field {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: var(--bg-elevated);
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.delete-record-dialog__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   color: var(--fg-muted);
-  cursor: pointer;
-  border-radius: 999px;
-  box-shadow: var(--shadow-sm);
-  transition: color var(--transition-fast), transform var(--transition-fast);
-  z-index: 1;
+  text-transform: uppercase;
 }
 
-.signin-modal__close:hover {
+/* Target name shown in monospace so case + whitespace are
+   unambiguous. word-break:break-all so a long title doesn't
+   overflow the dialog. */
+.delete-record-dialog__target {
+  display: block;
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-size: 0.8125rem;
   color: var(--fg-primary);
-  transform: scale(1.05);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  word-break: break-all;
 }
 
-.signin-modal__close:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+.delete-record-dialog__input {
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--fg-primary);
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border-hover);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  width: 100%;
+  min-width: 0;
 }
+
+.delete-record-dialog__input:focus {
+  outline: none;
+  border-color: var(--color-error, #b91c1c);
+  box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.15);
+}
+
+.delete-record-dialog__error {
+  margin: 0 0 12px 0;
+  font-size: 0.8125rem;
+  color: var(--color-error, #b91c1c);
+}
+
+.delete-record-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Close button rules now live in `landing.css` (single source of
+   truth). The earlier "floating chip" treatment here positioned the
+   button outside the dialog corner with a shadow halo, which caused
+   the hover highlight to spill past the dialog edge. Removed; the
+   header's flex layout places the X inline with the title now. */
 
 .signin-modal__brandmark-wrap {
   display: flex;
@@ -168,7 +296,7 @@ dialog.signin-modal::backdrop {
   height: 56px;
   padding: 0 20px;
   border: 1.5px solid var(--border-default);
-  border-radius: 8px;
+  border-radius: var(--radius);
   font-size: 1rem;
   color: var(--fg-primary);
   background: var(--bg-elevated);
@@ -347,7 +475,7 @@ dialog.signin-modal::backdrop {
   }
   .signin-modal {
     padding: 32px 24px 28px;
-    border-radius: 20px;
+    border-radius: var(--radius);
   }
   .signin-modal__brandmark-wrap {
     margin-bottom: 24px;
@@ -366,7 +494,7 @@ dialog.signin-modal::backdrop {
 .feedback-modal__backdrop {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: var(--z-feedback);
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
@@ -608,12 +736,12 @@ dialog.signin-modal::backdrop {
 
   .feedback-bottom-sheet__backdrop {
     display: block;
-    z-index: 10000;
+    z-index: var(--z-feedback);
   }
 
   .feedback-bottom-sheet {
     display: flex;
-    z-index: 10001;
+    z-index: var(--z-feedback-above);
   }
 
   .feedback-bottom-sheet .feedback-modal__textarea {
@@ -1328,54 +1456,11 @@ dialog.signin-modal::backdrop {
   margin-top: 4px;
 }
 
-.domain-modal__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 18px;
-  border-radius: var(--radius);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  border: none;
-  min-height: 36px;
-}
-
-.domain-modal__btn--primary {
-  background: var(--color-accent);
-  color: var(--color-white);
-}
-
-.domain-modal__btn--primary:hover:not(:disabled) {
-  background: var(--color-accent-hover);
-}
-
-.domain-modal__btn--primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.domain-modal__btn--ghost {
-  background: none;
-  color: var(--fg-muted);
-}
-
-.domain-modal__btn--ghost:hover:not(:disabled) {
-  color: var(--fg-primary);
-  background: var(--bg-canvas);
-}
-
-.domain-modal__btn--ghost:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.domain-modal__btn:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
+/* The .domain-modal__btn* rules were retired — the modal now uses the
+   canonical <Button> with variant="primary"/"ghost" and size="sm".
+   The .domain-modal__spinner / @keyframes spin are kept because some
+   other code paths share the spinner animation; if you remove the last
+   consumer, drop the keyframe too. */
 
 .domain-modal__spinner {
   animation: spin 1s linear infinite;
@@ -1889,3 +1974,849 @@ dialog.signin-modal::backdrop {
   }
 }
 
+/* ==================================================================
+   ImageEditOverlay — shared image-upload pill(s) for record-detail
+   surfaces in inline-edit mode (cert image, project hero). The
+   parent (e.g. `.cert-detail__image`, `.project-detail__hero`)
+   must be `position: relative`. The dashed-outline `--editing`
+   treatment belongs to the parent, not to this overlay.
+   ================================================================== */
+
+.image-edit-overlay {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 1;
+}
+
+.image-edit-overlay__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(17, 17, 17, 0.78);
+  color: var(--color-white);
+  border: none;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.image-edit-overlay__btn:hover {
+  background: rgba(17, 17, 17, 0.92);
+}
+
+.image-edit-overlay__btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.image-edit-overlay__btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Quiet variant — same shape as the primary pill but a brighter,
+   lower-contrast surface. Mirrors the `.profile-banner-upload__btn
+   --ghost` pattern. */
+.image-edit-overlay__btn--ghost {
+  /* The surface is a fixed near-white (it sits over an image), so the
+     text must be a fixed dark too: --color-primary is invariant. Using
+     --fg-primary here made it white-on-white in dark mode, where
+     --fg-primary flips to near-white. */
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--color-primary);
+}
+
+.image-edit-overlay__btn--ghost:hover {
+  background: var(--color-white);
+}
+
+/* Visually-hidden file input. `tabIndex={-1}` keeps it out of the
+   tab order so the only keyboard-reachable affordance is the
+   Change pill. */
+.image-edit-overlay__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+
+/* ============================================================================
+   First-signin onboarding modal
+   Multi-step pane inside the shared AppDialog chrome. Each step renders
+   inside .onboarding-modal__body; the header + footer are constant across
+   steps.
+   ============================================================================ */
+
+.onboarding-modal {
+  width: 100%;
+}
+
+.onboarding-modal__header {
+  padding: 20px 24px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.onboarding-modal__title {
+  margin: 0 0 14px;
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--fg-primary);
+}
+
+.onboarding-modal__steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 8px;
+}
+
+.onboarding-modal__step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  color: var(--fg-muted);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.onboarding-modal__step:hover:not(:disabled):not(.onboarding-modal__step--current) {
+  background: var(--bg-raised);
+}
+
+.onboarding-modal__step--current:hover {
+  /* Active tab stays inverted on hover — `--bg-raised` from the
+     general hover rule above would otherwise wash the white text
+     onto a light background. */
+  background: var(--fg-primary);
+}
+
+.onboarding-modal__step:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.onboarding-modal__step:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.onboarding-modal__step--current {
+  background: var(--fg-primary);
+  color: var(--bg-canvas);
+}
+
+.onboarding-modal__step--done {
+  background: var(--bg-raised);
+  color: var(--fg-secondary);
+}
+
+.onboarding-modal__step-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--overlay-medium);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.onboarding-modal__step--current .onboarding-modal__step-index {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--bg-canvas);
+}
+
+.onboarding-modal__body {
+  padding: 20px 24px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.onboarding-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* ---------- Shared step chrome ---------- */
+
+.onboarding-step__lede {
+  margin: 0 0 16px;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--fg-secondary);
+}
+
+.onboarding-step__footnote {
+  margin: 16px 0 0;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  line-height: 1.45;
+}
+
+.onboarding-step__error {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  font-size: 0.8125rem;
+  color: var(--color-error);
+  background: rgba(186, 26, 26, 0.06);
+  border: 1px solid rgba(186, 26, 26, 0.18);
+  border-radius: var(--radius);
+}
+
+.onboarding-step__success {
+  margin: 12px 0 0;
+  font-size: 0.875rem;
+  color: var(--color-success-text);
+}
+
+.onboarding-step__loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px;
+  color: var(--fg-secondary);
+  font-size: 0.875rem;
+}
+
+/* ---------- Step 1: profile ---------- */
+
+.onboarding-step__hero {
+  position: relative;
+  margin-bottom: 36px;
+}
+
+/* Match `.profile-overview__banner` proportions exactly — 3:1 aspect
+   ratio capped at 220px tall for the populated case, 6:1 / 96px for
+   the empty placeholder. Inside the modal's narrower width this
+   produces a banner that sits at the same relative footprint as the
+   one shown on the profile page. */
+.onboarding-step__banner {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 1;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.onboarding-step__banner--empty {
+  aspect-ratio: 6 / 1;
+  max-height: 96px;
+  background: linear-gradient(
+    135deg,
+    var(--bg-raised) 0%,
+    var(--bg-sunken) 100%
+  );
+}
+
+.onboarding-step__avatar-slot {
+  position: absolute;
+  left: 20px;
+  bottom: -28px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid var(--bg-elevated);
+  overflow: hidden;
+  background: var(--bg-sunken);
+}
+
+.onboarding-step__avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.onboarding-step__avatar--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--fg-secondary);
+}
+
+.onboarding-step__media-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.onboarding-step__file-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.onboarding-step__file-btn:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-sunken);
+}
+
+.onboarding-step__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.onboarding-step__row {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.onboarding-step__row--split {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 599px) {
+  .onboarding-step__row--split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.onboarding-step__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.onboarding-step__label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  letter-spacing: 0.01em;
+}
+
+.onboarding-step__label-count {
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.onboarding-step__input,
+.onboarding-step__textarea {
+  width: 100%;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--fg-primary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.onboarding-step__textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.onboarding-step__input:focus,
+.onboarding-step__textarea:focus {
+  border-color: var(--fg-primary);
+}
+
+/* ---------- Step 2: graph ---------- */
+
+.onboarding-step__graph-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.onboarding-step__tile {
+  padding: 16px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.onboarding-step__tile--highlight {
+  background: var(--bg-elevated);
+  border-color: var(--border-hover);
+}
+
+.onboarding-step__tile-value {
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.onboarding-step__tile-label {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+/* Segmented-control radio group — short labels in one row, visually
+   selected when active. Hides the native radio input. Defaults to
+   3 columns; --two modifier collapses to 2 for the post-skip-removal
+   Step 2. */
+.onboarding-step__segments {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  padding: 0;
+  margin: 0 0 4px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.onboarding-step__segments--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.onboarding-step__segment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  border-right: 1px solid var(--border-default);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.onboarding-step__segment:last-child {
+  border-right: none;
+}
+
+.onboarding-step__segment:hover {
+  background: var(--bg-raised);
+}
+
+.onboarding-step__segment input[type="radio"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.onboarding-step__segment--active {
+  background: var(--fg-primary);
+  color: var(--bg-canvas);
+}
+
+.onboarding-step__segment--active:hover {
+  background: var(--fg-primary);
+}
+
+/* ---------- Step 3: done ---------- */
+
+.onboarding-step__heading {
+  margin: 0 0 16px;
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--fg-primary);
+}
+
+.onboarding-step__checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.onboarding-step__check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+}
+
+.onboarding-step__check--done {
+  border-color: var(--color-success);
+  background: rgba(46, 204, 113, 0.05);
+}
+
+.onboarding-step__check--error {
+  border-color: var(--color-error);
+}
+
+.onboarding-step__check-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  color: var(--fg-secondary);
+  font-size: 0.8125rem;
+  flex-shrink: 0;
+}
+
+.onboarding-step__check--done .onboarding-step__check-icon {
+  background: var(--color-success);
+  color: var(--color-white);
+}
+
+.onboarding-step__check--error .onboarding-step__check-icon {
+  background: var(--color-error);
+  color: var(--color-white);
+}
+
+.onboarding-step__check-label {
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+}
+
+/* ============================================================================
+   Onboarding re-entry banner (rendered on the viewer's own profile)
+   ============================================================================ */
+
+/* Inset + spacing mirror `.edit-banner` in profile-inline-edit.css so
+   the banner sits at the same offset under the navbar as the inline
+   edit affordance on the profile page. */
+.onboarding-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 24px 0;
+  padding: 12px 16px;
+  width: calc(100% - 48px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.onboarding-banner:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-raised);
+}
+
+.onboarding-banner:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.onboarding-banner__icon {
+  color: var(--fg-primary);
+  flex-shrink: 0;
+}
+
+.onboarding-banner__title {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+}
+
+.onboarding-banner__chevron {
+  color: var(--fg-muted);
+  flex-shrink: 0;
+  transition: transform var(--transition-fast);
+}
+
+.onboarding-banner:hover .onboarding-banner__chevron {
+  transform: translateX(2px);
+  color: var(--fg-primary);
+}
+
+/* ---------- Step 2 additions: progress + inline picker ---------- */
+
+.onboarding-step__progress {
+  margin: 14px 0 0;
+  padding: 10px 14px;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+}
+
+.onboarding-step__progress--done {
+  border-color: var(--color-success);
+  background: rgba(46, 204, 113, 0.05);
+}
+
+.onboarding-step__progress strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.onboarding-step__import-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.onboarding-step__picker {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.onboarding-step__picker-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  color: var(--fg-muted);
+}
+
+.onboarding-step__picker-search input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+}
+
+.onboarding-step__picker-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.onboarding-step__picker-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--fg-primary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.onboarding-step__picker-toggle:disabled {
+  opacity: 0.5;
+  cursor: default;
+  text-decoration: none;
+}
+
+.onboarding-step__picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+}
+
+.onboarding-step__picker-row {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.onboarding-step__picker-row:last-child {
+  border-bottom: none;
+}
+
+.onboarding-step__picker-row label {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.onboarding-step__picker-row label:hover {
+  background: var(--bg-raised);
+}
+
+.onboarding-step__picker-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.onboarding-step__picker-row-name {
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.onboarding-step__picker-row-handle {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.onboarding-step__picker-avatar-skel {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+}
+
+.onboarding-step__picker-empty {
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+}
+
+.onboarding-step__picker-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.onboarding-step__picker-pagination button {
+  background: none;
+  border: 1px solid var(--border-subtle);
+  color: var(--fg-primary);
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.onboarding-step__picker-pagination button:hover:not(:disabled) {
+  border-color: var(--border-hover);
+}
+
+.onboarding-step__picker-pagination button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ============================================================================
+   Onboarding success screen — celebratory overlay after the commit
+   resolves. Replaces the entire modal body (no steps, no footer chrome).
+   ============================================================================ */
+
+.onboarding-modal--success {
+  /* Tighter cap than the multi-step modal — the success view is
+     intentionally narrower to keep the message focused. */
+}
+
+.onboarding-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 40px 32px 32px;
+  gap: 4px;
+}
+
+.onboarding-success__avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bg-sunken);
+  box-shadow: 0 0 0 3px var(--bg-elevated), 0 6px 18px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.onboarding-success__avatar--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--fg-secondary);
+}
+
+.onboarding-success__title {
+  margin: 0 0 6px;
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--fg-primary);
+  line-height: 1.15;
+}
+
+.onboarding-success__subtitle {
+  margin: 0 0 28px;
+  font-size: 0.9375rem;
+  color: var(--fg-secondary);
+  line-height: 1.5;
+}

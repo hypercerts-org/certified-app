@@ -6,7 +6,7 @@ import { useFeedback } from "@/lib/feedback-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { useOrg } from "@/lib/groups/org-context";
 import { isRouteVisibleToActor } from "@/lib/groups/personal-only";
-import { useLayoutBreakpoints } from "@/lib/hooks/use-layout-breakpoints";
+import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints";
 
 function formatBadge(count: number, more: boolean): string | null {
   if (count <= 0) return null
@@ -27,19 +27,19 @@ export default function BottomNav() {
   // bottom-nav's focusable buttons would compete for tab order.
   if (isDesktop) return null;
 
-  const isFeed = pathname === "/feed" || pathname.startsWith("/feed/");
+  const isHome = pathname === "/home" || pathname.startsWith("/home/");
 
-  const handleFeedClick = () => {
-    if (isFeed) {
+  const handleHomeClick = () => {
+    if (isHome) {
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
-      router.push("/feed");
+      router.push("/home");
     }
   };
 
   const showCreate = isRouteVisibleToActor("create", !!activeOrg);
   const items = [
-    { key: "feed", label: "Feed", icon: Newspaper, onClick: handleFeedClick, active: isFeed, badge: null },
+    { key: "home", label: "Home", icon: Newspaper, onClick: handleHomeClick, active: isHome, badge: null },
     { key: "explore", label: "Explore", icon: Search, onClick: () => router.push("/search"), active: pathname === "/search", badge: null },
     ...(showCreate
       ? [{ key: "create", label: "Create", icon: PlusCircle, onClick: () => router.push("/create"), active: pathname === "/create", badge: null }]

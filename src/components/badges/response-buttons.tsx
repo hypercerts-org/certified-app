@@ -26,6 +26,9 @@ interface ResponseButtonsProps {
    *     accept or reject rather than "show on my profile".
    *  Both write the same `accepted` / `rejected` response record. */
   readonly labelStyle?: "show-hide" | "accept-reject"
+  /** Group DID when the viewer is acting AS that group (the response is
+   *  authored on the group's repo). Undefined for personal responses. */
+  readonly targetDid?: string
   /** Called after a successful write so the parent can invalidate
    *  caches and re-render with the new state. */
   readonly onAfterWrite?: () => void | Promise<void>
@@ -54,6 +57,7 @@ export default function ResponseButtons({
   ownerDid,
   state,
   labelStyle = "show-hide",
+  targetDid,
   onAfterWrite,
 }: ResponseButtonsProps) {
   const labels = labelStyle === "accept-reject"
@@ -72,6 +76,7 @@ export default function ResponseButtons({
           ownerDid,
           { uri: awardUri, cid: awardCid },
           response,
+          { targetDid },
         )
         await onAfterWrite?.()
       } catch (err) {
@@ -80,7 +85,7 @@ export default function ResponseButtons({
         setIsWriting(null)
       }
     },
-    [ownerDid, awardUri, awardCid, onAfterWrite],
+    [ownerDid, awardUri, awardCid, targetDid, onAfterWrite],
   )
 
   // "unknown" — the record on the PDS has a response value we don't

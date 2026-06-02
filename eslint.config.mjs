@@ -12,10 +12,19 @@
 
 import nextConfig from "eslint-config-next/core-web-vitals";
 
-export default [
+// Now that `npm run lint` runs `eslint .` (not just `src/`), the ignore
+// list must cover build output at any depth — `.claude/worktrees/*` holds
+// nested checkouts with their own `.next/` chunks, so a bare `.next/`
+// (root-anchored in flat config) would let ESLint lint generated bundles.
+const config = [
   ...nextConfig,
   {
-    ignores: [".next/", "node_modules/", "src/config/__tests__/"],
+    ignores: [
+      "**/.next/",
+      "**/node_modules/",
+      "**/coverage/",
+      ".claude/",
+    ],
   },
   {
     rules: {
@@ -33,3 +42,5 @@ export default [
     },
   },
 ];
+
+export default config;

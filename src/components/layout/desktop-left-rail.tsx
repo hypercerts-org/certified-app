@@ -3,6 +3,7 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Search,
@@ -15,16 +16,20 @@ import {
   Info,
   LayoutGrid,
   LogIn,
+  Rss,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
 import { useOrg } from "@/lib/groups/org-context";
-import { resolvePostSwitchPath } from "@/lib/groups/navigation";
-import { isRouteVisibleToActor } from "@/lib/groups/personal-only";
+import {
+  isRouteVisibleToActor,
+} from "@/lib/groups/personal-only";
+import { routeForActorSwitch } from "@/lib/groups/navigation";
 import { useOrgProfile } from "@/hooks/use-org-profile";
 import { usePendingAwardsCount } from "@/hooks/use-pending-awards-count";
 import { useNotifications } from "@/lib/notifications-context";
+import { useMounted } from "@/hooks/use-mounted";
 import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
 import AccountSwitcherList from "./account-switcher-list";
@@ -69,7 +74,7 @@ function formatPendingBadge(count: number | null): string | null {
 export default function DesktopLeftRail() {
   const pathname = usePathname();
   const router = useRouter();
-  const { isAuthenticated, did, openSignIn, signOut } = useAuth();
+  const { isLoading, isAuthenticated, did, openSignIn, signOut } = useAuth();
   const { profile, avatarUrl } = useProfile();
   const { handle } = useSession();
   const { activeOrg, groups, switchOrg } = useOrg();
@@ -92,8 +97,7 @@ export default function DesktopLeftRail() {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
 
   // Anchor position for the portaled menu, recomputed when it opens and
   // on window resize while open.
@@ -192,13 +196,12 @@ export default function DesktopLeftRail() {
   // personal-handle path uses `handle` (from useSession) rather than
   // `identity.handle`, which is the *group* handle when activeOrg is
   // set and would otherwise send us to /profile/<group-handle>.
-  const brandHref = !isAuthenticated
-    ? "/"
-    : activeOrg
-      ? resolvePostSwitchPath(activeOrg)
-      : handle
-        ? `/profile/${encodeURIComponent(handle)}`
-        : "/profile";
+  // Brand mark links to /home for signed-in viewers and to /welcome
+  // once auth resolves to signed-out. While auth is still loading we
+  // keep /home, whose own guard bounces an unauthenticated viewer to
+  // /welcome. Org-switch acting-as state is not load-bearing here —
+  // the user's mental model is "brand = home", not "brand = my profile".
+  const brandHref = !isLoading && !isAuthenticated ? "/welcome" : "/home";
 
   // Personal-only visibility (Create, Endorsements, Groups) is decided
   // by lib/groups/personal-only.ts — same source of truth used by the
@@ -208,6 +211,7 @@ export default function DesktopLeftRail() {
   const showGroups = isRouteVisibleToActor("groups", isActingAsOrg);
   const authedItems: NavItem[] = [
     { href: profileHref, label: "Profile", icon: User, matchPrefix: true },
+    { href: "/home", label: "Home", icon: Rss, matchPrefix: true },
     { href: "/search", label: "Explore", icon: Search },
     ...(showEndorsements
       ? [{ href: "/endorsements", label: "Endorsements", icon: Award, badge: pendingBadge, badgeUnit: "pending", matchPrefix: true }]
@@ -240,12 +244,13 @@ export default function DesktopLeftRail() {
           <Brandmark size={28} className="left-rail__brand-mark" />
         </span>
         <span className="left-rail__brand-wordmark">
-          <img
+          <Image
             src="/brand/wordmark/certified_wordmark_black.svg"
             alt="Certified"
             className="left-rail__brand-wordmark-img"
             width={125}
             height={24}
+            priority
           />
         </span>
       </Link>
@@ -363,11 +368,15 @@ export default function DesktopLeftRail() {
                 switchOrg={switchOrg}
                 onAfterSwitch={(next) => {
                   setSwitcherOpen(false);
-                  router.push(resolvePostSwitchPath(next));
+                  router.push(routeForActorSwitch(pathname, next));
                 }}
                 onSignOut={() => {
                   setSwitcherOpen(false);
                   signOut();
+                }}
+                onSwitchAccount={() => {
+                  setSwitcherOpen(false);
+                  openSignIn();
                 }}
               />
             </div>,

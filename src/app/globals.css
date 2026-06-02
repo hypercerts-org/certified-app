@@ -8,6 +8,24 @@
 @import "./styles/profile.css";
 @import "./styles/pages.css";
 @import "./styles/notifications.css";
+@import "./styles/cert-detail.css";
+@import "./styles/profile-endorsements.css";
+@import "./styles/profile-lists.css";
+@import "./styles/profile-edit.css";
+@import "./styles/profile-inline-edit.css";
+@import "./styles/profile-projects.css";
+@import "./styles/social-graph-sync.css";
+@import "./styles/project-detail.css";
+@import "./styles/context-updates.css";
+@import "./styles/workspace.css";
+@import "./styles/explore.css";
+@import "./styles/home.css";
+@import "./styles/site-drawer.css";
+@import "./styles/profile-groups.css";
+@import "./styles/smart-link.css";
+@import "./styles/settings-page.css";
+@import "./styles/leaflet.css";
+@import "./styles/landing.css";
 
 @tailwind base;
 @tailwind components;

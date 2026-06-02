@@ -19,19 +19,19 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <div className="app-page">
+    <div className="app-page legal-page">
       <PageTitle title="About" />
-      <div className="app-page__inner max-w-3xl">
-        <div className="prose prose-navy max-w-none space-y-8">
+      <div className="app-page__inner">
+        <div className="prose max-w-none space-y-8">
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">What is Certified?</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">What is Certified?</h2>
             <p>
               Certified is a passwordless identity platform built on{" "}
               <a
                 href="https://atproto.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 AT Protocol
               </a>
@@ -49,7 +49,7 @@ export default function AboutPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">How does it work?</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">How does it work?</h2>
             <p>
               Sign-in is passwordless: you enter your email, receive a one-time code, and
               you&apos;re in. Behind the scenes, Certified issues an AT Protocol identity tied to
@@ -64,7 +64,7 @@ export default function AboutPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">What is AT Protocol?</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">What is AT Protocol?</h2>
             <p>
               AT Protocol (Authenticated Transfer Protocol) is an open, federated protocol for
               building social and identity applications. Unlike centralized platforms where one
@@ -80,7 +80,7 @@ export default function AboutPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               How is Certified different from &quot;Sign in with Google&quot;?
             </h2>
             <p>
@@ -102,7 +102,7 @@ export default function AboutPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">Open source</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">Open source</h2>
             <p>
               Every component of Certified is open source. The application code, the PDS
               infrastructure, and the protocol it builds on are all publicly auditable. You can
@@ -111,7 +111,7 @@ export default function AboutPage() {
                 href="https://github.com/hypercerts-org"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 GitHub
               </a>
@@ -124,7 +124,7 @@ export default function AboutPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">Infrastructure</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">Infrastructure</h2>
             <p>
               The Personal Data Servers operated by Certified are hosted on cloud infrastructure
               located within the European Union. The service is designed to comply with GDPR and
@@ -132,11 +132,11 @@ export default function AboutPage() {
             </p>
             <p className="mt-4">
               For more details, see our{" "}
-              <Link href="/privacy" className="text-blue-600 underline hover:text-blue-800">
+              <Link href="/privacy" className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]">
                 Privacy Policy
               </Link>{" "}
               and{" "}
-              <Link href="/dsa" className="text-blue-600 underline hover:text-blue-800">
+              <Link href="/dsa" className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]">
                 DSA Compliance
               </Link>{" "}
               page.
@@ -144,7 +144,7 @@ export default function AboutPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               Who operates Certified?
             </h2>
             <p>
@@ -153,7 +153,7 @@ export default function AboutPage() {
                 href="https://hypercerts.org"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 Hypercerts Foundation
               </a>
@@ -171,7 +171,7 @@ export default function AboutPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">Contact</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">Contact</h2>
             <p>
               <strong>Hypercerts Foundation</strong>
               <br />
@@ -185,7 +185,7 @@ export default function AboutPage() {
               Email:{" "}
               <a
                 href="mailto:support@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 support@hypercerts.org
               </a>
@@ -195,7 +195,7 @@ export default function AboutPage() {
                 href="https://bsky.app/profile/hypercerts.org"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 Bluesky
               </a>
@@ -204,7 +204,7 @@ export default function AboutPage() {
                 href="https://x.com/hypercerts"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 Twitter/X
               </a>
@@ -213,7 +213,7 @@ export default function AboutPage() {
                 href="https://www.linkedin.com/company/hypercerts"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 LinkedIn
               </a>
@@ -222,7 +222,7 @@ export default function AboutPage() {
                 href="https://github.com/hypercerts-org"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 GitHub
               </a>

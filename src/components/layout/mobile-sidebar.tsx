@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -16,6 +16,7 @@ import { useFeedback } from "@/lib/feedback-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
+import { useMounted } from "@/hooks/use-mounted";
 import Avatar from "@/components/ui/avatar";
 import ThemeToggle from "@/components/ui/theme-toggle";
 import { getInitials } from "@/lib/utils/initials";
@@ -65,14 +66,13 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   // Close on navigation. Intentionally not dependent on onClose: the
   // parent passes an inline arrow that re-creates each render, and we
   // only want this effect to fire when the URL actually changes.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     onClose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   // Portal mount
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  const mounted = useMounted();
 
   // When acting as a group, the entire sidebar identity row (avatar,
   // name, handle) and the profile link should reflect the group the
@@ -110,7 +110,7 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   const showEndorsements = isRouteVisibleToActor("endorsements", isActingAsOrg);
   const navLinks = [
     { href: profileHref, label: "Profile", icon: User },
-    { href: "/feed", label: "Feed", icon: Newspaper },
+    { href: "/home", label: "Home", icon: Newspaper },
     { href: "/search", label: "Explore", icon: Search },
     ...(showCreate ? [{ href: "/create", label: "Create", icon: PlusCircle }] : []),
     ...(showGroups ? [{ href: "/groups", label: "Groups", icon: Building2 }] : []),

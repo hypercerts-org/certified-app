@@ -2,21 +2,35 @@
   "name": "certified-app",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.12.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint src/ --ext .ts,.tsx"
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "typecheck:test": "tsc --noEmit -p tsconfig.test.json"
   },
   "dependencies": {
     "@atproto/api": "^0.13.20",
     "@atproto/jwk-jose": "^0.1.11",
     "@atproto/oauth-client-node": "^0.3.17",
+    "@tabler/icons-react": "3.44.0",
+    "@tiptap/extension-link": "^3.23.4",
+    "@tiptap/extension-placeholder": "^3.23.4",
+    "@tiptap/pm": "^3.23.4",
+    "@tiptap/react": "^3.23.4",
+    "@tiptap/starter-kit": "^3.23.4",
     "@upstash/redis": "^1.36.3",
     "@vercel/analytics": "^2.0.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.468.0",
-    "next": "16.2.3",
+    "next": "16.2.6",
     "next-themes": "^0.4.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -25,14 +39,24 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.1",
     "@types/leaflet": "1.9.21",
-    "@types/node": "^22",
+    "@types/node": "22.19.19",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "4.1.6",
     "eslint": "^9",
-    "eslint-config-next": "16.2.3",
-    "postcss": "^8",
+    "eslint-config-next": "16.2.6",
+    "jsdom": "29.1.1",
+    "playwright": "1.60.0",
+    "postcss": "^8.5.10",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "4.1.6"
+  },
+  "overrides": {
+    "postcss": "^8.5.10"
   }
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import Brandmark from "@/components/ui/brandmark"
+import { resolvePostSigninPath } from "@/lib/auth/post-signin"
 
 export default function OAuthCallbackPage() {
   const [error, setError] = useState<string | null>(null)
@@ -32,7 +33,13 @@ export default function OAuthCallbackPage() {
             window.location.origin
           )
         } else {
-          window.location.replace("/")
+          // Restore the page the user was on before sign-in. Any
+          // `/profile/<old-handle>` segment in the saved path is
+          // rewritten to the new identity's DID so URLs that were
+          // identity-scoped (e.g. ?tab=settings) resolve to the new
+          // viewer's equivalent rather than rendering blank panels.
+          // Falls back to `/` when no path was stashed.
+          window.location.replace(resolvePostSigninPath(did ?? null))
         }
       } catch (err) {
         if (cancelled) return

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 
 export interface AvatarProps {
   src?: string;
@@ -16,6 +17,16 @@ const sizeMap = {
   md: "h-12 w-12 text-body",
   lg: "h-16 w-16 text-h4",
   xl: "h-24 w-24 text-h3",
+};
+
+// Pixel dimensions matching the Tailwind h-/w- classes above. next/image
+// needs explicit width+height (or `fill`); explicit values give it the
+// intrinsic aspect ratio it needs for layout-shift-free rendering.
+const sizePx: Record<NonNullable<AvatarProps["size"]>, number> = {
+  sm: 32,
+  md: 48,
+  lg: 64,
+  xl: 96,
 };
 
 const Avatar: React.FC<AvatarProps> = ({
@@ -35,6 +46,7 @@ const Avatar: React.FC<AvatarProps> = ({
     : "border border-[var(--border-subtle)]";
 
   const showFallback = !src || imageError;
+  const px = sizePx[size];
 
   return (
     <div
@@ -45,11 +57,21 @@ const Avatar: React.FC<AvatarProps> = ({
           {fallbackInitials.slice(0, 2).toUpperCase()}
         </div>
       ) : (
-        <img
-          src={src}
+        <Image
+          src={src as string}
           alt={alt}
+          width={px}
+          height={px}
           className="w-full h-full object-cover"
           onError={() => setImageError(true)}
+          // unoptimized: avatar URLs come from many foreign sources
+          // (Bluesky CDN, foreign PDS getBlob endpoints, our same-
+          // origin resolve-did proxy). next.config.ts allowlist only
+          // covers **.certified.app; rather than expand it to every
+          // possible blob host, skip optimisation for avatars. We
+          // still get layout-shift-free rendering from the explicit
+          // width/height + the framework's lazy-loading default.
+          unoptimized
         />
       )}
     </div>

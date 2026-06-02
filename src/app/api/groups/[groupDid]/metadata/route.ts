@@ -8,7 +8,14 @@ import { checkCsrf } from "@/lib/auth/csrf"
 import { isValidDid } from "@/lib/utils/did"
 import { extractRouteError, pickAllowedFields, parseJsonBody } from "@/lib/utils/api"
 
-const METADATA_FIELDS = ["organizationType", "urls", "location", "foundedDate", "createdAt"] as const
+const METADATA_FIELDS = [
+  "organizationType",
+  "urls",
+  "location",
+  "foundedDate",
+  "longDescription",
+  "createdAt",
+] as const
 
 /**
  * GET /api/groups/[groupDid]/metadata
@@ -45,8 +52,9 @@ export async function GET(
     const data = await res.json()
     return NextResponse.json(data.value)
   } catch (err: unknown) {
-    console.error("GET org metadata error:", err)
-    const { status, message } = extractRouteError(err)
+    // extractRouteError calls logSafe internally; bare console.error
+    // duplicated the log and skipped the redactSecrets pass.
+    const { status, message } = extractRouteError(err, "[groups/metadata/get]")
     return NextResponse.json({ error: message }, { status })
   }
 }
@@ -74,6 +82,10 @@ export async function PUT(
     const parsed = await parseJsonBody(request, "[groups/metadata]")
     if (!parsed.ok) return parsed.response
     const body = (parsed.body ?? {}) as Record<string, unknown>
+    // swapRecord — read before allowlist filter; envelope field.
+    const swapRecord = typeof body.swapRecord === "string"
+      ? body.swapRecord
+      : undefined
     const record = pickAllowedFields(body, METADATA_FIELDS, "app.certified.actor.organization")
     const groupAgent = createGroupAgent(auth.agent, groupDid)
 
@@ -85,6 +97,7 @@ export async function PUT(
         collection: "app.certified.actor.organization",
         rkey: "self",
         record,
+        ...(swapRecord ? { swapRecord } : {}),
       },
       { encoding: "application/json" }
     )

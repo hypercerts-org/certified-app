@@ -1,0 +1,1027 @@
+/* ---------- /explore page ----------
+   Page-frame layout lives in layout.css under the
+   `:is(:has(.home-page), :has(.explore-page))` selector — those
+   rules zero the shell padding, stretch the page to fill the
+   100vh shell, and collapse the footer margin so the sidebar/main
+   divider meets the footer flush. This file owns explore-specific
+   styling only. */
+
+.explore-page {
+  padding: 24px 16px 64px;
+}
+
+@media (min-width: 800px) {
+  .explore-page {
+    padding: 0;
+  }
+}
+
+.explore-page {
+  position: relative;
+  /* Fluid sidebar width clamped to 256–296px, matching /home's
+     .home-page var so the two surfaces line up at every viewport. */
+  --explore-sidebar-width: clamp(256px, 22vw, 296px);
+}
+
+.explore__layout {
+  display: grid;
+  grid-template-columns: var(--explore-sidebar-width) 1fr;
+  gap: 0;
+  align-items: start;
+}
+
+/* Vertical divider between the sidebar and the main pane,
+   matching GitHub's repo-list layout. Anchored on .explore-page
+   (not .explore__layout) so it spans every bit of the page
+   including the bottom padding — the divider meets the
+   .site-footer border-top flush instead of stopping where the
+   main column's last card ends. */
+.explore-page::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--explore-sidebar-width);
+  width: 1px;
+  background: var(--border-medium);
+  pointer-events: none;
+}
+
+@media (max-width: 799px) {
+  .explore__layout {
+    grid-template-columns: 1fr;
+    padding: 0 16px;
+  }
+}
+
+/* ---------- Sidebar ---------- */
+
+.explore__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  /* Scrolls with the page (matches the top bar's no-sticky
+     behavior). Flush-left to the viewport, with breathing room at
+     the top + right so the active filter pill doesn't touch the
+     vertical divider. Top padding shared with /home and /settings
+     so first-line-of-text sits at the same vertical position on
+     every page-frame route. */
+  padding: 32px 12px 32px 12px;
+}
+
+/* Filter list rows need their own right padding now that the
+   sidebar wrapper doesn't reserve any. */
+.explore__filter-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* Section heading above the Featured group. Same font size as
+   the filter pills below so the two read at the same visual
+   weight; the muted color + medium weight still carries the
+   label/target hierarchy. */
+.explore__filter-heading {
+  margin: 0;
+  padding: 0 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+}
+
+/* Thin horizontal divider between the Featured group and the
+   generic filter list. Uses the standard subtle border token. */
+.explore__filter-divider {
+  margin: 12px 10px;
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Featured-group pills sit indented from the section heading so
+   they read as nested children of it. The indent is applied to
+   the surrounding list (not the inner pill padding) so the pill's
+   hover + active background also shifts right by the same amount —
+   the highlight ends up tabbed in, matching the text. */
+.explore__filter-list--indented {
+  padding-left: 18px;
+}
+
+.explore__filter {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--fg-primary);
+  cursor: pointer;
+}
+
+.explore__filter:hover {
+  background: var(--bg-sunken);
+}
+
+.explore__filter--active,
+.explore__filter--active:hover {
+  /* The hover style on the generic filter dimmed the background
+     to bg-sunken while the active style inverts the text — producing
+     unreadable text mid-hover. Keep the fg-primary fill on hover when
+     the filter is already active. Text is --bg-canvas (not a fixed
+     white) so it inverts with the fg-primary fill: light in light mode,
+     dark in dark mode. A fixed white was white-on-white in dark mode,
+     where --fg-primary is itself near-white. */
+  background: var(--fg-primary);
+  color: var(--bg-canvas);
+}
+
+/* ---------- Main pane ---------- */
+
+.explore__main {
+  min-width: 0;
+  /* Center the content in the space right of the sidebar. The grid
+     cell takes the full remaining width; the inner content is
+     bounded + auto-margined so it sits in the middle of the cell.
+     Vertical padding gives the body air; the surrounding panes
+     (.app-shell__content, .explore-page) carry no padding so the
+     page-frame borders meet the navbar + footer borders flush. */
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px 24px 32px;
+}
+
+/* ---------- Sub-category dropdown prefix to the search bar ---------- */
+
+.explore__sub-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.explore__sub-dropdown-trigger:hover {
+  background: var(--bg-subtle);
+  border-color: var(--fg-secondary);
+}
+
+.explore__sub-dropdown-label {
+  color: var(--fg-primary);
+}
+
+
+@media (max-width: 799px) {
+  .explore__main {
+    padding: 0;
+  }
+}
+
+.explore__chrome {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.explore__search {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  color: var(--fg-secondary);
+}
+
+.explore__search:focus-within {
+  border-color: var(--fg-primary);
+}
+
+.explore__search-input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+}
+
+.explore__chrome-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.explore__chrome-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  font-size: 0.85rem;
+  color: var(--fg-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.explore__chrome-btn:hover {
+  background: var(--bg-subtle);
+}
+
+/* Icon-only chrome variant — square 32×32, drops the horizontal
+   padding the label-bearing buttons need. Used by the certs-tab
+   Quality popover trigger, where the icon alone communicates
+   "filter" and a textual label is redundant. */
+.explore__chrome-btn--icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  justify-content: center;
+}
+
+/* Active state (non-default selection) — same fill-on-accent
+   pattern other "currently applied" filter buttons use. */
+.explore__chrome-btn--active {
+  border-color: var(--fg-primary);
+  background: var(--bg-sunken);
+}
+
+.explore__loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+/* Load-more sentinel — sits below the result list, auto-triggers
+   the next page when scrolled into view, and renders an explicit
+   button as the keyboard fallback / end-of-list affordance. */
+.explore__load-more {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.explore__load-more-btn {
+  padding: 8px 18px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.explore__load-more-btn:hover:not(:disabled) {
+  background: var(--bg-sunken);
+}
+
+.explore__load-more-btn:disabled {
+  color: var(--fg-secondary);
+  cursor: progress;
+}
+
+/* ---------- Popover (sort + filter dropdowns) ---------- */
+
+.popover {
+  position: relative;
+  /* Lift the dropdown's stacking context above the main-pane content
+     (cards, list rows) so the menu paints on top instead of being
+     covered by hovered cards / images. */
+  z-index: 50;
+}
+
+.popover__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-popover);
+}
+
+.popover__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  z-index: var(--z-popover);
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+}
+
+.popover__menu--right {
+  right: 0;
+}
+
+.popover__menu--left {
+  left: 0;
+}
+
+.popover__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  background: none;
+  border: 0;
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--fg-primary);
+  cursor: pointer;
+}
+
+.popover__item:hover {
+  background: var(--bg-subtle);
+}
+
+.popover__item--active {
+  font-weight: 500;
+}
+
+.popover__item--check {
+  cursor: pointer;
+}
+
+.popover__item--check input {
+  margin: 0;
+}
+
+/* Sub-section heading inside a popover — used by the certs-tab
+   Quality popover to separate the Hyperlabel + Orglabeler tier
+   blocks. Same font size as the items, muted color, medium weight
+   so it reads as a label. */
+.popover__section-heading {
+  margin: 4px 0 2px;
+  padding: 0 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+}
+
+/* Thin rule between popover sections. Inset from the menu edges so
+   it doesn't visually merge with the menu border. */
+.popover__divider {
+  margin: 6px 8px;
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* "Reset to default" link at the bottom of each popover. Sits just
+   under the menu's last divider; rendered as a quiet text button
+   (no border / no fill) so it doesn't compete with the active
+   selection above. Disabled state when already at default keeps it
+   visible but reads as inert. */
+.popover__reset-btn {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  text-align: left;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.popover__reset-btn:hover:not(:disabled) {
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
+.popover__reset-btn:disabled {
+  color: var(--fg-muted, #b7bdc6);
+  cursor: default;
+}
+
+/* Inline reset on the endorsement-degree pill row (the degree
+   control lives in the chrome strip, not a popover, so its reset
+   sits adjacent to the pills rather than below them). */
+.explore__degree-reset {
+  margin-left: 4px;
+  padding: 4px 10px;
+  background: none;
+  border: 0;
+  border-radius: var(--radius);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.explore__degree-reset:hover {
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
+/* ---------- View toggle (certs + projects) ---------- */
+
+.explore__view-toggle {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-elevated);
+}
+
+.explore__view-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.explore__view-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--fg-primary);
+}
+
+.explore__view-btn--active {
+  background: var(--fg-primary);
+  color: var(--bg-canvas);
+}
+
+.explore__view-btn--active:hover {
+  background: var(--fg-primary);
+  color: var(--bg-canvas);
+}
+
+.explore__view-btn + .explore__view-btn {
+  border-left: 1px solid var(--border-subtle);
+}
+
+/* ---------- List view (certs + projects) ---------- */
+
+.explore__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.explore__list > li + li .cert-list-row {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.cert-list-row {
+  /* Four columns: link block (thumb + title/meta), author column,
+     and time. The link block shrinks; the author column has a
+     fixed minimum so author bylines stack vertically across rows. */
+  display: grid;
+  grid-template-columns: 1fr 200px 84px;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 14px;
+  transition: background var(--transition-fast);
+}
+
+.cert-list-row:hover {
+  /* --bg-subtle doesn't exist in the token set; fell through to
+     no background. Use --bg-sunken for a clearly-visible hover
+     wash that highlights the whole row, not just the title link. */
+  background: var(--bg-sunken);
+}
+
+.cert-list-row__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.cert-list-row__thumb {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-secondary);
+}
+
+.cert-list-row__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cert-list-row__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.cert-list-row__title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cert-list-row__meta {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  line-height: 1.3;
+  overflow: hidden;
+}
+
+.cert-list-row__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.cert-list-row__meta-sep {
+  color: var(--fg-muted, #b7bdc6);
+}
+
+.cert-list-row__meta-icon {
+  color: var(--fg-secondary);
+}
+
+/* Reserved fixed-width column for the author, left-aligned so
+   author bylines stack vertically across rows (instead of right-
+   floating into a ragged column). */
+.cert-list-row__author-col {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+  font-size: 0.8rem;
+}
+
+.cert-list-row__time {
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+@media (max-width: 799px) {
+  .cert-list-row {
+    grid-template-columns: 1fr;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .cert-list-row__author-col,
+  .cert-list-row__time {
+    justify-self: start;
+    text-align: left;
+  }
+}
+
+/* ---------- Result grids ---------- */
+
+.explore__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.explore__grid--users {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.explore__grid--projects {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.explore__grid--certs {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+/* ---------- Account gallery card ---------- */
+
+/* Vertical card: identity row (avatar + name + @handle) on top, then
+   the description block. Reads as one structured entity rather than
+   "avatar + line of text" — distinct from the cert/project cards. */
+.explore-user-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--transition-fast), background var(--transition-fast),
+    box-shadow var(--transition-fast);
+  min-width: 0;
+}
+
+.explore-user-card:hover {
+  border-color: var(--fg-secondary);
+  background: var(--bg-subtle);
+  /* Subtle lift on hover — distinguishes the account cards from the
+     flat cert/project cards so the kind switch is visually felt. */
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--fg-primary) 6%, transparent);
+}
+
+.explore-user-card__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.explore-user-card__avatar {
+  flex-shrink: 0;
+}
+
+.explore-user-card__id {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.explore-user-card__name {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.explore-user-card__handle {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.explore-user-card__handle--did {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  color: var(--fg-muted);
+}
+
+.explore-user-card__desc {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--fg-secondary);
+  line-height: 1.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+/* ---------- Account list row ---------- */
+
+/* Three tracks: identity block (avatar + name + @handle stacked),
+   optional endorsement badge, and a right-anchored "Joined …" date.
+   The middle and right tracks use `auto` so they collapse when the
+   data is missing — endorsement-filter mode adds the badge; older
+   profiles without a recorded createdAt drop the date silently. */
+.account-list-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px;
+  transition: background var(--transition-fast);
+}
+
+.explore__list > li + li .account-list-row {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.account-list-row:hover {
+  background: var(--bg-sunken);
+}
+
+.account-list-row__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.account-list-row__avatar {
+  flex-shrink: 0;
+}
+
+.account-list-row__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.account-list-row__name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.account-list-row__handle {
+  font-size: 0.78rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+
+.account-list-row__handle--did {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  color: var(--fg-muted);
+}
+
+.account-list-row__badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.account-list-row__joined {
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+@media (max-width: 600px) {
+  .account-list-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+  .account-list-row__badge,
+  .account-list-row__joined {
+    justify-self: start;
+  }
+}
+
+/* ---------- Project card ---------- */
+
+.explore-project-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.explore-project-card:hover {
+  border-color: var(--fg-secondary);
+  background: var(--bg-subtle);
+}
+
+.explore-project-card__image-wrap {
+  /* 3:1 to match the project page's banner aspect — the thumbnail
+     shows the same image after the same crop, so the explore card
+     never previews a region that gets cut on the detail page. */
+  aspect-ratio: 3 / 1;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-subtle);
+}
+
+.explore-project-card__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.explore-project-card__image--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-secondary);
+}
+
+.explore-project-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.explore-project-card__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.explore-project-card__desc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.explore-project-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+}
+
+.explore-project-card__count {
+  font-weight: 500;
+}
+
+.explore-project-card__when {
+  margin-left: auto;
+}
+
+/* -----------------------------------------------------------------
+ * Endorsement-degree segmented control (certified-app #84 +
+ * magic-indexer #117). Renders above the explore result list when
+ * the active filter is endorsement-based.
+ * --------------------------------------------------------------- */
+
+.explore__degree-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 0 6px;
+  margin-bottom: 12px;
+}
+
+.explore__degree-pills {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.explore__degree-pill {
+  border: 1px solid var(--border-default);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.explore__degree-pill:hover {
+  background: var(--surface-3);
+  color: var(--text-primary);
+}
+
+.explore__degree-pill--active {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+.explore__degree-truncated {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin: 0;
+  font-style: italic;
+}
+
+/* -----------------------------------------------------------------
+ * Row-level endorsement decoration (certified-app #84). Static degree
+ * pill — "1st" / "2nd" / "3rd" — rendered inline next to the row's
+ * primary text (display name on Project/Cert rows, handle on Account
+ * rows). No interactivity.
+ * --------------------------------------------------------------- */
+
+.endorsement-row-badge__degree {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+
+/* Color tiers — densest for direct endorsements, lighter for the
+ * wider rings. Keeps the visual hierarchy obvious at a glance. */
+.endorsement-row-badge__degree--d1 {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+.endorsement-row-badge__degree--d2 {
+  background: var(--surface-3);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+.endorsement-row-badge__degree--d3 {
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  border-color: var(--border-subtle);
+}
+
+.endorsement-row-badge__sep {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1;
+}

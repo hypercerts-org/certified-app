@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { memo, useEffect, useState } from "react"
 import Link from "next/link"
+import CertIcon from "@/components/ui/cert-icon"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import {
   resolveActivityImageUrl,
   formatRelativeTime,
-  workScopeToLabel,
 } from "@/lib/atproto/activity"
 import { activityDetailHref, parseActivityUri } from "@/lib/atproto/activity-uri"
 import type { LabelValue } from "@/lib/atproto/labeller"
@@ -18,17 +18,27 @@ interface ActivityCardProps {
   label?: LabelValue
 }
 
-export default function ActivityCard({ record, did, label }: ActivityCardProps) {
+// Memoized: loadMore replaces the activities array with a new identity, so
+// every prior card would otherwise re-render. Props are stable per URI, so
+// React.memo lets unchanged cards bail out of reconciliation on long lists.
+function ActivityCard({ record, did, label }: ActivityCardProps) {
   const { value } = record
 
   const imageUrl = value.image
     ? resolveActivityImageUrl(value.image, did)
     : null
   const [imageFailed, setImageFailed] = useState(false)
-
-  const contributorCount = value.contributors?.length ?? 0
-
-  const workScopeLabel = workScopeToLabel(value.workScope)
+  // Reset the failure flag when the image URL changes so a reused
+  // instance (record mutated in place, no remount) retries the new
+  // image instead of staying on the placeholder. Mirrors the same
+  // reset-on-dep-change effect in ActivityDetail / ProjectDetail.
+  // The unconditional setState here is the documented false-positive
+  // case for `set-state-in-effect` (see eslint.config.mjs); the sibling
+  // ActivityDetail effect isn't flagged, so suppress this one to match.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setImageFailed(false)
+  }, [imageUrl])
 
   // Derive the detail-page URL from the record's at:// URI. We prefer
   // the URI over the `did` prop because it encodes the rkey too.
@@ -41,7 +51,7 @@ export default function ActivityCard({ record, did, label }: ActivityCardProps) 
   //  - Everything else: wrapped in a Link to the detail page.
   const cardBody = (
     <>
-      {imageUrl && !imageFailed && (
+      {imageUrl && !imageFailed ? (
         <div className="feed-card__image-wrap">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -51,6 +61,13 @@ export default function ActivityCard({ record, did, label }: ActivityCardProps) 
             loading="lazy"
             onError={() => setImageFailed(true)}
           />
+        </div>
+      ) : (
+        <div
+          className="feed-card__image-wrap feed-card__image-wrap--placeholder"
+          aria-hidden="true"
+        >
+          <CertIcon size={40} strokeWidth={1.25} className="feed-card__image-placeholder-icon" />
         </div>
       )}
 
@@ -71,22 +88,6 @@ export default function ActivityCard({ record, did, label }: ActivityCardProps) 
         <time className="feed-card__time">
           {formatRelativeTime(value.createdAt)}
         </time>
-
-        {contributorCount > 0 && (
-          <>
-            <span className="feed-card__meta-sep" aria-hidden="true" />
-            <span className="feed-card__badge">
-              {contributorCount} contributor{contributorCount !== 1 ? "s" : ""}
-            </span>
-          </>
-        )}
-
-        {workScopeLabel && (
-          <>
-            <span className="feed-card__meta-sep" aria-hidden="true" />
-            <span className="feed-card__scope">{workScopeLabel}</span>
-          </>
-        )}
       </div>
     </>
   )
@@ -105,3 +106,5 @@ export default function ActivityCard({ record, did, label }: ActivityCardProps) 
     </article>
   )
 }
+
+export default memo(ActivityCard)

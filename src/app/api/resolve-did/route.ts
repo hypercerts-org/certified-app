@@ -1,131 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
-import { resolveHandle, resolveHandleToDid, resolvePdsUrl } from "@/lib/atproto/did"
-import { isValidDid } from "@/lib/utils/did"
 import { extractRouteError } from "@/lib/utils/api"
 import { getSessionDid } from "@/lib/auth/session"
+import { enforceRateLimitMulti, makeLimiter } from "@/lib/auth/rate-limit"
+import { clientIp } from "@/lib/utils/ip"
+import { buildProfilePayload, resolveInputToDid } from "./resolve-core"
 
-const CERTS_PROFILE_COLLECTION = "app.certified.actor.profile"
-const CERTS_PROFILE_RKEY = "self"
-
-/** Bluesky's public appView — serves `app.bsky.actor.getProfile`
- *  unauthenticated. */
-const BSKY_APPVIEW = "https://public.api.bsky.app"
-
-type BlobLike = {
-  ref?: { $link: string } | string
-}
-
-function extractBlobLink(ref: BlobLike["ref"]): string | null {
-  if (!ref) return null
-  if (typeof ref === "string") return ref
-  if (typeof ref === "object" && "$link" in ref) return ref.$link
-  return null
-}
-
-type CertsProfileValue = {
-  displayName?: string
-  description?: string
-  avatar?: { $type?: string; uri?: string; image?: BlobLike } | undefined
-  banner?: { $type?: string; uri?: string; image?: BlobLike } | undefined
-}
-
-/**
- * Resolve a Certs profile field (avatar or banner) into a URL.
- *
- * - `org.hypercerts.defs#uri` → return `uri` verbatim.
- * - blob variant → a relative URL through our XRPC proxy so federated
- *   DIDs get their blob streamed from their home PDS (see the
- *   `com.atproto.sync.getBlob` branch in /api/xrpc).
- * - anything else (missing, malformed) → null.
- */
-function resolveCertsField(
-  field: CertsProfileValue["avatar"] | CertsProfileValue["banner"],
-  did: string
-): string | null {
-  if (!field) return null
-  if (field.$type === "org.hypercerts.defs#uri" && field.uri) {
-    return field.uri
-  }
-  const link = extractBlobLink(field.image?.ref)
-  if (link) {
-    return `/api/xrpc/com/atproto/sync/getBlob?did=${encodeURIComponent(
-      did
-    )}&cid=${encodeURIComponent(link)}`
-  }
-  return null
-}
-
-/**
- * Fetch the Certified profile record for a DID and return the
- * pre-resolved avatar + banner URLs alongside the text fields. Returns
- * null if the record is missing or unreachable. Errors are swallowed —
- * callers fall back to the Bluesky profile.
- *
- * We resolve the DID to its actual PDS first so that Certs profiles
- * for users on any PDS in the network work, not just our own. The
- * request uses the public unauthenticated XRPC directly against the
- * target PDS.
- */
-async function getCertsProfile(did: string): Promise<{
-  displayName?: string
-  description?: string
-  avatarUrl: string | null
-  bannerUrl: string | null
-} | null> {
-  try {
-    const targetPds = await resolvePdsUrl(did)
-    if (!targetPds) return null
-
-    const params = new URLSearchParams({
-      repo: did,
-      collection: CERTS_PROFILE_COLLECTION,
-      rkey: CERTS_PROFILE_RKEY,
-    })
-    const res = await fetch(
-      `${targetPds}/xrpc/com.atproto.repo.getRecord?${params.toString()}`,
-      { signal: AbortSignal.timeout(8_000) }
-    )
-    if (!res.ok) return null
-    const data = (await res.json()) as { value?: CertsProfileValue }
-    const value = data.value
-    if (!value) return null
-    return {
-      displayName: value.displayName,
-      description: value.description,
-      avatarUrl: resolveCertsField(value.avatar, did),
-      bannerUrl: resolveCertsField(value.banner, did),
-    }
-  } catch {
-    return null
-  }
-}
-
-/** Fetch a user's Bluesky profile view from the public appView. Works
- *  without authentication, so signed-out visitors to the profile page
- *  still get full author info + avatar + banner. */
-async function getBlueskyProfile(did: string): Promise<{
-  displayName?: string
-  description?: string
-  avatar?: string
-  banner?: string
-} | null> {
-  try {
-    const res = await fetch(
-      `${BSKY_APPVIEW}/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(did)}`,
-      { signal: AbortSignal.timeout(8_000) }
-    )
-    if (!res.ok) return null
-    const data = (await res.json()) as {
-      displayName?: string
-      description?: string
-      avatar?: string
-      banner?: string
-    }
-    return data
-  } catch {
-    return null
-  }
-}
+// 60/min. Mirrors search-actors (judgment-002): this route is
+// unauthenticated and issues up to 3 outbound fetches per request, so
+// rate-limit on DID **and** IP simultaneously — a session-DID rotation
+// would otherwise bypass the limit, and we don't want to flood the
+// upstream PDS / appView we proxy. Callers that need many identities at
+// once should use the batched `POST /api/resolve-dids` instead of
+// firing one GET per identity.
+const LIMITER_DID = makeLimiter("resolve-did-did", 60, 60)
+const LIMITER_IP = makeLimiter("resolve-did-ip", 60, 60)
 
 /**
  * GET /api/resolve-did?did=<did>
@@ -150,72 +38,51 @@ async function getBlueskyProfile(did: string): Promise<{
  * - Certs: direct public XRPC against the target DID's PDS
  * - Bluesky: public appView at public.api.bsky.app
  * so this route works for signed-out visitors too.
+ *
+ * The resolution itself lives in `resolve-core.ts` and is shared with
+ * the batch route; this handler only owns rate-limiting, input parsing,
+ * and the per-DID HTTP cache-control.
  */
 export async function GET(request: NextRequest) {
   try {
-    let did = request.nextUrl.searchParams.get("did") || ""
-    const handleParam = request.nextUrl.searchParams.get("handle") || ""
+    // Rate-limit first — this route is unauthenticated and fans out to
+    // up to 3 upstream fetches, so block floods before any work. DID
+    // **and** IP, mirroring search-actors (judgment-002). fail-OPEN on
+    // a limiter backend error (handled inside enforceRateLimitMulti).
+    const sessionDid = await getSessionDid()
+    const rateDenied = await enforceRateLimitMulti([
+      { limit: LIMITER_DID, identifier: sessionDid ?? "anon" },
+      { limit: LIMITER_IP, identifier: clientIp(request) },
+    ])
+    if (rateDenied) return rateDenied
 
-    // If a handle was provided (and no valid DID), resolve it to a DID
-    // via Bluesky's public appView. Lets the endpoint serve contributor
-    // rows where the identity was typed as a handle, not a DID.
-    if (!isValidDid(did) && handleParam) {
-      const resolved = await resolveHandleToDid(handleParam.trim())
-      if (resolved) {
-        did = resolved
-      }
-    }
-
-    if (!isValidDid(did)) {
+    const did = await resolveInputToDid(
+      request.nextUrl.searchParams.get("did") || "",
+      request.nextUrl.searchParams.get("handle") || ""
+    )
+    if (!did) {
       return NextResponse.json({ error: "Invalid DID" }, { status: 400 })
     }
 
-    // Run handle resolution and both profile lookups in parallel.
-    // Each is independently allowed to fail — we combine whatever
-    // succeeds.
-    const [handleResult, certsResult, bskyResult] = await Promise.allSettled([
-      resolveHandle(did),
-      getCertsProfile(did),
-      getBlueskyProfile(did),
-    ])
+    const payload = await buildProfilePayload(did)
 
-    const handle =
-      handleResult.status === "fulfilled" ? handleResult.value : null
-    const certs =
-      certsResult.status === "fulfilled" ? certsResult.value : null
-    const bsky =
-      bskyResult.status === "fulfilled" ? bskyResult.value : null
-
-    const displayName = certs?.displayName || bsky?.displayName || undefined
-    const description = certs?.description || bsky?.description || undefined
-    const avatar = certs?.avatarUrl ?? bsky?.avatar ?? undefined
-    const banner = certs?.bannerUrl ?? bsky?.banner ?? undefined
-
-    // Own DID: short 10s cache so repeat navigations (clicking your
-    // own profile from the nav) feel instant without a network hit,
-    // while edits still propagate within seconds. The edit-profile
-    // save handlers also call this endpoint with `cache: "reload"`
-    // right after putRecord to evict the entry explicitly — that
-    // path is what guarantees the freshly-saved values show on the
-    // very next page load. Foreign lookups (feed bylines, handle
-    // search, etc.) keep the longer cache.
-    const sessionDid = await getSessionDid()
+    // Own DID: short 10s cache so repeat navigations (clicking your own
+    // profile from the nav) feel instant without a network hit, while
+    // edits still propagate within seconds. The edit-profile save
+    // handlers also call this endpoint with `cache: "reload"` right
+    // after putRecord to evict the entry explicitly — that path is what
+    // guarantees the freshly-saved values show on the very next page
+    // load. Foreign lookups (feed bylines, handle search, etc.) keep the
+    // longer cache. `sessionDid` was resolved once at the top for the
+    // rate limiter; reuse it here.
     const cacheControl =
       sessionDid && sessionDid === did
         ? "private, max-age=10"
         : "public, max-age=60, stale-while-revalidate=300"
 
-    return NextResponse.json(
-      {
-        did,
-        handle: handle || did,
-        displayName,
-        description,
-        avatar,
-        banner,
-      },
-      { headers: { "Cache-Control": cacheControl } }
-    )
+    return NextResponse.json(payload, {
+      headers: { "Cache-Control": cacheControl },
+    })
   } catch (err: unknown) {
     const { status, message } = extractRouteError(err)
     return NextResponse.json({ error: message }, { status })

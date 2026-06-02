@@ -1,8 +1,7 @@
 "use client"
 
-import { useEffect, useRef, useCallback } from "react"
-import { X } from "lucide-react"
 import Button from "@/components/ui/button"
+import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 
 interface ConfirmDialogProps {
   readonly title: string
@@ -16,10 +15,10 @@ interface ConfirmDialogProps {
 }
 
 /**
- * Generic "are you sure?" modal. Uses the existing signin-modal
- * chrome so it inherits the same backdrop, focus styling, and
- * dark-mode treatment as other dialogs in the app. Reused anywhere
- * a destructive action needs a confirmation step.
+ * Generic "are you sure?" modal. Uses the shared <AppDialog> chrome
+ * (signin-modal app-modal classes, native <dialog> + showModal(),
+ * backdrop-click close). Backdrop close is disabled while a confirm
+ * is in flight so the user can't dismiss mid-write.
  */
 export default function ConfirmDialog({
   title,
@@ -31,71 +30,39 @@ export default function ConfirmDialog({
   onCancel,
   onConfirm,
 }: ConfirmDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
-
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    dialog.showModal()
-
-    const handleClose = () => onCancel()
-    dialog.addEventListener("close", handleClose)
-    return () => dialog.removeEventListener("close", handleClose)
-  }, [onCancel])
-
-  const handleBackdropClick = useCallback(
-    (e: React.MouseEvent<HTMLDialogElement>) => {
-      if (e.target === dialogRef.current) onCancel()
-    },
-    [onCancel],
-  )
-
   return (
-    <dialog
-      ref={dialogRef}
-      className="signin-modal"
+    <AppDialog
+      ariaLabel={title}
       role="alertdialog"
-      aria-label={title}
-      onClick={handleBackdropClick}
-      style={{ maxWidth: 440 }}
+      maxWidth={440}
+      onClose={onCancel}
+      disableBackdropClose={isConfirming}
     >
-      <div onClick={(e) => e.stopPropagation()}>
-        <div className="signin-modal__header">
-          <span className="signin-modal__title">{title}</span>
-          <button
-            className="signin-modal__close"
+      <AppDialogHeader title={title} onClose={onCancel} disabled={isConfirming} />
+      <div className="signin-modal__body">
+        <p className="dash-card__desc" style={{ marginBottom: 20 }}>
+          {message}
+        </p>
+        <div
+          style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}
+        >
+          <Button
+            variant="ghost"
             onClick={onCancel}
-            aria-label="Close"
             disabled={isConfirming}
           >
-            <X size={18} />
-          </button>
-        </div>
-        <div className="signin-modal__body">
-          <p className="dash-card__desc" style={{ marginBottom: 20 }}>
-            {message}
-          </p>
-          <div
-            style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}
+            {cancelLabel}
+          </Button>
+          <Button
+            variant={confirmVariant}
+            onClick={onConfirm}
+            loading={isConfirming}
+            disabled={isConfirming}
           >
-            <Button
-              variant="ghost"
-              onClick={onCancel}
-              disabled={isConfirming}
-            >
-              {cancelLabel}
-            </Button>
-            <Button
-              variant={confirmVariant}
-              onClick={onConfirm}
-              loading={isConfirming}
-              disabled={isConfirming}
-            >
-              {confirmLabel}
-            </Button>
-          </div>
+            {confirmLabel}
+          </Button>
         </div>
       </div>
-    </dialog>
+    </AppDialog>
   )
 }

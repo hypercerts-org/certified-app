@@ -256,28 +256,37 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
             <p className="username-card__value">@{handle || "..."}</p>
           )}
 
-          {/* Action buttons — shown when not in any editing mode */}
-          {!showingForm && did && (
+          {/* Action buttons — shown when not in any editing mode.
+              The custom-domain buttons are gated OFF in group context
+              (groupDid set): the custom-domain flow writes the handle via
+              the personal XRPC updateHandle endpoint, which is wrong for a
+              group repo. The "Use a Certified username" button is kept —
+              it routes through the group-aware handle path. */}
+          {!showingForm && did && !(isCertifiedHandle && groupDid) && (
             <div className="username-card__switch-btns">
               {isCertifiedHandle ? (
-                <button
-                  className="username-card__domain-btn"
-                  onClick={() => setIsDomainModalOpen(true)}
-                  type="button"
-                >
-                  <Globe size={14} aria-hidden="true" />
-                  Use my own domain
-                </button>
-              ) : (
-                <>
+                !groupDid && (
                   <button
                     className="username-card__domain-btn"
                     onClick={() => setIsDomainModalOpen(true)}
                     type="button"
                   >
                     <Globe size={14} aria-hidden="true" />
-                    Use a different domain
+                    Use my own domain
                   </button>
+                )
+              ) : (
+                <>
+                  {!groupDid && (
+                    <button
+                      className="username-card__domain-btn"
+                      onClick={() => setIsDomainModalOpen(true)}
+                      type="button"
+                    >
+                      <Globe size={14} aria-hidden="true" />
+                      Use a different domain
+                    </button>
+                  )}
                   <button
                     className="username-card__domain-btn"
                     onClick={handleStartCertified}
@@ -293,8 +302,9 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
         </div>
       </div>
 
-      {/* Custom domain modal */}
-      {did && (
+      {/* Custom domain modal — not mounted in group context (groupDid set),
+          since the modal writes the handle via the personal XRPC endpoint. */}
+      {did && !groupDid && (
         <CustomDomainModal
           isOpen={isDomainModalOpen}
           onClose={() => setIsDomainModalOpen(false)}

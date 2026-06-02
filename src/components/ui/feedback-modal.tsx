@@ -10,7 +10,7 @@ import { useFeedback } from "@/lib/feedback-context"
 import { useSession } from "@/hooks/use-session"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import { useLayoutBreakpoints } from "@/lib/hooks/use-layout-breakpoints"
+import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
 
 export default function FeedbackModal() {
   const { isOpen, closeFeedback } = useFeedback()

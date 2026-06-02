@@ -3,37 +3,34 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
-import { useSession } from "@/hooks/use-session";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 
 /**
- * Home — `/`.
+ * Root — `/`.
  *
- * The home of Certified is the signed-in user's own profile.
- * Unauthenticated visitors are redirected to /search (the people
- * explorer) AND the sign-in modal is auto-opened so they can complete
- * sign-in without an extra click.
+ * Signed-in visitors land on `/home` (the activity feed). Signed-out
+ * visitors land on `/welcome` (the marketing landing). Applies
+ * uniformly across hosts — production (certified.app), redesign
+ * (redesign.certified.app), and staging (staging.certified.app) all
+ * resolve `/` through this component.
  *
- * Implementation is a client-side redirect rather than an inline render
- * because the underlying profile page already lives at /profile/[handle]
- * and we want one canonical URL per profile rather than two.
+ * Client-side redirect rather than a server-side rewrite because
+ * authentication state lives in a cookie-backed client context and
+ * resolves a tick after first paint; an inline loading spinner
+ * covers that gap.
  */
-export default function Home() {
-  const { isAuthenticated, isLoading, openSignIn } = useAuth();
-  const { handle } = useSession();
+export default function Root() {
+  const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (isLoading) return;
-    if (isAuthenticated && handle) {
-      router.replace(`/profile/${encodeURIComponent(handle)}`);
-    } else if (!isAuthenticated) {
-      router.replace("/search");
-      // Open the sign-in modal after the navigation. Modal state lives in
-      // the AuthProvider (root layout) so it persists across route change.
-      openSignIn();
+    if (isAuthenticated) {
+      router.replace("/home");
+    } else {
+      router.replace("/welcome");
     }
-  }, [isLoading, isAuthenticated, handle, router, openSignIn]);
+  }, [isLoading, isAuthenticated, router]);
 
   return (
     <div className="loading-screen">

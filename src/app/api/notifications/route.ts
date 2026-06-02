@@ -206,13 +206,20 @@ export async function POST(request: NextRequest) {
   const timeoutId = setTimeout(() => upstreamController.abort(), UPSTREAM_TIMEOUT_MS)
   const signal = AbortSignal.any([request.signal, upstreamController.signal])
 
+  // Bypass the indexer's per-IP rate limiter (magic-indexer R-7) for
+  // the app's own proxied traffic. Mirrors `resolve-did` / `/api/indexer`;
+  // attached only when `INDEXER_RATELIMIT_BYPASS_KEY` is non-empty.
+  const bypassKey = process.env.INDEXER_RATELIMIT_BYPASS_KEY
+  const upstreamHeaders: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${jwt}`,
+  }
+  if (bypassKey) upstreamHeaders["X-RateLimit-Bypass"] = bypassKey
+
   try {
     const upstream = await fetch(`${INDEXER_URL_BASE}/notifications/graphql`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${jwt}`,
-      },
+      headers: upstreamHeaders,
       body: JSON.stringify({ query, variables, operationName: parsed.operationName }),
       signal,
     })
@@ -225,7 +232,7 @@ export async function POST(request: NextRequest) {
     // so the client treats it as a backend issue, not a signout.
     // Preserve 429 + Retry-After for rate limits.
     if (!upstream.ok) {
-      console.warn(`[Notifications] upstream ${upstream.status}:`, responseBody.slice(0, 500))
+      console.warn(`[Notifications] upstream ${upstream.status}`)
       const clientStatus =
         upstream.status === 401 || upstream.status === 403 ? 502 : upstream.status
       const headers: Record<string, string> = { "Cache-Control": "no-store" }

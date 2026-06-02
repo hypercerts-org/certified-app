@@ -34,6 +34,11 @@ export function useUserProfile(handleOrDid: string | null): {
   isOwnProfile: boolean
   isLoading: boolean
   error: string | null
+  /** True when the resolved DID has an `app.certified.actor.profile`
+   *  record with a populated displayName. Surfaces / chrome that
+   *  want to flag bsky-sourced profile data ("Bluesky profile" tag
+   *  in the sidebar / header — issue #74) read this. */
+  hasCertifiedProfile: boolean
 } {
   const { did: myDid } = useAuth()
   const [did, setDid] = useState<string | null>(null)
@@ -41,6 +46,7 @@ export function useUserProfile(handleOrDid: string | null): {
   const [profile, setProfile] = useState<CertifiedProfile | null>(null)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [bannerUrl, setBannerUrl] = useState<string | null>(null)
+  const [hasCertifiedProfile, setHasCertifiedProfile] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -81,8 +87,12 @@ export function useUserProfile(handleOrDid: string | null): {
           handle: string
           displayName?: string
           description?: string
+          pronouns?: string
+          website?: string
           avatar?: string
           banner?: string
+          createdAt?: string
+          hasCertifiedProfile?: boolean
         }
         if (signal.aborted) return
 
@@ -91,10 +101,13 @@ export function useUserProfile(handleOrDid: string | null): {
         setProfile({
           displayName: data.displayName,
           description: data.description,
-          createdAt: new Date(0).toISOString(),
+          pronouns: data.pronouns,
+          website: data.website,
+          createdAt: data.createdAt,
         })
         setAvatarUrl(data.avatar ?? null)
         setBannerUrl(data.banner ?? null)
+        setHasCertifiedProfile(!!data.hasCertifiedProfile)
       } catch (err) {
         if (signal.aborted) return
         console.error("Failed to load user profile:", err)
@@ -102,6 +115,7 @@ export function useUserProfile(handleOrDid: string | null): {
         setProfile(null)
         setAvatarUrl(null)
         setBannerUrl(null)
+        setHasCertifiedProfile(false)
       } finally {
         if (!signal.aborted) setIsLoading(false)
       }
@@ -111,14 +125,24 @@ export function useUserProfile(handleOrDid: string | null): {
     return () => controller.abort()
   }, [handleOrDid])
 
+  const isOwnProfile = !!did && did === myDid
+  // Hide bsky fallback values on the viewer's own profile when they
+  // haven't authored a Certified profile yet. The onboarding banner
+  // is the only thing they should see on their own page until they
+  // finish setup — otherwise pre-existing bsky data masquerades as
+  // "your Certified profile" before any record has been written.
+  // Foreign visitors continue to see the bsky fallback as before.
+  const suppressFallback = isOwnProfile && !hasCertifiedProfile
+
   return {
-    profile,
-    avatarUrl,
-    bannerUrl,
+    profile: suppressFallback ? null : profile,
+    avatarUrl: suppressFallback ? null : avatarUrl,
+    bannerUrl: suppressFallback ? null : bannerUrl,
     did,
     handle,
-    isOwnProfile: !!did && did === myDid,
+    isOwnProfile,
     isLoading,
     error,
+    hasCertifiedProfile,
   }
 }

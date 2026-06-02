@@ -12,8 +12,7 @@ import {
 /**
  * A user's endorsement award, with the subject DID pre-extracted
  * from the (string-or-strongRef) `subject` union and the note
- * surfaced for display. Shape is intentionally close to the previous
- * `EndorsementRecord` so callers don't all need rewriting.
+ * surfaced for display.
  */
 export interface GivenEndorsement {
   uri: string
@@ -22,15 +21,25 @@ export interface GivenEndorsement {
   subjectDid: string
   createdAt: string
   note?: string
+  /**
+   * Vestigial — kept for `<PersonCard listTitle?: string>` prop-shape
+   * continuity. Always `undefined` after the lists-as-collections
+   * migration: there's only one endorsement definition per issuer
+   * now, and lists are a separate curation overlay (see
+   * `docs/lists-as-collections/`). Multi-list chip rendering on the
+   * Given panel is deferred — when it lands, replace this field with
+   * `lists: string[]` populated from the issuer's collection records.
+   */
+  listTitle?: string
 }
 
 /**
  * Fetch and track the endorsement awards **given** by a user — read
  * from their own PDS via two listRecords calls:
  *
- *   1. `app.certified.badge.definition` to find every definition the
- *      user owns
- *   2. `app.certified.badge.award` to list all awards they've issued
+ *   1. `app.certified.badge.definition` to find the issuer's
+ *      endorsement-typed definition(s).
+ *   2. `app.certified.badge.award` to list all awards they've issued.
  *
  * We then keep only awards whose `badge.uri` resolves to a definition
  * with `badgeType === "endorsement"`. This sidesteps the indexer
@@ -71,16 +80,18 @@ export function useGivenEndorsements(did: string | null): {
         ])
         if (signal?.aborted) return
 
-        // Build the set of endorsement-definition URIs owned by this
-        // user. Then filter their awards to only those referencing
-        // one of those definitions. We expect a single endorsement
-        // definition per user, but tolerate more (e.g. if they ever
-        // recreate one).
-        const endorsementDefUris = new Set(
-          defs
-            .filter((d) => isEndorsementDefinition(d.value))
-            .map((d) => d.uri),
-        )
+        // Build the set of endorsement-typed definition URIs owned by
+        // this user — used to filter awards to "actually endorsements"
+        // (vs. some other badgeType if one ever lands here). Lists
+        // no longer live in this collection (see
+        // `docs/lists-as-collections/`); the set therefore typically
+        // contains exactly one entry (the default def) but we still
+        // walk it so legacy custom-typed endorsement defs from before
+        // the migration still show up in Given.
+        const endorsementDefUris = new Set<string>()
+        for (const d of defs) {
+          if (isEndorsementDefinition(d.value)) endorsementDefUris.add(d.uri)
+        }
 
         const mapped = awards
           .filter((a) => endorsementDefUris.has(a.value.badge?.uri ?? ""))
@@ -131,6 +142,7 @@ function toGiven(award: BadgeAwardRecord): GivenEndorsement | null {
     subjectDid,
     createdAt: award.value.createdAt,
     note: award.value.note,
+    // listTitle intentionally unset — see interface JSDoc.
   }
 }
 

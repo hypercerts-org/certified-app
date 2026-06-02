@@ -7,7 +7,17 @@ import { BlobRef } from "@atproto/api";
  * response that wasn't passed through the lexicon). Both shapes are
  * supported; anything else falls back to `String(ref)` which yields the
  * CID's `toString()`.
+ *
+ * Workaround for a magic-indexer bug (hypercerts-org/magic-indexer#110):
+ * when serialising `Blob.ref` to a GraphQL `String!`, the resolver uses
+ * Go's default `fmt.Sprintf("%v", m)` on the underlying map and emits
+ * `map[$link:<cid>]` instead of just `<cid>`. We strip that wrapper here
+ * so downstream image URLs still work on records that use the
+ * lexicon-canonical `smallImage` / `largeImage` shape. Remove once the
+ * indexer fixes its resolver.
  */
+const INDEXER_MAP_LINK_RE = /^map\[\$link:([^\]]+)\]$/;
+
 export function getBlobRefLink(ref: unknown): string {
   if (
     typeof ref === "object" &&
@@ -17,12 +27,12 @@ export function getBlobRefLink(ref: unknown): string {
   ) {
     return (ref as { $link: string }).$link;
   }
+  if (typeof ref === "string") {
+    const m = ref.match(INDEXER_MAP_LINK_RE);
+    if (m) return m[1];
+    return ref;
+  }
   return String(ref);
-}
-
-/** Helper alias for callers that have a typed BlobRef and want to read its CID. */
-export function getBlobRefLinkFromBlob(ref: BlobRef["ref"]): string {
-  return getBlobRefLink(ref);
 }
 
 /** Matches org.hypercerts.defs#uri */

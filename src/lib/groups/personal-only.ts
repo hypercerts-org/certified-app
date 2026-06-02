@@ -34,3 +34,24 @@ export function isRouteVisibleToActor(
   if (!isActingAsOrg) return true
   return !PERSONAL_ONLY_ROUTES.includes(route)
 }
+
+/**
+ * Classify a pathname against the personal-only registry. Returns
+ * the matching route key (so callers can pass it to
+ * `isRouteVisibleToActor`) or null when the route is allowed for any
+ * actor (profile views, search, home, etc.).
+ *
+ * Used by the actor switcher to decide whether to stay on the user's
+ * current pathname after a persona switch, or redirect to /home
+ * because the new persona can't visit the current route.
+ */
+export function pathnameToPersonalOnlyRoute(
+  pathname: string,
+): PersonalOnlyRoute | null {
+  if (pathname === "/create" || pathname.startsWith("/create/")) return "create"
+  if (pathname === "/groups" || pathname.startsWith("/groups/")) return "groups"
+  if (pathname === "/endorsements" || pathname.startsWith("/endorsements/")) {
+    return "endorsements"
+  }
+  return null
+}

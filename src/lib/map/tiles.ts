@@ -1,16 +1,18 @@
 /**
- * Tile provider selection for the <Map /> component.
+ * Tile providers for the `<Map />` component.
  *
- * Primary: Stadia Maps — Alidade Smooth (light) / Alidade Smooth Dark.
- * Free tier, best-looking raster dark theme available without a
- * commercial license. Stadia allows unauthenticated requests from
- * localhost/127.0.0.1 under its "no-cost development" policy, so dev
- * works with zero config. Production needs a key in
- * NEXT_PUBLIC_STADIA_API_KEY.
+ * Base layer: Esri World Imagery — high-resolution satellite /
+ * aerial. Composited on top: Esri World Boundaries and Places — a
+ * transparent reference overlay that adds country / region / city
+ * labels and political boundaries so the satellite image reads as a
+ * navigable map rather than raw pixels.
  *
- * Fallback: Carto Positron / Dark Matter — free with attribution,
- * no API key required. Used when no Stadia key is set AND we're not
- * on localhost.
+ * No API key required for typical web-app use; Esri's terms require
+ * attribution which is rendered in the Leaflet control corner.
+ *
+ * Tile URL template: `{z}/{y}/{x}` — Esri's REST endpoint orders `y`
+ * before `x`, the opposite of XYZ. Leaflet's `TileLayer` honors
+ * whichever placeholder order the URL uses.
  */
 
 export interface TileConfig {
@@ -18,51 +20,36 @@ export interface TileConfig {
   attribution: string
 }
 
-const STADIA_ATTRIBUTION =
-  '&copy; <a href="https://www.stadiamaps.com/" target="_blank" rel="noopener">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> &copy; <a href="https://openstreetmap.org" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
+const ESRI_WORLD_IMAGERY_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
 
-const CARTO_ATTRIBUTION =
-  '&copy; <a href="https://openstreetmap.org" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>'
+const ESRI_WORLD_IMAGERY_ATTRIBUTION =
+  'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
 
-/** Is the runtime allowed to hit Stadia without an API key? Stadia
- *  permits unauthenticated access only from localhost for development. */
-function isLocalhost(): boolean {
-  if (typeof window === "undefined") return false
-  const h = window.location.hostname
-  return h === "localhost" || h === "127.0.0.1" || h === "[::1]"
-}
+const ESRI_WORLD_BOUNDARIES_AND_PLACES_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
 
-/** Pick the best available tile source for the resolved theme. Called
- *  during component render so it always matches the current theme + env. */
-export function getTileConfig(resolvedTheme: "light" | "dark" | undefined): TileConfig {
-  const key = process.env.NEXT_PUBLIC_STADIA_API_KEY
-  const canUseStadia = Boolean(key) || isLocalhost()
-
-  if (canUseStadia) {
-    const style = resolvedTheme === "dark" ? "alidade_smooth_dark" : "alidade_smooth"
-    // `{r}` is expanded by Leaflet to `@2x` on retina displays, empty otherwise.
-    const suffix = key ? `?api_key=${encodeURIComponent(key)}` : ""
-    return {
-      url: `https://tiles.stadiamaps.com/tiles/${style}/{z}/{x}/{y}{r}.png${suffix}`,
-      attribution: STADIA_ATTRIBUTION,
-    }
-  }
-
-  // Deployed without a Stadia key and off-localhost. Warn once so the
-  // missing key is visible in production logs.
-  if (typeof window !== "undefined" && !warnedNoKey) {
-    warnedNoKey = true
-    console.warn(
-      "[map] NEXT_PUBLIC_STADIA_API_KEY not set; falling back to Carto tiles. " +
-        "Set a Stadia API key for production to get the Alidade Smooth style."
-    )
-  }
-
-  const cartoStyle = resolvedTheme === "dark" ? "dark_all" : "light_all"
+/** Esri World Imagery looks the same in light + dark mode (it's a
+ *  satellite raster, not a styled basemap), so the resolved theme is
+ *  ignored. Kept as a parameter so the signature stays compatible
+ *  with the previous Stadia / Carto themed configs. */
+export function getTileConfig(
+  _resolvedTheme: "light" | "dark" | undefined,
+): TileConfig {
   return {
-    url: `https://{s}.basemaps.cartocdn.com/${cartoStyle}/{z}/{x}/{y}{r}.png`,
-    attribution: CARTO_ATTRIBUTION,
+    url: ESRI_WORLD_IMAGERY_URL,
+    attribution: ESRI_WORLD_IMAGERY_ATTRIBUTION,
   }
 }
 
-let warnedNoKey = false
+/** Reference overlay — transparent tiles with country / region /
+ *  city labels and political boundaries. Stacked above the Imagery
+ *  base layer so place names and borders are legible against the
+ *  satellite imagery. Same Esri credits already in the base layer's
+ *  attribution, so no separate attribution string is needed. */
+export function getOverlayTileConfig(): TileConfig {
+  return {
+    url: ESRI_WORLD_BOUNDARIES_AND_PLACES_URL,
+    attribution: "",
+  }
+}

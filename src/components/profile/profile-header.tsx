@@ -6,7 +6,6 @@ import { Pencil, UserPlus, Settings as SettingsIcon } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import { getInitials } from "@/lib/utils/initials"
-import { useProfilePds } from "@/hooks/use-profile-pds"
 import type { CertifiedProfile } from "@/lib/atproto/types"
 
 interface ProfileHeaderProps {
@@ -26,6 +25,11 @@ interface ProfileHeaderProps {
   /** Small uppercase tag above the display name ("Your profile",
    *  "Acting as this group", etc.). */
   eyebrow?: string
+  /** True when an `app.certified.actor.profile` record with a
+   *  populated displayName exists. When false, the displayName /
+   *  description / avatar / banner all came from `app.bsky.actor.profile`
+   *  and we show a "Bluesky profile" tag next to the handle. Issue #74. */
+  hasCertifiedProfile?: boolean
 }
 
 /**
@@ -52,6 +56,7 @@ export default function ProfileHeader({
   editHref,
   settingsHref,
   eyebrow,
+  hasCertifiedProfile = false,
 }: ProfileHeaderProps) {
   const displayName = profile?.displayName || (handle ? `@${handle}` : "Anonymous")
   const initials = getInitials(profile?.displayName, did)
@@ -65,8 +70,6 @@ export default function ProfileHeader({
   }, [bannerUrl])
 
   const hasAdminActions = !!editHref || !!settingsHref
-
-  const { isBskyHosted } = useProfilePds(did)
 
   // Half-height when there's no real banner — a half-height gradient
   // panel reads as "no banner set" intentionally rather than
@@ -133,7 +136,11 @@ export default function ProfileHeader({
         {handle ? (
           <p className="profile-hero__handle">
             @{handle}
-            {isBskyHosted ? (
+            {/* "Bluesky profile" tag — shown when the displayed
+                profile data came from app.bsky.actor.profile because
+                no app.certified.actor.profile record with a
+                displayName exists for this user. Issue #74. */}
+            {!hasCertifiedProfile ? (
               <span
                 className="profile-hero__pds-tag"
                 title="This profile information is imported from Bluesky"

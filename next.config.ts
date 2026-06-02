@@ -3,6 +3,12 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   serverExternalPackages: ["@atproto/oauth-client-node"],
+  // Next 16 dev blocks /_next/* requests (including the HMR WebSocket)
+  // when the request Origin doesn't match the canonical localhost form.
+  // Our PUBLIC_URL convention is 127.0.0.1 (for OAuth + cookie reasons),
+  // so without this allowlist, HMR fails with ERR_INVALID_HTTP_RESPONSE
+  // and React never hydrates on the page.
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   images: {
     remotePatterns: [
       {
@@ -33,7 +39,27 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://vercel.live; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https:; frame-src 'self' https://vercel.live; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+            // `frame-src` allowlists the iframe sources we explicitly
+            // support: Vercel's preview comments overlay, the leaflet
+            // linearDocument embed providers (YouTube + Vimeo). Without
+            // these origins listed here, the rendered iframes show
+            // YouTube's "This content is blocked. Contact the site
+            // owner to fix the issue." in-frame message — which is
+            // YouTube itself reacting to being framed from a page
+            // whose CSP forbids it.
+            //
+            // Dev addendum: Next.js + React in dev mode use `eval()` for
+            // HMR / source-map / debug callstacks, and the Next dev
+            // server's HMR WebSocket runs on `ws://`. Without
+            // `'unsafe-eval'` and `ws:` in dev, client-side React never
+            // hydrates — every page renders SSR-only and useEffect-based
+            // data fetches (e.g. the /welcome network-stats tiles) stall
+            // on their loading placeholders. Production keeps the strict
+            // policy.
+            value:
+              process.env.NODE_ENV === "production"
+                ? "default-src 'self'; script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://vercel.live; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https:; frame-src 'self' https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+                : "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://vercel.live; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https: ws: wss:; frame-src 'self' https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
           },
         ],
       },

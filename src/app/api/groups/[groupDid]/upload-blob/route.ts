@@ -60,8 +60,10 @@ export async function POST(
 
     return NextResponse.json(data)
   } catch (err: unknown) {
-    console.error("Upload blob error:", err)
-    const { status, message } = extractRouteError(err)
+    // extractRouteError calls logSafe internally — no separate
+    // console.error needed (would duplicate the log line and would
+    // also bypass the redactSecrets pass).
+    const { status, message } = extractRouteError(err, "[groups/upload-blob]")
     return NextResponse.json({ error: message }, { status })
   }
 }

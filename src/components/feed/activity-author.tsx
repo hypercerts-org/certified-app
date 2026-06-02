@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import Link from "next/link"
 import Avatar from "@/components/ui/avatar"
 import { useAuthorInfo } from "@/hooks/use-author-info"
@@ -8,6 +9,10 @@ import { getInitials } from "@/lib/utils/initials"
 interface ActivityAuthorProps {
   /** DID of the user who created the activity claim. */
   did: string
+  /** Optional content rendered inline immediately after the display
+   *  name (same line). Used by the /explore endorsement filter to put
+   *  the degree-of-separation pill next to the name. */
+  nameSuffix?: ReactNode
 }
 
 /**
@@ -19,7 +24,7 @@ interface ActivityAuthorProps {
  * cache, so the same author appearing in multiple feed cards only
  * triggers one network request.
  */
-export default function ActivityAuthor({ did }: ActivityAuthorProps) {
+export default function ActivityAuthor({ did, nameSuffix }: ActivityAuthorProps) {
   const { info, isLoading } = useAuthorInfo(did)
 
   // Skeleton while the resolve request is in flight. Keeps the card
@@ -54,9 +59,13 @@ export default function ActivityAuthor({ did }: ActivityAuthorProps) {
         src={info.avatarUrl || undefined}
         alt=""
         fallbackInitials={initials}
+        className="shrink-0"
       />
       <span className="feed-card__author-meta">
-        <span className="feed-card__author-name">{displayName}</span>
+        <span className="feed-card__author-name-line">
+          <span className="feed-card__author-name">{displayName}</span>
+          {nameSuffix}
+        </span>
         {info.handle ? (
           <span className="feed-card__author-handle">@{info.handle}</span>
         ) : null}

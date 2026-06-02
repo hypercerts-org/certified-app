@@ -1,28 +1,48 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { Image as ImageIcon } from "lucide-react";
+import { Camera, Trash2 } from "lucide-react";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 
 export interface BannerUploadProps {
   currentBannerUrl: string | null;
   onUpload: (file: File) => Promise<void>;
   isUploading: boolean;
+  /** When provided AND a banner image is currently set, a "Remove"
+   *  pill renders next to the "Change banner" button. Clicking it
+   *  clears the banner from the draft so save persists no banner. */
+  onRemove?: () => void;
 }
 
+const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB — Vercel serverless limit is ~4.5MB
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+/**
+ * Banner upload control. Mirrors `AvatarEditOverlay` in the sidebar:
+ * always renders a floating "Change banner" button in the corner so
+ * the affordance is the same regardless of whether a banner image is
+ * present or not. The button itself opens the file picker; the rest
+ * of the banner box is decorative (no whole-area click target, which
+ * matches the avatar behaviour and avoids the rect-click vs.
+ * pill-click inconsistency the user flagged).
+ */
 const BannerUpload: React.FC<BannerUploadProps> = ({
   currentBannerUrl,
   onUpload,
   isUploading,
+  onRemove,
 }) => {
+  // Self-preview the picked file (mirrors AvatarUpload): create an
+  // object URL on pick so the banner area shows the chosen image
+  // immediately, falling back to `currentBannerUrl` (the saved record)
+  // when nothing has been picked. The displayed image (`displayUrl` /
+  // `hasImage`) is the single source of truth — the button label and
+  // Remove pill derive from it, so they can't desync the way the old
+  // write-once `hasPending` boolean did.
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isHovered, setIsHovered] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB — Vercel serverless limit is ~4.5MB
-  const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
   const handleClick = () => {
     fileInputRef.current?.click();
@@ -34,38 +54,34 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
 
     setError(null);
 
-    // Validate file type
     if (!ALLOWED_TYPES.includes(file.type)) {
       setError("Please select a JPEG, PNG, or WebP image");
       return;
     }
 
-    // Validate file size
     if (file.size > MAX_FILE_SIZE) {
       setError("Image must be 4MB or smaller");
       return;
     }
 
-    // Create preview
+    // Optimistic preview — show the picked file before/while it uploads.
     const objectUrl = URL.createObjectURL(file);
     setPreviewUrl(objectUrl);
 
-    // Upload
     try {
       await onUpload(file);
     } catch (err) {
       console.error("Upload failed:", err);
       setError(err instanceof Error ? err.message : "Upload failed");
-      // Clear preview on error
+      // Clear preview on error so the stale/saved banner shows again.
       URL.revokeObjectURL(objectUrl);
       setPreviewUrl(null);
     }
 
-    // Reset file input
     e.target.value = "";
   };
 
-  // Clean up preview URL on unmount
+  // Clean up the preview URL on unmount.
   React.useEffect(() => {
     return () => {
       if (previewUrl) {
@@ -74,66 +90,95 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
     };
   }, [previewUrl]);
 
-  const displayUrl = previewUrl || currentBannerUrl;
+  // When the parent's banner reference changes — e.g. the inline-edit
+  // flow's Remove clears `currentBannerUrl` to null, or the saved record
+  // refetches a new URL — release the local preview so the displayed
+  // image follows the parent's truth instead of pinning the now-stale
+  // picked file. (Mirrors the parent hook's quality-036 mirror-clear.)
+  React.useEffect(() => {
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+  }, [currentBannerUrl]);
 
-  // Reset the error flag when the displayed URL changes so users can
-  // recover after a failed load by uploading a new file.
+  const displayUrl = previewUrl || currentBannerUrl;
+  const hasImage = !!displayUrl && !imgFailed;
+
   React.useEffect(() => {
     setImgFailed(false);
   }, [displayUrl]);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="profile-banner-upload">
       <div
-        className="profile-card__banner relative cursor-pointer"
-        style={{ marginBottom: 0 }}
-        role="button"
-        tabIndex={0}
-        aria-label="Upload banner"
-        onClick={handleClick}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClick(); } }}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        className={
+          "profile-banner-upload__box" +
+          (hasImage ? "" : " profile-banner-upload__box--empty")
+        }
       >
-        {/* Banner image or placeholder (falls through to the gradient
-            background when the URL is missing or fails to load, instead
-            of showing the browser's broken-image icon). */}
-        {displayUrl && !imgFailed ? (
+        {hasImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={displayUrl}
+            src={displayUrl!}
             alt="Profile banner"
+            className="profile-banner-upload__img"
             onError={() => setImgFailed(true)}
           />
         ) : null}
 
-        {/* Overlay */}
-        {(isHovered || isUploading) && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center gap-2">
+        <div className="profile-banner-upload__btn-row">
+          <button
+            type="button"
+            className="profile-banner-upload__btn"
+            onClick={handleClick}
+            aria-label={isUploading ? "Uploading banner" : "Change banner"}
+            title={isUploading ? "Uploading…" : "Change banner"}
+            disabled={isUploading}
+          >
             {isUploading ? (
               <LoadingSpinner size="sm" />
             ) : (
               <>
-                <ImageIcon className="h-6 w-6 text-white" />
-                <span className="text-white text-xs">Change banner</span>
+                <Camera size={16} strokeWidth={1.75} aria-hidden />
+                {/* Label is derived straight from the displayed image
+                    (the single source of truth): "Replace" while a
+                    banner is shown, "Change" when the box is empty. This
+                    can't desync the way the old write-once `hasPending`
+                    boolean did, which stayed stuck at "Replace" after
+                    the parent cleared the banner (inline-edit Remove). */}
+                <span className="profile-banner-upload__btn-label">
+                  {hasImage ? "Replace banner" : "Change banner"}
+                </span>
               </>
             )}
-          </div>
-        )}
+          </button>
+          {hasImage && onRemove && !isUploading ? (
+            <button
+              type="button"
+              className="profile-banner-upload__btn profile-banner-upload__btn--ghost"
+              onClick={onRemove}
+              aria-label="Remove banner"
+              title="Remove banner"
+            >
+              <Trash2 size={14} strokeWidth={1.75} aria-hidden />
+              <span className="profile-banner-upload__btn-label">Remove</span>
+            </button>
+          ) : null}
+        </div>
 
-        {/* Hidden file input */}
         <input
           ref={fileInputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp"
           onChange={handleFileChange}
-          className="hidden"
+          className="profile-banner-upload__input"
           disabled={isUploading}
         />
       </div>
 
-      {/* Error message */}
       {error && (
-        <p role="alert" className="text-caption text-[var(--color-error)]">
+        <p role="alert" className="profile-banner-upload__error">
           {error}
         </p>
       )}

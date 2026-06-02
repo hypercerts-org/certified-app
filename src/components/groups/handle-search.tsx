@@ -17,12 +17,6 @@ interface HandleSearchProps {
   onSelect: (did: string, handle: string) => void
 }
 
-function isDid(value: string): boolean {
-  const trimmed = value.trim()
-  return (trimmed.startsWith("did:plc:") && trimmed.length > 12) ||
-         (trimmed.startsWith("did:web:") && trimmed.length > 12)
-}
-
 function looksLikeCompleteDid(value: string): boolean {
   const trimmed = value.trim()
   return (trimmed.startsWith("did:plc:") && trimmed.length >= 32) ||

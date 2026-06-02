@@ -6,6 +6,7 @@ import { authFetch } from "@/lib/auth/fetch";
 import { clearSessionCache } from "@/hooks/use-session";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
+import Button from "@/components/ui/button";
 
 interface CustomDomainModalProps {
   isOpen: boolean;
@@ -204,21 +205,18 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
                 Enter the domain you want to use as your username. You must have access to its DNS settings.
               </p>
               <div className="domain-modal__actions">
-                <button
-                  className="domain-modal__btn domain-modal__btn--ghost"
-                  onClick={onClose}
-                  type="button"
-                >
+                <Button variant="ghost" size="sm" onClick={onClose} type="button">
                   Cancel
-                </button>
-                <button
-                  className="domain-modal__btn domain-modal__btn--primary"
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
                   onClick={handleContinue}
                   disabled={!cleanDomain(domain)}
                   type="button"
                 >
                   Next
-                </button>
+                </Button>
               </div>
             </>
           )}
@@ -270,20 +268,22 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
               </div>
 
               <div className="domain-modal__actions">
-                <button
-                  className="domain-modal__btn domain-modal__btn--ghost"
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setStep("enter-domain")}
                   type="button"
                 >
                   Back
-                </button>
-                <button
-                  className="domain-modal__btn domain-modal__btn--primary"
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
                   onClick={() => { setVerifyError(null); setStep("verify"); }}
                   type="button"
                 >
                   I&apos;ve added the DNS record
-                </button>
+                </Button>
               </div>
             </>
           )}
@@ -323,29 +323,25 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
                   )}
 
                   <div className="domain-modal__actions">
-                    <button
-                      className="domain-modal__btn domain-modal__btn--ghost"
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => { setVerifyError(null); setStep("dns-setup"); }}
                       type="button"
                       disabled={isVerifying}
                     >
                       Back
-                    </button>
-                    <button
-                      className="domain-modal__btn domain-modal__btn--primary"
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
                       onClick={handleVerify}
+                      loading={isVerifying}
                       disabled={isVerifying}
                       type="button"
                     >
-                      {isVerifying ? (
-                        <>
-                          <Loader2 size={16} className="domain-modal__spinner" />
-                          Verifying...
-                        </>
-                      ) : (
-                        "Verify DNS record"
-                      )}
-                    </button>
+                      {isVerifying ? "Verifying…" : "Verify DNS record"}
+                    </Button>
                   </div>
                 </>
               )}

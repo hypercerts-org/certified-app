@@ -11,23 +11,23 @@ export const metadata: Metadata = {
       "Terms of Service for Certified, the identity platform operated by the Hypercerts Foundation.",
     url: "https://certified.app/terms",
     type: "website",
-    images: [{ url: "/assets/certified-hero-1200x630.png", width: 1200, height: 630, alt: "Certified — One account, any app" }],
+    images: [{ url: "/assets/certs-hero-1200x630.png", width: 1200, height: 630, alt: "Certified — One account, any app" }],
   },
 };
 
 export default function TermsPage() {
   return (
-    <div className="app-page">
-      <div className="app-page__inner max-w-3xl">
+    <div className="app-page legal-page">
+      <div className="app-page__inner">
         <h1 className="font-headline text-h1 text-[var(--fg-primary)] tracking-tight mb-8">
           Terms of Service — Certified
         </h1>
 
-        <p className="text-sm text-gray-500 mb-8">Last updated: May 6, 2026</p>
+        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: May 6, 2026</p>
 
-        <div className="prose prose-navy max-w-none space-y-8">
+        <div className="prose max-w-none space-y-8">
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">1. About Certified</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">1. About Certified</h2>
             <p>
               Certified is operated by the Hypercerts Foundation (&quot;Hypercerts
               Foundation&quot;, &quot;we&quot;, &quot;our&quot;, or &quot;us&quot;), a Delaware
@@ -57,7 +57,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               2. Nature of the services
             </h2>
             <p>
@@ -80,7 +80,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               3. Agreement to these Terms
             </h2>
             <p>
@@ -98,7 +98,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               4. AT Protocol identity and user responsibility
             </h2>
             <p>
@@ -131,7 +131,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               5. Group and organization accounts
             </h2>
             <p>
@@ -148,7 +148,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               6. Intellectual property
             </h2>
             <p>
@@ -171,7 +171,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">7. Acceptable use</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">7. Acceptable use</h2>
             <p>
               You may use Certified only for lawful purposes and in a manner that does not
               interfere with the operation or stability of the services.
@@ -205,7 +205,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               8. Infrastructure and service operation
             </h2>
             <p>
@@ -236,7 +236,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               9. Third-party services
             </h2>
             <p>
@@ -252,7 +252,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               10. Privacy and data protection
             </h2>
             <p>
@@ -270,7 +270,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               11. Handling unlawful data and legal orders
             </h2>
             <p>
@@ -301,7 +301,7 @@ export default function TermsPage() {
             <p className="mt-4">
               Reports of illegal content may be submitted in accordance with the notice-and-action
               procedure described in our{" "}
-              <a href="/dsa" className="text-blue-600 underline hover:text-blue-800">
+              <a href="/dsa" className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]">
                 DSA Compliance Page
               </a>
               .
@@ -310,7 +310,7 @@ export default function TermsPage() {
               Reports and legal notices may also be sent to:{" "}
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 legal@hypercerts.org
               </a>
@@ -318,7 +318,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               12. Availability, modification, and discontinuation
             </h2>
             <p>Certified services are provided on a best-effort basis.</p>
@@ -333,7 +333,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               13. Data persistence in federated systems
             </h2>
             <p>
@@ -347,7 +347,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               14. Account security
             </h2>
             <p>
@@ -358,7 +358,7 @@ export default function TermsPage() {
               If you believe your account has been compromised, you must notify us promptly at{" "}
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 legal@hypercerts.org
               </a>
@@ -375,21 +375,21 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">15. Termination</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">15. Termination</h2>
 
-            <h3 className="font-headline text-lg text-[var(--fg-primary)] mt-6 mb-3">Termination by you</h3>
+            <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">Termination by you</h3>
             <p>
               To delete your account, contact us at{" "}
               <a
                 href="mailto:support@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 support@hypercerts.org
               </a>
               .
             </p>
 
-            <h3 className="font-headline text-lg text-[var(--fg-primary)] mt-6 mb-3">
+            <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">
               Termination by the Hypercerts Foundation
             </h3>
             <p>
@@ -412,7 +412,7 @@ export default function TermsPage() {
               action may be taken without prior notice.
             </p>
 
-            <h3 className="font-headline text-lg text-[var(--fg-primary)] mt-6 mb-3">
+            <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">
               Effect of termination
             </h3>
             <p>
@@ -426,7 +426,7 @@ export default function TermsPage() {
               cannot ensure deletion of such data from federated systems.
             </p>
 
-            <h3 className="font-headline text-lg text-[var(--fg-primary)] mt-6 mb-3">Survival</h3>
+            <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">Survival</h3>
             <p>
               Sections 6 (intellectual property), 13 (data persistence), 16 (feedback), 17
               (disclaimer of warranties), 18 (limitation of liability), 19 (indemnification), 20
@@ -435,7 +435,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">16. Feedback</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">16. Feedback</h2>
             <p>
               If you provide suggestions, ideas, or feedback regarding the services, the Hypercerts
               Foundation may use such feedback{" "}
@@ -444,7 +444,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               17. Disclaimer of warranties
             </h2>
             <p>
@@ -465,7 +465,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               18. Limitation of liability
             </h2>
             <p>
@@ -488,7 +488,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               19. Indemnification
             </h2>
             <p>
@@ -508,7 +508,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               20. Consumer protections
             </h2>
             <p>
@@ -518,7 +518,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               21. Validity and waiver
             </h2>
             <p>
@@ -532,7 +532,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               22. Changes to these Terms
             </h2>
             <p>
@@ -554,7 +554,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               23. Transfer of rights
             </h2>
             <p>
@@ -568,7 +568,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">24. Governing law</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">24. Governing law</h2>
             <p>
               These Terms are governed by the laws of the State of California, regardless of
               conflict of laws rules.
@@ -586,7 +586,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               25. Entire agreement
             </h2>
             <p>
@@ -598,7 +598,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-xl text-[var(--fg-primary)] mb-4">26. Contact</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">26. Contact</h2>
             <p>
               For all inquiries — including support, legal notices, Digital Services Act
               communications, and privacy matters:
@@ -606,7 +606,7 @@ export default function TermsPage() {
             <p className="mt-4">
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 legal@hypercerts.org
               </a>

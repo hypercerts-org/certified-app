@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { logSafe } from "@/lib/utils/log-safe"
+import { enforceRateLimit, makeLimiter } from "@/lib/auth/rate-limit"
+import { clientIp } from "@/lib/utils/ip"
 
 const PUBLIC_RESOLVER = "https://bsky.social"
+
+// 100/min by IP. Higher cap than search-actors because typeahead +
+// profile-page first-loads both hit this. Unauthenticated route —
+// IP is the only identifier available.
+const LIMITER = makeLimiter("resolve-handle", 100, 60)
 
 /**
  * GET /api/resolve-handle?handle=<handle>
@@ -14,6 +21,9 @@ const PUBLIC_RESOLVER = "https://bsky.social"
  * work so the page can render at all.
  */
 export async function GET(request: NextRequest) {
+  const rateDenied = await enforceRateLimit(LIMITER, clientIp(request))
+  if (rateDenied) return rateDenied
+
   const handle = (request.nextUrl.searchParams.get("handle") || "").trim()
   if (!handle) {
     return NextResponse.json({ error: "Handle is required" }, { status: 400 })
