@@ -947,6 +947,7 @@ function EndorseButton({
         orgName: activeOrg.displayName || activeOrg.handle,
         orgHandle: activeOrg.handle,
         operatorHandle: operatorHandle ?? "you",
+        operatorRole: activeOrg.role,
       }
     : undefined
 

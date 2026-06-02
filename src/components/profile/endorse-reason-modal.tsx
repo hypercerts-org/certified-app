@@ -24,6 +24,9 @@ export interface EndorseReasonActingAs {
   orgHandle: string
   /** Handle of the signed-in operator acting on the group's behalf. */
   operatorHandle: string
+  /** The operator's actual role in the group (owner / admin / member) —
+   *  never hard-coded, so the copy reflects the real relationship. */
+  operatorRole: string
 }
 
 interface EndorseReasonModalProps {
@@ -130,7 +133,7 @@ export default function EndorseReasonModal({
           {actingAs ? (
             <p className="endorse-reason-modal__acting-as" role="note">
               <b>{actingAs.orgName}</b> will endorse {subjectLabel}. You (@
-              {actingAs.operatorHandle}) are acting as an admin.
+              {actingAs.operatorHandle}) are acting as its {actingAs.operatorRole}.
             </p>
           ) : null}
 
