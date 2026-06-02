@@ -51,6 +51,9 @@
   --color-dark-gray: #4c4546;
   --color-surface: #f9f9f9;
   --color-surface-container-low: #f3f3f3;
+  /* One step above --color-surface-container-low; a touch more contained
+     than --bg-sunken (#eeeeee). Avatar initials-chip fallback background. */
+  --color-surface-container-high: #e7e7e7;
 
   /* ===== Semantic tokens (overridden in dark theme) ===== */
 
@@ -104,11 +107,17 @@
   /* Status colors */
   --color-success: #2ECC71;
   --color-success-text: #047857;
+  /* Soft success tint surface (pairs with --color-success-text). */
+  --color-success-bg: rgba(46, 204, 113, 0.1);
   --color-warning: #F5A623;
   --color-warning-bg: #fef9e7;
   --color-warning-border: #f5d880;
   --color-warning-text: #7a6420;
   --color-error: #ba1a1a;
+  /* Subtle error-tint surface + border that pair with --color-error text.
+     Soft red consistent with #ba1a1a at low alpha over the light canvas. */
+  --color-error-bg: rgba(186, 26, 26, 0.08);
+  --color-error-border: rgba(186, 26, 26, 0.22);
 
   /* Badges */
   --badge-success-bg: #e8f5e9;
@@ -239,7 +248,13 @@
   --color-warning-border: rgba(245, 166, 35, 0.3);
   --color-warning-text: #fbbf24;
   --color-success-text: #6ee7a7;
+  /* Soft success tint over the dark canvas (based on #6ee7a7). */
+  --color-success-bg: rgba(110, 231, 167, 0.12);
   --color-error: #f87171;
+  /* Subtle error-tint surface + border over the dark canvas (based on
+     #f87171) that pair with --color-error text. */
+  --color-error-bg: rgba(248, 113, 113, 0.12);
+  --color-error-border: rgba(248, 113, 113, 0.3);
 
   /* Badges */
   --badge-success-bg: rgba(46, 204, 113, 0.15);
@@ -269,6 +284,9 @@
   --color-dark-gray: #c7c7cc;       /* secondary text */
   --color-surface: #18181b;         /* hero background */
   --color-surface-container-low: #111114; /* recessed section background */
+  /* Elevated container, one step above --bg-elevated (#2d2d33).
+     Avatar initials-chip fallback background. */
+  --color-surface-container-high: #3a3a40;
 }
 
 a:focus-visible,
