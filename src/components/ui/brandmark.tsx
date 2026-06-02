@@ -3,6 +3,15 @@ import React from "react";
 type BrandmarkProps = React.SVGProps<SVGSVGElement> & {
   size?: number | string;
   title?: string;
+  /**
+   * Mark the brandmark as purely decorative. When the brandmark sits inside
+   * an element that is already labelled (e.g. a link whose text or aria-label
+   * names the destination), exposing the brandmark's own label produces a
+   * redundant announcement. Set `decorative` to hide it from the a11y tree
+   * (`aria-hidden`, no `role="img"`, no `<title>`/`aria-label`). Defaults to
+   * `false`, preserving the labelled behaviour.
+   */
+  decorative?: boolean;
 };
 
 /**
@@ -18,6 +27,7 @@ type BrandmarkProps = React.SVGProps<SVGSVGElement> & {
 export default function Brandmark({
   size = 40,
   title = "Certified",
+  decorative = false,
   className,
   ...rest
 }: BrandmarkProps) {
@@ -28,12 +38,13 @@ export default function Brandmark({
       viewBox="0 0 40 40"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      role="img"
-      aria-label={title}
+      role={decorative ? undefined : "img"}
+      aria-label={decorative ? undefined : title}
+      aria-hidden={decorative ? true : undefined}
       className={className}
       {...rest}
     >
-      <title>{title}</title>
+      {!decorative && <title>{title}</title>}
       <path
         d="M0 8C0 3.58172 3.58172 0 8 0H32C36.4183 0 40 3.58172 40 8V32C40 36.4183 36.4183 40 32 40H8C3.58172 40 0 36.4183 0 32V8Z"
         fill="currentColor"

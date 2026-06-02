@@ -10,7 +10,8 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
    * "elevated" — bg-elevated, full border, var(--radius). Used for
    *              "object" cards (explore people/projects, app tiles,
    *              endorsement summaries).
-   * "inset"    — bg-canvas (recessed), full border, var(--radius).
+   * "inset"    — bg-canvas (recessed), full border (--border-default,
+   *              same weight as elevated), var(--radius).
    *              Use for inset details inside an elevated parent.
    */
   variant?: CardVariant;
@@ -22,21 +23,28 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   as?: "div" | "article" | "li" | "section";
 }
 
+// Canonical border tokens for the card family:
+// - Row dividers use --border-subtle (matches tabs.tsx and the vast majority
+//   of `border-bottom` divider rules across the app's CSS). This is THE
+//   row-divider token — do not reintroduce --border-light here.
+// - Full-bordered surfaces (elevated, inset) use --border-default so the two
+//   "boxed" variants read as the same weight; only the background recesses.
+// All tokens above flip in dark mode (see tokens.css [data-theme="dark"]).
 const baseByVariant: Record<CardVariant, string> = {
   row:
     "bg-transparent border-0 border-b border-[var(--border-subtle)] rounded-none",
   elevated:
     "bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded",
   inset:
-    "bg-[var(--bg-canvas)] border border-[var(--border-subtle)] rounded",
+    "bg-[var(--bg-canvas)] border border-[var(--border-default)] rounded",
 };
 
 const hoverByVariant: Record<CardVariant, string> = {
-  row: "hover:bg-[var(--overlay-weak)]",
+  row: "transition-colors duration-150 motion-reduce:transition-none hover:bg-[var(--overlay-weak)]",
   elevated:
-    "transition-all duration-150 hover:border-[var(--border-hover)] hover:shadow-sm",
+    "transition-all duration-150 motion-reduce:transition-none hover:border-[var(--border-hover)] hover:shadow-sm",
   inset:
-    "transition-all duration-150 hover:border-[var(--border-hover-soft)]",
+    "transition-all duration-150 motion-reduce:transition-none hover:border-[var(--border-hover-soft)]",
 };
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(

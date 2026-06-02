@@ -8,8 +8,26 @@ export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
   width?: number | string;
   /** Pixel height. Defaults vary by variant. */
   height?: number | string;
-  /** For variant="text", number of stacked lines. */
+  /**
+   * Shortcut for variant="circle": equal width/height and a fully-round
+   * radius. Convenience for replacing hand-rolled avatar placeholders.
+   * When set, it wins over an explicit `variant`.
+   */
+  circle?: boolean;
+  /**
+   * Override the border-radius. A number is treated as pixels; a string is
+   * used verbatim. Omit to inherit the default `rounded` (var(--radius), 2px),
+   * or the pill radius forced by circle/variant="circle".
+   */
+  radius?: number | string;
+  /** For variant="text", number of stacked lines within one paragraph. */
   lines?: number;
+  /**
+   * Render N stacked copies of this skeleton (gap-2 column). Defaults to 1.
+   * Eases replacing hand-rolled lists of placeholder rows. For the text
+   * variant this stacks N paragraphs of `lines` lines each.
+   */
+  count?: number;
   /** When true, no pulse animation (e.g. when a parent already pulses). */
   noAnimate?: boolean;
 }
@@ -42,48 +60,100 @@ const cssFor = (
   }
 };
 
+// Normalize the radius prop: number -> px, string -> verbatim, undefined -> skip.
+const radiusValue = (radius: SkeletonProps["radius"]): string | undefined =>
+  radius === undefined
+    ? undefined
+    : typeof radius === "number"
+      ? `${radius}px`
+      : radius;
+
 const Skeleton: React.FC<SkeletonProps> = ({
   variant = "box",
   width,
   height,
+  circle = false,
+  radius,
   lines = 3,
+  count = 1,
   noAnimate = false,
   className = "",
   style,
   ...props
 }) => {
-  const cls = `${baseClass} ${noAnimate ? "!animate-none" : ""} ${className}`.trim();
+  // `circle` is sugar for the circle variant and wins over an explicit variant.
+  const resolvedVariant: SkeletonVariant = circle ? "circle" : variant;
+  const radiusOverride = radiusValue(radius);
+  // Stack at least one copy; a non-positive count collapses to a single item.
+  const repeat = Math.max(1, Math.floor(count));
 
-  if (variant === "text") {
-    return (
-      <div
-        aria-hidden
-        className={`flex flex-col gap-2 ${className}`}
-        {...props}
-      >
+  if (resolvedVariant === "text") {
+    // One paragraph = `lines` stacked bars, last one ragged (60%) to avoid the
+    // "newspaper paragraph" look. Returned as a fragment so the single-paragraph
+    // case keeps its original DOM shape (root carries aria-hidden + props).
+    const paragraphLines = (
+      <>
         {Array.from({ length: lines }).map((_, i) => {
-          // Last line is 60% to avoid the "newspaper paragraph" look;
-          // earlier lines honor the documented `width` prop (default 100%).
+          // Earlier lines honor the documented `width` prop (default 100%).
           const w = i === lines - 1 ? "60%" : (width ?? "100%");
           return (
             <div
               key={i}
               className={`${baseClass} ${noAnimate ? "!animate-none" : ""}`}
-              style={{ ...style, width: w, height: height ?? 12 }}
+              style={{
+                ...style,
+                width: w,
+                height: height ?? 12,
+                ...(radiusOverride !== undefined
+                  ? { borderRadius: radiusOverride }
+                  : {}),
+              }}
             />
           );
         })}
+      </>
+    );
+
+    if (repeat === 1) {
+      // Preserve the original single-paragraph DOM shape.
+      return (
+        <div aria-hidden className={`flex flex-col gap-2 ${className}`} {...props}>
+          {paragraphLines}
+        </div>
+      );
+    }
+
+    return (
+      <div aria-hidden className={`flex flex-col gap-4 ${className}`} {...props}>
+        {Array.from({ length: repeat }).map((_, p) => (
+          <div key={p} aria-hidden className="flex flex-col gap-2">
+            {paragraphLines}
+          </div>
+        ))}
       </div>
     );
   }
 
+  const itemCls = `${baseClass} ${noAnimate ? "!animate-none" : ""}`;
+  const itemStyle: React.CSSProperties = {
+    ...cssFor(resolvedVariant, width, height),
+    ...style,
+    ...(radiusOverride !== undefined ? { borderRadius: radiusOverride } : {}),
+  };
+
+  if (repeat === 1) {
+    // Preserve the original single-element DOM shape.
+    return (
+      <div aria-hidden className={`${itemCls} ${className}`.trim()} style={itemStyle} {...props} />
+    );
+  }
+
   return (
-    <div
-      aria-hidden
-      className={cls}
-      style={{ ...cssFor(variant, width, height), ...style }}
-      {...props}
-    />
+    <div aria-hidden className={`flex flex-col gap-2 ${className}`.trim()} {...props}>
+      {Array.from({ length: repeat }).map((_, i) => (
+        <div key={i} aria-hidden className={itemCls} style={itemStyle} />
+      ))}
+    </div>
   );
 };
 

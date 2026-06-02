@@ -6,7 +6,7 @@ import Image from "next/image";
 export interface AvatarProps {
   src?: string;
   alt?: string;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl";
   fallbackInitials?: string;
   className?: string;
   bordered?: boolean;
@@ -17,6 +17,9 @@ const sizeMap = {
   md: "h-12 w-12 text-body",
   lg: "h-16 w-16 text-h4",
   xl: "h-24 w-24 text-h3",
+  // 240px profile-page hero. text-display (3rem) matches the
+  // !text-5xl override profile-sidebar previously applied inline.
+  "2xl": "h-[240px] w-[240px] text-display",
 };
 
 // Pixel dimensions matching the Tailwind h-/w- classes above. next/image
@@ -27,6 +30,7 @@ const sizePx: Record<NonNullable<AvatarProps["size"]>, number> = {
   md: 48,
   lg: 64,
   xl: 96,
+  "2xl": 240,
 };
 
 const Avatar: React.FC<AvatarProps> = ({

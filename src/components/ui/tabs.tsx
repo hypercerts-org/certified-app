@@ -9,6 +9,8 @@ import React, {
   useRef,
 } from "react";
 
+import Badge from "./badge";
+
 /**
  * Canonical Tabs/Tab/TabPanel components with proper ARIA semantics:
  *   role="tablist" on the strip, role="tab" on each trigger,
@@ -39,7 +41,7 @@ interface TabsContextValue {
   /** Stable id shared across tablist + tabs + panels. */
   baseId: string;
   /** Ordered list of tab values, used by arrow-key navigation. */
-  registerTab: (value: string) => void;
+  registerTab: (value: string, disabled: boolean) => void;
   focusTab: (value: string) => void;
 }
 
@@ -66,13 +68,17 @@ export function Tabs({ value, onChange, children, className = "" }: TabsProps) {
   // Ordered list of tab values, used to compute prev/next for arrow keys.
   // useRef so registration doesn't trigger re-renders.
   const orderRef = useRef<string[]>([]);
+  // Set of disabled tab values, so arrow-key navigation can skip them.
+  const disabledRef = useRef<Set<string>>(new Set());
   // Map value → button DOM node, so we can focus it from the context.
   const buttonsRef = useRef<Map<string, HTMLButtonElement>>(new Map());
 
-  const registerTab = useCallback((v: string) => {
+  const registerTab = useCallback((v: string, disabled: boolean) => {
     if (!orderRef.current.includes(v)) {
       orderRef.current.push(v);
     }
+    if (disabled) disabledRef.current.add(v);
+    else disabledRef.current.delete(v);
   }, []);
 
   const focusTab = useCallback((v: string) => {
@@ -88,7 +94,7 @@ export function Tabs({ value, onChange, children, className = "" }: TabsProps) {
   // its DOM node without re-rendering siblings on every render.
   return (
     <TabsContext.Provider value={ctx}>
-      <TabsRegistryContext.Provider value={{ buttonsRef, orderRef }}>
+      <TabsRegistryContext.Provider value={{ buttonsRef, orderRef, disabledRef }}>
         <div className={className}>{children}</div>
       </TabsRegistryContext.Provider>
     </TabsContext.Provider>
@@ -98,6 +104,7 @@ export function Tabs({ value, onChange, children, className = "" }: TabsProps) {
 interface TabsRegistry {
   buttonsRef: React.MutableRefObject<Map<string, HTMLButtonElement>>;
   orderRef: React.MutableRefObject<string[]>;
+  disabledRef: React.MutableRefObject<Set<string>>;
 }
 
 const TabsRegistryContext = createContext<TabsRegistry | null>(null);
@@ -124,18 +131,33 @@ export interface TabProps
   extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children" | "value"> {
   value: string;
   children: React.ReactNode;
+  /** When true, the tab is non-interactive: it ignores clicks, is skipped by
+   *  arrow-key / Home / End navigation, is removed from the roving tab order,
+   *  and is announced via `aria-disabled`. */
+  disabled?: boolean;
+  /** Optional count/badge rendered after the label via the Badge primitive
+   *  (the neutral `count` chip). Accepts a number or short string. */
+  count?: number | string;
 }
 
-export function Tab({ value, children, className = "", ...props }: TabProps) {
+export function Tab({
+  value,
+  children,
+  disabled = false,
+  count,
+  className = "",
+  ...props
+}: TabProps) {
   const ctx = useTabsContext("Tab");
   const registry = useContext(TabsRegistryContext);
   const isActive = ctx.value === value;
   const tabId = `${ctx.baseId}-tab-${value}`;
   const panelId = `${ctx.baseId}-panel-${value}`;
+  const hasCount = count !== undefined && count !== null && count !== "";
 
-  // Register the tab + DOM node refs on every render. This is cheap
-  // (Map.set + array.includes) and avoids effect-ordering subtleties.
-  ctx.registerTab(value);
+  // Register the tab + its disabled state on every render. This is cheap
+  // (Set/Map ops + array.includes) and avoids effect-ordering subtleties.
+  ctx.registerTab(value, disabled);
 
   const handleRef = useCallback(
     (node: HTMLButtonElement | null) => {
@@ -149,16 +171,37 @@ export function Tab({ value, children, className = "", ...props }: TabProps) {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
     if (!registry) return;
     const order = registry.orderRef.current;
+    const disabledSet = registry.disabledRef.current;
     const idx = order.indexOf(value);
     if (idx < 0) return;
-    let next: number | null = null;
-    if (e.key === "ArrowRight") next = (idx + 1) % order.length;
-    else if (e.key === "ArrowLeft") next = (idx - 1 + order.length) % order.length;
-    else if (e.key === "Home") next = 0;
-    else if (e.key === "End") next = order.length - 1;
-    if (next !== null) {
-      e.preventDefault();
-      const nextValue = order[next];
+
+    // Step in `dir` from `idx`, skipping disabled tabs, wrapping once.
+    // Returns null if every other tab is disabled.
+    const step = (dir: 1 | -1): string | null => {
+      for (let i = 1; i <= order.length; i++) {
+        const candidate = order[(idx + dir * i + order.length * i) % order.length];
+        if (!disabledSet.has(candidate)) return candidate;
+      }
+      return null;
+    };
+    // Find the first/last enabled tab for Home/End.
+    const edge = (from: "start" | "end"): string | null => {
+      const seq = from === "start" ? order : [...order].reverse();
+      for (const candidate of seq) {
+        if (!disabledSet.has(candidate)) return candidate;
+      }
+      return null;
+    };
+
+    let nextValue: string | null = null;
+    if (e.key === "ArrowRight") nextValue = step(1);
+    else if (e.key === "ArrowLeft") nextValue = step(-1);
+    else if (e.key === "Home") nextValue = edge("start");
+    else if (e.key === "End") nextValue = edge("end");
+    else return;
+
+    e.preventDefault();
+    if (nextValue !== null) {
       ctx.onChange(nextValue);
       ctx.focusTab(nextValue);
     }
@@ -172,17 +215,30 @@ export function Tab({ value, children, className = "", ...props }: TabProps) {
       id={tabId}
       aria-controls={panelId}
       aria-selected={isActive}
-      tabIndex={isActive ? 0 : -1}
-      onClick={() => ctx.onChange(value)}
+      aria-disabled={disabled || undefined}
+      // Disabled tabs stay out of the roving tab order entirely; the active
+      // (and only the active) enabled tab is the single Tab-key stop.
+      tabIndex={disabled ? -1 : isActive ? 0 : -1}
+      onClick={() => {
+        if (disabled) return;
+        ctx.onChange(value);
+      }}
       onKeyDown={handleKeyDown}
-      className={`px-1 py-3 text-sm cursor-pointer border-b-2 transition-colors duration-150 ${
-        isActive
-          ? "text-[var(--fg-primary)] border-[var(--fg-primary)] font-semibold"
-          : "text-[var(--fg-muted)] border-transparent hover:text-[var(--fg-primary)]"
+      className={`inline-flex items-center gap-2 px-1 py-3 text-sm border-b-2 transition-colors duration-150 motion-reduce:transition-none ${
+        disabled
+          ? "text-[var(--fg-muted)] border-transparent opacity-50 cursor-not-allowed"
+          : isActive
+            ? "text-[var(--fg-primary)] border-[var(--fg-primary)] font-semibold cursor-pointer"
+            : "text-[var(--fg-muted)] border-transparent hover:text-[var(--fg-primary)] cursor-pointer"
       } ${className}`}
       {...props}
     >
       {children}
+      {hasCount && (
+        <Badge variant="count" compact>
+          {count}
+        </Badge>
+      )}
     </button>
   );
 }

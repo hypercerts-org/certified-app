@@ -3,6 +3,7 @@ import Brandmark from "@/components/ui/brandmark";
 export default function ProviderRedirectOverlay() {
   return (
     <div
+      role="status"
       className="loading-screen"
       style={{ position: "fixed", inset: 0, zIndex: "var(--z-skip-nav)" }}
     >

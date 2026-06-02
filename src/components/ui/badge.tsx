@@ -48,7 +48,7 @@ const config: Record<BadgeVariant, VariantConfig> = {
     icon: null,
     defaultCompact: false,
   },
-  // Neutral chips
+  // Neutral chips — tag (label), role (membership), count (numeric).
   tag: {
     styles:
       "bg-[var(--bg-sunken)] text-[var(--fg-secondary)] uppercase tracking-wider",
@@ -100,9 +100,11 @@ const Badge: React.FC<BadgeProps> = ({
   // `compact` prop overrides; otherwise variant chooses its natural density.
   const isCompact = compact ?? c.defaultCompact;
   const sizeStyles = isCompact
-    ? "px-2 py-0.5 text-[11px] font-semibold"
+    ? "px-2 py-0.5 text-caption font-semibold"
     : "px-3 py-1 text-body-sm font-medium";
-  const baseStyles = `rounded-full inline-flex items-center gap-1.5 ${sizeStyles}`;
+  // All badges are pills (one shape per semantic). 999px per the radius rule;
+  // rounded-full is reserved for circles (e.g. avatars).
+  const baseStyles = `rounded-[999px] inline-flex items-center gap-1.5 ${sizeStyles}`;
 
   return (
     <span className={`${baseStyles} ${c.styles} ${className}`}>
