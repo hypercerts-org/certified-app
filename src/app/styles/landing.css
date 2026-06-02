@@ -1512,10 +1512,11 @@
 }
 
 /* /welcome footer wrapper — the app shell skips SiteFooter on this
-   route, so the landing layout renders it directly. Padding matches
-   the landing sections' horizontal inset so the footer row aligns
-   with the section content above it. */
+   route, so the landing layout renders it directly. Full-bleed (no
+   horizontal padding or max-width cap) so the off-white band and the
+   footer's border-top span the full viewport width; SiteFooter applies
+   its own 32px content inset. */
 .welcome-footer {
-  padding: 0 32px;
+  padding: 0;
   background: var(--color-off-white);
 }

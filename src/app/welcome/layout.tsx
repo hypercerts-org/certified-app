@@ -10,9 +10,8 @@ import SiteFooter from "@/components/layout/site-footer";
  * the global `.app-shell__content` reading column.
  *
  * Renders the global SiteFooter directly (the app-shell short-circuit
- * skips it on /welcome). Wrapped in `.landing-section__inner` so the
- * footer row aligns with the landing sections above it instead of
- * stretching to the viewport edges.
+ * skips it on /welcome), full-bleed so the footer bar (border-top +
+ * off-white band) spans the full viewport width like every other page.
  *
  * NOTE: this branch ships the local `useProfileNavbar` hook for
  * the transparent variant instead of main's `useNavbarVariant`;
@@ -28,9 +27,7 @@ export default function WelcomeLayout({
     <>
       {children}
       <div className="welcome-footer">
-        <div className="landing-section__inner">
-          <SiteFooter />
-        </div>
+        <SiteFooter />
       </div>
     </>
   );
