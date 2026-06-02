@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Option 3 — GitHub model (no persona mode) with org endorsements</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Serif:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --color-primary:#111111; --color-white:#FFFFFF;
+    --bg-canvas:#f9f9f9; --bg-sunken:#eeeeee; --bg-raised:#f3f3f3; --bg-elevated:#FFFFFF;
+    --fg-primary:#111111; --fg-secondary:#4c4546; --fg-muted:#6b6263;
+    --border-default:rgba(0,0,0,0.08); --border-hover:rgba(0,0,0,0.15); --border-strong:rgba(0,0,0,0.22);
+    --shadow-md:0 4px 12px rgba(0,0,0,0.08); --shadow-lg:0 18px 50px rgba(0,0,0,0.20);
+    --radius:2px; --serif:'Noto Serif',Georgia,serif; --ui:'Inter',system-ui,sans-serif; --stage:#dcdcd8;
+  }
+  .dark{
+    --bg-canvas:#18181b; --bg-sunken:#111114; --bg-raised:#26262b; --bg-elevated:#2d2d33;
+    --fg-primary:#f5f5f7; --fg-secondary:#c7c7cc; --fg-muted:#8e8e93;
+    --border-default:rgba(255,255,255,0.08); --border-hover:rgba(255,255,255,0.18); --border-strong:rgba(255,255,255,0.28);
+    --shadow-lg:0 18px 50px rgba(0,0,0,0.6); --stage:#0c0c0e;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:var(--ui);background:var(--stage);color:var(--fg-primary);-webkit-font-smoothing:antialiased;}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:20px 30px;}
+  .top h1{font-family:var(--serif);font-weight:600;font-size:21px;margin:0;}
+  .top h1 small{font-family:var(--ui);font-weight:500;font-size:12.5px;color:var(--fg-muted);margin-left:10px;}
+  .toggle{font-size:12.5px;font-weight:500;color:var(--fg-primary);background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:999px;padding:7px 14px;cursor:pointer;}
+  .wrap{max-width:1320px;margin:0 auto;padding:0 30px 60px;}
+  .intro{font-size:14px;line-height:1.6;color:var(--fg-secondary);max-width:920px;margin:0 0 24px;}
+  .intro b{color:var(--fg-primary);}
+  .flabel{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-muted);margin-bottom:9px;}
+  .rowwrap{display:flex;gap:34px;flex-wrap:wrap;align-items:flex-start;margin-bottom:8px;}
+  .col{display:flex;flex-direction:column;}
+
+  /* avatars */
+  .av{border-radius:50%;display:grid;place-items:center;font-weight:600;color:#fff;flex:none;}
+  .av.green{background:#3d5a45;} .av.blue{background:#3a4a63;} .av.plum{background:#5a3d52;}
+  .av-18{width:18px;height:18px;font-size:8px;} .av-20{width:20px;height:20px;font-size:8px;} .av-24{width:24px;height:24px;font-size:9px;}
+  .av-26{width:26px;height:26px;font-size:10px;} .av-28{width:28px;height:28px;font-size:10px;} .av-72{width:72px;height:72px;font-size:26px;} .av-110{width:110px;height:110px;font-size:38px;}
+
+  /* phone */
+  .phone{width:340px;background:var(--bg-canvas);border:1px solid var(--border-hover);border-radius:15px;overflow:hidden;box-shadow:0 14px 36px rgba(0,0,0,.16);position:relative;}
+  .pnav{height:50px;display:flex;align-items:center;justify-content:space-between;padding:0 13px;background:var(--bg-elevated);border-bottom:1px solid var(--border-default);}
+  .brand{font-family:var(--serif);font-weight:600;font-size:17px;}
+  .you{display:flex;align-items:center;gap:5px;} .you .chev{color:var(--fg-muted);font-size:10px;}
+  .pbody{padding:18px 16px 22px;}
+
+  /* browser */
+  .browser{border:1px solid var(--border-hover);border-radius:11px;overflow:hidden;box-shadow:0 16px 40px rgba(0,0,0,.18);background:var(--bg-canvas);position:relative;width:780px;}
+  .chrome{height:34px;display:flex;align-items:center;gap:11px;padding:0 12px;background:var(--bg-sunken);border-bottom:1px solid var(--border-default);}
+  .dots{display:flex;gap:6px;} .dots i{width:9px;height:9px;border-radius:50%;background:#cfcfca;display:block;} .dark .dots i{background:#3a3a40;}
+  .url{font-size:11px;color:var(--fg-muted);}
+  .abar{height:52px;display:flex;align-items:center;gap:14px;padding:0 18px;background:var(--bg-elevated);border-bottom:1px solid var(--border-default);}
+  .tabs{display:flex;gap:3px;margin-left:8px;} .tabs a{font-size:12px;color:var(--fg-muted);padding:5px 9px;text-decoration:none;border-radius:var(--radius);} .tabs a.on{color:var(--fg-primary);font-weight:600;background:var(--bg-sunken);}
+  .sp{flex:1;}
+  .id2{display:flex;flex-direction:column;line-height:1.15;} .id2 .n{font-size:12px;font-weight:600;} .id2 .h{font-size:10.5px;color:var(--fg-muted);}
+
+  /* profile */
+  .prof{display:flex;flex-direction:column;align-items:center;text-align:center;}
+  .prof .nm{font-family:var(--serif);font-weight:600;font-size:20px;margin-top:10px;} .prof .hd{font-size:13px;color:var(--fg-muted);margin-top:2px;}
+  .pcontent{display:grid;grid-template-columns:250px 1fr;}
+  .pside{padding:24px 20px;border-right:1px solid var(--border-default);display:flex;flex-direction:column;align-items:flex-start;}
+  .pside .nm{font-family:var(--serif);font-weight:600;font-size:19px;margin-top:13px;} .pside .hd{font-size:12.5px;color:var(--fg-muted);margin-top:2px;}
+  .pmain{padding:22px;}
+
+  /* split action button (the core mechanic) */
+  .actions{display:flex;gap:9px;margin-top:16px;width:100%;}
+  .split{display:inline-flex;border:1px solid var(--color-primary);border-radius:var(--radius);overflow:hidden;position:relative;}
+  .dark .split{border-color:var(--color-white);}
+  .split.ghost{border-color:var(--border-strong);}
+  .split .do{background:var(--color-primary);color:#fff;padding:8px 14px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;}
+  .dark .split .do{background:var(--color-white);color:var(--color-primary);}
+  .split.ghost .do{background:var(--bg-elevated);color:var(--fg-primary);}
+  .split .pick{padding:8px 9px;display:inline-flex;align-items:center;gap:5px;cursor:pointer;background:var(--bg-elevated);color:var(--fg-secondary);border-left:1px solid var(--border-default);font-size:12px;}
+  .split .pick .chev{font-size:10px;color:var(--fg-muted);}
+
+  /* actor picker menu */
+  .picker{position:absolute;top:42px;right:0;width:248px;background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:8px;box-shadow:var(--shadow-md);overflow:hidden;z-index:25;}
+  .picker .ph{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-muted);padding:10px 12px 5px;}
+  .picker .pr{display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;} .picker .pr:hover{background:var(--bg-sunken);}
+  .picker .pr .m{flex:1;line-height:1.2;} .picker .pr .m .n{font-size:13px;font-weight:500;} .picker .pr .m .h{font-size:11px;color:var(--fg-muted);}
+  .picker .pr .role{font-size:9.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--fg-muted);background:var(--bg-sunken);padding:2px 6px;border-radius:999px;}
+  .picker .pr.on .ck{margin-left:auto;}
+
+  /* confirm (mobile sheet / desktop modal) */
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,.44);display:flex;z-index:40;}
+  .overlay.sheet-host{align-items:flex-end;} .overlay.modal-host{align-items:center;justify-content:center;}
+  .confirm{background:var(--bg-elevated);border:1px solid var(--border-default);padding:18px 16px 18px;}
+  .sheet-host .confirm{width:100%;border-top-left-radius:14px;border-top-right-radius:14px;}
+  .modal-host .confirm{width:430px;border-radius:8px;box-shadow:var(--shadow-lg);padding:22px;}
+  .confirm h3{font-family:var(--serif);font-weight:600;font-size:17px;margin:0 0 8px;}
+  .confirm .exp{font-size:13px;color:var(--fg-secondary);line-height:1.5;margin:0 0 14px;} .confirm .exp b{color:var(--fg-primary);font-weight:600;}
+  .actrow{display:flex;align-items:center;gap:10px;padding:11px;border:1px solid var(--border-default);border-radius:var(--radius);background:var(--bg-raised);margin-bottom:9px;}
+  .actrow .m{flex:1;line-height:1.2;} .actrow .m .n{font-size:13.5px;font-weight:600;} .actrow .m .h{font-size:11px;color:var(--fg-muted);}
+  .actrow .tag{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--fg-muted);}
+  .oprow{font-size:11.5px;color:var(--fg-muted);margin-bottom:15px;display:flex;align-items:center;gap:7px;}
+  .drow{display:flex;justify-content:flex-end;gap:9px;}
+  .btn{height:37px;padding:0 15px;border-radius:var(--radius);font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border-default);background:var(--bg-elevated);color:var(--fg-primary);}
+  .btn.primary{background:var(--color-primary);color:#fff;border-color:var(--color-primary);} .dark .btn.primary{background:var(--color-white);color:var(--color-primary);border-color:var(--color-white);}
+
+  /* owner picker on create */
+  .lab{font-size:12px;font-weight:600;color:var(--fg-secondary);margin:14px 0 6px;}
+  .owner{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 12px;border:1px solid var(--border-default);border-radius:var(--radius);background:var(--bg-elevated);font-size:13px;font-weight:500;}
+  .owner .chev{color:var(--fg-muted);font-size:11px;margin-left:4px;}
+  .fld{height:38px;border:1px solid var(--border-default);border-radius:var(--radius);background:var(--bg-elevated);display:flex;align-items:center;padding:0 12px;font-size:13px;color:var(--fg-muted);}
+
+  .annos{display:flex;gap:24px;flex-wrap:wrap;margin:20px 0 6px;}
+  .anno{font-size:12.5px;line-height:1.5;color:var(--fg-secondary);padding-left:15px;position:relative;max-width:300px;}
+  .anno::before{content:"";position:absolute;left:0;top:7px;width:6px;height:6px;border-radius:50%;background:var(--fg-primary);}
+  .anno b{color:var(--fg-primary);font-weight:600;}
+
+  .ship{margin-top:30px;border-top:1px solid var(--border-hover);padding-top:22px;}
+  .ship h2{font-family:var(--serif);font-weight:600;font-size:18px;margin:0 0 4px;}
+  .ship p.sub{font-size:13px;color:var(--fg-muted);margin:0 0 16px;}
+  .shipgrid{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+  .shipcard{border:1px solid var(--border-default);border-radius:8px;background:var(--bg-elevated);padding:16px 18px;}
+  .shipcard .ttl{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:600;margin-bottom:4px;}
+  .pctpill{font-size:10px;font-weight:700;letter-spacing:.03em;padding:2px 8px;border-radius:999px;border:1px solid var(--border-strong);color:var(--fg-secondary);}
+  .pctpill.half{background:var(--bg-sunken);} .pctpill.zero{background:var(--color-primary);color:#fff;border-color:var(--color-primary);} .dark .pctpill.zero{background:var(--color-white);color:var(--color-primary);}
+  .shipcard ul{margin:8px 0 0;padding-left:16px;} .shipcard li{font-size:12px;line-height:1.55;color:var(--fg-secondary);margin-bottom:5px;} .shipcard li b{color:var(--fg-primary);font-weight:600;}
+  .shipcard .have{color:var(--fg-muted);font-size:11.5px;margin-bottom:6px;}
+  @media(max-width:900px){.shipgrid{grid-template-columns:1fr;}}
+  svg{display:block;}
+</style>
+</head>
+<body>
+  <div class="top">
+    <h1>Option 3 — the GitHub model <small>no persona mode &middot; per-action identity &middot; orgs can endorse</small></h1>
+    <button class="toggle" id="themeBtn">Dark mode</button>
+  </div>
+  <div class="wrap">
+    <p class="intro">You are <b>always you</b> in the chrome, your feed, and your profile. There is no "acting as" mode to enter or forget. Identity is chosen <b>per action</b> via a split button: the primary side acts as you by default; the chevron opens a small menu of the orgs you own or admin. The default is <b>always You</b> (never last-used), so the sticky-mode bug class is gone by construction. Because endorsing is high-stakes and core to Certified, choosing a group as the endorser triggers a confirm that names all three parties. Managing a group happens on the group's own page.</p>
+
+    <!-- ===================== MOBILE ===================== -->
+    <div class="flabel">Mobile</div>
+    <div class="rowwrap">
+      <div class="col">
+        <div class="flabel" style="font-weight:500;text-transform:none;letter-spacing:0;color:var(--fg-secondary);">Foreign profile &mdash; split actions, picker open</div>
+        <div class="phone">
+          <div class="pnav"><span class="brand">Certified</span><div class="you"><div class="av plum av-26">YO</div><span class="chev">&#9662;</span></div></div>
+          <div class="pbody">
+            <div class="prof">
+              <div class="av blue av-72">JR</div>
+              <div class="nm">Jane Rivera</div>
+              <div class="hd">@jane.bsky.social</div>
+              <div class="actions">
+                <div class="split ghost" style="flex:1;"><span class="do" style="flex:1;justify-content:center;">&#43; Follow</span><span class="pick"><div class="av plum av-18">YO</div><span class="chev">&#9662;</span></span></div>
+                <div class="split" style="flex:1;position:relative;"><span class="do" style="flex:1;justify-content:center;">&#9786; Endorse</span><span class="pick" id="mpick"><div class="av plum av-18">YO</div><span class="chev">&#9662;</span></span>
+                  <div class="picker" id="mpicker" style="display:none;">
+                    <div class="ph">Endorse as</div>
+                    <div class="pr on"><div class="av plum av-24">YO</div><div class="m"><div class="n">You</div><div class="h">@holke</div></div><span class="ck">&#10003;</span></div>
+                    <div class="pr"><div class="av green av-24">AC</div><div class="m"><div class="n">Acme Collective</div><div class="h">@acme</div></div><span class="role">Owner</span></div>
+                    <div class="pr"><div class="av blue av-24">RF</div><div class="m"><div class="n">Rainforest Fund</div><div class="h">@rainforest</div></div><span class="role">Admin</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- confirm sheet -->
+          <div class="overlay sheet-host" id="msheet" style="display:none;">
+            <div class="confirm">
+              <h3>Endorse as Acme Collective?</h3>
+              <p class="exp">This records that <b>Acme Collective</b> certifies <b>Jane Rivera</b>. It is a public, durable vouch.</p>
+              <div class="actrow"><div class="av green av-28">AC</div><div class="m"><div class="n">Acme Collective</div><div class="h">@acme.certified.app</div></div><span class="tag">Endorser</span></div>
+              <div class="oprow"><div class="av plum av-18">YO</div>On behalf of Acme as <b style="color:var(--fg-secondary);font-weight:600;">you (@holke)</b>, an admin.</div>
+              <div class="drow"><button class="btn" id="mcancel">Cancel</button><button class="btn primary">Endorse as Acme</button></div>
+            </div>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--fg-muted);margin-top:10px;max-width:340px;">Tap the <b style="color:var(--fg-secondary)">Endorse&nbsp;&#9662;</b> chevron to open the actor menu, then "Acme" to see the confirm.</p>
+      </div>
+
+      <div class="col" style="max-width:300px;">
+        <div class="flabel">How it behaves</div>
+        <div class="annos" style="flex-direction:column;gap:13px;">
+          <div class="anno"><b>Split button</b> on the action itself: primary acts as you; the chevron picks a different endorser for this one action. Identity stays on the button (Facebook's pattern, not LinkedIn's misplaced corner).</div>
+          <div class="anno"><b>Default is always You.</b> The menu resets to you each time, so you can't drift into endorsing as the wrong org.</div>
+          <div class="anno"><b>Only orgs you own/admin</b> appear, with the role shown. The server re-checks the role on write.</div>
+          <div class="anno"><b>Follow as org</b> is one click (low-stakes). <b>Endorse as org</b> gets the confirm, because it is the product's core trust record.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== DESKTOP ===================== -->
+    <div class="flabel" style="margin-top:26px;">Desktop</div>
+    <div class="rowwrap">
+      <div class="col">
+        <div class="flabel" style="font-weight:500;text-transform:none;letter-spacing:0;color:var(--fg-secondary);">Foreign profile &mdash; endorse confirm names all three parties</div>
+        <div class="browser">
+          <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><span class="url">certified.app/profile/jane.bsky.social</span></div>
+          <div class="abar"><span class="brand">Certified</span><nav class="tabs"><a href="#" class="on">Overview</a><a href="#">Certs</a><a href="#">Endorsements</a></nav><span class="sp"></span><div class="you"><div class="av plum av-26">YO</div><div class="id2"><span class="n">You</span><span class="h">@holke.certified.app</span></div><span class="chev">&#9662;</span></div></div>
+          <div class="pcontent">
+            <div class="pside">
+              <div class="av blue av-110">JR</div>
+              <div class="nm">Jane Rivera</div>
+              <div class="hd">@jane.bsky.social</div>
+              <div class="actions" style="flex-direction:column;gap:8px;">
+                <div class="split ghost" style="width:100%;"><span class="do" style="flex:1;justify-content:center;">&#43; Follow</span><span class="pick"><div class="av plum av-18">YO</div>as You<span class="chev">&#9662;</span></span></div>
+                <div class="split" style="width:100%;"><span class="do" style="flex:1;justify-content:center;">&#9786; Endorse</span><span class="pick"><div class="av green av-18">AC</div>as Acme<span class="chev">&#9662;</span></span></div>
+              </div>
+            </div>
+            <div class="pmain">
+              <div style="font-family:var(--serif);font-weight:600;font-size:16px;margin-bottom:10px;">Endorsed by 14</div>
+              <div style="font-size:12.5px;color:var(--fg-muted);line-height:1.6;">A foreign profile. The chrome and your tabs stay "You". Only the action's endorser is chosen, here pre-set to Acme via the split button.</div>
+            </div>
+          </div>
+          <!-- modal confirm -->
+          <div class="overlay modal-host" id="dmodal">
+            <div class="confirm">
+              <h3>Endorse Jane Rivera as Acme Collective?</h3>
+              <p class="exp">This records that <b>Acme Collective</b> certifies <b>Jane Rivera</b>. Endorsements are public and durable.</p>
+              <div class="actrow"><div class="av green av-28">AC</div><div class="m"><div class="n">Acme Collective</div><div class="h">@acme.certified.app</div></div><span class="tag">Endorser</span></div>
+              <div class="oprow"><div class="av plum av-18">YO</div>Authored by <b style="color:var(--fg-secondary);font-weight:600;">you (@holke)</b> as an admin of Acme &middot; kept in the group's audit log.</div>
+              <div class="drow"><button class="btn" id="dcancel">Cancel</button><button class="btn primary">Endorse as Acme</button></div>
+            </div>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--fg-muted);margin-top:10px;">The confirm names the <b style="color:var(--fg-secondary)">endorser</b> (Acme), the <b style="color:var(--fg-secondary)">operator</b> (you), and the <b style="color:var(--fg-secondary)">subject</b> (Jane). <a href="#" id="reopen" style="color:var(--fg-secondary);">Reopen confirm</a></p>
+      </div>
+
+      <div class="col">
+        <div class="flabel" style="font-weight:500;text-transform:none;letter-spacing:0;color:var(--fg-secondary);">Create &mdash; an "Owner" picker (GitHub's dropdown)</div>
+        <div class="browser" style="width:430px;">
+          <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><span class="url">certified.app/create</span></div>
+          <div class="abar"><span class="brand">Certified</span><span class="sp"></span><div class="you"><div class="av plum av-26">YO</div><div class="id2"><span class="n">You</span><span class="h">@holke.certified.app</span></div></div></div>
+          <div style="padding:20px;">
+            <div style="font-family:var(--serif);font-weight:600;font-size:18px;">New certificate</div>
+            <div class="lab">Owner</div>
+            <div class="owner"><div class="av green av-20">AC</div>Acme Collective<span class="chev">&#9662;</span></div>
+            <div class="lab">Title</div><div class="fld">Reforestation milestone, Q2</div>
+            <div class="lab">Recipient</div><div class="fld">@jane.bsky.social</div>
+            <button class="btn primary" style="margin-top:18px;height:42px;">Create certificate</button>
+          </div>
+        </div>
+        <div class="annos" style="flex-direction:column;gap:11px;margin-top:14px;">
+          <div class="anno"><b>Authoring</b> (certs, projects) uses the same idea as a plain owner dropdown, defaulting to you.</div>
+          <div class="anno"><b>Browsing/managing</b> a group lives on <b>/groups/acme</b>, not by re-skinning your home. Your home is always yours.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== SHIP ===================== -->
+    <div class="ship">
+      <h2>What it takes to ship (grounded in the backend trace)</h2>
+      <p class="sub">Unlike Options 1 &amp; 2, this needs real backend work, because "endorse as org" does not exist yet. The UI above is the target; here is the gap.</p>
+      <div class="shipgrid">
+        <div class="shipcard">
+          <div class="ttl">Follow as org <span class="pctpill half">~50% built</span></div>
+          <div class="have">Have: group follow <b>create</b> (POST /api/groups/[did]/follow, createFollow via writeToRepo targetDid).</div>
+          <ul>
+            <li><b>Add DELETE</b> to the group follow route (it is POST-only today, so a group can't unfollow).</li>
+            <li><b>deleteFollow</b> must take a targetDid and route via writeToRepo (currently hardwired to the personal proxy).</li>
+            <li>Thread targetDid into the 2 unfollow call sites; wire the profile Follow button's actor picker.</li>
+          </ul>
+        </div>
+        <div class="shipcard">
+          <div class="ttl">Endorse as org <span class="pctpill zero">0% built</span></div>
+          <div class="have">Endorse is hardwired to the personal DID; no group badge route exists, and the XRPC proxy blocks group writes (repo === session).</div>
+          <ul>
+            <li><b>New group badge route</b> (POST + DELETE for app.certified.badge.award) modeled on the follow POST + project DELETE.</li>
+            <li><b>Per-group endorsement definition</b>: ensure an app.certified.badge.definition on the group repo (the lazy ensure can only target the personal repo today).</li>
+            <li><b>Refactor</b> createEndorsementAward / deleteEndorsementAward to accept targetDid via writeToRepo; thread it through the 5 award call sites.</li>
+            <li>Revisit the "endorsements = personal-only" classification; mirror the badge.award rate-limit on the group route.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="annos" style="margin-top:16px;">
+        <div class="anno"><b>Permission</b> is already enforceable: group writes go through createGroupAgent, which the group service authorizes for owner/admin only and rejects for members. The picker just mirrors that role gate in the UI.</div>
+        <div class="anno"><b>Accountability:</b> the public endorser is the group DID, but the authoring admin's DID is retained in the group's audit log, so "who endorsed as Acme" is always answerable.</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  document.getElementById('themeBtn').addEventListener('click',e=>{const on=document.body.classList.toggle('dark');e.target.textContent=on?'Light mode':'Dark mode';});
+  // mobile picker -> sheet
+  const mp=document.getElementById('mpicker'), msheet=document.getElementById('msheet');
+  document.getElementById('mpick').addEventListener('click',e=>{e.stopPropagation();mp.style.display=mp.style.display==='none'?'block':'none';});
+  mp.querySelectorAll('.pr').forEach((r,i)=>r.addEventListener('click',()=>{mp.style.display='none';if(i>0)msheet.style.display='flex';}));
+  document.getElementById('mcancel').addEventListener('click',()=>msheet.style.display='none');
+  document.addEventListener('click',()=>{mp.style.display='none';});
+  // desktop modal
+  const dm=document.getElementById('dmodal');
+  document.getElementById('dcancel').addEventListener('click',()=>dm.style.display='none');
+  document.getElementById('reopen').addEventListener('click',e=>{e.preventDefault();dm.style.display='flex';});
+  dm.addEventListener('click',e=>{if(e.target===dm)dm.style.display='none';});
+</script>
+</body>
+</html>
