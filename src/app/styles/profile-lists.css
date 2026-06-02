@@ -776,7 +776,7 @@
 }
 
 .profile-lists__paste-row--added .profile-lists__paste-status {
-  color: var(--color-success, #16a34a);
+  color: var(--color-success);
 }
 
 .profile-lists__paste-row--already .profile-lists__paste-status,

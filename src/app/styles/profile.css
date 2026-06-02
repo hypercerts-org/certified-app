@@ -112,7 +112,7 @@
   align-items: center;
   padding: 1px 8px;
   border-radius: 999px;
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.08));
+  background: var(--overlay-weak);
   border: 1px solid var(--border-default);
   color: var(--fg-muted);
   font-size: 0.6875rem;

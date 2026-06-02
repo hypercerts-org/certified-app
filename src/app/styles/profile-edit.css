@@ -238,7 +238,7 @@
 
 .pe__input--invalid,
 .pe__textarea--invalid {
-  border-color: var(--color-error, #d4453d);
+  border-color: var(--color-error);
 }
 
 .pe__field-help {
@@ -249,7 +249,7 @@
 
 .pe__field-error {
   font-size: 0.75rem;
-  color: var(--color-error, #d4453d);
+  color: var(--color-error);
   margin: 0;
 }
 

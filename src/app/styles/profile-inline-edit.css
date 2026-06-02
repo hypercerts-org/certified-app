@@ -141,7 +141,7 @@
 
 .edit-banner__error {
   font-size: 0.8125rem;
-  color: var(--color-error, #d33);
+  color: var(--color-error);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -524,9 +524,9 @@
   width: 100%;
   font: inherit;
   font-size: 14px;
-  color: var(--color-text-primary);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  color: var(--fg-primary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius);
   padding: 8px 12px;
   margin-top: 8px;
@@ -534,14 +534,14 @@
 
 .profile-overview__website-input:focus {
   outline: none;
-  border-color: var(--color-accent, var(--color-text-primary));
-  box-shadow: 0 0 0 2px var(--color-accent-soft, rgba(0, 0, 0, 0.1));
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .profile-overview__website-label {
   font-size: 12px;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--fg-secondary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }

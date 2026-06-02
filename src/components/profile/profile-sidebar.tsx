@@ -220,10 +220,9 @@ export default function ProfileSidebar({
         }
       >
         <Avatar
-          size="xl"
+          size="2xl"
           src={avatarUrl || undefined}
           fallbackInitials={initials}
-          className="!h-[240px] !w-[240px] !text-5xl"
         />
         {isEditing && hasInline ? (
           <AvatarEditOverlay
