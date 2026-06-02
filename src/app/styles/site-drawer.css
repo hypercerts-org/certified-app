@@ -16,48 +16,16 @@
 }
 
 .desktop-top-bar__menu:hover {
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
 /* ---------- Site drawer (slides in from the left) ---------- */
-
-.site-drawer__scrim {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.4);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 180ms ease, visibility 180ms ease;
-  z-index: 1000;
-}
-
-.site-drawer__scrim--open {
-  opacity: 1;
-  visibility: visible;
-}
-
-.site-drawer {
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 280px;
-  max-width: 86vw;
-  background: var(--bg-primary, #fff);
-  border-right: 1px solid var(--border-subtle);
-  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.08);
-  transform: translateX(-100%);
-  transition: transform 220ms ease;
-  z-index: 1001;
-  display: flex;
-  flex-direction: column;
-  visibility: hidden;
-}
-
-.site-drawer--open {
-  transform: translateX(0);
-  visibility: visible;
-}
+/* The portal shell — scrim (.site-drawer__scrim), the sliding
+   <aside> panel (.site-drawer / .site-drawer--open), focus trap,
+   scroll lock and Esc — now live in the canonical <Drawer> primitive
+   (src/components/ui/drawer.tsx). Those shell rules were removed; the
+   inner-content classes below (head / brand / nav / item) are still
+   rendered by SiteDrawer and styled here. */
 
 .site-drawer__head {
   display: flex;
@@ -94,7 +62,7 @@
 }
 
 .site-drawer__close:hover {
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
   color: var(--fg-primary);
 }
 
@@ -123,16 +91,16 @@
 }
 
 .site-drawer__item:hover {
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
 .site-drawer__item--active {
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
   color: var(--fg-primary);
 }
 
 .site-drawer__item--disabled {
-  color: var(--fg-muted, #b7bdc6);
+  color: var(--fg-muted);
   cursor: not-allowed;
 }
 

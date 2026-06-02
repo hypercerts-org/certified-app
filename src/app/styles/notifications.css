@@ -76,51 +76,13 @@ a.notification-row--unread:hover {
   color: var(--fg-muted);
 }
 
-/* Skeleton */
+/* Skeleton — the placeholder bars now use the canonical <Skeleton>
+   primitive (src/components/ui/skeleton.tsx), which carries its own
+   pulse animation + reduced-motion guard. Only the row container keeps
+   a class here so the skeleton row matches the live row's layout. */
 
 .notification-row--skeleton {
   pointer-events: none;
-}
-
-@keyframes notificationPulse {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 0.85; }
-}
-
-.notification-row__avatar-skel,
-.notification-row__text-skel,
-.notification-row__time-skel {
-  animation: notificationPulse 1.6s ease-in-out infinite;
-}
-
-.notification-row__avatar-skel {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--bg-canvas);
-  flex-shrink: 0;
-}
-
-.notification-row__text-skel {
-  width: 70%;
-  height: 18px;
-  background: var(--bg-canvas);
-  border-radius: var(--radius);
-}
-
-.notification-row__time-skel {
-  width: 40px;
-  height: 12px;
-  background: var(--bg-canvas);
-  border-radius: var(--radius);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .notification-row__avatar-skel,
-  .notification-row__text-skel,
-  .notification-row__time-skel {
-    animation: none;
-  }
 }
 
 /* Nav badges */
