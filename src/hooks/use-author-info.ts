@@ -1,13 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { authFetch } from "@/lib/auth/fetch"
-import { createBoundedCache } from "@/lib/utils/bounded-cache"
+import { loadResolvedProfile } from "@/lib/atproto/resolve-did-batch"
 
 /**
  * Compact profile info for rendering an activity card's author byline.
- * Handles are resolved via /api/resolve-did which also returns the
- * Bluesky display name and avatar URL in one round-trip.
+ * Handles are resolved via the batched resolve-did coalescer, which also
+ * returns the Bluesky display name and avatar URL in one round-trip.
  */
 export interface AuthorInfo {
   did: string
@@ -16,41 +15,20 @@ export interface AuthorInfo {
   avatarUrl: string | null
 }
 
-// Module-level cache so the same author rendered in multiple feed cards
-// only fires one network request. Shared across all `useAuthorInfo`
-// callers for the lifetime of the JS module.
-const cache = createBoundedCache<string, Promise<AuthorInfo>>()
-
+/**
+ * Resolve one author DID through the shared coalescer
+ * (`loadResolvedProfile`), which batches all authors needed in a render
+ * pass into a single request and dedupes/caches across every byline.
+ * Never rejects: an unresolvable DID (or a transient 429) degrades to a
+ * DID-only byline rather than a stuck skeleton or a retry storm.
+ */
 function fetchAuthor(did: string): Promise<AuthorInfo> {
-  const existing = cache.get(did)
-  if (existing) return existing
-
-  const p: Promise<AuthorInfo> = authFetch(
-    `/api/resolve-did?did=${encodeURIComponent(did)}`
-  )
-    .then((res) => {
-      if (!res.ok) throw new Error("Failed to resolve DID")
-      return res.json() as Promise<{
-        did: string
-        handle: string
-        displayName?: string
-        avatar?: string
-      }>
-    })
-    .then((data) => ({
-      did,
-      handle: data.handle || did,
-      displayName: data.displayName ?? null,
-      avatarUrl: data.avatar ?? null,
-    }))
-    .catch((err) => {
-      // Invalidate the cache entry on error so a later render can retry
-      cache.delete(did)
-      throw err
-    })
-
-  cache.set(did, p)
-  return p
+  return loadResolvedProfile(did).then((data) => ({
+    did,
+    handle: data?.handle || did,
+    displayName: data?.displayName ?? null,
+    avatarUrl: data?.avatar ?? null,
+  }))
 }
 
 export function useAuthorInfo(did: string | null): {
