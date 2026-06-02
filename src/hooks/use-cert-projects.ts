@@ -113,7 +113,7 @@ export function useCertProjects(did: string | null, rkey: string | null) {
         setError(
           err instanceof Error
             ? err.message
-            : "Failed to load projects containing this cert",
+            : "Failed to load projects containing this activity",
         )
         setProjects([])
       })

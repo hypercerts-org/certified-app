@@ -165,7 +165,7 @@ function parseAtUri(uri: string): { did: string; collection: string; rkey: strin
 }
 
 export default function ActivityEditPage() {
-  usePageTitle("Edit cert")
+  usePageTitle("Edit activity")
   const router = useRouter()
   const params = useParams()
   const did = useMemo(() => {
@@ -466,7 +466,7 @@ export default function ActivityEditPage() {
             <EmptyState
               icon={PenLine}
               title="Sign in to edit"
-              description="You need to be signed in to edit a cert."
+              description="You need to be signed in to edit an activity."
             />
           </div>
         </div>
@@ -481,8 +481,8 @@ export default function ActivityEditPage() {
           <div className="dashboard__main">
             <EmptyState
               icon={PenLine}
-              title="Cert not found"
-              description={activityError || "Couldn't load this cert to edit."}
+              title="Activity not found"
+              description={activityError || "Couldn't load this activity to edit."}
             />
           </div>
         </div>
@@ -497,8 +497,8 @@ export default function ActivityEditPage() {
           <div className="dashboard__main">
             <EmptyState
               icon={PenLine}
-              title="You can't edit this cert"
-              description="Only the cert's creator (or the active group it's published under) can make changes."
+              title="You can't edit this activity"
+              description="Only the activity's creator (or the active group it's published under) can make changes."
             />
           </div>
         </div>
@@ -760,7 +760,7 @@ export default function ActivityEditPage() {
           "Someone else saved while you were editing — please refresh and try again.",
         )
       } else {
-        setError(err instanceof Error ? err.message : "Failed to save cert")
+        setError(err instanceof Error ? err.message : "Failed to save activity")
       }
       setIsSubmitting(false)
     }
@@ -784,7 +784,7 @@ export default function ActivityEditPage() {
       }}
     >
       <EditBanner
-        label="Editing cert"
+        label="Editing activity"
         error={error}
         isSaving={isSubmitting}
         canSave={canSubmit}
@@ -794,7 +794,7 @@ export default function ActivityEditPage() {
         }}
       />
       <article className="page-layout cert-detail--wide create-cert">
-        <aside className="cert-detail__aside" aria-label="Cert metadata">
+        <aside className="cert-detail__aside" aria-label="Activity metadata">
           <div className="cert-detail__image cert-detail__image--editing">
             {displayImageUrl ? (
               /* eslint-disable-next-line @next/next/no-img-element */
@@ -965,7 +965,7 @@ export default function ActivityEditPage() {
                 type="text"
                 className="cert-detail__title-input"
                 aria-label="Title"
-                placeholder="Title for your cert"
+                placeholder="Title for your activity"
                 value={title}
                 maxLength={TITLE_MAX}
                 onChange={(e) => setTitle(e.target.value)}
@@ -1019,8 +1019,8 @@ export default function ActivityEditPage() {
             <LeafletEditor
               value={description}
               onChange={setDescription}
-              placeholder="Full description of this cert."
-              ariaLabel="Cert description"
+              placeholder="Full description of this activity."
+              ariaLabel="Activity description"
               did={did ?? ""}
               onImageUpload={(file) =>
                 uploadBlob(

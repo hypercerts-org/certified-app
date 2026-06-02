@@ -62,7 +62,7 @@ export default function CertSearch({
   onSelect,
   prioritizeAuthorDid,
   excludeUris,
-  placeholder = "Search certs",
+  placeholder = "Search activities",
   className = "",
   autoFocus = false,
   clearOnSelect = false,
@@ -287,7 +287,7 @@ export default function CertSearch({
   if (isSearching) liveStatus = "Searching"
   else if (results.length > 0)
     liveStatus = `${results.length} result${results.length === 1 ? "" : "s"}`
-  else if (query.trim()) liveStatus = "No certs found"
+  else if (query.trim()) liveStatus = "No activities found"
 
   // Partition for the rendered listbox — own certs first if any.
   // We render a divider between groups (only when both groups have
@@ -357,7 +357,7 @@ export default function CertSearch({
           )}
           {!isSearching && results.length === 0 && query.trim() && (
             <li className="cert-search__empty">
-              No certs found for &ldquo;{query.trim()}&rdquo;.
+              No activities found for &ldquo;{query.trim()}&rdquo;.
             </li>
           )}
 
@@ -369,7 +369,7 @@ export default function CertSearch({
               role="presentation"
               aria-hidden="true"
             >
-              Your certs
+              Your activities
             </li>
           ) : null}
 
@@ -415,7 +415,7 @@ function CertSearchRow({
     ? resolveActivityImageUrl(record.value.image, did)
     : null
   const authorHandle = info?.handle ?? null
-  const title = record.value.title || "Untitled cert"
+  const title = record.value.title || "Untitled activity"
 
   return (
     <>
@@ -425,7 +425,7 @@ function CertSearchRow({
           role="presentation"
           aria-hidden="true"
         >
-          Other certs
+          Other activities
         </li>
       ) : null}
       <li

@@ -414,7 +414,7 @@ export default function GlobalSearch({
               role="presentation"
               aria-hidden="true"
             >
-              Certs
+              Activities
             </li>
           ) : null}
           {certs.map((row, i) => {
@@ -512,7 +512,7 @@ function CertRowItem({
   const imageUrl = record.value.image
     ? resolveActivityImageUrl(record.value.image, did)
     : null
-  const title = record.value.title || "Untitled cert"
+  const title = record.value.title || "Untitled activity"
   const handle = info?.handle ?? null
 
   return (

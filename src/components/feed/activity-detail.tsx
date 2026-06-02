@@ -631,7 +631,7 @@ export default function ActivityDetail({
         )
       } else {
         console.error("Failed to save cert:", err)
-        setSaveError(err instanceof Error ? err.message : "Failed to save cert")
+        setSaveError(err instanceof Error ? err.message : "Failed to save activity")
       }
     } finally {
       setIsSaving(false)
@@ -705,8 +705,8 @@ export default function ActivityDetail({
             className="cert-detail__title-input"
             value={drafts.title}
             maxLength={256}
-            placeholder="Cert title"
-            aria-label="Cert title"
+            placeholder="Activity title"
+            aria-label="Activity title"
             onChange={(e) =>
               setDrafts((d) => ({ ...d, title: e.target.value }))
             }
@@ -719,8 +719,8 @@ export default function ActivityDetail({
             <Link
               href={`/activity/${encodeURIComponent(did)}/${encodeURIComponent(rkey ?? "")}/edit`}
               className="cert-detail__edit-btn"
-              aria-label="Edit cert"
-              title="Edit cert"
+              aria-label="Edit activity"
+              title="Edit activity"
             >
               <Pencil size={14} strokeWidth={1.75} aria-hidden />
               Edit
@@ -728,8 +728,8 @@ export default function ActivityDetail({
             <button
               type="button"
               className="cert-detail__delete-btn"
-              aria-label="Delete cert"
-              title="Delete cert"
+              aria-label="Delete activity"
+              title="Delete activity"
               onClick={() => {
                 setDeleteError(null)
                 setDeleteOpen(true)
@@ -823,7 +823,7 @@ export default function ActivityDetail({
           the left rail. */}
       {editing ? (
         <EditBanner
-          label="Editing cert"
+          label="Editing activity"
           error={saveError}
           isSaving={isSaving}
           onCancel={handleCancelEdit}
@@ -832,7 +832,7 @@ export default function ActivityDetail({
       ) : null}
 
       <article className="page-layout cert-detail--wide">
-      <aside className="cert-detail__aside" aria-label="Cert details">
+      <aside className="cert-detail__aside" aria-label="Activity details">
         <div
           className={
             editing
@@ -1098,8 +1098,8 @@ export default function ActivityDetail({
                 onChange={(next) =>
                   setDrafts((d) => ({ ...d, description: next }))
                 }
-                placeholder="Full description of this cert."
-                ariaLabel="Cert description"
+                placeholder="Full description of this activity."
+                ariaLabel="Activity description"
                 did={did}
                 onImageUpload={(file) =>
                   uploadBlob(
@@ -1168,9 +1168,9 @@ export default function ActivityDetail({
     </article>
     {deleteOpen ? (
       <DeleteRecordDialog
-        title="Delete this cert"
+        title="Delete this activity"
         recordName={effectiveValue.title || ""}
-        recordTypeLabel="cert"
+        recordTypeLabel="activity"
         isDeleting={isDeleting}
         errorMessage={deleteError}
         onCancel={() => {

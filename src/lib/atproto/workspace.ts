@@ -359,7 +359,7 @@ export type WorkspaceLexicon =
   | "followers"
 
 export const WORKSPACE_LEXICON_LABEL: Record<WorkspaceLexicon, string> = {
-  certs: "Certs",
+  certs: "Activities",
   projects: "Projects",
   lists: "Lists",
   endorsementsReceived: "Endorsements",

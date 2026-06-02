@@ -270,7 +270,7 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
 
       {expanded ? (
         <AppDialog
-          ariaLabel="Larger map of cert locations"
+          ariaLabel="Larger map of activity locations"
           className="cert-detail__map-modal"
           maxWidth={1100}
           onClose={() => setExpanded(false)}

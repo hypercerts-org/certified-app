@@ -644,7 +644,7 @@ export default function Explore() {
               <div
                 className="explore__view-toggle"
                 role="group"
-                aria-label={`${kind === "certs" ? "Cert" : kind === "projects" ? "Project" : "Account"} view`}
+                aria-label={`${kind === "certs" ? "Activity" : kind === "projects" ? "Project" : "Account"} view`}
               >
                 <button
                   type="button"
@@ -737,7 +737,7 @@ export default function Explore() {
                 >
                   {kind === "certs" ? (
                     <>
-                      <p className="popover__section-heading">Cert quality</p>
+                      <p className="popover__section-heading">Activity quality</p>
                       {HYPERLABEL_DISPLAY_ORDER.map((tier) => (
                         <label
                           key={tier}
@@ -1019,7 +1019,7 @@ function SubPrefixDropdown({
 function searchPlaceholder(kind: ExploreKind): string {
   if (kind === "accounts") return "Search accounts by name…"
   if (kind === "projects") return "Search projects…"
-  return "Search certs…"
+  return "Search activities…"
 }
 
 function Popover({
@@ -1230,7 +1230,7 @@ function ResultsArea({
 
 function EmptyResults({ kind }: { kind: ExploreKind }) {
   const label =
-    kind === "accounts" ? "accounts" : kind === "projects" ? "projects" : "certs"
+    kind === "accounts" ? "accounts" : kind === "projects" ? "projects" : "activities"
   return (
     <EmptyState
       icon={kind === "accounts" ? Users : kind === "projects" ? FolderGit2 : CertIcon}

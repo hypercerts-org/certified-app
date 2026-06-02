@@ -107,7 +107,7 @@ export default function ProfileCerts({ did, viewerIsOwner }: ProfileCertsProps) 
       <EmptyState
         icon={Inbox}
         title="No contributions yet"
-        description="Certs on other users' repos that list this user as a contributor will appear here."
+        description="Activities on other users' repos that list this user as a contributor will appear here."
       />
     ) : undefined
 
@@ -117,7 +117,7 @@ export default function ProfileCerts({ did, viewerIsOwner }: ProfileCertsProps) 
         <nav
           className="profile-certs__subtabs"
           role="tablist"
-          aria-label="Certs sections"
+          aria-label="Activities sections"
         >
           <button
             type="button"
@@ -158,7 +158,7 @@ export default function ProfileCerts({ did, viewerIsOwner }: ProfileCertsProps) 
             <Link href="/create">
               <Button variant="primary" size="sm">
                 <Plus size={14} strokeWidth={1.75} aria-hidden />
-                New cert
+                New activity
               </Button>
             </Link>
           ) : null}
@@ -173,8 +173,8 @@ export default function ProfileCerts({ did, viewerIsOwner }: ProfileCertsProps) 
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search certs"
-              aria-label="Search certs"
+              placeholder="Search activities"
+              aria-label="Search activities"
               className="profile-certs__search-input"
             />
           </label>
@@ -187,7 +187,7 @@ export default function ProfileCerts({ did, viewerIsOwner }: ProfileCertsProps) 
               onClick={() => setSortOpen((v) => !v)}
               aria-haspopup="menu"
               aria-expanded={sortOpen}
-              aria-label="Sort certs"
+              aria-label="Sort activities"
               title="Sort"
             >
               <ArrowUpDown size={16} strokeWidth={1.75} aria-hidden />

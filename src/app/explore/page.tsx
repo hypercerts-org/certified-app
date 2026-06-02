@@ -5,7 +5,7 @@ import Explore from "@/components/explore-page/explore"
 export const metadata: Metadata = {
   title: "Explore — Certified",
   description:
-    "Browse users, projects, and certs across the Certified network.",
+    "Browse users, projects, and activities across the Certified network.",
 }
 
 /**

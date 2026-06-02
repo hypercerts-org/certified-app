@@ -37,7 +37,7 @@ export default function NetworkStats() {
       value: counts.organizations,
     },
     { key: "projects", label: "Projects", value: counts.projects },
-    { key: "achievements", label: "Certs", value: counts.achievements },
+    { key: "achievements", label: "Activities", value: counts.achievements },
     {
       key: "endorsements",
       label: "Endorsements",

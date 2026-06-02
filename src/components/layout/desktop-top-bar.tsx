@@ -56,7 +56,7 @@ interface ProfileTab {
 
 const PROFILE_TABS: ProfileTab[] = [
   { key: "overview", label: "Overview" },
-  { key: "certs", label: "Certs" },
+  { key: "certs", label: "Activities" },
   { key: "projects", label: "Projects" },
   { key: "groups", label: "Groups", groupsOnly: true },
   { key: "endorsements", label: "Endorsements" },
@@ -83,7 +83,7 @@ type DetailTab = { key: string; label: string; subRoute?: string };
  *  tabs replaces ?kind= on /explore and clears the kind-specific
  *  state to match the on-page behavior. */
 const EXPLORE_TABS: { key: string; label: string }[] = [
-  { key: "certs", label: "Certs" },
+  { key: "certs", label: "Activities" },
   { key: "projects", label: "Projects" },
   { key: "accounts", label: "Accounts" },
 ];
@@ -101,7 +101,7 @@ const CERT_DETAIL_TABS: DetailTab[] = [
 const PROJECT_DETAIL_TABS: DetailTab[] = [
   { key: "overview", label: "Overview" },
   { key: "description", label: "Description" },
-  { key: "certs", label: "Certs" },
+  { key: "certs", label: "Activities" },
   { key: "updates", label: "Updates" },
 ];
 
@@ -589,7 +589,7 @@ export default function DesktopTopBar() {
             <nav
               className="desktop-top-bar__tabs"
               role="tablist"
-              aria-label={isOnCertDetail ? "Cert sections" : "Project sections"}
+              aria-label={isOnCertDetail ? "Activity sections" : "Project sections"}
             >
               {(isOnCertDetail
                 ? CERT_DETAIL_TABS
@@ -664,7 +664,7 @@ export default function DesktopTopBar() {
                 onClick={() => setCreateOpen(false)}
               >
                 <FileBadge size={16} strokeWidth={1.75} aria-hidden />
-                <span>New cert</span>
+                <span>New activity</span>
               </Link>
               <Link
                 href="/project/new"

@@ -531,7 +531,7 @@ export default function LocationPickerDialog({
             ) : myLocations.length === 0 ? (
               <p className="create-cert__loc-hint">
                 You haven&apos;t published any locations yet. Add one
-                via the New tab and it will appear here on the next cert.
+                via the New tab and it will appear here on the next activity.
               </p>
             ) : (
               <>
