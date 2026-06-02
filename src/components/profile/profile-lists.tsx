@@ -899,14 +899,15 @@ function PasteUrisModal({
     // Accept commas, newlines, and whitespace as separators so users
     // can paste a list of URIs from any reasonable source without
     // hand-formatting it. Dedupe within the input.
-    // Accept bare actor URIs (`at://did:plc:…`) in the accounts list:
-    // the profile record is conventionally `app.certified.actor.profile/self`,
-    // so any URI that ends at the DID gets normalized to the full
-    // record path before validation. For certs / projects the rkey
-    // is record-specific so we leave those URIs untouched.
+    // Accounts list: accept a bare DID (`did:plc:…`) or an actor URI
+    // (`at://did:plc:…`), with or without a trailing slash, and expand it
+    // to the conventional profile record path
+    // (`at://<did>/app.certified.actor.profile/self`) before validation —
+    // the profile record's rkey is always `self`. For certs / projects the
+    // rkey is record-specific, so those URIs are left untouched.
     const normalize = (uri: string): string => {
       if (type !== LIST_ACCOUNTS_TYPE) return uri
-      const m = uri.match(/^at:\/\/(did:[a-z0-9]+:[a-z0-9-]+)\/?$/)
+      const m = uri.match(/^(?:at:\/\/)?(did:[a-z]+:[A-Za-z0-9._:-]+)\/?$/)
       return m ? `at://${m[1]}/${ITEM_NSID[LIST_ACCOUNTS_TYPE]}/self` : uri
     }
 
@@ -1030,8 +1031,9 @@ function PasteUrisModal({
           will be added.
           {type === LIST_ACCOUNTS_TYPE ? (
             <>
-              {" "}For accounts a bare{" "}
-              <code className="profile-lists__paste-nsid">at://did:plc:…</code>{" "}
+              {" "}For accounts a bare DID{" "}
+              <code className="profile-lists__paste-nsid">did:plc:…</code>{" "}
+              (with or without <code className="profile-lists__paste-nsid">at://</code>)
               is also accepted — we&rsquo;ll expand it to the profile record.
             </>
           ) : null}
@@ -1042,7 +1044,11 @@ function PasteUrisModal({
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
           rows={6}
-          placeholder="at://did:plc:…/…/abc123, at://did:plc:…/…/def456, …"
+          placeholder={
+            type === LIST_ACCOUNTS_TYPE
+              ? "did:plc:…, did:plc:…, …"
+              : "at://did:plc:…/…/abc123, at://did:plc:…/…/def456, …"
+          }
           disabled={running}
         />
         {rows.length > 0 ? (
