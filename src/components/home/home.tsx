@@ -158,7 +158,7 @@ function HomeSidebar({ activeDid }: { activeDid: string }) {
         items={previewCerts}
         total={certs.length}
         renderItem={(c) => <CertRow key={c.uri} record={c} fallbackDid={activeDid} />}
-        moreHref={`${profileBase}?tab=certs`}
+        moreHref={`${profileBase}?tab=activities`}
         emptyLabel="No activities yet."
       />
     </>

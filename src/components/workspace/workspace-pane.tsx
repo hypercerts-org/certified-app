@@ -126,7 +126,7 @@ function truncateDid(did: string): string {
 
 function hrefForLexicon(did: string, lex: WorkspaceLexicon): string {
   const base = `/profile/${encodeURIComponent(did)}`
-  if (lex === "certs") return `${base}?tab=certs`
+  if (lex === "certs") return `${base}?tab=activities`
   if (lex === "projects") return `${base}?tab=projects`
   if (lex === "lists") return `${base}?tab=lists`
   if (lex === "endorsementsReceived") return `${base}?tab=endorsements`

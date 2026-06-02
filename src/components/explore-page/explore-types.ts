@@ -1,4 +1,4 @@
-export type ExploreKind = "accounts" | "projects" | "certs"
+export type ExploreKind = "accounts" | "projects" | "activities"
 
 export type SortOrder = "newest" | "oldest" | "alphabetical"
 
@@ -75,7 +75,7 @@ export const SUB_OPTIONS: Record<
     { key: "organizations", label: "Organizations" },
   ],
   projects: [],
-  certs: [
+  activities: [
     { key: "all", label: "All" },
     { key: "created", label: "Created", requiresAuth: true },
     { key: "contributed", label: "Contributed", requiresAuth: true },

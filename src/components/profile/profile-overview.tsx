@@ -333,7 +333,7 @@ export default function ProfileOverview({
 
       <section className="profile-overview__stats" aria-label="Profile stats">
         <Link
-          href={`${basePath}?tab=certs`}
+          href={`${basePath}?tab=activities`}
           scroll={false}
           className="profile-overview__stat"
         >
@@ -402,7 +402,7 @@ export default function ProfileOverview({
           {createdActivities.length + contributedActivities.length >
           ACTIVITY_PREVIEW ? (
             <Link
-              href={`${basePath}?tab=certs`}
+              href={`${basePath}?tab=activities`}
               scroll={false}
               className="profile-overview__see-all"
             >

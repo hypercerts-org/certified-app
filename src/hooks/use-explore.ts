@@ -511,13 +511,13 @@ async function loadPage(args: LoadArgs): Promise<LoadedPage> {
   // all options reads as "nothing matches", which is the natural
   // affordance for re-adding a selection.
   if (
-    (args.kind === "certs" || args.kind === "projects") &&
+    (args.kind === "activities" || args.kind === "projects") &&
     isExplicitlyEmpty(args.includeCertLabels)
   ) {
     return EMPTY_PAGE
   }
   if (
-    (args.kind === "accounts" || args.kind === "certs") &&
+    (args.kind === "accounts" || args.kind === "activities") &&
     isExplicitlyEmpty(args.includeOrgLabels)
   ) {
     return EMPTY_PAGE
@@ -528,7 +528,7 @@ async function loadPage(args: LoadArgs): Promise<LoadedPage> {
     args.noEndorsementRings &&
     (
       (args.kind === "accounts" && args.filter === "endorsed") ||
-      ((args.kind === "certs" || args.kind === "projects") &&
+      ((args.kind === "activities" || args.kind === "projects") &&
         args.filter === "by-endorsed")
     )
   ) {

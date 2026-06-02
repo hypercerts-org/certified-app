@@ -40,7 +40,7 @@ import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
 type TabKey =
   | "overview"
   | "about"
-  | "certs"
+  | "activities"
   | "projects"
   | "groups"
   | "endorsements"
@@ -55,7 +55,7 @@ type TabKey =
 // own-profile only.
 const TABS: { key: TabKey; label: string }[] = [
   { key: "overview", label: "Overview" },
-  { key: "certs", label: "Activities" },
+  { key: "activities", label: "Activities" },
   { key: "projects", label: "Projects" },
   { key: "groups", label: "Groups" },
   { key: "endorsements", label: "Endorsements" },
@@ -322,7 +322,10 @@ export default function UserProfilePage() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const tabFromUrl = useMemo<TabKey>(() => {
-    const v = searchParams?.get("tab")
+    const raw = searchParams?.get("tab")
+    // Migration shim — the legacy ?tab=certs slug resolves to activities
+    // so old links / bookmarks keep working.
+    const v = raw === "certs" ? "activities" : raw
     return v && TABS.some((t) => t.key === v) ? (v as TabKey) : "overview"
   }, [searchParams])
   const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl)
@@ -482,11 +485,11 @@ export default function UserProfilePage() {
                 ) : null}
               </div>
             ) : null}
-            {activeTab === "certs" && (
+            {activeTab === "activities" && (
               <div
                 role="tabpanel"
-                id="tabpanel-certs"
-                aria-labelledby="tab-certs"
+                id="tabpanel-activities"
+                aria-labelledby="tab-activities"
               >
                 <ProfileCerts did={did} viewerIsOwner={isViewerThisEntity} />
               </div>
