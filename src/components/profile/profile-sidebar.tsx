@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import {
+  ArrowLeftRight,
   Calendar,
   Camera,
   Check,
@@ -26,6 +27,7 @@ import { getInitials } from "@/lib/utils/initials"
 import { formatMonthYear } from "@/lib/utils/format-date"
 import { useProfilePds } from "@/hooks/use-profile-pds"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useOrg } from "@/lib/groups/org-context"
 import { useFollowing } from "@/hooks/use-following"
 import { useFollowers } from "@/hooks/use-followers"
 import { useGivenEndorsements } from "@/hooks/use-endorsements"
@@ -172,6 +174,14 @@ export default function ProfileSidebar({
   // when the viewer is signed out or when they're looking at their
   // own profile (no Follow button to render in either case).
   const { did: viewerDid, isAuthenticated } = useAuth()
+  // Acting-as-group context. Follow / Endorse / Add-to-list write to the
+  // viewer's PERSONAL repo (createFollow + createEndorsementAward are
+  // keyed to the signed-in DID, and there is no group endorse path nor a
+  // group *unfollow* route). So while acting as a group we must NOT render
+  // the live buttons — doing so silently authored personal-repo records
+  // while the rest of the UI claimed the user was the group. Guard them
+  // and offer a one-tap return to personal instead.
+  const { activeOrg, switchOrg } = useOrg()
   const isOwnProfile = !!viewerDid && viewerDid === did
   const viewerFollowing = useFollowing(
     isAuthenticated && !isOwnProfile ? viewerDid : null,
@@ -259,6 +269,11 @@ export default function ProfileSidebar({
             <Pencil size={14} strokeWidth={1.75} aria-hidden />
             Edit profile
           </Link>
+        ) : isAuthenticated && viewerDid && activeOrg ? (
+          <ActingAsGroupNotice
+            groupName={activeOrg.displayName || activeOrg.handle}
+            onSwitchToPersonal={() => switchOrg(null)}
+          />
         ) : isAuthenticated && viewerDid ? (
           <>
             <FollowButton
@@ -664,6 +679,39 @@ function AvatarEditOverlay({ onFile, isUploading, hasPending }: AvatarEditOverla
  * while the write is in flight; the parent's `onAfterWrite` re-pages
  * the viewer's follow list so the true state catches up.
  */
+
+/**
+ * Shown in the action slot of a foreign profile while the viewer is
+ * acting as a group. Follow / Endorse / Add-to-list are personal-only
+ * actions (no group write path exists for them), so rather than letting
+ * a click misattribute a record to the personal repo, we explain the
+ * state and offer a one-tap return to personal. Mirrors the personal-only
+ * nav-gating philosophy in lib/groups/personal-only.ts.
+ */
+function ActingAsGroupNotice({
+  groupName,
+  onSwitchToPersonal,
+}: {
+  groupName: string
+  onSwitchToPersonal: () => void
+}) {
+  return (
+    <div className="profile-sidebar__acting-note" role="note">
+      <p className="profile-sidebar__acting-note-text">
+        Acting as <strong>{groupName}</strong>. Follow and endorse are
+        personal actions.
+      </p>
+      <button
+        type="button"
+        className="profile-sidebar__acting-note-switch"
+        onClick={onSwitchToPersonal}
+      >
+        <ArrowLeftRight size={14} strokeWidth={1.75} aria-hidden />
+        Switch to personal
+      </button>
+    </div>
+  )
+}
 
 interface FollowButtonProps {
   viewerDid: string

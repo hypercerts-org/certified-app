@@ -2615,6 +2615,52 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   min-height: 36px;
 }
 
+/* Acting-as-group guard shown in place of the Follow/Endorse cluster on
+   foreign profiles while the viewer is acting as a group. Those actions
+   write to the personal repo, so we explain the state instead of letting
+   a click misattribute the record. */
+.profile-sidebar__acting-note {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+
+.profile-sidebar__acting-note-text {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--fg-muted);
+}
+
+.profile-sidebar__acting-note-text strong {
+  color: var(--fg-secondary);
+  font-weight: 600;
+}
+
+.profile-sidebar__acting-note-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.profile-sidebar__acting-note-switch:hover {
+  background: var(--bg-sunken);
+  border-color: var(--border-hover);
+}
+
 .profile-sidebar__action-primary {
   display: inline-flex;
   align-items: center;
