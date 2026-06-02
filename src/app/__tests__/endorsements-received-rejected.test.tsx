@@ -31,6 +31,11 @@ vi.mock("@/lib/auth/auth-context", () => ({
   useAuth: () => ({ did: DID, isAuthenticated: true }),
 }))
 
+// Personal (non-delegated) session — the page renders its owner inbox.
+vi.mock("@/lib/groups/org-context", () => ({
+  useOrg: () => ({ activeOrg: null }),
+}))
+
 vi.mock("@/lib/navbar-context", () => ({
   usePageTitle: () => undefined,
 }))

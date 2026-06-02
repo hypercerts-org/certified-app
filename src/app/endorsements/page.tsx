@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Plus } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useOrg } from "@/lib/groups/org-context"
 import { usePageTitle } from "@/lib/navbar-context"
 import { useGivenEndorsements } from "@/hooks/use-endorsements"
 import { useReceivedEndorsements, type ReceivedEndorsement } from "@/hooks/use-received-endorsements"
@@ -208,6 +209,7 @@ const DEFAULT_TAB: TabKey = "given"
 export default function EndorsementsPage() {
   usePageTitle("Endorsements")
   const { did } = useAuth()
+  const { activeOrg } = useOrg()
 
   // Tab state lives in `?tab=<key>` on the URL so refresh / shared
   // link lands on the same view. The default tab stays bare to keep
@@ -215,6 +217,15 @@ export default function EndorsementsPage() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+
+  // /endorsements manages your PERSONAL given/received endorsements. While
+  // delegated (acting as a group) it's hidden from nav; if reached by a
+  // direct URL, bounce to /home so you can't create/revoke/respond on your
+  // personal repo while "being" the org. The org's endorsements live on the
+  // org's own profile.
+  useEffect(() => {
+    if (activeOrg) router.replace("/home")
+  }, [activeOrg, router])
   const tabFromUrl = useMemo<TabKey>(() => {
     const v = searchParams?.get("tab")
     return v && TABS.some((t) => t.key === v) ? (v as TabKey) : DEFAULT_TAB

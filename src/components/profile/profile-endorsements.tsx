@@ -97,7 +97,14 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
   // admin acting as this group) get the read-only view.
   const { activeOrg } = useOrg()
   const actingAsThisGroup = !!activeOrg && activeOrg.groupDid === did
-  const canManage = viewerIsOwner || actingAsThisGroup
+  // Owner-side affordances (give / revoke-given / accept-reject-received).
+  // CRITICAL: while delegated (activeOrg set) you must NOT manage your
+  // PERSONAL endorsements — that would write to your personal repo while
+  // the chrome says you're the org, which is exactly the confusing
+  // cross-identity action we forbid. So personal management requires
+  // `!activeOrg`; group management requires acting AS the very group whose
+  // profile this is. The two are mutually exclusive.
+  const canManage = (viewerIsOwner && !activeOrg) || actingAsThisGroup
   const manageTargetDid = actingAsThisGroup ? did : undefined
 
   const given = useGivenEndorsements(did)
@@ -204,7 +211,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
           viewers don't see the list curation UI. Hides the
           create / rename / member-add affordances + the list
           previews themselves when viewing someone else's profile. */}
-      {viewerIsOwner ? (
+      {viewerIsOwner && !activeOrg ? (
         <EndorsementLists did={did} viewerIsOwner={viewerIsOwner} />
       ) : null}
 
