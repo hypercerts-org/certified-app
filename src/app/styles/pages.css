@@ -352,73 +352,6 @@
   margin-top: 2px;
 }
 
-.org-members__item-role-badge {
-  font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--fg-muted);
-  background: var(--bg-canvas);
-  padding: 4px 8px;
-  border-radius: var(--radius);
-  flex-shrink: 0;
-}
-
-.org-members__item-role-select {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.org-members__role-dropdown {
-  appearance: none;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--fg-primary);
-  background: var(--bg-canvas);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  padding: 6px 28px 6px 10px;
-  cursor: pointer;
-  transition: border-color var(--transition-fast);
-}
-
-.org-members__role-dropdown:hover {
-  border-color: var(--border-hover);
-}
-
-.org-members__role-dropdown:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-.org-members__role-icon {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-  color: var(--fg-muted);
-}
-
-.org-members__remove-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: none;
-  color: var(--fg-muted);
-  cursor: pointer;
-  border-radius: var(--radius);
-  transition: background var(--transition-fast), color var(--transition-fast);
-  flex-shrink: 0;
-}
-
-.org-members__remove-btn:hover {
-  background: rgba(186, 26, 26, 0.08);
-  color: var(--color-error);
-}
 
 /* Add member form */
 .org-members__add {
@@ -492,7 +425,7 @@
 
 .org-members__selected-remove:hover {
   color: var(--color-error);
-  background: rgba(186, 26, 26, 0.08);
+  background: var(--color-error-bg);
 }
 
 /* Audit log */
@@ -586,12 +519,12 @@
 
 .org-audit__result--permitted {
   color: var(--color-success-text);
-  background: rgba(46, 204, 113, 0.1);
+  background: var(--color-success-bg);
 }
 
 .org-audit__result--denied {
   color: var(--color-error);
-  background: rgba(186, 26, 26, 0.08);
+  background: var(--color-error-bg);
 }
 
 /* Account switcher in navbar */
@@ -758,7 +691,7 @@
 
 .account-switcher__signout:hover {
   color: var(--color-error);
-  background: rgba(186, 26, 26, 0.06);
+  background: var(--color-error-bg);
 }
 
 /* Bottom Sign-out row: full-width menu item that lives in its own
@@ -783,7 +716,7 @@
 
 .account-switcher__signout-row:hover {
   color: var(--color-error);
-  background: rgba(186, 26, 26, 0.06);
+  background: var(--color-error-bg);
 }
 
 .account-switcher__signout-row:focus-visible {
@@ -805,7 +738,7 @@
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.4);
+    background: var(--navy-overlay-30);
     z-index: 70;
     animation: bottomSheetFadeIn 0.2s ease-out;
   }
@@ -844,7 +777,7 @@
     width: 36px;
     height: 4px;
     background: var(--border-default);
-    border-radius: 2px;
+    border-radius: var(--radius);
   }
 
   .bottom-sheet__content {
@@ -885,11 +818,6 @@
 
   .org-members__item-info {
     width: 100%;
-  }
-
-  .org-members__remove-btn {
-    width: 44px;
-    height: 44px;
   }
 
   /* Larger touch target for selected-tag remove buttons */
@@ -1016,8 +944,7 @@
   justify-content: center;
   width: 64px;
   height: 64px;
-  /* iOS squircle ratio — ~22% of side length. */
-  border-radius: 22%;
+  border-radius: var(--radius);
   overflow: hidden;
   flex-shrink: 0;
   background: var(--bg-sunken);

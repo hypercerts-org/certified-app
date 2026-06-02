@@ -7,11 +7,12 @@ import {
   useRef,
   useState,
 } from "react"
-import { ArrowLeft, RefreshCw, Search, Users, X } from "lucide-react"
+import { ArrowLeft, RefreshCw, Search, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
+import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import AppDialog from "@/components/ui/app-dialog"
+import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import {
   useSocialGraphSync,
@@ -220,39 +221,34 @@ function SyncModal({ candidateDids, onClose, onImport }: SyncModalProps) {
       onClose={onClose}
       disableBackdropClose={isImporting}
     >
-      <div className="signin-modal__header">
-          {step === "select" && !result ? (
-            <button
-              type="button"
-              className="social-graph-sync__modal-back"
-              onClick={() => {
-                if (isImporting) return
-                setStep("choose")
-                setError(null)
-              }}
-              aria-label="Back to import options"
-              disabled={isImporting}
-            >
-              <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
-            </button>
-          ) : null}
-          <span className="signin-modal__title">
+      <AppDialogHeader
+        title={
+          <span className="social-graph-sync__modal-title-row">
+            {step === "select" && !result ? (
+              <button
+                type="button"
+                className="social-graph-sync__modal-back"
+                onClick={() => {
+                  if (isImporting) return
+                  setStep("choose")
+                  setError(null)
+                }}
+                aria-label="Back to import options"
+                disabled={isImporting}
+              >
+                <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
+              </button>
+            ) : null}
             {result
               ? "Sync complete"
               : step === "choose"
-              ? "Sync from Bluesky"
-              : "Select people to import"}
+                ? "Sync from Bluesky"
+                : "Select people to import"}
           </span>
-          <button
-            type="button"
-            className="signin-modal__close"
-            onClick={onClose}
-            aria-label="Close"
-            disabled={isImporting}
-          >
-            <X size={18} />
-          </button>
-        </div>
+        }
+        onClose={onClose}
+        disabled={isImporting}
+      />
 
         <div className="signin-modal__body social-graph-sync__modal-body">
           {result ? (
@@ -445,27 +441,20 @@ function SelectStep({
 
   return (
     <>
-      <label className="social-graph-sync__modal-search">
-        <Search
-          size={16}
-          strokeWidth={1.75}
-          className="social-graph-sync__modal-search-icon"
-          aria-hidden
-        />
-        <input
-          type="search"
-          className="social-graph-sync__modal-search-input"
-          placeholder="Search Bluesky-only follows…"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value)
-            setPage(0)
-          }}
-          aria-label="Search candidates"
-          autoComplete="off"
-          spellCheck={false}
-        />
-      </label>
+      <Input
+        type="search"
+        size="sm"
+        leadingIcon={<Search size={16} strokeWidth={1.75} aria-hidden />}
+        placeholder="Search Bluesky-only follows…"
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value)
+          setPage(0)
+        }}
+        aria-label="Search candidates"
+        autoComplete="off"
+        spellCheck={false}
+      />
 
       <div className="social-graph-sync__modal-meta">
         <button

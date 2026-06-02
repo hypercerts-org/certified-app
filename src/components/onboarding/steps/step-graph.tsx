@@ -8,6 +8,7 @@ import {
 import { Search } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import { RadioGroup, Radio } from "@/components/ui/radio"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import type {
   SocialGraphSyncStats,
@@ -122,50 +123,39 @@ export default function StepGraph({
       {/* Segments are hidden while the pipeline is mid-flight so the
           user can't toggle intent under the commit's feet. */}
       {!isCommitting && canImport ? (
-        <fieldset className="onboarding-step__segments">
-          <legend className="sr-only">
-            What to do with Bluesky-only follows
-          </legend>
-          <label
+        <RadioGroup
+          className="onboarding-step__segments"
+          aria-label="What to do with Bluesky-only follows"
+          value={intent.kind}
+          onValueChange={(kind) =>
+            onChange({ kind } as GraphIntent)
+          }
+        >
+          <Radio
+            value="all"
             className={`onboarding-step__segment${
               intent.kind === "all" ? " onboarding-step__segment--active" : ""
             }`}
           >
-            <input
-              type="radio"
-              name="onboarding-graph-intent"
-              checked={intent.kind === "all"}
-              onChange={() => onChange({ kind: "all" })}
-            />
-            <span>Import all</span>
-          </label>
-          <label
+            Import all
+          </Radio>
+          <Radio
+            value="select"
             className={`onboarding-step__segment${
               intent.kind === "select" ? " onboarding-step__segment--active" : ""
             }`}
           >
-            <input
-              type="radio"
-              name="onboarding-graph-intent"
-              checked={intent.kind === "select"}
-              onChange={() => onChange({ kind: "select" })}
-            />
-            <span>Pick specific</span>
-          </label>
-          <label
+            Pick specific
+          </Radio>
+          <Radio
+            value="skip"
             className={`onboarding-step__segment${
               intent.kind === "skip" ? " onboarding-step__segment--active" : ""
             }`}
           >
-            <input
-              type="radio"
-              name="onboarding-graph-intent"
-              checked={intent.kind === "skip"}
-              onChange={() => onChange({ kind: "skip" })}
-            />
-            <span>Skip</span>
-          </label>
-        </fieldset>
+            Skip
+          </Radio>
+        </RadioGroup>
       ) : null}
 
       {!isCommitting && intent.kind === "select" ? (

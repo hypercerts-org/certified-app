@@ -16,7 +16,9 @@ import type { OrgRole } from "@/lib/groups/types"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Badge from "@/components/ui/badge"
+import Button from "@/components/ui/button"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
+import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
 import { getInitials } from "@/lib/utils/initials"
 
 type TabKey = "public" | "private"
@@ -118,29 +120,32 @@ export default function GroupsPage() {
       </Link>
       <div className="org-list__item-actions">
         {org.accepted ? (
-          <button
-            className="org-list__action-btn"
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => handleRemovePublicMembership(org.groupDid)}
             disabled={removingPublic === org.groupDid}
           >
             Make private
-          </button>
+          </Button>
         ) : (
-          <button
-            className="org-list__action-btn org-list__action-btn--primary"
+          <Button
+            variant="primary"
+            size="sm"
             onClick={() => handleAcceptMembership(org.groupDid, org.role)}
             disabled={acceptingOrg === org.groupDid}
           >
             Make public
-          </button>
+          </Button>
         )}
         {canLeaveMap[org.groupDid] && (
-          <button
-            className="org-list__action-btn org-list__action-btn--danger"
+          <Button
+            variant="destructive"
+            size="sm"
             onClick={() => setLeaveOrg({ groupDid: org.groupDid, name: org.displayName || org.handle })}
           >
             Leave
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -189,7 +194,26 @@ export default function GroupsPage() {
     }
   }
 
-  const visibleOrgs = activeTab === "public" ? acceptedOrgs : pendingOrgs
+  const renderPanelBody = (tab: TabKey) => {
+    const visibleOrgs = tab === "public" ? acceptedOrgs : pendingOrgs
+    if (isLoading) {
+      return (
+        <div className="org-list__loading">
+          <LoadingSpinner size="md" />
+        </div>
+      )
+    }
+    if (visibleOrgs.length === 0) {
+      return (
+        <p className="org-list__empty">
+          {tab === "public"
+            ? "No public memberships yet. Make a private membership public from this list to share it on your profile."
+            : "No private memberships. Pending invites and memberships you've removed from public view appear here."}
+        </p>
+      )
+    }
+    return <div className="org-list__items">{visibleOrgs.map(renderOrgItem)}</div>
+  }
 
   return (
     <div className="dashboard">
@@ -197,57 +221,34 @@ export default function GroupsPage() {
         <div className="dashboard__main">
           <h1 className="page-section-heading">Membership</h1>
 
-          <div className="page-tabs-bar">
-            <div className="page-tabs" role="tablist" aria-label="Membership">
-              {TABS.map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  role="tab"
-                  id={`tab-${tab.key}`}
-                  aria-selected={activeTab === tab.key}
-                  aria-controls={`tabpanel-${tab.key}`}
-                  className={`page-tabs__tab ${
-                    activeTab === tab.key ? "page-tabs__tab--active" : ""
-                  }`}
-                  onClick={() => changeTab(tab.key)}
-                >
-                  {tab.label}
-                </button>
-              ))}
+          <Tabs value={activeTab} onChange={(v) => changeTab(v as TabKey)}>
+            <div className="page-tabs-bar">
+              {/* The surrounding .page-tabs-bar (feed.css, cross-track) already
+                  draws the strip's bottom border, so drop TabList's own. */}
+              <TabList aria-label="Membership" className="border-0 self-end">
+                {TABS.map((tab) => (
+                  <Tab key={tab.key} value={tab.key}>
+                    {tab.label}
+                  </Tab>
+                ))}
+              </TabList>
+
+              <Link
+                href="/groups/create"
+                className="page-tabs-bar__new"
+                aria-label="New group"
+              >
+                <Plus size={16} aria-hidden="true" />
+                <span>New group</span>
+              </Link>
             </div>
 
-            <Link
-              href="/groups/create"
-              className="page-tabs-bar__new"
-              aria-label="New group"
-            >
-              <Plus size={16} aria-hidden="true" />
-              <span>New group</span>
-            </Link>
-          </div>
-
-          <div
-            role="tabpanel"
-            id={`tabpanel-${activeTab}`}
-            aria-labelledby={`tab-${activeTab}`}
-          >
-            {isLoading ? (
-              <div className="org-list__loading">
-                <LoadingSpinner size="md" />
-              </div>
-            ) : visibleOrgs.length === 0 ? (
-              <p className="org-list__empty">
-                {activeTab === "public"
-                  ? "No public memberships yet. Make a private membership public from this list to share it on your profile."
-                  : "No private memberships. Pending invites and memberships you've removed from public view appear here."}
-              </p>
-            ) : (
-              <div className="org-list__items">
-                {visibleOrgs.map(renderOrgItem)}
-              </div>
-            )}
-          </div>
+            {TABS.map((tab) => (
+              <TabPanel key={tab.key} value={tab.key}>
+                {renderPanelBody(tab.key)}
+              </TabPanel>
+            ))}
+          </Tabs>
         </div>
       </div>
 

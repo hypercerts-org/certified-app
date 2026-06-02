@@ -62,7 +62,7 @@
 .more-link:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 /* ========== Micro-interactions ========== */
@@ -2148,7 +2148,9 @@ dialog.signin-modal.app-modal .signin-modal__body {
 }
 
 .onboarding-modal__step--current .onboarding-modal__step-index {
-  background: rgba(255, 255, 255, 0.18);
+  /* Inverted chip (dark in light mode, light in dark mode). Inherit the
+     themed --overlay-medium pip from the base rule so it flips with the
+     surface instead of pinning a white tint that vanishes in dark mode. */
   color: var(--bg-canvas);
 }
 
@@ -2188,8 +2190,8 @@ dialog.signin-modal.app-modal .signin-modal__body {
   padding: 10px 14px;
   font-size: 0.8125rem;
   color: var(--color-error);
-  background: rgba(186, 26, 26, 0.06);
-  border: 1px solid rgba(186, 26, 26, 0.18);
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
   border-radius: var(--radius);
 }
 
@@ -2340,29 +2342,9 @@ dialog.signin-modal.app-modal .signin-modal__body {
   font-variant-numeric: tabular-nums;
 }
 
-.onboarding-step__input,
-.onboarding-step__textarea {
-  width: 100%;
-  padding: 10px 12px;
-  font: inherit;
-  font-size: 0.9375rem;
-  color: var(--fg-primary);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  outline: none;
-  transition: border-color var(--transition-fast);
-}
-
-.onboarding-step__textarea {
-  resize: vertical;
-  min-height: 80px;
-}
-
-.onboarding-step__input:focus,
-.onboarding-step__textarea:focus {
-  border-color: var(--fg-primary);
-}
+/* The onboarding profile-step fields now use the shared <Input> /
+   <Textarea> primitives; the bespoke .onboarding-step__input /
+   __textarea chrome was removed in the component-library consolidation. */
 
 /* ---------- Step 2: graph ---------- */
 
@@ -2494,7 +2476,7 @@ dialog.signin-modal.app-modal .signin-modal__body {
 
 .onboarding-step__check--done {
   border-color: var(--color-success);
-  background: rgba(46, 204, 113, 0.05);
+  background: var(--color-success-bg);
 }
 
 .onboarding-step__check--error {

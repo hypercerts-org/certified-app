@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
 import {
   useActorWorkspaceCounts,
   useNetworkActors,
@@ -144,42 +145,39 @@ export default function Workspace() {
         </p>
       </header>
 
-      <nav
-        className="workspace__layouts"
-        role="tablist"
-        aria-label="Layout candidates"
+      <Tabs
+        value={layout}
+        onChange={(next) => setUrl({ layout: next as LayoutKey })}
       >
-        {LAYOUTS.map((l) => (
-          <button
-            key={l.key}
-            type="button"
-            role="tab"
-            aria-selected={layout === l.key}
-            className={`workspace__layout-tab${layout === l.key ? " workspace__layout-tab--active" : ""}`}
-            onClick={() => setUrl({ layout: l.key })}
-          >
-            {l.label}
-          </button>
-        ))}
-      </nav>
+        <TabList
+          aria-label="Layout candidates"
+          className="flex-wrap mb-5"
+        >
+          {LAYOUTS.map((l) => (
+            <Tab key={l.key} value={l.key}>
+              {l.label}
+            </Tab>
+          ))}
+        </TabList>
 
-      <div className="workspace__body">
-        {actorsLoading && actors.length === 0 ? (
-          <div className="workspace__loading">
-            <LoadingSpinner size="md" />
-          </div>
-        ) : layout === "notion" ? (
-          <NotionRailLayout {...layoutProps} />
-        ) : layout === "breadcrumb" ? (
-          <BreadcrumbLayout {...layoutProps} />
-        ) : layout === "mail" ? (
-          <MailAccountsLayout {...layoutProps} />
-        ) : layout === "bluesky" ? (
-          <BlueskySwitcherLayout {...layoutProps} />
-        ) : (
-          <SlackColumnsLayout {...layoutProps} />
-        )}
-      </div>
+        <TabPanel value={layout} className="workspace__body">
+          {actorsLoading && actors.length === 0 ? (
+            <div className="workspace__loading">
+              <LoadingSpinner size="md" />
+            </div>
+          ) : layout === "notion" ? (
+            <NotionRailLayout {...layoutProps} />
+          ) : layout === "breadcrumb" ? (
+            <BreadcrumbLayout {...layoutProps} />
+          ) : layout === "mail" ? (
+            <MailAccountsLayout {...layoutProps} />
+          ) : layout === "bluesky" ? (
+            <BlueskySwitcherLayout {...layoutProps} />
+          ) : (
+            <SlackColumnsLayout {...layoutProps} />
+          )}
+        </TabPanel>
+      </Tabs>
     </div>
   )
 }

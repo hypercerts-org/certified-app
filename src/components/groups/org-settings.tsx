@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react"
 import {
   AtSign,
-  ChevronDown,
   ScrollText,
   Share2,
   Trash2,
@@ -22,6 +21,8 @@ import {
 import type { Group, OrgMember, AuditEntry, OrgRole } from "@/lib/groups/types"
 import { authFetch } from "@/lib/auth/fetch"
 import Button from "@/components/ui/button"
+import Badge from "@/components/ui/badge"
+import Select from "@/components/ui/select"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import HandleSearch from "@/components/groups/handle-search"
 import ErrorMessage from "@/components/ui/error-message"
@@ -452,32 +453,29 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                       </div>
                       <div className="org-members__item-actions">
                         {isOwner && member.role !== "owner" ? (
-                          <div className="org-members__item-role-select">
-                            <select
-                              value={member.role}
-                              onChange={(e) =>
-                                handleRoleChange(member.did, e.target.value as OrgRole)
-                              }
-                              className="org-members__role-dropdown"
-                            >
-                              <option value="member">Member</option>
-                              <option value="admin">Admin</option>
-                            </select>
-                            <ChevronDown size={14} className="org-members__role-icon" />
-                          </div>
+                          <Select
+                            size="sm"
+                            aria-label="Member role"
+                            value={member.role}
+                            onChange={(e) =>
+                              handleRoleChange(member.did, e.target.value as OrgRole)
+                            }
+                          >
+                            <option value="member">Member</option>
+                            <option value="admin">Admin</option>
+                          </Select>
                         ) : (
-                          <span className="org-members__item-role-badge">
-                            {member.role}
-                          </span>
+                          <Badge variant="role">{member.role}</Badge>
                         )}
                         {isAdmin && member.did !== did && member.role !== "owner" && (
-                          <button
-                            className="org-members__remove-btn"
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Remove member"
                             onClick={() => setConfirmRemove(member.did)}
-                            title="Remove member"
                           >
                             <Trash2 size={14} />
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -540,14 +538,15 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                         {addError && <ErrorMessage message={addError} />}
                         <div className="org-members__add-submit">
                           <span className="org-members__add-submit-label">Add as</span>
-                          <select
+                          <Select
+                            size="sm"
+                            aria-label="Role for new member"
                             value={newMemberRole}
                             onChange={(e) => setNewMemberRole(e.target.value as OrgRole)}
-                            className="org-members__role-dropdown"
                           >
                             <option value="member">Member</option>
                             <option value="admin">Admin</option>
-                          </select>
+                          </Select>
                           <Button
                             variant="primary"
                             size="sm"
