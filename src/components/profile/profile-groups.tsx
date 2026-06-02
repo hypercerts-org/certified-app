@@ -2,13 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { ArrowUpDown, Building2, Check, Plus, Search } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { ArrowUpDown, Building2, Check, LogIn, Plus, Search } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { useCgsMemberships, type UserGroup } from "@/hooks/use-cgs-memberships"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useOrg } from "@/lib/groups/org-context"
+import type { OrgRole } from "@/lib/groups/types"
 import { formatRelativeTime } from "@/lib/atproto/activity"
 import { getInitials } from "@/lib/utils/initials"
 
@@ -194,11 +197,33 @@ interface GroupRowProps {
 }
 
 function GroupRow({ group }: GroupRowProps) {
+  const router = useRouter()
+  const { groups: orgGroups, activeOrg, switchOrg } = useOrg()
   const name = group.displayName || group.handle
   const initials = getInitials(name, group.groupDid)
   const joinedLabel = group.joinedAt
     ? `Joined ${formatRelativeTime(group.joinedAt)}`
     : null
+  const isOperating = activeOrg?.groupDid === group.groupDid
+
+  // "Operate as" = act FOR this group (delegation). Deliberately separate
+  // from the row link, which goes to the group's profile. Prefer the
+  // org-context's canonical Group so the active-org reconciliation keeps it;
+  // fall back to a Group built from the CGS membership if it isn't loaded yet.
+  const handleOperateAs = () => {
+    const org =
+      orgGroups.find((g) => g.groupDid === group.groupDid) ?? {
+        groupDid: group.groupDid,
+        handle: group.handle,
+        displayName: group.displayName,
+        role: (group.role as OrgRole) ?? "member",
+        accepted: true,
+        avatarUrl: group.avatarUrl,
+      }
+    switchOrg(org)
+    router.push("/home")
+  }
+
   return (
     <li className="profile-groups__item">
       <div className="profile-groups__row">
@@ -231,6 +256,22 @@ function GroupRow({ group }: GroupRowProps) {
           {group.role ? (
             <span className="profile-groups__role">{group.role}</span>
           ) : null}
+          {isOperating ? (
+            <Button variant="secondary" size="sm" disabled>
+              <Check size={14} strokeWidth={2} aria-hidden />
+              Operating
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleOperateAs}
+              title={`Operate as ${name}`}
+            >
+              <LogIn size={14} strokeWidth={1.75} aria-hidden />
+              Operate as
+            </Button>
+          )}
         </div>
       </div>
     </li>
