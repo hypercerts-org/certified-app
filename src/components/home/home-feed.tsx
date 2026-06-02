@@ -342,14 +342,14 @@ function QualityFilter({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="true"
         aria-expanded={open}
-        aria-label="Filter feed by cert quality"
-        title="Filter by cert quality"
+        aria-label="Filter feed by activity quality"
+        title="Filter by activity quality"
       >
         <FilterIcon size={14} strokeWidth={1.75} aria-hidden />
       </button>
       {open ? (
-        <div className="home-feed__filter-pop" role="dialog" aria-label="Cert quality filters">
-          <p className="home-feed__filter-title">Certs quality</p>
+        <div className="home-feed__filter-pop" role="dialog" aria-label="Activity quality filters">
+          <p className="home-feed__filter-title">Activities quality</p>
           <ul className="home-feed__filter-list">
             {HYPERLABEL_DISPLAY_ORDER.map((tier) => (
               <li key={tier}>
@@ -707,11 +707,11 @@ function EndorsedAccountLink({ did }: { did: string }) {
 function EventSentence({ event }: { event: HomeFeedEvent }) {
   switch (event.kind) {
     case "cert.create":
-      return <>created a cert</>
+      return <>created an activity</>
     case "collection.create":
       return <CollectionSentence record={event.record} />
     case "project.created_with_cert":
-      return <>created a project with a cert</>
+      return <>created a project with an activity</>
     case "endorsement.award":
     case "legacy.endorsement":
       return <EndorsementSentence subjectDid={event.subjectDid} />
@@ -776,7 +776,7 @@ function CertTargetName({ did, rkey }: { did: string; rkey: string }) {
     typeof activity?.value.title === "string" && activity.value.title.length > 0
       ? activity.value.title
       : null
-  return <>{title ?? "a cert"}</>
+  return <>{title ?? "an activity"}</>
 }
 
 /**
@@ -840,11 +840,11 @@ function ProjectTargetName({ did, rkey }: { did: string; rkey: string }) {
 function UnhydratedSentence({ rawKind }: { rawKind: string }) {
   switch (rawKind) {
     case "cert.create":
-      return <>created a cert</>
+      return <>created an activity</>
     case "collection.create":
       return <>created a project</>
     case "project.created_with_cert":
-      return <>created a project with a cert</>
+      return <>created a project with an activity</>
     case "evaluation.create":
       return <>added an evaluation</>
     case "measurement.create":
@@ -892,7 +892,7 @@ function CollectionSentence({ record }: { record: CollectionRecord }) {
     case "list:projects":
       return <>created a list of projects</>
     case "list:certs":
-      return <>created a list of certs</>
+      return <>created a list of activities</>
     case "list:accounts":
       return <>created a list of accounts</>
     case "portfolio":
@@ -945,7 +945,7 @@ export function CertPreview({
   const title =
     typeof record.value.title === "string" && record.value.title.length > 0
       ? record.value.title
-      : "Untitled cert"
+      : "Untitled activity"
   const description =
     typeof record.value.shortDescription === "string" &&
     record.value.shortDescription.length > 0
@@ -1026,7 +1026,14 @@ function CollectionPreview({
         )
       : null
   const itemCount = Array.isArray(v.items) ? v.items.length : 0
-  const itemNoun = collectionType === "list:endorsements" ? "endorsement" : "cert"
+  const itemNoun =
+    collectionType === "list:endorsements"
+      ? itemCount === 1
+        ? "endorsement"
+        : "endorsements"
+      : itemCount === 1
+        ? "activity"
+        : "activities"
 
   return (
     <PreviewCard
@@ -1035,9 +1042,7 @@ function CollectionPreview({
       imageUrl={imageUrl}
       description={description}
       meta={[
-        itemCount > 0
-          ? `${itemCount} ${itemNoun}${itemCount === 1 ? "" : "s"}`
-          : null,
+        itemCount > 0 ? `${itemCount} ${itemNoun}` : null,
       ].filter((s): s is string => !!s)}
     />
   )

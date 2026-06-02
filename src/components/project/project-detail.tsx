@@ -265,11 +265,13 @@ export default function ProjectDetail({
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const tabParam = searchParams?.get("tab") ?? "overview"
-  const activeTab: "overview" | "description" | "certs" | "updates" =
-    tabParam === "description" ||
-    tabParam === "certs" ||
-    tabParam === "updates"
-      ? tabParam
+  // Legacy ?tab=certs resolves to activities so old links keep working.
+  const normalizedTab = tabParam === "certs" ? "activities" : tabParam
+  const activeTab: "overview" | "description" | "activities" | "updates" =
+    normalizedTab === "description" ||
+    normalizedTab === "activities" ||
+    normalizedTab === "updates"
+      ? normalizedTab
       : "overview"
 
   /** Build a URL pointing at another subtab on this page —
@@ -277,7 +279,7 @@ export default function ProjectDetail({
    *  (rare today; future-proof). Returns null when pathname isn't
    *  resolved yet so callers can skip rendering the link. */
   const buildTabHref = useCallback(
-    (tab: "overview" | "description" | "certs" | "updates"): string | null => {
+    (tab: "overview" | "description" | "activities" | "updates"): string | null => {
       if (!pathname) return null
       const params = new URLSearchParams(searchParams?.toString() ?? "")
       if (tab === "overview") params.delete("tab")
@@ -289,7 +291,7 @@ export default function ProjectDetail({
   )
 
   const descriptionHref = buildTabHref("description")
-  const certsHref = buildTabHref("certs")
+  const certsHref = buildTabHref("activities")
   const updatesHref = buildTabHref("updates")
 
   // Image resolution order:
@@ -1131,11 +1133,11 @@ export default function ProjectDetail({
           {certCount > 0 && certsHref ? (
             <section
               className="project-detail__certs project-detail__certs--preview"
-              aria-label="Certs preview"
+              aria-label="Activities preview"
             >
               <div className="project-detail__certs-header">
                 <h2 className="project-detail__certs-title">
-                  Certs in this project
+                  Activities in this project
                 </h2>
                 <span className="project-detail__certs-count">
                   {certCount}
@@ -1230,10 +1232,10 @@ export default function ProjectDetail({
           )
         ) : null}
 
-        {activeTab === "certs" ? (
+        {activeTab === "activities" ? (
         <section className="project-detail__certs">
           <div className="project-detail__certs-header">
-            <h2 className="project-detail__certs-title">Certs in this project</h2>
+            <h2 className="project-detail__certs-title">Activities in this project</h2>
             <span className="project-detail__certs-count">{certCount}</span>
             {editing && !addingCert ? (
               <button
@@ -1242,7 +1244,7 @@ export default function ProjectDetail({
                 onClick={() => setAddingCert(true)}
               >
                 <Plus size={14} strokeWidth={1.75} aria-hidden />
-                Add cert
+                Add activity
               </button>
             ) : null}
           </div>
@@ -1253,7 +1255,7 @@ export default function ProjectDetail({
                 onSelect={handleAddCert}
                 prioritizeAuthorDid={sessionDid ?? undefined}
                 excludeUris={draftItemUris}
-                placeholder="Search for a cert to add…"
+                placeholder="Search for an activity to add…"
                 autoFocus
                 clearOnSelect
               />
@@ -1274,8 +1276,8 @@ export default function ProjectDetail({
               ) : resolvedActivities.length === 0 ? (
                 <EmptyState
                   icon={Inbox}
-                  title="No certs in this project yet"
-                  description="Click “Add cert” above to search for and add certs."
+                  title="No activities in this project yet"
+                  description="Click “Add activity” above to search for and add activities."
                 />
               ) : (
                 resolvedActivities.map((rec) => (
@@ -1291,7 +1293,7 @@ export default function ProjectDetail({
                       <button
                         type="button"
                         className="project-detail__cert-menu-btn"
-                        aria-label="Cert actions"
+                        aria-label="Activity actions"
                         aria-haspopup="menu"
                         aria-expanded={openMenuUri === rec.uri}
                         onClick={(e) => {
@@ -1345,8 +1347,8 @@ export default function ProjectDetail({
               emptyState={
                 <EmptyState
                   icon={Inbox}
-                  title="No certs in this project yet"
-                  description="When certs are added to this project, they'll appear here."
+                  title="No activities in this project yet"
+                  description="When activities are added to this project, they'll appear here."
                 />
               }
             />

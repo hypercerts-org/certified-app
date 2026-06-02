@@ -43,7 +43,7 @@ import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { getInitials } from "@/lib/utils/initials"
 
 const SECTIONS: { type: TypedListType; title: string; emptyHint: string }[] = [
-  { type: LIST_CERTS_TYPE, title: "Certs", emptyHint: "No cert lists yet." },
+  { type: LIST_CERTS_TYPE, title: "Activities", emptyHint: "No activity lists yet." },
   { type: LIST_PROJECTS_TYPE, title: "Projects", emptyHint: "No project lists yet." },
   { type: LIST_ACCOUNTS_TYPE, title: "Accounts", emptyHint: "No account lists yet." },
 ]
@@ -583,7 +583,7 @@ function CertItemRow({
   const title =
     typeof activity?.value.title === "string" && activity.value.title.length > 0
       ? activity.value.title
-      : "Untitled cert"
+      : "Untitled activity"
   const imageUrl =
     activity?.value.image && parsed
       ? resolveActivityImageUrl(activity.value.image, parsed.did)
@@ -847,7 +847,7 @@ function CreateListModal({
 }
 
 const LABELS: Record<TypedListType, string> = {
-  "list:certs": "certs",
+  "list:certs": "activities",
   "list:projects": "projects",
   "list:accounts": "accounts",
 }
@@ -1315,7 +1315,7 @@ function AddItemsModal({
 }
 
 const SEARCH_PLACEHOLDERS: Record<TypedListType, string> = {
-  "list:certs": "Search certs by title",
+  "list:certs": "Search activities by title",
   "list:projects": "Search projects by title",
   "list:accounts": "Search accounts by handle or name",
 }
@@ -1382,7 +1382,7 @@ async function searchCerts(query: string, signal: AbortSignal): Promise<SearchRe
       title:
         typeof rec.value.title === "string" && rec.value.title.length > 0
           ? rec.value.title
-          : "Untitled cert",
+          : "Untitled activity",
       subtitle: null,
       imageUrl,
     })

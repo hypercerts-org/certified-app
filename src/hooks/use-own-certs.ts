@@ -61,7 +61,7 @@ export function useOwnCerts(did: string | null): {
           title:
             typeof rec.value?.title === "string" && rec.value.title.trim()
               ? rec.value.title.trim()
-              : rec.uri.split("/").pop() ?? "(untitled cert)",
+              : rec.uri.split("/").pop() ?? "(untitled activity)",
           createdAt:
             typeof rec.value?.createdAt === "string"
               ? rec.value.createdAt

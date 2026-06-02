@@ -333,11 +333,11 @@ export default function ProfileOverview({
 
       <section className="profile-overview__stats" aria-label="Profile stats">
         <Link
-          href={`${basePath}?tab=certs`}
+          href={`${basePath}?tab=activities`}
           scroll={false}
           className="profile-overview__stat"
         >
-          <span className="profile-overview__stat-label">Certs</span>
+          <span className="profile-overview__stat-label">Activities</span>
           <span className="profile-overview__stat-split">
             <span className="profile-overview__stat-value">
               {activitiesLoading
@@ -397,12 +397,12 @@ export default function ProfileOverview({
             id="profile-overview-activities-heading"
             className="profile-overview__section-title"
           >
-            Recent certs
+            Recent activities
           </h2>
           {createdActivities.length + contributedActivities.length >
           ACTIVITY_PREVIEW ? (
             <Link
-              href={`${basePath}?tab=certs`}
+              href={`${basePath}?tab=activities`}
               scroll={false}
               className="profile-overview__see-all"
             >
@@ -414,7 +414,7 @@ export default function ProfileOverview({
         {activitiesLoading && previewActivities.length === 0 ? (
           <div className="profile-overview__loading"><LoadingSpinner size="sm" /></div>
         ) : previewActivities.length === 0 ? (
-          <p className="profile-overview__empty">No certs yet.</p>
+          <p className="profile-overview__empty">No activities yet.</p>
         ) : (
           <ul className="profile-overview__activity-list">
             {previewActivities.map((a) => {
@@ -425,7 +425,7 @@ export default function ProfileOverview({
                     <ActivityThumb value={a.value} did={did} />
                     <span className="profile-overview__activity-text">
                       <span className="profile-overview__activity-title">
-                        {a.value.title || "Untitled cert"}
+                        {a.value.title || "Untitled activity"}
                       </span>
                       {a.value.shortDescription ? (
                         <span className="profile-overview__activity-desc">

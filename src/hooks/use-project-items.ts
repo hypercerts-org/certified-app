@@ -113,8 +113,8 @@ export function useProjectItems(items: unknown): {
             if (!res.ok) {
               throw new Error(
                 res.status === 404
-                  ? "Cert not found"
-                  : `Failed to load cert (${res.status})`,
+                  ? "Activity not found"
+                  : `Failed to load activity (${res.status})`,
               )
             }
             const data = (await res.json()) as {
@@ -135,7 +135,7 @@ export function useProjectItems(items: unknown): {
             next[idx] = {
               ...next[idx],
               error:
-                err instanceof Error ? err.message : "Failed to load cert",
+                err instanceof Error ? err.message : "Failed to load activity",
             }
           }
         }),

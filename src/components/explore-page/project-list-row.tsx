@@ -50,7 +50,7 @@ export default function ProjectListRow({
       : null
 
   const itemCount = countItems(value.items)
-  const countLabel = `${itemCount} cert${itemCount === 1 ? "" : "s"}`
+  const countLabel = `${itemCount} ${itemCount === 1 ? "activity" : "activities"}`
   // `value.location` comes in two shapes on the wire:
   //   - inline string (legacy / direct text), e.g. "Bern, CH"
   //   - strongRef { uri, cid } pointing at an `app.certified.location`

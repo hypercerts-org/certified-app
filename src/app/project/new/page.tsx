@@ -449,7 +449,7 @@ export default function CreateProjectPage() {
 
           <section className="cert-detail__section">
             <div className="cert-detail__section-header">
-              <h2 className="cert-detail__section-title">Certs</h2>
+              <h2 className="cert-detail__section-title">Activities</h2>
               {items.length > 0 ? (
                 <span className="cert-detail__section-count">
                   {items.length}
@@ -487,19 +487,19 @@ export default function CreateProjectPage() {
                 items[] without typing anything. Hidden when the
                 user has no certs OR the active group has none. */}
             {ownCertsLoading ? (
-              <p className="cert-detail__empty-line">Loading your certs…</p>
+              <p className="cert-detail__empty-line">Loading your activities…</p>
             ) : ownCerts.length === 0 ? (
               <p className="cert-detail__empty-line">
-                You don&rsquo;t have any certs yet.{" "}
+                You don&rsquo;t have any activities yet.{" "}
                 <Link href="/create" className="create-project__inline-link">
-                  Create your first cert
+                  Create your first activity
                 </Link>
                 .
               </p>
             ) : (
               <>
                 <p className="create-project__quick-pick-label">
-                  Add your certs:
+                  Add your activities:
                 </p>
                 <ul className="create-project__quick-pick-list">
                   {ownCerts.map((c) => {

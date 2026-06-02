@@ -15,7 +15,7 @@ import {
 } from "@/lib/atproto/typed-lists"
 
 const TYPE_LABEL: Record<TypedListType, string> = {
-  "list:certs": "cert",
+  "list:certs": "activity",
   "list:projects": "project",
   "list:accounts": "account",
 }

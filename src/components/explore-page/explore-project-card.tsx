@@ -70,7 +70,7 @@ export default function ExploreProjectCard({
         ) : null}
         <div className="explore-project-card__meta">
           <span className="explore-project-card__count">
-            {itemCount} cert{itemCount === 1 ? "" : "s"}
+            {itemCount} {itemCount === 1 ? "activity" : "activities"}
           </span>
           {createdLabel ? (
             <span className="explore-project-card__when">{createdLabel}</span>

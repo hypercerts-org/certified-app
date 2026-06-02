@@ -130,7 +130,7 @@ interface RightsOption {
 }
 
 export default function CreatePage() {
-  usePageTitle("New cert")
+  usePageTitle("New activity")
   const { isAuthenticated, isLoading, did } = useAuth()
   const { activeOrg } = useOrg()
   const router = useRouter()
@@ -612,7 +612,7 @@ export default function CreatePage() {
   return (
     <form onSubmit={handleSubmit}>
       <article className="page-layout cert-detail--wide create-cert">
-        <aside className="cert-detail__aside" aria-label="Cert metadata">
+        <aside className="cert-detail__aside" aria-label="Activity metadata">
           {/* Image slot — `--editing` carries the dashed outline that
               signals "click here to set an image", matching the
               inline-edit mode of the detail page. When a blob is
@@ -803,7 +803,7 @@ export default function CreatePage() {
                 type="text"
                 className="cert-detail__title-input"
                 aria-label="Title"
-                placeholder="Title for your cert"
+                placeholder="Title for your activity"
                 value={title}
                 maxLength={TITLE_MAX}
                 onChange={(e) => setTitle(e.target.value)}
@@ -856,8 +856,8 @@ export default function CreatePage() {
             <LeafletEditor
               value={description}
               onChange={setDescription}
-              placeholder="Full description of this cert. Headings, lists, links, images, and video embeds are all supported via the toolbar."
-              ariaLabel="Cert description"
+              placeholder="Full description of this activity. Headings, lists, links, images, and video embeds are all supported via the toolbar."
+              ariaLabel="Activity description"
               did={did ?? ""}
               onImageUpload={(file) =>
                 uploadBlob(
@@ -1124,7 +1124,7 @@ export default function CreatePage() {
               loading={isSubmitting}
               disabled={!canSubmit}
             >
-              {isSubmitting ? "Publishing…" : "Publish cert"}
+              {isSubmitting ? "Publishing…" : "Publish activity"}
             </Button>
           </div>
         </div>

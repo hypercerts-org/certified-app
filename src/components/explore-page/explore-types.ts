@@ -1,4 +1,4 @@
-export type ExploreKind = "accounts" | "projects" | "certs"
+export type ExploreKind = "accounts" | "projects" | "activities"
 
 export type SortOrder = "newest" | "oldest" | "alphabetical"
 
@@ -39,10 +39,10 @@ const PROJECT_FILTERS: FilterOption[] = [
 const CERT_FILTERS: FilterOption[] = [
   ...FEATURED_FILTERS,
   { key: "recent", label: "Recently viewed" },
-  { key: "by-me", label: "My certs", requiresAuth: true },
+  { key: "by-me", label: "My activities", requiresAuth: true },
   { key: "by-follows", label: "Accounts I follow", requiresAuth: true },
   { key: "by-endorsed", label: "Endorsed accounts", requiresAuth: true },
-  { key: "all", label: "All certs" },
+  { key: "all", label: "All activities" },
 ]
 
 export function filtersForKind(kind: ExploreKind): FilterOption[] {
@@ -75,7 +75,7 @@ export const SUB_OPTIONS: Record<
     { key: "organizations", label: "Organizations" },
   ],
   projects: [],
-  certs: [
+  activities: [
     { key: "all", label: "All" },
     { key: "created", label: "Created", requiresAuth: true },
     { key: "contributed", label: "Contributed", requiresAuth: true },

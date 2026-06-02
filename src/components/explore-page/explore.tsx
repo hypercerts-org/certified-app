@@ -104,11 +104,13 @@ const DEFAULT_ORG_TIER_SLUGS: readonly OrgTierSlug[] = ORG_TIER_SLUGS.filter(
 )
 
 function parseKind(v: string | null): ExploreKind {
-  if (v === "accounts" || v === "projects" || v === "certs") return v
-  // Migration shim — old URLs with ?kind=users or ?kind=profiles still
-  // resolve to accounts so external links keep working.
+  if (v === "accounts" || v === "projects" || v === "activities") return v
+  // Migration shim — old URLs with ?kind=users or ?kind=profiles resolve
+  // to accounts, and the legacy ?kind=certs resolves to activities, so
+  // external links keep working.
   if (v === "users" || v === "profiles") return "accounts"
-  return "certs"
+  if (v === "certs") return "activities"
+  return "activities"
 }
 
 function parseSort(v: string | null): SortOrder {
@@ -487,16 +489,16 @@ export default function Explore() {
     noEndorsementRings: showsDegreeControl && degrees.size === 0,
     // Cert-quality filter — only meaningful for the certs kind, but
     // passing it for other kinds is a no-op at the load-page level.
-    excludeCertLabels: kind === "certs" ? excludeCertLabels : undefined,
-    includeCertLabels: kind === "certs" ? includeCertLabels : undefined,
+    excludeCertLabels: kind === "activities" ? excludeCertLabels : undefined,
+    includeCertLabels: kind === "activities" ? includeCertLabels : undefined,
     // Org-quality filter — used on accounts (filters the actor list)
     // and certs (filters certs whose author org carries the tier).
     excludeOrgLabels:
-      kind === "accounts" || kind === "certs" || kind === "projects"
+      kind === "accounts" || kind === "activities" || kind === "projects"
         ? excludeOrgLabels
         : undefined,
     includeOrgLabels:
-      kind === "accounts" || kind === "certs" || kind === "projects"
+      kind === "accounts" || kind === "activities" || kind === "projects"
         ? includeOrgLabels
         : undefined,
   })
@@ -644,7 +646,7 @@ export default function Explore() {
               <div
                 className="explore__view-toggle"
                 role="group"
-                aria-label={`${kind === "certs" ? "Cert" : kind === "projects" ? "Project" : "Account"} view`}
+                aria-label={`${kind === "activities" ? "Activity" : kind === "projects" ? "Project" : "Account"} view`}
               >
                 <button
                   type="button"
@@ -707,7 +709,7 @@ export default function Explore() {
                   Account quality only — projects' record-tier
                   filtering is keyed off the author's org label, not
                   the project itself. */}
-              {kind === "certs" || kind === "accounts" || kind === "projects" ? (
+              {kind === "activities" || kind === "accounts" || kind === "projects" ? (
                 <Popover
                   open={qualityOpen}
                   onClose={() => setQualityOpen(false)}
@@ -715,7 +717,7 @@ export default function Explore() {
                     <button
                       type="button"
                       className={`explore__chrome-btn explore__chrome-btn--icon${
-                        (kind === "certs" && !qualityIsDefault) ||
+                        (kind === "activities" && !qualityIsDefault) ||
                         !orgQualityIsDefault
                           ? " explore__chrome-btn--active"
                           : ""
@@ -724,7 +726,7 @@ export default function Explore() {
                       aria-expanded={qualityOpen}
                       aria-haspopup="menu"
                       aria-label={`Filter by quality${
-                        (kind === "certs" && !qualityIsDefault) ||
+                        (kind === "activities" && !qualityIsDefault) ||
                         !orgQualityIsDefault
                           ? " (filtered)"
                           : ""
@@ -735,9 +737,9 @@ export default function Explore() {
                     </button>
                   }
                 >
-                  {kind === "certs" ? (
+                  {kind === "activities" ? (
                     <>
-                      <p className="popover__section-heading">Cert quality</p>
+                      <p className="popover__section-heading">Activity quality</p>
                       {HYPERLABEL_DISPLAY_ORDER.map((tier) => (
                         <label
                           key={tier}
@@ -799,7 +801,7 @@ export default function Explore() {
                     className="popover__reset-btn"
                     onClick={onResetQuality}
                     disabled={
-                      (kind !== "certs" || qualityIsDefault) &&
+                      (kind !== "activities" || qualityIsDefault) &&
                       orgQualityIsDefault
                     }
                   >
@@ -1019,7 +1021,7 @@ function SubPrefixDropdown({
 function searchPlaceholder(kind: ExploreKind): string {
   if (kind === "accounts") return "Search accounts by name…"
   if (kind === "projects") return "Search projects…"
-  return "Search certs…"
+  return "Search activities…"
 }
 
 function Popover({
@@ -1230,7 +1232,7 @@ function ResultsArea({
 
 function EmptyResults({ kind }: { kind: ExploreKind }) {
   const label =
-    kind === "accounts" ? "accounts" : kind === "projects" ? "projects" : "certs"
+    kind === "accounts" ? "accounts" : kind === "projects" ? "projects" : "activities"
   return (
     <EmptyState
       icon={kind === "accounts" ? Users : kind === "projects" ? FolderGit2 : CertIcon}

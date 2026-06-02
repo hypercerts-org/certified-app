@@ -56,7 +56,7 @@ interface ProfileTab {
 
 const PROFILE_TABS: ProfileTab[] = [
   { key: "overview", label: "Overview" },
-  { key: "certs", label: "Certs" },
+  { key: "activities", label: "Activities" },
   { key: "projects", label: "Projects" },
   { key: "groups", label: "Groups", groupsOnly: true },
   { key: "endorsements", label: "Endorsements" },
@@ -83,7 +83,7 @@ type DetailTab = { key: string; label: string; subRoute?: string };
  *  tabs replaces ?kind= on /explore and clears the kind-specific
  *  state to match the on-page behavior. */
 const EXPLORE_TABS: { key: string; label: string }[] = [
-  { key: "certs", label: "Certs" },
+  { key: "activities", label: "Activities" },
   { key: "projects", label: "Projects" },
   { key: "accounts", label: "Accounts" },
 ];
@@ -101,7 +101,7 @@ const CERT_DETAIL_TABS: DetailTab[] = [
 const PROJECT_DETAIL_TABS: DetailTab[] = [
   { key: "overview", label: "Overview" },
   { key: "description", label: "Description" },
-  { key: "certs", label: "Certs" },
+  { key: "activities", label: "Activities" },
   { key: "updates", label: "Updates" },
 ];
 
@@ -215,7 +215,9 @@ export default function DesktopTopBar() {
     [isOnOwnProfile, profileAboutAvailable, profileGroupsAvailable],
   );
   const activeTab = useMemo(() => {
-    const v = searchParams?.get("tab");
+    const raw = searchParams?.get("tab");
+    // Legacy ?tab=certs -> activities so old links highlight correctly.
+    const v = raw === "certs" ? "activities" : raw;
     if (v && visibleProfileTabs.some((t) => t.key === v)) return v;
     return "overview";
   }, [searchParams, visibleProfileTabs]);
@@ -517,11 +519,13 @@ export default function DesktopTopBar() {
               // <Explore> uses (users / profiles legacy → accounts).
               const raw = searchParams?.get("kind") ?? null;
               const currentKind =
-                raw === "accounts" || raw === "projects" || raw === "certs"
+                raw === "accounts" || raw === "projects" || raw === "activities"
                   ? raw
                   : raw === "users" || raw === "profiles"
                   ? "accounts"
-                  : "certs";
+                  : raw === "certs"
+                  ? "activities"
+                  : "activities";
               const isActive = currentKind === t.key;
               const params = new URLSearchParams();
               // Reset other state (filter/sub/q/sort/view/attrs) when
@@ -589,7 +593,7 @@ export default function DesktopTopBar() {
             <nav
               className="desktop-top-bar__tabs"
               role="tablist"
-              aria-label={isOnCertDetail ? "Cert sections" : "Project sections"}
+              aria-label={isOnCertDetail ? "Activity sections" : "Project sections"}
             >
               {(isOnCertDetail
                 ? CERT_DETAIL_TABS
@@ -664,7 +668,7 @@ export default function DesktopTopBar() {
                 onClick={() => setCreateOpen(false)}
               >
                 <FileBadge size={16} strokeWidth={1.75} aria-hidden />
-                <span>New cert</span>
+                <span>New activity</span>
               </Link>
               <Link
                 href="/project/new"

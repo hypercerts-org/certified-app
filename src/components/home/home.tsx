@@ -152,14 +152,14 @@ function HomeSidebar({ activeDid }: { activeDid: string }) {
         emptyLabel="No projects yet."
       />
       <SidebarSection
-        title="My certs"
+        title="My activities"
         icon={CertIcon}
         isLoading={certsLoading && previewCerts.length === 0}
         items={previewCerts}
         total={certs.length}
         renderItem={(c) => <CertRow key={c.uri} record={c} fallbackDid={activeDid} />}
-        moreHref={`${profileBase}?tab=certs`}
-        emptyLabel="No certs yet."
+        moreHref={`${profileBase}?tab=activities`}
+        emptyLabel="No activities yet."
       />
     </>
   )
@@ -319,7 +319,7 @@ function CertRow({
           )}
         </span>
         <span className="home-row__label">
-          {record.value.title || "Untitled cert"}
+          {record.value.title || "Untitled activity"}
         </span>
       </Link>
     </li>

@@ -44,6 +44,6 @@ export async function putCertRecord(
       method: "PUT",
       body: { rkey, record: body, ...(swap ? { swapRecord: swap } : {}) },
     },
-    errorFallback: "Failed to save cert",
+    errorFallback: "Failed to save activity",
   })
 }

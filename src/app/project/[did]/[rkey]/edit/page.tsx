@@ -190,7 +190,7 @@ export default function ProjectEditPage() {
         title:
           typeof r.record!.value.title === "string" && r.record!.value.title.trim()
             ? r.record!.value.title.trim()
-            : r.record!.uri.split("/").pop() ?? "(untitled cert)",
+            : r.record!.uri.split("/").pop() ?? "(untitled activity)",
       }))
     setItems(hydrated)
     itemsSeededRef.current = true
@@ -711,7 +711,7 @@ export default function ProjectEditPage() {
 
           <section className="cert-detail__section">
             <div className="cert-detail__section-header">
-              <h2 className="cert-detail__section-title">Certs</h2>
+              <h2 className="cert-detail__section-title">Activities</h2>
               {items.length > 0 ? (
                 <span className="cert-detail__section-count">
                   {items.length}
@@ -742,19 +742,19 @@ export default function ProjectEditPage() {
             ) : null}
 
             {ownCertsLoading ? (
-              <p className="cert-detail__empty-line">Loading your certs…</p>
+              <p className="cert-detail__empty-line">Loading your activities…</p>
             ) : ownCerts.length === 0 ? (
               <p className="cert-detail__empty-line">
-                You don&rsquo;t have any certs yet.{" "}
+                You don&rsquo;t have any activities yet.{" "}
                 <Link href="/create" className="create-project__inline-link">
-                  Create your first cert
+                  Create your first activity
                 </Link>
                 .
               </p>
             ) : (
               <>
                 <p className="create-project__quick-pick-label">
-                  Add your certs:
+                  Add your activities:
                 </p>
                 <ul className="create-project__quick-pick-list">
                   {ownCerts.map((c) => {

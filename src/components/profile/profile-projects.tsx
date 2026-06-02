@@ -83,7 +83,7 @@ export default function ProfileProjects({ did, viewerIsOwner }: ProfileProjectsP
           title="No projects yet"
           description={
             viewerIsOwner
-              ? "Create your first project to group related certs together."
+              ? "Create your first project to group related activities together."
               : "When this profile creates a project collection, it'll appear here."
           }
         />
@@ -204,7 +204,7 @@ function ProjectBox({ project }: ProjectBoxProps) {
 
       <div className="profile-projects__box-certs">
         <div className="profile-projects__box-certs-head">
-          <h3 className="profile-projects__box-certs-title">Certs</h3>
+          <h3 className="profile-projects__box-certs-title">Activities</h3>
           <span className="profile-projects__box-certs-count">
             {totalCerts}
           </span>
@@ -216,7 +216,7 @@ function ProjectBox({ project }: ProjectBoxProps) {
           </div>
         ) : previews.length === 0 ? (
           <p className="profile-projects__section-empty">
-            <CertIcon size={14} strokeWidth={1.5} aria-hidden /> No certs in this
+            <CertIcon size={14} strokeWidth={1.5} aria-hidden /> No activities in this
             project yet.
           </p>
         ) : (
@@ -230,7 +230,7 @@ function ProjectBox({ project }: ProjectBoxProps) {
             </ul>
             {detailHref && hiddenCount > 0 ? (
               <Link href={detailHref} className="profile-projects__box-see-all">
-                See all {totalCerts} certs
+                See all {totalCerts} activities
                 <ArrowRight size={14} strokeWidth={1.75} aria-hidden />
               </Link>
             ) : null}
@@ -251,7 +251,7 @@ function CertRow({ resolution }: CertRowProps) {
   const parsed = parseAtUri(record.uri)
   const rkey = parsed?.rkey ?? ""
   const href = activityDetailHref(did, rkey)
-  const title = asString(record.value.title) || "Untitled cert"
+  const title = asString(record.value.title) || "Untitled activity"
   const imageUrl = record.value.image
     ? resolveActivityImageUrl(record.value.image, did)
     : null
