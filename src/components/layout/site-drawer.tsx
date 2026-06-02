@@ -27,7 +27,7 @@ export default function SiteDrawer({
   onClose: () => void
 }) {
   const pathname = usePathname()
-  const { isAuthenticated } = useAuth()
+  const { isLoading, isAuthenticated } = useAuth()
   const { handle: personalHandle } = useSession()
   const { activeOrg } = useOrg()
   // The "My profile" item — and any future identity-bound link added
@@ -98,7 +98,7 @@ export default function SiteDrawer({
       >
         <header className="site-drawer__head">
           <Link
-            href="/home"
+            href={!isLoading && !isAuthenticated ? "/welcome" : "/home"}
             className="site-drawer__brand"
             onClick={onClose}
             aria-label="Certified home"

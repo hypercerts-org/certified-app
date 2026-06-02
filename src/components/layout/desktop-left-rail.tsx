@@ -74,7 +74,7 @@ function formatPendingBadge(count: number | null): string | null {
 export default function DesktopLeftRail() {
   const pathname = usePathname();
   const router = useRouter();
-  const { isAuthenticated, did, openSignIn, signOut } = useAuth();
+  const { isLoading, isAuthenticated, did, openSignIn, signOut } = useAuth();
   const { profile, avatarUrl } = useProfile();
   const { handle } = useSession();
   const { activeOrg, groups, switchOrg } = useOrg();
@@ -196,11 +196,12 @@ export default function DesktopLeftRail() {
   // personal-handle path uses `handle` (from useSession) rather than
   // `identity.handle`, which is the *group* handle when activeOrg is
   // set and would otherwise send us to /profile/<group-handle>.
-  // Brand mark always links to /home. The /home page handles its
-  // own unauth state (sign-in empty state). Org-switch acting-as
-  // state is no longer load-bearing here — the user's mental model
-  // is "brand = home", not "brand = my current profile".
-  const brandHref = "/home";
+  // Brand mark links to /home for signed-in viewers and to /welcome
+  // once auth resolves to signed-out. While auth is still loading we
+  // keep /home, whose own guard bounces an unauthenticated viewer to
+  // /welcome. Org-switch acting-as state is not load-bearing here —
+  // the user's mental model is "brand = home", not "brand = my profile".
+  const brandHref = !isLoading && !isAuthenticated ? "/welcome" : "/home";
 
   // Personal-only visibility (Create, Endorsements, Groups) is decided
   // by lib/groups/personal-only.ts — same source of truth used by the

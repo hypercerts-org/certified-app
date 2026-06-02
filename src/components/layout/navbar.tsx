@@ -314,10 +314,13 @@ const Navbar: React.FC = () => {
           )}
         </div>
 
-        {/* Center: brandmark — always links to /home. The /home page
-            handles the unauthenticated state itself (sign-in empty
-            state) so we don't need to branch the href here. */}
-        <Link href="/home" className="navbar__logo">
+        {/* Center: brandmark — links to /home for signed-in viewers and
+            straight to /welcome once we know the viewer is signed out.
+            While auth is still resolving we keep /home; its own guard
+            redirects an unauthenticated viewer to /welcome, so the worst
+            case is a one-tick bounce rather than stranding a signed-in
+            viewer on the marketing page during the loading flash. */}
+        <Link href={!isLoading && !isAuthenticated ? "/welcome" : "/home"} className="navbar__logo">
           <Brandmark className="navbar__logo-img" title="Certified" />
         </Link>
 
