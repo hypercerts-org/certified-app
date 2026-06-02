@@ -126,6 +126,64 @@ describe("resolve-did batch coalescer", () => {
     expect(bodyOf(1).identities).toHaveLength(10)
   })
 
+  it("defers the next batch until the 429 cooldown lapses", async () => {
+    authFetch.mockResolvedValueOnce(jsonResponse({ error: "x" }, 429))
+    const first = loadResolvedProfile("did:plc:a")
+    await vi.advanceTimersByTimeAsync(20)
+    expect(await first).toBeNull()
+    expect(authFetch).toHaveBeenCalledTimes(1)
+
+    // A fresh identity queued during the cooldown must NOT be sent yet.
+    authFetch.mockResolvedValue(
+      jsonResponse({
+        results: { "did:plc:b": { did: "did:plc:b", handle: "b.test" } },
+      }),
+    )
+    const second = loadResolvedProfile("did:plc:b")
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(authFetch).toHaveBeenCalledTimes(1)
+
+    // Once the 5s cooldown elapses it goes out.
+    await vi.advanceTimersByTimeAsync(5_000)
+    expect(await second).toMatchObject({ handle: "b.test" })
+    expect(authFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it("sends loads that arrive mid-flush in their own later batch", async () => {
+    // Hold the first request open so a second load lands while flush #1
+    // is in flight.
+    let releaseFirst!: (r: Response) => void
+    const firstResponse = new Promise<Response>((res) => {
+      releaseFirst = res
+    })
+    authFetch.mockReturnValueOnce(firstResponse)
+
+    const pA = loadResolvedProfile("did:plc:a")
+    await vi.advanceTimersByTimeAsync(20)
+    expect(authFetch).toHaveBeenCalledTimes(1)
+
+    // Arrives while flush #1 awaits its response — must not be lost.
+    const pB = loadResolvedProfile("did:plc:b")
+
+    authFetch.mockResolvedValue(
+      jsonResponse({
+        results: { "did:plc:b": { did: "did:plc:b", handle: "b.test" } },
+      }),
+    )
+    releaseFirst(
+      jsonResponse({
+        results: { "did:plc:a": { did: "did:plc:a", handle: "a.test" } },
+      }),
+    )
+    expect(await pA).toMatchObject({ handle: "a.test" })
+
+    await vi.advanceTimersByTimeAsync(20)
+    expect(await pB).toMatchObject({ handle: "b.test" })
+    expect(authFetch).toHaveBeenCalledTimes(2)
+    // B went out on its own request, not bundled into A's.
+    expect(bodyOf(1).identities).toEqual(["did:plc:b"])
+  })
+
   it("resolves blank identities to null without a request", async () => {
     const p = loadResolvedProfile("   ")
     expect(await p).toBeNull()

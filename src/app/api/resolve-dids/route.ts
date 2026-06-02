@@ -29,11 +29,18 @@ import {
  * own fallback.
  */
 
-// One batch == one rate-limit hit. The same 60/min budget as the GET
-// route now covers 60 *pages* per minute instead of 60 rows, which is
-// what removes the 429s. DID **and** IP, mirroring the GET route.
-const LIMITER_DID = makeLimiter("resolve-dids-did", 60, 60)
-const LIMITER_IP = makeLimiter("resolve-dids-ip", 60, 60)
+// Budget is counted in IDENTITIES, not requests: each request charges
+// `identities.length` against the window (see the `cost` arg below). A
+// 50-identity page costs 50; a 1-identity lookup costs 1. 600/min is
+// ~12 full explore pages of *distinct* authors per minute (the client
+// coalescer dedups repeats to cost 0), and bounds upstream fan-out to
+// ~600x3 fetches/min/IP — far tighter than a flat 60-*request* budget,
+// which would let one IP drive ~9k upstream fetches/min through the
+// 50x fan-out. DID **and** IP, mirroring the GET route. Replacing the
+// per-row GET calls also lifts anonymous users off the GET route's
+// shared "anon" 60/min bucket, which itself contributed to the 429s.
+const LIMITER_DID = makeLimiter("resolve-dids-did", 600, 60)
+const LIMITER_IP = makeLimiter("resolve-dids-ip", 600, 60)
 
 /** Hard cap per request. The client chunks larger sets into multiple
  *  POSTs; this bounds the upstream fan-out a single request can trigger. */
@@ -70,14 +77,10 @@ async function mapWithConcurrency<T, R>(
 
 export async function POST(request: NextRequest) {
   try {
-    // Rate-limit first — same posture as the GET route. fail-OPEN on a
-    // limiter backend error (handled inside enforceRateLimitMulti).
+    // Parse + normalise BEFORE rate-limiting so the limiter can charge by
+    // identity count. Body parsing is cheap and does no upstream work, so
+    // the "deny before any upstream fetch" property still holds.
     const sessionDid = await getSessionDid()
-    const rateDenied = await enforceRateLimitMulti([
-      { limit: LIMITER_DID, identifier: sessionDid ?? "anon" },
-      { limit: LIMITER_IP, identifier: clientIp(request) },
-    ])
-    if (rateDenied) return rateDenied
 
     const body = (await request.json().catch(() => null)) as {
       identities?: unknown
@@ -113,6 +116,16 @@ export async function POST(request: NextRequest) {
     if (identities.length === 0) {
       return NextResponse.json({ results })
     }
+
+    // Charge the window by identity count (one unit per upstream
+    // resolution this request will trigger). fail-OPEN on a limiter
+    // backend error (handled inside enforceRateLimitMulti).
+    const cost = identities.length
+    const rateDenied = await enforceRateLimitMulti([
+      { limit: LIMITER_DID, identifier: sessionDid ?? "anon", cost },
+      { limit: LIMITER_IP, identifier: clientIp(request), cost },
+    ])
+    if (rateDenied) return rateDenied
 
     const resolved = await mapWithConcurrency(
       identities,

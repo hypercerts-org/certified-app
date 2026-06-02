@@ -59,6 +59,9 @@ const cache = createBoundedCache<string, Promise<ResolvedDidResult | null>>(
 let queue: QueueEntry[] = []
 let flushTimer: ReturnType<typeof setTimeout> | null = null
 let cooldownUntil = 0
+// Per-identity TTL timers for negative-cache eviction, tracked so they
+// can be replaced on reschedule and cleared on reset (no timer leak).
+const evictionTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 /**
  * Resolve a DID or handle to its profile, batched. Returns the same
@@ -94,6 +97,14 @@ function scheduleFlush(): void {
 
 async function flush(): Promise<void> {
   if (queue.length === 0) return
+  // A 429 on a concurrent chunk can set a cooldown after this flush was
+  // already armed (within the normal 16ms window). Respect it: re-arm for
+  // the cooldown's remainder and leave the queue intact so nothing is
+  // lost or sent early.
+  if (Date.now() < cooldownUntil) {
+    scheduleFlush()
+    return
+  }
   // Drain everything queued so far; new loads during the awaits below
   // accumulate in a fresh queue and schedule their own flush.
   const drained = queue
@@ -150,11 +161,16 @@ function failChunk(chunk: QueueEntry[]): void {
 
 function scheduleNegativeEviction(identity: string): void {
   const cached = cache.get(identity)
-  setTimeout(() => {
+  // Replace any pending timer for this identity so retries don't stack.
+  const existing = evictionTimers.get(identity)
+  if (existing) clearTimeout(existing)
+  const timer = setTimeout(() => {
+    evictionTimers.delete(identity)
     // Only evict if this exact negative promise is still cached — never
     // clobber a newer successful re-resolution of the same identity.
     if (cache.get(identity) === cached) cache.delete(identity)
   }, NEGATIVE_TTL_MS)
+  evictionTimers.set(identity, timer)
 }
 
 /** Test-only: reset all module state between cases. */
@@ -165,5 +181,7 @@ export function __resetResolveDidBatchForTests(): void {
     clearTimeout(flushTimer)
     flushTimer = null
   }
+  for (const timer of evictionTimers.values()) clearTimeout(timer)
+  evictionTimers.clear()
   cooldownUntil = 0
 }

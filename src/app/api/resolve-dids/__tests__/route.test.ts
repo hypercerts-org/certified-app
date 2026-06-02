@@ -15,11 +15,14 @@ import { NextRequest } from "next/server"
  * identity resolves to its handle via the legacy fan-out.
  */
 
+// The batch route charges the limiter by identity count, so it uses
+// `incrby` (cost > 1). `incr` is kept for the single-identity cost-1 path.
 const incr = vi.fn()
+const incrby = vi.fn()
 const expire = vi.fn().mockResolvedValue(1)
 
 vi.mock("@/lib/auth/stores", () => ({
-  getRedis: () => ({ incr, expire }),
+  getRedis: () => ({ incr, incrby, expire }),
 }))
 
 vi.mock("@/lib/auth/session", () => ({
@@ -42,7 +45,10 @@ const mockFetch = vi.fn()
 const originalFetch = globalThis.fetch
 
 beforeEach(() => {
+  // Default: fresh bucket — return the amount added so the count stays
+  // well under the 600/min budget and the request is allowed.
   incr.mockReset().mockResolvedValue(1)
+  incrby.mockReset().mockImplementation(async (_key: string, by: number) => by)
   expire.mockReset().mockResolvedValue(1)
   globalThis.fetch = mockFetch as unknown as typeof fetch
   // appView getProfile returns a minimal bsky profile; everything else
@@ -132,10 +138,19 @@ describe("POST /api/resolve-dids", () => {
   })
 
   it("returns 429 when the limiter denies, before any upstream work", async () => {
-    incr.mockResolvedValue(61)
+    // Over the 600-identity/min budget on both the cost-1 (incr) and
+    // weighted (incrby) paths.
+    incr.mockResolvedValue(601)
+    incrby.mockResolvedValue(601)
     const res = await postResolve({ identities: [DID_A] })
     expect(res.status).toBe(429)
     expect(res.headers.get("Retry-After")).toBeTruthy()
     expect(mockFetch).not.toHaveBeenCalled()
+  })
+
+  it("charges the limiter by identity count (incrby = batch size)", async () => {
+    await postResolve({ identities: [DID_A, DID_B] })
+    // Two distinct identities -> cost 2 on each bucket (DID + IP).
+    expect(incrby).toHaveBeenCalledWith(expect.any(String), 2)
   })
 })
