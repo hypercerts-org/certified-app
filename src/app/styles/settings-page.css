@@ -150,13 +150,14 @@
 }
 
 /* Active state mirrors .explore__filter--active: solid fg-primary fill
-   with white text. Keep the fill on hover so we don't get
-   white-on-light text mid-hover. */
+   with inverted (--bg-canvas) text so it stays readable in dark mode,
+   where --fg-primary is near-white and a fixed white was white-on-white.
+   Keep the fill on hover so we don't get unreadable text mid-hover. */
 .sx-menu__item--active,
 .sx-menu__item--active:hover,
 .sx-menu__item--active:focus-visible {
   background: var(--fg-primary);
-  color: #ffffff;
+  color: var(--bg-canvas);
   font-weight: 500;
 }
 
@@ -177,7 +178,7 @@
 
 .sx-menu__item--active .sx-menu__icon,
 .sx-menu__item--active:hover .sx-menu__icon {
-  color: #ffffff;
+  color: var(--bg-canvas);
 }
 
 .sx-menu__label {

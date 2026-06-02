@@ -129,11 +129,14 @@
 .explore__filter--active,
 .explore__filter--active:hover {
   /* The hover style on the generic filter dimmed the background
-     to bg-sunken while the active style flips text to white —
-     producing unreadable white-on-light text mid-hover. Keep the
-     fg-primary fill on hover when the filter is already active. */
+     to bg-sunken while the active style inverts the text — producing
+     unreadable text mid-hover. Keep the fg-primary fill on hover when
+     the filter is already active. Text is --bg-canvas (not a fixed
+     white) so it inverts with the fg-primary fill: light in light mode,
+     dark in dark mode. A fixed white was white-on-white in dark mode,
+     where --fg-primary is itself near-white. */
   background: var(--fg-primary);
-  color: #ffffff;
+  color: var(--bg-canvas);
 }
 
 /* ---------- Main pane ---------- */
@@ -475,12 +478,12 @@
 
 .explore__view-btn--active {
   background: var(--fg-primary);
-  color: var(--bg-primary, #fff);
+  color: var(--bg-canvas);
 }
 
 .explore__view-btn--active:hover {
   background: var(--fg-primary);
-  color: var(--bg-primary, #fff);
+  color: var(--bg-canvas);
 }
 
 .explore__view-btn + .explore__view-btn {
