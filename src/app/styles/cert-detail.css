@@ -899,43 +899,6 @@
   font-feature-settings: 'tnum' 1;
 }
 
-/* ---------- Record tab (schema field/value table) ---------- */
-
-.cert-detail__record-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-}
-
-.cert-detail__record-row {
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.cert-detail__record-row:last-child {
-  border-bottom: none;
-}
-
-.cert-detail__record-field {
-  width: 38%;
-  text-align: left;
-  vertical-align: top;
-  padding: 10px 16px 10px 0;
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--fg-muted);
-  word-break: break-word;
-}
-
-.cert-detail__record-value {
-  vertical-align: top;
-  padding: 10px 0;
-  font-size: 0.875rem;
-  color: var(--fg-primary);
-  line-height: 1.5;
-  word-break: break-word;
-}
-
 /* ---------- Contributors list ----------
 
    Single-column stack — lives inside the sidebar so it never gets the
