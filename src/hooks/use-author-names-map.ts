@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { authFetch } from "@/lib/auth/fetch"
+import { loadResolvedProfile } from "@/lib/atproto/resolve-did-batch"
 
 /**
  * Resolve a batch of DIDs to display-name-or-handle strings via the
@@ -25,24 +25,15 @@ const namePromises = new Map<string, Promise<string>>()
 function fetchName(did: string): Promise<string> {
   const cached = namePromises.get(did)
   if (cached) return cached
-  const p = authFetch(`/api/resolve-did?did=${encodeURIComponent(did)}`)
-    .then((res) => {
-      if (!res.ok) throw new Error("resolve failed")
-      return res.json() as Promise<{
-        handle?: string
-        displayName?: string
-      }>
-    })
-    .then((data) => {
-      const name = (data.displayName || data.handle || did).toLowerCase()
-      nameCache.set(did, name)
-      return name
-    })
-    .catch(() => {
-      // On failure cache the DID itself so we don't retry forever.
-      nameCache.set(did, did.toLowerCase())
-      return did.toLowerCase()
-    })
+  // Resolve through the shared coalescer so the whole tab's DIDs batch
+  // into one request instead of one per row. `loadResolvedProfile` never
+  // rejects — a miss / transient 429 resolves to null, which we fall
+  // back to the DID for (same behaviour as the old catch branch).
+  const p = loadResolvedProfile(did).then((data) => {
+    const name = (data?.displayName || data?.handle || did).toLowerCase()
+    nameCache.set(did, name)
+    return name
+  })
   namePromises.set(did, p)
   return p
 }

@@ -169,14 +169,24 @@ export function makeLimiter(
 export async function checkHttpRateLimit(
   limit: HttpRateLimit,
   identifier: string,
+  cost = 1,
 ): Promise<HttpRateLimitResult> {
   const redis = getRedis()
   const nowSec = Math.floor(Date.now() / 1000)
   const bucket = Math.floor(nowSec / limit.windowSec)
   const key = `rl:${limit.name}:${identifier}:${bucket}`
 
-  const count = await redis.incr(key)
-  if (count === 1) {
+  // `cost` lets a single request consume more than one unit of budget —
+  // used by batch routes that fan out to several upstream fetches per
+  // request, so the budget bounds total upstream load rather than request
+  // count. cost===1 keeps the exact INCR-by-one path every existing
+  // caller relies on (and the test mocks that only stub `incr`).
+  const count =
+    cost === 1 ? await redis.incr(key) : await redis.incrby(key, cost)
+  // The bucket-creating call is the one whose post-increment count equals
+  // its own cost (the prior value was 0). Generalises the old `count === 1`
+  // so the TTL is still set exactly once per window.
+  if (count === cost) {
     // Set TTL once on first hit; +60s buffer so the bucket outlives
     // the wall-clock window slightly. Don't await — fire and forget
     // since the count is what we care about.
@@ -196,10 +206,10 @@ export async function checkHttpRateLimit(
  * #70 H5: cheap to spin up a new did:plc). Both buckets INCR even
  * on denial so a burst attacker stays on the same trajectory. */
 export async function checkHttpRateLimitMulti(
-  pairs: { limit: HttpRateLimit; identifier: string }[],
+  pairs: { limit: HttpRateLimit; identifier: string; cost?: number }[],
 ): Promise<HttpRateLimitResult> {
   const results = await Promise.all(
-    pairs.map((p) => checkHttpRateLimit(p.limit, p.identifier)),
+    pairs.map((p) => checkHttpRateLimit(p.limit, p.identifier, p.cost ?? 1)),
   )
   // Deny if any pair tripped. resetAt = the earliest reset across
   // the denied buckets (so Retry-After reflects when SOMETHING
@@ -273,7 +283,7 @@ export async function enforceRateLimit(
 }
 
 export async function enforceRateLimitMulti(
-  pairs: { limit: HttpRateLimit; identifier: string }[],
+  pairs: { limit: HttpRateLimit; identifier: string; cost?: number }[],
   message?: string,
 ): Promise<NextResponse | null> {
   try {
