@@ -2027,8 +2027,12 @@ dialog.signin-modal.app-modal .signin-modal__body {
    lower-contrast surface. Mirrors the `.profile-banner-upload__btn
    --ghost` pattern. */
 .image-edit-overlay__btn--ghost {
+  /* The surface is a fixed near-white (it sits over an image), so the
+     text must be a fixed dark too: --color-primary is invariant. Using
+     --fg-primary here made it white-on-white in dark mode, where
+     --fg-primary flips to near-white. */
   background: rgba(255, 255, 255, 0.92);
-  color: var(--fg-primary);
+  color: var(--color-primary);
 }
 
 .image-edit-overlay__btn--ghost:hover {

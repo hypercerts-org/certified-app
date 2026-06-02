@@ -297,8 +297,11 @@
    surface so the primary "Change banner" button stays the focal
    action. */
 .profile-banner-upload__btn--ghost {
+  /* Fixed near-white surface (sits over the banner image) → text must be
+     a fixed dark. --color-primary is invariant; --fg-primary flipped to
+     near-white in dark mode, giving white-on-white. */
   background: rgba(255, 255, 255, 0.92);
-  color: var(--fg-primary);
+  color: var(--color-primary);
 }
 
 .profile-banner-upload__btn--ghost:hover {

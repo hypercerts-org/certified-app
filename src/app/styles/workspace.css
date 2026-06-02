@@ -144,7 +144,7 @@
   padding: 6px 12px;
   border-radius: var(--radius);
   background: var(--fg-primary);
-  color: var(--bg-primary, #fff);
+  color: var(--bg-canvas);
   text-decoration: none;
   font-size: 0.85rem;
   font-weight: 500;
@@ -282,7 +282,7 @@
 
 .wks-notion__node--active {
   background: var(--fg-primary);
-  color: var(--bg-primary, #fff);
+  color: var(--bg-canvas);
 }
 
 .wks-notion__node-label {
@@ -352,7 +352,7 @@
 
 .wks-mail__network--active {
   background: var(--fg-primary);
-  color: var(--bg-primary, #fff);
+  color: var(--bg-canvas);
 }
 
 .wks-mail__accounts {
@@ -434,7 +434,7 @@
 
 .wks-mail__folder--active {
   background: var(--fg-primary);
-  color: var(--bg-primary, #fff);
+  color: var(--bg-canvas);
 }
 
 .wks-mail__folder-label {
@@ -633,7 +633,7 @@
 
 .wks-slack__lex--active {
   background: var(--fg-primary);
-  color: var(--bg-primary, #fff);
+  color: var(--bg-canvas);
 }
 
 .wks-slack__lex-label {
