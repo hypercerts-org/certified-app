@@ -1,16 +1,15 @@
 "use client"
 
 import React, { useEffect, useRef, useState } from "react"
-import { createPortal } from "react-dom"
-import { X, Maximize2, Minimize2 } from "lucide-react"
-import { useFocusTrap } from "@/hooks/use-focus-trap"
-import { useBottomSheetDrag } from "@/hooks/use-bottom-sheet-drag"
-import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock"
+import ResponsiveDialog from "@/components/ui/responsive-dialog"
+import { AppDialogHeader } from "@/components/ui/app-dialog"
+import Button from "@/components/ui/button"
+import Input from "@/components/ui/input"
+import Textarea from "@/components/ui/textarea"
 import { useFeedback } from "@/lib/feedback-context"
 import { useSession } from "@/hooks/use-session"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
 
 export default function FeedbackModal() {
   const { isOpen, closeFeedback } = useFeedback()
@@ -25,54 +24,23 @@ export default function FeedbackModal() {
   const greetingName =
     authorInfo?.displayName ||
     (sessionHandle ? `@${sessionHandle}` : null)
-  const [expanded, setExpanded] = useState(false)
   const [message, setMessage] = useState("")
   const [email, setEmail] = useState("")
   const [emailError, setEmailError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState("")
-  const backdropRef = useRef<HTMLDivElement>(null)
-  const { isDesktop } = useLayoutBreakpoints()
-  const isMobile = !isDesktop
-  const {
-    sheetRef,
-    sheetExpanded,
-    setSheetExpanded,
-    onHandleTouchStart,
-    onHandleTouchMove,
-    onHandleTouchEnd,
-  } = useBottomSheetDrag({ isOpen, onClose: closeFeedback })
-
-  const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen && !isMobile)
-  // Wire mobile focus trap directly to sheetRef (avoids useEffect timing issue)
-  const mobileFocusTrapRef = useFocusTrap<HTMLDivElement>(isOpen && isMobile)
-  if (isMobile && sheetRef.current) {
-    (mobileFocusTrapRef as React.MutableRefObject<HTMLDivElement | null>).current = sheetRef.current
-  }
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  // Backdrop / Esc / focus trap / body-scroll lock / drag-to-dismiss are all
+  // owned by <ResponsiveDialog> now; we only manage form state here.
   useEffect(() => {
     if (isOpen) {
       setEmailError("")
       setError("")
-      setExpanded(false)
-      setSheetExpanded(false)
       setTimeout(() => textareaRef.current?.focus(), 100)
     }
-  }, [isOpen, setSheetExpanded])
-
-  // Lock body scroll when open on mobile
-  useBodyScrollLock(isOpen && isMobile)
-
-  useEffect(() => {
-    if (!isOpen) return
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeFeedback()
-    }
-    document.addEventListener("keydown", handleKeyDown)
-    return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen, closeFeedback])
+  }, [isOpen])
 
   const validateEmail = (value: string) => {
     if (!value) {
@@ -116,22 +84,16 @@ export default function FeedbackModal() {
     }
   }
 
-  const formContent = submitted ? (
+  const body = submitted ? (
     <div className="feedback-modal__success">
       <p>Thank you for your feedback!</p>
       <div className="feedback-modal__success-actions">
-        <button
-          className="feedback-modal__done"
-          onClick={() => closeFeedback()}
-        >
+        <Button variant="primary" size="sm" onClick={() => closeFeedback()}>
           Close
-        </button>
-        <button
-          className="feedback-modal__more"
-          onClick={() => setSubmitted(false)}
-        >
+        </Button>
+        <Button variant="secondary" size="sm" onClick={() => setSubmitted(false)}>
           More Feedback
-        </button>
+        </Button>
       </div>
     </div>
   ) : (
@@ -139,13 +101,10 @@ export default function FeedbackModal() {
       {greetingName ? (
         <p className="feedback-modal__greeting">Hi, {greetingName}!</p>
       ) : null}
-      <label className="feedback-modal__label" htmlFor="feedback-message">
-        Please share your feedback, suggestions, and questions.
-      </label>
-      <textarea
+      <Textarea
         ref={textareaRef}
         id="feedback-message"
-        className="feedback-modal__textarea"
+        label="Please share your feedback, suggestions, and questions."
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         required
@@ -153,103 +112,45 @@ export default function FeedbackModal() {
         rows={5}
       />
 
-      <label className="feedback-modal__label feedback-modal__label--email" htmlFor="feedback-email">
-        If you would like us to follow up with you regarding your feedback, please provide your email address (optional).
-      </label>
-      <input
-        id="feedback-email"
-        type="email"
-        className="feedback-modal__input"
-        value={email}
-        onChange={(e) => { setEmail(e.target.value); if (emailError) validateEmail(e.target.value) }}
-        onBlur={() => validateEmail(email)}
-        placeholder="your@email.com"
-        disabled={isSubmitting}
-        aria-invalid={emailError ? true : undefined}
-        aria-describedby={emailError ? "feedback-email-error" : undefined}
-      />
-      {emailError && <p id="feedback-email-error" className="feedback-modal__error" role="alert">{emailError}</p>}
+      <div className="mt-4">
+        <Input
+          id="feedback-email"
+          type="email"
+          label="If you would like us to follow up with you regarding your feedback, please provide your email address (optional)."
+          value={email}
+          onChange={(e) => { setEmail(e.target.value); if (emailError) validateEmail(e.target.value) }}
+          onBlur={() => validateEmail(email)}
+          placeholder="your@email.com"
+          disabled={isSubmitting}
+          error={emailError || undefined}
+        />
+      </div>
 
-      {error && <p className="feedback-modal__error" role="alert">{error}</p>}
+      {error && (
+        <p className="feedback-modal__error mt-2" role="alert">{error}</p>
+      )}
 
-      <button
+      <Button
         type="submit"
-        className="feedback-modal__submit"
+        loading={isSubmitting}
         disabled={isSubmitting || !message.trim()}
+        aria-busy={isSubmitting}
+        className="mt-5 w-full"
       >
         {isSubmitting ? "Sending..." : "Send Feedback"}
-      </button>
+      </Button>
     </form>
   )
 
   return (
-    <>
-      {isOpen && (
-        <>
-          {/* Desktop modal */}
-          <div
-            className="feedback-modal__backdrop feedback-modal__backdrop--desktop"
-            ref={backdropRef}
-            onClick={(e) => { if (e.target === backdropRef.current) closeFeedback() }}
-          >
-            <div
-              className={`feedback-modal ${expanded ? "feedback-modal--expanded" : ""}`}
-              ref={focusTrapRef}
-              role="dialog"
-              aria-modal="true"
-              aria-label="Share feedback"
-            >
-              <div className="feedback-modal__header">
-                <button
-                  className="feedback-modal__expand"
-                  onClick={() => setExpanded(!expanded)}
-                  aria-label={expanded ? "Shrink" : "Expand"}
-                >
-                  {expanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                </button>
-                <span className="feedback-modal__title">Share Feedback</span>
-                <button
-                  className="feedback-modal__close"
-                  onClick={() => closeFeedback()}
-                  aria-label="Close"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-              <div className="feedback-modal__body">
-                {!isMobile && formContent}
-              </div>
-            </div>
-          </div>
-
-          {/* Mobile bottom sheet */}
-          {createPortal(
-            <>
-              <div className="bottom-sheet__backdrop feedback-bottom-sheet__backdrop" onClick={() => closeFeedback()} />
-              <div
-                className={`bottom-sheet feedback-bottom-sheet ${sheetExpanded ? "bottom-sheet--expanded" : ""}`}
-                ref={sheetRef}
-                role="dialog"
-                aria-modal="true"
-                aria-label="Share feedback"
-              >
-                <div
-                  className="bottom-sheet__handle"
-                  onTouchStart={onHandleTouchStart}
-                  onTouchMove={onHandleTouchMove}
-                  onTouchEnd={onHandleTouchEnd}
-                />
-                <div className="bottom-sheet__content">
-                  <div className="feedback-modal__body">
-                    {isMobile && formContent}
-                  </div>
-                </div>
-              </div>
-            </>,
-            document.body
-          )}
-        </>
-      )}
-    </>
+    <ResponsiveDialog
+      open={isOpen}
+      onClose={closeFeedback}
+      ariaLabel="Share feedback"
+      maxWidth={440}
+      header={<AppDialogHeader title="Share Feedback" onClose={closeFeedback} />}
+    >
+      <div className="feedback-modal__body">{body}</div>
+    </ResponsiveDialog>
   )
 }
