@@ -160,7 +160,7 @@
   flex-shrink: 0;
   border-radius: var(--radius);
   overflow: hidden;
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -425,7 +425,7 @@
 
 a.home-feed__preview:hover {
   border-color: var(--fg-secondary);
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
 .home-feed__preview-thumb {
@@ -433,7 +433,7 @@ a.home-feed__preview:hover {
   height: 56px;
   border-radius: var(--radius);
   overflow: hidden;
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -500,8 +500,8 @@ a.home-feed__preview:hover {
 }
 
 .home-feed__preview-tag--warn {
-  color: var(--color-error, #b91c1c);
-  border-color: var(--color-error, #b91c1c);
+  color: var(--color-error);
+  border-color: var(--color-error);
   background: transparent;
 }
 
@@ -601,7 +601,7 @@ a.home-feed__preview:hover {
 
 .home-feed__filter-btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--focus-ring, var(--fg-primary));
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 /* When any tier is excluded, give the trigger a subtle filled state
@@ -616,7 +616,7 @@ a.home-feed__preview:hover {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  z-index: 50;
+  z-index: var(--z-popover);
   min-width: 184px;
   padding: 10px 8px 8px;
   background: var(--bg-elevated);
@@ -702,7 +702,7 @@ a.home-feed__preview:hover {
 }
 
 .home-feed__filter-reset:disabled {
-  color: var(--fg-muted, #b7bdc6);
+  color: var(--fg-muted);
   cursor: default;
 }
 
@@ -747,7 +747,7 @@ a.home-feed__preview:hover {
 
 .home-feed__evaluator-link:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--focus-ring, var(--fg-primary));
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .home-feed__evaluator-name {

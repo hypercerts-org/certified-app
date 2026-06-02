@@ -187,7 +187,7 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
-  z-index: 30;
+  z-index: var(--z-popover);
   min-width: 180px;
   padding: 8px 0;
 }
@@ -433,44 +433,9 @@
   pointer-events: none;
 }
 
-.feed-card__author-avatar-skel {
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  background: var(--overlay-weak);
-  animation: feed-author-skel-pulse 1.4s ease-in-out infinite;
-  flex-shrink: 0;
-}
-
-.feed-card__author-name-skel {
-  width: 96px;
-  height: 11px;
-  border-radius: var(--radius);
-  background: var(--overlay-weak);
-  animation: feed-author-skel-pulse 1.4s ease-in-out infinite;
-}
-
-.feed-card__author-handle-skel {
-  width: 64px;
-  height: 9px;
-  border-radius: var(--radius);
-  background: var(--overlay-weak);
-  animation: feed-author-skel-pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes feed-author-skel-pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.8; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .feed-card__author-avatar-skel,
-  .feed-card__author-name-skel,
-  .feed-card__author-handle-skel {
-    animation: none;
-    opacity: 0.5;
-  }
-}
+/* Author-byline skeleton bars now render via the <Skeleton> primitive
+   (animate-pulse). The hand-rolled *-skel rules + feed-author-skel-pulse
+   keyframe were removed in the component-library consolidation. */
 
 .feed-card__image-wrap {
   width: 100%;
@@ -592,54 +557,14 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.feed-skeleton__image {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  border-radius: var(--radius);
-  background: var(--bg-sunken);
-  margin-bottom: 12px;
-  animation: skeleton-pulse 1.5s ease-in-out infinite;
-}
-
-.feed-skeleton__title {
-  height: 20px;
-  width: 70%;
-  border-radius: var(--radius);
-  background: var(--bg-sunken);
-  margin-bottom: 8px;
-  animation: skeleton-pulse 1.5s ease-in-out infinite;
-}
-
-.feed-skeleton__line {
-  height: 14px;
-  width: 100%;
-  border-radius: var(--radius);
-  background: var(--bg-sunken);
-  margin-bottom: 6px;
-  animation: skeleton-pulse 1.5s ease-in-out infinite;
-}
-
-.feed-skeleton__line--short {
-  width: 45%;
-}
+/* Inner skeleton bars (image/title/line/pill) now render via the
+   <Skeleton> primitive (animate-pulse). The hand-rolled *-skel rules +
+   skeleton-pulse keyframe were removed in the consolidation. */
 
 .feed-skeleton__meta {
   display: flex;
   gap: 8px;
   margin-top: 12px;
-}
-
-.feed-skeleton__pill {
-  height: 18px;
-  width: 72px;
-  border-radius: 999px;
-  background: var(--bg-sunken);
-  animation: skeleton-pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes skeleton-pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
 }
 
 /* ---- Desktop enhancements ---- */
@@ -668,16 +593,6 @@
 
   .feed-skeleton {
     padding: 24px 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .feed-skeleton__image,
-  .feed-skeleton__title,
-  .feed-skeleton__line,
-  .feed-skeleton__pill {
-    animation: none;
-    opacity: 0.6;
   }
 }
 
@@ -868,27 +783,8 @@
   color: var(--fg-muted);
 }
 
-.activity-detail__contributor-avatar-skel {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--bg-elevated, rgba(128, 128, 128, 0.15));
-}
-
-.activity-detail__contributor-name-skel {
-  width: 120px;
-  height: 12px;
-  border-radius: var(--radius);
-  background: var(--bg-elevated, rgba(128, 128, 128, 0.15));
-  margin-bottom: 4px;
-}
-
-.activity-detail__contributor-handle-skel {
-  width: 80px;
-  height: 10px;
-  border-radius: var(--radius);
-  background: var(--bg-elevated, rgba(128, 128, 128, 0.1));
-}
+/* Contributor-row skeleton bars now render via the <Skeleton> primitive.
+   The hand-rolled *-skel rules were removed in the consolidation. */
 
 .activity-detail__uri {
   font-family: var(--font-mono, ui-monospace, monospace);
@@ -1070,51 +966,9 @@
   word-break: break-all;
 }
 
-/* Skeleton while the record is being fetched */
-.location-card--skeleton {
-  pointer-events: none;
-}
-
-.location-card--skeleton .location-card__icon-skel {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  background: var(--overlay-weak);
-  animation: location-card-pulse 1.4s ease-in-out infinite;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.location-card--skeleton .location-card__name-skel {
-  width: 60%;
-  height: 12px;
-  border-radius: var(--radius);
-  background: var(--overlay-weak);
-  margin-bottom: 6px;
-  animation: location-card-pulse 1.4s ease-in-out infinite;
-}
-
-.location-card--skeleton .location-card__detail-skel {
-  width: 40%;
-  height: 10px;
-  border-radius: var(--radius);
-  background: var(--overlay-weak);
-  animation: location-card-pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes location-card-pulse {
-  0%, 100% { opacity: 0.35; }
-  50% { opacity: 0.7; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .location-card--skeleton .location-card__icon-skel,
-  .location-card--skeleton .location-card__name-skel,
-  .location-card--skeleton .location-card__detail-skel {
-    animation: none;
-    opacity: 0.45;
-  }
-}
+/* The .location-card skeleton (icon/name/detail bars + location-card-pulse
+   keyframe) was dead CSS — no TSX consumer — and was removed in the
+   consolidation. */
 
 /* ========== Map (Leaflet wrapper) ========== */
 
@@ -1329,7 +1183,7 @@
   gap: 12px;
   padding: 16px;
   margin-bottom: 16px;
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.05));
+  background: var(--overlay-weak);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
 }
@@ -1362,7 +1216,7 @@
 }
 
 .endorsement-panel__close:hover:not(:disabled) {
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.12));
+  background: var(--overlay-weak);
   color: var(--fg-primary);
 }
 
@@ -1414,7 +1268,7 @@
   font-size: 0.8125rem;
   line-height: 1.55;
   color: var(--fg-secondary);
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.05));
+  background: var(--overlay-weak);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
 }
@@ -1469,7 +1323,7 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.15));
+  background: var(--overlay-weak);
   flex-shrink: 0;
 }
 
@@ -1651,11 +1505,11 @@
    a status-coloured checkmark / X. Click still opens the menu so
    the user can change their mind or reset. */
 .response-menu__trigger--accepted {
-  color: var(--color-success, #2c8a3e);
+  color: var(--color-success);
 }
 
 .response-menu__trigger--rejected {
-  color: var(--color-warning, #b04a2a);
+  color: var(--color-warning);
 }
 
 .response-menu__trigger--accepted:hover:not(:disabled),
@@ -1692,15 +1546,15 @@
 }
 
 .response-menu__quick-btn--accept:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-success, #2c8a3e) 12%, transparent);
-  border-color: var(--color-success, #2c8a3e);
-  color: var(--color-success, #2c8a3e);
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+  border-color: var(--color-success);
+  color: var(--color-success);
 }
 
 .response-menu__quick-btn--reject:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-warning, #b04a2a) 12%, transparent);
-  border-color: var(--color-warning, #b04a2a);
-  color: var(--color-warning, #b04a2a);
+  background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+  border-color: var(--color-warning);
+  color: var(--color-warning);
 }
 
 /* Active state — filled background + white glyph so the
@@ -1709,29 +1563,29 @@
    handler in response-menu.tsx swaps `writeResponse` for
    `resetToDefault` when the button matches the current state). */
 .response-menu__quick-btn--accept.response-menu__quick-btn--active {
-  background: var(--color-success, #2c8a3e);
-  border-color: var(--color-success, #2c8a3e);
-  color: var(--bg-canvas, #fff);
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: var(--bg-canvas);
 }
 
 .response-menu__quick-btn--accept.response-menu__quick-btn--active:hover:not(:disabled) {
   /* Slightly darker on hover to surface the "click to reset"
      affordance without losing the filled-active read. */
-  background: color-mix(in srgb, var(--color-success, #2c8a3e) 85%, black);
-  border-color: color-mix(in srgb, var(--color-success, #2c8a3e) 85%, black);
-  color: var(--bg-canvas, #fff);
+  background: color-mix(in srgb, var(--color-success) 85%, black);
+  border-color: color-mix(in srgb, var(--color-success) 85%, black);
+  color: var(--bg-canvas);
 }
 
 .response-menu__quick-btn--reject.response-menu__quick-btn--active {
-  background: var(--color-warning, #b04a2a);
-  border-color: var(--color-warning, #b04a2a);
-  color: var(--bg-canvas, #fff);
+  background: var(--color-warning);
+  border-color: var(--color-warning);
+  color: var(--bg-canvas);
 }
 
 .response-menu__quick-btn--reject.response-menu__quick-btn--active:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-warning, #b04a2a) 85%, black);
-  border-color: color-mix(in srgb, var(--color-warning, #b04a2a) 85%, black);
-  color: var(--bg-canvas, #fff);
+  background: color-mix(in srgb, var(--color-warning) 85%, black);
+  border-color: color-mix(in srgb, var(--color-warning) 85%, black);
+  color: var(--bg-canvas);
 }
 
 .response-menu__quick-btn:focus-visible {
@@ -1754,7 +1608,7 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
-  z-index: 10;
+  z-index: var(--z-popover);
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -1828,7 +1682,7 @@
   border-radius: var(--radius);
   font-size: 0.75rem;
   box-shadow: var(--shadow-md);
-  z-index: 10;
+  z-index: var(--z-popover);
 }
 
 .response-menu__toast-undo {
@@ -1885,7 +1739,7 @@
   align-items: center;
   gap: 12px;
   padding: 12px;
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.08));
+  background: var(--overlay-weak);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
 }
@@ -1926,7 +1780,7 @@
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.08));
+  background: var(--overlay-weak);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
 }
@@ -1979,13 +1833,13 @@
 }
 
 .endorsement-multi-row__status--success {
-  background: var(--success, #2a8);
-  color: white;
+  background: var(--color-success);
+  color: var(--color-white);
 }
 
 .endorsement-multi-row__status--error {
   background: var(--color-error);
-  color: white;
+  color: var(--color-white);
 }
 
 @keyframes endorsement-multi-spin {
@@ -2005,7 +1859,7 @@
 }
 
 .endorsement-multi-row__remove:hover {
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.12));
+  background: var(--overlay-weak);
   color: var(--fg-primary);
 }
 
@@ -2067,7 +1921,7 @@
 }
 
 .profile-endorsements__endorse-btn:hover:not(:disabled) {
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.08));
+  background: var(--overlay-weak);
   border-color: var(--fg-primary);
 }
 
@@ -2080,7 +1934,7 @@
    Filled background so the click affordance (= "revoke") reads
    distinctly from the empty Endorse state. */
 .profile-endorsements__endorse-btn--active {
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.12));
+  background: var(--overlay-weak);
   border-color: var(--fg-primary);
   color: var(--fg-primary);
 }
@@ -2125,7 +1979,7 @@
 }
 
 .profile-endorsements__pagination-btn:hover:not(:disabled) {
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.08));
+  background: var(--overlay-weak);
   color: var(--fg-primary);
 }
 
@@ -2176,7 +2030,7 @@
   align-items: center;
   gap: 6px;
   padding: 4px 10px 4px 4px;
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.08));
+  background: var(--overlay-weak);
   border: 1px solid var(--border-default);
   border-radius: 9999px;
   text-decoration: none;
@@ -2187,7 +2041,7 @@
 }
 
 .endorser-chip:hover {
-  background: var(--overlay-medium, rgba(128, 128, 128, 0.15));
+  background: var(--overlay-medium);
 }
 
 .endorser-chip__name {

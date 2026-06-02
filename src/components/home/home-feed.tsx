@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { Filter as FilterIcon, Inbox, MapPin, UserCheck, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
+import Banner from "@/components/ui/banner"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import LoadMoreSentinel from "@/components/ui/load-more-sentinel"
@@ -241,9 +242,9 @@ function HomeFeedBody({
   }
   if (followsError) {
     return (
-      <div className="feed__warning" role="alert">
+      <Banner variant="warning">
         Could not load your follow list. Please try again later.
-      </div>
+      </Banner>
     )
   }
   if (followedCount === 0) {
@@ -257,9 +258,9 @@ function HomeFeedBody({
   }
   if (error) {
     return (
-      <div className="feed__warning" role="alert">
+      <Banner variant="warning">
         Could not load activity: {error}
-      </div>
+      </Banner>
     )
   }
   if (events.length === 0) {

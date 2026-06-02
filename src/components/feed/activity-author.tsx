@@ -3,6 +3,7 @@
 import type { ReactNode } from "react"
 import Link from "next/link"
 import Avatar from "@/components/ui/avatar"
+import Skeleton from "@/components/ui/skeleton"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { getInitials } from "@/lib/utils/initials"
 
@@ -32,10 +33,10 @@ export default function ActivityAuthor({ did, nameSuffix }: ActivityAuthorProps)
   if (isLoading || !info) {
     return (
       <div className="feed-card__author feed-card__author--skeleton" aria-hidden="true">
-        <div className="feed-card__author-avatar-skel" />
+        <Skeleton circle width={32} className="shrink-0" />
         <div className="feed-card__author-meta">
-          <div className="feed-card__author-name-skel" />
-          <div className="feed-card__author-handle-skel" />
+          <Skeleton variant="line" width={96} height={11} />
+          <Skeleton variant="line" width={64} height={9} />
         </div>
       </div>
     )
