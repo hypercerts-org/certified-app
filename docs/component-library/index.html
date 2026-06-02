@@ -1,0 +1,1963 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Certified — Component Library Styleguide</title>
+<style>
+/* ==========================================================================
+   DESIGN TOKENS — faithful copy of src/app/styles/tokens.css
+   :root (light) + :root[data-theme="dark"] blocks, copied verbatim so every
+   example renders with production colors / spacing / radii / shadows and
+   flips correctly when the theme toggle sets data-theme="dark" on <html>.
+   ========================================================================== */
+:root {
+  color-scheme: light dark;
+
+  /* ===== Invariant primitives (do NOT override in dark theme) ===== */
+  --color-primary: #111111;
+  --color-white: #FFFFFF;
+  --color-accent: #5e5e5e;
+  --color-accent-hover: #454747;
+
+  /* Landing-page palette */
+  --color-navy: #111111;
+  --color-off-white: #f9f9f9;
+  --color-gray-100: #eeeeee;
+  --color-light-gray: #e5e5e5;
+  --color-mid-gray: #6b6263;
+  --color-dark-gray: #4c4546;
+  --color-surface: #f9f9f9;
+  --color-surface-container-low: #f3f3f3;
+  --color-surface-container-high: #e7e7e7;
+
+  /* ===== Semantic tokens (overridden in dark theme) ===== */
+
+  /* Surfaces (elevation ramp — lightest to darkest in light mode) */
+  --bg-canvas: #f9f9f9;
+  --bg-sunken: #eeeeee;
+  --bg-raised: #f3f3f3;
+  --bg-elevated: #FFFFFF;
+
+  /* Foregrounds */
+  --fg-primary: #111111;
+  --fg-secondary: #4c4546;
+  --fg-muted: #6b6263;
+
+  /* Borders (transparent overlays — adapt naturally) */
+  --border-subtle: rgba(0, 0, 0, 0.04);
+  --border-light: rgba(0, 0, 0, 0.06);
+  --border-default: rgba(0, 0, 0, 0.08);
+  --border-medium: rgba(0, 0, 0, 0.1);
+  --border-hover: rgba(0, 0, 0, 0.15);
+  --border-hover-soft: rgba(0, 0, 0, 0.12);
+
+  /* Overlays */
+  --overlay-weak: rgba(0, 0, 0, 0.04);
+  --overlay-medium: rgba(0, 0, 0, 0.08);
+  --navy-overlay-30: rgba(0, 0, 0, 0.3);
+  --navy-overlay-70: rgba(0, 0, 0, 0.7);
+
+  /* Media letterbox */
+  --media-letterbox: #000000;
+
+  /* Navbar + sheets */
+  --navbar-bg: rgba(255, 255, 255, 0.8);
+  --navbar-border: rgba(0, 0, 0, 0.05);
+  --sheet-bg: rgba(255, 255, 255, 0.95);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.12);
+
+  /* Focus + selection */
+  --focus-ring: var(--color-accent);
+  --selection-bg: var(--color-primary);
+  --selection-fg: var(--color-white);
+
+  /* Status colors */
+  --color-success: #2ECC71;
+  --color-success-text: #047857;
+  --color-success-bg: rgba(46, 204, 113, 0.1);
+  --color-warning: #F5A623;
+  --color-warning-bg: #fef9e7;
+  --color-warning-border: #f5d880;
+  --color-warning-text: #7a6420;
+  --color-error: #ba1a1a;
+  --color-error-bg: rgba(186, 26, 26, 0.08);
+  --color-error-border: rgba(186, 26, 26, 0.22);
+
+  /* Badges */
+  --badge-success-bg: #e8f5e9;
+  --badge-success-fg: #1b7a3d;
+  --badge-warning-bg: #fff3e0;
+  --badge-warning-fg: #b37100;
+  --badge-neutral-bg: #f5f5f5;
+  --badge-neutral-fg: #6b6263;
+  --badge-neutral-border: #e5e7eb;
+  --badge-count-bg: #b91c1c;
+  --badge-count-fg: #ffffff;
+
+  /* Primary button (inverts in dark mode) */
+  --btn-primary-bg: var(--color-primary);
+  --btn-primary-fg: var(--color-white);
+
+  /* Transitions */
+  --transition-fast: 150ms ease-out;
+  --transition-base: 250ms ease-out;
+  --transition-slow: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Radius */
+  --radius: 2px;
+
+  /* Navbar */
+  --navbar-height: 64px;
+
+  /* Desktop top bar */
+  --top-bar-row1: 52px;
+  --top-bar-row2: 44px;
+  --top-bar-total: var(--top-bar-row1);
+
+  /* Breakpoints (informational) */
+  --bp-gt-mobile: 800px;
+  --bp-gt-narrow-desktop: 1100px;
+  --bp-gt-desktop: 1300px;
+
+  /* Z-index map */
+  --z-rail-sticky: 10;
+  --z-rail: 30;
+  --z-popover: 40;
+  --z-navbar: 50;
+  --z-bottom-nav: 50;
+  --z-portal-sheet: 60;
+  --z-modal: 100;
+  --z-skip-nav: 9999;
+  --z-feedback: 10000;
+  --z-feedback-above: 10001;
+
+  /* ===== Styleguide chrome (NOT app tokens) ===== */
+  --sg-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* ========== Dark theme — overrides semantic tokens only ========== */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg-canvas: #18181b;
+  --bg-sunken: #111114;
+  --bg-raised: #26262b;
+  --bg-elevated: #2d2d33;
+
+  --fg-primary: #f5f5f7;
+  --fg-secondary: #c7c7cc;
+  --fg-muted: #8e8e93;
+
+  --color-accent: #a0a0a8;
+  --color-accent-hover: #c7c7cc;
+
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --border-light: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.12);
+  --border-hover: rgba(255, 255, 255, 0.18);
+  --border-hover-soft: rgba(255, 255, 255, 0.14);
+
+  --overlay-weak: rgba(255, 255, 255, 0.04);
+  --overlay-medium: rgba(255, 255, 255, 0.08);
+  --navy-overlay-30: rgba(0, 0, 0, 0.5);
+  --navy-overlay-70: rgba(0, 0, 0, 0.8);
+
+  --navbar-bg: rgba(11, 11, 13, 0.8);
+  --navbar-border: rgba(255, 255, 255, 0.06);
+  --sheet-bg: rgba(20, 20, 23, 0.95);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+
+  --focus-ring: #8e8e93;
+  --selection-bg: #f5f5f7;
+  --selection-fg: #0b0b0d;
+
+  --color-warning-bg: rgba(245, 166, 35, 0.1);
+  --color-warning-border: rgba(245, 166, 35, 0.3);
+  --color-warning-text: #fbbf24;
+  --color-success-text: #6ee7a7;
+  --color-success-bg: rgba(110, 231, 167, 0.12);
+  --color-error: #f87171;
+  --color-error-bg: rgba(248, 113, 113, 0.12);
+  --color-error-border: rgba(248, 113, 113, 0.3);
+
+  --badge-success-bg: rgba(46, 204, 113, 0.15);
+  --badge-success-fg: #6ee7a7;
+  --badge-warning-bg: rgba(245, 166, 35, 0.15);
+  --badge-warning-fg: #fbbf24;
+  --badge-neutral-bg: rgba(255, 255, 255, 0.06);
+  --badge-neutral-fg: #8e8e93;
+  --badge-neutral-border: rgba(255, 255, 255, 0.1);
+  --badge-count-bg: #dc2626;
+  --badge-count-fg: #ffffff;
+
+  --btn-primary-bg: #f5f5f7;
+  --btn-primary-fg: #0b0b0d;
+
+  --color-navy: #f5f5f7;
+  --color-off-white: #18181b;
+  --color-gray-100: #26262b;
+  --color-light-gray: rgba(255, 255, 255, 0.1);
+  --color-mid-gray: #8e8e93;
+  --color-dark-gray: #c7c7cc;
+  --color-surface: #18181b;
+  --color-surface-container-low: #111114;
+  --color-surface-container-high: #3a3a40;
+}
+
+/* Global focus ring (copied from tokens.css) */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+::selection { background: var(--selection-bg); color: var(--selection-fg); }
+
+/* ==========================================================================
+   BASE TYPE SYSTEM
+   In production: Inter (--font-inter) for UI, Noto Serif (--font-headline)
+   for headlines. This standalone file has NO network access, so we use the
+   documented fallbacks: system-ui for body/UI, Georgia, serif for headlines
+   (matching tailwind.config.ts's `headline` stack tail). The visual rhythm
+   (sizes/weights/tracking) is reproduced exactly from the Tailwind fontSize
+   scale; only the glyph shapes differ from production.
+   ========================================================================== */
+* { box-sizing: border-box; }
+html { scrollbar-gutter: stable; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--fg-secondary);
+  background: var(--bg-canvas);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.font-headline { font-family: Georgia, "Times New Roman", serif; }
+
+/* Tailwind-equivalent type-scale utilities (from tailwind.config.ts) */
+.text-display { font-size: 3rem;     line-height: 1.1; font-weight: 700; letter-spacing: -0.03em; }
+.text-h1      { font-size: 2.25rem;  line-height: 1.2; font-weight: 700; letter-spacing: -0.02em; }
+.text-h2      { font-size: 1.75rem;  line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; }
+.text-h3      { font-size: 1.375rem; line-height: 1.4; font-weight: 600; }
+.text-h4      { font-size: 1.125rem; line-height: 1.4; font-weight: 600; }
+.text-body    { font-size: 1rem;     line-height: 1.6; font-weight: 400; }
+.text-body-sm { font-size: 0.875rem; line-height: 1.5; font-weight: 400; }
+.text-caption { font-size: 0.75rem;  line-height: 1.4; font-weight: 500; letter-spacing: 0.05em; }
+
+h1, h2, h3, h4 { color: var(--fg-primary); }
+
+/* ==========================================================================
+   STYLEGUIDE LAYOUT CHROME
+   ========================================================================== */
+.sg-topbar {
+  position: sticky; top: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 12px 24px;
+  background: var(--navbar-bg);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--navbar-border);
+}
+.sg-topbar__brand { display: flex; align-items: center; gap: 12px; }
+.sg-topbar__brand-name { font-weight: 600; letter-spacing: -0.01em; color: var(--fg-primary); }
+.sg-topbar__brand-sub { color: var(--fg-muted); font-size: 0.8125rem; }
+.sg-theme-toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 16px;
+  font: inherit; font-size: 0.8125rem; font-weight: 500; letter-spacing: 0.04em;
+  color: var(--btn-primary-fg);
+  background: var(--btn-primary-bg);
+  border: none; border-radius: var(--radius);
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+.sg-theme-toggle:hover { opacity: 0.9; }
+
+.sg-shell { max-width: 1080px; margin: 0 auto; padding: 0 24px 120px; }
+
+.sg-intro { padding: 56px 0 24px; border-bottom: 1px solid var(--border-default); }
+.sg-intro h1 { margin: 0 0 16px; }
+.sg-intro p { max-width: 720px; color: var(--fg-secondary); }
+.sg-principles { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin-top: 28px; }
+.sg-principle {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.sg-principle h4 { margin: 0 0 6px; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--fg-muted); }
+.sg-principle p { margin: 0; font-size: 0.875rem; color: var(--fg-secondary); }
+
+/* Table of contents */
+.sg-toc { display: flex; flex-wrap: wrap; gap: 8px; padding: 24px 0; border-bottom: 1px solid var(--border-default); }
+.sg-toc a {
+  font-size: 0.8125rem; color: var(--fg-secondary); text-decoration: none;
+  padding: 4px 10px; border: 1px solid var(--border-default); border-radius: 999px;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+.sg-toc a:hover { border-color: var(--border-hover); color: var(--fg-primary); }
+
+/* Category + component sections */
+.sg-category { padding-top: 48px; }
+.sg-category > h2 { font-size: 1.75rem; letter-spacing: -0.01em; margin: 0 0 4px; }
+.sg-category > .sg-category-desc { color: var(--fg-muted); font-size: 0.9375rem; margin: 0 0 8px; }
+
+.sg-component {
+  margin-top: 40px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+.sg-component__head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-raised);
+}
+.sg-component__title { font-size: 1.25rem; font-weight: 600; color: var(--fg-primary); }
+.sg-component__file { font-family: var(--sg-mono); font-size: 0.75rem; color: var(--fg-muted); }
+.sg-component__body { padding: 24px; }
+.sg-usage {
+  margin: 0 0 20px;
+  font-size: 0.875rem; line-height: 1.6; color: var(--fg-secondary);
+  padding: 12px 16px;
+  background: var(--bg-canvas);
+  border-left: 2px solid var(--border-hover);
+  border-radius: var(--radius);
+}
+.sg-usage strong { color: var(--fg-primary); }
+
+.sg-block-label {
+  display: block;
+  font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--fg-muted); margin: 24px 0 12px; font-weight: 600;
+}
+.sg-block-label:first-child { margin-top: 0; }
+
+.sg-demo {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 16px;
+  padding: 24px;
+  background:
+    repeating-conic-gradient(var(--overlay-weak) 0% 25%, transparent 0% 50%) 0 / 20px 20px,
+    var(--bg-canvas);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+}
+.sg-demo--col { flex-direction: column; align-items: stretch; }
+.sg-demo--stack > * { width: 100%; }
+.sg-demo__caption { width: 100%; font-size: 0.75rem; color: var(--fg-muted); font-family: var(--sg-mono); }
+
+/* API / props tables */
+table.sg-api {
+  width: 100%; border-collapse: collapse; margin: 16px 0 0; font-size: 0.8125rem;
+}
+table.sg-api caption {
+  text-align: left; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--fg-muted); font-weight: 600; padding: 24px 0 8px;
+}
+table.sg-api th, table.sg-api td {
+  text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border-subtle); vertical-align: top;
+}
+table.sg-api th { color: var(--fg-muted); font-weight: 600; }
+table.sg-api td:first-child, table.sg-api code { font-family: var(--sg-mono); color: var(--fg-primary); }
+table.sg-api td { color: var(--fg-secondary); }
+code.tok { font-family: var(--sg-mono); font-size: 0.8em; background: var(--bg-sunken); padding: 1px 5px; border-radius: var(--radius); color: var(--fg-primary); }
+
+/* ==========================================================================
+   APP PRIMITIVE STYLES (reproduced from the real classNames / inline utils)
+   These mirror what each TSX primitive renders. Class names match the source.
+   ========================================================================== */
+
+/* ---- Button (button.tsx) ---- */
+.btn {
+  border-radius: var(--radius);
+  font: inherit; font-size: 0.875rem; font-weight: 500; letter-spacing: 0.05em;
+  transition: all 150ms; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: none;
+}
+.btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.btn--primary    { background: var(--btn-primary-bg); color: var(--btn-primary-fg); }
+.btn--primary:hover { opacity: 0.9; }
+.btn--secondary  { background: transparent; color: var(--fg-primary); border: 1px solid var(--border-default); }
+.btn--secondary:hover { border-color: var(--border-hover); }
+.btn--ghost      { background: transparent; color: var(--fg-muted); }
+.btn--ghost:hover { background: var(--overlay-weak); color: var(--fg-primary); }
+.btn--destructive { background: var(--color-error-bg); color: var(--color-error); border: 1px solid var(--color-error-border); }
+.btn--destructive:hover { opacity: 0.9; }
+.btn--sm   { padding: 6px 16px;  font-size: 0.75rem; }
+.btn--md   { padding: 10px 24px; font-size: 0.875rem; }
+.btn--lg   { padding: 12px 32px; font-size: 0.875rem; }
+.btn--icon { height: 40px; width: 40px; padding: 0; }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+.spin { animation: sg-spin 1s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+@keyframes sg-spin { to { transform: rotate(360deg); } }
+
+/* ---- Input / Textarea / Select (input.tsx, textarea.tsx, select.tsx) ---- */
+.ui-field {
+  width: 100%;
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  height: 44px; padding: 0 16px; font: inherit; font-size: 0.875rem;
+  transition: all 150ms;
+}
+textarea.ui-field { height: auto; padding: 12px 16px; resize: vertical; min-height: 84px; }
+.ui-field::placeholder { color: var(--fg-muted); }
+.ui-field:focus { outline: none; border-color: var(--focus-ring); box-shadow: 0 0 0 1px color-mix(in srgb, var(--focus-ring) 20%, transparent); }
+.ui-field--error { border-color: var(--color-error-border); }
+.ui-field:disabled { cursor: not-allowed; opacity: 0.6; background: var(--bg-sunken); }
+.ui-field--underline { border: 0; border-bottom: 1px solid var(--border-medium); border-radius: 0; background: transparent; }
+.ui-field--underline:focus { box-shadow: none; border-color: var(--fg-primary); }
+.ui-field--inline { border-width: 1.5px; border-color: var(--border-hover); }
+.ui-field-label { display: block; margin-bottom: 6px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-muted); }
+.ui-field-err  { margin: 6px 0 0; font-size: 0.75rem; color: var(--color-error); }
+.ui-field-help { margin: 6px 0 0; font-size: 0.75rem; color: var(--fg-muted); }
+.ui-field-wrap { position: relative; width: 100%; }
+.ui-field-icon { position: absolute; top: 50%; transform: translateY(-50%); color: var(--fg-muted); display: inline-flex; pointer-events: none; }
+.ui-field-icon--lead { left: 16px; }
+.ui-field-icon--trail { right: 16px; }
+.ui-field--padlead  { padding-left: 44px; }
+.ui-field--padtrail { padding-right: 44px; }
+select.ui-field { appearance: none; -webkit-appearance: none; padding-right: 40px; }
+.ui-select-wrap { position: relative; width: 100%; }
+.ui-select-chevron { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: var(--fg-muted); pointer-events: none; }
+
+/* ---- Checkbox (checkbox.tsx) ---- */
+.ui-check-row { display: flex; align-items: center; gap: 8px; }
+.ui-check-box {
+  height: 16px; width: 16px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border-hover); border-radius: var(--radius);
+  background: var(--bg-elevated); color: transparent; transition: 150ms;
+}
+.ui-check-box--checked { border-color: var(--btn-primary-bg); background: var(--btn-primary-bg); color: var(--btn-primary-fg); }
+.ui-check-box--error { border-color: var(--color-error-border); }
+.ui-check-box svg { width: 12px; height: 12px; }
+.ui-check-label { font-size: 0.875rem; color: var(--fg-primary); cursor: pointer; }
+.ui-check-row--disabled .ui-check-box { opacity: 0.5; }
+.ui-check-row--disabled .ui-check-label { opacity: 0.5; cursor: not-allowed; }
+
+/* ---- Radio / SegmentedControl (radio.tsx) ---- */
+.ui-radiogroup { display: inline-flex; gap: 12px; }
+.ui-radio {
+  display: inline-flex; align-items: center; gap: 8px;
+  border-radius: var(--radius); font-size: 0.875rem; color: var(--fg-primary);
+  background: none; border: none; cursor: pointer; font: inherit; padding: 0;
+}
+.ui-radio:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.ui-radio__dot { width: 16px; height: 16px; border-radius: 999px; border: 1.5px solid var(--border-hover); display: inline-flex; align-items: center; justify-content: center; }
+.ui-radio--checked .ui-radio__dot { border-color: var(--btn-primary-bg); }
+.ui-radio--checked .ui-radio__dot::after { content: ""; width: 8px; height: 8px; border-radius: 999px; background: var(--btn-primary-bg); }
+.ui-radio--disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---- Switch (switch.tsx) ---- */
+.ui-switch { position: relative; display: inline-flex; align-items: center; height: 20px; width: 36px; flex: none; border: 1px solid transparent; border-radius: 999px; background: var(--border-hover); transition: background 150ms; cursor: pointer; padding: 0; }
+.ui-switch--on { background: var(--btn-primary-bg); }
+.ui-switch__thumb { position: absolute; left: 0; height: 16px; width: 16px; border-radius: 999px; background: var(--bg-elevated); box-shadow: var(--shadow-sm); transition: transform 150ms; transform: translateX(2px); }
+.ui-switch--on .ui-switch__thumb { transform: translateX(16px); }
+.ui-switch-row { display: inline-flex; align-items: center; gap: 8px; }
+
+/* ---- ThemeToggle segmented (theme-toggle.tsx) ---- */
+.theme-toggle-group { display: inline-flex; align-items: stretch; gap: 2px; border: 1px solid var(--border-default); background: var(--bg-sunken); padding: 3px; border-radius: var(--radius); }
+.tt-option { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; font: inherit; font-size: 13px; font-weight: 500; border: none; background: none; cursor: pointer; border-radius: var(--radius); color: var(--fg-muted); }
+.tt-option:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.tt-option:hover { color: var(--fg-primary); }
+.tt-option--selected { background: var(--bg-elevated); color: var(--fg-primary); box-shadow: var(--shadow-sm); }
+.theme-toggle-cycle { display: inline-flex; align-items: center; justify-content: center; height: 40px; width: 40px; border: 1px solid var(--border-default); background: var(--bg-elevated); color: var(--fg-primary); border-radius: var(--radius); cursor: pointer; }
+
+/* ---- SmartLink (smart-link.tsx) ---- */
+.smart-link { display: inline-flex; align-items: center; gap: 8px; }
+.smart-link a { color: var(--fg-primary); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--border-hover); }
+.smart-link svg { color: var(--fg-muted); }
+
+/* ---- Card (card.tsx) ---- */
+.ui-card--row      { background: transparent; border: 0; border-bottom: 1px solid var(--border-subtle); border-radius: 0; padding: 20px 0; }
+.ui-card--elevated { background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius); padding: 24px; }
+.ui-card--inset    { background: var(--bg-canvas); border: 1px solid var(--border-default); border-radius: var(--radius); padding: 24px; }
+.ui-card__title { font-family: Georgia, serif; font-weight: 700; color: var(--fg-primary); margin: 0 0 4px; font-size: 1.0625rem; }
+.ui-card__desc { margin: 0; font-size: 0.875rem; color: var(--fg-secondary); }
+
+/* ---- Badge / FeedLabelPill (badge.tsx) ---- */
+.ui-badge { border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; }
+.ui-badge--lg { padding: 4px 12px; font-size: 0.875rem; font-weight: 500; }
+.ui-badge--sm { padding: 2px 8px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; }
+.ui-badge svg { width: 16px; height: 16px; }
+.ui-badge--verified  { background: var(--badge-success-bg); color: var(--badge-success-fg); }
+.ui-badge--pending   { background: var(--badge-warning-bg); color: var(--badge-warning-fg); }
+.ui-badge--unverified{ background: var(--badge-neutral-bg); color: var(--badge-neutral-fg); border: 1px solid var(--badge-neutral-border); }
+.ui-badge--tag   { background: var(--bg-sunken); color: var(--fg-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+.ui-badge--role  { background: var(--bg-canvas); color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.ui-badge--count { background: var(--badge-count-bg); color: var(--badge-count-fg); font-weight: 600; }
+.ui-badge--hq    { background: var(--badge-success-bg); color: var(--badge-success-fg); }
+.ui-badge--standard { background: var(--bg-sunken); color: var(--fg-secondary); }
+.ui-badge--draft { background: var(--badge-warning-bg); color: var(--badge-warning-fg); }
+.ui-badge--test  { background: var(--bg-raised); color: var(--fg-muted); }
+
+/* ---- Avatar (avatar.tsx) ---- */
+.ui-avatar { border-radius: 50%; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border-subtle); background: var(--color-surface-container-high); color: var(--fg-primary); font-weight: 600; }
+.ui-avatar--sm { height: 32px; width: 32px; font-size: 0.875rem; }
+.ui-avatar--md { height: 48px; width: 48px; font-size: 1rem; }
+.ui-avatar--lg { height: 64px; width: 64px; font-size: 1.125rem; }
+.ui-avatar--xl { height: 96px; width: 96px; font-size: 1.375rem; }
+.ui-avatar--2xl { height: 120px; width: 120px; font-size: 2rem; } /* shown at 120px here; real 2xl is 240px / text-display */
+
+/* ---- Brandmark (brandmark.tsx) ---- */
+.brandmark { color: var(--fg-primary); }
+
+/* ---- Tabs (tabs.tsx) ---- */
+.ui-tablist { display: inline-flex; gap: 16px; border-bottom: 1px solid var(--border-subtle); }
+.ui-tab { display: inline-flex; align-items: center; gap: 8px; padding: 12px 4px; font: inherit; font-size: 0.875rem; background: none; border: none; border-bottom: 2px solid transparent; color: var(--fg-muted); cursor: pointer; }
+.ui-tab:hover { color: var(--fg-primary); }
+.ui-tab--active { color: var(--fg-primary); border-bottom-color: var(--fg-primary); font-weight: 600; }
+.ui-tab--disabled { opacity: 0.5; cursor: not-allowed; }
+.ui-tab:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* ---- Popover (popover.tsx) ---- */
+.ui-popover { background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius); box-shadow: var(--shadow-md); padding: 4px; min-width: 200px; }
+.ui-popover__item { display: block; width: 100%; text-align: left; padding: 8px 12px; font: inherit; font-size: 0.875rem; color: var(--fg-primary); background: none; border: none; border-radius: var(--radius); cursor: pointer; }
+.ui-popover__item:hover, .ui-popover__item:focus { background: var(--overlay-weak); outline: none; }
+.ui-popover__item:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---- Dialog surface representation (app-dialog.tsx etc.) ---- */
+.dialog-surface { width: 100%; max-width: 440px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius); box-shadow: var(--shadow-lg); overflow: hidden; }
+.dialog-surface--wide { max-width: 520px; }
+.signin-modal__header { display: flex; align-items: center; justify-content: space-between; padding: 20px 40px 12px 24px; }
+.signin-modal__title { font-size: 1.0625rem; font-weight: 600; color: var(--fg-primary); }
+.signin-modal__close { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: var(--radius); border: none; background: none; color: var(--fg-muted); cursor: pointer; }
+.signin-modal__close:hover { background: var(--overlay-weak); color: var(--fg-primary); }
+.signin-modal__body { padding: 0 20px 20px; }
+.delete-record-dialog__warning { margin: 0 0 16px; font-size: 0.875rem; line-height: 1.5; color: var(--fg-secondary); }
+.delete-record-dialog__warning strong { color: var(--color-error); }
+.delete-record-dialog__label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--fg-muted); display: block; margin-bottom: 6px; }
+.delete-record-dialog__target { display: block; font-family: var(--sg-mono); font-size: 0.8125rem; color: var(--fg-primary); background: var(--bg-sunken); border: 1px solid var(--border-subtle); border-radius: var(--radius); padding: 6px 10px; word-break: break-all; margin-bottom: 8px; }
+.dialog-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+/* Bottom-sheet representation */
+.sheet-surface { width: 100%; max-width: 440px; background: var(--sheet-bg); border: 1px solid var(--border-default); border-radius: 16px 16px var(--radius) var(--radius); box-shadow: var(--shadow-lg); padding-bottom: 16px; }
+.sheet-surface__handle { width: 40px; height: 4px; border-radius: 999px; background: var(--border-hover); margin: 12px auto 4px; }
+.sheet-surface__header { display: flex; align-items: center; justify-content: space-between; padding: 8px 20px 12px; }
+.sheet-surface__title { font-family: Georgia, serif; font-size: 1.125rem; color: var(--fg-primary); }
+.sheet-surface__content { padding: 0 20px; color: var(--fg-secondary); font-size: 0.875rem; }
+
+/* Drawer representation */
+.drawer-frame { position: relative; height: 220px; border: 1px dashed var(--border-hover); border-radius: var(--radius); overflow: hidden; background: var(--bg-canvas); }
+.drawer-frame__scrim { position: absolute; inset: 0; background: var(--navy-overlay-30); }
+.drawer-panel { position: absolute; top: 0; bottom: 0; left: 0; width: 78%; max-width: 280px; background: var(--bg-elevated); box-shadow: var(--shadow-lg); padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.drawer-panel__row { font-size: 0.875rem; color: var(--fg-secondary); padding: 6px 0; border-bottom: 1px solid var(--border-subtle); }
+
+/* ---- Status & feedback ---- */
+/* LoadingSpinner — pulsing brandmark */
+.spinner-pulse { color: var(--fg-primary); animation: sg-pulse 1.5s ease-in-out infinite; }
+@keyframes sg-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+@media (prefers-reduced-motion: reduce) { .spinner-pulse { animation: none; } }
+
+/* Skeleton (skeleton.tsx) */
+.skeleton { background: var(--overlay-weak); border-radius: var(--radius); animation: sg-pulse 1.5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+.skeleton--circle { border-radius: 999px; }
+
+/* EmptyState (empty-state.tsx + components.css) */
+.empty-state { text-align: center; padding: 48px 16px; display: flex; flex-direction: column; align-items: center; }
+.empty-state__icon { color: var(--fg-muted); margin-bottom: 16px; opacity: 0.5; }
+.empty-state__title { font-family: Georgia, serif; font-size: 1.125rem; font-weight: 600; color: var(--fg-primary); margin: 0 0 8px; }
+.empty-state__desc { font-size: 0.875rem; line-height: 1.6; color: var(--fg-muted); max-width: 320px; margin: 0; }
+.empty-state__actions { margin-top: 20px; }
+.empty-state--compact { margin: 0; font-size: 0.875rem; color: var(--fg-muted); }
+
+/* ErrorMessage (error-message.tsx) */
+.error-message { border: 1px solid var(--color-error-border); background: var(--color-error-bg); border-radius: var(--radius); padding: 24px; display: flex; gap: 16px; }
+.error-message svg { color: var(--color-error); flex: none; margin-top: 2px; }
+.error-message__title { font-size: 0.875rem; font-weight: 600; letter-spacing: 0.05em; color: var(--fg-primary); margin: 0 0 4px; }
+.error-message__msg { font-size: 0.875rem; color: var(--fg-secondary); margin: 0; }
+
+/* ErrorBoundaryFallback — uses dashboard chrome */
+.dashboard { border: 1px solid var(--border-default); border-radius: var(--radius); overflow: hidden; }
+.dashboard__topbar { padding: 16px 20px; border-bottom: 1px solid var(--border-subtle); background: var(--bg-raised); }
+.dashboard__page-title { font-family: Georgia, serif; font-size: 1.25rem; color: var(--fg-primary); margin: 0; }
+.dash-card { background: transparent; border-bottom: 1px solid var(--border-light); padding: 24px 20px; }
+.dash-card__desc { font-size: 0.8125rem; line-height: 1.6; color: var(--fg-muted); margin: 0 0 12px; }
+
+/* ProviderRedirectOverlay — loading-screen representation */
+.loading-screen-demo { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 48px; background: var(--bg-canvas); border: 1px solid var(--border-subtle); border-radius: var(--radius); }
+
+/* Toast (toast.tsx) */
+.toast { display: flex; align-items: flex-start; gap: 12px; border-radius: var(--radius); border: 1px solid var(--border-default); padding: 12px 16px; box-shadow: var(--shadow-md); min-width: 280px; max-width: 26rem; background: var(--bg-elevated); color: var(--fg-primary); }
+.toast--success { background: var(--color-success-bg); border-color: var(--border-default); }
+.toast--error   { background: var(--color-error-bg); border-color: var(--color-error-border); }
+.toast svg { flex: none; }
+.toast__title { font-size: 0.875rem; font-weight: 500; margin: 0; }
+.toast__desc { font-size: 0.75rem; color: var(--fg-muted); margin: 2px 0 0; }
+.toast__action { margin-left: auto; align-self: center; background: none; border: none; font: inherit; font-size: 0.75rem; font-weight: 600; color: var(--fg-primary); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.toast__close { background: none; border: none; color: var(--fg-muted); cursor: pointer; padding: 2px; }
+
+/* Banner (banner.tsx) */
+.banner { display: flex; gap: 12px; border-radius: var(--radius); border: 1px solid; padding: 16px; font-size: 0.875rem; color: var(--fg-primary); }
+.banner--info    { background: var(--bg-sunken);          border-color: var(--border-default); }
+.banner--warning { background: var(--color-warning-bg);   border-color: var(--color-warning-border); }
+.banner--success { background: var(--color-success-bg);   border-color: var(--border-default); }
+.banner--error   { background: var(--color-error-bg);     border-color: var(--color-error-border); }
+.banner__icon--info    { color: var(--fg-muted); }
+.banner__icon--warning { color: var(--color-warning-text); }
+.banner__icon--success { color: var(--color-success-text); }
+.banner__icon--error   { color: var(--color-error); }
+.banner__icon { flex: none; margin-top: 1px; }
+.banner__title { font-weight: 600; letter-spacing: 0.05em; margin: 0 0 4px; color: var(--fg-primary); }
+.banner__body { color: var(--fg-secondary); margin: 0; }
+
+/* LoadMoreSentinel — just a secondary Button by default */
+
+/* ==========================================================================
+   TOKEN GALLERY
+   ========================================================================== */
+.swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.swatch { border: 1px solid var(--border-default); border-radius: var(--radius); overflow: hidden; background: var(--bg-elevated); }
+.swatch__chip { height: 56px; border-bottom: 1px solid var(--border-subtle); }
+.swatch__meta { padding: 8px 10px; }
+.swatch__name { font-family: var(--sg-mono); font-size: 0.6875rem; color: var(--fg-primary); display: block; word-break: break-all; }
+.swatch__val { font-family: var(--sg-mono); font-size: 0.625rem; color: var(--fg-muted); display: block; }
+.scale-row { display: flex; align-items: baseline; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border-subtle); }
+.scale-row__tag { font-family: var(--sg-mono); font-size: 0.6875rem; color: var(--fg-muted); width: 110px; flex: none; }
+.space-row { display: flex; align-items: center; gap: 16px; padding: 6px 0; }
+.space-row__tag { font-family: var(--sg-mono); font-size: 0.6875rem; color: var(--fg-muted); width: 80px; flex: none; }
+.space-bar { height: 14px; background: var(--fg-primary); border-radius: var(--radius); }
+.radius-row { display: flex; align-items: center; gap: 16px; padding: 6px 0; }
+.radius-box { width: 48px; height: 48px; background: var(--bg-sunken); border: 1px solid var(--border-hover); }
+
+.sg-note { font-size: 0.8125rem; color: var(--fg-muted); margin-top: 8px; }
+.sg-icon { display: inline-block; vertical-align: middle; }
+hr.sg-hr { border: 0; border-top: 1px solid var(--border-default); margin: 56px 0 0; }
+</style>
+</head>
+<body>
+
+<header class="sg-topbar">
+  <div class="sg-topbar__brand">
+    <svg class="brandmark" width="28" height="28" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+      <path d="M0 8C0 3.58172 3.58172 0 8 0H32C36.4183 0 40 3.58172 40 8V32C40 36.4183 36.4183 40 32 40H8C3.58172 40 0 36.4183 0 32V8Z" fill="currentColor"/>
+      <path d="M29.8965 22.5791C29.7197 23.9952 29.2851 25.2627 28.5918 26.3828C27.8974 27.5029 26.9757 28.3863 25.8262 29.0312C24.6754 29.6762 23.3451 29.9999 21.835 30C20.2149 30 18.7905 29.6896 17.5645 29.0693L19.5527 27.167C20.2356 27.404 20.995 27.5273 21.835 27.5273C23.3104 27.5273 24.5302 27.069 25.4961 26.1553C26.4621 25.2414 27.0424 24.0493 27.2354 22.5801V22.5791H29.8965ZM21.6172 22.0518L14.4609 28.8994C13.792 29.5396 12.7408 29.5057 12.1133 28.8232L11.6914 28.3643L9 25.4336L10.8262 23.6875L13.3633 26.4492L19.9062 20.1895L21.6172 22.0518ZM21.833 10C23.2554 10 24.529 10.2916 25.6533 10.874C26.7777 11.4565 27.6864 12.2634 28.3809 13.2939C29.074 14.3244 29.5349 15.4942 29.7637 16.8018H27.1025C26.8564 15.5118 26.2602 14.467 25.3115 13.6699C24.3628 12.8716 23.2381 12.4727 21.833 12.4727C20.4281 12.4727 19.2423 12.8052 18.2764 13.4678C17.3104 14.1304 16.5955 15.0321 16.1299 16.1699C15.6643 17.3089 15.4316 18.5861 15.4316 20.001C15.4317 20.4418 15.4577 20.8677 15.5039 21.2803L15.501 21.2812L13.1689 23.5137C12.8524 22.4183 12.6905 21.2482 12.6904 20.002C12.6904 18.1566 13.0379 16.4762 13.7324 14.9609C14.4257 13.4457 15.4623 12.2409 16.8408 11.3447C18.2192 10.4487 19.8839 10.0001 21.833 10Z" fill="var(--bg-canvas)"/>
+    </svg>
+    <div>
+      <span class="sg-topbar__brand-name">Certified</span>
+      <span class="sg-topbar__brand-sub"> · Component Library</span>
+    </div>
+  </div>
+  <button id="theme-btn" class="sg-theme-toggle" type="button" aria-pressed="false">
+    <span id="theme-icon" aria-hidden="true">☾</span>
+    <span id="theme-label">Dark</span>
+  </button>
+</header>
+
+<main class="sg-shell">
+
+  <!-- ===================== INTRO ===================== -->
+  <section class="sg-intro" id="top">
+    <h1 class="font-headline text-h1">Component Library</h1>
+    <p>
+      A hand-authored, self-contained styleguide for the <strong>certified-app</strong> primitive
+      library in <code class="tok">src/components/ui/</code>. The primitives are TSX and can't be
+      rendered without a build, so every example below is static HTML that mirrors each primitive's
+      real rendered output (matching its actual class names and token usage). All styling is inline;
+      there is no build step, dev server, or network dependency. Toggle the control above to view every
+      example in light and dark.
+    </p>
+    <p class="sg-note">
+      Fonts: production uses <strong>Inter</strong> (UI) and <strong>Noto Serif</strong> via
+      <code class="tok">font-headline</code> (headlines). With no network access here, this file falls
+      back to <code class="tok">system-ui</code> for body/UI and <code class="tok">Georgia, serif</code>
+      for headlines (the documented tail of the <code class="tok">headline</code> font stack). Only the
+      glyph shapes differ from production — sizes, weights, and tracking are reproduced exactly.
+    </p>
+
+    <div class="sg-principles" aria-label="Design principles">
+      <div class="sg-principle"><h4>Monochrome</h4><p>Near-black primary, warm grays, no brand accent hue. Identity is carried by typography, not color.</p></div>
+      <div class="sg-principle"><h4>Document-like</h4><p>Serif headlines anchor content like a printed title; Inter handles all chrome. Reads like a notary's ledger.</p></div>
+      <div class="sg-principle"><h4>2px radius</h4><p><code class="tok">--radius: 2px</code> everywhere; <code class="tok">999px</code> for pills, <code class="tok">50%</code> for circles. Sharp, deliberate edges.</p></div>
+      <div class="sg-principle"><h4>Mobile-first</h4><p>Every layout is designed for small screens first; desktop is a natural widening of one centered column.</p></div>
+      <div class="sg-principle"><h4>Accessibility-first</h4><p>Skip-nav, global <code class="tok">:focus-visible</code> rings, ARIA roles on tabs/menus/switches, and <code class="tok">prefers-reduced-motion</code> support throughout.</p></div>
+      <div class="sg-principle"><h4>Dark mode</h4><p>Full <code class="tok">data-theme="dark"</code> flip: surfaces invert, the primary button inverts so it always pops off the canvas.</p></div>
+    </div>
+  </section>
+
+  <!-- ===================== TOC ===================== -->
+  <nav class="sg-toc" aria-label="Sections">
+    <a href="#core">Core interactive</a>
+    <a href="#surfaces">Surfaces</a>
+    <a href="#navoverlay">Navigation &amp; overlay</a>
+    <a href="#status">Status &amp; feedback</a>
+    <a href="#tokens">Design tokens</a>
+  </nav>
+
+  <!-- ============================================================= -->
+  <!-- CORE INTERACTIVE                                              -->
+  <!-- ============================================================= -->
+  <section class="sg-category" id="core">
+    <h2 class="font-headline">Core interactive</h2>
+    <p class="sg-category-desc">Buttons, form controls, and the theme + link primitives.</p>
+
+    <!-- Button -->
+    <article class="sg-component" id="button">
+      <div class="sg-component__head">
+        <span class="sg-component__title">Button</span>
+        <span class="sg-component__file">src/components/ui/button.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          The canonical button. Four <strong>variants</strong> (primary / secondary / ghost / destructive)
+          and four <strong>sizes</strong> (sm / md / lg / icon). Renders a real <code class="tok">&lt;button&gt;</code>
+          with <code class="tok">press-scale</code>, a <code class="tok">--focus-ring</code> outline, and
+          <code class="tok">aria-busy</code> while loading. The <code class="tok">icon</code> size is a 40×40 square
+          and its discriminated union <em>requires</em> <code class="tok">aria-label</code>. Reach for this before any raw <code class="tok">&lt;button&gt;</code>.
+        </p>
+
+        <span class="sg-block-label">Variants (size md)</span>
+        <div class="sg-demo">
+          <button class="btn btn--primary btn--md">Primary</button>
+          <button class="btn btn--secondary btn--md">Secondary</button>
+          <button class="btn btn--ghost btn--md">Ghost</button>
+          <button class="btn btn--destructive btn--md">Destructive</button>
+        </div>
+
+        <span class="sg-block-label">Sizes</span>
+        <div class="sg-demo">
+          <button class="btn btn--primary btn--sm">Small</button>
+          <button class="btn btn--primary btn--md">Medium</button>
+          <button class="btn btn--primary btn--lg">Large</button>
+          <button class="btn btn--secondary btn--icon" aria-label="Settings">
+            <svg class="sg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+          <span class="sg-demo__caption">icon (40×40, requires aria-label)</span>
+        </div>
+
+        <span class="sg-block-label">States</span>
+        <div class="sg-demo">
+          <button class="btn btn--primary btn--md">Hover me</button>
+          <span class="sg-demo__caption">hover → primary opacity 0.9 / secondary border-hover / ghost overlay-weak</span>
+          <button class="btn btn--primary btn--md" disabled>Disabled</button>
+          <button class="btn btn--primary btn--md" aria-busy="true" disabled>
+            <svg class="sg-icon spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            Loading
+          </button>
+          <button class="btn btn--destructive btn--md" aria-busy="true" disabled>
+            <svg class="sg-icon spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            Deleting
+          </button>
+        </div>
+
+        <table class="sg-api">
+          <caption>Props</caption>
+          <thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>variant</td><td>"primary" | "secondary" | "ghost" | "destructive"</td><td>"primary"</td><td>destructive uses <code>--color-error-bg/-border</code></td></tr>
+            <tr><td>size</td><td>"sm" | "md" | "lg" | "icon"</td><td>"md"</td><td>icon = 40×40; requires <code>aria-label</code> (union)</td></tr>
+            <tr><td>loading</td><td>boolean</td><td>false</td><td>shows spinner, sets <code>disabled</code> + <code>aria-busy</code></td></tr>
+            <tr><td>disabled</td><td>boolean</td><td>—</td><td>opacity 0.5, not-allowed</td></tr>
+            <tr><td>…rest</td><td>ButtonHTMLAttributes</td><td>—</td><td><code>type</code> defaults to "button"; forwards ref</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <!-- Input -->
+    <article class="sg-component" id="input">
+      <div class="sg-component__head">
+        <span class="sg-component__title">Input</span>
+        <span class="sg-component__file">src/components/ui/input.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          44px text field on <code class="tok">--bg-elevated</code> with a <code class="tok">--border-default</code>
+          border. Focus shifts the border to <code class="tok">--focus-ring</code> with a 20% ring. Supports
+          <strong>label</strong>, <strong>error</strong>, <strong>helperText</strong>, three sizes, three
+          variants (default / underline / inline-edit), and leading/trailing <strong>icon slots</strong>
+          (an absolute wrapper added only when an icon exists).
+        </p>
+
+        <span class="sg-block-label">Default · with label &amp; helper</span>
+        <div class="sg-demo sg-demo--col sg-demo--stack">
+          <div style="max-width:360px;">
+            <label class="ui-field-label">Display name</label>
+            <input class="ui-field" type="text" placeholder="Jane Doe" />
+            <p class="ui-field-help">Shown on your public profile.</p>
+          </div>
+        </div>
+
+        <span class="sg-block-label">States: disabled · error · icon slots</span>
+        <div class="sg-demo sg-demo--col sg-demo--stack">
+          <div style="max-width:360px;"><input class="ui-field" type="text" value="can't edit" disabled /></div>
+          <div style="max-width:360px;">
+            <input class="ui-field ui-field--error" type="email" value="not-an-email" aria-invalid="true" />
+            <p class="ui-field-err">Enter a valid email address.</p>
+          </div>
+          <div style="max-width:360px;">
+            <div class="ui-field-wrap">
+              <span class="ui-field-icon ui-field-icon--lead" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              </span>
+              <input class="ui-field ui-field--padlead" type="search" placeholder="Search" />
+            </div>
+          </div>
+        </div>
+
+        <span class="sg-block-label">Variants: underline · inline-edit</span>
+        <div class="sg-demo sg-demo--col sg-demo--stack">
+          <div style="max-width:360px;"><input class="ui-field ui-field--underline" type="text" placeholder="Typeahead (underline)" /></div>
+          <div style="max-width:360px;"><input class="ui-field ui-field--inline" type="text" value="Editing name (inline-edit)" /></div>
+        </div>
+
+        <table class="sg-api">
+          <caption>Props (extends InputHTMLAttributes, omits native "size")</caption>
+          <thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>label</td><td>string</td><td>—</td><td>renders <code>.app-card__label</code></td></tr>
+            <tr><td>error</td><td>string</td><td>—</td><td>error border + <code>role="alert"</code> message, sets <code>aria-invalid</code></td></tr>
+            <tr><td>helperText</td><td>string</td><td>—</td><td>muted hint (hidden when error present)</td></tr>
+            <tr><td>size</td><td>"sm" | "md" | "lg"</td><td>"md"</td><td>36 / 44 / 56px</td></tr>
+            <tr><td>variant</td><td>"default" | "underline" | "inline-edit"</td><td>"default"</td><td>inline-edit = 1.5px border</td></tr>
+            <tr><td>leadingIcon / trailingIcon</td><td>ReactNode</td><td>—</td><td>absolutely positioned; input padded to clear it</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <!-- Textarea -->
+    <article class="sg-component" id="textarea">
+      <div class="sg-component__head">
+        <span class="sg-component__title">Textarea</span>
+        <span class="sg-component__file">src/components/ui/textarea.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          Mirrors Input's chrome with <code class="tok">resize-y</code>, a <code class="tok">rows</code> prop,
+          and an optional live <strong>character counter</strong> (<code class="tok">showCount</code> + <code class="tok">maxLength</code>)
+          announced via <code class="tok">aria-live="polite"</code>. Sizes (sm/md/lg) and variants (default/underline) match Input.
+        </p>
+        <span class="sg-block-label">Default · with counter</span>
+        <div class="sg-demo sg-demo--col sg-demo--stack">
+          <div style="max-width:420px;">
+            <label class="ui-field-label">Bio</label>
+            <textarea class="ui-field" rows="3" placeholder="A short bio…"></textarea>
+            <div style="display:flex;justify-content:flex-end;"><span class="ui-field-help">0 / 280</span></div>
+          </div>
+          <div style="max-width:420px;"><textarea class="ui-field" rows="2" disabled>Disabled — resize off</textarea></div>
+          <div style="max-width:420px;">
+            <textarea class="ui-field ui-field--error" rows="2" aria-invalid="true">Too long…</textarea>
+            <p class="ui-field-err">Keep it under 280 characters.</p>
+          </div>
+        </div>
+        <table class="sg-api">
+          <caption>Props (extends TextareaHTMLAttributes)</caption>
+          <thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>label / error / helperText</td><td>string</td><td>—</td><td>same semantics as Input</td></tr>
+            <tr><td>rows</td><td>number</td><td>3</td><td>height driver</td></tr>
+            <tr><td>size / variant</td><td>see Input</td><td>"md" / "default"</td><td>—</td></tr>
+            <tr><td>showCount</td><td>boolean</td><td>false</td><td>live "n / max" counter (works controlled + uncontrolled)</td></tr>
+            <tr><td>maxLength</td><td>number</td><td>—</td><td>forwarded to native + counter denominator</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <!-- Select -->
+    <article class="sg-component" id="select">
+      <div class="sg-component__head">
+        <span class="sg-component__title">Select</span>
+        <span class="sg-component__file">src/components/ui/select.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          Native <code class="tok">&lt;select&gt;</code> styled to match Input, with an overlaid
+          <code class="tok">ChevronDown</code> and surface tokens applied to <code class="tok">&lt;option&gt;</code>
+          so platforms that honor them render dark-correct option lists. Label / error / helperText / sizes mirror Input.
+        </p>
+        <span class="sg-block-label">Default · error · disabled</span>
+        <div class="sg-demo sg-demo--col sg-demo--stack">
+          <div style="max-width:320px;">
+            <label class="ui-field-label">Role</label>
+            <div class="ui-select-wrap">
+              <select class="ui-field"><option>Owner</option><option>Editor</option><option>Viewer</option></select>
+              <span class="ui-select-chevron" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>
+            </div>
+          </div>
+          <div style="max-width:320px;">
+            <div class="ui-select-wrap">
+              <select class="ui-field ui-field--error" aria-invalid="true"><option>Choose…</option></select>
+              <span class="ui-select-chevron" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>
+            </div>
+            <p class="ui-field-err">Selection required.</p>
+          </div>
+          <div style="max-width:320px;">
+            <div class="ui-select-wrap">
+              <select class="ui-field" disabled><option>Locked</option></select>
+              <span class="ui-select-chevron" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>
+            </div>
+          </div>
+        </div>
+        <table class="sg-api">
+          <caption>Props (extends SelectHTMLAttributes, omits native "size")</caption>
+          <thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead>
+          <tbody>
+            <tr><td>label / error / helperText</td><td>string</td><td>—</td></tr>
+            <tr><td>size</td><td>"sm" | "md" | "lg"</td><td>"md"</td></tr>
+            <tr><td>children</td><td>&lt;option&gt; list</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <!-- Checkbox -->
+    <article class="sg-component" id="checkbox">
+      <div class="sg-component__head">
+        <span class="sg-component__title">Checkbox</span>
+        <span class="sg-component__file">src/components/ui/checkbox.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          A visually-hidden native <code class="tok">&lt;input type="checkbox"&gt;</code> (kept in the a11y tree)
+          stacked over a custom box drawn with semantic tokens — deliberately avoiding <code class="tok">accent-color</code>.
+          Supports <strong>indeterminate</strong> (renders a dash + sets the DOM flag), <strong>error</strong>, and disabled.
+          Checked fills with <code class="tok">--btn-primary-bg</code>.
+        </p>
+        <span class="sg-block-label">Unchecked · checked · indeterminate · error · disabled</span>
+        <div class="sg-demo sg-demo--col sg-demo--stack" style="gap:14px;">
+          <div class="ui-check-row"><span class="ui-check-box" aria-hidden="true"></span><span class="ui-check-label">Email notifications</span></div>
+          <div class="ui-check-row"><span class="ui-check-box ui-check-box--checked" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span class="ui-check-label">Push notifications</span></div>
+          <div class="ui-check-row"><span class="ui-check-box ui-check-box--checked" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12h14"/></svg></span><span class="ui-check-label">Select all (indeterminate)</span></div>
+          <div class="ui-check-row"><span class="ui-check-box ui-check-box--error" aria-hidden="true"></span><span class="ui-check-label">Accept terms</span></div>
+          <div class="ui-check-row ui-check-row--disabled"><span class="ui-check-box" aria-hidden="true"></span><span class="ui-check-label">Disabled option</span></div>
+        </div>
+        <table class="sg-api">
+          <caption>Props (extends InputHTMLAttributes, omits "type"/"size")</caption>
+          <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>label</td><td>ReactNode</td><td>associated via <code>htmlFor</code></td></tr>
+            <tr><td>indeterminate</td><td>boolean</td><td>tri-state dash; applied via ref effect</td></tr>
+            <tr><td>error</td><td>string</td><td>tints box + <code>role="alert"</code> message</td></tr>
+            <tr><td>checked / disabled / …rest</td><td>native</td><td>forwarded to the input; ref merged</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <!-- Radio -->
+    <article class="sg-component" id="radio">
+      <div class="sg-component__head">
+        <span class="sg-component__title">RadioGroup / Radio</span>
+        <span class="sg-component__file">src/components/ui/radio.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          WAI-ARIA <code class="tok">radiogroup</code> pattern, controlled only (<code class="tok">value</code> +
+          <code class="tok">onValueChange</code>). Roving tabindex: exactly one Radio is tabbable; arrow keys move
+          selection <em>and</em> focus (wrapping), Home/End jump to ends, disabled options are skipped. Doubles as the
+          <strong>SegmentedControl</strong> base — render custom children and style via <code class="tok">className</code>
+          (that's how ThemeToggle's segmented variant is built).
+        </p>
+        <span class="sg-block-label">Vertical radio group</span>
+        <div class="sg-demo sg-demo--col sg-demo--stack">
+          <div class="ui-radiogroup" role="radiogroup" aria-label="Visibility" style="flex-direction:column;align-items:flex-start;gap:12px;">
+            <button class="ui-radio ui-radio--checked" role="radio" aria-checked="true"><span class="ui-radio__dot" aria-hidden="true"></span>Public</button>
+            <button class="ui-radio" role="radio" aria-checked="false"><span class="ui-radio__dot" aria-hidden="true"></span>Followers only</button>
+            <button class="ui-radio ui-radio--disabled" role="radio" aria-checked="false" aria-disabled="true"><span class="ui-radio__dot" aria-hidden="true"></span>Private (disabled)</button>
+          </div>
+        </div>
+        <table class="sg-api">
+          <caption>RadioGroup props</caption>
+          <thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead>
+          <tbody>
+            <tr><td>value</td><td>string</td><td>—</td></tr>
+            <tr><td>onValueChange</td><td>(value: string) =&gt; void</td><td>—</td></tr>
+            <tr><td>name</td><td>string</td><td>auto id</td></tr>
+            <tr><td>disabled</td><td>boolean</td><td>false</td></tr>
+            <tr><td>orientation</td><td>"horizontal" | "vertical"</td><td>"horizontal"</td></tr>
+          </tbody>
+        </table>
+        <table class="sg-api">
+          <caption>Radio props</caption>
+          <thead><tr><th>Prop</th><th>Type</th></tr></thead>
+          <tbody>
+            <tr><td>value</td><td>string (required)</td></tr>
+            <tr><td>disabled</td><td>boolean</td></tr>
+            <tr><td>children</td><td>ReactNode (label / icon)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <!-- Switch -->
+    <article class="sg-component" id="switch">
+      <div class="sg-component__head">
+        <span class="sg-component__title">Switch</span>
+        <span class="sg-component__file">src/components/ui/switch.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          ARIA <code class="tok">switch</code> on a real <code class="tok">&lt;button&gt;</code> (free Space/Enter).
+          Controlled (<code class="tok">checked</code> + <code class="tok">onCheckedChange</code>). Track recolors to
+          <code class="tok">--btn-primary-bg</code> when on; the thumb slides (reduced-motion safe). Optional
+          <code class="tok">label</code> renders to the right and labels the control.
+        </p>
+        <span class="sg-block-label">Off · on · with label · disabled</span>
+        <div class="sg-demo" style="gap:24px;">
+          <button class="ui-switch" role="switch" aria-checked="false" aria-label="Off"><span class="ui-switch__thumb"></span></button>
+          <button class="ui-switch ui-switch--on" role="switch" aria-checked="true" aria-label="On"><span class="ui-switch__thumb"></span></button>
+          <span class="ui-switch-row"><button class="ui-switch ui-switch--on" role="switch" aria-checked="true" aria-labelledby="sw-l"><span class="ui-switch__thumb"></span></button><label id="sw-l" class="ui-check-label">Private account</label></span>
+          <span class="ui-switch-row" style="opacity:.5;"><button class="ui-switch" role="switch" aria-checked="false" aria-disabled="true" disabled><span class="ui-switch__thumb"></span></button><span class="ui-check-label">Disabled</span></span>
+        </div>
+        <table class="sg-api">
+          <caption>Props (extends ButtonHTMLAttributes, omits onChange/type/value)</caption>
+          <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>checked</td><td>boolean (required)</td><td>controlled state</td></tr>
+            <tr><td>onCheckedChange</td><td>(checked: boolean) =&gt; void</td><td>fired with the next state</td></tr>
+            <tr><td>label</td><td>ReactNode</td><td>when set, labels via <code>aria-labelledby</code>; else <code>aria-label</code> required</td></tr>
+            <tr><td>disabled</td><td>boolean</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <!-- ThemeToggle -->
+    <article class="sg-component" id="theme-toggle">
+      <div class="sg-component__head">
+        <span class="sg-component__title">ThemeToggle</span>
+        <span class="sg-component__file">src/components/ui/theme-toggle.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          Backed by <code class="tok">next-themes</code>. <strong>segmented</strong> (default) is a three-way
+          RadioGroup (Light / Dark / System) — inheriting the Radio primitive's roving-tabindex + focus ring;
+          <code class="tok">compact</code> drops the labels. <strong>cycle</strong> is a single icon button that
+          rotates System → Light → Dark, showing the <em>current</em> selection's icon.
+          (The control in this page's top bar is a standalone analogue.)
+        </p>
+        <span class="sg-block-label">segmented</span>
+        <div class="sg-demo sg-demo--col sg-demo--stack">
+          <div class="theme-toggle-group" role="radiogroup" aria-label="Theme" style="max-width:360px;">
+            <button class="tt-option tt-option--selected" role="radio" aria-checked="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>Light</button>
+            <button class="tt-option" role="radio" aria-checked="false"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>Dark</button>
+            <button class="tt-option" role="radio" aria-checked="false"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>System</button>
+          </div>
+        </div>
+        <span class="sg-block-label">segmented · compact &nbsp;&amp;&nbsp; cycle</span>
+        <div class="sg-demo">
+          <div class="theme-toggle-group" role="radiogroup" aria-label="Theme">
+            <button class="tt-option tt-option--selected" role="radio" aria-checked="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></button>
+            <button class="tt-option" role="radio" aria-checked="false"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
+            <button class="tt-option" role="radio" aria-checked="false"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></button>
+          </div>
+          <button class="theme-toggle-cycle" aria-label="Theme: System. Click to switch to Light.">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          </button>
+        </div>
+        <table class="sg-api">
+          <caption>Props</caption>
+          <thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead>
+          <tbody>
+            <tr><td>variant</td><td>"segmented" | "cycle"</td><td>"segmented"</td></tr>
+            <tr><td>compact</td><td>boolean</td><td>false</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <!-- SmartLink -->
+    <article class="sg-component" id="smart-link">
+      <div class="sg-component__head">
+        <span class="sg-component__title">SmartLink</span>
+        <span class="sg-component__file">src/components/ui/smart-link.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          Sanctioned external-link primitive. Detects the service from the URL, renders the matching brand glyph
+          (inlined Simple Icons marks, generic link fallback) as the first child plus an <code class="tok">&lt;a target="_blank" rel="noopener noreferrer"&gt;</code>
+          with a friendly display string, an always-appended <code class="tok">--focus-ring</code>, and an sr-only
+          "(opens in new tab)" cue. Non-http(s) URLs render as plain text.
+        </p>
+        <span class="sg-block-label">Examples</span>
+        <div class="sg-demo sg-demo--col sg-demo--stack" style="gap:12px;">
+          <span class="smart-link"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><a href="#0">example.com</a><span style="position:absolute;left:-9999px;">(opens in new tab)</span></span>
+          <span class="smart-link"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.09.66-.22.66-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.6 9.6 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85v2.74c0 .27.16.58.67.48A10 10 0 0 0 22 12c0-5.52-4.48-10-10-10z"/></svg><a href="#0">github.com/certified</a><span style="position:absolute;left:-9999px;">(opens in new tab)</span></span>
+        </div>
+        <table class="sg-api">
+          <caption>Props</caption>
+          <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>url</td><td>string (required)</td><td>must be http/https or returns plain text</td></tr>
+            <tr><td>className</td><td>string</td><td>focus ring is appended regardless</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- SURFACES                                                      -->
+  <!-- ============================================================= -->
+  <section class="sg-category" id="surfaces">
+    <h2 class="font-headline">Surfaces</h2>
+    <p class="sg-category-desc">Cards, badges, avatars, and the brand glyphs.</p>
+
+    <!-- Card -->
+    <article class="sg-component" id="card">
+      <div class="sg-component__head">
+        <span class="sg-component__title">Card</span>
+        <span class="sg-component__file">src/components/ui/card.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          Three variants. <strong>row</strong>: transparent, bottom-border only (<code class="tok">--border-subtle</code>),
+          no radius, <code class="tok">py-5</code> — list/divider rows. <strong>elevated</strong>: <code class="tok">--bg-elevated</code>,
+          full <code class="tok">--border-default</code>, <code class="tok">--radius</code>, <code class="tok">p-6</code> — "object" cards.
+          <strong>inset</strong>: recessed <code class="tok">--bg-canvas</code> with the same border — details inside an elevated parent.
+          <code class="tok">hoverable</code> adds the per-variant highlight; <code class="tok">as</code> swaps the element.
+        </p>
+        <span class="sg-block-label">elevated</span>
+        <div class="sg-demo sg-demo--stack">
+          <div class="ui-card--elevated">
+            <h4 class="ui-card__title font-headline">Elevated card</h4>
+            <p class="ui-card__desc">bg-elevated, full border, 2px radius, 24px padding. Hover adds border-hover + shadow-sm.</p>
+          </div>
+        </div>
+        <span class="sg-block-label">inset</span>
+        <div class="sg-demo sg-demo--stack">
+          <div class="ui-card--inset">
+            <h4 class="ui-card__title font-headline">Inset card</h4>
+            <p class="ui-card__desc">Recessed bg-canvas with the same border weight — sits inside an elevated parent.</p>
+          </div>
+        </div>
+        <span class="sg-block-label">row (×2, as a list)</span>
+        <div class="sg-demo sg-demo--col sg-demo--stack" style="gap:0;">
+          <div class="ui-card--row"><h4 class="ui-card__title font-headline">First row</h4><p class="ui-card__desc">Bottom-border divider, no radius, no background.</p></div>
+          <div class="ui-card--row"><h4 class="ui-card__title font-headline">Second row</h4><p class="ui-card__desc">Used for feed activity, settings sections, account fields.</p></div>
+        </div>
+        <table class="sg-api">
+          <caption>Props (extends HTMLAttributes&lt;HTMLDivElement&gt;)</caption>
+          <thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead>
+          <tbody>
+            <tr><td>variant</td><td>"row" | "elevated" | "inset"</td><td>"elevated"</td></tr>
+            <tr><td>hoverable</td><td>boolean</td><td>false</td></tr>
+            <tr><td>unpadded</td><td>boolean</td><td>false</td></tr>
+            <tr><td>as</td><td>"div" | "article" | "li" | "section"</td><td>"div"</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <!-- Badge -->
+    <article class="sg-component" id="badge">
+      <div class="sg-component__head">
+        <span class="sg-component__title">Badge</span>
+        <span class="sg-component__file">src/components/ui/badge.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          One pill shape (<code class="tok">999px</code>) for every semantic. Status badges carry an icon
+          (verified / pending / unverified); neutral chips are label / tag / role / count; quality labels are
+          high-quality / standard / draft / test. <code class="tok">compact</code> overrides density; otherwise
+          each variant picks its natural size.
+        </p>
+        <span class="sg-block-label">Status</span>
+        <div class="sg-demo">
+          <span class="ui-badge ui-badge--lg ui-badge--verified"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>Verified</span>
+          <span class="ui-badge ui-badge--lg ui-badge--pending"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Pending</span>
+          <span class="ui-badge ui-badge--lg ui-badge--unverified">Unverified</span>
+        </div>
+        <span class="sg-block-label">Neutral chips (compact)</span>
+        <div class="sg-demo">
+          <span class="ui-badge ui-badge--sm ui-badge--tag">Design</span>
+          <span class="ui-badge ui-badge--sm ui-badge--role">Owner</span>
+          <span class="ui-badge ui-badge--sm ui-badge--count">3</span>
+        </div>
+        <span class="sg-block-label">Quality labels (compact)</span>
+        <div class="sg-demo">
+          <span class="ui-badge ui-badge--sm ui-badge--hq">High quality</span>
+          <span class="ui-badge ui-badge--sm ui-badge--standard">Standard</span>
+          <span class="ui-badge ui-badge--sm ui-badge--draft">Draft</span>
+          <span class="ui-badge ui-badge--sm ui-badge--test">Likely test</span>
+        </div>
+        <table class="sg-api">
+          <caption>Props</caption>
+          <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>variant</td><td>verified | pending | unverified | tag | role | count | high-quality | standard | draft | test</td><td>required</td></tr>
+            <tr><td>compact</td><td>boolean</td><td>overrides per-variant default density</td></tr>
+            <tr><td>children</td><td>ReactNode</td><td>label text</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <!-- FeedLabelPill -->
+    <article class="sg-component" id="feed-label-pill">
+      <div class="sg-component__head">
+        <span class="sg-component__title">FeedLabelPill</span>
+        <span class="sg-component__file">src/components/ui/feed-label-pill.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          Thin wrapper that maps an atproto <code class="tok">LabelValue</code> to the matching Badge quality variant
+          and renders its display string. No styling of its own — it delegates entirely to Badge.
+        </p>
+        <span class="sg-block-label">All four labels</span>
+        <div class="sg-demo">
+          <span class="ui-badge ui-badge--sm ui-badge--hq">High quality</span>
+          <span class="ui-badge ui-badge--sm ui-badge--standard">Standard</span>
+          <span class="ui-badge ui-badge--sm ui-badge--draft">Draft</span>
+          <span class="ui-badge ui-badge--sm ui-badge--test">Likely test</span>
+        </div>
+        <table class="sg-api">
+          <caption>Props</caption>
+          <thead><tr><th>Prop</th><th>Type</th></tr></thead>
+          <tbody>
+            <tr><td>label</td><td>"high-quality" | "standard" | "draft" | "likely-test"</td></tr>
+            <tr><td>className</td><td>string</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <!-- Avatar -->
+    <article class="sg-component" id="avatar">
+      <div class="sg-component__head">
+        <span class="sg-component__title">Avatar</span>
+        <span class="sg-component__file">src/components/ui/avatar.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          Always circular (<code class="tok">50%</code>). Five sizes: sm 32 · md 48 · lg 64 · xl 96 · 2xl 240px
+          (profile hero, <code class="tok">text-display</code> initials). Falls back to an initials chip on
+          <code class="tok">--color-surface-container-high</code> when no <code class="tok">src</code> or on image error.
+          <code class="tok">bordered</code> swaps the subtle border for a 2px <code class="tok">--bg-elevated</code> ring.
+        </p>
+        <span class="sg-block-label">Sizes (initials fallback) — 2xl shown at 120px to fit</span>
+        <div class="sg-demo" style="align-items:flex-end;">
+          <span class="ui-avatar ui-avatar--sm">JD</span>
+          <span class="ui-avatar ui-avatar--md">JD</span>
+          <span class="ui-avatar ui-avatar--lg">JD</span>
+          <span class="ui-avatar ui-avatar--xl">JD</span>
+          <span class="ui-avatar ui-avatar--2xl">JD</span>
+        </div>
+        <table class="sg-api">
+          <caption>Props</caption>
+          <thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead>
+          <tbody>
+            <tr><td>src</td><td>string</td><td>—</td></tr>
+            <tr><td>alt</td><td>string</td><td>""</td></tr>
+            <tr><td>size</td><td>"sm" | "md" | "lg" | "xl" | "2xl"</td><td>"md"</td></tr>
+            <tr><td>fallbackInitials</td><td>string</td><td>"?"</td></tr>
+            <tr><td>bordered</td><td>boolean</td><td>false</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <!-- Brandmark -->
+    <article class="sg-component" id="brandmark">
+      <div class="sg-component__head">
+        <span class="sg-component__title">Brandmark</span>
+        <span class="sg-component__file">src/components/ui/brandmark.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          Inline SVG. The rounded square inherits the parent's <code class="tok">color</code> (drive with
+          <code class="tok">--fg-primary</code>); the inner "C" is filled with <code class="tok">--bg-canvas</code>
+          so it inverts in both themes. <code class="tok">decorative</code> hides it from the a11y tree (no role/title)
+          when it sits inside an already-labelled element.
+        </p>
+        <span class="sg-block-label">Sizes (currentColor = --fg-primary)</span>
+        <div class="sg-demo" style="align-items:flex-end;color:var(--fg-primary);">
+          <svg class="brandmark" width="24" height="24" viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M0 8C0 3.58172 3.58172 0 8 0H32C36.4183 0 40 3.58172 40 8V32C40 36.4183 36.4183 40 32 40H8C3.58172 40 0 36.4183 0 32V8Z" fill="currentColor"/><path d="M29.8965 22.5791C29.7197 23.9952 29.2851 25.2627 28.5918 26.3828C27.8974 27.5029 26.9757 28.3863 25.8262 29.0312C24.6754 29.6762 23.3451 29.9999 21.835 30C20.2149 30 18.7905 29.6896 17.5645 29.0693L19.5527 27.167C20.2356 27.404 20.995 27.5273 21.835 27.5273C23.3104 27.5273 24.5302 27.069 25.4961 26.1553C26.4621 25.2414 27.0424 24.0493 27.2354 22.5801V22.5791H29.8965ZM21.6172 22.0518L14.4609 28.8994C13.792 29.5396 12.7408 29.5057 12.1133 28.8232L11.6914 28.3643L9 25.4336L10.8262 23.6875L13.3633 26.4492L19.9062 20.1895L21.6172 22.0518ZM21.833 10C23.2554 10 24.529 10.2916 25.6533 10.874C26.7777 11.4565 27.6864 12.2634 28.3809 13.2939C29.074 14.3244 29.5349 15.4942 29.7637 16.8018H27.1025C26.8564 15.5118 26.2602 14.467 25.3115 13.6699C24.3628 12.8716 23.2381 12.4727 21.833 12.4727C20.4281 12.4727 19.2423 12.8052 18.2764 13.4678C17.3104 14.1304 16.5955 15.0321 16.1299 16.1699C15.6643 17.3089 15.4316 18.5861 15.4316 20.001C15.4317 20.4418 15.4577 20.8677 15.5039 21.2803L15.501 21.2812L13.1689 23.5137C12.8524 22.4183 12.6905 21.2482 12.6904 20.002C12.6904 18.1566 13.0379 16.4762 13.7324 14.9609C14.4257 13.4457 15.4623 12.2409 16.8408 11.3447C18.2192 10.4487 19.8839 10.0001 21.833 10Z" fill="var(--bg-canvas)"/></svg>
+          <svg class="brandmark" width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M0 8C0 3.58172 3.58172 0 8 0H32C36.4183 0 40 3.58172 40 8V32C40 36.4183 36.4183 40 32 40H8C3.58172 40 0 36.4183 0 32V8Z" fill="currentColor"/><path d="M29.8965 22.5791C29.7197 23.9952 29.2851 25.2627 28.5918 26.3828C27.8974 27.5029 26.9757 28.3863 25.8262 29.0312C24.6754 29.6762 23.3451 29.9999 21.835 30C20.2149 30 18.7905 29.6896 17.5645 29.0693L19.5527 27.167C20.2356 27.404 20.995 27.5273 21.835 27.5273C23.3104 27.5273 24.5302 27.069 25.4961 26.1553C26.4621 25.2414 27.0424 24.0493 27.2354 22.5801V22.5791H29.8965ZM21.6172 22.0518L14.4609 28.8994C13.792 29.5396 12.7408 29.5057 12.1133 28.8232L11.6914 28.3643L9 25.4336L10.8262 23.6875L13.3633 26.4492L19.9062 20.1895L21.6172 22.0518ZM21.833 10C23.2554 10 24.529 10.2916 25.6533 10.874C26.7777 11.4565 27.6864 12.2634 28.3809 13.2939C29.074 14.3244 29.5349 15.4942 29.7637 16.8018H27.1025C26.8564 15.5118 26.2602 14.467 25.3115 13.6699C24.3628 12.8716 23.2381 12.4727 21.833 12.4727C20.4281 12.4727 19.2423 12.8052 18.2764 13.4678C17.3104 14.1304 16.5955 15.0321 16.1299 16.1699C15.6643 17.3089 15.4316 18.5861 15.4316 20.001C15.4317 20.4418 15.4577 20.8677 15.5039 21.2803L15.501 21.2812L13.1689 23.5137C12.8524 22.4183 12.6905 21.2482 12.6904 20.002C12.6904 18.1566 13.0379 16.4762 13.7324 14.9609C14.4257 13.4457 15.4623 12.2409 16.8408 11.3447C18.2192 10.4487 19.8839 10.0001 21.833 10Z" fill="var(--bg-canvas)"/></svg>
+          <svg class="brandmark" width="64" height="64" viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M0 8C0 3.58172 3.58172 0 8 0H32C36.4183 0 40 3.58172 40 8V32C40 36.4183 36.4183 40 32 40H8C3.58172 40 0 36.4183 0 32V8Z" fill="currentColor"/><path d="M29.8965 22.5791C29.7197 23.9952 29.2851 25.2627 28.5918 26.3828C27.8974 27.5029 26.9757 28.3863 25.8262 29.0312C24.6754 29.6762 23.3451 29.9999 21.835 30C20.2149 30 18.7905 29.6896 17.5645 29.0693L19.5527 27.167C20.2356 27.404 20.995 27.5273 21.835 27.5273C23.3104 27.5273 24.5302 27.069 25.4961 26.1553C26.4621 25.2414 27.0424 24.0493 27.2354 22.5801V22.5791H29.8965ZM21.6172 22.0518L14.4609 28.8994C13.792 29.5396 12.7408 29.5057 12.1133 28.8232L11.6914 28.3643L9 25.4336L10.8262 23.6875L13.3633 26.4492L19.9062 20.1895L21.6172 22.0518ZM21.833 10C23.2554 10 24.529 10.2916 25.6533 10.874C26.7777 11.4565 27.6864 12.2634 28.3809 13.2939C29.074 14.3244 29.5349 15.4942 29.7637 16.8018H27.1025C26.8564 15.5118 26.2602 14.467 25.3115 13.6699C24.3628 12.8716 23.2381 12.4727 21.833 12.4727C20.4281 12.4727 19.2423 12.8052 18.2764 13.4678C17.3104 14.1304 16.5955 15.0321 16.1299 16.1699C15.6643 17.3089 15.4316 18.5861 15.4316 20.001C15.4317 20.4418 15.4577 20.8677 15.5039 21.2803L15.501 21.2812L13.1689 23.5137C12.8524 22.4183 12.6905 21.2482 12.6904 20.002C12.6904 18.1566 13.0379 16.4762 13.7324 14.9609C14.4257 13.4457 15.4623 12.2409 16.8408 11.3447C18.2192 10.4487 19.8839 10.0001 21.833 10Z" fill="var(--bg-canvas)"/></svg>
+        </div>
+        <table class="sg-api">
+          <caption>Props (extends SVGProps)</caption>
+          <thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead>
+          <tbody>
+            <tr><td>size</td><td>number | string</td><td>40</td></tr>
+            <tr><td>title</td><td>string</td><td>"Certified"</td></tr>
+            <tr><td>decorative</td><td>boolean</td><td>false</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <!-- CertIcon -->
+    <article class="sg-component" id="cert-icon">
+      <div class="sg-component__head">
+        <span class="sg-component__title">CertIcon</span>
+        <span class="sg-component__file">src/components/ui/cert-icon.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          The single sanctioned <code class="tok">@tabler/icons-react</code> import (<code class="tok">IconCertificate</code>),
+          wrapped to a lucide-compatible API (<code class="tok">strokeWidth</code>, not tabler's <code class="tok">stroke</code>).
+          Hidden from assistive tech by default; pass <code class="tok">title</code>/<code class="tok">aria-label</code> for
+          standalone labelled use. The glyph below is an approximation (no tabler at <code class="tok">file://</code>).
+        </p>
+        <span class="sg-block-label">Sizes (currentColor)</span>
+        <div class="sg-demo" style="color:var(--fg-primary);align-items:center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 15l-2 5-1.6-2.4M9 15l2 5 1.6-2.4"/><circle cx="12" cy="8" r="6"/><path d="M9.5 8.5l1.5 1.5 3-3"/></svg>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 15l-2 5-1.6-2.4M9 15l2 5 1.6-2.4"/><circle cx="12" cy="8" r="6"/><path d="M9.5 8.5l1.5 1.5 3-3"/></svg>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 15l-2 5-1.6-2.4M9 15l2 5 1.6-2.4"/><circle cx="12" cy="8" r="6"/><path d="M9.5 8.5l1.5 1.5 3-3"/></svg>
+        </div>
+        <table class="sg-api">
+          <caption>Props</caption>
+          <thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead>
+          <tbody>
+            <tr><td>size</td><td>number | string</td><td>24</td></tr>
+            <tr><td>strokeWidth</td><td>number | string</td><td>1.75</td></tr>
+            <tr><td>aria-hidden / title / aria-label</td><td>—</td><td>hidden unless a label is given</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- NAVIGATION & OVERLAY                                          -->
+  <!-- ============================================================= -->
+  <section class="sg-category" id="navoverlay">
+    <h2 class="font-headline">Navigation &amp; overlay</h2>
+    <p class="sg-category-desc">Tabs, Popover, and the dialog family. Dialogs are shown as static surface representations with behavior notes — they're live modals at runtime.</p>
+
+    <!-- Tabs -->
+    <article class="sg-component" id="tabs">
+      <div class="sg-component__head">
+        <span class="sg-component__title">Tabs / TabList / Tab / TabPanel</span>
+        <span class="sg-component__file">src/components/ui/tabs.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          Full WAI-ARIA tablist: <code class="tok">role="tablist/tab/tabpanel"</code> with
+          <code class="tok">aria-controls</code>/<code class="tok">aria-labelledby</code> auto-wired, roving tabindex,
+          and Arrow/Home/End navigation that skips disabled tabs. Visual: underline-on-active. Tabs accept an optional
+          <code class="tok">count</code> (rendered via the Badge <code class="tok">count</code> chip) and a
+          <code class="tok">disabled</code> flag. Controlled via <code class="tok">value</code> + <code class="tok">onChange</code>.
+        </p>
+        <span class="sg-block-label">Tab strip (with count + disabled)</span>
+        <div class="sg-demo sg-demo--col sg-demo--stack">
+          <div class="ui-tablist" role="tablist" aria-label="Profile sections">
+            <button class="ui-tab ui-tab--active" role="tab" aria-selected="true" tabindex="0">Overview</button>
+            <button class="ui-tab" role="tab" aria-selected="false" tabindex="-1">Activity <span class="ui-badge ui-badge--sm ui-badge--count">12</span></button>
+            <button class="ui-tab" role="tab" aria-selected="false" tabindex="-1">Endorsements</button>
+            <button class="ui-tab ui-tab--disabled" role="tab" aria-selected="false" aria-disabled="true" tabindex="-1">Drafts</button>
+          </div>
+          <div role="tabpanel" style="padding-top:16px;font-size:0.875rem;color:var(--fg-secondary);">Active panel content for "Overview".</div>
+        </div>
+        <table class="sg-api">
+          <caption>Key props</caption>
+          <thead><tr><th>Component</th><th>Prop</th><th>Type</th></tr></thead>
+          <tbody>
+            <tr><td>Tabs</td><td>value / onChange</td><td>string / (next: string) =&gt; void</td></tr>
+            <tr><td>TabList</td><td>aria-label</td><td>string (required)</td></tr>
+            <tr><td>Tab</td><td>value / disabled / count</td><td>string / boolean / number | string</td></tr>
+            <tr><td>TabPanel</td><td>value / keepMounted</td><td>string / boolean</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <!-- Popover -->
+    <article class="sg-component" id="popover">
+      <div class="sg-component__head">
+        <span class="sg-component__title">Popover</span>
+        <span class="sg-component__file">src/components/ui/popover.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          Trigger + Content + Item composition. Click-outside and Esc close (Esc refocuses the trigger);
+          <code class="tok">aria-haspopup/-expanded/-controls</code> wired automatically. Content is a
+          <code class="tok">role="menu"</code> card (<code class="tok">--bg-elevated</code>, <code class="tok">--shadow-md</code>)
+          that focuses the first item on open; Items are <code class="tok">role="menuitem"</code> with arrow-key roving
+          focus (Home/End jump to ends, disabled items skipped). <code class="tok">align</code> = start / center / end.
+        </p>
+        <span class="sg-block-label">Open menu (static, align=start)</span>
+        <div class="sg-demo sg-demo--col" style="align-items:flex-start;">
+          <button class="btn btn--secondary btn--sm" aria-haspopup="menu" aria-expanded="true">Account ▾</button>
+          <div class="ui-popover" role="menu">
+            <button class="ui-popover__item" role="menuitem">View profile</button>
+            <button class="ui-popover__item" role="menuitem">Settings</button>
+            <button class="ui-popover__item" role="menuitem" disabled>Switch account (disabled)</button>
+            <button class="ui-popover__item" role="menuitem">Sign out</button>
+          </div>
+        </div>
+        <table class="sg-api">
+          <caption>Key props</caption>
+          <thead><tr><th>Component</th><th>Prop</th><th>Type</th></tr></thead>
+          <tbody>
+            <tr><td>Popover</td><td>open / onOpenChange</td><td>boolean / (next) =&gt; void (uncontrolled if omitted)</td></tr>
+            <tr><td>PopoverTrigger</td><td>children</td><td>single focusable element (cloned)</td></tr>
+            <tr><td>PopoverContent</td><td>align / offset / minWidth</td><td>"start"|"center"|"end" / number / number|string</td></tr>
+            <tr><td>PopoverItem</td><td>…ButtonHTMLAttributes</td><td>roving tabindex (-1)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <!-- Dialog family -->
+    <article class="sg-component" id="dialogs">
+      <div class="sg-component__head">
+        <span class="sg-component__title">Dialog family</span>
+        <span class="sg-component__file">app-dialog · confirm-dialog · delete-record-dialog · form-dialog · bottom-sheet · responsive-dialog · drawer</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          <strong>AppDialog</strong> is the canonical native-<code class="tok">&lt;dialog&gt;</code> base:
+          <code class="tok">showModal()</code>, native <code class="tok">::backdrop</code>, Esc via the browser close event,
+          gateable backdrop-click close, a full Tab-cycle focus trap, focus save/restore, and optional
+          <code class="tok">autoFocusFirst</code>. It renders the <code class="tok">.signin-modal.app-modal</code> chrome
+          (2px radius, <code class="tok">--shadow-lg</code>). <code class="tok">AppDialogHeader</code> is the shared title + close-X row.
+          The surfaces below are static representations — at runtime these are real modals/sheets/drawers.
+        </p>
+
+        <span class="sg-block-label">AppDialog + AppDialogHeader</span>
+        <div class="sg-demo" style="justify-content:center;">
+          <div class="dialog-surface" role="dialog" aria-label="Edit profile">
+            <div class="signin-modal__header"><span class="signin-modal__title">Edit profile</span><button class="signin-modal__close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+            <div class="signin-modal__body">
+              <p class="dash-card__desc">Generic modal body. Header + body + actions are the consumer's; AppDialog owns the dialog dance.</p>
+              <div class="dialog-footer"><button class="btn btn--ghost btn--md">Cancel</button><button class="btn btn--primary btn--md">Save</button></div>
+            </div>
+          </div>
+        </div>
+
+        <span class="sg-block-label">ConfirmDialog (role=alertdialog)</span>
+        <div class="sg-demo" style="justify-content:center;">
+          <div class="dialog-surface" role="alertdialog" aria-label="Remove member">
+            <div class="signin-modal__header"><span class="signin-modal__title">Remove member</span><button class="signin-modal__close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+            <div class="signin-modal__body">
+              <p class="dash-card__desc" style="margin-bottom:20px;">Are you sure you want to remove this member from the group?</p>
+              <div class="dialog-footer"><button class="btn btn--ghost btn--md">Cancel</button><button class="btn btn--destructive btn--md">Confirm</button></div>
+            </div>
+          </div>
+        </div>
+        <p class="sg-note">Thin wrapper over AppDialog. Backdrop-close disabled while confirming; confirm button takes <code class="tok">confirmVariant</code> primary | destructive (default destructive).</p>
+
+        <span class="sg-block-label">DeleteRecordDialog (type-to-confirm)</span>
+        <div class="sg-demo" style="justify-content:center;">
+          <div class="dialog-surface" role="alertdialog" aria-label="Delete this cert">
+            <div class="signin-modal__header"><span class="signin-modal__title">Delete this cert</span><button class="signin-modal__close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+            <div class="signin-modal__body">
+              <p class="delete-record-dialog__warning">This will permanently delete the cert. This action <strong>cannot be undone</strong>.</p>
+              <span class="delete-record-dialog__label">Type the cert name to confirm:</span>
+              <code class="delete-record-dialog__target">Solidity Audit 2026</code>
+              <input class="ui-field ui-field--inline" type="text" placeholder="Solidity Audit 2026" />
+              <div class="dialog-footer"><button class="btn btn--ghost btn--md">Cancel</button><button class="btn btn--destructive btn--md" disabled>Delete cert</button></div>
+            </div>
+          </div>
+        </div>
+        <p class="sg-note">Delete enables only when the trimmed input matches the record name (case-sensitive). Submit is stopPropagation-guarded so a parent form doesn't catch it.</p>
+
+        <span class="sg-block-label">FormDialog</span>
+        <div class="sg-demo" style="justify-content:center;">
+          <div class="dialog-surface" role="dialog" aria-label="New list">
+            <div class="signin-modal__header"><span class="signin-modal__title">New list</span><button class="signin-modal__close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+            <div class="signin-modal__body">
+              <label class="ui-field-label">List name</label>
+              <input class="ui-field" type="text" placeholder="e.g. Trusted auditors" />
+              <div class="dialog-footer"><button class="btn btn--ghost btn--md">Cancel</button><button class="btn btn--primary btn--md">Save</button></div>
+            </div>
+          </div>
+        </div>
+        <p class="sg-note">AppDialog chrome + header + body <code class="tok">&lt;form&gt;</code> + the shared ghost-Cancel / primary-Submit footer (<code class="tok">DIALOG_FOOTER_ACTIONS_CLASS = "flex justify-end gap-2"</code>). Owns preventDefault + stopPropagation + autofocus. <code class="tok">submitVariant</code> primary | destructive.</p>
+
+        <span class="sg-block-label">BottomSheet (&lt;800px) — portalled, drag-to-dismiss</span>
+        <div class="sg-demo" style="justify-content:center;">
+          <div class="sheet-surface" role="dialog" aria-modal="true" aria-label="Switch account">
+            <div class="sheet-surface__handle" aria-hidden="true"></div>
+            <div class="sheet-surface__header"><span class="sheet-surface__title font-headline">Switch account</span><button class="signin-modal__close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+            <div class="sheet-surface__content">Bottom-anchored sheet over <code class="tok">useBottomSheetDrag</code>: drag-to-dismiss/expand, Esc, focus trap, body-scroll-lock. CSS-gated to <code class="tok">display:none</code> at desktop widths.</div>
+          </div>
+        </div>
+
+        <span class="sg-block-label">Drawer (edge-anchored)</span>
+        <div class="sg-demo sg-demo--stack">
+          <div class="drawer-frame">
+            <div class="drawer-frame__scrim" aria-hidden="true"></div>
+            <aside class="drawer-panel" role="dialog" aria-modal="true" aria-label="Menu">
+              <strong style="color:var(--fg-primary);font-size:0.875rem;">Menu</strong>
+              <span class="drawer-panel__row">Home</span>
+              <span class="drawer-panel__row">Explore</span>
+              <span class="drawer-panel__row">Notifications</span>
+            </aside>
+          </div>
+        </div>
+        <p class="sg-note">Portalled <code class="tok">&lt;aside role="dialog" aria-modal&gt;</code> pinned to the left/right edge (83.33% wide, max 320px), sliding via transform. Esc + backdrop close, focus trap, body-scroll-lock, <code class="tok">inert</code> while off-canvas. Folds the mobile-sidebar + site-drawer shells.</p>
+
+        <span class="sg-block-label">ResponsiveDialog</span>
+        <p class="sg-note" style="margin-top:0;">No surface of its own: it renders <strong>AppDialog ≥800px</strong> and <strong>BottomSheet &lt;800px</strong> behind one <code class="tok">open / onClose / header / children</code> API (driven by <code class="tok">useLayoutBreakpoints().isDesktop</code>, SSR-safe). The two paths never co-mount.</p>
+
+        <table class="sg-api">
+          <caption>AppDialog props (base)</caption>
+          <thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead>
+          <tbody>
+            <tr><td>ariaLabel</td><td>string (required)</td><td>—</td></tr>
+            <tr><td>role</td><td>"dialog" | "alertdialog"</td><td>"dialog"</td></tr>
+            <tr><td>onClose</td><td>() =&gt; void</td><td>—</td></tr>
+            <tr><td>disableBackdropClose</td><td>boolean</td><td>false</td></tr>
+            <tr><td>maxWidth</td><td>number | string</td><td>—</td></tr>
+            <tr><td>autoFocusFirst / initialFocusRef</td><td>boolean / Ref</td><td>false / —</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- STATUS & FEEDBACK                                             -->
+  <!-- ============================================================= -->
+  <section class="sg-category" id="status">
+    <h2 class="font-headline">Status &amp; feedback</h2>
+    <p class="sg-category-desc">Loading, empty, error, and notification primitives.</p>
+
+    <!-- LoadingSpinner -->
+    <article class="sg-component" id="loading-spinner">
+      <div class="sg-component__head">
+        <span class="sg-component__title">LoadingSpinner</span>
+        <span class="sg-component__file">src/components/ui/loading-spinner.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          A pulsing Brandmark in <code class="tok">currentColor</code> (<code class="tok">--fg-primary</code>),
+          wrapped in <code class="tok">role="status" aria-live="polite"</code> with sr-only "Loading" text and a
+          <code class="tok">&lt;noscript&gt;</code> Loader2 fallback. Three sizes: sm 24 · md 48 · lg 64.
+        </p>
+        <span class="sg-block-label">Sizes</span>
+        <div class="sg-demo" style="align-items:center;color:var(--fg-primary);" role="status" aria-live="polite">
+          <svg class="spinner-pulse" width="24" height="24" viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M0 8C0 3.58172 3.58172 0 8 0H32C36.4183 0 40 3.58172 40 8V32C40 36.4183 36.4183 40 32 40H8C3.58172 40 0 36.4183 0 32V8Z" fill="currentColor"/><path d="M29.8965 22.5791C29.7197 23.9952 29.2851 25.2627 28.5918 26.3828C27.8974 27.5029 26.9757 28.3863 25.8262 29.0312C24.6754 29.6762 23.3451 29.9999 21.835 30C20.2149 30 18.7905 29.6896 17.5645 29.0693L19.5527 27.167C20.2356 27.404 20.995 27.5273 21.835 27.5273C23.3104 27.5273 24.5302 27.069 25.4961 26.1553C26.4621 25.2414 27.0424 24.0493 27.2354 22.5801V22.5791H29.8965ZM21.6172 22.0518L14.4609 28.8994C13.792 29.5396 12.7408 29.5057 12.1133 28.8232L11.6914 28.3643L9 25.4336L10.8262 23.6875L13.3633 26.4492L19.9062 20.1895L21.6172 22.0518ZM21.833 10C23.2554 10 24.529 10.2916 25.6533 10.874C26.7777 11.4565 27.6864 12.2634 28.3809 13.2939C29.074 14.3244 29.5349 15.4942 29.7637 16.8018H27.1025C26.8564 15.5118 26.2602 14.467 25.3115 13.6699C24.3628 12.8716 23.2381 12.4727 21.833 12.4727C20.4281 12.4727 19.2423 12.8052 18.2764 13.4678C17.3104 14.1304 16.5955 15.0321 16.1299 16.1699C15.6643 17.3089 15.4316 18.5861 15.4316 20.001C15.4317 20.4418 15.4577 20.8677 15.5039 21.2803L15.501 21.2812L13.1689 23.5137C12.8524 22.4183 12.6905 21.2482 12.6904 20.002C12.6904 18.1566 13.0379 16.4762 13.7324 14.9609C14.4257 13.4457 15.4623 12.2409 16.8408 11.3447C18.2192 10.4487 19.8839 10.0001 21.833 10Z" fill="var(--bg-canvas)"/></svg>
+          <svg class="spinner-pulse" width="48" height="48" viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M0 8C0 3.58172 3.58172 0 8 0H32C36.4183 0 40 3.58172 40 8V32C40 36.4183 36.4183 40 32 40H8C3.58172 40 0 36.4183 0 32V8Z" fill="currentColor"/><path d="M29.8965 22.5791C29.7197 23.9952 29.2851 25.2627 28.5918 26.3828C27.8974 27.5029 26.9757 28.3863 25.8262 29.0312C24.6754 29.6762 23.3451 29.9999 21.835 30C20.2149 30 18.7905 29.6896 17.5645 29.0693L19.5527 27.167C20.2356 27.404 20.995 27.5273 21.835 27.5273C23.3104 27.5273 24.5302 27.069 25.4961 26.1553C26.4621 25.2414 27.0424 24.0493 27.2354 22.5801V22.5791H29.8965ZM21.6172 22.0518L14.4609 28.8994C13.792 29.5396 12.7408 29.5057 12.1133 28.8232L11.6914 28.3643L9 25.4336L10.8262 23.6875L13.3633 26.4492L19.9062 20.1895L21.6172 22.0518ZM21.833 10C23.2554 10 24.529 10.2916 25.6533 10.874C26.7777 11.4565 27.6864 12.2634 28.3809 13.2939C29.074 14.3244 29.5349 15.4942 29.7637 16.8018H27.1025C26.8564 15.5118 26.2602 14.467 25.3115 13.6699C24.3628 12.8716 23.2381 12.4727 21.833 12.4727C20.4281 12.4727 19.2423 12.8052 18.2764 13.4678C17.3104 14.1304 16.5955 15.0321 16.1299 16.1699C15.6643 17.3089 15.4316 18.5861 15.4316 20.001C15.4317 20.4418 15.4577 20.8677 15.5039 21.2803L15.501 21.2812L13.1689 23.5137C12.8524 22.4183 12.6905 21.2482 12.6904 20.002C12.6904 18.1566 13.0379 16.4762 13.7324 14.9609C14.4257 13.4457 15.4623 12.2409 16.8408 11.3447C18.2192 10.4487 19.8839 10.0001 21.833 10Z" fill="var(--bg-canvas)"/></svg>
+          <svg class="spinner-pulse" width="64" height="64" viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M0 8C0 3.58172 3.58172 0 8 0H32C36.4183 0 40 3.58172 40 8V32C40 36.4183 36.4183 40 32 40H8C3.58172 40 0 36.4183 0 32V8Z" fill="currentColor"/><path d="M29.8965 22.5791C29.7197 23.9952 29.2851 25.2627 28.5918 26.3828C27.8974 27.5029 26.9757 28.3863 25.8262 29.0312C24.6754 29.6762 23.3451 29.9999 21.835 30C20.2149 30 18.7905 29.6896 17.5645 29.0693L19.5527 27.167C20.2356 27.404 20.995 27.5273 21.835 27.5273C23.3104 27.5273 24.5302 27.069 25.4961 26.1553C26.4621 25.2414 27.0424 24.0493 27.2354 22.5801V22.5791H29.8965ZM21.6172 22.0518L14.4609 28.8994C13.792 29.5396 12.7408 29.5057 12.1133 28.8232L11.6914 28.3643L9 25.4336L10.8262 23.6875L13.3633 26.4492L19.9062 20.1895L21.6172 22.0518ZM21.833 10C23.2554 10 24.529 10.2916 25.6533 10.874C26.7777 11.4565 27.6864 12.2634 28.3809 13.2939C29.074 14.3244 29.5349 15.4942 29.7637 16.8018H27.1025C26.8564 15.5118 26.2602 14.467 25.3115 13.6699C24.3628 12.8716 23.2381 12.4727 21.833 12.4727C20.4281 12.4727 19.2423 12.8052 18.2764 13.4678C17.3104 14.1304 16.5955 15.0321 16.1299 16.1699C15.6643 17.3089 15.4316 18.5861 15.4316 20.001C15.4317 20.4418 15.4577 20.8677 15.5039 21.2803L15.501 21.2812L13.1689 23.5137C12.8524 22.4183 12.6905 21.2482 12.6904 20.002C12.6904 18.1566 13.0379 16.4762 13.7324 14.9609C14.4257 13.4457 15.4623 12.2409 16.8408 11.3447C18.2192 10.4487 19.8839 10.0001 21.833 10Z" fill="var(--bg-canvas)"/></svg>
+          <span style="position:absolute;left:-9999px;">Loading</span>
+        </div>
+        <table class="sg-api"><caption>Props</caption><thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead><tbody><tr><td>size</td><td>"sm" | "md" | "lg"</td><td>"md"</td></tr></tbody></table>
+      </div>
+    </article>
+
+    <!-- Skeleton -->
+    <article class="sg-component" id="skeleton">
+      <div class="sg-component__head">
+        <span class="sg-component__title">Skeleton</span>
+        <span class="sg-component__file">src/components/ui/skeleton.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          Pulsing placeholder on <code class="tok">--overlay-weak</code>. Variants: line / box / circle / text.
+          <code class="tok">circle</code> sugar forces a round chip; <code class="tok">text</code> stacks
+          <code class="tok">lines</code> bars (last one ragged at 60%); <code class="tok">count</code> repeats N copies;
+          <code class="tok">radius</code> overrides; <code class="tok">noAnimate</code> stops the pulse. Always
+          <code class="tok">aria-hidden</code>.
+        </p>
+        <span class="sg-block-label">box · line · circle · text(3)</span>
+        <div class="sg-demo sg-demo--col sg-demo--stack" style="gap:18px;">
+          <div class="skeleton" style="width:100%;height:80px;" aria-hidden="true"></div>
+          <div class="skeleton" style="width:60%;height:12px;" aria-hidden="true"></div>
+          <div class="skeleton skeleton--circle" style="width:40px;height:40px;" aria-hidden="true"></div>
+          <div aria-hidden="true" style="display:flex;flex-direction:column;gap:8px;">
+            <div class="skeleton" style="width:100%;height:12px;"></div>
+            <div class="skeleton" style="width:100%;height:12px;"></div>
+            <div class="skeleton" style="width:60%;height:12px;"></div>
+          </div>
+        </div>
+        <table class="sg-api"><caption>Props</caption><thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead><tbody>
+          <tr><td>variant</td><td>"line" | "box" | "circle" | "text"</td><td>"box"</td></tr>
+          <tr><td>width / height</td><td>number | string</td><td>variant-dependent</td></tr>
+          <tr><td>circle</td><td>boolean</td><td>false</td></tr>
+          <tr><td>lines</td><td>number (text variant)</td><td>3</td></tr>
+          <tr><td>count</td><td>number</td><td>1</td></tr>
+          <tr><td>radius</td><td>number | string</td><td>—</td></tr>
+          <tr><td>noAnimate</td><td>boolean</td><td>false</td></tr>
+        </tbody></table>
+      </div>
+    </article>
+
+    <!-- EmptyState -->
+    <article class="sg-component" id="empty-state">
+      <div class="sg-component__head">
+        <span class="sg-component__title">EmptyState</span>
+        <span class="sg-component__file">src/components/ui/empty-state.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          <strong>rich</strong> (default): centered block — optional icon, serif title, description, CTA slot.
+          <strong>compact</strong>: a single muted line for inline <code class="tok">*__empty</code> hints (icon dropped,
+          quiet body text, CTA stays inline).
+        </p>
+        <span class="sg-block-label">rich</span>
+        <div class="sg-demo sg-demo--stack">
+          <div class="empty-state">
+            <div class="empty-state__icon" aria-hidden="true"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></div>
+            <h3 class="empty-state__title font-headline">No certs yet</h3>
+            <p class="empty-state__desc">When you receive or issue a certificate, it'll show up here.</p>
+            <div class="empty-state__actions"><button class="btn btn--primary btn--sm">Create a cert</button></div>
+          </div>
+        </div>
+        <span class="sg-block-label">compact</span>
+        <div class="sg-demo sg-demo--stack">
+          <p class="empty-state--compact">No endorsements yet. <a href="#0" style="color:var(--fg-primary);">Ask for one</a></p>
+        </div>
+        <table class="sg-api"><caption>Props</caption><thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead><tbody>
+          <tr><td>title</td><td>string (required)</td><td>—</td></tr>
+          <tr><td>description</td><td>string</td><td>—</td></tr>
+          <tr><td>icon</td><td>ComponentType (lucide/cert)</td><td>—</td></tr>
+          <tr><td>variant</td><td>"rich" | "compact"</td><td>"rich"</td></tr>
+          <tr><td>children</td><td>ReactNode (CTA slot)</td><td>—</td></tr>
+        </tbody></table>
+      </div>
+    </article>
+
+    <!-- ErrorMessage -->
+    <article class="sg-component" id="error-message">
+      <div class="sg-component__head">
+        <span class="sg-component__title">ErrorMessage</span>
+        <span class="sg-component__file">src/components/ui/error-message.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          Inline <code class="tok">role="alert"</code> error card on the error-surface tokens
+          (<code class="tok">--color-error-bg/-border</code>), with an AlertCircle, a tracked title, a message, and an
+          optional secondary <strong>Try again</strong> Button when <code class="tok">onRetry</code> is supplied.
+        </p>
+        <span class="sg-block-label">With retry</span>
+        <div class="sg-demo sg-demo--stack">
+          <div class="error-message" role="alert">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+            <div>
+              <h4 class="error-message__title">Something went wrong</h4>
+              <p class="error-message__msg">We couldn't load your activity feed. Check your connection and try again.</p>
+              <div style="margin-top:16px;"><button class="btn btn--secondary btn--sm">Try again</button></div>
+            </div>
+          </div>
+        </div>
+        <table class="sg-api"><caption>Props</caption><thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead><tbody>
+          <tr><td>title</td><td>string</td><td>"Something went wrong"</td></tr>
+          <tr><td>message</td><td>string (required)</td><td>—</td></tr>
+          <tr><td>onRetry</td><td>() =&gt; void</td><td>— (hides button when absent)</td></tr>
+        </tbody></table>
+      </div>
+    </article>
+
+    <!-- ErrorBoundaryFallback -->
+    <article class="sg-component" id="error-boundary-fallback">
+      <div class="sg-component__head">
+        <span class="sg-component__title">ErrorBoundaryFallback</span>
+        <span class="sg-component__file">src/components/ui/error-boundary-fallback.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          Shared fallback for Next.js segment <code class="tok">error.tsx</code> files. Renders the
+          <code class="tok">.dashboard</code> chrome with a title, message, optional error <code class="tok">digest</code>
+          reference line, and two Buttons: <strong>Try again</strong> (wired to <code class="tok">onReset</code>) and a
+          <strong>Go home</strong> link.
+        </p>
+        <span class="sg-block-label">Fallback surface</span>
+        <div class="sg-demo sg-demo--stack">
+          <div class="dashboard">
+            <div class="dashboard__topbar"><h1 class="dashboard__page-title font-headline">Couldn't load this section</h1></div>
+            <div class="dash-card">
+              <p class="dash-card__desc">Something went wrong while loading the page. Try again or head back home.</p>
+              <p class="dash-card__desc" style="font-size:0.75rem;color:var(--fg-muted);">Reference: 7f3a9c1e</p>
+              <div style="display:flex;flex-wrap:wrap;gap:12px;"><button class="btn btn--secondary btn--sm">Try again</button><button class="btn btn--ghost btn--sm">Go home</button></div>
+            </div>
+          </div>
+        </div>
+        <table class="sg-api"><caption>Props</caption><thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead><tbody>
+          <tr><td>error</td><td>Error &amp; { digest?: string }</td><td>—</td></tr>
+          <tr><td>onReset</td><td>() =&gt; void</td><td>—</td></tr>
+          <tr><td>title</td><td>string</td><td>"Couldn't load this section"</td></tr>
+          <tr><td>message</td><td>string</td><td>generic load-failure copy</td></tr>
+        </tbody></table>
+      </div>
+    </article>
+
+    <!-- LoadMoreSentinel -->
+    <article class="sg-component" id="load-more-sentinel">
+      <div class="sg-component__head">
+        <span class="sg-component__title">LoadMoreSentinel</span>
+        <span class="sg-component__file">src/components/ui/load-more-sentinel.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          An <code class="tok">IntersectionObserver</code>-tracked div (fires <code class="tok">onLoadMore</code> 200px before
+          it scrolls into view) plus a visible manual button. By default the button is
+          <code class="tok">&lt;Button variant="secondary" size="sm"&gt;</code> with a loading state; surfaces with bespoke
+          chrome can pass <code class="tok">buttonClassName</code> for a raw button instead.
+        </p>
+        <span class="sg-block-label">Idle · loading</span>
+        <div class="sg-demo">
+          <button class="btn btn--secondary btn--sm">Load more</button>
+          <button class="btn btn--secondary btn--sm" aria-busy="true" disabled>
+            <svg class="sg-icon spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            Loading…
+          </button>
+        </div>
+        <table class="sg-api"><caption>Props</caption><thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead><tbody>
+          <tr><td>onLoadMore</td><td>() =&gt; void</td><td>—</td></tr>
+          <tr><td>isLoading</td><td>boolean</td><td>—</td></tr>
+          <tr><td>label</td><td>string</td><td>"Load more"</td></tr>
+          <tr><td>className / buttonClassName</td><td>string</td><td>— (raw-button escape hatch)</td></tr>
+        </tbody></table>
+      </div>
+    </article>
+
+    <!-- ProviderRedirectOverlay -->
+    <article class="sg-component" id="provider-redirect-overlay">
+      <div class="sg-component__head">
+        <span class="sg-component__title">ProviderRedirectOverlay</span>
+        <span class="sg-component__file">src/components/ui/provider-redirect-overlay.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          Full-screen fixed <code class="tok">role="status"</code> overlay (<code class="tok">.loading-screen</code>,
+          z = <code class="tok">--z-skip-nav</code>) shown during an OAuth provider redirect: a centered Brandmark plus a
+          muted "Redirecting..." line. Takes no props.
+        </p>
+        <span class="sg-block-label">Overlay (inline representation)</span>
+        <div class="sg-demo sg-demo--stack">
+          <div class="loading-screen-demo" role="status">
+            <svg class="brandmark" width="48" height="48" viewBox="0 0 40 40" fill="none" style="color:var(--fg-primary);" aria-hidden="true"><path d="M0 8C0 3.58172 3.58172 0 8 0H32C36.4183 0 40 3.58172 40 8V32C40 36.4183 36.4183 40 32 40H8C3.58172 40 0 36.4183 0 32V8Z" fill="currentColor"/><path d="M29.8965 22.5791C29.7197 23.9952 29.2851 25.2627 28.5918 26.3828C27.8974 27.5029 26.9757 28.3863 25.8262 29.0312C24.6754 29.6762 23.3451 29.9999 21.835 30C20.2149 30 18.7905 29.6896 17.5645 29.0693L19.5527 27.167C20.2356 27.404 20.995 27.5273 21.835 27.5273C23.3104 27.5273 24.5302 27.069 25.4961 26.1553C26.4621 25.2414 27.0424 24.0493 27.2354 22.5801V22.5791H29.8965ZM21.6172 22.0518L14.4609 28.8994C13.792 29.5396 12.7408 29.5057 12.1133 28.8232L11.6914 28.3643L9 25.4336L10.8262 23.6875L13.3633 26.4492L19.9062 20.1895L21.6172 22.0518ZM21.833 10C23.2554 10 24.529 10.2916 25.6533 10.874C26.7777 11.4565 27.6864 12.2634 28.3809 13.2939C29.074 14.3244 29.5349 15.4942 29.7637 16.8018H27.1025C26.8564 15.5118 26.2602 14.467 25.3115 13.6699C24.3628 12.8716 23.2381 12.4727 21.833 12.4727C20.4281 12.4727 19.2423 12.8052 18.2764 13.4678C17.3104 14.1304 16.5955 15.0321 16.1299 16.1699C15.6643 17.3089 15.4316 18.5861 15.4316 20.001C15.4317 20.4418 15.4577 20.8677 15.5039 21.2803L15.501 21.2812L13.1689 23.5137C12.8524 22.4183 12.6905 21.2482 12.6904 20.002C12.6904 18.1566 13.0379 16.4762 13.7324 14.9609C14.4257 13.4457 15.4623 12.2409 16.8408 11.3447C18.2192 10.4487 19.8839 10.0001 21.833 10Z" fill="var(--bg-canvas)"/></svg>
+            <p style="margin:0;font-size:0.875rem;letter-spacing:0.03em;color:var(--fg-muted);">Redirecting...</p>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- Toast -->
+    <article class="sg-component" id="toast">
+      <div class="sg-component__head">
+        <span class="sg-component__title">Toast / ToastProvider / useToast</span>
+        <span class="sg-component__file">src/components/ui/toast.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          Portal-backed aria-live stack (bottom-right desktop / full-width mobile). Mount <code class="tok">&lt;ToastProvider&gt;</code>
+          high in the tree; call <code class="tok">useToast().toast({...})</code> to enqueue. Variants default / success / error;
+          <code class="tok">duration</code> (0/∞ = sticky), optional <code class="tok">action</code> (e.g. Undo), pause-on-hover.
+          Errors announce assertively (<code class="tok">role="alert"</code>); others politely.
+        </p>
+        <span class="sg-block-label">default (with Undo) · success · error</span>
+        <div class="sg-demo sg-demo--col sg-demo--stack" style="gap:12px;">
+          <div class="toast" role="status">
+            <div style="flex:1;min-width:0;"><p class="toast__title">Response hidden</p><p class="toast__desc">Removed from your feed.</p></div>
+            <button class="toast__action">Undo</button>
+            <button class="toast__close" aria-label="Dismiss notification"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+          </div>
+          <div class="toast toast--success" role="status">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-success-text)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+            <div style="flex:1;min-width:0;"><p class="toast__title">Profile saved</p></div>
+            <button class="toast__close" aria-label="Dismiss notification"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+          </div>
+          <div class="toast toast--error" role="alert">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-error)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+            <div style="flex:1;min-width:0;"><p class="toast__title">Couldn't publish</p><p class="toast__desc">Try again in a moment.</p></div>
+            <button class="toast__close" aria-label="Dismiss notification"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+          </div>
+        </div>
+        <table class="sg-api"><caption>toast(options) — ToastOptions</caption><thead><tr><th>Field</th><th>Type</th><th>Default</th></tr></thead><tbody>
+          <tr><td>title</td><td>ReactNode (required)</td><td>—</td></tr>
+          <tr><td>description</td><td>ReactNode</td><td>—</td></tr>
+          <tr><td>variant</td><td>"default" | "success" | "error"</td><td>"default"</td></tr>
+          <tr><td>duration</td><td>number (ms; 0/∞ sticky)</td><td>6000</td></tr>
+          <tr><td>action</td><td>{ label, onClick }</td><td>—</td></tr>
+        </tbody></table>
+      </div>
+    </article>
+
+    <!-- Banner -->
+    <article class="sg-component" id="banner">
+      <div class="sg-component__head">
+        <span class="sg-component__title">Banner</span>
+        <span class="sg-component__file">src/components/ui/banner.tsx</span>
+      </div>
+      <div class="sg-component__body">
+        <p class="sg-usage">
+          Inline (non-modal) callout. Four variants with a default leading icon + tint surface + ARIA role
+          (info/success → <code class="tok">status</code>; warning/error → <code class="tok">alert</code>). Optional bold
+          <code class="tok">title</code>, custom or suppressed <code class="tok">icon</code>, and a trailing dismiss button
+          (<code class="tok">onDismiss</code>; the caller owns unmounting).
+        </p>
+        <span class="sg-block-label">info · warning · success · error</span>
+        <div class="sg-demo sg-demo--col sg-demo--stack" style="gap:12px;">
+          <div class="banner banner--info">
+            <span class="banner__icon banner__icon--info" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></span>
+            <div><p class="banner__body">Your changes are saved automatically as you edit.</p></div>
+          </div>
+          <div class="banner banner--warning" role="alert">
+            <span class="banner__icon banner__icon--warning" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg></span>
+            <div><p class="banner__title">Custom domain not verified</p><p class="banner__body">DNS changes can take up to 24 hours to propagate.</p></div>
+          </div>
+          <div class="banner banner--success" role="status">
+            <span class="banner__icon banner__icon--success" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg></span>
+            <div><p class="banner__body">Your social graph import finished successfully.</p></div>
+          </div>
+          <div class="banner banner--error" role="alert">
+            <span class="banner__icon banner__icon--error" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></span>
+            <div><p class="banner__title">Session expired</p><p class="banner__body">Sign in again to continue.</p></div>
+          </div>
+        </div>
+        <table class="sg-api"><caption>Props (extends HTMLAttributes, omits "title")</caption><thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead><tbody>
+          <tr><td>variant</td><td>"info" | "warning" | "success" | "error"</td><td>"info"</td></tr>
+          <tr><td>title</td><td>ReactNode</td><td>—</td></tr>
+          <tr><td>icon</td><td>ReactNode | false</td><td>per-variant default</td></tr>
+          <tr><td>onDismiss</td><td>() =&gt; void</td><td>— (renders dismiss button)</td></tr>
+          <tr><td>dismissLabel</td><td>string</td><td>"Dismiss"</td></tr>
+        </tbody></table>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- DESIGN TOKENS                                                 -->
+  <!-- ============================================================= -->
+  <section class="sg-category" id="tokens">
+    <h2 class="font-headline">Design tokens</h2>
+    <p class="sg-category-desc">Live token values from <code class="tok">src/app/styles/tokens.css</code>. Swatches render the current theme — toggle to see each token flip. Light/dark hex pairs are annotated.</p>
+
+    <!-- Surfaces -->
+    <article class="sg-component">
+      <div class="sg-component__head"><span class="sg-component__title">Surfaces &amp; foregrounds</span></div>
+      <div class="sg-component__body">
+        <div class="swatch-grid">
+          <div class="swatch"><div class="swatch__chip" style="background:var(--bg-canvas);"></div><div class="swatch__meta"><span class="swatch__name">--bg-canvas</span><span class="swatch__val">#f9f9f9 / #18181b</span></div></div>
+          <div class="swatch"><div class="swatch__chip" style="background:var(--bg-sunken);"></div><div class="swatch__meta"><span class="swatch__name">--bg-sunken</span><span class="swatch__val">#eeeeee / #111114</span></div></div>
+          <div class="swatch"><div class="swatch__chip" style="background:var(--bg-raised);"></div><div class="swatch__meta"><span class="swatch__name">--bg-raised</span><span class="swatch__val">#f3f3f3 / #26262b</span></div></div>
+          <div class="swatch"><div class="swatch__chip" style="background:var(--bg-elevated);"></div><div class="swatch__meta"><span class="swatch__name">--bg-elevated</span><span class="swatch__val">#FFFFFF / #2d2d33</span></div></div>
+          <div class="swatch"><div class="swatch__chip" style="background:var(--fg-primary);"></div><div class="swatch__meta"><span class="swatch__name">--fg-primary</span><span class="swatch__val">#111111 / #f5f5f7</span></div></div>
+          <div class="swatch"><div class="swatch__chip" style="background:var(--fg-secondary);"></div><div class="swatch__meta"><span class="swatch__name">--fg-secondary</span><span class="swatch__val">#4c4546 / #c7c7cc</span></div></div>
+          <div class="swatch"><div class="swatch__chip" style="background:var(--fg-muted);"></div><div class="swatch__meta"><span class="swatch__name">--fg-muted</span><span class="swatch__val">#6b6263 / #8e8e93</span></div></div>
+          <div class="swatch"><div class="swatch__chip" style="background:var(--color-surface-container-high);"></div><div class="swatch__meta"><span class="swatch__name">--color-surface-container-high</span><span class="swatch__val">#e7e7e7 / #3a3a40</span></div></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- Primary / accent / borders -->
+    <article class="sg-component">
+      <div class="sg-component__head"><span class="sg-component__title">Primary button, accent &amp; borders</span></div>
+      <div class="sg-component__body">
+        <div class="swatch-grid">
+          <div class="swatch"><div class="swatch__chip" style="background:var(--btn-primary-bg);"></div><div class="swatch__meta"><span class="swatch__name">--btn-primary-bg</span><span class="swatch__val">#111111 / #f5f5f7 (inverts)</span></div></div>
+          <div class="swatch"><div class="swatch__chip" style="background:var(--btn-primary-fg);"></div><div class="swatch__meta"><span class="swatch__name">--btn-primary-fg</span><span class="swatch__val">#FFFFFF / #0b0b0d (inverts)</span></div></div>
+          <div class="swatch"><div class="swatch__chip" style="background:var(--color-accent);"></div><div class="swatch__meta"><span class="swatch__name">--color-accent / --focus-ring</span><span class="swatch__val">#5e5e5e / #a0a0a8</span></div></div>
+          <div class="swatch"><div class="swatch__chip" style="background:var(--bg-elevated);border-bottom:none;box-shadow:inset 0 0 0 8px var(--border-default);"></div><div class="swatch__meta"><span class="swatch__name">--border-default</span><span class="swatch__val">rgba(0,0,0,.08) / rgba(255,255,255,.08)</span></div></div>
+          <div class="swatch"><div class="swatch__chip" style="background:var(--bg-elevated);border-bottom:none;box-shadow:inset 0 0 0 8px var(--border-hover);"></div><div class="swatch__meta"><span class="swatch__name">--border-hover</span><span class="swatch__val">rgba(0,0,0,.15) / rgba(255,255,255,.18)</span></div></div>
+          <div class="swatch"><div class="swatch__chip" style="background:var(--bg-elevated);border-bottom:none;box-shadow:inset 0 0 0 8px var(--border-subtle);"></div><div class="swatch__meta"><span class="swatch__name">--border-subtle</span><span class="swatch__val">rgba(0,0,0,.04) / rgba(255,255,255,.04)</span></div></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- Status & badge tokens -->
+    <article class="sg-component">
+      <div class="sg-component__head"><span class="sg-component__title">Status &amp; badge colors</span></div>
+      <div class="sg-component__body">
+        <div class="swatch-grid">
+          <div class="swatch"><div class="swatch__chip" style="background:var(--color-success);"></div><div class="swatch__meta"><span class="swatch__name">--color-success</span><span class="swatch__val">#2ECC71 (both)</span></div></div>
+          <div class="swatch"><div class="swatch__chip" style="background:var(--color-warning);"></div><div class="swatch__meta"><span class="swatch__name">--color-warning</span><span class="swatch__val">#F5A623 (both)</span></div></div>
+          <div class="swatch"><div class="swatch__chip" style="background:var(--color-error);"></div><div class="swatch__meta"><span class="swatch__name">--color-error</span><span class="swatch__val">#ba1a1a / #f87171</span></div></div>
+          <div class="swatch"><div class="swatch__chip" style="background:var(--badge-success-bg);"></div><div class="swatch__meta"><span class="swatch__name">--badge-success-bg/fg</span><span class="swatch__val">#e8f5e9 · #1b7a3d</span></div></div>
+          <div class="swatch"><div class="swatch__chip" style="background:var(--badge-warning-bg);"></div><div class="swatch__meta"><span class="swatch__name">--badge-warning-bg/fg</span><span class="swatch__val">#fff3e0 · #b37100</span></div></div>
+          <div class="swatch"><div class="swatch__chip" style="background:var(--badge-neutral-bg);"></div><div class="swatch__meta"><span class="swatch__name">--badge-neutral-bg/fg</span><span class="swatch__val">#f5f5f5 · #6b6263</span></div></div>
+          <div class="swatch"><div class="swatch__chip" style="background:var(--badge-count-bg);"></div><div class="swatch__meta"><span class="swatch__name">--badge-count-bg/fg</span><span class="swatch__val">#b91c1c · #fff / #dc2626</span></div></div>
+          <div class="swatch"><div class="swatch__chip" style="background:var(--color-error-bg);"></div><div class="swatch__meta"><span class="swatch__name">--color-error-bg</span><span class="swatch__val">rgba(186,26,26,.08) / rgba(248,113,113,.12)</span></div></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- Type scale -->
+    <article class="sg-component">
+      <div class="sg-component__head"><span class="sg-component__title">Type scale</span><span class="sg-component__file">tailwind.config.ts fontSize · headline = font-headline</span></div>
+      <div class="sg-component__body">
+        <div class="scale-row"><span class="scale-row__tag">display · 3rem</span><span class="font-headline text-display">Certified ledger</span></div>
+        <div class="scale-row"><span class="scale-row__tag">h1 · 2.25rem</span><span class="font-headline text-h1">Certified ledger</span></div>
+        <div class="scale-row"><span class="scale-row__tag">h2 · 1.75rem</span><span class="font-headline text-h2">Certified ledger</span></div>
+        <div class="scale-row"><span class="scale-row__tag">h3 · 1.375rem</span><span class="font-headline text-h3">Certified ledger</span></div>
+        <div class="scale-row"><span class="scale-row__tag">h4 · 1.125rem</span><span class="font-headline text-h4">Certified ledger</span></div>
+        <div class="scale-row"><span class="scale-row__tag">body · 1rem</span><span class="text-body">The quick brown fox jumps over the lazy dog (Inter / system-ui).</span></div>
+        <div class="scale-row"><span class="scale-row__tag">body-sm · .875rem</span><span class="text-body-sm">The quick brown fox jumps over the lazy dog.</span></div>
+        <div class="scale-row"><span class="scale-row__tag">caption · .75rem</span><span class="text-caption" style="text-transform:uppercase;">Section label · uppercase tracking</span></div>
+        <p class="sg-note">Headline rows use Georgia, serif here (Noto Serif fallback). display/h1/h2 carry negative tracking; caption is uppercase with +0.05em tracking.</p>
+      </div>
+    </article>
+
+    <!-- Spacing & radii -->
+    <article class="sg-component">
+      <div class="sg-component__head"><span class="sg-component__title">Spacing &amp; radii</span></div>
+      <div class="sg-component__body">
+        <span class="sg-block-label">Spacing (4px grid — the documented scale)</span>
+        <div class="space-row"><span class="space-row__tag">4px</span><span class="space-bar" style="width:4px;"></span></div>
+        <div class="space-row"><span class="space-row__tag">8px</span><span class="space-bar" style="width:8px;"></span></div>
+        <div class="space-row"><span class="space-row__tag">12px</span><span class="space-bar" style="width:12px;"></span></div>
+        <div class="space-row"><span class="space-row__tag">16px</span><span class="space-bar" style="width:16px;"></span></div>
+        <div class="space-row"><span class="space-row__tag">20px</span><span class="space-bar" style="width:20px;"></span></div>
+        <div class="space-row"><span class="space-row__tag">24px</span><span class="space-bar" style="width:24px;"></span></div>
+        <div class="space-row"><span class="space-row__tag">32px</span><span class="space-bar" style="width:32px;"></span></div>
+        <div class="space-row"><span class="space-row__tag">48px</span><span class="space-bar" style="width:48px;"></span></div>
+
+        <span class="sg-block-label">Radii</span>
+        <div class="radius-row"><span class="space-row__tag">--radius (2px)</span><span class="radius-box" style="border-radius:var(--radius);"></span><span class="sg-note" style="margin:0;">All cards, buttons, inputs</span></div>
+        <div class="radius-row"><span class="space-row__tag">999px (pill)</span><span class="radius-box" style="border-radius:999px;width:80px;"></span><span class="sg-note" style="margin:0;">Badges, switches, drag handles</span></div>
+        <div class="radius-row"><span class="space-row__tag">50% (circle)</span><span class="radius-box" style="border-radius:50%;"></span><span class="sg-note" style="margin:0;">Avatars only</span></div>
+
+        <span class="sg-block-label">Shadows</span>
+        <div class="sg-demo" style="background:var(--bg-canvas);">
+          <span class="radius-box" style="box-shadow:var(--shadow-sm);background:var(--bg-elevated);border:none;"></span>
+          <span class="radius-box" style="box-shadow:var(--shadow-md);background:var(--bg-elevated);border:none;"></span>
+          <span class="radius-box" style="box-shadow:var(--shadow-lg);background:var(--bg-elevated);border:none;"></span>
+          <span class="sg-demo__caption">--shadow-sm · --shadow-md · --shadow-lg</span>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <hr class="sg-hr" />
+  <p class="sg-note" style="padding-top:24px;">
+    Hand-authored static mirror of <code class="tok">src/components/ui/</code>. Tokens copied verbatim from
+    <code class="tok">src/app/styles/tokens.css</code>; class names and props derived from each primitive's TSX source.
+    Open via <code class="tok">file://</code> — no build, no network.
+  </p>
+
+</main>
+
+<script>
+/* Theme toggle — flips data-theme on <html>. The token blocks above do the
+   rest. No persistence/network; pure inline toggle per the requirements. */
+(function () {
+  var root = document.documentElement;
+  var btn = document.getElementById("theme-btn");
+  var icon = document.getElementById("theme-icon");
+  var label = document.getElementById("theme-label");
+  function apply(theme) {
+    root.setAttribute("data-theme", theme);
+    var dark = theme === "dark";
+    btn.setAttribute("aria-pressed", String(dark));
+    icon.textContent = dark ? "☀" : "☾";
+    label.textContent = dark ? "Light" : "Dark";
+  }
+  btn.addEventListener("click", function () {
+    apply(root.getAttribute("data-theme") === "dark" ? "light" : "dark");
+  });
+})();
+</script>
+</body>
+</html>
