@@ -19,6 +19,9 @@ interface ResponseMenuProps {
   /** All of the owner's response records — needed for "Reset to default"
    *  which sweeps every vestigial response targeting this award. */
   readonly allResponses: BadgeResponseRecord[]
+  /** Group DID when the viewer is acting AS that group (responses are
+   *  authored on the group's repo). Undefined for personal responses. */
+  readonly targetDid?: string
   /** Invoked after a write so the parent can refresh state + drop
    *  the row from the visible list when the action was Hide. */
   readonly onAfterWrite?: () => void | Promise<void>
@@ -63,6 +66,7 @@ export default function ResponseMenu({
   ownerDid,
   state,
   allResponses,
+  targetDid,
   onAfterWrite,
 }: ResponseMenuProps) {
   const [isWriting, setIsWriting] = useState(false)
@@ -78,6 +82,7 @@ export default function ResponseMenu({
           ownerDid,
           { uri: awardUri, cid: awardCid },
           resp,
+          { targetDid },
         )
         await onAfterWrite?.()
       } catch (err) {
@@ -86,7 +91,7 @@ export default function ResponseMenu({
         setIsWriting(false)
       }
     },
-    [ownerDid, awardUri, awardCid, onAfterWrite],
+    [ownerDid, awardUri, awardCid, targetDid, onAfterWrite],
   )
 
   const resetToDefault = useCallback(async () => {
@@ -94,14 +99,16 @@ export default function ResponseMenu({
     setIsWriting(true)
     setError(null)
     try {
-      await deleteAllResponsesForAward(ownerDid, awardUri, allResponses)
+      await deleteAllResponsesForAward(ownerDid, awardUri, allResponses, {
+        targetDid,
+      })
       await onAfterWrite?.()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to reset")
     } finally {
       setIsWriting(false)
     }
-  }, [ownerDid, awardUri, allResponses, onAfterWrite])
+  }, [ownerDid, awardUri, allResponses, targetDid, onAfterWrite])
 
   /** Single-click toggle:
    *    - clicking the currently-active state → reset to default

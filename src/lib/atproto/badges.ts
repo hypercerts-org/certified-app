@@ -816,8 +816,35 @@ export async function createResponse(
   ownDid: string,
   badgeAward: StrongRef,
   response: "accepted" | "rejected",
-  weight?: string,
+  opts?: { targetDid?: string; weight?: string },
 ): Promise<{ uri: string; cid: string }> {
+  const weight = opts?.weight
+  // Acting as a group (recipient): route the response to the GROUP's repo
+  // via the BFF so the group's own profile reflects the accept/reject.
+  // Personal path (no targetDid) is unchanged below.
+  if (opts?.targetDid && opts.targetDid !== ownDid) {
+    const res = await authFetch(
+      `/api/groups/${encodeURIComponent(opts.targetDid)}/response`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ award: badgeAward, response, weight }),
+      },
+    )
+    const data = (await res.json().catch(() => ({}))) as {
+      uri?: string
+      cid?: string
+      error?: string
+    }
+    if (!res.ok || !data.uri || !data.cid) {
+      throw new Error(
+        data.error || `Failed to create group badge response: ${res.status}`,
+      )
+    }
+    invalidateEndorsementClosure()
+    return { uri: data.uri, cid: data.cid }
+  }
+
   const body = {
     repo: ownDid,
     collection: BADGE_RESPONSE_COLLECTION,
@@ -865,7 +892,26 @@ export async function createResponse(
 export async function deleteResponse(
   ownDid: string,
   rkey: string,
+  opts?: { targetDid?: string },
 ): Promise<void> {
+  // Acting as a group: delete the response from the GROUP's repo via the BFF.
+  if (opts?.targetDid && opts.targetDid !== ownDid) {
+    const res = await authFetch(
+      `/api/groups/${encodeURIComponent(opts.targetDid)}/response`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rkey }),
+      },
+    )
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      throw new Error(
+        data.error || `Failed to delete group badge response: ${res.status}`,
+      )
+    }
+    return
+  }
   const res = await authFetch("/api/xrpc/com/atproto/repo/deleteRecord", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -949,12 +995,13 @@ export async function deleteAllResponsesForAward(
   ownDid: string,
   awardUri: string,
   allResponses: BadgeResponseRecord[],
+  opts?: { targetDid?: string },
 ): Promise<number> {
   const matching = allResponses.filter(
     (r) => r.value.badgeAward?.uri === awardUri,
   )
   for (const r of matching) {
-    await deleteResponse(ownDid, r.rkey)
+    await deleteResponse(ownDid, r.rkey, opts)
   }
   return matching.length
 }
