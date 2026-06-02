@@ -362,10 +362,11 @@ export default function DesktopTopBar() {
     return qs ? `${pathname}?${qs}` : pathname;
   };
 
-  // Brandmark always navigates to /home, regardless of auth or
-  // active identity. The /home page itself handles the signed-out
-  // empty state. Mirrors the navbar + left-rail brand link.
-  const brandHref = "/home"
+  // Brandmark navigates to /home for signed-in viewers and to /welcome
+  // once we know the viewer is signed out. isLoading already returned
+  // null above (line ~353), so !isAuthenticated here means definitively
+  // signed out. Mirrors the navbar + left-rail brand link.
+  const brandHref = isAuthenticated ? "/home" : "/welcome"
   const brandAriaLabel = "Certified home"
 
   return (

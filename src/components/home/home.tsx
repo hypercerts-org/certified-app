@@ -1,14 +1,15 @@
 "use client"
 
+import { useEffect } from "react"
 import Link from "next/link"
-import { FolderGit2, LogIn, User, Users } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { FolderGit2, User, Users } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useUserProjects } from "@/hooks/use-user-projects"
 import { useUserActivities } from "@/hooks/use-user-activities"
 import { usePageTitle } from "@/lib/navbar-context"
-import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Avatar from "@/components/ui/avatar"
 import HomeFeed from "@/components/home/home-feed"
@@ -46,6 +47,7 @@ const SIDEBAR_PREVIEW_LIMIT = 5
  */
 export default function Home() {
   usePageTitle("Home")
+  const router = useRouter()
   const { isLoading: authLoading, isAuthenticated, did: personalDid } = useAuth()
   const { activeOrg } = useOrg()
 
@@ -56,29 +58,27 @@ export default function Home() {
   // useOrg() further down, which always reflects the signed-in user).
   const activeDid = activeOrg?.groupDid || personalDid
 
-  // While the auth check is in flight `isAuthenticated` is still
-  // false. Show a spinner instead of the sign-in CTA so the page
-  // doesn't flash a "sign in" message every reload before the auth
-  // state resolves.
-  if (authLoading) {
+  // /home is a signed-in-only surface. Once auth resolves to
+  // signed-out, redirect to the marketing landing rather than showing
+  // a sign-in empty state. Runs in an effect because router.replace
+  // can't fire during render. The brandmark links already aim straight
+  // at /welcome when they know the viewer is signed out; this guard
+  // backstops the remaining paths into /home — direct navigation, the
+  // bottom-nav Home tab, or a click during the auth-loading tick.
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.replace("/welcome")
+    }
+  }, [authLoading, isAuthenticated, router])
+
+  // Show a spinner while auth is still resolving, while the signed-out
+  // redirect above is in flight, or while an authenticated viewer's
+  // acting-as DID is still resolving — never flash the feed or a CTA.
+  if (authLoading || !isAuthenticated || !activeDid) {
     return (
       <div className="home-page">
         <div className="home__loading">
           <LoadingSpinner size="md" />
-        </div>
-      </div>
-    )
-  }
-
-  if (!isAuthenticated || !activeDid) {
-    return (
-      <div className="home-page">
-        <div className="home__signed-out">
-          <EmptyState
-            icon={LogIn}
-            title="Sign in to see your home"
-            description="Once signed in, you'll see the groups, projects, and certs you own — plus a feed of activity from the people you follow."
-          />
         </div>
       </div>
     )
