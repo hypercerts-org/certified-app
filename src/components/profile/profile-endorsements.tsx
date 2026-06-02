@@ -23,6 +23,7 @@ import { useAuthorInfo, type AuthorInfo } from "@/hooks/use-author-info"
 import { useAuthorNamesMap } from "@/hooks/use-author-names-map"
 import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useOrg } from "@/lib/groups/org-context"
 import {
   createEndorsementAward,
   deleteEndorsementAward,
@@ -88,6 +89,17 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
   const { did: viewerDid } = useAuth()
   const viewerIsOwner = !!viewerDid && viewerDid === did
 
+  // Acting AS this group: when an owner/admin operates a group (delegation)
+  // and is viewing the group's own profile, the GIVE and revoke-given
+  // actions author the award on the GROUP's repo via `giveTargetDid`
+  // instead of the personal one. The Received-side response controls
+  // (accept/reject) stay personal-only for now — group accept/reject is a
+  // separate, not-yet-built recipient flow — so they keep `viewerIsOwner`.
+  const { activeOrg } = useOrg()
+  const actingAsThisGroup = !!activeOrg && activeOrg.groupDid === did
+  const canGive = viewerIsOwner || actingAsThisGroup
+  const giveTargetDid = actingAsThisGroup ? did : undefined
+
   const given = useGivenEndorsements(did)
   // Owner-side surfaces see ALL received endorsements (including
   // the rejected ones) so the filter dropdown below can offer
@@ -151,7 +163,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
   // single pass.
   const [isEndorseModalOpen, setIsEndorseModalOpen] = useState(false)
   const ownGivenForModal = useGivenEndorsements(
-    viewerIsOwner ? viewerDid : null,
+    canGive ? did : null,
   )
   const ownAlreadyEndorsedDids = useMemo(
     () => new Set(ownGivenForModal.endorsements.map((e) => e.subjectDid)),
@@ -235,7 +247,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
         </nav>
 
         <div className="profile-endorsements-v2__controls">
-          {viewerIsOwner ? (
+          {canGive ? (
             <button
               type="button"
               className="profile-endorsements-v2__endorse-add"
@@ -397,19 +409,22 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
           query={query}
           sort={sort}
           names={names}
-          viewerIsOwner={viewerIsOwner}
+          viewerIsOwner={canGive}
           viewerDid={viewerDid}
+          targetDid={giveTargetDid}
           onAfterRevoke={() => given.refetch()}
         />
       )}
 
-      {isEndorseModalOpen && viewerIsOwner && viewerDid ? (
+      {isEndorseModalOpen && canGive && viewerDid ? (
         <EndorsePeopleModal
           viewerDid={viewerDid}
           alreadyEndorsedDids={ownAlreadyEndorsedDids}
           requireReason
           onEndorse={(subjectDid, note) =>
-            createEndorsementAward(viewerDid, subjectDid, note)
+            createEndorsementAward(viewerDid, subjectDid, note, {
+              targetDid: giveTargetDid,
+            })
           }
           onClose={() => setIsEndorseModalOpen(false)}
           onCompleted={async () => {
@@ -620,6 +635,9 @@ interface GivenGridProps {
    *  issued. Controls whether the per-card revoke `×` renders. */
   viewerIsOwner: boolean
   viewerDid: string | null
+  /** Group DID when the viewer is acting AS this group — revokes route
+   *  to the group repo. Undefined for personal revokes. */
+  targetDid?: string
   onAfterRevoke: () => void | Promise<void>
 }
 
@@ -632,6 +650,7 @@ function GivenGrid({
   names,
   viewerIsOwner,
   viewerDid,
+  targetDid,
   onAfterRevoke,
 }: GivenGridProps) {
   const visible = useMemo(
@@ -680,6 +699,7 @@ function GivenGrid({
           endorsement={e}
           canRevoke={viewerIsOwner && !!viewerDid}
           viewerDid={viewerDid}
+          targetDid={targetDid}
           onAfterRevoke={onAfterRevoke}
         />
       ))}
@@ -691,11 +711,13 @@ function GivenCard({
   endorsement,
   canRevoke,
   viewerDid,
+  targetDid,
   onAfterRevoke,
 }: {
   endorsement: GivenEndorsement
   canRevoke: boolean
   viewerDid: string | null
+  targetDid?: string
   onAfterRevoke: () => void | Promise<void>
 }) {
   const { info, isLoading } = useAuthorInfo(endorsement.subjectDid)
@@ -712,6 +734,7 @@ function GivenCard({
           <RevokeGivenButton
             viewerDid={viewerDid}
             rkey={endorsement.rkey}
+            targetDid={targetDid}
             subjectDisplay={
               info?.displayName || info?.handle || endorsement.subjectDid
             }
@@ -732,11 +755,13 @@ function GivenCard({
 function RevokeGivenButton({
   viewerDid,
   rkey,
+  targetDid,
   subjectDisplay,
   onAfterRevoke,
 }: {
   viewerDid: string
   rkey: string
+  targetDid?: string
   subjectDisplay: string
   onAfterRevoke: () => void | Promise<void>
 }) {
@@ -749,7 +774,7 @@ function RevokeGivenButton({
     setIsRevoking(true)
     setError(null)
     try {
-      await deleteEndorsementAward(viewerDid, rkey)
+      await deleteEndorsementAward(viewerDid, rkey, { targetDid })
       await onAfterRevoke()
       setConfirmOpen(false)
     } catch (err) {
