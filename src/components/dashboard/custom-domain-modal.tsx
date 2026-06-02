@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Globe, Copy, Check, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Globe, Copy, Check, AlertCircle, CheckCircle2 } from "lucide-react";
 import { authFetch } from "@/lib/auth/fetch";
 import { clearSessionCache } from "@/hooks/use-session";
-import { useFocusTrap } from "@/hooks/use-focus-trap";
-import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import Button from "@/components/ui/button";
+import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog";
 
 interface CustomDomainModalProps {
   isOpen: boolean;
@@ -17,7 +16,6 @@ interface CustomDomainModalProps {
 type Step = "enter-domain" | "dns-setup" | "verify";
 
 export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomainModalProps) {
-  const backdropRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -28,7 +26,6 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
       if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
     };
   }, []);
-  const modalRef = useFocusTrap<HTMLDivElement>(isOpen);
 
   const [step, setStep] = useState<Step>("enter-domain");
   const [domain, setDomain] = useState("");
@@ -37,7 +34,9 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Reset state when modal opens
+  // Reset state when modal opens. AppDialog owns the Esc-to-close,
+  // body-scroll-lock, focus trap, and focus save/restore; this effect
+  // only resets the wizard's own state and focuses the domain input.
   useEffect(() => {
     if (isOpen) {
       setStep("enter-domain");
@@ -49,19 +48,6 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
-
-  // Close on Escape
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
-
-  // Prevent body scroll
-  useBodyScrollLock(isOpen);
 
   const cleanDomain = useCallback((input: string) => {
     let d = input.trim().toLowerCase();
@@ -138,32 +124,26 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
   const dnsValue = `did=${did}`;
 
   return (
-    <div
-      className="domain-modal__backdrop"
-      ref={backdropRef}
-      onClick={(e) => { if (e.target === backdropRef.current) onClose(); }}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Use your own domain as your username"
+    <AppDialog
+      ariaLabel="Use your own domain as your username"
+      className="domain-modal"
+      maxWidth={480}
+      onClose={onClose}
     >
-      <div className="domain-modal" ref={modalRef}>
-        {/* Header */}
-        <div className="domain-modal__header">
-          <Globe size={18} className="domain-modal__header-icon" />
-          <span className="domain-modal__title">Use your own domain</span>
-          <button
-            className="domain-modal__close"
-            onClick={onClose}
-            aria-label="Close"
+      <AppDialogHeader
+        title={
+          <span
+            style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M4 4l8 8M12 4l-8 8" />
-            </svg>
-          </button>
-        </div>
+            <Globe size={18} className="domain-modal__header-icon" aria-hidden />
+            Use your own domain
+          </span>
+        }
+        onClose={onClose}
+      />
 
-        {/* Steps indicator */}
-        <div className="domain-modal__steps">
+      {/* Steps indicator */}
+      <div className="domain-modal__steps">
           <div className={`domain-modal__step ${step === "enter-domain" ? "domain-modal__step--active" : ""} ${step !== "enter-domain" ? "domain-modal__step--done" : ""}`}>
             <span className="domain-modal__step-num">1</span>
             <span className="domain-modal__step-label">Enter domain</span>
@@ -348,7 +328,6 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
             </>
           )}
         </div>
-      </div>
-    </div>
+    </AppDialog>
   );
 }

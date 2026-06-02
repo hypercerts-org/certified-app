@@ -582,12 +582,12 @@
 
 .cert-detail__delete-btn:hover {
   background: var(--bg-sunken);
-  border-color: var(--color-error, #b91c1c);
-  color: var(--color-error, #b91c1c);
+  border-color: var(--color-error);
+  color: var(--color-error);
 }
 
 .cert-detail__delete-btn:focus-visible {
-  outline: 2px solid var(--color-error, #b91c1c);
+  outline: 2px solid var(--color-error);
   outline-offset: 2px;
 }
 
@@ -1420,7 +1420,7 @@
   white-space: nowrap;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 799px) {
   .cert-detail__headline-cols {
     grid-template-columns: 1fr;
     gap: 12px;
@@ -1484,7 +1484,7 @@
 
 .create-cert__counter--over,
 .create-cert__counter--under {
-  color: var(--color-error, #b91c1c);
+  color: var(--color-error);
 }
 
 .create-cert__counter--over {
@@ -1574,7 +1574,7 @@
   min-width: 0;
   padding: 4px 8px 4px 4px;
   border: none;
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: transparent;
   height: 32px;
 }
@@ -1621,7 +1621,7 @@
 
 .create-cert__contrib-card-clear:hover,
 .create-cert__contrib-card-clear:focus-visible {
-  background: var(--bg-base);
+  background: var(--bg-elevated);
   color: var(--fg-primary);
 }
 
@@ -1634,11 +1634,11 @@
    error>` below the row carries the explanation; this is the
    field-level visual cue. */
 .create-cert__contrib-id-input--invalid {
-  border-color: var(--color-error, #b91c1c);
+  border-color: var(--color-error);
 }
 
 .create-cert__contrib-id-input--invalid:focus {
-  border-color: var(--color-error, #b91c1c);
+  border-color: var(--color-error);
   box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.15);
 }
 
@@ -1649,7 +1649,7 @@
   grid-column: 1 / -1;
   margin: 0;
   font-size: 0.75rem;
-  color: var(--color-error, #b91c1c);
+  color: var(--color-error);
 }
 
 .create-cert__contrib-id-spinner {
@@ -1723,11 +1723,11 @@
 
 .create-cert__contrib-remove:hover {
   background: var(--bg-sunken);
-  color: var(--color-error, #b91c1c);
-  border-color: var(--color-error, #b91c1c);
+  color: var(--color-error);
+  border-color: var(--color-error);
 }
 
-@media (max-width: 560px) {
+@media (max-width: 799px) {
   .create-cert__contrib-row {
     grid-template-columns: 1fr auto;
     gap: 6px;
@@ -1971,7 +1971,7 @@
 }
 
 .create-cert__loc-tab--active {
-  background: var(--bg-primary, var(--bg-base, #fff));
+  background: var(--bg-elevated);
   color: var(--fg-primary);
   box-shadow: var(--shadow-sm);
 }
@@ -1987,7 +1987,7 @@
   gap: 8px;
 }
 
-@media (max-width: 560px) {
+@media (max-width: 799px) {
   .create-cert__loc-fields {
     grid-template-columns: 1fr;
   }
@@ -2043,10 +2043,10 @@
   top: calc(100% + 4px);
   left: 0;
   right: 0;
-  z-index: 1000;
+  z-index: var(--z-popover);
   max-height: 220px;
   overflow-y: auto;
-  background: var(--bg-primary, var(--bg-base, #fff));
+  background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
