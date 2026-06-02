@@ -14,6 +14,7 @@ import { getInitials } from "@/lib/utils/initials"
 import Avatar from "@/components/ui/avatar"
 import ResponseButtons from "@/components/badges/response-buttons"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useOrg } from "@/lib/groups/org-context"
 
 function reasonText(
   notification: Notification,
@@ -43,6 +44,10 @@ interface NotificationRowProps {
 
 export default function NotificationRow({ notification, wasUnreadOnMount }: NotificationRowProps) {
   const { did: ownerDid } = useAuth()
+  // Notifications are the personal account's. While delegated (acting as a
+  // group) the accept/reject control is hidden — responding to your personal
+  // endorsements while "being" the org is a confusing cross-identity action.
+  const { activeOrg } = useOrg()
   const { info } = useAuthorInfo(notification.latestAuthor)
   const hasHandle = Boolean(info?.handle)
   const displayName = info?.handle || truncateDid(notification.latestAuthor)
@@ -118,7 +123,7 @@ export default function NotificationRow({ notification, wasUnreadOnMount }: Noti
   return (
     <div className={className}>
       {content}
-      {isBadgeAward ? (
+      {isBadgeAward && !activeOrg ? (
         <ResponseButtons
           awardUri={notification.latestRecordUri}
           awardCid={notification.latestRecordCid}
