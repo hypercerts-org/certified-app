@@ -2,6 +2,13 @@
    Notifications
    ========================================================================== */
 
+/* Identity focus strip above the list — only rendered on the aggregated
+   path (notifications aggregation on + the viewer manages groups). */
+.notifications-filter {
+  display: flex;
+  padding: 4px 4px 14px;
+}
+
 .notification-list {
   display: flex;
   flex-direction: column;
