@@ -30,6 +30,8 @@ import { getInitials } from "@/lib/utils/initials";
 import AccountSwitcherList from "./account-switcher-list";
 import Brandmark from "@/components/ui/brandmark";
 import GlobalSearch from "@/components/search/global-search";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Tabs, TabList, Tab } from "@/components/ui/tabs";
 
 const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
 
@@ -222,12 +224,26 @@ export default function DesktopTopBar() {
     return "overview";
   }, [searchParams, visibleProfileTabs]);
 
-  // Switcher dropdown — portaled to <body> so it escapes the bar's
-  // overflow/transform context. Anchor recomputed on resize/scroll.
+  // Active /explore kind — reads ?kind= with the same migration shim
+  // <Explore> uses (users / profiles legacy → accounts; certs → activities).
+  // Drives the explore tab strip's selected state.
+  const exploreKind = useMemo(() => {
+    const raw = searchParams?.get("kind") ?? null;
+    return raw === "accounts" || raw === "projects" || raw === "activities"
+      ? raw
+      : raw === "users" || raw === "profiles"
+        ? "accounts"
+        : raw === "certs"
+          ? "activities"
+          : "activities";
+  }, [searchParams]);
+
+  // Switcher dropdown — now the canonical <Popover> (portal + side="bottom"
+  // + align="end"), which escapes the bar's overflow/transform context and
+  // owns positioning, click-outside, Esc-to-close (focus-return to trigger)
+  // and re-measurement on resize/scroll.
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const switcherRef = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
   const mounted = useMounted();
 
   // "+" create dropdown — same pattern as the account switcher
@@ -243,54 +259,8 @@ export default function DesktopTopBar() {
     top: number;
   } | null>(null);
 
-  const [anchor, setAnchor] = useState<{ right: number; top: number } | null>(null);
-  useEffect(() => {
-    if (!switcherOpen || !switcherRef.current) {
-      setAnchor(null);
-      return;
-    }
-    const compute = () => {
-      const rect = switcherRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      setAnchor({
-        right: globalThis.innerWidth - rect.right,
-        top: rect.bottom + 8,
-      });
-    };
-    compute();
-    globalThis.addEventListener("resize", compute);
-    globalThis.addEventListener("scroll", compute, true);
-    return () => {
-      globalThis.removeEventListener("resize", compute);
-      globalThis.removeEventListener("scroll", compute, true);
-    };
-  }, [switcherOpen]);
-
-  useEffect(() => {
-    if (!switcherOpen) return;
-    const onMouseDown = (e: MouseEvent) => {
-      const t = e.target;
-      if (!(t instanceof Node)) return;
-      const inTrigger = switcherRef.current?.contains(t) ?? false;
-      const inMenu = menuRef.current?.contains(t) ?? false;
-      if (!inTrigger && !inMenu) setSwitcherOpen(false);
-    };
-    document.addEventListener("mousedown", onMouseDown);
-    return () => document.removeEventListener("mousedown", onMouseDown);
-  }, [switcherOpen]);
-
-  useEffect(() => {
-    if (!switcherOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      e.preventDefault();
-      setSwitcherOpen(false);
-      switcherRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [switcherOpen]);
-
+  // Close the switcher on navigation. Positioning, click-outside and
+  // Esc-to-close are owned by the <Popover> primitive.
   useEffect(() => {
     setSwitcherOpen(false);
   }, [pathname]);
@@ -464,30 +434,64 @@ export default function DesktopTopBar() {
           ) : null}
 
           {isAuthenticated ? (
-            <div className="desktop-top-bar__switcher-wrap" ref={switcherRef}>
-              <button
-                type="button"
-                className="desktop-top-bar__switcher"
-                onClick={() => setSwitcherOpen((v) => !v)}
-                aria-haspopup="menu"
-                aria-expanded={switcherOpen}
-                aria-label={`Switch account (currently ${identity.name || "anonymous"})`}
-              >
-                <Avatar
-                  size="sm"
-                  src={identity.avatarUrl}
-                  fallbackInitials={identity.initials}
-                />
-                <span className="desktop-top-bar__switcher-meta">
-                  {identity.name ? (
-                    <span className="desktop-top-bar__switcher-name">{identity.name}</span>
-                  ) : null}
-                  {identity.handle ? (
-                    <span className="desktop-top-bar__switcher-handle">@{identity.handle}</span>
-                  ) : null}
-                </span>
-                <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
-              </button>
+            <div className="desktop-top-bar__switcher-wrap">
+              <Popover open={switcherOpen} onOpenChange={setSwitcherOpen}>
+                <PopoverTrigger>
+                  <button
+                    type="button"
+                    className="desktop-top-bar__switcher"
+                    aria-label={`Switch account (currently ${identity.name || "anonymous"})`}
+                  >
+                    <Avatar
+                      size="sm"
+                      src={identity.avatarUrl}
+                      fallbackInitials={identity.initials}
+                    />
+                    <span className="desktop-top-bar__switcher-meta">
+                      {identity.name ? (
+                        <span className="desktop-top-bar__switcher-name">{identity.name}</span>
+                      ) : null}
+                      {identity.handle ? (
+                        <span className="desktop-top-bar__switcher-handle">@{identity.handle}</span>
+                      ) : null}
+                    </span>
+                    <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  portal
+                  side="bottom"
+                  align="end"
+                  minWidth={260}
+                  style={{ width: 300 }}
+                  className="max-h-[70vh] overflow-y-auto [scrollbar-gutter:stable]"
+                >
+                  <AccountSwitcherList
+                    session={{ handle: handle ?? null }}
+                    profile={profile ? { displayName: profile.displayName ?? undefined } : null}
+                    avatarUrl={avatarUrl ?? undefined}
+                    sortedOrgs={sortedOrgs}
+                    activeOrg={activeOrg}
+                    switchOrg={switchOrg}
+                    onAfterSwitch={(next) => {
+                      setSwitcherOpen(false);
+                      // Stay on the current page after the swap unless
+                      // it's a personal-only surface the new actor can't
+                      // visit (e.g. /create when switching personal →
+                      // group); the helper returns /home in that case.
+                      router.push(routeForActorSwitch(pathname, next));
+                    }}
+                    onSignOut={() => {
+                      setSwitcherOpen(false);
+                      signOut();
+                    }}
+                    onSwitchAccount={() => {
+                      setSwitcherOpen(false);
+                      openSignIn();
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           ) : (
             <button
@@ -509,74 +513,48 @@ export default function DesktopTopBar() {
 
       {isOnExplore ? (
         <div className="desktop-top-bar__row desktop-top-bar__row--tabs">
-          <nav
-            className="desktop-top-bar__tabs"
-            role="tablist"
-            aria-label="Explore sections"
-          >
-            {EXPLORE_TABS.map((t) => {
-              // Active kind: read ?kind= with the same migration shim
-              // <Explore> uses (users / profiles legacy → accounts).
-              const raw = searchParams?.get("kind") ?? null;
-              const currentKind =
-                raw === "accounts" || raw === "projects" || raw === "activities"
-                  ? raw
-                  : raw === "users" || raw === "profiles"
-                  ? "accounts"
-                  : raw === "certs"
-                  ? "activities"
-                  : "activities";
-              const isActive = currentKind === t.key;
+          {/* Explore kind strip — canonical <Tabs> (underline). The row
+              wrapper owns the bottom border, so TabList drops its own
+              (border-0). onChange replaces ?kind= in place with
+              scroll:false to match the on-page kind switcher (which resets
+              filter/sub/q/sort/view/attrs). */}
+          <Tabs
+            value={exploreKind}
+            onChange={(next) => {
               const params = new URLSearchParams();
-              // Reset other state (filter/sub/q/sort/view/attrs) when
-              // switching kind — matches the on-page kind switcher.
-              params.set("kind", t.key);
-              const href = `/explore?${params.toString()}`;
-              return (
-                <Link
-                  key={t.key}
-                  href={href}
-                  role="tab"
-                  aria-selected={isActive}
-                  aria-current={isActive ? "page" : undefined}
-                  scroll={false}
-                  replace
-                  className={`desktop-top-bar__tab ${
-                    isActive ? "desktop-top-bar__tab--active" : ""
-                  }`}
-                >
+              params.set("kind", next);
+              router.replace(`/explore?${params.toString()}`, { scroll: false });
+            }}
+          >
+            <TabList aria-label="Explore sections" className="border-0">
+              {EXPLORE_TABS.map((t) => (
+                <Tab key={t.key} value={t.key}>
                   {t.label}
-                </Link>
-              );
-            })}
-          </nav>
+                </Tab>
+              ))}
+            </TabList>
+          </Tabs>
         </div>
       ) : showTabsRow ? (
         <div className="desktop-top-bar__row desktop-top-bar__row--tabs">
-          <nav
-            className="desktop-top-bar__tabs"
-            role="tablist"
-            aria-label="Profile sections"
+          {/* Profile ?tab= strip — canonical <Tabs> (underline). onChange
+              pushes the ?tab= URL (scroll:false) so the page mirrors it,
+              matching the prior <Link scroll={false}> default-push. */}
+          <Tabs
+            value={activeTab}
+            onChange={(next) => {
+              const tab = visibleProfileTabs.find((t) => t.key === next);
+              if (tab) router.push(tabHref(tab), { scroll: false });
+            }}
           >
-            {visibleProfileTabs.map((tab) => {
-              const isActive = activeTab === tab.key;
-              return (
-                <Link
-                  key={tab.key}
-                  href={tabHref(tab)}
-                  role="tab"
-                  aria-selected={isActive}
-                  aria-current={isActive ? "page" : undefined}
-                  scroll={false}
-                  className={`desktop-top-bar__tab ${
-                    isActive ? "desktop-top-bar__tab--active" : ""
-                  }`}
-                >
+            <TabList aria-label="Profile sections" className="border-0">
+              {visibleProfileTabs.map((tab) => (
+                <Tab key={tab.key} value={tab.key}>
                   {tab.label}
-                </Link>
-              );
-            })}
-          </nav>
+                </Tab>
+              ))}
+            </TabList>
+          </Tabs>
         </div>
       ) : showBackRow ? (
         <div className="desktop-top-bar__row desktop-top-bar__row--tabs">
@@ -589,62 +567,57 @@ export default function DesktopTopBar() {
             <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
             Back
           </button>
-          {pathname && (isOnCertDetail || isOnProjectDetail) ? (
-            <nav
-              className="desktop-top-bar__tabs"
-              role="tablist"
-              aria-label={isOnCertDetail ? "Activity sections" : "Project sections"}
-            >
-              {(isOnCertDetail
-                ? CERT_DETAIL_TABS
-                : PROJECT_DETAIL_TABS
-              ).map((t) => {
-                // Two flavors: query-param tabs (overview/description/…)
-                // and sub-route tabs (explore). Sub-route tabs leave
-                // the same pathname behind so the user can navigate
-                // back to the parent detail page with the Back button.
-                let href: string
-                let isActive: boolean
-                const isOnSubRoute = pathname?.endsWith("/explore")
-                if (t.subRoute) {
-                  // Strip any trailing /<subRoute> to avoid /explore/explore.
-                  const base = pathname?.replace(/\/explore$/, "") ?? ""
-                  href = `${base}/${t.subRoute}`
-                  isActive = !!isOnSubRoute && t.key === "explore"
-                } else {
-                  const params = new URLSearchParams(
-                    searchParams?.toString() ?? "",
-                  )
-                  if (t.key === "overview") params.delete("tab")
-                  else params.set("tab", t.key)
-                  const qs = params.toString()
-                  const base = pathname?.replace(/\/explore$/, "") ?? ""
-                  href = qs ? `${base}?${qs}` : base
-                  const currentTab = searchParams?.get("tab") ?? "overview"
-                  isActive = !isOnSubRoute && currentTab === t.key
-                }
-                return (
-                  <Link
-                    key={t.key}
-                    href={href}
-                    scroll={false}
-                    // Replace (not push) so switching between tabs on
-                    // the same cert / project doesn't pollute browser
-                    // history. The Back button then skips tab states
-                    // and goes back to wherever the user came from.
-                    replace
-                    role="tab"
-                    aria-selected={isActive}
-                    className={`desktop-top-bar__tab ${
-                      isActive ? "desktop-top-bar__tab--active" : ""
-                    }`}
-                  >
-                    {t.label}
-                  </Link>
-                )
-              })}
-            </nav>
-          ) : null}
+          {pathname && (isOnCertDetail || isOnProjectDetail) ? (() => {
+            const detailTabs = isOnCertDetail ? CERT_DETAIL_TABS : PROJECT_DETAIL_TABS
+            const isOnSubRoute = pathname?.endsWith("/explore")
+            // Compute the navigation target for a detail tab. Two flavors:
+            // query-param tabs (overview/description/…) and sub-route tabs
+            // (explore) which leave the same pathname behind so the Back
+            // button returns to the parent detail page.
+            const hrefFor = (t: DetailTab): string => {
+              if (t.subRoute) {
+                // Strip any trailing /<subRoute> to avoid /explore/explore.
+                const base = pathname?.replace(/\/explore$/, "") ?? ""
+                return `${base}/${t.subRoute}`
+              }
+              const params = new URLSearchParams(searchParams?.toString() ?? "")
+              if (t.key === "overview") params.delete("tab")
+              else params.set("tab", t.key)
+              const qs = params.toString()
+              const base = pathname?.replace(/\/explore$/, "") ?? ""
+              return qs ? `${base}?${qs}` : base
+            }
+            // Active tab: sub-route "explore" when on the /explore child,
+            // else the ?tab= value (overview default).
+            const activeDetailTab = isOnSubRoute
+              ? (detailTabs.find((t) => t.subRoute && t.key === "explore")?.key ??
+                 (searchParams?.get("tab") ?? "overview"))
+              : (searchParams?.get("tab") ?? "overview")
+            return (
+              // Detail strip — canonical <Tabs> (underline). onChange
+              // REPLACES (not pushes) so switching tabs on the same cert /
+              // project doesn't pollute history; scroll:false keeps the
+              // scroll position. The row wrapper owns the bottom border.
+              <Tabs
+                value={activeDetailTab}
+                onChange={(next) => {
+                  const t = detailTabs.find((tab) => tab.key === next)
+                  if (t) router.replace(hrefFor(t), { scroll: false })
+                }}
+              >
+                <TabList
+                  aria-label={isOnCertDetail ? "Activity sections" : "Project sections"}
+                  className="border-0"
+                >
+                  {detailTabs.map((t) => (
+                    <Tab key={t.key} value={t.key}>
+                      {t.label}
+                    </Tab>
+                  ))}
+                </TabList>
+              </Tabs>
+            )
+          })() : null}
         </div>
       ) : null}
 
@@ -688,48 +661,6 @@ export default function DesktopTopBar() {
                 <Building2 size={16} strokeWidth={1.75} aria-hidden />
                 <span>New group</span>
               </Link>
-            </div>,
-            document.body
-          )
-        : null}
-
-      {mounted && switcherOpen && isAuthenticated && anchor
-        ? createPortal(
-            <div
-              ref={menuRef}
-              className="account-switcher__menu account-switcher__menu--top-bar"
-              role="menu"
-              style={{
-                position: "fixed",
-                top: anchor.top,
-                right: anchor.right,
-                width: 300,
-              }}
-            >
-              <AccountSwitcherList
-                session={{ handle: handle ?? null }}
-                profile={profile ? { displayName: profile.displayName ?? undefined } : null}
-                avatarUrl={avatarUrl ?? undefined}
-                sortedOrgs={sortedOrgs}
-                activeOrg={activeOrg}
-                switchOrg={switchOrg}
-                onAfterSwitch={(next) => {
-                  setSwitcherOpen(false);
-                  // Stay on the current page after the swap unless
-                  // it's a personal-only surface the new actor can't
-                  // visit (e.g. /create when switching personal →
-                  // group); the helper returns /home in that case.
-                  router.push(routeForActorSwitch(pathname, next));
-                }}
-                onSignOut={() => {
-                  setSwitcherOpen(false);
-                  signOut();
-                }}
-                onSwitchAccount={() => {
-                  setSwitcherOpen(false);
-                  openSignIn();
-                }}
-              />
             </div>,
             document.body
           )

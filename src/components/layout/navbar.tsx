@@ -19,6 +19,7 @@ import AccountSwitcherList from "./account-switcher-list";
 import Brandmark from "@/components/ui/brandmark";
 import ThemeToggle from "@/components/ui/theme-toggle";
 import BottomSheet from "@/components/ui/bottom-sheet";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints";
 
 const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
@@ -65,11 +66,13 @@ const Navbar: React.FC = () => {
     setSwitcherOpen(false);
   }, [isDesktop]);
 
-  // Close account switcher on outside click. Governs the inline
-  // `.account-switcher__menu` dropdown. The mobile <BottomSheet> portals
-  // its content (and backdrop) to document.body — outside `switcherRef`
-  // — so we skip mousedowns landing inside the sheet here and let the
-  // sheet own its own dismissal (backdrop tap / Esc / drag).
+  // Close account switcher on outside click. The desktop inline menu now
+  // lives in a portal <Popover> (which owns its own click-outside), so at
+  // ≥800px this is redundant; below 800px the <BottomSheet> portals its
+  // content (and backdrop) to document.body — outside `switcherRef` — so we
+  // skip mousedowns landing inside the sheet and let the sheet own its own
+  // dismissal (backdrop tap / Esc / drag). Kept as a harmless guard for the
+  // trigger so the mobile switcher state can't get stuck open.
   useEffect(() => {
     if (!switcherOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -274,21 +277,42 @@ const Navbar: React.FC = () => {
         <div className="navbar__right">
         {isAuthenticated ? (
           <>
-            {/* Account switcher — hidden at desktop widths; left rail
-                hosts its own trigger (see desktop-left-rail.tsx). */}
+            {/* Account switcher — the desktop inline menu now portals via
+                the canonical <Popover> (side=bottom, align=end). It is gated
+                to desktop widths to match the old CSS, which hid
+                `.account-switcher__menu` below 800px; the mobile range uses
+                the <BottomSheet> below. Since this navbar early-returns null
+                at ≥800px, the desktop Popover never actually mounts here —
+                the left rail / top bar host the desktop switcher — but the
+                gate keeps the contract explicit and the two paths disjoint. */}
             <div className="account-switcher" ref={switcherRef}>
-              <button
-                className="account-switcher__trigger"
-                onClick={() => { setSwitcherOpen(!switcherOpen); setDropdownOpen(false); }}
-                aria-label="Switch account"
-                aria-haspopup="menu"
-                aria-expanded={switcherOpen}
-              >
-                <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
-                <ChevronDown size={14} className="navbar__chevron-desktop" />
-              </button>
-                {switcherOpen && (
-                  <div className="account-switcher__menu" role="menu">
+              {isDesktop ? (
+                // Desktop inline menu, migrated to the canonical portal
+                // <Popover> (side=bottom, align=end). The old
+                // `.account-switcher__menu` was CSS-hidden below 800px, so
+                // gating the whole Popover to `isDesktop` reproduces that
+                // exactly. NOTE: this navbar early-returns null at ≥800px,
+                // so in practice this branch never mounts here — the left
+                // rail / top bar host the desktop switcher — but it keeps
+                // the migration faithful and the BEM removable.
+                <Popover open={switcherOpen} onOpenChange={setSwitcherOpen}>
+                  <PopoverTrigger>
+                    <button
+                      className="account-switcher__trigger"
+                      onClick={() => { setDropdownOpen(false); }}
+                      aria-label="Switch account"
+                    >
+                      <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
+                      <ChevronDown size={14} className="navbar__chevron-desktop" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    portal
+                    side="bottom"
+                    align="end"
+                    minWidth={260}
+                    className="max-h-[70vh] overflow-y-auto [scrollbar-gutter:stable]"
+                  >
                     <AccountSwitcherList
                       session={{ handle }}
                       profile={profile}
@@ -306,8 +330,23 @@ const Navbar: React.FC = () => {
                         openSignIn();
                       }}
                     />
-                  </div>
-                )}
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                // Mobile trigger — opens the <BottomSheet> switcher below.
+                // Kept as a plain button so its aria-expanded reflects the
+                // sheet state exactly as before (the sanctioned sheet path).
+                <button
+                  className="account-switcher__trigger"
+                  onClick={() => { setSwitcherOpen(!switcherOpen); setDropdownOpen(false); }}
+                  aria-label="Switch account"
+                  aria-haspopup="menu"
+                  aria-expanded={switcherOpen}
+                >
+                  <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
+                  <ChevronDown size={14} className="navbar__chevron-desktop" />
+                </button>
+              )}
               </div>
 
             {/* Mobile bottom sheet for account switcher — the canonical

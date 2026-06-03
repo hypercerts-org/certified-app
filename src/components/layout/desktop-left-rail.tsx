@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState, useEffect } from "react";
-import { createPortal } from "react-dom";
+import React, { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -29,11 +28,11 @@ import { routeForActorSwitch } from "@/lib/groups/navigation";
 import { useOrgProfile } from "@/hooks/use-org-profile";
 import { usePendingAwardsCount } from "@/hooks/use-pending-awards-count";
 import { useNotifications } from "@/lib/notifications-context";
-import { useMounted } from "@/hooks/use-mounted";
 import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
 import AccountSwitcherList from "./account-switcher-list";
 import Brandmark from "@/components/ui/brandmark";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 
 const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
 
@@ -90,69 +89,14 @@ export default function DesktopLeftRail() {
   const pendingCount = usePendingAwardsCount();
   const pendingBadge = formatPendingBadge(pendingCount);
 
-  // Account-switcher dropdown state. The dropdown is portaled to <body>
-  // because the .left-rail's overflow-y: auto would otherwise clip it —
-  // especially at the 86px icon-only width where the dropdown needs to
-  // extend rightward beyond the rail into the center column.
+  // Account-switcher dropdown state. The menu is portaled to <body> via the
+  // canonical <Popover> (portal + side="top" + align="start") because the
+  // .left-rail's overflow-y: auto would otherwise clip it — especially at the
+  // 86px icon-only width where the dropdown needs to extend rightward beyond
+  // the rail into the center column. The Popover primitive owns positioning,
+  // click-outside, Esc-to-close (with focus-return to the trigger) and
+  // re-measurement on scroll/resize.
   const [switcherOpen, setSwitcherOpen] = useState(false);
-  const switcherRef = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const mounted = useMounted();
-
-  // Anchor position for the portaled menu, recomputed when it opens and
-  // on window resize while open.
-  const [anchor, setAnchor] = useState<{ left: number; bottom: number } | null>(null);
-  useEffect(() => {
-    if (!switcherOpen || !switcherRef.current) {
-      setAnchor(null);
-      return;
-    }
-    const computeAnchor = () => {
-      const rect = switcherRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      setAnchor({
-        left: rect.left,
-        bottom: globalThis.innerHeight - rect.top + 8, // 8px gap above the trigger
-      });
-    };
-    computeAnchor();
-    globalThis.addEventListener("resize", computeAnchor);
-    globalThis.addEventListener("scroll", computeAnchor, true);
-    return () => {
-      globalThis.removeEventListener("resize", computeAnchor);
-      globalThis.removeEventListener("scroll", computeAnchor, true);
-    };
-  }, [switcherOpen]);
-
-  useEffect(() => {
-    if (!switcherOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target;
-      if (!(target instanceof Node)) return;
-      const inTrigger = switcherRef.current?.contains(target) ?? false;
-      const inMenu = menuRef.current?.contains(target) ?? false;
-      if (!inTrigger && !inMenu) setSwitcherOpen(false);
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [switcherOpen]);
-
-  // Esc-to-close — WAI-ARIA menu requirement. Returns focus to the
-  // trigger button so the keyboard user lands somewhere predictable.
-  useEffect(() => {
-    if (!switcherOpen) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      e.preventDefault();
-      setSwitcherOpen(false);
-      const trigger = switcherRef.current?.querySelector<HTMLButtonElement>(
-        "button.left-rail__switcher"
-      );
-      trigger?.focus();
-    };
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [switcherOpen]);
 
   // Close on navigation
   useEffect(() => {
@@ -288,31 +232,69 @@ export default function DesktopLeftRail() {
       <div className="left-rail__bottom">
         {isAuthenticated ? (
           <>
-            {/* Account-switcher trigger — minimal avatar + handle + chevron.
-                Reads useOrg().activeOrg so identity reflects the acting role. */}
-            <div className="account-switcher" ref={switcherRef}>
-              <button
-                type="button"
-                className="left-rail__switcher"
-                onClick={() => setSwitcherOpen((v) => !v)}
-                aria-haspopup="menu"
-                aria-expanded={switcherOpen}
-                aria-label={`Switch account (currently ${identity.name || "anonymous"})`}
-              >
-                <Avatar
-                  size="sm"
-                  src={identity.avatarUrl}
-                  fallbackInitials={identity.initials}
-                />
-                <span className="left-rail__switcher-meta">
-                  <span className="left-rail__switcher-name">{identity.name || "Anonymous"}</span>
-                  {identity.handle ? (
-                    <span className="left-rail__switcher-handle">@{identity.handle}</span>
-                  ) : null}
-                </span>
-                <ChevronDown size={16} strokeWidth={1.5} aria-hidden />
-              </button>
-              {/* Dropdown is portaled below; nothing rendered inline here. */}
+            {/* Account-switcher — minimal avatar + handle + chevron trigger.
+                Reads useOrg().activeOrg so identity reflects the acting role.
+                The menu portals to <body> via the canonical <Popover> so it
+                escapes the rail's overflow-y: auto clip and opens upward
+                (side="top") aligned to the trigger's left edge (align="start"). */}
+            <div className="account-switcher">
+              <Popover open={switcherOpen} onOpenChange={setSwitcherOpen}>
+                <PopoverTrigger>
+                  <button
+                    type="button"
+                    className="left-rail__switcher"
+                    aria-label={`Switch account (currently ${identity.name || "anonymous"})`}
+                  >
+                    <Avatar
+                      size="sm"
+                      src={identity.avatarUrl}
+                      fallbackInitials={identity.initials}
+                    />
+                    <span className="left-rail__switcher-meta">
+                      <span className="left-rail__switcher-name">{identity.name || "Anonymous"}</span>
+                      {identity.handle ? (
+                        <span className="left-rail__switcher-handle">@{identity.handle}</span>
+                      ) : null}
+                    </span>
+                    <ChevronDown size={16} strokeWidth={1.5} aria-hidden />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  portal
+                  side="top"
+                  align="start"
+                  offset={8}
+                  // Wider than the rail-bottom box so the vertical scrollbar
+                  // (when the org list is long) doesn't crowd the content
+                  // into a horizontal scroll. max-height + overflow preserve
+                  // the base `.account-switcher__menu` scroll behaviour for a
+                  // long org list (70vh cap, stable scrollbar gutter).
+                  minWidth={260}
+                  style={{ width: 300 }}
+                  className="max-h-[70vh] overflow-y-auto [scrollbar-gutter:stable]"
+                >
+                  <AccountSwitcherList
+                    session={{ handle: handle ?? null }}
+                    profile={profile ? { displayName: profile.displayName ?? undefined } : null}
+                    avatarUrl={avatarUrl ?? undefined}
+                    sortedOrgs={sortedOrgs}
+                    activeOrg={activeOrg}
+                    switchOrg={switchOrg}
+                    onAfterSwitch={(next) => {
+                      setSwitcherOpen(false);
+                      router.push(routeForActorSwitch(pathname, next));
+                    }}
+                    onSignOut={() => {
+                      setSwitcherOpen(false);
+                      signOut();
+                    }}
+                    onSwitchAccount={() => {
+                      setSwitcherOpen(false);
+                      openSignIn();
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </>
         ) : (
@@ -334,55 +316,6 @@ export default function DesktopLeftRail() {
         )}
       </div>
 
-      {/* Portaled account-switcher menu — sits outside .left-rail so it
-          escapes the rail's overflow-y: auto clip. Positioned to sit
-          immediately above the trigger row. */}
-      {mounted && switcherOpen && isAuthenticated && anchor
-        ? createPortal(
-            <div
-              ref={menuRef}
-              className="account-switcher__menu account-switcher__menu--rail"
-              role="menu"
-              style={{
-                position: "fixed",
-                // Base `.account-switcher__menu` has top: calc(100%+8px)
-                // and right: 0 inherited from the navbar variant — with
-                // position:fixed those resolve viewport-relative and push
-                // the menu off-screen. Reset them so left+bottom govern.
-                top: "auto",
-                right: "auto",
-                left: anchor.left,
-                bottom: anchor.bottom,
-                // Wider than the rail-bottom box so the vertical scrollbar
-                // (when the org list is long) doesn't crowd the content
-                // into a horizontal scroll.
-                width: 300,
-              }}
-            >
-              <AccountSwitcherList
-                session={{ handle: handle ?? null }}
-                profile={profile ? { displayName: profile.displayName ?? undefined } : null}
-                avatarUrl={avatarUrl ?? undefined}
-                sortedOrgs={sortedOrgs}
-                activeOrg={activeOrg}
-                switchOrg={switchOrg}
-                onAfterSwitch={(next) => {
-                  setSwitcherOpen(false);
-                  router.push(routeForActorSwitch(pathname, next));
-                }}
-                onSignOut={() => {
-                  setSwitcherOpen(false);
-                  signOut();
-                }}
-                onSwitchAccount={() => {
-                  setSwitcherOpen(false);
-                  openSignIn();
-                }}
-              />
-            </div>,
-            document.body
-          )
-        : null}
     </nav>
   );
 }
