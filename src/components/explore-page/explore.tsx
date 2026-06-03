@@ -32,6 +32,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import SegmentedControl, { ToggleGroup } from "@/components/ui/segmented-control"
 import EmptyState from "@/components/ui/empty-state"
 import SharedLoadMoreSentinel from "@/components/ui/load-more-sentinel"
 import ActivityCard from "@/components/feed/activity-card"
@@ -505,26 +506,18 @@ export default function Explore() {
         : undefined,
   })
 
-  const onDegreeButtonClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      const raw = e.currentTarget.dataset.degreeKey
-      const key =
-        raw === "1" ? 1 : raw === "2" ? 2 : raw === "3" ? 3 : null
-      if (!key) return
-      // Toggle: deselect if already active, select otherwise.
-      // Deselecting the last ring is allowed — the result list
-      // renders empty until the user re-adds a ring. serializeDegrees
-      // encodes the empty set as the explicit sentinel so the round-
-      // trip through the URL doesn't collapse it back to the default.
-      const next = new Set<Degree>(degrees)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      // Clear the legacy `degree=` param while we're patching so it
-      // doesn't outlive a multi-select edit and re-take precedence
-      // on the next read.
+  const onDegreesChange = useCallback(
+    (next: Set<Degree>) => {
+      // Each ring toggles independently; deselecting the last ring is
+      // allowed — the result list renders empty until the user re-adds a
+      // ring. serializeDegrees encodes the empty set as the explicit
+      // sentinel so the round-trip through the URL doesn't collapse it
+      // back to the default. Clear the legacy `degree=` param while we're
+      // patching so it doesn't outlive a multi-select edit and re-take
+      // precedence on the next read.
       setUrl({ degrees: serializeDegrees(next), degree: null })
     },
-    [degrees, setUrl],
+    [setUrl],
   )
 
   // Local search debounce: keep typing snappy, hit indexer once typing stops.
@@ -647,30 +640,34 @@ export default function Explore() {
             </div>
 
             <div className="explore__chrome-actions">
-              <div
-                className="explore__view-toggle"
-                role="group"
+              <SegmentedControl
                 aria-label={`${kind === "activities" ? "Activity" : kind === "projects" ? "Project" : "Account"} view`}
-              >
-                <button
-                  type="button"
-                  aria-label="List view"
-                  aria-pressed={view === "list"}
-                  className={`explore__view-btn${view === "list" ? " explore__view-btn--active" : ""}`}
-                  onClick={() => setUrl({ view: null })}
-                >
-                  <ListIcon size={14} strokeWidth={1.75} aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Gallery view"
-                  aria-pressed={view === "gallery"}
-                  className={`explore__view-btn${view === "gallery" ? " explore__view-btn--active" : ""}`}
-                  onClick={() => setUrl({ view: "gallery" })}
-                >
-                  <LayoutGrid size={14} strokeWidth={1.75} aria-hidden />
-                </button>
-              </div>
+                value={view}
+                // List is the default view, so selecting it clears the
+                // `?view=` param (keeps the URL clean); Gallery writes
+                // `?view=gallery`. Same mapping the two buttons had.
+                onValueChange={(next) =>
+                  setUrl({ view: next === "gallery" ? "gallery" : null })
+                }
+                options={[
+                  {
+                    value: "list",
+                    icon: <ListIcon size={14} strokeWidth={1.75} aria-hidden />,
+                    ariaLabel: "List view",
+                  },
+                  {
+                    value: "gallery",
+                    icon: (
+                      <LayoutGrid size={14} strokeWidth={1.75} aria-hidden />
+                    ),
+                    ariaLabel: "Gallery view",
+                  },
+                ]}
+                size="md"
+                joined
+                shape="square"
+                iconOnly
+              />
               <UiPopover open={sortOpen} onOpenChange={setSortOpen}>
                 <PopoverTrigger>
                   <button type="button" className="explore__chrome-btn">
@@ -811,7 +808,7 @@ export default function Explore() {
           {showsDegreeControl ? (
             <EndorsementDegreeBar
               degrees={degrees}
-              onSelect={onDegreeButtonClick}
+              onChange={onDegreesChange}
               onReset={onResetDegrees}
               meta={data.endorsementClosure}
             />
@@ -848,14 +845,6 @@ const DEGREE_LABEL: Record<Degree, string> = {
   3: "3rd",
 }
 
-/** Hover tooltip per degree pill. Explains the ring in plain language
- *  so the abbreviated "1st / 2nd / 3rd" labels don't have to. */
-const DEGREE_TITLE: Record<Degree, string> = {
-  1: "1st-degree — accounts you endorse directly.",
-  2: "2nd-degree — accounts endorsed by the people you endorse.",
-  3: "3rd-degree — accounts endorsed by your 2nd-degree connections.",
-}
-
 /**
  * Multi-select pill row above the result list when the active filter
  * is endorsement-based (Accounts/"endorsed", Projects|Certs/"by-endorsed").
@@ -865,18 +854,21 @@ const DEGREE_TITLE: Record<Degree, string> = {
  * endorsements, or only 3rd-degree connections, or skip the 2nd ring
  * entirely). The caption tracks the current selection.
  *
- * Implementation note: data-degree-key on each button + a captured
- * onSelect avoids the same SWC-minifier closure-capture hazard the
- * filter / sub-option buttons solve via `data-filter-key` / `data-sub-key`.
+ * Rendered with the canonical <ToggleGroup> primitive (gapped pills,
+ * neutral tone): it owns the aria-pressed buttons + role="group" and
+ * emits the full next subset, which we convert back into the
+ * `Set<Degree>` the URL serialiser expects. (This also sidesteps the
+ * old SWC-minifier closure-capture hazard the data-degree-key hand-roll
+ * was working around — the primitive carries no per-button closure.)
  */
 function EndorsementDegreeBar({
   degrees,
-  onSelect,
+  onChange,
   onReset,
   meta,
 }: {
   degrees: Set<Degree>
-  onSelect: (e: React.MouseEvent<HTMLButtonElement>) => void
+  onChange: (next: Set<Degree>) => void
   onReset: () => void
   meta: ReturnType<typeof useExploreData>["endorsementClosure"]
 }) {
@@ -885,29 +877,26 @@ function EndorsementDegreeBar({
   // visit.
   const isDefault = degrees.size === 1 && degrees.has(1)
   return (
-    <div
-      className="explore__degree-bar"
-      role="group"
-      aria-label="Endorsement rings — mark one or more"
-    >
+    <div className="explore__degree-bar">
       <div className="explore__degree-pills">
-        {ALL_DEGREES.map((d) => {
-          const active = degrees.has(d)
-          return (
-            <button
-              key={d}
-              type="button"
-              data-degree-key={String(d)}
-              onClick={onSelect}
-              className={`explore__degree-pill${active ? " explore__degree-pill--active" : ""}`}
-              aria-pressed={active}
-              title={DEGREE_TITLE[d]}
-              aria-label={DEGREE_TITLE[d]}
-            >
-              {DEGREE_LABEL[d]}
-            </button>
-          )
-        })}
+        <ToggleGroup
+          aria-label="Endorsement rings — mark one or more"
+          value={ALL_DEGREES.filter((d) => degrees.has(d)).map(String)}
+          onValueChange={(values) =>
+            onChange(
+              new Set<Degree>(
+                ALL_DEGREES.filter((d) => values.includes(String(d))),
+              ),
+            )
+          }
+          options={ALL_DEGREES.map((d) => ({
+            value: String(d),
+            label: DEGREE_LABEL[d],
+          }))}
+          tone="neutral"
+          shape="pill"
+          joined={false}
+        />
         {!isDefault ? (
           <button
             type="button"

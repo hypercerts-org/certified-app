@@ -8,6 +8,7 @@ import {
   type BadgeResponseRecord,
   type ResponseState,
 } from "@/lib/atproto/badges"
+import { ToggleGroup } from "@/components/ui/segmented-control"
 
 interface ResponseMenuProps {
   readonly awardUri: string
@@ -28,36 +29,18 @@ interface ResponseMenuProps {
 }
 
 /**
- * Quiet kebab-menu control rendered on profile / endorsements
- * audit-surface rows (the row's owner is viewing their own wall).
+ * Quiet color-coded quick-actions control rendered on profile /
+ * endorsements audit-surface rows (the row's owner is viewing their
+ * own wall).
  *
- * Owner-only state indicator at the top of the menu, then the
- * actions:
+ * Two joined icon buttons — Accept (Check, green/success) and Reject
+ * (X, amber/warning). Both buttons are always shown; the active one
+ * carries `aria-pressed` and the tone-tinted active state so the
+ * rendered decision is unambiguous. No menu, no kebab.
  *
- *   - default  → "Showing on your profile (default)" +
- *                "Hide from profile"
- *   - accepted → "Showing on your profile"           +
- *                "Hide from profile" + "Reset to default"
- *   - rejected → "Hidden from your profile"          +
- *                "Show on profile" + "Reset to default"
- *   - unknown  → "Unrecognised response state"       +
- *                "Hide from profile" + "Reset to default"
- *
- * The kebab is only rendered on the profile owner's view (see the
- * ProfileEndorsements + /endorsements page gating) — non-owner
- * viewers never see the indicator, matching the plan §"Accept-state
- * visibility" owner-only contract.
- *
- * Keyboard contract (WAI-ARIA menu pattern):
- *   - Trigger: Enter/Space opens; first menuitem auto-focuses.
- *   - In menu: ArrowUp/ArrowDown moves between items; Home/End jump
- *     to first/last. Esc closes + returns focus to trigger.
- *     Outside-click closes.
- *
- * After Hide on a row, the row removes from its list. Focus moves
- * to the next sibling's kebab via `findNextFocusTarget`. Plan
- * AC#7. AC#8 shows a 6-second `aria-live="polite"` undo toast
- * anchored to the menu column.
+ * Single-click toggle:
+ *   - clicking the currently-active state → reset to default
+ *   - clicking the other state → write that response
  */
 export default function ResponseMenu({
   awardUri,
@@ -114,67 +97,79 @@ export default function ResponseMenu({
    *    - clicking the currently-active state → reset to default
    *    - clicking the other state → write that response
    * Both buttons are always shown; the active one carries the
-   * `--active` class so the rendered state is unambiguous. No
-   * menu, no kebab, no reset-to-default menuitem (clicking the
-   * active button serves that role). */
-  const onAcceptClick = useCallback(() => {
-    if (state === "accepted") resetToDefault()
-    else writeResponse("accepted")
+   * tone-tinted active state so the rendered state is unambiguous.
+   * Clicking the active button serves the "reset to default" role. */
+  const onAccept = useCallback(() => {
+    if (state === "accepted") void resetToDefault()
+    else void writeResponse("accepted")
   }, [state, resetToDefault, writeResponse])
 
-  const onRejectClick = useCallback(() => {
-    if (state === "rejected") resetToDefault()
-    else writeResponse("rejected")
+  const onReject = useCallback(() => {
+    if (state === "rejected") void resetToDefault()
+    else void writeResponse("rejected")
   }, [state, resetToDefault, writeResponse])
+
+  // The pressed set: exactly the currently-active state (accept XOR
+  // reject), empty for default/unknown. A toggle of "accepted" routes
+  // to onAccept and "rejected" to onReject regardless of direction —
+  // both pressing and un-pressing a value emit it in the diff below.
+  const pressedValues =
+    state === "accepted"
+      ? ["accepted"]
+      : state === "rejected"
+        ? ["rejected"]
+        : []
+
+  const onValueChange = useCallback(
+    (next: string[]) => {
+      const prev = new Set(pressedValues)
+      // Whichever value changed membership (added when un-pressed → pressed,
+      // removed when the active button is clicked to reset) is the one the
+      // user actuated.
+      const toggled =
+        next.find((v) => !prev.has(v)) ??
+        ["accepted", "rejected"].find((v) => prev.has(v) && !next.includes(v))
+      if (toggled === "accepted") onAccept()
+      else if (toggled === "rejected") onReject()
+    },
+    [pressedValues, onAccept, onReject],
+  )
+
+  const disabled = !ownerDid || isWriting
 
   return (
-    <div className="response-menu" aria-busy={isWriting}>
-      <div
-        className="response-menu__quick-actions"
-        role="group"
+    <div className="relative flex-shrink-0" aria-busy={isWriting}>
+      <ToggleGroup
         aria-label={`Respond to endorsement from ${issuerDisplayName}`}
-      >
-        <button
-          type="button"
-          className={`response-menu__quick-btn response-menu__quick-btn--accept ${
-            state === "accepted"
-              ? "response-menu__quick-btn--active"
-              : ""
-          }`}
-          aria-label={
-            state === "accepted"
-              ? `Reset accepted endorsement from ${issuerDisplayName} to default`
-              : `Accept endorsement from ${issuerDisplayName}`
-          }
-          aria-pressed={state === "accepted"}
-          title={state === "accepted" ? "Accepted — click to reset" : "Accept"}
-          onClick={onAcceptClick}
-          disabled={!ownerDid || isWriting}
-        >
-          <Check size={14} strokeWidth={2.25} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          className={`response-menu__quick-btn response-menu__quick-btn--reject ${
-            state === "rejected"
-              ? "response-menu__quick-btn--active"
-              : ""
-          }`}
-          aria-label={
-            state === "rejected"
-              ? `Reset rejected endorsement from ${issuerDisplayName} to default`
-              : `Reject endorsement from ${issuerDisplayName}`
-          }
-          aria-pressed={state === "rejected"}
-          title={state === "rejected" ? "Rejected — click to reset" : "Reject"}
-          onClick={onRejectClick}
-          disabled={!ownerDid || isWriting}
-        >
-          <X size={14} strokeWidth={2.25} aria-hidden="true" />
-        </button>
-      </div>
+        value={pressedValues}
+        onValueChange={onValueChange}
+        size="sm"
+        iconOnly
+        options={[
+          {
+            value: "accepted",
+            tone: "success",
+            icon: <Check size={14} strokeWidth={2.25} aria-hidden="true" />,
+            ariaLabel:
+              state === "accepted"
+                ? `Reset accepted endorsement from ${issuerDisplayName} to default`
+                : `Accept endorsement from ${issuerDisplayName}`,
+            disabled,
+          },
+          {
+            value: "rejected",
+            tone: "warn",
+            icon: <X size={14} strokeWidth={2.25} aria-hidden="true" />,
+            ariaLabel:
+              state === "rejected"
+                ? `Reset rejected endorsement from ${issuerDisplayName} to default`
+                : `Reject endorsement from ${issuerDisplayName}`,
+            disabled,
+          },
+        ]}
+      />
       {error ? (
-        <p className="response-menu__error" role="alert">
+        <p className="text-[0.6875rem] text-[var(--color-error)] mt-1" role="alert">
           {error}
         </p>
       ) : null}

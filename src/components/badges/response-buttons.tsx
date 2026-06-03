@@ -5,6 +5,7 @@ import {
   createResponse,
   type ResponseState,
 } from "@/lib/atproto/badges"
+import { ToggleGroup } from "@/components/ui/segmented-control"
 
 interface ResponseButtonsProps {
   /** The award being responded to — passed through to createResponse
@@ -38,11 +39,11 @@ interface ResponseButtonsProps {
  * Loud inline Show / Hide buttons rendered next to an incoming
  * endorsement on the /notifications surface.
  *
- * Why two buttons, not a toggle: per WAI-ARIA toggle-group pattern,
- * users with screen readers benefit from both options being visible
- * even when one is the current state. `aria-pressed` carries the
- * binary state; the parent `role="group"` element gives per-row
- * context.
+ * Why two buttons, not a single toggle: per WAI-ARIA toggle-group
+ * pattern, users with screen readers benefit from both options being
+ * visible even when one is the current state. Each option carries its
+ * own `aria-pressed` (rendered by <ToggleGroup>); the group's
+ * `role="group"` element gives per-row context.
  *
  * Why no separate "default" affordance: in default state both
  * buttons are unpressed; clicking Show writes an `accepted` record,
@@ -96,42 +97,72 @@ export default function ResponseButtons({
   const isRejected = state === "rejected"
   const isUnknown = state === "unknown"
 
+  // The set of currently-pressed values for the ToggleGroup. At most one
+  // of accept/reject is pressed at a time (accepted XOR rejected); an
+  // unknown/default state presses neither.
+  const pressedValues = isAccepted
+    ? ["accepted"]
+    : isRejected
+      ? ["rejected"]
+      : []
+
+  // Translate a toggle into a write. Clicking either button always
+  // writes its response (matching the original "no reset here" intent),
+  // so we diff the emitted set against the current one to learn which
+  // option the user actuated, then write that response.
+  const onValueChange = useCallback(
+    (next: string[]) => {
+      const prev = new Set(pressedValues)
+      const added = next.find((v) => !prev.has(v))
+      // `added` is set when the user pressed a currently-unpressed button.
+      // When they click the already-pressed button it's removed from the
+      // set instead; the original buttons re-wrote the same response on
+      // that click, so resolve to whichever option is no longer in `next`.
+      const toggled =
+        added ?? ["accepted", "rejected"].find((v) => prev.has(v) && !next.includes(v))
+      if (toggled === "accepted") void write("accepted")
+      else if (toggled === "rejected") void write("rejected")
+    },
+    [pressedValues, write],
+  )
+
+  const writing = isWriting !== null
+  const disabled = !ownerDid || writing
+
   return (
     <div
       role="group"
       aria-label={`Response to endorsement from ${issuerDisplayName}`}
-      aria-busy={isWriting !== null}
-      className="response-buttons"
+      aria-busy={writing}
+      className="inline-flex items-center gap-1.5 flex-shrink-0"
     >
       {isUnknown ? (
         <span className="sr-only">
           The current response state is not recognised by this app.
         </span>
       ) : null}
-      <button
-        type="button"
-        aria-pressed={isAccepted}
-        disabled={!ownerDid || isWriting !== null}
-        onClick={() => write("accepted")}
-        className={`response-buttons__btn response-buttons__btn--show ${
-          isAccepted ? "response-buttons__btn--pressed" : ""
-        }`}
-      >
-        {isWriting === "show" ? "Saving…" : labels.accept}
-      </button>
-      <button
-        type="button"
-        aria-pressed={isRejected}
-        disabled={!ownerDid || isWriting !== null}
-        onClick={() => write("rejected")}
-        className={`response-buttons__btn response-buttons__btn--hide ${
-          isRejected ? "response-buttons__btn--pressed" : ""
-        }`}
-      >
-        {isWriting === "hide" ? "Saving…" : labels.reject}
-      </button>
+      <ToggleGroup
+        aria-label={`Response to endorsement from ${issuerDisplayName}`}
+        value={pressedValues}
+        onValueChange={onValueChange}
+        joined={false}
+        tone="neutral"
+        size="sm"
+        options={[
+          {
+            value: "accepted",
+            label: isWriting === "show" ? "Saving…" : labels.accept,
+            disabled,
+          },
+          {
+            value: "rejected",
+            label: isWriting === "hide" ? "Saving…" : labels.reject,
+            disabled,
+          },
+        ]}
+      />
       {error ? (
-        <span className="response-buttons__error" role="alert">
+        <span className="text-[0.6875rem] text-[var(--color-error)] ml-1.5" role="alert">
           {error}
         </span>
       ) : null}
