@@ -1,10 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import Button from "@/components/ui/button"
-import Input from "@/components/ui/input"
-import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
-import { DIALOG_FOOTER_ACTIONS_CLASS } from "@/components/ui/form-dialog"
+import Button from "./button"
+import Input from "./input"
+import AppDialog, { AppDialogHeader } from "./app-dialog"
+import { DIALOG_FOOTER_ACTIONS_CLASS } from "./form-dialog"
 
 interface DeleteRecordDialogProps {
   /** Modal title — e.g. "Delete this cert" / "Delete this project". */
@@ -62,7 +62,7 @@ export default function DeleteRecordDialog({
         disabled={isDeleting}
       />
       <form
-        className="signin-modal__body"
+        className="px-5 pb-5 pt-0"
         onSubmit={(e) => {
           e.preventDefault()
           // The dialog is portalled to body but React synthetic

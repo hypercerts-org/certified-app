@@ -94,7 +94,7 @@ export default function LinkDialog({
   return (
     <AppDialog ariaLabel={resolvedTitle} maxWidth={440} onClose={onClose}>
       <AppDialogHeader title={resolvedTitle} onClose={onClose} />
-      <form className="signin-modal__body" onSubmit={handleSubmit}>
+      <form className="px-5 pb-5 pt-0" onSubmit={handleSubmit}>
         <label className="link-dialog__field">
           <span className="link-dialog__label">URL</span>
           <input

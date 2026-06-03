@@ -1,6 +1,6 @@
 "use client"
 
-import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
+import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
 import LeafletDocument from "./leaflet-document"
 
 export interface LongDescriptionModalProps {
@@ -49,13 +49,13 @@ export default function LongDescriptionModal({
         }
         onClose={onClose}
       />
-      <div className="signin-modal__body long-description-modal__body">
+      <AppDialogBody className="long-description-modal__body">
         <LeafletDocument
           value={value}
           did={did}
           className="long-description-modal__doc"
         />
-      </div>
+      </AppDialogBody>
     </AppDialog>
   )
 }

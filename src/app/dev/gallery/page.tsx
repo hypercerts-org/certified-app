@@ -37,7 +37,7 @@ import {
   PopoverItem,
 } from "@/components/ui/popover";
 import { useToast } from "@/components/ui/toast";
-import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog";
+import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import FormDialog from "@/components/ui/form-dialog";
 import BottomSheet from "@/components/ui/bottom-sheet";
@@ -953,7 +953,7 @@ export default function GalleryPage() {
             title="Demo dialog"
             onClose={() => setAppDialogOpen(false)}
           />
-          <div className="signin-modal__body">
+          <AppDialogBody>
             <p className="dash-card__desc" style={{ marginBottom: 20 }}>
               This is a bare AppDialog with the standard header chrome.
             </p>
@@ -966,7 +966,7 @@ export default function GalleryPage() {
                 Close
               </Button>
             </div>
-          </div>
+          </AppDialogBody>
         </AppDialog>
       )}
 
@@ -1037,12 +1037,12 @@ export default function GalleryPage() {
         }
         maxWidth={440}
       >
-        <div className="signin-modal__body">
+        <AppDialogBody>
           <p className="dash-card__desc">
             Renders as an AppDialog at desktop width and a BottomSheet below
             800px.
           </p>
-        </div>
+        </AppDialogBody>
       </ResponsiveDialog>
     </div>
   );

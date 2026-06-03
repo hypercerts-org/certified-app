@@ -16,7 +16,7 @@ import {
   Trash2,
   X,
 } from "lucide-react"
-import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
+import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
@@ -803,7 +803,7 @@ function CreateListModal({
         onClose={() => !isWriting && onCancel()}
         disabled={isWriting}
       />
-      <form className="signin-modal__body profile-lists__create-form" onSubmit={submit}>
+      <form className="px-5 pb-5 pt-0 profile-lists__create-form" onSubmit={submit}>
         <label className="profile-lists__create-field">
           <span className="profile-lists__create-label">Name</span>
           <input
@@ -1023,7 +1023,7 @@ function PasteUrisModal({
         onClose={() => !running && onClose()}
         disabled={running}
       />
-      <div className="signin-modal__body profile-lists__paste-body">
+      <AppDialogBody className="profile-lists__paste-body">
         <p className="profile-lists__paste-help">
           Paste at-URIs separated by commas, newlines, or spaces.
           Only items matching{" "}
@@ -1081,7 +1081,7 @@ function PasteUrisModal({
             Add
           </Button>
         </div>
-      </div>
+      </AppDialogBody>
     </AppDialog>
   )
 }
@@ -1242,7 +1242,7 @@ function AddItemsModal({
         title={`Add ${LABELS[type]} to list`}
         onClose={onClose}
       />
-      <div className="signin-modal__body profile-lists__add-body">
+      <AppDialogBody className="profile-lists__add-body">
         <label className="profile-lists__add-search">
           <Search size={14} strokeWidth={1.75} aria-hidden />
           <input
@@ -1309,7 +1309,7 @@ function AddItemsModal({
             })}
           </ul>
         ) : null}
-      </div>
+      </AppDialogBody>
     </AppDialog>
   )
 }

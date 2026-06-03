@@ -1,8 +1,8 @@
 "use client"
 
-import Button from "@/components/ui/button"
-import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
-import { DIALOG_FOOTER_ACTIONS_CLASS } from "@/components/ui/form-dialog"
+import Button from "./button"
+import AppDialog, { AppDialogHeader, AppDialogBody } from "./app-dialog"
+import { DIALOG_FOOTER_ACTIONS_CLASS } from "./form-dialog"
 
 interface ConfirmDialogProps {
   readonly title: string
@@ -40,7 +40,7 @@ export default function ConfirmDialog({
       disableBackdropClose={isConfirming}
     >
       <AppDialogHeader title={title} onClose={onCancel} disabled={isConfirming} />
-      <div className="signin-modal__body">
+      <AppDialogBody>
         <p className="dash-card__desc" style={{ marginBottom: 20 }}>
           {message}
         </p>
@@ -61,7 +61,7 @@ export default function ConfirmDialog({
             {confirmLabel}
           </Button>
         </div>
-      </div>
+      </AppDialogBody>
     </AppDialog>
   )
 }

@@ -1,11 +1,11 @@
 "use client"
 
 import React, { useEffect, useRef, useState } from "react"
-import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
-import Brandmark from "@/components/ui/brandmark"
-import Button from "@/components/ui/button"
-import Checkbox from "@/components/ui/checkbox"
-import Input from "@/components/ui/input"
+import AppDialog, { AppDialogHeader, AppDialogBody } from "./app-dialog"
+import Brandmark from "./brandmark"
+import Button from "./button"
+import Checkbox from "./checkbox"
+import Input from "./input"
 
 interface SignInModalProps {
   isOpen: boolean
@@ -80,13 +80,16 @@ export default function SignInModal({
     <AppDialog ariaLabel="Sign in" onClose={onClose}>
       <AppDialogHeader title="" onClose={onClose} />
 
-      <div className="signin-modal__body">
-        <div className="signin-modal__brandmark-wrap">
-          <Brandmark size={72} decorative className="signin-modal__brandmark" />
+      <AppDialogBody>
+        <div className="flex justify-center mb-8 text-[var(--fg-primary)] max-[520px]:mb-6">
+          <Brandmark size={72} decorative className="block" />
         </div>
 
-        <form onSubmit={handleSubmit} className="signin-modal__form" method="post" aria-label="Sign in">
-          <label className="signin-modal__heading" htmlFor={isCertified ? "email" : "username"}>
+        <form onSubmit={handleSubmit} className="flex flex-col" method="post" aria-label="Sign in">
+          <label
+            className="font-[var(--font-inter),system-ui,sans-serif] text-[1.125rem] font-semibold tracking-[-0.01em] text-[var(--fg-primary)] mb-3 max-[520px]:text-base"
+            htmlFor={isCertified ? "email" : "username"}
+          >
             {heading}
           </label>
           <Input
@@ -137,11 +140,11 @@ export default function SignInModal({
         </form>
 
         <div
-          className="signin-modal__powered"
+          className='block mx-auto mt-6 w-[165px] h-[18px] bg-[var(--fg-primary)] dark:bg-[var(--fg-secondary)] [mask-image:url("/assets/powered_by_certified_black.svg")] [mask-size:contain] [mask-repeat:no-repeat] [mask-position:center] [-webkit-mask-image:url("/assets/powered_by_certified_black.svg")] [-webkit-mask-size:contain] [-webkit-mask-repeat:no-repeat] [-webkit-mask-position:center]'
           role="img"
           aria-label="Powered by Certified"
         />
-      </div>
+      </AppDialogBody>
     </AppDialog>
   )
 }

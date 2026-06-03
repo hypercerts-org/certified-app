@@ -1,8 +1,8 @@
 "use client"
 
 import type { ReactNode, RefObject, FormEvent } from "react"
-import Button from "@/components/ui/button"
-import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
+import Button from "./button"
+import AppDialog, { AppDialogHeader } from "./app-dialog"
 
 /**
  * Shared footer-actions row for every dialog that ends in a
@@ -97,7 +97,7 @@ export default function FormDialog({
       initialFocusRef={initialFocusRef}
     >
       <AppDialogHeader title={title} onClose={onClose} disabled={isSubmitting} />
-      <form className="signin-modal__body" onSubmit={handleSubmit}>
+      <form className="px-5 pb-5 pt-0" onSubmit={handleSubmit}>
         {children}
         <div className={DIALOG_FOOTER_ACTIONS_CLASS}>
           <Button

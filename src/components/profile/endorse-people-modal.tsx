@@ -11,7 +11,7 @@ import { Check, Search, UserPlus, X } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
+import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
 import { getInitials } from "@/lib/utils/initials"
 
 interface Actor {
@@ -240,7 +240,7 @@ export default function EndorsePeopleModal({
     >
       <AppDialogHeader title={title} onClose={onClose} disabled={isWriting} />
 
-        <div className="signin-modal__body endorse-people-modal__body">
+        <AppDialogBody className="endorse-people-modal__body">
           {subtitle ? (
             <p className="endorse-people-modal__subtitle">{subtitle}</p>
           ) : null}
@@ -337,7 +337,7 @@ export default function EndorsePeopleModal({
                 : confirmActionLabel}
             </Button>
           </div>
-        </div>
+        </AppDialogBody>
     </AppDialog>
   )
 }

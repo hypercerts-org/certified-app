@@ -20,7 +20,7 @@ import {
 } from "lucide-react"
 import { resolveHandleToDid } from "@/lib/atproto/did"
 import { parseSubjectInput } from "@/lib/utils/parse-subject-input"
-import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
+import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import {
@@ -715,7 +715,7 @@ function CreateListModal({
     >
       <AppDialogHeader title={headerLabel} onClose={onClose} disabled={isSaving} />
 
-      <form className="signin-modal__body" onSubmit={handleSubmit}>
+      <form className="px-5 pb-5 pt-0" onSubmit={handleSubmit}>
         <label className="endorsement-lists__create-field">
           <span className="endorsement-lists__create-label">Title</span>
           <input
@@ -859,7 +859,7 @@ function RevokeListItemButton({
           <AppDialogHeader
             title={`Remove ${subjectDisplay} from "${listTitle}"?`}
           />
-          <div className="signin-modal__body endorsement-lists__revoke-body">
+          <AppDialogBody className="endorsement-lists__revoke-body">
             <p className="endorsement-lists__revoke-copy">
               You can drop them from this list and keep your
               endorsement, or revoke the endorsement entirely (which
@@ -898,7 +898,7 @@ function RevokeListItemButton({
                 Revoke endorsement
               </Button>
             </div>
-          </div>
+          </AppDialogBody>
         </AppDialog>
       ) : null}
     </>
@@ -1176,7 +1176,7 @@ function PasteSubjectsModal({
         onClose={() => !running && onClose()}
         disabled={running}
       />
-      <div className="signin-modal__body profile-lists__paste-body">
+      <AppDialogBody className="profile-lists__paste-body">
         <p className="profile-lists__paste-help">
           Paste handles, DIDs, or profile URLs separated by commas,
           newlines, or spaces. Each person gets an endorsement from you
@@ -1239,7 +1239,7 @@ function PasteSubjectsModal({
             </>
           )}
         </div>
-      </div>
+      </AppDialogBody>
     </AppDialog>
   )
 }

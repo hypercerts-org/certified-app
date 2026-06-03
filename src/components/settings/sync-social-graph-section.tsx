@@ -14,7 +14,7 @@ import Checkbox from "@/components/ui/checkbox"
 import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Skeleton from "@/components/ui/skeleton"
-import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
+import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import {
   useSocialGraphSync,
@@ -252,7 +252,7 @@ function SyncModal({ candidateDids, onClose, onImport }: SyncModalProps) {
         disabled={isImporting}
       />
 
-        <div className="signin-modal__body social-graph-sync__modal-body">
+        <AppDialogBody className="social-graph-sync__modal-body">
           {result ? (
             <ResultView
               result={result}
@@ -283,7 +283,7 @@ function SyncModal({ candidateDids, onClose, onImport }: SyncModalProps) {
               onImport={() => runImport(Array.from(selected))}
             />
           )}
-        </div>
+        </AppDialogBody>
     </AppDialog>
   )
 }

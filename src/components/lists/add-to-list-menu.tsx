@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Copy, ListPlus, MoreVertical } from "lucide-react"
-import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
+import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
 import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -259,7 +259,7 @@ function AddToListModal({
         onClose={() => !busyRkey && onClose()}
         disabled={!!busyRkey}
       />
-      <div className="signin-modal__body add-to-list__body">
+      <AppDialogBody className="add-to-list__body">
         {isLoading ? (
           <div className="add-to-list__loading">
             <LoadingSpinner size="sm" />
@@ -344,7 +344,7 @@ function AddToListModal({
             + Create a new list
           </button>
         )}
-      </div>
+      </AppDialogBody>
     </AppDialog>
   )
 }
