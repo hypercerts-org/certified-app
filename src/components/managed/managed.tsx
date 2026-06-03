@@ -1,8 +1,7 @@
 "use client"
 
-import { useCallback, useMemo } from "react"
+import { useMemo } from "react"
 import Link from "next/link"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { FolderGit2, Plus } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
 import SegmentedControl from "@/components/ui/segmented-control"
@@ -12,6 +11,7 @@ import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { usePageTitle } from "@/lib/navbar-context"
 import { useManagedAuthors } from "@/hooks/use-managed-authors"
+import { useIdentityFocus } from "@/hooks/use-identity-focus"
 import { useManagedRecords, type ManagedItem } from "@/hooks/use-managed-records"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
@@ -32,17 +32,9 @@ import type { OrgRole } from "@/lib/groups/types"
  * suppressed (it would be noise).
  *
  * Switch between a <SegmentedControl> (<=5 identities, fits a strip) and
- * a <Select> dropdown (more than 5) so the filter never overflows.
+ * a <Select> dropdown (more than 5) so the filter never overflows — both
+ * driven by the shared `useIdentityFocus` hook.
  */
-
-// Sentinel focus values. Everything is the bare default; You is the
-// personal identity. Any other value is a group DID.
-const FOCUS_EVERYTHING = "everything"
-const FOCUS_YOU = "you"
-
-// Above this many identities the segmented strip would overflow the
-// reading column, so fall back to a dropdown.
-const SEGMENTED_MAX_IDENTITIES = 5
 
 const ROLE_LABEL: Record<OrgRole, string> = {
   owner: "Owner",
@@ -97,76 +89,23 @@ function itemImageUrl(item: ManagedItem): string | null {
 export default function Managed() {
   usePageTitle("Managed")
 
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-
   const { identities, isLoading: identitiesLoading } = useManagedAuthors()
   const { items, isLoading, isLoadingMore, hasMore, loadMore } =
     useManagedRecords()
 
-  // Resolve the focus from `?focus=`. Everything is the default and the
-  // only valid sentinel besides You + the known group DIDs; an unknown
-  // value (e.g. a stale group DID after losing admin) collapses to
-  // Everything rather than showing an empty list with no way out.
-  const focus = useMemo<string>(() => {
-    const raw = searchParams?.get("focus")
-    if (!raw || raw === FOCUS_EVERYTHING) return FOCUS_EVERYTHING
-    if (raw === FOCUS_YOU) return FOCUS_YOU
-    return identities.some((i) => i.did === raw) ? raw : FOCUS_EVERYTHING
-  }, [searchParams, identities])
-
-  const setFocus = useCallback(
-    (next: string) => {
-      const params = new URLSearchParams(searchParams?.toString() ?? "")
-      if (next === FOCUS_EVERYTHING) params.delete("focus")
-      else params.set("focus", next)
-      const qs = params.toString()
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
-    },
-    [router, pathname, searchParams],
-  )
-
-  // Map a focus value to the DID it scopes to (null = Everything).
-  const focusedDid = useMemo<string | null>(() => {
-    if (focus === FOCUS_EVERYTHING) return null
-    if (focus === FOCUS_YOU) {
-      return identities.find((i) => i.kind === "personal")?.did ?? null
-    }
-    return focus
-  }, [focus, identities])
-
-  // Whether a single GROUP is focused — suppresses the per-row "via"
-  // line, since every visible row already shares that owner.
-  const singleGroupFocused = useMemo<boolean>(() => {
-    if (focus === FOCUS_EVERYTHING || focus === FOCUS_YOU) return false
-    return identities.some((i) => i.did === focus && i.kind === "group")
-  }, [focus, identities])
+  const {
+    focus,
+    setFocus,
+    focusedDid,
+    singleGroupFocused,
+    filterOptions,
+    useDropdown,
+  } = useIdentityFocus(identities)
 
   const visibleItems = useMemo<ManagedItem[]>(() => {
     if (!focusedDid) return items
     return items.filter((item) => item.owner.ownerDid === focusedDid)
   }, [items, focusedDid])
-
-  // Build the filter options: [Everything, You, ...each group].
-  const filterOptions = useMemo(() => {
-    const opts: { value: string; label: string }[] = [
-      { value: FOCUS_EVERYTHING, label: "Everything" },
-    ]
-    for (const identity of identities) {
-      if (identity.kind === "personal") {
-        opts.push({ value: FOCUS_YOU, label: identity.label })
-      } else {
-        opts.push({ value: identity.did, label: identity.label })
-      }
-    }
-    return opts
-  }, [identities])
-
-  // <=5 identities → segmented strip; more → dropdown. `identities`
-  // always includes the personal account, so the option count is
-  // identities.length + 1 (the Everything option).
-  const useDropdown = identities.length > SEGMENTED_MAX_IDENTITIES
 
   const showInitialSpinner = isLoading && items.length === 0
 
