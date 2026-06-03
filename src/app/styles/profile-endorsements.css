@@ -939,9 +939,9 @@
 
 /* ==================================================================
    Endorse-people modal — opened from the `+` button on the
-   Endorsements toolbar (own profile only). Mounted as a native
-   <dialog> so it inherits the existing .signin-modal chrome
-   (backdrop, focus styling, close-X), and adds its own search +
+   Endorsements toolbar (own profile only). Mounted via <AppDialog>,
+   which supplies the backdrop, focus trap, and close-X chrome
+   (self-contained Tailwind); this block adds its own search +
    results + selected list rows.
    ================================================================== */
 

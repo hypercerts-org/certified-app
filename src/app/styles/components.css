@@ -1,35 +1,19 @@
 /* ========== Empty State ========== */
+/* The base `.empty-state` rule is kept as a styling/override hook: the
+   EmptyState primitive still emits the bare `empty-state` class on its
+   root, and contextual overrides key on it via parent selectors
+   (`.profile-endorsements-v2__grid > .empty-state` in
+   profile-endorsements.css, `.profile-certs .feed > .empty-state` in
+   layout.css). The base look is now self-contained Tailwind in
+   empty-state.tsx, so the BEM sub-element rules
+   (`__icon` / `__title` / `__desc` / `__actions`) were orphaned and
+   removed. */
 .empty-state {
   text-align: center;
   padding: 48px 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
-}
-
-.empty-state__icon {
-  color: var(--fg-muted);
-  margin-bottom: 16px;
-  opacity: 0.5;
-}
-
-.empty-state__title {
-  font-family: var(--font-headline), "Noto Serif", serif;
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--fg-primary);
-  margin-bottom: 8px;
-}
-
-.empty-state__desc {
-  font-size: 0.875rem;
-  line-height: 1.6;
-  color: var(--fg-muted);
-  max-width: 320px;
-}
-
-.empty-state__actions {
-  margin-top: 20px;
 }
 
 /* ========== "More" link ==========
@@ -80,111 +64,6 @@
   .press-scale:active {
     transform: none;
   }
-}
-
-/* ========== Sign-In Modal ========== */
-.signin-modal__backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background: rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(8px);
-  animation: modalFadeIn 200ms ease-out;
-  overflow-y: auto;
-}
-
-[data-theme="dark"] .signin-modal__backdrop {
-  background: var(--navy-overlay-70);
-}
-
-.signin-modal__wrapper {
-  position: relative;
-  width: 100%;
-  max-width: 460px;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  animation: modalSlideUp 300ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.signin-modal {
-  width: 100%;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  padding: 40px 40px 36px;
-  box-shadow: var(--shadow-lg);
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-}
-
-dialog.signin-modal {
-  position: fixed;
-  inset: 0;
-  margin: auto;
-  max-height: calc(100vh - 40px);
-  overflow-y: auto;
-  /* Never show a horizontal scrollbar — long DIDs / handles in
-     content should ellipsis-truncate, not spill the modal width. */
-  overflow-x: hidden;
-}
-
-dialog.signin-modal::backdrop {
-  background: rgba(0, 0, 0, 0.5);
-}
-
-[data-theme="dark"] dialog.signin-modal::backdrop {
-  background: var(--navy-overlay-70);
-}
-
-/* App-wide modal shape. Add this class ALONGSIDE `.signin-modal` on
-   any non-sign-in dialog (`<dialog className="signin-modal app-modal">`)
-   so the radius drops from the sign-in surface's intentional 20px
-   down to the design system's 2px (`var(--radius)`). Padding is also
-   trimmed since dense form/list modals don't need the sign-in
-   surface's hero spacing. See DESIGN.md §11 — Modals. */
-dialog.signin-modal.app-modal {
-  border-radius: var(--radius);
-  padding: 0;
-  /* `<dialog>` doesn't ship with a positioned ancestor by default —
-     set one explicitly so the absolute-positioned close button below
-     is anchored to the modal corner, not the page. */
-  position: relative;
-}
-
-dialog.signin-modal.app-modal .signin-modal__header {
-  /* Right padding reserves space for the absolute-positioned X
-     (24px button inset 4px from the modal corner + 12px breathing
-     room = 40px). Without this the title would slide under the
-     close button on narrow modals. */
-  padding: 20px 40px 12px 24px;
-}
-
-/* Close button — the 18px `<X>` glyph sits in exactly the same
-   place it did when the button was 32×32 flush in the corner
-   (centre at 16px / 16px from the modal's top-right corner) but
-   the hover highlight is a smaller 24×24 chip inset 4px from the
-   corner. A 24×24 button centres an 18px icon at the same screen
-   position (button top 4 + icon offset 3 + icon centre 9 = 16,
-   matching the previous button top 0 + icon offset 7 + icon
-   centre 9 = 16). The radius is a uniform 6px now that the chip
-   no longer touches the modal's rounded corner. */
-dialog.signin-modal.app-modal .signin-modal__close {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 24px;
-  height: 24px;
-  border-radius: var(--radius);
-}
-
-dialog.signin-modal.app-modal .signin-modal__body {
-  padding: 0 20px 20px;
 }
 
 /* ---------- Type-to-confirm delete dialog ---------- */
@@ -260,199 +139,11 @@ dialog.signin-modal.app-modal .signin-modal__body {
   gap: 8px;
 }
 
-/* Close button rules now live in `landing.css` (single source of
-   truth). The earlier "floating chip" treatment here positioned the
-   button outside the dialog corner with a shadow halo, which caused
-   the hover highlight to spill past the dialog edge. Removed; the
-   header's flex layout places the X inline with the title now. */
-
-.signin-modal__brandmark-wrap {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 32px;
-  color: var(--fg-primary);
-}
-
-.signin-modal__brandmark {
-  display: block;
-}
-
-.signin-modal__form {
-  display: flex;
-  flex-direction: column;
-}
-
-.signin-modal__heading {
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--fg-primary);
-  letter-spacing: -0.01em;
-  margin-bottom: 12px;
-}
-
-.signin-modal__input {
-  width: 100%;
-  height: 56px;
-  padding: 0 20px;
-  border: 1.5px solid var(--border-default);
-  border-radius: var(--radius);
-  font-size: 1rem;
-  color: var(--fg-primary);
-  background: var(--bg-elevated);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-  outline: none;
-}
-
-.signin-modal__input::placeholder {
-  color: var(--fg-muted);
-}
-
-.signin-modal__input:focus {
-  border-color: var(--fg-primary);
-  box-shadow: 0 0 0 3px var(--overlay-medium);
-}
-
-.signin-modal__input:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.signin-modal__remember {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 16px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.signin-modal__remember-input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-  width: 0;
-  height: 0;
-}
-
-.signin-modal__remember-box {
-  width: 18px;
-  height: 18px;
-  border-radius: var(--radius);
-  border: 1.5px solid var(--border-hover);
-  background: var(--bg-elevated);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: transparent;
-  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
-  flex-shrink: 0;
-}
-
-.signin-modal__remember-input:checked + .signin-modal__remember-box {
-  background: var(--fg-primary);
-  border-color: var(--fg-primary);
-  color: var(--bg-canvas);
-}
-
-.signin-modal__remember-input:focus-visible + .signin-modal__remember-box {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.signin-modal__remember-label {
-  font-size: 0.875rem;
-  color: var(--fg-secondary);
-  font-weight: 500;
-}
-
-.signin-modal__error {
-  font-size: 0.8125rem;
-  color: var(--color-error);
-  margin-top: 12px;
-  margin-bottom: 0;
-  line-height: 1.4;
-}
-
-.signin-modal__submit {
-  margin-top: 24px;
-  width: 100%;
-  height: 56px;
-  border: none;
-  border-radius: 999px;
-  font-size: 1rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--btn-primary-fg);
-  background: var(--btn-primary-bg);
-  cursor: pointer;
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
-}
-
-.signin-modal__submit:hover:not(:disabled) {
-  opacity: 0.92;
-}
-
-.signin-modal__submit:active:not(:disabled) {
-  transform: scale(0.99);
-}
-
-.signin-modal__submit:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 3px;
-}
-
-.signin-modal__submit:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.signin-modal__alt {
-  margin-top: 12px;
-  width: 100%;
-  height: 56px;
-  border: 1.5px solid var(--border-default);
-  border-radius: 999px;
-  font-size: 1rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--fg-primary);
-  background: transparent;
-  cursor: pointer;
-  transition: border-color var(--transition-fast), background var(--transition-fast);
-}
-
-.signin-modal__alt:hover {
-  border-color: var(--border-hover);
-  background: var(--overlay-weak);
-}
-
-.signin-modal__alt:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 3px;
-}
-
-.signin-modal__powered {
-  display: block;
-  margin: 24px auto 0;
-  width: 165px;
-  height: 18px;
-  /* Light: use primary text color for full contrast.
-     Dark: keep the softer secondary tone (overridden below). */
-  background-color: var(--fg-primary);
-  -webkit-mask-image: url("/assets/powered_by_certified_black.svg");
-          mask-image: url("/assets/powered_by_certified_black.svg");
-  -webkit-mask-size: contain;
-          mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-          mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-          mask-position: center;
-}
-
-[data-theme="dark"] .signin-modal__powered {
-  background-color: var(--fg-secondary);
-}
+/* The sign-in surface chrome + form styling that previously lived here
+   (`.signin-modal__*`) was Tailwind-ified into the AppDialog primitive
+   and sign-in-modal.tsx; the orphaned rules were removed. The
+   @keyframes below are kept — they're still referenced by AppDialog's
+   `animate-[modalSlideUp]` and by the feedback / other modal blocks. */
 
 @keyframes modalFadeIn {
   from { opacity: 0; }
@@ -462,32 +153,6 @@ dialog.signin-modal.app-modal .signin-modal__body {
 @keyframes modalSlideUp {
   from { opacity: 0; transform: translateY(16px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .signin-modal__backdrop { animation: none; }
-  .signin-modal__wrapper { animation: none; }
-}
-
-@media (max-width: 520px) {
-  .signin-modal__backdrop {
-    padding: 16px;
-  }
-  .signin-modal {
-    padding: 32px 24px 28px;
-    border-radius: var(--radius);
-  }
-  .signin-modal__brandmark-wrap {
-    margin-bottom: 24px;
-  }
-  .signin-modal__heading {
-    font-size: 1rem;
-  }
-  .signin-modal__input,
-  .signin-modal__submit,
-  .signin-modal__alt {
-    height: 52px;
-  }
 }
 
 /* ========== Feedback Modal ========== */

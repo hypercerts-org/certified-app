@@ -120,6 +120,13 @@
    (was `.profile-edit-banner` before the cert page started reusing it
    — renamed to `.edit-banner` for the broader scope). */
 
+/* The base `.edit-banner` rule is kept as a hook: EditBanner still emits
+   the bare `edit-banner` class on its root, and the profile inline-edit
+   click guard keys on it via `target.closest(".edit-banner")` in
+   use-profile-inline-edit.ts. The label / error / actions / button
+   styling is now self-contained Tailwind in edit-banner.tsx, so the BEM
+   sub-element rules (`__label` / `__error` / `__actions` / `__btn` /
+   `__btn--primary`) were orphaned and removed. */
 .edit-banner {
   display: flex;
   align-items: center;
@@ -129,78 +136,6 @@
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
-}
-
-.edit-banner__label {
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--fg-primary);
-  letter-spacing: 0.01em;
-}
-
-.edit-banner__error {
-  font-size: 0.8125rem;
-  color: var(--color-error);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.edit-banner__actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-}
-
-.edit-banner__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 14px;
-  font-family: inherit;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  line-height: 1;
-  border-radius: var(--radius);
-  border: 1px solid var(--border-default);
-  background: var(--bg-elevated);
-  color: var(--fg-primary);
-  cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-}
-
-.edit-banner__btn:hover:not(:disabled) {
-  background: var(--overlay-weak);
-}
-
-.edit-banner__btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.edit-banner__btn--primary {
-  background: var(--btn-primary-bg);
-  color: var(--btn-primary-fg);
-  border-color: var(--btn-primary-bg);
-}
-
-/* The base `.edit-banner__btn:hover` rule above sets background to
-   `--overlay-weak` for the ghost-button hover treatment. Without
-   restating background here, the primary's dark fill would be
-   replaced by that near-white overlay on hover — leaving white
-   text on a near-white background. Re-pin the background AND
-   border-color so the primary stays dark, with opacity for the
-   hover affordance (matches the canonical primary-button treatment
-   on the sign-in modal and feed actions). */
-.edit-banner__btn--primary:hover:not(:disabled) {
-  background: var(--btn-primary-bg);
-  border-color: var(--btn-primary-bg);
-  opacity: 0.92;
 }
 
 /* --- Overview banner in edit mode -----------------------------------
