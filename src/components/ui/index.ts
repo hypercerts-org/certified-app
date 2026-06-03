@@ -87,6 +87,9 @@ export * from "./loading-spinner";
 export { default as LoadMoreSentinel } from "./load-more-sentinel";
 export * from "./load-more-sentinel";
 
+export { default as Pagination } from "./pagination";
+export * from "./pagination";
+
 export { default as Popover } from "./popover";
 export * from "./popover";
 
