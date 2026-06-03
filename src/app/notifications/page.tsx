@@ -37,14 +37,20 @@ function NotificationsContent() {
   // viewer actually owns/admins a group. Otherwise the page is the
   // personal feed, byte-identical to before.
   const managesAnyGroup = useManagesAnyGroup()
+  const { identities, isLoading: managedLoading } = useManagedAuthors()
   const aggregating = NOTIFICATIONS_AGGREGATION_ENABLED && managesAnyGroup
+
+  // While aggregation is enabled but the org roles haven't resolved,
+  // `managesAnyGroup` is still false — firing the personal hook now would
+  // waste a fetch and flash personal-only before the aggregate engages.
+  // Hold both hooks until the role set settles. (Flag off → no wait.)
+  const orgResolving = NOTIFICATIONS_AGGREGATION_ENABLED && managedLoading
 
   // Both hooks are always called (rules of hooks); the inactive one is
   // disabled, so it does no fetch and returns empty.
-  const personal = useNotificationsFeed(isAuthenticated && !aggregating)
+  const personal = useNotificationsFeed(isAuthenticated && !aggregating && !orgResolving)
   const managed = useManagedNotifications(isAuthenticated && aggregating)
 
-  const { identities } = useManagedAuthors()
   const { focus, setFocus, focusedDid, singleGroupFocused, filterOptions, useDropdown } =
     useIdentityFocus(identities)
 
@@ -60,9 +66,11 @@ function NotificationsContent() {
     return personal.notifications.map((n) => ({ notification: n, owner: null }))
   }, [aggregating, managed.items, personal.notifications])
 
-  const { isLoading, isLoadingMore, error, hasMore, loadMore } = aggregating
-    ? managed
-    : personal
+  const activeSource = aggregating ? managed : personal
+  const { isLoadingMore, error, hasMore, loadMore } = activeSource
+  // Show the skeleton while the org roles are still resolving so we don't
+  // render an empty/personal state before the aggregated source engages.
+  const isLoading = activeSource.isLoading || orgResolving
 
   // Apply the identity focus filter (aggregated view only).
   const visibleRows = useMemo<NotificationRowData[]>(() => {
@@ -175,6 +183,7 @@ function NotificationsContent() {
                   aria-label="Focus"
                   value={focus}
                   onChange={(e) => setFocus(e.target.value)}
+                  className="notifications-filter__select"
                 >
                   {filterOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>

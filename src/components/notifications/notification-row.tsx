@@ -109,13 +109,7 @@ export default function NotificationRow({
       </div>
       <div className="notification-row__body">
         <p className="notification-row__text">{reasonText(notification, displayName, hasHandle)}</p>
-        {via ? (
-          <ViaByline
-            group={via.group}
-            role={via.role}
-            className="notification-row__via"
-          />
-        ) : null}
+        {via ? <ViaByline group={via.group} role={via.role} /> : null}
         <time
           dateTime={notification.sortAt}
           title={absoluteTime}

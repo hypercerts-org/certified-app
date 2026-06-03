@@ -90,9 +90,24 @@
 }
 
 /* ---- Focus filter row ---- */
+/* Horizontally scrollable on narrow viewports so a long identity list
+   (segmented strip) never overflows or wraps; the strip keeps its
+   intrinsic width and the row scrolls instead. Scrollbar hidden to match
+   the rest of the chrome. */
 .managed-page__filter {
   display: flex;
   align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.managed-page__filter::-webkit-scrollbar {
+  display: none;
+}
+
+.managed-page__filter > * {
+  flex-shrink: 0;
 }
 
 .managed-page__filter-select {

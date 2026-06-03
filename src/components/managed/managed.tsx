@@ -239,7 +239,7 @@ function ManagedRow({
           <span className="managed-row__title">{title}</span>
           {showVia ? (
             <span className="managed-row__via">
-              <span className="managed-row__via-label">via {owner.label}</span>
+              via {owner.label}
               {roleLabel ? (
                 <span className="managed-row__via-role"> · {roleLabel}</span>
               ) : null}

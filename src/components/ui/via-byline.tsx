@@ -30,20 +30,18 @@ export default function ViaByline({ group, role, className = "" }: ViaBylineProp
   const initials = getInitials(group.displayName ?? group.handle, group.groupDid)
 
   return (
-    <span
-      className={`via-byline${className ? ` ${className}` : ""}`}
-      // Spelled out for assistive tech — the visual avatar is decorative.
-      aria-label={`via ${name}${role ? ` (${role})` : ""}`}
-    >
-      <span className="via-byline__label" aria-hidden="true">
-        via
-      </span>
+    // The visible "via {name}" text IS the accessible name — read naturally
+    // by assistive tech. A bare aria-label on a roleless span isn't reliably
+    // announced, so we let the real text carry the meaning and only hide the
+    // decorative avatar. The role (when shown) is appended sr-only so screen
+    // readers get "via {name}, {role}" without changing the compact visual.
+    <span className={`via-byline${className ? ` ${className}` : ""}`}>
+      <span className="via-byline__label">via</span>
       <span className="via-byline__avatar" aria-hidden="true">
         <Avatar size="sm" src={group.avatarUrl} alt="" fallbackInitials={initials} />
       </span>
-      <span className="via-byline__name" aria-hidden="true">
-        {name}
-      </span>
+      <span className="via-byline__name">{name}</span>
+      {role ? <span className="sr-only">, {role}</span> : null}
     </span>
   )
 }

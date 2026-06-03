@@ -770,9 +770,15 @@ function FollowButton({
   // Per-action write identity for THIS Follow. Default You; the picker
   // below lets the operator opt into "Follow as <group>". Follow is
   // low-stakes, so there's no confirm gate — just the inline choice.
-  const [posting, setPosting] = useState<PostingIdentity>(
-    () => postingOptions[0] ?? { did: viewerDid, kind: "personal", label: "You" },
-  )
+  //
+  // Store only the selected DID and derive the identity object each render,
+  // so the picker always shows the FRESHEST option (handle/avatar resolve
+  // asynchronously — seeding the whole object once would pin a stale copy).
+  const [selectedDid, setSelectedDid] = useState<string | null>(null)
+  const posting: PostingIdentity =
+    postingOptions.find((o) => o.did === selectedDid) ??
+    postingOptions[0] ?? { did: viewerDid, kind: "personal", label: "You" }
+  const setPosting = (next: PostingIdentity) => setSelectedDid(next.did)
   const disabled = isLoading || isWriting
   // Group writes route to the group's repo via the BFF (`targetDid`);
   // personal writes leave `targetDid` undefined → the viewer's own PDS.
@@ -905,10 +911,13 @@ function EndorseButton({
   // Per-action WRITE identity for this endorsement. Default You; the
   // picker lets the operator opt into a group, which then routes through
   // the high-stakes confirm before committing. Never seeded from the
-  // active read-scope org.
-  const [posting, setPosting] = useState<PostingIdentity>(
-    () => postingOptions[0] ?? { did: viewerDid, kind: "personal", label: "You" },
-  )
+  // active read-scope org. Store only the selected DID and derive the
+  // identity each render so the picker shows the freshest resolved option.
+  const [selectedDid, setSelectedDid] = useState<string | null>(null)
+  const posting: PostingIdentity =
+    postingOptions.find((o) => o.did === selectedDid) ??
+    postingOptions[0] ?? { did: viewerDid, kind: "personal", label: "You" }
+  const setPosting = (next: PostingIdentity) => setSelectedDid(next.did)
   const postingIsGroup = posting.kind === "group"
   // The group DID the write routes to (undefined when posting as You →
   // the viewer's own repo via the personal path).

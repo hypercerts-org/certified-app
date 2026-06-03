@@ -3,10 +3,27 @@
    ========================================================================== */
 
 /* Identity focus strip above the list — only rendered on the aggregated
-   path (notifications aggregation on + the viewer manages groups). */
+   path (notifications aggregation on + the viewer manages groups).
+   Horizontally scrollable so a long identity list never overflows; the
+   dropdown variant is width-capped to match /managed. */
 .notifications-filter {
   display: flex;
   padding: 4px 4px 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.notifications-filter::-webkit-scrollbar {
+  display: none;
+}
+
+.notifications-filter > * {
+  flex-shrink: 0;
+}
+
+.notifications-filter__select {
+  max-width: 280px;
 }
 
 .notification-list {

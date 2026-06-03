@@ -420,7 +420,7 @@
 }
 
 .profile-managed-bridge__link:hover {
-  color: var(--color-accent);
+  color: var(--color-accent-hover);
   text-decoration: underline;
 }
 

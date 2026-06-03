@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, Check } from "lucide-react"
 import {
   Popover,
   PopoverTrigger,
@@ -128,6 +128,12 @@ export default function PostingAs({
               onClick={() => onChange(opt)}
               className="w-full flex items-center gap-2 px-3 py-2 text-left rounded hover:bg-[var(--overlay-weak)] focus:bg-[var(--overlay-weak)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 focus:outline-none"
             >
+              {/* Reserved-width check so the current identity is visibly
+                  marked while every row's label stays left-aligned. */}
+              <Check
+                className={`h-4 w-4 shrink-0 text-[var(--fg-primary)] ${selected ? "opacity-100" : "opacity-0"}`}
+                aria-hidden="true"
+              />
               <IdentitySummary identity={opt} size="sm" />
             </button>
           )
