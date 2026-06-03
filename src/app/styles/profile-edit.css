@@ -192,8 +192,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.pe__input,
-.pe__textarea {
+.pe__input {
   width: 100%;
   /* Belt-and-braces against any inherited box-sizing surprises — without
      this, an extra-wide URL placeholder can push the row sideways and
@@ -213,31 +212,21 @@
     background var(--transition-fast);
 }
 
-.pe__input::placeholder,
-.pe__textarea::placeholder {
+.pe__input::placeholder {
   color: var(--fg-muted);
   font-weight: 400;
 }
 
-.pe__input:hover,
-.pe__textarea:hover {
+.pe__input:hover {
   border-color: var(--border-hover, var(--fg-muted));
 }
 
-.pe__input:focus,
-.pe__textarea:focus {
+.pe__input:focus {
   outline: none;
   border-color: var(--fg-primary);
 }
 
-.pe__textarea {
-  resize: vertical;
-  min-height: 96px;
-  line-height: 1.55;
-}
-
-.pe__input--invalid,
-.pe__textarea--invalid {
+.pe__input--invalid {
   border-color: var(--color-error);
 }
 

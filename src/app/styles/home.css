@@ -488,29 +488,6 @@ a.home-feed__preview:hover {
   -webkit-box-orient: vertical;
 }
 
-.home-feed__preview-tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 1px 6px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border-medium);
-  background: var(--bg-sunken);
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  line-height: 1.4;
-  color: var(--fg-secondary);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.home-feed__preview-tag--warn {
-  color: var(--color-error);
-  border-color: var(--color-error);
-  background: transparent;
-}
-
 .home-feed__preview-desc {
   font-size: 0.8rem;
   color: var(--fg-secondary);
