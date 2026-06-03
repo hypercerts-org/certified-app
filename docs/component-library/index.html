@@ -408,6 +408,9 @@ code.tok { font-family: var(--sg-mono); font-size: 0.8em; background: var(--bg-s
 .btn--lg   { padding: 12px 32px; font-size: 0.875rem; }
 .btn--icon { height: 40px; width: 40px; padding: 0; }
 .btn:disabled, .btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+/* pressed (aria-pressed="true") — active visual on secondary/ghost only */
+.btn--secondary.btn--pressed { background: var(--overlay-medium); color: var(--fg-primary); border-color: var(--border-hover); }
+.btn--ghost.btn--pressed     { background: var(--overlay-medium); color: var(--fg-primary); }
 .spin { animation: sg-spin 1s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
 @keyframes sg-spin { to { transform: rotate(360deg); } }
@@ -439,6 +442,11 @@ textarea.ui-field { height: auto; padding: 12px 16px; resize: vertical; min-heig
 .ui-field-icon--trail { right: 16px; }
 .ui-field--padlead  { padding-left: 44px; }
 .ui-field--padtrail { padding-right: 44px; }
+/* trailingButton slot — interactive (keeps pointer events, not aria-hidden) */
+.ui-field-btn { position: absolute; top: 50%; right: 16px; transform: translateY(-50%); display: inline-flex; }
+.ui-field-btn button { display: inline-flex; align-items: center; justify-content: center; height: 24px; width: 24px; padding: 0; border: none; border-radius: var(--radius); background: none; color: var(--fg-muted); cursor: pointer; }
+.ui-field-btn button:hover { background: var(--overlay-weak); color: var(--fg-primary); }
+.ui-field-btn button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 select.ui-field { appearance: none; -webkit-appearance: none; padding-right: 40px; }
 .ui-select-wrap { position: relative; width: 100%; }
 .ui-select-chevron { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: var(--fg-muted); pointer-events: none; }
@@ -509,10 +517,20 @@ select.ui-field { appearance: none; -webkit-appearance: none; padding-right: 40p
 .ui-badge--tag   { background: var(--bg-sunken); color: var(--fg-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
 .ui-badge--role  { background: var(--bg-canvas); color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.05em; }
 .ui-badge--count { background: var(--badge-count-bg); color: var(--badge-count-fg); font-weight: 600; }
+/* count + tone="neutral" — muted pill instead of the red attention pill */
+.ui-badge--count-neutral { background: var(--bg-sunken); color: var(--fg-muted); font-weight: 600; }
+/* count-bare (tone neutral/default) — chromeless muted tabular number, no pill */
+.ui-badge--count-bare { padding: 0; color: var(--fg-muted); font-weight: 600; font-variant-numeric: tabular-nums; text-transform: none; letter-spacing: 0.05em; }
 .ui-badge--hq    { background: var(--badge-success-bg); color: var(--badge-success-fg); }
 .ui-badge--standard { background: var(--bg-sunken); color: var(--fg-secondary); }
 .ui-badge--draft { background: var(--badge-warning-bg); color: var(--badge-warning-fg); }
 .ui-badge--test  { background: var(--bg-raised); color: var(--fg-muted); }
+/* shape="square" — small 2px rounded tag chip (one palette per tone) */
+.ui-badge--square { border-radius: var(--radius); text-transform: uppercase; letter-spacing: 0.05em; }
+.ui-badge--sq-neutral { background: var(--bg-sunken); color: var(--fg-secondary); border: 1px solid var(--border-medium); }
+.ui-badge--sq-error   { background: transparent; color: var(--color-error); border: 1px solid var(--color-error); }
+.ui-badge--sq-warn    { background: transparent; color: var(--color-error); border: 1px solid var(--color-error); }
+.ui-badge--sq-success { background: var(--color-success-bg); color: var(--color-success-text); border: 1px solid var(--color-success-text); }
 
 /* ---- Avatar (avatar.tsx) ---- */
 .ui-avatar { border-radius: 50%; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border-subtle); background: var(--color-surface-container-high); color: var(--fg-primary); font-weight: 600; }
@@ -532,12 +550,23 @@ select.ui-field { appearance: none; -webkit-appearance: none; padding-right: 40p
 .ui-tab--active { color: var(--fg-primary); border-bottom-color: var(--fg-primary); font-weight: 600; }
 .ui-tab--disabled { opacity: 0.5; cursor: not-allowed; }
 .ui-tab:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+/* link tabs render as <a> but share the underline look */
+a.ui-tab { text-decoration: none; }
+/* variant="segmented" — sunken pill container, active tab is a raised pill */
+.ui-tablist--segmented { display: inline-flex; gap: 4px; border-bottom: 0; padding: 4px; background: var(--bg-sunken); border-radius: var(--radius); }
+.ui-tab--seg { padding: 6px 12px; border-bottom: 0; border-radius: var(--radius); justify-content: center; }
+.ui-tab--seg.ui-tab--active { color: var(--fg-primary); background: var(--bg-elevated); box-shadow: var(--shadow-sm); border-bottom: 0; font-weight: 600; }
 
 /* ---- Popover (popover.tsx) ---- */
 .ui-popover { background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius); box-shadow: var(--shadow-md); padding: 4px; min-width: 200px; }
 .ui-popover__item { display: block; width: 100%; text-align: left; padding: 8px 12px; font: inherit; font-size: 0.875rem; color: var(--fg-primary); background: none; border: none; border-radius: var(--radius); cursor: pointer; }
 .ui-popover__item:hover, .ui-popover__item:focus { background: var(--overlay-weak); outline: none; }
 .ui-popover__item:disabled { opacity: 0.5; cursor: not-allowed; }
+/* role="menuitemradio" item — reserved leading checkmark column, paints when selected */
+.ui-popover__item--radio { display: flex; align-items: center; gap: 8px; text-align: left; }
+.ui-popover__item--radio svg { width: 14px; height: 14px; flex: none; }
+.ui-popover__item--radio svg.is-off { opacity: 0; }
+.ui-popover__item--radio span { flex: 1; text-align: left; }
 
 /* ---- Dialog surface representation (app-dialog.tsx etc.) ---- */
 .dialog-surface { width: 100%; max-width: 440px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius); box-shadow: var(--shadow-lg); overflow: hidden; }
@@ -575,7 +604,9 @@ select.ui-field { appearance: none; -webkit-appearance: none; padding-right: 40p
 /* Skeleton (skeleton.tsx) */
 .skeleton { background: var(--overlay-weak); border-radius: var(--radius); animation: sg-pulse 1.5s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
-.skeleton--circle { border-radius: 999px; }
+.skeleton--circle { border-radius: 999px; flex: none; }
+/* animate={false} / noAnimate — flat static token surface, no pulse */
+.skeleton--static { animation: none; }
 
 /* EmptyState (empty-state.tsx + components.css) */
 .empty-state { text-align: center; padding: 48px 16px; display: flex; flex-direction: column; align-items: center; }
@@ -583,7 +614,9 @@ select.ui-field { appearance: none; -webkit-appearance: none; padding-right: 40p
 .empty-state__title { font-family: Georgia, serif; font-size: 1.125rem; font-weight: 600; color: var(--fg-primary); margin: 0 0 8px; }
 .empty-state__desc { font-size: 0.875rem; line-height: 1.6; color: var(--fg-muted); max-width: 320px; margin: 0; }
 .empty-state__actions { margin-top: 20px; }
-.empty-state--compact { margin: 0; font-size: 0.875rem; color: var(--fg-muted); }
+/* inline variant (and its "compact" alias) — single muted line, no icon/headline/container */
+.empty-state--inline, .empty-state--compact { margin: 0; font-size: 0.875rem; color: var(--fg-muted); }
+.empty-state--inline .empty-state__inline-cta { margin-left: 4px; }
 
 /* ErrorMessage (error-message.tsx) */
 .error-message { border: 1px solid var(--color-error-border); background: var(--color-error-bg); border-radius: var(--radius); padding: 24px; display: flex; gap: 16px; }
@@ -727,7 +760,9 @@ hr.sg-hr { border: 0; border-top: 1px solid var(--border-default); margin: 56px 
           and four <strong>sizes</strong> (sm / md / lg / icon). Renders a real <code class="tok">&lt;button&gt;</code>
           with <code class="tok">press-scale</code>, a <code class="tok">--focus-ring</code> outline, and
           <code class="tok">aria-busy</code> while loading. The <code class="tok">icon</code> size is a 40×40 square
-          and its discriminated union <em>requires</em> <code class="tok">aria-label</code>. Reach for this before any raw <code class="tok">&lt;button&gt;</code>.
+          and its discriminated union <em>requires</em> <code class="tok">aria-label</code>. Pass
+          <code class="tok">pressed</code> to back an <code class="tok">aria-pressed</code> toggle — a truthy value also
+          flips secondary/ghost to an active visual (primary/destructive keep their base look). Reach for this before any raw <code class="tok">&lt;button&gt;</code>.
         </p>
 
         <span class="sg-block-label">Variants (size md)</span>
@@ -764,6 +799,15 @@ hr.sg-hr { border: 0; border-top: 1px solid var(--border-default); margin: 56px 
           </button>
         </div>
 
+        <span class="sg-block-label">Toggle (pressed) — secondary / ghost flip to an active visual</span>
+        <div class="sg-demo">
+          <button class="btn btn--secondary btn--md" aria-pressed="false">Off</button>
+          <button class="btn btn--secondary btn--md btn--pressed" aria-pressed="true">On</button>
+          <button class="btn btn--ghost btn--md" aria-pressed="false">Off</button>
+          <button class="btn btn--ghost btn--md btn--pressed" aria-pressed="true">On</button>
+          <span class="sg-demo__caption">pressed sets aria-pressed; secondary/ghost gain an active fill (primary/destructive unchanged)</span>
+        </div>
+
         <table class="sg-api">
           <caption>Props</caption>
           <thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Notes</th></tr></thead>
@@ -771,6 +815,7 @@ hr.sg-hr { border: 0; border-top: 1px solid var(--border-default); margin: 56px 
             <tr><td>variant</td><td>"primary" | "secondary" | "ghost" | "destructive"</td><td>"primary"</td><td>destructive uses <code>--color-error-bg/-border</code></td></tr>
             <tr><td>size</td><td>"sm" | "md" | "lg" | "icon"</td><td>"md"</td><td>icon = 40×40; requires <code>aria-label</code> (union)</td></tr>
             <tr><td>loading</td><td>boolean</td><td>false</td><td>shows spinner, sets <code>disabled</code> + <code>aria-busy</code></td></tr>
+            <tr><td>pressed</td><td>boolean</td><td>—</td><td>emits <code>aria-pressed</code>; truthy adds active visual on secondary/ghost only</td></tr>
             <tr><td>disabled</td><td>boolean</td><td>—</td><td>opacity 0.5, not-allowed</td></tr>
             <tr><td>…rest</td><td>ButtonHTMLAttributes</td><td>—</td><td><code>type</code> defaults to "button"; forwards ref</td></tr>
           </tbody>
@@ -790,7 +835,10 @@ hr.sg-hr { border: 0; border-top: 1px solid var(--border-default); margin: 56px 
           border. Focus shifts the border to <code class="tok">--focus-ring</code> with a 20% ring. Supports
           <strong>label</strong>, <strong>error</strong>, <strong>helperText</strong>, three sizes, three
           variants (default / underline / inline-edit), and leading/trailing <strong>icon slots</strong>
-          (an absolute wrapper added only when an icon exists).
+          (an absolute wrapper added only when an icon exists). The <code class="tok">trailingButton</code> slot is the
+          interactive sibling of <code class="tok">trailingIcon</code> — it keeps pointer events and is not
+          aria-hidden, so a combobox can hang a real focusable clear/submit <code class="tok">&lt;button&gt;</code> there
+          (it wins the trailing slot over a decorative icon).
         </p>
 
         <span class="sg-block-label">Default · with label &amp; helper</span>
@@ -825,6 +873,24 @@ hr.sg-hr { border: 0; border-top: 1px solid var(--border-default); margin: 56px 
           <div style="max-width:360px;"><input class="ui-field ui-field--inline" type="text" value="Editing name (inline-edit)" /></div>
         </div>
 
+        <span class="sg-block-label">trailingButton slot · combobox usage</span>
+        <div class="sg-demo sg-demo--col sg-demo--stack">
+          <div style="max-width:360px;">
+            <div class="ui-field-wrap" role="combobox" aria-expanded="false" aria-haspopup="listbox">
+              <span class="ui-field-icon ui-field-icon--lead" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              </span>
+              <input class="ui-field ui-field--padlead ui-field--padtrail" type="text" value="acme" aria-label="Search organizations" />
+              <span class="ui-field-btn">
+                <button type="button" aria-label="Clear search">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+              </span>
+            </div>
+          </div>
+          <span class="sg-demo__caption">trailingButton = a real focusable &lt;button&gt; (its own aria-label); keeps pointer events, not aria-hidden</span>
+        </div>
+
         <table class="sg-api">
           <caption>Props (extends InputHTMLAttributes, omits native "size")</caption>
           <thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Notes</th></tr></thead>
@@ -834,7 +900,8 @@ hr.sg-hr { border: 0; border-top: 1px solid var(--border-default); margin: 56px 
             <tr><td>helperText</td><td>string</td><td>—</td><td>muted hint (hidden when error present)</td></tr>
             <tr><td>size</td><td>"sm" | "md" | "lg"</td><td>"md"</td><td>36 / 44 / 56px</td></tr>
             <tr><td>variant</td><td>"default" | "underline" | "inline-edit"</td><td>"default"</td><td>inline-edit = 1.5px border</td></tr>
-            <tr><td>leadingIcon / trailingIcon</td><td>ReactNode</td><td>—</td><td>absolutely positioned; input padded to clear it</td></tr>
+            <tr><td>leadingIcon / trailingIcon</td><td>ReactNode</td><td>—</td><td>decorative (aria-hidden, no pointer events); absolutely positioned, input padded to clear it</td></tr>
+            <tr><td>trailingButton</td><td>ReactNode</td><td>—</td><td>interactive trailing slot (keeps pointer events, not aria-hidden) for a combobox clear/submit button; wins over <code>trailingIcon</code></td></tr>
           </tbody>
         </table>
       </div>
@@ -1176,7 +1243,11 @@ hr.sg-hr { border: 0; border-top: 1px solid var(--border-default); margin: 56px 
           One pill shape (<code class="tok">999px</code>) for every semantic. Status badges carry an icon
           (verified / pending / unverified); neutral chips are label / tag / role / count; quality labels are
           high-quality / standard / draft / test. <code class="tok">compact</code> overrides density; otherwise
-          each variant picks its natural size.
+          each variant picks its natural size. The <code class="tok">count</code> chip takes a
+          <code class="tok">tone</code> (<code class="tok">default</code> red vs <code class="tok">neutral</code> muted);
+          <code class="tok">variant="count-bare"</code> drops all pill chrome for a bare tabular number; and
+          <code class="tok">shape="square"</code> renders a small 2px tag chip whose palette is chosen by
+          <code class="tok">tone</code> (error / warn / success / neutral).
         </p>
         <span class="sg-block-label">Status</span>
         <div class="sg-demo">
@@ -1190,6 +1261,21 @@ hr.sg-hr { border: 0; border-top: 1px solid var(--border-default); margin: 56px 
           <span class="ui-badge ui-badge--sm ui-badge--role">Owner</span>
           <span class="ui-badge ui-badge--sm ui-badge--count">3</span>
         </div>
+        <span class="sg-block-label">Count tones: default (red) · tone="neutral" (muted) · variant="count-bare"</span>
+        <div class="sg-demo">
+          <span class="ui-badge ui-badge--sm ui-badge--count">3</span>
+          <span class="ui-badge ui-badge--sm ui-badge--count-neutral">12</span>
+          <span class="ui-badge ui-badge--sm ui-badge--count-bare">128</span>
+          <span class="sg-demo__caption">count-bare = chromeless tabular number for right-aligned section counts</span>
+        </div>
+        <span class="sg-block-label">Square tags (shape="square") — tone error / warn / success / neutral</span>
+        <div class="sg-demo">
+          <span class="ui-badge ui-badge--sm ui-badge--square ui-badge--sq-error">Error</span>
+          <span class="ui-badge ui-badge--sm ui-badge--square ui-badge--sq-warn">Draft</span>
+          <span class="ui-badge ui-badge--sm ui-badge--square ui-badge--sq-success">Live</span>
+          <span class="ui-badge ui-badge--sm ui-badge--square ui-badge--sq-neutral">Internal</span>
+          <span class="sg-demo__caption">2px radius (var(--radius)); "warn" is error-toned by design</span>
+        </div>
         <span class="sg-block-label">Quality labels (compact)</span>
         <div class="sg-demo">
           <span class="ui-badge ui-badge--sm ui-badge--hq">High quality</span>
@@ -1201,7 +1287,9 @@ hr.sg-hr { border: 0; border-top: 1px solid var(--border-default); margin: 56px 
           <caption>Props</caption>
           <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
           <tbody>
-            <tr><td>variant</td><td>verified | pending | unverified | tag | role | count | high-quality | standard | draft | test</td><td>required</td></tr>
+            <tr><td>variant</td><td>verified | pending | unverified | tag | role | count | count-bare | high-quality | standard | draft | test</td><td>required; <code>count-bare</code> = no pill chrome, bare tabular number</td></tr>
+            <tr><td>tone</td><td>"default" | "neutral" | "error" | "warn" | "success"</td><td>"default". For <code>count</code>: default red vs neutral muted. For <code>shape="square"</code>: picks the tag palette (warn aliases error). Ignored elsewhere.</td></tr>
+            <tr><td>shape</td><td>"pill" | "square"</td><td>"pill" (999px). "square" = 2px tag chip keyed by <code>tone</code>, inherently compact + uppercase.</td></tr>
             <tr><td>compact</td><td>boolean</td><td>overrides per-variant default density</td></tr>
             <tr><td>children</td><td>ReactNode</td><td>label text</td></tr>
           </tbody>
@@ -1353,9 +1441,13 @@ hr.sg-hr { border: 0; border-top: 1px solid var(--border-default); margin: 56px 
         <p class="sg-usage">
           Full WAI-ARIA tablist: <code class="tok">role="tablist/tab/tabpanel"</code> with
           <code class="tok">aria-controls</code>/<code class="tok">aria-labelledby</code> auto-wired, roving tabindex,
-          and Arrow/Home/End navigation that skips disabled tabs. Visual: underline-on-active. Tabs accept an optional
+          and Arrow/Home/End navigation that skips disabled tabs. Two visuals via <code class="tok">variant</code>:
+          <code class="tok">underline</code> (default, underline-on-active) and <code class="tok">segmented</code> (a sunken pill
+          container with the active tab as a raised pill). Tabs accept an optional
           <code class="tok">count</code> (rendered via the Badge <code class="tok">count</code> chip) and a
-          <code class="tok">disabled</code> flag. Controlled via <code class="tok">value</code> + <code class="tok">onChange</code>.
+          <code class="tok">disabled</code> flag. A Tab with an <code class="tok">href</code> renders as a Next
+          <code class="tok">&lt;Link&gt;</code> (an anchor) for URL-router tab strips while keeping the same role / roving
+          tabindex / keyboard contract. Controlled via <code class="tok">value</code> + <code class="tok">onChange</code>.
         </p>
         <span class="sg-block-label">Tab strip (with count + disabled)</span>
         <div class="sg-demo sg-demo--col sg-demo--stack">
@@ -1367,13 +1459,32 @@ hr.sg-hr { border: 0; border-top: 1px solid var(--border-default); margin: 56px 
           </div>
           <div role="tabpanel" style="padding-top:16px;font-size:0.875rem;color:var(--fg-secondary);">Active panel content for "Overview".</div>
         </div>
+        <span class="sg-block-label">variant="segmented" (raised active pill)</span>
+        <div class="sg-demo sg-demo--col" style="align-items:flex-start;">
+          <div class="ui-tablist ui-tablist--segmented" role="tablist" aria-label="View mode">
+            <button class="ui-tab ui-tab--seg ui-tab--active" role="tab" aria-selected="true" tabindex="0">List</button>
+            <button class="ui-tab ui-tab--seg" role="tab" aria-selected="false" tabindex="-1">Grid</button>
+            <button class="ui-tab ui-tab--seg" role="tab" aria-selected="false" tabindex="-1">Map</button>
+          </div>
+        </div>
+        <span class="sg-block-label">Link tabs (Tab href → renders an &lt;a&gt;)</span>
+        <div class="sg-demo sg-demo--col" style="align-items:flex-start;">
+          <div class="ui-tablist" role="tablist" aria-label="Workspace routes">
+            <a class="ui-tab ui-tab--active" role="tab" aria-selected="true" tabindex="0" href="#0">Members</a>
+            <a class="ui-tab" role="tab" aria-selected="false" tabindex="-1" href="#0">Records</a>
+            <a class="ui-tab" role="tab" aria-selected="false" tabindex="-1" href="#0">Settings</a>
+          </div>
+          <span class="sg-demo__caption">each tab is an anchor; onChange still fires on activation so controlled value stays in sync, navigation left to the router</span>
+        </div>
         <table class="sg-api">
           <caption>Key props</caption>
           <thead><tr><th>Component</th><th>Prop</th><th>Type</th></tr></thead>
           <tbody>
+            <tr><td>Tabs / TabList</td><td>variant</td><td>"underline" | "segmented" (default "underline"; TabList can override Tabs)</td></tr>
             <tr><td>Tabs</td><td>value / onChange</td><td>string / (next: string) =&gt; void</td></tr>
             <tr><td>TabList</td><td>aria-label</td><td>string (required)</td></tr>
             <tr><td>Tab</td><td>value / disabled / count</td><td>string / boolean / number | string</td></tr>
+            <tr><td>Tab</td><td>href</td><td>string — renders a Next &lt;Link&gt; (anchor); ignored when disabled</td></tr>
             <tr><td>TabPanel</td><td>value / keepMounted</td><td>string / boolean</td></tr>
           </tbody>
         </table>
@@ -1393,6 +1504,10 @@ hr.sg-hr { border: 0; border-top: 1px solid var(--border-default); margin: 56px 
           <code class="tok">role="menu"</code> card (<code class="tok">--bg-elevated</code>, <code class="tok">--shadow-md</code>)
           that focuses the first item on open; Items are <code class="tok">role="menuitem"</code> with arrow-key roving
           focus (Home/End jump to ends, disabled items skipped). <code class="tok">align</code> = start / center / end.
+          Passing <code class="tok">selected</code> (boolean) to a <code class="tok">PopoverItem</code> opts it into single-select
+          (radio) semantics — <code class="tok">role="menuitemradio"</code> + <code class="tok">aria-checked</code> with a reserved
+          leading checkmark column that paints when selected — the shape a "Sort:" / "pick exactly one" menu needs. Both
+          roles participate in arrow-key roving.
         </p>
         <span class="sg-block-label">Open menu (static, align=start)</span>
         <div class="sg-demo sg-demo--col" style="align-items:flex-start;">
@@ -1404,6 +1519,22 @@ hr.sg-hr { border: 0; border-top: 1px solid var(--border-default); margin: 56px 
             <button class="ui-popover__item" role="menuitem">Sign out</button>
           </div>
         </div>
+        <span class="sg-block-label">Single-select (selected → role="menuitemradio")</span>
+        <div class="sg-demo sg-demo--col" style="align-items:flex-start;">
+          <button class="btn btn--secondary btn--sm" aria-haspopup="menu" aria-expanded="true">Sort: Newest ▾</button>
+          <div class="ui-popover" role="menu">
+            <button class="ui-popover__item ui-popover__item--radio" role="menuitemradio" aria-checked="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg><span>Newest first</span>
+            </button>
+            <button class="ui-popover__item ui-popover__item--radio" role="menuitemradio" aria-checked="false">
+              <svg class="is-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg><span>Oldest first</span>
+            </button>
+            <button class="ui-popover__item ui-popover__item--radio" role="menuitemradio" aria-checked="false">
+              <svg class="is-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg><span>Most endorsed</span>
+            </button>
+          </div>
+          <span class="sg-demo__caption">checkmark column is reserved on every row so labels stay aligned; aria-checked conveys state</span>
+        </div>
         <table class="sg-api">
           <caption>Key props</caption>
           <thead><tr><th>Component</th><th>Prop</th><th>Type</th></tr></thead>
@@ -1411,6 +1542,7 @@ hr.sg-hr { border: 0; border-top: 1px solid var(--border-default); margin: 56px 
             <tr><td>Popover</td><td>open / onOpenChange</td><td>boolean / (next) =&gt; void (uncontrolled if omitted)</td></tr>
             <tr><td>PopoverTrigger</td><td>children</td><td>single focusable element (cloned)</td></tr>
             <tr><td>PopoverContent</td><td>align / offset / minWidth</td><td>"start"|"center"|"end" / number / number|string</td></tr>
+            <tr><td>PopoverItem</td><td>selected</td><td>boolean — opt into role="menuitemradio" + aria-checked + leading checkmark (omit = plain role="menuitem")</td></tr>
             <tr><td>PopoverItem</td><td>…ButtonHTMLAttributes</td><td>roving tabindex (-1)</td></tr>
           </tbody>
         </table>
@@ -1567,8 +1699,10 @@ hr.sg-hr { border: 0; border-top: 1px solid var(--border-default); margin: 56px 
           Pulsing placeholder on <code class="tok">--overlay-weak</code>. Variants: line / box / circle / text.
           <code class="tok">circle</code> sugar forces a round chip; <code class="tok">text</code> stacks
           <code class="tok">lines</code> bars (last one ragged at 60%); <code class="tok">count</code> repeats N copies;
-          <code class="tok">radius</code> overrides; <code class="tok">noAnimate</code> stops the pulse. Always
-          <code class="tok">aria-hidden</code>.
+          <code class="tok">radius</code> overrides. Set <code class="tok">animate={false}</code> (or the legacy
+          <code class="tok">noAnimate</code> — either one off suppresses the pulse) for a flat static token surface, e.g. an
+          avatar placeholder that should not shimmer. A circle keeps <code class="tok">shrink-0</code> so it holds its size
+          in a flex row. Always <code class="tok">aria-hidden</code>.
         </p>
         <span class="sg-block-label">box · line · circle · text(3)</span>
         <div class="sg-demo sg-demo--col sg-demo--stack" style="gap:18px;">
@@ -1581,14 +1715,26 @@ hr.sg-hr { border: 0; border-top: 1px solid var(--border-default); margin: 56px 
             <div class="skeleton" style="width:60%;height:12px;"></div>
           </div>
         </div>
+        <span class="sg-block-label">animate={false} (static) · flex circle holds its size in a row</span>
+        <div class="sg-demo sg-demo--stack">
+          <div aria-hidden="true" style="display:flex;align-items:center;gap:12px;">
+            <div class="skeleton skeleton--circle skeleton--static" style="width:48px;height:48px;"></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
+              <div class="skeleton skeleton--static" style="width:60%;height:12px;"></div>
+              <div class="skeleton skeleton--static" style="width:40%;height:12px;"></div>
+            </div>
+          </div>
+          <span class="sg-demo__caption">no pulse (flat surface); the circle keeps shrink-0 so the row text doesn't squeeze it</span>
+        </div>
         <table class="sg-api"><caption>Props</caption><thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead><tbody>
           <tr><td>variant</td><td>"line" | "box" | "circle" | "text"</td><td>"box"</td></tr>
           <tr><td>width / height</td><td>number | string</td><td>variant-dependent</td></tr>
-          <tr><td>circle</td><td>boolean</td><td>false</td></tr>
+          <tr><td>circle</td><td>boolean</td><td>false (wins over variant; adds shrink-0)</td></tr>
           <tr><td>lines</td><td>number (text variant)</td><td>3</td></tr>
           <tr><td>count</td><td>number</td><td>1</td></tr>
           <tr><td>radius</td><td>number | string</td><td>—</td></tr>
-          <tr><td>noAnimate</td><td>boolean</td><td>false</td></tr>
+          <tr><td>animate</td><td>boolean</td><td>true — false = flat static surface (no pulse)</td></tr>
+          <tr><td>noAnimate</td><td>boolean</td><td>false — legacy alias; either signal off suppresses the pulse</td></tr>
         </tbody></table>
       </div>
     </article>
@@ -1602,8 +1748,11 @@ hr.sg-hr { border: 0; border-top: 1px solid var(--border-default); margin: 56px 
       <div class="sg-component__body">
         <p class="sg-usage">
           <strong>rich</strong> (default): centered block — optional icon, serif title, description, CTA slot.
-          <strong>compact</strong>: a single muted line for inline <code class="tok">*__empty</code> hints (icon dropped,
-          quiet body text, CTA stays inline).
+          <strong>inline</strong>: a single muted line (rendered as a bare <code class="tok">&lt;p class="m-0 text-sm
+          text-[var(--fg-muted)]"&gt;</code>) for the ~12 inline <code class="tok">*__empty</code> slots
+          (<code class="tok">home-section__empty</code>, <code class="tok">org-list__empty</code>, …) — no icon, no headline
+          weight, no container, zero margin; the description and CTA slot follow inline so the whole hint reads as one line.
+          <strong>compact</strong> is the back-compat alias of <code class="tok">inline</code>; new code should prefer <code class="tok">inline</code>.
         </p>
         <span class="sg-block-label">rich</span>
         <div class="sg-demo sg-demo--stack">
@@ -1614,15 +1763,19 @@ hr.sg-hr { border: 0; border-top: 1px solid var(--border-default); margin: 56px 
             <div class="empty-state__actions"><button class="btn btn--primary btn--sm">Create a cert</button></div>
           </div>
         </div>
-        <span class="sg-block-label">compact</span>
+        <span class="sg-block-label">inline (canonical) — single muted line; CTA stays inline</span>
         <div class="sg-demo sg-demo--stack">
-          <p class="empty-state--compact">No endorsements yet. <a href="#0" style="color:var(--fg-primary);">Ask for one</a></p>
+          <p class="empty-state--inline">No endorsements yet.<a class="empty-state__inline-cta" href="#0" style="color:var(--fg-primary);">Ask for one</a></p>
+        </div>
+        <span class="sg-block-label">compact (alias of inline)</span>
+        <div class="sg-demo sg-demo--stack">
+          <p class="empty-state--compact">No members in this group yet.</p>
         </div>
         <table class="sg-api"><caption>Props</caption><thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead><tbody>
           <tr><td>title</td><td>string (required)</td><td>—</td></tr>
           <tr><td>description</td><td>string</td><td>—</td></tr>
-          <tr><td>icon</td><td>ComponentType (lucide/cert)</td><td>—</td></tr>
-          <tr><td>variant</td><td>"rich" | "compact"</td><td>"rich"</td></tr>
+          <tr><td>icon</td><td>ComponentType (lucide/cert)</td><td>— (ignored by inline/compact)</td></tr>
+          <tr><td>variant</td><td>"rich" | "inline" | "compact"</td><td>"rich"</td></tr>
           <tr><td>children</td><td>ReactNode (CTA slot)</td><td>—</td></tr>
         </tbody></table>
       </div>
