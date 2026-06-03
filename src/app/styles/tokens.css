@@ -84,6 +84,13 @@
   --navy-overlay-30: rgba(0, 0, 0, 0.3);
   --navy-overlay-70: rgba(0, 0, 0, 0.7);
 
+  /* Modal backdrop — the ::backdrop fill behind a native modal
+     <dialog> (AppDialog). Mirrors the live `dialog.signin-modal::backdrop`
+     rule: rgba(0,0,0,0.5) in light, --navy-overlay-70 in dark (see the
+     dark-theme override below). Tokenized so the AppDialog engine can
+     reference it from TSX without a raw rgb() literal. */
+  --modal-backdrop: rgba(0, 0, 0, 0.5);
+
   /* Media letterbox — opaque backdrop behind embedded video / iframe
      content. Intentionally invariant (not overridden in dark mode): a
      player surround reads as black in both themes. */
@@ -239,6 +246,10 @@
   --overlay-medium: rgba(255, 255, 255, 0.08);
   --navy-overlay-30: rgba(0, 0, 0, 0.5);
   --navy-overlay-70: rgba(0, 0, 0, 0.8);
+
+  /* Modal backdrop — dark. Mirrors `[data-theme="dark"]
+     dialog.signin-modal::backdrop { background: var(--navy-overlay-70) }`. */
+  --modal-backdrop: var(--navy-overlay-70);
 
   /* Navbar + sheets */
   --navbar-bg: rgba(11, 11, 13, 0.8);

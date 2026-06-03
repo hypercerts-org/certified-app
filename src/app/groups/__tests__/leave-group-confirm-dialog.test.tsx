@@ -91,8 +91,8 @@ describe("Leave Group confirmation uses the shared ConfirmDialog", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Leave" }))
 
-    // ConfirmDialog -> AppDialog renders a real <dialog> with the
-    // shared signin-modal app-modal chrome.
+    // ConfirmDialog -> AppDialog renders a real native <dialog> with
+    // the shared (now self-contained Tailwind) modal chrome.
     const dialog = screen.getByRole("alertdialog", { hidden: true })
     expect(dialog.tagName).toBe("DIALOG")
     expect(dialog.getAttribute("aria-label")).toBe("Leave Group")

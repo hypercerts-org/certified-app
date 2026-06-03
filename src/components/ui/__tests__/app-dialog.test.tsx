@@ -31,19 +31,28 @@ beforeEach(() => {
 })
 
 describe("AppDialog", () => {
-  it("renders with the base signin-modal app-modal classes + aria-label", () => {
+  it("renders a native <dialog> with the self-contained chrome + aria-label", () => {
     render(
       <AppDialog ariaLabel="Test" onClose={() => undefined}>
         <span>body</span>
       </AppDialog>,
     )
     const dialog = screen.getByRole("dialog", { hidden: true })
-    expect(dialog.className).toContain("signin-modal")
-    expect(dialog.className).toContain("app-modal")
+    // The legacy `signin-modal app-modal` BEM pair was translated to
+    // self-contained Tailwind utilities + token arbitrary values at
+    // strict visual parity. Pin the parity-load-bearing bits — the
+    // var(--radius) corner and the off-white surface token — rather
+    // than the removed class names. (Per CLAUDE.md hard rule 1 the
+    // radius is var(--radius), never a raw px.)
+    expect(dialog.tagName).toBe("DIALOG")
+    expect(dialog.className).toContain("rounded-[var(--radius)]")
+    expect(dialog.className).toContain("bg-[var(--color-off-white)]")
+    expect(dialog.className).not.toContain("signin-modal")
+    expect(dialog.className).not.toContain("app-modal")
     expect(dialog.getAttribute("aria-label")).toBe("Test")
   })
 
-  it("appends a custom className to the base pair", () => {
+  it("appends a custom className after the base chrome", () => {
     render(
       <AppDialog
         ariaLabel="X"
@@ -54,7 +63,11 @@ describe("AppDialog", () => {
       </AppDialog>,
     )
     const dialog = screen.getByRole("dialog", { hidden: true })
-    expect(dialog.className).toBe("signin-modal app-modal endorse-people-modal")
+    // The custom className is composed AFTER the base chrome
+    // (`${baseChrome} ${className}`), so per-modal extras can override
+    // earlier utilities on the same property.
+    expect(dialog.className).toContain("endorse-people-modal")
+    expect(dialog.className).toMatch(/rounded-\[var\(--radius\)\].*endorse-people-modal$/)
   })
 
   it("renders an alertdialog when role='alertdialog'", () => {
