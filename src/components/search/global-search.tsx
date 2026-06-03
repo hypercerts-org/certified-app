@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Search as SearchIcon, X } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
 import Avatar from "@/components/ui/avatar"
+import Combobox from "@/components/ui/combobox"
 import { getInitials } from "@/lib/utils/initials"
 import { fetchIndexerActivities } from "@/lib/atproto/indexer"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
@@ -51,8 +52,13 @@ const CERTS_LIMIT = 6
  *     full-text matches
  *
  * Results render in two grouped sections in one dropdown
- * ("People" / "Certs"). Arrow keys walk the combined list; Enter
+ * ("People" / "Activities"). Arrow keys walk the combined list; Enter
  * activates the highlighted row.
+ *
+ * The input + dropdown + keyboard + ARIA machinery is the shared
+ * `Combobox` primitive; this surface keeps its own two-source fetch,
+ * the flat People-then-Activities row order, the interleaved group
+ * headers, and the Cmd/Ctrl+K focus shortcut.
  *
  * Selecting a person navigates to /profile/<did>; selecting a cert
  * navigates to its detail page (/activity/<did>/<rkey>).
@@ -68,18 +74,15 @@ export default function GlobalSearch({
   const [certs, setCerts] = useState<CertRow[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
-  const [highlight, setHighlight] = useState(-1)
 
   const inputRef = useRef<HTMLInputElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const listRef = useRef<HTMLUListElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const requestSeq = useRef(0)
   const suppressNextSearchRef = useRef(false)
 
   // Flat row list used for keyboard nav. Order matches render
   // order: People section first, then Certs. Memoised so the
-  // `onEnter` useCallback below isn't invalidated on every render —
+  // `select` useCallback below isn't invalidated on every render —
   // its `[rows, ...]` dep array would otherwise spawn a new identity
   // each render, breaking downstream memoization.
   const rows: Row[] = useMemo(
@@ -134,9 +137,6 @@ export default function GlobalSearch({
         }
       }
       setCerts(certRows)
-
-      const total = (peopleRes.actors?.length ?? 0) + certRows.length
-      setHighlight(total > 0 ? 0 : -1)
       setIsOpen(true)
     } finally {
       if (seq === requestSeq.current) setIsSearching(false)
@@ -155,7 +155,6 @@ export default function GlobalSearch({
       setCerts([])
       setIsOpen(false)
       setIsSearching(false)
-      setHighlight(-1)
       return
     }
     const seq = ++requestSeq.current
@@ -167,20 +166,6 @@ export default function GlobalSearch({
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
   }, [query, search])
-
-  // Close on outside click.
-  useEffect(() => {
-    if (!isOpen) return
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target
-      if (!(target instanceof Node)) return
-      if (containerRef.current && !containerRef.current.contains(target)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener("mousedown", handleClick)
-    return () => document.removeEventListener("mousedown", handleClick)
-  }, [isOpen])
 
   // Cmd/Ctrl+K focus shortcut — same gesture as the old PeopleSearch.
   useEffect(() => {
@@ -204,15 +189,6 @@ export default function GlobalSearch({
     return () => globalThis.removeEventListener("keydown", onKey)
   }, [])
 
-  // Keep the highlighted row visible during arrow navigation.
-  useEffect(() => {
-    if (highlight < 0 || !listRef.current) return
-    const els = listRef.current.querySelectorAll<HTMLLIElement>(
-      "[data-result-row]",
-    )
-    els[highlight]?.scrollIntoView({ block: "nearest" })
-  }, [highlight])
-
   const select = useCallback(
     (row: Row) => {
       suppressNextSearchRef.current = true
@@ -228,128 +204,51 @@ export default function GlobalSearch({
       setCerts([])
       setIsOpen(false)
       setIsSearching(false)
-      setHighlight(-1)
       inputRef.current?.blur()
     },
     [router],
   )
-
-  const moveHighlight = useCallback(
-    (delta: 1 | -1) => {
-      setIsOpen(true)
-      setHighlight((h) => {
-        if (rows.length === 0) return -1
-        if (delta === 1) return (h + 1) % rows.length
-        return h <= 0 ? rows.length - 1 : h - 1
-      })
-    },
-    [rows.length],
-  )
-
-  const onEnter = useCallback(() => {
-    if (rows.length === 0) return
-    const target = highlight >= 0 ? rows[highlight] : rows[0]
-    if (target) select(target)
-  }, [rows, highlight, select])
-
-  const onEscape = useCallback(() => {
-    if (isOpen) {
-      setIsOpen(false)
-      return
-    }
-    if (query) setQuery("")
-    else inputRef.current?.blur()
-  }, [isOpen, query])
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    switch (e.key) {
-      case "ArrowDown":
-        if (rows.length === 0) return
-        e.preventDefault()
-        moveHighlight(1)
-        return
-      case "ArrowUp":
-        if (rows.length === 0) return
-        e.preventDefault()
-        moveHighlight(-1)
-        return
-      case "Enter":
-        if (rows.length === 0) return
-        e.preventDefault()
-        onEnter()
-        return
-      case "Escape":
-        e.preventDefault()
-        onEscape()
-        return
-      case "Home":
-        if (rows.length === 0) return
-        e.preventDefault()
-        setHighlight(0)
-        return
-      case "End":
-        if (rows.length === 0) return
-        e.preventDefault()
-        setHighlight(rows.length - 1)
-    }
-  }
 
   const handleClear = () => {
     setQuery("")
     setPeople([])
     setCerts([])
     setIsOpen(false)
-    setHighlight(-1)
     inputRef.current?.focus()
   }
 
-  const showDropdown =
-    isOpen && (isSearching || rows.length > 0 || query.trim().length > 0)
-
-  const listboxId = "global-search-listbox"
-  const activeId =
-    highlight >= 0 ? `global-search-option-${highlight}` : undefined
-
-  let liveStatus = ""
-  if (isSearching) liveStatus = "Searching"
-  else if (rows.length > 0)
-    liveStatus = `${rows.length} result${rows.length === 1 ? "" : "s"}`
-  else if (query.trim()) liveStatus = "No results"
+  const peopleCount = people.length
 
   return (
-    <div
-      ref={containerRef}
+    <Combobox<Row>
       className={`people-search ${className}`}
       role="search"
-    >
-      <div className="people-search__field">
-        <SearchIcon
-          size={16}
-          className="people-search__icon"
-          aria-hidden="true"
-        />
-        <input
-          ref={inputRef}
-          type="text"
-          className="people-search__input"
-          value={query}
-          placeholder={placeholder}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={() => {
-            if (rows.length > 0) setIsOpen(true)
-          }}
-          role="combobox"
-          aria-label={placeholder}
-          aria-autocomplete="list"
-          aria-expanded={showDropdown}
-          aria-controls={showDropdown ? listboxId : undefined}
-          aria-activedescendant={activeId}
-          autoComplete="off"
-          autoFocus={autoFocus}
-          spellCheck={false}
-        />
-        {query ? (
+      value={query}
+      onValueChange={setQuery}
+      items={rows}
+      getItemKey={(row) =>
+        row.kind === "person" ? `p-${row.actor.did}` : `c-${row.record.uri}`
+      }
+      isLoading={isSearching}
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      onSelect={select}
+      inputRef={inputRef}
+      listboxClassName="people-search__dropdown"
+      liveStatus={{
+        searching: "Searching",
+        results: (n) => `${n} result${n === 1 ? "" : "s"}`,
+        empty: "No results",
+      }}
+      inputProps={{
+        size: "md",
+        placeholder,
+        autoFocus,
+        "aria-label": placeholder,
+        leadingIcon: <SearchIcon size={16} aria-hidden="true" />,
+      }}
+      trailingButton={
+        query ? (
           <button
             type="button"
             className="people-search__clear"
@@ -358,85 +257,72 @@ export default function GlobalSearch({
           >
             <X size={14} aria-hidden="true" />
           </button>
-        ) : null}
-      </div>
-
-      <div className="sr-only" aria-live="polite" aria-atomic="true">
-        {liveStatus}
-      </div>
-
-      {showDropdown && (
-        <ul
-          ref={listRef}
-          id={listboxId}
-          role="listbox"
-          aria-busy={isSearching}
-          className="people-search__dropdown"
-        >
-          {isSearching && rows.length === 0 && (
-            <li className="people-search__empty">Searching…</li>
-          )}
-          {!isSearching && rows.length === 0 && query.trim() && (
+        ) : undefined
+      }
+      renderEmpty={() => {
+        if (isSearching) {
+          return <li className="people-search__empty">Searching…</li>
+        }
+        if (query.trim()) {
+          return (
             <li className="people-search__empty">
               No results for &ldquo;{query.trim()}&rdquo;.
             </li>
-          )}
-
-          {/* People section — header + person rows. Both the header
-              and the rows are conditional on people.length so we
-              don't render an empty "People" header when only certs
-              came back. */}
-          {people.length > 0 ? (
-            <li
-              className="cert-search__group-header"
-              role="presentation"
-              aria-hidden="true"
-            >
-              People
-            </li>
-          ) : null}
-          {people.map((actor, i) => (
-            <PersonRowItem
-              key={`p-${actor.did}`}
-              actor={actor}
-              index={i}
-              highlighted={i === highlight}
-              onHover={() => setHighlight(i)}
-              onSelect={() => select({ kind: "person", actor })}
-            />
-          ))}
-
-          {/* Certs section — same shape. Header + cert rows, both
-              conditional on certs.length. */}
-          {certs.length > 0 ? (
-            <li
-              className="cert-search__group-header"
-              role="presentation"
-              aria-hidden="true"
-            >
-              Activities
-            </li>
-          ) : null}
-          {certs.map((row, i) => {
-            // Continue the flat-list highlight index past the
-            // people section so arrow-key nav matches the visual
-            // row order.
-            const flatIndex = people.length + i
-            return (
-              <CertRowItem
-                key={`c-${row.record.uri}`}
-                record={row.record}
-                did={row.did}
-                index={flatIndex}
-                highlighted={flatIndex === highlight}
-                onHover={() => setHighlight(flatIndex)}
-                onSelect={() => select(row)}
+          )
+        }
+        return null
+      }}
+      renderOption={({ item: row, index, highlighted, optionId, onHover, onSelect }) => {
+        if (row.kind === "person") {
+          return (
+            <>
+              {/* People header — interleaved above the first person row.
+                  Only rendered when people came back (index 0 is a person
+                  iff people.length > 0). */}
+              {index === 0 ? (
+                <li
+                  className="cert-search__group-header"
+                  role="presentation"
+                  aria-hidden="true"
+                >
+                  People
+                </li>
+              ) : null}
+              <PersonRowItem
+                actor={row.actor}
+                optionId={optionId}
+                highlighted={highlighted}
+                onHover={onHover}
+                onSelect={onSelect}
               />
-            )
-          })}
-        </ul>
-      )}
-    </div>
+            </>
+          )
+        }
+        return (
+          <>
+            {/* Activities header — interleaved above the first cert row
+                (the row at flat index === people.length). */}
+            {index === peopleCount ? (
+              <li
+                className="cert-search__group-header"
+                role="presentation"
+                aria-hidden="true"
+              >
+                Activities
+              </li>
+            ) : null}
+            <CertRowItem
+              record={row.record}
+              did={row.did}
+              optionId={optionId}
+              highlighted={highlighted}
+              onHover={onHover}
+              onSelect={onSelect}
+            />
+          </>
+        )
+      }}
+    />
   )
 }
 
@@ -448,15 +334,15 @@ function activityDetailHrefFromRecord(uri: string): string | null {
 
 interface PersonRowProps {
   actor: Actor
-  index: number
+  optionId: string
   highlighted: boolean
   onHover: () => void
-  onSelect: () => void
+  onSelect: (e: React.MouseEvent) => void
 }
 
 function PersonRowItem({
   actor,
-  index,
+  optionId,
   highlighted,
   onHover,
   onSelect,
@@ -464,18 +350,15 @@ function PersonRowItem({
   const name = actor.displayName || actor.handle
   return (
     <li
-      id={`global-search-option-${index}`}
+      id={optionId}
       role="option"
       aria-selected={highlighted}
-      data-result-row
+      data-combobox-option
       className={`people-search__item ${
         highlighted ? "people-search__item--highlighted" : ""
       }`}
       onMouseEnter={onHover}
-      onMouseDown={(e) => {
-        e.preventDefault()
-        onSelect()
-      }}
+      onMouseDown={onSelect}
     >
       <Avatar
         size="sm"
@@ -494,16 +377,16 @@ function PersonRowItem({
 interface CertRowProps {
   record: ActivityRecord
   did: string
-  index: number
+  optionId: string
   highlighted: boolean
   onHover: () => void
-  onSelect: () => void
+  onSelect: (e: React.MouseEvent) => void
 }
 
 function CertRowItem({
   record,
   did,
-  index,
+  optionId,
   highlighted,
   onHover,
   onSelect,
@@ -516,42 +399,39 @@ function CertRowItem({
   const handle = info?.handle ?? null
 
   return (
-      <li
-        id={`global-search-option-${index}`}
-        role="option"
-        aria-selected={highlighted}
-        data-result-row
-        className={`cert-search__item ${
-          highlighted ? "cert-search__item--highlighted" : ""
-        }`}
-        onMouseEnter={onHover}
-        onMouseDown={(e) => {
-          e.preventDefault()
-          onSelect()
-        }}
-      >
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            className="cert-search__thumb"
-            src={imageUrl}
-            alt=""
-            loading="lazy"
-          />
-        ) : (
-          <div
-            className="cert-search__thumb cert-search__thumb--placeholder"
-            aria-hidden="true"
-          >
-            <CertIcon size={16} strokeWidth={1.5} />
-          </div>
-        )}
-        <div className="cert-search__item-info">
-          <span className="cert-search__item-title">{title}</span>
-          {handle ? (
-            <span className="cert-search__item-handle">@{handle}</span>
-          ) : null}
+    <li
+      id={optionId}
+      role="option"
+      aria-selected={highlighted}
+      data-combobox-option
+      className={`cert-search__item ${
+        highlighted ? "cert-search__item--highlighted" : ""
+      }`}
+      onMouseEnter={onHover}
+      onMouseDown={onSelect}
+    >
+      {imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          className="cert-search__thumb"
+          src={imageUrl}
+          alt=""
+          loading="lazy"
+        />
+      ) : (
+        <div
+          className="cert-search__thumb cert-search__thumb--placeholder"
+          aria-hidden="true"
+        >
+          <CertIcon size={16} strokeWidth={1.5} />
         </div>
-      </li>
+      )}
+      <div className="cert-search__item-info">
+        <span className="cert-search__item-title">{title}</span>
+        {handle ? (
+          <span className="cert-search__item-handle">@{handle}</span>
+        ) : null}
+      </div>
+    </li>
   )
 }

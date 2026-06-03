@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search as SearchIcon, X } from "lucide-react";
 import Avatar from "@/components/ui/avatar";
-import Input from "@/components/ui/input";
+import Combobox from "@/components/ui/combobox";
 import { getInitials } from "@/lib/utils/initials";
 
 interface Actor {
@@ -58,6 +58,10 @@ function isEditableTarget(target: EventTarget | null): boolean {
  * announces "Searching…" / "N results" / "No results" so screen readers
  * are notified when the dropdown state changes.
  *
+ * The input + dropdown + keyboard + ARIA machinery is the shared
+ * `Combobox` primitive; this surface keeps its own fetch / debounce /
+ * navigate-on-select / suppress-next-search behaviour.
+ *
  * Mirrors hypercerts-org/certified-app#51.
  */
 export default function PeopleSearch({
@@ -71,11 +75,8 @@ export default function PeopleSearch({
   const [results, setResults] = useState<Actor[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [highlight, setHighlight] = useState<number>(-1);
 
   const inputRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLUListElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Drop stale responses when the user keeps typing.
   const requestSeq = useRef(0);
@@ -105,11 +106,9 @@ export default function PeopleSearch({
         const data = (await res.json()) as { actors?: Actor[] };
         const next = data.actors ?? [];
         setResults(next);
-        setHighlight(next.length > 0 ? 0 : -1);
         setIsOpen(true);
       } else {
         setResults([]);
-        setHighlight(-1);
         setIsOpen(true);
       }
     } catch (err) {
@@ -135,7 +134,6 @@ export default function PeopleSearch({
       setResults([]);
       setIsOpen(false);
       setIsSearching(false);
-      setHighlight(-1);
       return;
     }
     const seq = ++requestSeq.current;
@@ -144,20 +142,6 @@ export default function PeopleSearch({
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [query, search]);
-
-  // Close on outside click.
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target;
-      if (!(target instanceof Node)) return;
-      if (containerRef.current && !containerRef.current.contains(target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [isOpen]);
 
   // Cmd/Ctrl+K focus shortcut. Only fires when the user isn't already
   // typing in another editable element — yanking focus from a post
@@ -174,13 +158,6 @@ export default function PeopleSearch({
     return () => globalThis.removeEventListener("keydown", onKey);
   }, []);
 
-  // Keep the highlighted row visible when navigating with the keyboard.
-  useEffect(() => {
-    if (highlight < 0 || !listRef.current) return;
-    const el = listRef.current.querySelectorAll<HTMLLIElement>("[data-result-row]")[highlight];
-    el?.scrollIntoView({ block: "nearest" });
-  }, [highlight]);
-
   const select = useCallback(
     (actor: Actor) => {
       suppressNextSearchRef.current = true;
@@ -188,195 +165,96 @@ export default function PeopleSearch({
       setResults([]);
       setIsOpen(false);
       setIsSearching(false);
-      setHighlight(-1);
       inputRef.current?.blur();
       router.push(`/profile/${encodeURIComponent(actor.did)}`);
     },
     [router]
   );
 
-  // Per-key handlers — keeps handleKeyDown trivially below Sonar's
-  // cognitive-complexity ceiling and easier to scan.
-  const moveHighlight = useCallback((delta: 1 | -1) => {
-    setIsOpen(true);
-    setHighlight((h) => {
-      if (results.length === 0) return -1;
-      if (delta === 1) return (h + 1) % results.length;
-      return h <= 0 ? results.length - 1 : h - 1;
-    });
-  }, [results.length]);
-
-  const onEnter = useCallback(() => {
-    if (results.length === 0) return;
-    const target = highlight >= 0 ? results[highlight] : results[0];
-    if (target) select(target);
-  }, [results, highlight, select]);
-
-  // Esc: WAI-ARIA combobox pattern. First press closes the listbox; if it's
-  // already closed (or the input is empty), clear the input.
-  const onEscape = useCallback(() => {
-    if (isOpen) {
-      setIsOpen(false);
-      return;
-    }
-    if (query) setQuery("");
-    else inputRef.current?.blur();
-  }, [isOpen, query]);
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    switch (e.key) {
-      case "ArrowDown":
-        if (results.length === 0) return;
-        e.preventDefault();
-        moveHighlight(1);
-        return;
-      case "ArrowUp":
-        if (results.length === 0) return;
-        e.preventDefault();
-        moveHighlight(-1);
-        return;
-      case "Enter":
-        if (results.length === 0) return;
-        e.preventDefault();
-        onEnter();
-        return;
-      case "Escape":
-        e.preventDefault();
-        onEscape();
-        return;
-      case "Home":
-        if (results.length === 0) return;
-        e.preventDefault();
-        setHighlight(0);
-        return;
-      case "End":
-        if (results.length === 0) return;
-        e.preventDefault();
-        setHighlight(results.length - 1);
-    }
-  };
-
   const handleClear = () => {
     setQuery("");
     setResults([]);
     setIsOpen(false);
-    setHighlight(-1);
     inputRef.current?.focus();
   };
 
-  const showDropdown =
-    isOpen && (isSearching || results.length > 0 || query.trim().length > 0);
-
-  const listboxId = "people-search-listbox";
-  const activeId = highlight >= 0 ? `people-search-option-${highlight}` : undefined;
-
-  // Live-region message. Empty string when nothing to announce so
-  // screen readers don't say "blank".
-  let liveStatus = "";
-  if (isSearching) liveStatus = "Searching";
-  else if (results.length > 0) liveStatus = `${results.length} result${results.length === 1 ? "" : "s"}`;
-  else if (query.trim()) liveStatus = "No people found";
-
   return (
-    <div
-      ref={containerRef}
+    <Combobox<Actor>
       className={`people-search ${className}`}
       role="search"
-    >
-      <Input
-        ref={inputRef}
-        type="text"
-        size="md"
-        value={query}
-        placeholder={placeholder}
-        onChange={(e) => setQuery(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onFocus={() => {
-          if (results.length > 0) setIsOpen(true);
-        }}
-        role="combobox"
-        aria-label="Search people on atproto"
-        aria-autocomplete="list"
-        aria-expanded={showDropdown}
-        aria-controls={showDropdown ? listboxId : undefined}
-        aria-activedescendant={activeId}
-        autoComplete="off"
-        autoFocus={autoFocus}
-        spellCheck={false}
-        leadingIcon={<SearchIcon size={16} aria-hidden="true" />}
-        trailingButton={
-          query ? (
-            <button
-              type="button"
-              className="people-search__clear"
-              onClick={handleClear}
-              aria-label="Clear search"
-            >
-              <X size={14} aria-hidden="true" />
-            </button>
-          ) : undefined
+      value={query}
+      onValueChange={setQuery}
+      items={results}
+      getItemKey={(actor) => actor.did}
+      isLoading={isSearching}
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      onSelect={select}
+      inputRef={inputRef}
+      listboxClassName="people-search__dropdown"
+      liveStatus={{
+        searching: "Searching",
+        results: (n) => `${n} result${n === 1 ? "" : "s"}`,
+        empty: "No people found",
+      }}
+      inputProps={{
+        size: "md",
+        placeholder,
+        autoFocus,
+        "aria-label": "Search people on atproto",
+        leadingIcon: <SearchIcon size={16} aria-hidden="true" />,
+      }}
+      trailingButton={
+        query ? (
+          <button
+            type="button"
+            className="people-search__clear"
+            onClick={handleClear}
+            aria-label="Clear search"
+          >
+            <X size={14} aria-hidden="true" />
+          </button>
+        ) : undefined
+      }
+      renderEmpty={() => {
+        if (isSearching) {
+          return <li className="people-search__empty">Searching…</li>;
         }
-      />
-
-      {/* Visually-hidden live region — announces search state to SR users.
-          Polite so it doesn't interrupt mid-utterance. */}
-      <div className="sr-only" aria-live="polite" aria-atomic="true">
-        {liveStatus}
-      </div>
-
-      {showDropdown && (
-        <ul
-          ref={listRef}
-          id={listboxId}
-          role="listbox"
-          aria-busy={isSearching}
-          className="people-search__dropdown"
-        >
-          {isSearching && results.length === 0 && (
-            <li className="people-search__empty">
-              Searching…
-            </li>
-          )}
-          {!isSearching && results.length === 0 && query.trim() && (
+        if (query.trim()) {
+          return (
             <li className="people-search__empty">
               No people found for &ldquo;{query.trim()}&rdquo;.
             </li>
-          )}
-          {results.map((actor, i) => {
-            const name = actor.displayName || actor.handle;
-            const isHighlighted = i === highlight;
-            return (
-              <li
-                key={actor.did}
-                id={`people-search-option-${i}`}
-                role="option"
-                aria-selected={isHighlighted}
-                data-result-row
-                className={`people-search__item ${
-                  isHighlighted ? "people-search__item--highlighted" : ""
-                }`}
-                onMouseEnter={() => setHighlight(i)}
-                onMouseDown={(e) => {
-                  // mouseDown (not click) — fires before the input's blur so
-                  // the dropdown doesn't disappear before navigation.
-                  e.preventDefault();
-                  select(actor);
-                }}
-              >
-                <Avatar
-                  size="sm"
-                  src={actor.avatar || undefined}
-                  fallbackInitials={getInitials(name, actor.did)}
-                />
-                <div className="people-search__item-info">
-                  <span className="people-search__item-name">{name}</span>
-                  <span className="people-search__item-handle">@{actor.handle}</span>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
+          );
+        }
+        return null;
+      }}
+      renderOption={({ item: actor, highlighted, optionId, onHover, onSelect }) => {
+        const name = actor.displayName || actor.handle;
+        return (
+          <li
+            id={optionId}
+            role="option"
+            aria-selected={highlighted}
+            data-combobox-option
+            className={`people-search__item ${
+              highlighted ? "people-search__item--highlighted" : ""
+            }`}
+            onMouseEnter={onHover}
+            onMouseDown={onSelect}
+          >
+            <Avatar
+              size="sm"
+              src={actor.avatar || undefined}
+              fallbackInitials={getInitials(name, actor.did)}
+            />
+            <div className="people-search__item-info">
+              <span className="people-search__item-name">{name}</span>
+              <span className="people-search__item-handle">@{actor.handle}</span>
+            </div>
+          </li>
+        );
+      }}
+    />
   );
 }

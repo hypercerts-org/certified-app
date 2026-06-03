@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Search as SearchIcon, X } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
-import Input from "@/components/ui/input"
+import Combobox from "@/components/ui/combobox"
 import {
   fetchIndexerActivities,
   fetchUserIndexerActivities,
@@ -54,6 +54,10 @@ const OWN_SEARCH_PAGE_SIZE = 4
  *  pattern (keyboard nav, debounce, a11y), but renders cert rows
  *  and optionally surfaces the editor's own certs at the top.
  *
+ *  The input + dropdown + keyboard + ARIA machinery is the shared
+ *  `Combobox` primitive; this surface keeps its own fetch / merge /
+ *  dedupe / Your-vs-Other partition + clearOnSelect behaviour.
+ *
  *  Reusable: the project edit page uses it to add certs to a
  *  project's items[]; the top-bar global search composes it
  *  alongside people results. Doesn't navigate on its own — the
@@ -72,11 +76,8 @@ export default function CertSearch({
   const [results, setResults] = useState<CertSearchResult[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
-  const [highlight, setHighlight] = useState(-1)
 
   const inputRef = useRef<HTMLInputElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const listRef = useRef<HTMLUListElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Drop stale responses when the user keeps typing.
   const requestSeq = useRef(0)
@@ -143,7 +144,6 @@ export default function CertSearch({
         pushFrom(globalPage?.records, globalPage?.dids, false)
 
         setResults(merged)
-        setHighlight(merged.length > 0 ? 0 : -1)
         setIsOpen(true)
       } finally {
         if (seq === requestSeq.current) setIsSearching(false)
@@ -159,7 +159,6 @@ export default function CertSearch({
       setResults([])
       setIsOpen(false)
       setIsSearching(false)
-      setHighlight(-1)
       return
     }
     const seq = ++requestSeq.current
@@ -172,29 +171,6 @@ export default function CertSearch({
     }
   }, [query, search])
 
-  // Close on outside click.
-  useEffect(() => {
-    if (!isOpen) return
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target
-      if (!(target instanceof Node)) return
-      if (containerRef.current && !containerRef.current.contains(target)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener("mousedown", handleClick)
-    return () => document.removeEventListener("mousedown", handleClick)
-  }, [isOpen])
-
-  // Keep the highlighted row visible when arrowing through results.
-  useEffect(() => {
-    if (highlight < 0 || !listRef.current) return
-    const rows = listRef.current.querySelectorAll<HTMLLIElement>(
-      "[data-result-row]",
-    )
-    rows[highlight]?.scrollIntoView({ block: "nearest" })
-  }, [highlight])
-
   const handleSelect = useCallback(
     (result: CertSearchResult) => {
       if (clearOnSelect) {
@@ -203,204 +179,117 @@ export default function CertSearch({
       }
       setIsOpen(false)
       setIsSearching(false)
-      setHighlight(-1)
       onSelect(result)
     },
     [clearOnSelect, onSelect],
   )
 
-  const moveHighlight = useCallback(
-    (delta: 1 | -1) => {
-      setIsOpen(true)
-      setHighlight((h) => {
-        if (results.length === 0) return -1
-        if (delta === 1) return (h + 1) % results.length
-        return h <= 0 ? results.length - 1 : h - 1
-      })
-    },
-    [results.length],
-  )
-
-  const onEnter = useCallback(() => {
-    if (results.length === 0) return
-    const target = highlight >= 0 ? results[highlight] : results[0]
-    if (target) handleSelect(target)
-  }, [results, highlight, handleSelect])
-
-  const onEscape = useCallback(() => {
-    if (isOpen) {
-      setIsOpen(false)
-      return
-    }
-    if (query) setQuery("")
-    else inputRef.current?.blur()
-  }, [isOpen, query])
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    switch (e.key) {
-      case "ArrowDown":
-        if (results.length === 0) return
-        e.preventDefault()
-        moveHighlight(1)
-        return
-      case "ArrowUp":
-        if (results.length === 0) return
-        e.preventDefault()
-        moveHighlight(-1)
-        return
-      case "Enter":
-        if (results.length === 0) return
-        e.preventDefault()
-        onEnter()
-        return
-      case "Escape":
-        e.preventDefault()
-        onEscape()
-        return
-      case "Home":
-        if (results.length === 0) return
-        e.preventDefault()
-        setHighlight(0)
-        return
-      case "End":
-        if (results.length === 0) return
-        e.preventDefault()
-        setHighlight(results.length - 1)
-    }
-  }
-
   const handleClear = () => {
     setQuery("")
     setResults([])
     setIsOpen(false)
-    setHighlight(-1)
     inputRef.current?.focus()
   }
-
-  const showDropdown =
-    isOpen && (isSearching || results.length > 0 || query.trim().length > 0)
-
-  const listboxId = "cert-search-listbox"
-  const activeId =
-    highlight >= 0 ? `cert-search-option-${highlight}` : undefined
-
-  let liveStatus = ""
-  if (isSearching) liveStatus = "Searching"
-  else if (results.length > 0)
-    liveStatus = `${results.length} result${results.length === 1 ? "" : "s"}`
-  else if (query.trim()) liveStatus = "No activities found"
 
   // Partition for the rendered listbox — own certs first if any.
   // We render a divider between groups (only when both groups have
   // members) so the "Your certs" framing is visible.
   const ownIdxEnd = results.findIndex((r) => !r.isOwn)
   const dividerAt = ownIdxEnd > 0 ? ownIdxEnd : -1
+  const hasOwn = Boolean(prioritizeAuthorDid) && results.some((r) => r.isOwn)
 
   return (
-    <div
-      ref={containerRef}
+    <Combobox<CertSearchResult>
       className={`cert-search ${className}`}
       role="search"
-    >
-      <Input
-        ref={inputRef}
-        type="text"
-        size="md"
-        value={query}
-        placeholder={placeholder}
-        onChange={(e) => setQuery(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onFocus={() => {
-          if (results.length > 0) setIsOpen(true)
-        }}
-        role="combobox"
-        aria-label={placeholder}
-        aria-autocomplete="list"
-        aria-expanded={showDropdown}
-        aria-controls={showDropdown ? listboxId : undefined}
-        aria-activedescendant={activeId}
-        autoComplete="off"
-        autoFocus={autoFocus}
-        spellCheck={false}
-        leadingIcon={<SearchIcon size={16} aria-hidden="true" />}
-        trailingButton={
-          query ? (
-            <button
-              type="button"
-              className="cert-search__clear"
-              onClick={handleClear}
-              aria-label="Clear search"
-            >
-              <X size={14} aria-hidden="true" />
-            </button>
-          ) : undefined
+      value={query}
+      onValueChange={setQuery}
+      items={results}
+      getItemKey={(result) => result.record.uri}
+      isLoading={isSearching}
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      onSelect={handleSelect}
+      inputRef={inputRef}
+      listboxClassName="cert-search__dropdown"
+      liveStatus={{
+        searching: "Searching",
+        results: (n) => `${n} result${n === 1 ? "" : "s"}`,
+        empty: "No activities found",
+      }}
+      inputProps={{
+        size: "md",
+        placeholder,
+        autoFocus,
+        "aria-label": placeholder,
+        leadingIcon: <SearchIcon size={16} aria-hidden="true" />,
+      }}
+      trailingButton={
+        query ? (
+          <button
+            type="button"
+            className="cert-search__clear"
+            onClick={handleClear}
+            aria-label="Clear search"
+          >
+            <X size={14} aria-hidden="true" />
+          </button>
+        ) : undefined
+      }
+      renderEmpty={() => {
+        if (isSearching) {
+          return <li className="cert-search__empty">Searching…</li>
         }
-      />
-
-      <div className="sr-only" aria-live="polite" aria-atomic="true">
-        {liveStatus}
-      </div>
-
-      {showDropdown && (
-        <ul
-          ref={listRef}
-          id={listboxId}
-          role="listbox"
-          aria-busy={isSearching}
-          className="cert-search__dropdown"
-        >
-          {isSearching && results.length === 0 && (
-            <li className="cert-search__empty">Searching…</li>
-          )}
-          {!isSearching && results.length === 0 && query.trim() && (
+        if (query.trim()) {
+          return (
             <li className="cert-search__empty">
               No activities found for &ldquo;{query.trim()}&rdquo;.
             </li>
-          )}
-
-          {/* "Your certs" header — only when we're prioritizing a DID
-              AND we got at least one own result back. */}
-          {prioritizeAuthorDid && results.some((r) => r.isOwn) ? (
-            <li
-              className="cert-search__group-header"
-              role="presentation"
-              aria-hidden="true"
-            >
-              Your activities
-            </li>
-          ) : null}
-
-          {results.map((result, i) => (
-            <CertSearchRow
-              key={result.record.uri}
-              result={result}
-              index={i}
-              highlighted={i === highlight}
-              showOtherHeader={i === dividerAt}
-              onHover={() => setHighlight(i)}
-              onSelect={() => handleSelect(result)}
-            />
-          ))}
-        </ul>
+          )
+        }
+        return null
+      }}
+      renderListHeader={
+        hasOwn
+          ? () => (
+              <li
+                className="cert-search__group-header"
+                role="presentation"
+                aria-hidden="true"
+              >
+                Your activities
+              </li>
+            )
+          : undefined
+      }
+      renderOption={({ item: result, index, highlighted, optionId, onHover, onSelect }) => (
+        <CertSearchRow
+          result={result}
+          optionId={optionId}
+          highlighted={highlighted}
+          showOtherHeader={index === dividerAt}
+          onHover={onHover}
+          onSelect={onSelect}
+        />
       )}
-    </div>
+    />
   )
 }
 
 interface CertSearchRowProps {
   result: CertSearchResult
-  index: number
+  optionId: string
   highlighted: boolean
   /** Render the "Other certs" group header above this row (the
    *  first non-own result after a run of own results). */
   showOtherHeader: boolean
   onHover: () => void
-  onSelect: () => void
+  onSelect: (e: React.MouseEvent) => void
 }
 
 function CertSearchRow({
   result,
-  index,
+  optionId,
   highlighted,
   showOtherHeader,
   onHover,
@@ -426,20 +315,15 @@ function CertSearchRow({
         </li>
       ) : null}
       <li
-        id={`cert-search-option-${index}`}
+        id={optionId}
         role="option"
         aria-selected={highlighted}
-        data-result-row
+        data-combobox-option
         className={`cert-search__item ${
           highlighted ? "cert-search__item--highlighted" : ""
         }`}
         onMouseEnter={onHover}
-        onMouseDown={(e) => {
-          // mouseDown (not click) — fires before input blur so the
-          // dropdown doesn't close before our handler runs.
-          e.preventDefault()
-          onSelect()
-        }}
+        onMouseDown={onSelect}
       >
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

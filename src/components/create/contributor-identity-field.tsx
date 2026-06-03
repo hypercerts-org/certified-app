@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import Combobox from "@/components/ui/combobox"
 import { isAtprotoIdentity } from "@/hooks/use-contributor-info"
 
 /**
@@ -11,7 +12,11 @@ import { isAtprotoIdentity } from "@/hooks/use-contributor-info"
  *     `/api/search-actors`, the same endpoint that powers the
  *     HandleSearch component in groups + endorsements. Renders as
  *     a `cert-detail__meta-input` so it sits flush in a row
- *     alongside Role + Weight inputs.
+ *     alongside Role + Weight inputs. The input + dropdown +
+ *     keyboard + ARIA machinery is the shared `Combobox` primitive
+ *     (via its bare-input `renderInput` escape hatch); this surface
+ *     keeps its own fetch / exclude filtering / commit-on-Enter /
+ *     blur-commit behaviour.
  *   - `normalizeIdentity` — strips the leading `@` and trims.
  *   - `isContributorIdentityAcceptable` — empty OR a recognisable
  *     atproto handle / DID.
@@ -87,8 +92,6 @@ export function ContributorIdentityField({
   const [results, setResults] = useState<Actor[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
-  const [focusedIndex, setFocusedIndex] = useState(-1)
-  const containerRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSelectedRef = useRef<string>("")
 
@@ -133,42 +136,30 @@ export function ContributorIdentityField({
     }
   }, [value])
 
-  useEffect(() => {
-    if (!isOpen) return
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target
-      if (!(target instanceof Node)) return
-      if (containerRef.current && !containerRef.current.contains(target)) {
+  const handleSelect = useCallback(
+    (actor: Actor) => {
+      const h = actor.handle?.toLowerCase() ?? ""
+      const d = actor.did?.toLowerCase() ?? ""
+      if (
+        (h && excludeIdentities.has(h)) ||
+        (d && excludeIdentities.has(d))
+      ) {
         setIsOpen(false)
+        setResults([])
+        return
       }
-    }
-    document.addEventListener("mousedown", handleClick)
-    return () => document.removeEventListener("mousedown", handleClick)
-  }, [isOpen])
-
-  const handleSelect = (actor: Actor) => {
-    const h = actor.handle?.toLowerCase() ?? ""
-    const d = actor.did?.toLowerCase() ?? ""
-    if (
-      (h && excludeIdentities.has(h)) ||
-      (d && excludeIdentities.has(d))
-    ) {
+      const picked =
+        actor.handle && actor.handle !== actor.did
+          ? `@${actor.handle}`
+          : actor.did
+      lastSelectedRef.current = picked
+      onChange(picked)
       setIsOpen(false)
       setResults([])
-      setFocusedIndex(-1)
-      return
-    }
-    const picked =
-      actor.handle && actor.handle !== actor.did
-        ? `@${actor.handle}`
-        : actor.did
-    lastSelectedRef.current = picked
-    onChange(picked)
-    setIsOpen(false)
-    setResults([])
-    setFocusedIndex(-1)
-    onCommit?.(picked)
-  }
+      onCommit?.(picked)
+    },
+    [excludeIdentities, onChange, onCommit],
+  )
 
   const visibleResults = results.filter((a) => {
     const h = a.handle?.toLowerCase() ?? ""
@@ -178,38 +169,30 @@ export function ContributorIdentityField({
     return true
   })
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "ArrowDown") {
-      e.preventDefault()
-      if (!isOpen || visibleResults.length === 0) return
-      setFocusedIndex((prev) => (prev + 1) % visibleResults.length)
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault()
-      if (!isOpen || visibleResults.length === 0) return
-      setFocusedIndex((prev) =>
-        prev <= 0 ? visibleResults.length - 1 : prev - 1,
-      )
-    } else if (e.key === "Escape") {
-      setIsOpen(false)
-      setFocusedIndex(-1)
-    } else if (e.key === "Enter") {
-      if (focusedIndex >= 0 && focusedIndex < visibleResults.length) {
-        e.preventDefault()
-        handleSelect(visibleResults[focusedIndex])
-      } else if (visibleResults.length === 1) {
-        e.preventDefault()
-        handleSelect(visibleResults[0])
-      } else if (isContributorIdentityAcceptable(value) && value.trim().length > 0) {
-        // No dropdown match — but the typed value is a recognisable
-        // DID or handle. Treat Enter as "I'm done typing"; the
-        // parent swaps the input out for the contributor card.
-        e.preventDefault()
-        onCommit?.(value.trim())
+  const handleValueChange = useCallback(
+    (next: string) => {
+      if (next !== lastSelectedRef.current) {
+        lastSelectedRef.current = ""
       }
-    }
-  }
+      onChange(next)
+    },
+    [onChange],
+  )
 
-  const handleBlur = () => {
+  // Bare Enter with no dropdown match — but the typed value is a
+  // recognisable DID or handle. Treat Enter as "I'm done typing"; the
+  // parent swaps the input out for the contributor card.
+  const handleSubmitNoMatch = useCallback(
+    (raw: string) => {
+      const v = raw.trim()
+      if (isContributorIdentityAcceptable(raw) && v.length > 0) {
+        onCommit?.(v)
+      }
+    },
+    [onCommit],
+  )
+
+  const handleBlur = useCallback(() => {
     // Blur acts as an implicit commit when the typed value is a
     // recognisable identity — same effect as picking from the
     // typeahead, just without the dropdown round-trip. Empty / not-
@@ -220,85 +203,70 @@ export function ContributorIdentityField({
     if (!v) return
     if (!isContributorIdentityAcceptable(v)) return
     onCommit?.(v)
-  }
+  }, [value, onCommit])
 
   return (
-    <div className="create-cert__contrib-id" ref={containerRef}>
-      <input
-        type="text"
-        className={
-          invalid
-            ? "cert-detail__meta-input create-cert__contrib-id-input--invalid"
-            : "cert-detail__meta-input"
-        }
-        aria-label={ariaLabel}
-        aria-invalid={invalid}
-        placeholder="@handle or did:plc:…"
-        value={value}
-        maxLength={1000}
-        autoComplete="off"
-        onBlur={handleBlur}
-        role="combobox"
-        aria-expanded={isOpen}
-        aria-controls={`create-cert-contrib-listbox-${idx}`}
-        aria-autocomplete="list"
-        aria-activedescendant={
-          focusedIndex >= 0
-            ? `create-cert-contrib-opt-${idx}-${focusedIndex}`
-            : undefined
-        }
-        onChange={(e) => {
-          if (e.target.value !== lastSelectedRef.current) {
-            lastSelectedRef.current = ""
+    <Combobox<Actor>
+      className="create-cert__contrib-id"
+      value={value}
+      onValueChange={handleValueChange}
+      items={visibleResults}
+      getItemKey={(actor) => actor.did}
+      isLoading={isSearching}
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      onSelect={handleSelect}
+      onSubmitNoMatch={handleSubmitNoMatch}
+      enableHomeEnd={false}
+      escapeStage="close-only"
+      liveStatus={null}
+      listboxClassName="create-cert__contrib-id-dropdown"
+      renderInput={({ ref, onKeyDown, ...rest }) => (
+        <>
+          <input
+            ref={ref}
+            type="text"
+            id={`create-cert-contrib-input-${idx}`}
+            className={
+              invalid
+                ? "cert-detail__meta-input create-cert__contrib-id-input--invalid"
+                : "cert-detail__meta-input"
+            }
+            aria-label={ariaLabel}
+            aria-invalid={invalid}
+            placeholder="@handle or did:plc:…"
+            maxLength={1000}
+            onKeyDown={onKeyDown}
+            onBlur={handleBlur}
+            {...rest}
+          />
+          {isSearching ? (
+            <span className="create-cert__contrib-id-spinner" aria-hidden />
+          ) : null}
+        </>
+      )}
+      renderOption={({ item: actor, highlighted, optionId, onHover, onSelect }) => (
+        <li
+          id={optionId}
+          role="option"
+          aria-selected={highlighted}
+          data-combobox-option
+          className={
+            highlighted
+              ? "create-cert__contrib-id-option create-cert__contrib-id-option--active"
+              : "create-cert__contrib-id-option"
           }
-          onChange(e.target.value)
-        }}
-        onKeyDown={handleKeyDown}
-        onFocus={() => {
-          if (visibleResults.length > 0) setIsOpen(true)
-        }}
-      />
-      {isSearching ? (
-        <span className="create-cert__contrib-id-spinner" aria-hidden />
-      ) : null}
-      {isOpen && visibleResults.length > 0 ? (
-        <ul
-          id={`create-cert-contrib-listbox-${idx}`}
-          role="listbox"
-          className="create-cert__contrib-id-dropdown"
+          onMouseEnter={onHover}
+          onMouseDown={onSelect}
         >
-          {visibleResults.map((actor, i) => {
-            const isActive = i === focusedIndex
-            return (
-              <li
-                key={actor.did}
-                id={`create-cert-contrib-opt-${idx}-${i}`}
-                role="option"
-                aria-selected={isActive}
-                className={
-                  isActive
-                    ? "create-cert__contrib-id-option create-cert__contrib-id-option--active"
-                    : "create-cert__contrib-id-option"
-                }
-                onMouseEnter={() => setFocusedIndex(i)}
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  handleSelect(actor)
-                }}
-              >
-                <span className="create-cert__contrib-id-name">
-                  {actor.displayName || actor.handle}
-                </span>
-                <span className="create-cert__contrib-id-handle">
-                  {actor.handle !== actor.did
-                    ? `@${actor.handle}`
-                    : actor.did}
-                </span>
-              </li>
-            )
-          })}
-        </ul>
-      ) : null}
-    </div>
+          <span className="create-cert__contrib-id-name">
+            {actor.displayName || actor.handle}
+          </span>
+          <span className="create-cert__contrib-id-handle">
+            {actor.handle !== actor.did ? `@${actor.handle}` : actor.did}
+          </span>
+        </li>
+      )}
+    />
   )
 }
