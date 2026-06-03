@@ -78,13 +78,18 @@ type Tone = "neutral" | "success" | "warn";
 /** Outer container geometry shared by both primitives. */
 function containerClass(joined: boolean, shape: Shape): string {
   const radius = shape === "pill" ? "rounded-[999px]" : "rounded";
+  // `self-center`: the strip has an intrinsic height (its segments) and must
+  // NOT vertically stretch when it's a child of a flex toolbar whose other
+  // items are taller (e.g. the explore chrome row, where `align-items` defaults
+  // to `stretch`). Without this, the container stretches but the fixed-height
+  // segments don't, leaving the active "square" floating in extra background.
   if (joined) {
     // One border for the whole strip; overflow-hidden clips segment corners to
     // the container radius. Inline-flex so it hugs its content.
-    return `inline-flex items-stretch overflow-hidden border border-[var(--border-default)] bg-[var(--bg-sunken)] ${radius}`;
+    return `inline-flex items-stretch self-center overflow-hidden border border-[var(--border-default)] bg-[var(--bg-sunken)] ${radius}`;
   }
   // Gapped: no shared border/background; each segment is bordered on its own.
-  return "inline-flex items-stretch gap-1";
+  return "inline-flex items-stretch self-center gap-1";
 }
 
 /** Per-segment geometry shared by both primitives. */
