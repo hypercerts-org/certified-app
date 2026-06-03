@@ -16,8 +16,19 @@ export interface InputProps
    * A bare <Input> with no icons renders exactly as before (no wrapper cost).
    */
   leadingIcon?: React.ReactNode;
-  /** Optional addon glyph rendered inside the field, after the text. */
+  /** Optional decorative addon glyph rendered inside the field, after the text. */
   trailingIcon?: React.ReactNode;
+  /**
+   * Optional INTERACTIVE element rendered at the trailing edge inside the field
+   * (e.g. a combobox clear/submit button). Unlike `trailingIcon` it is NOT
+   * decorative: it keeps pointer events and is not aria-hidden, so callers can
+   * pass a real `<button>`. Pass a fully-formed interactive node (it should be
+   * focusable and carry its own `aria-label`). When both `trailingIcon` and
+   * `trailingButton` are supplied, `trailingButton` wins the trailing slot and
+   * the decorative icon is not rendered. The input picks up the same trailing
+   * padding as `trailingIcon` so text never overlaps the control.
+   */
+  trailingButton?: React.ReactNode;
 }
 
 const sizeClasses: Record<InputSize, string> = {
@@ -63,6 +74,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       className = "",
       leadingIcon,
       trailingIcon,
+      trailingButton,
       id,
       disabled,
       ...props
@@ -113,8 +125,14 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       }
     })();
 
+    // The interactive trailing button takes priority over the decorative icon
+    // for the trailing slot; only one occupies it at a time.
+    const showTrailingButton = Boolean(trailingButton);
+    const showTrailingIcon = Boolean(trailingIcon) && !showTrailingButton;
+    const hasTrailingAddon = showTrailingButton || showTrailingIcon;
+
     const iconPad = `${leadingIcon ? leadingPadClasses[size] : ""} ${
-      trailingIcon ? trailingPadClasses[size] : ""
+      hasTrailingAddon ? trailingPadClasses[size] : ""
     }`;
 
     const inputEl = (
@@ -129,9 +147,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       />
     );
 
-    // Only pay for the relative wrapper + absolute icons when an addon exists.
+    // Only pay for the relative wrapper + absolute addons when one exists.
     const field =
-      leadingIcon || trailingIcon ? (
+      leadingIcon || hasTrailingAddon ? (
         <div className="relative w-full">
           {leadingIcon && (
             <span
@@ -142,13 +160,24 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             </span>
           )}
           {inputEl}
-          {trailingIcon && (
+          {showTrailingButton ? (
+            // Interactive slot: keeps pointer events, NOT aria-hidden. The caller
+            // supplies a focusable control (e.g. a clear/submit <button> with its
+            // own aria-label) that a combobox can wire up.
             <span
-              aria-hidden="true"
-              className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${trailingIconPos[size]} flex items-center text-[var(--fg-muted)]`}
+              className={`absolute top-1/2 -translate-y-1/2 ${trailingIconPos[size]} flex items-center`}
             >
-              {trailingIcon}
+              {trailingButton}
             </span>
+          ) : (
+            showTrailingIcon && (
+              <span
+                aria-hidden="true"
+                className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${trailingIconPos[size]} flex items-center text-[var(--fg-muted)]`}
+              >
+                {trailingIcon}
+              </span>
+            )
           )}
         </div>
       ) : (

@@ -8,6 +8,10 @@ type ButtonSize = "sm" | "md" | "lg" | "icon";
 type ButtonBaseProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
   variant?: "primary" | "secondary" | "ghost" | "destructive";
   loading?: boolean;
+  // Toggle support: when provided, the button reports aria-pressed so it can
+  // back an aria-pressed control. A truthy value also flips secondary/ghost
+  // variants to an "active" visual (other variants keep their base look).
+  pressed?: boolean;
 };
 
 type IconButtonProps = ButtonBaseProps & {
@@ -30,6 +34,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       size = "md",
       loading = false,
       disabled,
+      pressed,
       type = "button",
       className = "",
       children,
@@ -61,13 +66,24 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const disabledStyles = disabled || loading ? "opacity-50 cursor-not-allowed" : "";
 
+    // Active visual for toggle buttons. Only secondary/ghost have an "off" look
+    // distinct enough that a pressed state reads as on; primary/destructive keep
+    // their base styling.
+    const pressedStyles: Partial<Record<NonNullable<ButtonProps["variant"]>, string>> = {
+      secondary:
+        "bg-[var(--overlay-medium)] text-[var(--fg-primary)] border-[var(--border-hover)]",
+      ghost: "bg-[var(--overlay-medium)] text-[var(--fg-primary)]",
+    };
+    const activeStyles = pressed ? pressedStyles[variant] ?? "" : "";
+
     return (
       <button
         ref={ref}
         type={type}
         disabled={disabled || loading}
         aria-busy={loading}
-        className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${disabledStyles} ${className}`}
+        aria-pressed={pressed}
+        className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${activeStyles} ${disabledStyles} ${className}`}
         {...props}
       >
         {loading && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />}

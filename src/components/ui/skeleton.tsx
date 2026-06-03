@@ -30,6 +30,13 @@ export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
   count?: number;
   /** When true, no pulse animation (e.g. when a parent already pulses). */
   noAnimate?: boolean;
+  /**
+   * Whether to show the pulse animation. Defaults to true. Set `false` for a
+   * flat, static token surface (e.g. avatar placeholders that should not
+   * pulse). Disabling here is equivalent to `noAnimate`; either one off
+   * suppresses the animation.
+   */
+  animate?: boolean;
 }
 
 const baseClass =
@@ -77,6 +84,7 @@ const Skeleton: React.FC<SkeletonProps> = ({
   lines = 3,
   count = 1,
   noAnimate = false,
+  animate = true,
   className = "",
   style,
   ...props
@@ -84,6 +92,11 @@ const Skeleton: React.FC<SkeletonProps> = ({
   // `circle` is sugar for the circle variant and wins over an explicit variant.
   const resolvedVariant: SkeletonVariant = circle ? "circle" : variant;
   const radiusOverride = radiusValue(radius);
+  // The pulse is suppressed when either signal is off: `animate={false}` or the
+  // legacy `noAnimate`. A static skeleton is a flat token surface.
+  const isStatic = !animate || noAnimate;
+  // Circles must keep their size in a flex row instead of being squeezed.
+  const circleCls = resolvedVariant === "circle" ? "shrink-0" : "";
   // Stack at least one copy; a non-positive count collapses to a single item.
   const repeat = Math.max(1, Math.floor(count));
 
@@ -99,7 +112,7 @@ const Skeleton: React.FC<SkeletonProps> = ({
           return (
             <div
               key={i}
-              className={`${baseClass} ${noAnimate ? "!animate-none" : ""}`}
+              className={`${baseClass} ${isStatic ? "!animate-none" : ""}`}
               style={{
                 ...style,
                 width: w,
@@ -134,7 +147,8 @@ const Skeleton: React.FC<SkeletonProps> = ({
     );
   }
 
-  const itemCls = `${baseClass} ${noAnimate ? "!animate-none" : ""}`;
+  const itemCls =
+    `${baseClass} ${isStatic ? "!animate-none" : ""} ${circleCls}`.trim();
   const itemStyle: React.CSSProperties = {
     ...cssFor(resolvedVariant, width, height),
     ...style,
