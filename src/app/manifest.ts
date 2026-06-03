@@ -6,7 +6,10 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Certified",
     description: "Your identity, everywhere.",
     start_url: "/welcome",
-    display: "standalone",
+    // "browser" makes the app non-installable, so the browser stops showing the
+    // PWA "install" prompt in the address bar (it would confuse users during the
+    // redesign). Set back to "standalone" to re-enable installability.
+    display: "browser",
     theme_color: "#f9f9f6",
     background_color: "#f9f9f6",
     icons: [
