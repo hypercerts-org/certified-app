@@ -70,6 +70,7 @@ import SettingsPanel from "@/components/settings/settings-panel"
 import Workspace from "@/components/workspace/workspace"
 import Managed from "@/components/managed/managed"
 import CreatePage from "@/app/create/page"
+import NotificationsPage from "@/app/notifications/page"
 
 const SURFACES = [
   "profile",
@@ -79,6 +80,7 @@ const SURFACES = [
   "workspace",
   "managed",
   "write-as-org",
+  "notifications",
 ] as const
 type Surface = (typeof SURFACES)[number]
 
@@ -146,6 +148,16 @@ function SurfaceBody({ surface }: { surface: Surface }) {
           <CreatePage />
         </Suspense>
       )
+    case "notifications":
+      // The notifications page. Under the managed scenario + the
+      // NOTIFICATIONS_AGGREGATION flag it aggregates across the viewer's
+      // groups (identity focus filter + "via {group}" rows); otherwise it
+      // renders the personal feed.
+      return (
+        <Suspense fallback={null}>
+          <NotificationsPage />
+        </Suspense>
+      )
   }
 }
 
@@ -173,6 +185,7 @@ export default function PreviewPage() {
   const managedScenario =
     rawSurface === "managed" ||
     rawSurface === "write-as-org" ||
+    rawSurface === "notifications" ||
     searchParams?.get("managed") === "1"
 
   if (!isSurface(rawSurface)) notFound()

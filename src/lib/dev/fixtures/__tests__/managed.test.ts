@@ -14,6 +14,8 @@ import {
   managedGroups,
   managedOrgProfile,
   managedPlcDidDocument,
+  managedNotificationsConnection,
+  managedUnreadCount,
 } from "@/lib/dev/fixtures/managed"
 
 /**
@@ -82,6 +84,47 @@ describe("managed fixtures — connections are owned by the requested DIDs", () 
   it("a request with no managed DIDs yields no managed records", () => {
     expect(managedProjectsConnection([MANAGED_MEMBER_GROUP_DID]).totalCount).toBe(0)
     expect(managedActivitiesConnection([MANAGED_MEMBER_GROUP_DID]).totalCount).toBe(0)
+  })
+})
+
+describe("managed fixtures — notifications aggregation", () => {
+  it("every notification node carries its recipient + the new field", () => {
+    const conn = managedNotificationsConnection(MANAGED_AGGREGATED_DIDS)
+    expect(conn.edges.length).toBeGreaterThan(0)
+    for (const edge of conn.edges) {
+      // recipient is the identity the notification is FOR, and must be one
+      // of the requested (authorized) DIDs.
+      expect(MANAGED_AGGREGATED_DIDS).toContain(edge.node.recipient)
+      expect(typeof edge.node.id).toBe("string")
+      expect(edge.node.isRead).toBe(false)
+    }
+    // Both the viewer and a group are recipients → mixed "via {group}" view.
+    const recipients = new Set(conn.edges.map((e) => e.node.recipient))
+    expect(recipients.has(MOCK_DID)).toBe(true)
+    expect(recipients.has(MANAGED_OWNER_GROUP_DID)).toBe(true)
+  })
+
+  it("the member group is never a notification recipient", () => {
+    const withMember = [...MANAGED_AGGREGATED_DIDS, MANAGED_MEMBER_GROUP_DID]
+    const conn = managedNotificationsConnection(withMember)
+    for (const edge of conn.edges) {
+      expect(edge.node.recipient).not.toBe(MANAGED_MEMBER_GROUP_DID)
+    }
+  })
+
+  it("a null/personal request yields only the viewer's notifications", () => {
+    const conn = managedNotificationsConnection(null)
+    expect(conn.edges.length).toBeGreaterThan(0)
+    for (const edge of conn.edges) {
+      expect(edge.node.recipient).toBe(MOCK_DID)
+    }
+  })
+
+  it("unread count sums notice counts across requested recipients", () => {
+    const personal = managedUnreadCount(null).count
+    const aggregated = managedUnreadCount(MANAGED_AGGREGATED_DIDS).count
+    // Aggregating adds the groups' unreads on top of the personal ones.
+    expect(aggregated).toBeGreaterThan(personal)
   })
 })
 

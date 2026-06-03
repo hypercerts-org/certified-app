@@ -312,6 +312,95 @@ export function managedActivitiesConnection(authors: string[]): {
   }
 }
 
+/** ---- /api/notifications (managed aggregation) --------------------- */
+
+/** Per-recipient notification content — the identity each notification is
+ *  FOR (the viewer or a group they own/admin), the reason, and who
+ *  triggered it. The member group never appears (it isn't a recipient the
+ *  aggregation authorizes). */
+interface RecipientNotice {
+  recipient: string
+  reason: "endorsement" | "activity-contributor"
+  /** Display handle of the actor who triggered the notice (latestAuthor). */
+  actorDid: string
+  sortAt: string
+  count: number
+}
+
+const RECIPIENT_NOTICES: RecipientNotice[] = [
+  {
+    recipient: MOCK_DID,
+    reason: "endorsement",
+    actorDid: "did:plc:noticeactor0000000000000000001",
+    sortAt: "2026-05-20T14:10:00.000Z",
+    count: 1,
+  },
+  {
+    recipient: MANAGED_OWNER_GROUP_DID,
+    reason: "endorsement",
+    actorDid: "did:plc:noticeactor0000000000000000002",
+    sortAt: "2026-05-20T11:40:00.000Z",
+    count: 3,
+  },
+  {
+    recipient: MANAGED_OWNER_GROUP_DID,
+    reason: "activity-contributor",
+    actorDid: "did:plc:noticeactor0000000000000000003",
+    sortAt: "2026-05-19T16:05:00.000Z",
+    count: 1,
+  },
+  {
+    recipient: MANAGED_ADMIN_GROUP_DID,
+    reason: "endorsement",
+    actorDid: "did:plc:noticeactor0000000000000000004",
+    sortAt: "2026-05-19T09:25:00.000Z",
+    count: 2,
+  },
+]
+
+/** The notices whose recipient is in the requested `recipients` set. A
+ *  request with no recipients (personal path) yields only the viewer's. */
+function noticesForRecipients(recipients: string[] | null): RecipientNotice[] {
+  const wanted = new Set(recipients && recipients.length > 0 ? recipients : [MOCK_DID])
+  return RECIPIENT_NOTICES.filter((n) => wanted.has(n.recipient))
+}
+
+/** Notifications connection for the managed aggregation — the
+ *  `{ edges, pageInfo }` shape the notifications proxy forwards, each node
+ *  carrying the new `recipient` field so the client tags "via {group}". */
+export function managedNotificationsConnection(recipients: string[] | null): {
+  edges: { cursor: string; node: Record<string, unknown> }[]
+  pageInfo: { hasNextPage: boolean; endCursor: string | null }
+} {
+  const notices = noticesForRecipients(recipients)
+  const edges = notices.map((n, i) => ({
+    cursor: `managed-notif-${i}`,
+    node: {
+      id: `managed-notif-${i}`,
+      reason: n.reason,
+      reasonSubject: `at://${n.recipient}/org.hypercerts.claim.activity/ma0`,
+      sortAt: n.sortAt,
+      count: n.count,
+      latestRecordUri: `at://${n.actorDid}/app.certified.badge.award/award${i}`,
+      latestRecordCid: `bafymanagednotif${i}000000000000000000000000000000000000`,
+      latestAuthor: n.actorDid,
+      isRead: false,
+      recipient: n.recipient,
+    },
+  }))
+  return { edges, pageInfo: { hasNextPage: false, endCursor: null } }
+}
+
+/** Aggregated unread count for the managed scenario — the sum of notice
+ *  `count`s across the requested recipients. */
+export function managedUnreadCount(recipients: string[] | null): {
+  count: number
+  more: boolean
+} {
+  const total = noticesForRecipients(recipients).reduce((sum, n) => sum + n.count, 0)
+  return { count: total, more: false }
+}
+
 /** ---- PLC DID document (managed groups) ---------------------------- */
 
 /** A minimal PLC DID document for one managed group DID, so the

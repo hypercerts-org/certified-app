@@ -66,6 +66,8 @@ import {
   managedMembershipRecords,
   managedOrgProfile,
   managedPlcDidDocument,
+  managedNotificationsConnection,
+  managedUnreadCount,
 } from "@/lib/dev/fixtures/managed"
 import { ORG_MEMBERSHIP_COLLECTION } from "@/lib/groups/constants"
 
@@ -449,6 +451,7 @@ function installMockFetch(
         // throws "Unread count unavailable" if the field is missing, so
         // every op the provider polls needs a valid envelope here.
         let op: string | undefined
+        let recipients: string[] | null = null
         try {
           const text =
             typeof init?.body === "string"
@@ -456,25 +459,47 @@ function installMockFetch(
               : init?.body
                 ? String(init.body)
                 : "{}"
-          op = (JSON.parse(text) as { operationName?: string }).operationName
+          const parsedBody = JSON.parse(text) as {
+            operationName?: string
+            variables?: { recipients?: unknown }
+          }
+          op = parsedBody.operationName
+          const rawRecipients = parsedBody.variables?.recipients
+          if (Array.isArray(rawRecipients)) {
+            recipients = rawRecipients.filter(
+              (r): r is string => typeof r === "string",
+            )
+          }
         } catch {
           /* fall through → default empty notifications page */
         }
+        // The aggregated path: the client sent `recipients` AND we're in the
+        // managed scenario, so serve per-recipient notices (with the new
+        // `recipient` field). Outside the managed scenario, recipients are
+        // still honoured but only the viewer has notices.
+        const aggregated = managed && recipients !== null
         if (op === "unreadNotificationCount") {
           return json({
-            data: { unreadNotificationCount: { count: 0, more: false } },
+            data: {
+              unreadNotificationCount: aggregated
+                ? managedUnreadCount(recipients)
+                : { count: 0, more: false },
+            },
           })
         }
         if (op === "updateNotificationsSeen") {
           return json({ data: { updateNotificationsSeen: { seenAt: null } } })
         }
-        // `notifications` (list) and anything else → empty, valid page.
+        // `notifications` (list) and anything else → empty, valid page,
+        // or the managed connection on the aggregated path.
         return json({
           data: {
-            notifications: {
-              edges: [],
-              pageInfo: { hasNextPage: false, endCursor: null },
-            },
+            notifications: aggregated
+              ? managedNotificationsConnection(recipients)
+              : {
+                  edges: [],
+                  pageInfo: { hasNextPage: false, endCursor: null },
+                },
           },
         })
       }
