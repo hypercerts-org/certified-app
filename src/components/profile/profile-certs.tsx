@@ -1,13 +1,19 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
-import { ArrowUpDown, Check, Inbox, Plus, Search } from "lucide-react"
+import { ArrowUpDown, Inbox, Plus, Search } from "lucide-react"
 import { useUserIndexerActivities } from "@/hooks/use-user-indexer-activities"
 import FeedLayout from "@/components/feed/feed-layout"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
 import Badge from "@/components/ui/badge"
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverItem,
+} from "@/components/ui/popover"
 import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 
@@ -66,29 +72,6 @@ export default function ProfileCerts({ did, viewerIsOwner }: ProfileCertsProps) 
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState<SortKey>("created-desc")
   const [sortOpen, setSortOpen] = useState(false)
-
-  const sortBtnRef = useRef<HTMLButtonElement>(null)
-  const sortMenuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!sortOpen) return
-    const onMouseDown = (e: MouseEvent) => {
-      const t = e.target
-      if (!(t instanceof Node)) return
-      if (sortBtnRef.current?.contains(t)) return
-      if (sortMenuRef.current?.contains(t)) return
-      setSortOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSortOpen(false)
-    }
-    document.addEventListener("mousedown", onMouseDown)
-    document.addEventListener("keydown", onKey)
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown)
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [sortOpen])
 
   // `created` and `contributed` come directly from the hook now —
   // the previous `_or` + client-side split is replaced by two
@@ -186,47 +169,32 @@ export default function ProfileCerts({ did, viewerIsOwner }: ProfileCertsProps) 
           </label>
 
           <div className="profile-certs__sort-wrap">
-            <button
-              ref={sortBtnRef}
-              type="button"
-              className="profile-certs__sort-btn"
-              onClick={() => setSortOpen((v) => !v)}
-              aria-haspopup="menu"
-              aria-expanded={sortOpen}
-              aria-label="Sort activities"
-              title="Sort"
-            >
-              <ArrowUpDown size={16} strokeWidth={1.75} aria-hidden />
-            </button>
-            {sortOpen ? (
-              <div
-                ref={sortMenuRef}
-                className="profile-certs__sort-menu"
-                role="menu"
-              >
-                {SORT_OPTIONS.map((opt) => {
-                  const active = opt.key === sort
-                  return (
-                    <button
-                      key={opt.key}
-                      type="button"
-                      role="menuitemradio"
-                      aria-checked={active}
-                      className="profile-certs__sort-item"
-                      onClick={() => {
-                        setSort(opt.key)
-                        setSortOpen(false)
-                      }}
-                    >
-                      <span className="profile-certs__sort-item-check">
-                        {active ? <Check size={14} strokeWidth={2} aria-hidden /> : null}
-                      </span>
-                      {opt.label}
-                    </button>
-                  )
-                })}
-              </div>
-            ) : null}
+            <Popover open={sortOpen} onOpenChange={setSortOpen}>
+              <PopoverTrigger>
+                <button
+                  type="button"
+                  className="profile-certs__sort-btn"
+                  aria-label="Sort activities"
+                  title="Sort"
+                >
+                  <ArrowUpDown size={16} strokeWidth={1.75} aria-hidden />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end">
+                {SORT_OPTIONS.map((opt) => (
+                  <PopoverItem
+                    key={opt.key}
+                    selected={opt.key === sort}
+                    onClick={() => {
+                      setSort(opt.key)
+                      setSortOpen(false)
+                    }}
+                  >
+                    {opt.label}
+                  </PopoverItem>
+                ))}
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
       </div>

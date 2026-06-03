@@ -68,18 +68,25 @@ describe("ProfileEditForm error aria-describedby", () => {
     )
 
     const textarea = container.querySelector(
-      "textarea.pe__textarea",
+      "textarea",
     ) as HTMLTextAreaElement
     expect(textarea).toBeTruthy()
 
     fireEvent.change(textarea, { target: { value: "x".repeat(257) } })
 
+    // The bio field now renders through the <Textarea> primitive, which owns
+    // the error wiring: it renders <p id="<id>-error" role="alert"> and points
+    // the textarea's aria-describedby at it. With showCount the field also has
+    // a counter node, so aria-describedby is space-joined ("<id>-error
+    // <id>-count") — assert the error id is among the described-by tokens.
     const error = textarea
       .closest(".pe__field")
-      ?.querySelector(".pe__field-error") as HTMLParagraphElement | null
+      ?.querySelector('p[role="alert"]') as HTMLParagraphElement | null
     expect(error).toBeTruthy()
     expect(error!.id).toBeTruthy()
-    expect(textarea.getAttribute("aria-describedby")).toBe(error!.id)
+    const describedBy = textarea.getAttribute("aria-describedby")
+    expect(describedBy).toBeTruthy()
+    expect(describedBy!.split(" ")).toContain(error!.id)
   })
 
   it("links the website input to its error text when invalid", () => {

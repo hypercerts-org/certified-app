@@ -1,11 +1,9 @@
 "use client"
 
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { useUrlParam } from "@/hooks/use-url-param"
-import { useClickOutsideClose } from "@/hooks/use-click-outside-close"
 import {
   ArrowUpDown,
-  Check,
   Filter,
   Inbox,
   Plus,
@@ -36,6 +34,12 @@ import ConfirmDialog from "@/components/ui/confirm-dialog"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Badge from "@/components/ui/badge"
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverItem,
+} from "@/components/ui/popover"
 import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
 
 interface ProfileEndorsementsProps {
@@ -181,15 +185,6 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
     [ownGivenForModal.endorsements],
   )
 
-  const sortWrapRef = useRef<HTMLDivElement>(null)
-  useClickOutsideClose(sortOpen, sortWrapRef, () => setSortOpen(false))
-
-  // Same outside-click + Escape contract for the response-filter
-  // menu — anchored on its own `*__sort-wrap` div so each dropdown's
-  // lifecycle is independent.
-  const filterWrapRef = useRef<HTMLDivElement>(null)
-  useClickOutsideClose(filterOpen, filterWrapRef, () => setFilterOpen(false))
-
   // The DID set to hydrate names for — issuers for the Received tab,
   // recipients for the Given tab. Sort + search both read from the
   // resolved name map.
@@ -285,94 +280,63 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
               `includeRejected: true` for owners) so flipping the
               filter is purely client-side. */}
           {canManage && tab === "received" ? (
-            <div
-              className="profile-endorsements-v2__sort-wrap"
-              ref={filterWrapRef}
-            >
-              <button
-                type="button"
-                className="profile-endorsements-v2__sort-btn"
-                onClick={() => setFilterOpen((v) => !v)}
-                aria-haspopup="menu"
-                aria-expanded={filterOpen}
-                aria-label="Filter endorsements by response"
-                title="Filter"
-              >
-                <Filter size={16} strokeWidth={1.75} aria-hidden />
-              </button>
-              {filterOpen ? (
-                <div
-                  className="profile-endorsements-v2__sort-menu"
-                  role="menu"
-                >
-                  {RESPONSE_FILTER_OPTIONS.map((opt) => {
-                    const active = opt.key === responseFilter
-                    return (
-                      <button
-                        key={opt.key}
-                        type="button"
-                        role="menuitemradio"
-                        aria-checked={active}
-                        className="profile-endorsements-v2__sort-item"
-                        onClick={() => {
-                          setResponseFilter(opt.key)
-                          setFilterOpen(false)
-                        }}
-                      >
-                        <span className="profile-endorsements-v2__sort-item-check">
-                          {active ? (
-                            <Check size={14} strokeWidth={2} aria-hidden />
-                          ) : null}
-                        </span>
-                        {opt.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              ) : null}
+            <div className="profile-endorsements-v2__sort-wrap">
+              <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+                <PopoverTrigger>
+                  <button
+                    type="button"
+                    className="profile-endorsements-v2__sort-btn"
+                    aria-label="Filter endorsements by response"
+                    title="Filter"
+                  >
+                    <Filter size={16} strokeWidth={1.75} aria-hidden />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end">
+                  {RESPONSE_FILTER_OPTIONS.map((opt) => (
+                    <PopoverItem
+                      key={opt.key}
+                      selected={opt.key === responseFilter}
+                      onClick={() => {
+                        setResponseFilter(opt.key)
+                        setFilterOpen(false)
+                      }}
+                    >
+                      {opt.label}
+                    </PopoverItem>
+                  ))}
+                </PopoverContent>
+              </Popover>
             </div>
           ) : null}
 
-          <div className="profile-endorsements-v2__sort-wrap" ref={sortWrapRef}>
-            <button
-              type="button"
-              className="profile-endorsements-v2__sort-btn"
-              onClick={() => setSortOpen((v) => !v)}
-              aria-haspopup="menu"
-              aria-expanded={sortOpen}
-              aria-label="Sort endorsements"
-              title="Sort"
-            >
-              <ArrowUpDown size={16} strokeWidth={1.75} aria-hidden />
-            </button>
-            {sortOpen ? (
-              <div
-                className="profile-endorsements-v2__sort-menu"
-                role="menu"
-              >
-                {sortOptions.map((opt) => {
-                  const active = opt.key === sort
-                  return (
-                    <button
-                      key={opt.key}
-                      type="button"
-                      role="menuitemradio"
-                      aria-checked={active}
-                      className="profile-endorsements-v2__sort-item"
-                      onClick={() => {
-                        setSort(opt.key)
-                        setSortOpen(false)
-                      }}
-                    >
-                      <span className="profile-endorsements-v2__sort-item-check">
-                        {active ? <Check size={14} strokeWidth={2} aria-hidden /> : null}
-                      </span>
-                      {opt.label}
-                    </button>
-                  )
-                })}
-              </div>
-            ) : null}
+          <div className="profile-endorsements-v2__sort-wrap">
+            <Popover open={sortOpen} onOpenChange={setSortOpen}>
+              <PopoverTrigger>
+                <button
+                  type="button"
+                  className="profile-endorsements-v2__sort-btn"
+                  aria-label="Sort endorsements"
+                  title="Sort"
+                >
+                  <ArrowUpDown size={16} strokeWidth={1.75} aria-hidden />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end">
+                {sortOptions.map((opt) => (
+                  <PopoverItem
+                    key={opt.key}
+                    selected={opt.key === sort}
+                    onClick={() => {
+                      setSort(opt.key)
+                      setSortOpen(false)
+                    }}
+                  >
+                    {opt.label}
+                  </PopoverItem>
+                ))}
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
       </div>

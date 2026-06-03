@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Plus, X, ChevronLeft } from "lucide-react";
 import ErrorMessage from "@/components/ui/error-message";
 import Input from "@/components/ui/input";
+import Textarea from "@/components/ui/textarea";
 import AvatarUpload from "@/components/profile/avatar-upload";
 import BannerUpload from "@/components/profile/banner-upload";
 import type {
@@ -422,15 +423,12 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
           <div className="pe__field">
             <label className="pe__label" htmlFor={descriptionId}>
               <span>About</span>
-              <span className="pe__label-count">{description.length}/256</span>
             </label>
-            <textarea
+            <Textarea
               id={descriptionId}
-              className={`pe__textarea${
-                descriptionError ? " pe__textarea--invalid" : ""
-              }`}
               rows={4}
               maxLength={256}
+              showCount
               value={description}
               placeholder={
                 isOrg
@@ -441,20 +439,8 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                 setDescription(e.target.value);
                 validateDescription(e.target.value);
               }}
-              aria-invalid={descriptionError ? true : undefined}
-              aria-describedby={
-                descriptionError ? `${descriptionId}-error` : undefined
-              }
+              error={descriptionError || undefined}
             />
-            {descriptionError ? (
-              <p
-                id={`${descriptionId}-error`}
-                className="pe__field-error"
-                role="alert"
-              >
-                {descriptionError}
-              </p>
-            ) : null}
           </div>
         </div>
       </div>
