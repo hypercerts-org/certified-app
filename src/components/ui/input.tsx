@@ -289,7 +289,10 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={inputId} className="app-card__label block mb-1.5">
+          <label
+            htmlFor={inputId}
+            className="block mb-1.5 text-[0.6875rem] font-semibold tracking-[0.08em] text-[var(--color-mid-gray)] [font-feature-settings:'case'_1]"
+          >
             {label}
           </label>
         )}

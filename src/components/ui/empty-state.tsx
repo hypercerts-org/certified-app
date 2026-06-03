@@ -70,16 +70,32 @@ export default function EmptyState({
     );
   }
 
+  // `empty-state` class retained on the root only as a hook for the external
+  // contextual overrides that key on it via parent selectors (e.g.
+  // `.profile-endorsements-v2__grid > .empty-state` in profile-endorsements.css,
+  // `.profile-certs .feed > .empty-state` in layout.css). The base look below is
+  // self-contained Tailwind mirroring the `.empty-state*` rules in components.css.
   return (
-    <div className={`empty-state ${className}`}>
+    <div
+      className={`empty-state flex flex-col items-center px-4 py-12 text-center ${className}`}
+    >
       {Icon && (
-        <div className="empty-state__icon" aria-hidden="true">
+        <div
+          className="mb-4 text-[var(--fg-muted)] opacity-50"
+          aria-hidden="true"
+        >
           <Icon size={40} strokeWidth={1.2} />
         </div>
       )}
-      <h3 className="empty-state__title">{title}</h3>
-      {description && <p className="empty-state__desc">{description}</p>}
-      {children && <div className="empty-state__actions">{children}</div>}
+      <h3 className="mb-2 font-headline text-[1.125rem] font-semibold text-[var(--fg-primary)]">
+        {title}
+      </h3>
+      {description && (
+        <p className="max-w-[320px] text-[0.875rem] leading-[1.6] text-[var(--fg-muted)]">
+          {description}
+        </p>
+      )}
+      {children && <div className="mt-5">{children}</div>}
     </div>
   );
 }

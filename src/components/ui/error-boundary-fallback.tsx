@@ -2,7 +2,7 @@
 
 import React from "react"
 import Link from "next/link"
-import Button from "@/components/ui/button"
+import Button from "./button"
 
 /**
  * Shared fallback used by Next.js segment `error.tsx` files. Renders a

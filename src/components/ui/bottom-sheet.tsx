@@ -82,9 +82,20 @@ export default function BottomSheet({
   // Portal targets document.body, which is undefined during SSR.
   if (typeof document === "undefined") return null
 
-  const sheetClassName = `bottom-sheet${
-    sheetExpanded ? " bottom-sheet--expanded" : ""
-  }${className ? ` ${className}` : ""}`
+  // Self-contained Tailwind mirroring `.bottom-sheet*` in pages.css. The chrome
+  // is gated behind `max-[799px]:` so the sheet stays `display:none` on desktop
+  // (callers pair this with <AppDialog> for the desktop surface). The slide-up /
+  // fade-in animations reference the global @keyframes still defined inside the
+  // `@media (max-width:799px)` block in pages.css.
+  const sheetBase =
+    // `bottom-sheet` is kept as a JS hook (navbar.tsx click-outside guard uses
+    // closest('.bottom-sheet, .bottom-sheet__backdrop')); styling is the Tailwind below.
+    "bottom-sheet hidden max-[799px]:flex max-[799px]:flex-col max-[799px]:fixed max-[799px]:bottom-0 max-[799px]:left-0 max-[799px]:right-0 max-[799px]:max-h-[70vh] max-[799px]:bg-[var(--bg-elevated)] max-[799px]:rounded-t-[var(--radius)] max-[799px]:z-[71] max-[799px]:overflow-hidden max-[799px]:animate-[bottomSheetSlideUp_0.3s_ease-out] max-[799px]:transition-[max-height] max-[799px]:duration-300 max-[799px]:ease-out"
+  // `.bottom-sheet--expanded` raises the cap to 92vh.
+  const sheetExpandedClass = sheetExpanded ? " max-[799px]:max-h-[92vh]" : ""
+  const sheetClassName = `${sheetBase}${sheetExpandedClass}${
+    className ? ` ${className}` : ""
+  }`
 
   // Default header: title on the left, close X on the right. Only rendered
   // when a custom `header` is not supplied and a `title` exists.
@@ -109,7 +120,7 @@ export default function BottomSheet({
   return createPortal(
     <>
       <div
-        className="bottom-sheet__backdrop"
+        className="bottom-sheet__backdrop hidden max-[799px]:block max-[799px]:fixed max-[799px]:inset-0 max-[799px]:bg-[var(--navy-overlay-30)] max-[799px]:z-[70] max-[799px]:animate-[bottomSheetFadeIn_0.2s_ease-out]"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -121,13 +132,15 @@ export default function BottomSheet({
         aria-label={title && typeof title === "string" ? title : ariaLabel}
       >
         <div
-          className="bottom-sheet__handle"
+          className="max-[799px]:flex max-[799px]:justify-center max-[799px]:pt-3.5 max-[799px]:pb-2.5 max-[799px]:flex-shrink-0 max-[799px]:cursor-grab max-[799px]:touch-none max-[799px]:after:content-[''] max-[799px]:after:w-9 max-[799px]:after:h-1 max-[799px]:after:bg-[var(--border-default)] max-[799px]:after:rounded-[var(--radius)]"
           onTouchStart={onHandleTouchStart}
           onTouchMove={onHandleTouchMove}
           onTouchEnd={onHandleTouchEnd}
         />
         {resolvedHeader}
-        <div className="bottom-sheet__content">{children}</div>
+        <div className="max-[799px]:overflow-x-hidden max-[799px]:overflow-y-auto max-[799px]:[-webkit-overflow-scrolling:touch] max-[799px]:pb-[env(safe-area-inset-bottom,16px)]">
+          {children}
+        </div>
       </div>
     </>,
     document.body,
