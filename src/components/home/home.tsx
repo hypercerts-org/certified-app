@@ -7,13 +7,14 @@ import { FolderGit2, User, Users } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
-import { useUserProjects } from "@/hooks/use-user-projects"
-import { useUserActivities } from "@/hooks/use-user-activities"
+import { useManagedProjects } from "@/hooks/use-managed-projects"
+import { useManagedActivities } from "@/hooks/use-managed-activities"
 import { usePageTitle } from "@/lib/navbar-context"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Avatar from "@/components/ui/avatar"
 import Badge from "@/components/ui/badge"
 import EmptyState from "@/components/ui/empty-state"
+import ViaByline from "@/components/ui/via-byline"
 import HomeFeed from "@/components/home/home-feed"
 import NewsSection from "@/components/right-rail/news-section"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
@@ -21,6 +22,7 @@ import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { getInitials } from "@/lib/utils/initials"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
+import type { OwnerTag } from "@/lib/atproto/owner-tag"
 import type { Group } from "@/lib/groups/types"
 
 /** DID of the actor whose Bluesky timeline powers the home page's
@@ -90,7 +92,7 @@ export default function Home() {
     <div className="home-page">
       <div className="home__layout">
         <aside className="home__sidebar" aria-label="Your library">
-          <HomeSidebar activeDid={activeDid} />
+          <HomeSidebar activeDid={activeDid} isGroupFocused={!!activeOrg} />
         </aside>
         <main className="home__main">
           <div className="home__split">
@@ -109,11 +111,24 @@ export default function Home() {
 
 // ---------------------------- Sidebar ---------------------------------------
 
-function HomeSidebar({ activeDid }: { activeDid: string }) {
+function HomeSidebar({
+  activeDid,
+  isGroupFocused,
+}: {
+  activeDid: string
+  /** True when the viewer has switched into a single group — the "via
+   *  {group}" aggregation byline is suppressed in that mode since every
+   *  visible record already belongs to that one group. */
+  isGroupFocused: boolean
+}) {
   const { groups, isLoading: groupsLoading } = useOrg()
-  const { projects, isLoading: projectsLoading } = useUserProjects(activeDid)
-  const { activities: certs, isLoading: certsLoading } =
-    useUserActivities(activeDid)
+  // Aggregated across the viewer's managed identities (personal + every
+  // owned/admin group), so group-owned projects/activities surface here
+  // too. The managed hooks anchor on the viewer's PERSONAL DID
+  // internally (via useAuth), so this aggregate is stable regardless of
+  // which identity the home page is currently focused on (activeDid).
+  const { items: projects, isLoading: projectsLoading } = useManagedProjects()
+  const { items: certs, isLoading: certsLoading } = useManagedActivities()
 
   const previewGroups = groups.slice(0, SIDEBAR_PREVIEW_LIMIT)
   const previewProjects = projects.slice(0, SIDEBAR_PREVIEW_LIMIT)
@@ -149,7 +164,14 @@ function HomeSidebar({ activeDid }: { activeDid: string }) {
         isLoading={projectsLoading && previewProjects.length === 0}
         items={previewProjects}
         total={projects.length}
-        renderItem={(p) => <ProjectRow key={p.uri} project={p} />}
+        renderItem={(p) => (
+          <ProjectRow
+            key={p.record.uri}
+            project={p.record}
+            owner={p.owner}
+            showVia={!isGroupFocused}
+          />
+        )}
         moreHref={`${profileBase}?tab=projects`}
         emptyLabel="No projects yet."
       />
@@ -159,7 +181,15 @@ function HomeSidebar({ activeDid }: { activeDid: string }) {
         isLoading={certsLoading && previewCerts.length === 0}
         items={previewCerts}
         total={certs.length}
-        renderItem={(c) => <CertRow key={c.uri} record={c} fallbackDid={activeDid} />}
+        renderItem={(c) => (
+          <CertRow
+            key={c.record.uri}
+            record={c.record}
+            owner={c.owner}
+            showVia={!isGroupFocused}
+            fallbackDid={activeDid}
+          />
+        )}
         moreHref={`${profileBase}?tab=activities`}
         emptyLabel="No activities yet."
       />
@@ -245,7 +275,16 @@ function GroupRow({ group }: { group: Group }) {
   )
 }
 
-function ProjectRow({ project }: { project: CollectionRecord }) {
+function ProjectRow({
+  project,
+  owner,
+  showVia,
+}: {
+  project: CollectionRecord
+  owner: OwnerTag
+  /** Suppress the "via {group}" byline (e.g. while focused on one group). */
+  showVia: boolean
+}) {
   const parsed = parseAtUri(project.uri)
   const did = parsed?.did ?? ""
   const href = parsed
@@ -267,6 +306,10 @@ function ProjectRow({ project }: { project: CollectionRecord }) {
         )
       : null
 
+  // Only group-owned records carry a provenance line; personal records
+  // are the viewer's own, so no "via" is shown.
+  const via = showVia && owner.kind === "group" && owner.group ? owner.group : null
+
   return (
     <li>
       <Link href={href} className="home-row">
@@ -283,7 +326,10 @@ function ProjectRow({ project }: { project: CollectionRecord }) {
             />
           )}
         </span>
-        <span className="home-row__label">{title}</span>
+        <span className="home-row__text">
+          <span className="home-row__label">{title}</span>
+          {via ? <ViaByline group={via} role={owner.role} /> : null}
+        </span>
       </Link>
     </li>
   )
@@ -291,9 +337,14 @@ function ProjectRow({ project }: { project: CollectionRecord }) {
 
 function CertRow({
   record,
+  owner,
+  showVia,
   fallbackDid,
 }: {
   record: ActivityRecord
+  owner: OwnerTag
+  /** Suppress the "via {group}" byline (e.g. while focused on one group). */
+  showVia: boolean
   fallbackDid: string
 }) {
   const parsed = parseAtUri(record.uri)
@@ -305,6 +356,10 @@ function CertRow({
   const imageUrl = record.value.image
     ? resolveActivityImageUrl(record.value.image, did)
     : null
+
+  // Only group-owned records carry a provenance line; personal records
+  // are the viewer's own, so no "via" is shown.
+  const via = showVia && owner.kind === "group" && owner.group ? owner.group : null
 
   return (
     <li>
@@ -322,8 +377,11 @@ function CertRow({
             />
           )}
         </span>
-        <span className="home-row__label">
-          {record.value.title || "Untitled activity"}
+        <span className="home-row__text">
+          <span className="home-row__label">
+            {record.value.title || "Untitled activity"}
+          </span>
+          {via ? <ViaByline group={via} role={owner.role} /> : null}
         </span>
       </Link>
     </li>

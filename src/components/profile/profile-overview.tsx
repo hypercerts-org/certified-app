@@ -8,6 +8,7 @@ import Avatar from "@/components/ui/avatar"
 import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import BannerUpload from "@/components/profile/banner-upload"
+import ProfileManagedBridge from "@/components/profile/profile-managed-bridge"
 import Map from "@/components/map/map-dynamic"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
 import {
@@ -22,7 +23,7 @@ import { useGivenEndorsements } from "@/hooks/use-endorsements"
 import { useUserIndexerActivities } from "@/hooks/use-user-indexer-activities"
 import { useUserProjects } from "@/hooks/use-user-projects"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import { activityDetailHref } from "@/lib/atproto/activity-uri"
+import { activityDetailHref, parseAtUri } from "@/lib/atproto/activity-uri"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import type { ActivityRecord, ClaimActivity } from "@/lib/atproto/activity-types"
 import type { CertifiedProfile } from "@/lib/atproto/types"
@@ -34,6 +35,10 @@ interface ProfileOverviewProps {
   did: string
   profile: CertifiedProfile | null
   basePath: string
+  /** True when the viewer is looking at their OWN profile. Gates the
+   *  dismissible Managed bridge (group-owned records aggregation link).
+   *  The public profile itself stays single-identity regardless. */
+  isOwnProfile?: boolean
   /** True when the page is in inline-edit mode. Only sent by the page
    *  when the viewer can edit their own profile — the overview itself
    *  doesn't gate on viewer identity. */
@@ -81,6 +86,7 @@ export default function ProfileOverview({
   did,
   profile,
   basePath,
+  isOwnProfile = false,
   isEditing = false,
   drafts,
   onDraftChange,
@@ -156,6 +162,11 @@ export default function ProfileOverview({
 
   return (
     <div className="profile-overview">
+      {/* Own-profile bridge to the Managed surface. Self-gating: renders
+          nothing for foreign profiles or when there are no group-owned
+          projects. Hidden in edit mode so it doesn't crowd the editor. */}
+      {!isEditing ? <ProfileManagedBridge isOwnProfile={isOwnProfile} /> : null}
+
       {isEditing ? (
         <div className="profile-overview__banner profile-overview__banner--editing profile-overview__banner-edit-slot">
           <BannerUpload
@@ -418,11 +429,19 @@ export default function ProfileOverview({
         ) : (
           <ul className="profile-overview__activity-list">
             {previewActivities.map((a) => {
-              const href = activityDetailHref(did, uriToRkey(a.uri))
+              // Resolve each record against its OWN owner DID (the repo
+              // in its AT-URI), not the profile's `did`. The digest mixes
+              // created + contributed activities, and a contributed cert
+              // lives in another repo — using the profile DID there would
+              // build a broken link and resolve the thumbnail blob against
+              // the wrong PDS. Fall back to the profile DID only if the
+              // URI somehow won't parse.
+              const ownerDid = parseAtUri(a.uri)?.did ?? did
+              const href = activityDetailHref(ownerDid, uriToRkey(a.uri))
               return (
                 <li key={a.uri} className="profile-overview__activity-item">
                   <Link href={href} className="profile-overview__activity-link">
-                    <ActivityThumb value={a.value} did={did} />
+                    <ActivityThumb value={a.value} did={ownerDid} />
                     <span className="profile-overview__activity-text">
                       <span className="profile-overview__activity-title">
                         {a.value.title || "Untitled activity"}

@@ -177,10 +177,59 @@
   color: var(--fg-secondary);
 }
 
+/* Column wrapping the label + optional "via {group}" byline so a
+   group-owned row reads as two stacked lines while a personal row stays
+   a single line. The thumb stays vertically centred against either. */
+.home-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .home-row__label {
   font-size: 0.85rem;
   color: var(--fg-primary);
   line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Compact "via {group}" provenance line under a dense Home row.
+   Single muted line — small group avatar + name. The avatar is forced
+   to 14px here (the <Avatar size="sm"> primitive is 32px by default);
+   we constrain it rather than add a new size to the shared primitive. */
+.via-byline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  color: var(--fg-muted);
+}
+
+.via-byline__label {
+  flex-shrink: 0;
+}
+
+.via-byline__avatar {
+  flex-shrink: 0;
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+}
+
+.via-byline__avatar > div {
+  width: 14px;
+  height: 14px;
+  font-size: 0.5rem;
+}
+
+.via-byline__name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
