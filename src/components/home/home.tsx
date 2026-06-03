@@ -92,7 +92,7 @@ export default function Home() {
     <div className="home-page">
       <div className="home__layout">
         <aside className="home__sidebar" aria-label="Your library">
-          <HomeSidebar activeDid={activeDid} isGroupFocused={!!activeOrg} />
+          <HomeSidebar activeDid={activeDid} />
         </aside>
         <main className="home__main">
           <div className="home__split">
@@ -111,22 +111,16 @@ export default function Home() {
 
 // ---------------------------- Sidebar ---------------------------------------
 
-function HomeSidebar({
-  activeDid,
-  isGroupFocused,
-}: {
-  activeDid: string
-  /** True when the viewer has switched into a single group — the "via
-   *  {group}" aggregation byline is suppressed in that mode since every
-   *  visible record already belongs to that one group. */
-  isGroupFocused: boolean
-}) {
+function HomeSidebar({ activeDid }: { activeDid: string }) {
   const { groups, isLoading: groupsLoading } = useOrg()
   // Aggregated across the viewer's managed identities (personal + every
   // owned/admin group), so group-owned projects/activities surface here
-  // too. The managed hooks anchor on the viewer's PERSONAL DID
-  // internally (via useAuth), so this aggregate is stable regardless of
-  // which identity the home page is currently focused on (activeDid).
+  // too. The managed hooks anchor on the viewer's PERSONAL DID internally
+  // (via useAuth), so this aggregate is the same regardless of which
+  // identity the page is focused on — acting-as is read-scope and never
+  // changes what's "yours" here. Every group-owned row keeps its "via
+  // {group}" provenance; the dedicated /managed hub is where the focus
+  // filter narrows to a single owner.
   const { items: projects, isLoading: projectsLoading } = useManagedProjects()
   const { items: certs, isLoading: certsLoading } = useManagedActivities()
 
@@ -165,14 +159,9 @@ function HomeSidebar({
         items={previewProjects}
         total={projects.length}
         renderItem={(p) => (
-          <ProjectRow
-            key={p.record.uri}
-            project={p.record}
-            owner={p.owner}
-            showVia={!isGroupFocused}
-          />
+          <ProjectRow key={p.record.uri} project={p.record} owner={p.owner} />
         )}
-        moreHref={`${profileBase}?tab=projects`}
+        moreHref="/managed"
         emptyLabel="No projects yet."
       />
       <SidebarSection
@@ -186,11 +175,10 @@ function HomeSidebar({
             key={c.record.uri}
             record={c.record}
             owner={c.owner}
-            showVia={!isGroupFocused}
             fallbackDid={activeDid}
           />
         )}
-        moreHref={`${profileBase}?tab=activities`}
+        moreHref="/managed"
         emptyLabel="No activities yet."
       />
     </>
@@ -278,12 +266,9 @@ function GroupRow({ group }: { group: Group }) {
 function ProjectRow({
   project,
   owner,
-  showVia,
 }: {
   project: CollectionRecord
   owner: OwnerTag
-  /** Suppress the "via {group}" byline (e.g. while focused on one group). */
-  showVia: boolean
 }) {
   const parsed = parseAtUri(project.uri)
   const did = parsed?.did ?? ""
@@ -308,7 +293,7 @@ function ProjectRow({
 
   // Only group-owned records carry a provenance line; personal records
   // are the viewer's own, so no "via" is shown.
-  const via = showVia && owner.kind === "group" && owner.group ? owner.group : null
+  const via = owner.kind === "group" && owner.group ? owner.group : null
 
   return (
     <li>
@@ -338,13 +323,10 @@ function ProjectRow({
 function CertRow({
   record,
   owner,
-  showVia,
   fallbackDid,
 }: {
   record: ActivityRecord
   owner: OwnerTag
-  /** Suppress the "via {group}" byline (e.g. while focused on one group). */
-  showVia: boolean
   fallbackDid: string
 }) {
   const parsed = parseAtUri(record.uri)
@@ -359,7 +341,7 @@ function CertRow({
 
   // Only group-owned records carry a provenance line; personal records
   // are the viewer's own, so no "via" is shown.
-  const via = showVia && owner.kind === "group" && owner.group ? owner.group : null
+  const via = owner.kind === "group" && owner.group ? owner.group : null
 
   return (
     <li>

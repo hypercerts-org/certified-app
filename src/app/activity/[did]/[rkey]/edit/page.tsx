@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
-import { useOrg } from "@/lib/groups/org-context"
+import { useManagedAuthors } from "@/hooks/use-managed-authors"
 import { authFetch } from "@/lib/auth/fetch"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
@@ -178,24 +178,20 @@ export default function ActivityEditPage() {
   }, [params.rkey])
 
   const { isAuthenticated, isLoading: authLoading, did: sessionDid } = useAuth()
-  const { activeOrg } = useOrg()
+  // Eligibility derives from the viewer's MANAGED identities (personal +
+  // owned/admin groups), NOT the transient org switcher — so a cert
+  // surfaced via read-aggregation is editable without first switching the
+  // switcher to its group. `byDid` holds the personal identity + owner/admin
+  // groups (member groups excluded); the BFF re-checks role server-side.
+  const { byDid, isLoading: managedLoading } = useManagedAuthors()
 
-  // Edits write back into the repo the record LIVES in (`did`, the route
-  // owner) — never a target derived from the active org. `activeOrg` is
-  // read here ONLY to gate eligibility: editing a group-owned cert
-  // requires the operator to be operating that same group with an
-  // owner/admin role (the BFF re-checks this server-side). The write
-  // target is always the record's own repo; the active org just unlocks
-  // the affordance.
-  const canEditAsActiveOrg =
-    !!activeOrg && !!did && activeOrg.groupDid === did &&
-    (activeOrg.role === "owner" || activeOrg.role === "admin")
-  const isCreator = activeOrg
-    ? canEditAsActiveOrg
-    : !!sessionDid && sessionDid === did
-  // `editTargetDid` is the record-owner repo (group) when editing a
-  // group-owned cert, else undefined → the viewer's own PDS via XRPC.
-  const editTargetDid = canEditAsActiveOrg ? did : undefined
+  const isPersonalRecord = !!did && !!sessionDid && sessionDid === did
+  const isOwnedOrAdminGroup = !!did && byDid.get(did)?.kind === "group"
+  const isCreator = isPersonalRecord || isOwnedOrAdminGroup
+  // Edits write back into the repo the record LIVES in: the group repo for
+  // a group-owned cert (`editTargetDid` = did), else the viewer's own PDS
+  // (undefined target). Never derived from a read-scope org.
+  const editTargetDid = isOwnedOrAdminGroup ? did : undefined
 
   const { activity, isLoading: activityLoading, error: activityError } =
     useActivity(did, rkey)
@@ -456,8 +452,10 @@ export default function ActivityEditPage() {
       : null
   const displayImageUrl = pendingImagePreviewUrl ?? existingImageUrl
 
-  // Auth-loading / signed-out states. Mirrors /create's gates.
-  if (authLoading || activityLoading) {
+  // Auth-loading / signed-out states. Mirrors /create's gates. For a
+  // non-personal record we also wait on the managed-author set so a group
+  // cert the viewer manages doesn't flash "you can't edit" before roles resolve.
+  if (authLoading || activityLoading || (!isPersonalRecord && managedLoading)) {
     return (
       <div className="dashboard">
         <div className="dashboard__body">

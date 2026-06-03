@@ -6,7 +6,7 @@ import Link from "next/link"
 import { MapPin, Plus, X, FolderGit2 } from "lucide-react"
 import Image from "next/image"
 import { useAuth } from "@/lib/auth/auth-context"
-import { useOrg } from "@/lib/groups/org-context"
+import { useManagedAuthors } from "@/hooks/use-managed-authors"
 import { authFetch } from "@/lib/auth/fetch"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
@@ -80,26 +80,24 @@ export default function ProjectEditPage() {
   }, [params.rkey])
 
   const { isAuthenticated, isLoading: authLoading, did: sessionDid } = useAuth()
-  const { activeOrg } = useOrg()
+  // Eligibility derives from the viewer's MANAGED identities (personal +
+  // the groups they own/admin), NOT the transient org switcher. This is
+  // what lets the read-aggregation→edit path work: a record surfaced via
+  // /managed or Home is editable without first switching the switcher to
+  // its group. `byDid` holds exactly the personal identity + owner/admin
+  // groups (member groups excluded); the BFF re-checks role server-side.
+  const { byDid, isLoading: managedLoading } = useManagedAuthors()
 
-  // Edits write back into the repo the record LIVES in (`did`, the route
-  // owner) — never a target derived from the active org. `activeOrg` is
-  // read here ONLY to gate eligibility: editing a group-owned project
-  // requires the operator to be operating that same group with an
-  // owner/admin role (the BFF re-checks this server-side). The write
-  // target is always the record's own repo; the active org just unlocks
-  // the affordance.
-  const canEditAsActiveOrg =
-    !!activeOrg &&
-    !!did &&
-    activeOrg.groupDid === did &&
-    (activeOrg.role === "owner" || activeOrg.role === "admin")
-  const isOwner = activeOrg
-    ? canEditAsActiveOrg
-    : !!sessionDid && sessionDid === did
-  // `editTargetDid` is the record-owner repo (group) when editing a
-  // group-owned project, else undefined → the viewer's own PDS.
-  const editTargetDid = canEditAsActiveOrg ? did : undefined
+  const isPersonalRecord = !!did && !!sessionDid && sessionDid === did
+  // byDid only contains owner/admin groups (+ the personal identity), so a
+  // 'group' hit here means the viewer owns/admins the owning repo.
+  const isOwnedOrAdminGroup = !!did && byDid.get(did)?.kind === "group"
+  const isOwner = isPersonalRecord || isOwnedOrAdminGroup
+  // Edits write back into the repo the record LIVES in. For a group-owned
+  // record that's the group repo (`editTargetDid` = did); a personal record
+  // writes to the viewer's own PDS (undefined target). The write target is
+  // always the record's own repo — never derived from a read-scope org.
+  const editTargetDid = isOwnedOrAdminGroup ? did : undefined
 
   const { project, isLoading: projectLoading, error: projectError } = useProject(
     did,
@@ -347,8 +345,10 @@ export default function ProjectEditPage() {
       : null
   const displayBannerUrl = pendingBannerPreviewUrl ?? existingBannerUrl
 
-  // Loading / sign-in gates.
-  if (authLoading || projectLoading) {
+  // Loading / sign-in gates. For a non-personal record we also wait on the
+  // managed-author set so a group record the viewer manages doesn't flash
+  // "you can't edit" before the owner/admin roles resolve.
+  if (authLoading || projectLoading || (!isPersonalRecord && managedLoading)) {
     return (
       <div className="dashboard">
         <div className="dashboard__body">
