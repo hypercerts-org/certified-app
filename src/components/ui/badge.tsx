@@ -19,10 +19,41 @@ export type BadgeVariant =
   | "draft"
   | "test";
 
-/** Colour treatment for numeric variants.
+/** Colour treatment.
+ *  Count pills (`variant="count"`):
  *  - "default": red attention pill (--badge-count-bg). The historical look.
- *  - "neutral": muted pill (--bg-sunken / --fg-muted) for non-attention counts. */
-export type BadgeTone = "default" | "neutral";
+ *  - "neutral": muted pill (--bg-sunken / --fg-muted) for non-attention counts.
+ *  Square tags (`shape="square"`): "error" | "warn" | "success" | "neutral".
+ *  ("warn" is an alias of "error" so a draft/warn tag reads error-toned, matching
+ *  the legacy home-feed__preview-tag--warn look.) */
+export type BadgeTone =
+  | "default"
+  | "neutral"
+  | "error"
+  | "warn"
+  | "success";
+
+/** Visual shape. Defaults to "pill" (999px) — the one-shape-per-semantic rule.
+ *  "square" renders a small rounded-[var(--radius)] (2px) chip for error / warn /
+ *  success / neutral tags (e.g. home-feed__preview-tag), tone selected via `tone`. */
+export type BadgeShape = "pill" | "square";
+
+/** Square-tag palettes. Each pairs an error/warn/success/neutral tone with tokens
+ *  that already flip in dark mode, mirroring the legacy preview-tag BEM look:
+ *  neutral = sunken fill + medium border; error/warn = transparent + error tint. */
+const squareToneStyles: Record<
+  Exclude<BadgeTone, "default">,
+  string
+> = {
+  neutral:
+    "bg-[var(--bg-sunken)] text-[var(--fg-secondary)] border border-[var(--border-medium)]",
+  error:
+    "bg-transparent text-[var(--color-error)] border border-[var(--color-error)]",
+  // "warn" tags are error-toned by design (the draft/warn preview tag is red).
+  warn: "bg-transparent text-[var(--color-error)] border border-[var(--color-error)]",
+  success:
+    "bg-[var(--color-success-bg)] text-[var(--color-success-text)] border border-[var(--color-success-text)]",
+};
 
 export interface BadgeProps {
   variant: BadgeVariant;
@@ -31,10 +62,13 @@ export interface BadgeProps {
   /** When true, render compact (smaller padding + smaller font).
    *  Used by feed-quality labels and inline count chips. */
   compact?: boolean;
-  /** Colour treatment for the `count` variant. Defaults to "default" (red).
-   *  Use "neutral" for counts that should not read as an alert.
-   *  Ignored by every non-count variant. */
+  /** Colour treatment. For `variant="count"`: "default" (red) | "neutral" (muted).
+   *  For `shape="square"`: "error" | "warn" | "success" | "neutral" (defaults to
+   *  "neutral"). Ignored by every other variant/shape combination. */
   tone?: BadgeTone;
+  /** Shape modifier. Defaults to "pill" (999px). Pass "square" to render a small
+   *  rounded-[var(--radius)] (2px) tag chip honoring the `tone` palette. */
+  shape?: BadgeShape;
 }
 
 interface VariantConfig {
@@ -114,13 +148,22 @@ const Badge: React.FC<BadgeProps> = ({
   className = "",
   compact,
   tone = "default",
+  shape = "pill",
 }) => {
   const c = config[variant];
+  const isSquare = shape === "square";
+
+  // Square tags swap their whole palette by `tone` (error/warn/success/neutral).
+  // The default "default" tone has no square meaning, so fall back to "neutral".
+  const squarePalette =
+    squareToneStyles[tone === "default" ? "neutral" : tone];
+
   // tone="neutral" repaints the red `count` pill as a muted pill so neutral
   // counts can adopt Badge without reading as an alert. Only `count` carries a
-  // tone — every other variant ignores it.
-  const toneStyles =
-    variant === "count" && tone === "neutral"
+  // tone — every other (pill) variant ignores it.
+  const toneStyles = isSquare
+    ? squarePalette
+    : variant === "count" && tone === "neutral"
       ? "bg-[var(--bg-sunken)] text-[var(--fg-muted)] font-semibold"
       : c.styles;
 
@@ -136,17 +179,21 @@ const Badge: React.FC<BadgeProps> = ({
   }
 
   // `compact` prop overrides; otherwise variant chooses its natural density.
-  const isCompact = compact ?? c.defaultCompact;
+  // Square tags are inherently compact (small uppercase chips) unless told otherwise.
+  const isCompact = compact ?? (isSquare ? true : c.defaultCompact);
   const sizeStyles = isCompact
     ? "px-2 py-0.5 text-caption font-semibold"
     : "px-3 py-1 text-body-sm font-medium";
-  // All badges are pills (one shape per semantic). 999px per the radius rule;
-  // rounded-full is reserved for circles (e.g. avatars).
-  const baseStyles = `rounded-[999px] inline-flex items-center gap-1.5 ${sizeStyles}`;
+  // Pills are 999px (one shape per semantic; rounded-full is reserved for circles).
+  // Square tags use var(--radius) (2px) and pick up uppercase tracking like a tag.
+  const shapeStyles = isSquare
+    ? "rounded-[var(--radius)] uppercase tracking-wider"
+    : "rounded-[999px]";
+  const baseStyles = `${shapeStyles} inline-flex items-center gap-1.5 ${sizeStyles}`;
 
   return (
     <span className={`${baseStyles} ${toneStyles} ${className}`}>
-      {c.icon}
+      {isSquare ? null : c.icon}
       {children}
     </span>
   );

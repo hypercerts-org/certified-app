@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import React, {
   createContext,
   useCallback,
@@ -28,6 +29,13 @@ import React, {
  *  - aria-controls / aria-expanded wired between trigger and content
  *  - content positions absolutely relative to the trigger; align
  *    controls horizontal alignment ("start" | "center" | "end").
+ *  - arrow-key roving focus over the menu's items.
+ *
+ * Item roles: <PopoverItem> is a plain action item (role="menuitem") by
+ * default. Pass `selected` (boolean) to turn it into a single-select
+ * option — role="menuitemradio" + aria-checked, with a leading checkmark
+ * on the selected row — which is what a "Sort:" or other "pick exactly
+ * one" menu needs. Both roles participate in arrow-key roving.
  *
  * Replaces the four ad-hoc menu implementations:
  *  - account switcher menu (layout.css)
@@ -162,11 +170,18 @@ const alignClass: Record<PopoverAlign, string> = {
  * order. Used for roving focus. Disabled items (native `disabled` or
  * `aria-disabled="true"`) are skipped so arrow navigation never lands on
  * an unactionable option.
+ *
+ * Both `role="menuitem"` (action items) and `role="menuitemradio"`
+ * (single-select / sort-menu items, see <PopoverItem selected>) are
+ * collected, so arrow-key roving works identically whichever role the
+ * caller adopts.
  */
 function getMenuItems(content: HTMLElement | null): HTMLElement[] {
   if (!content) return [];
   return Array.from(
-    content.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+    content.querySelectorAll<HTMLElement>(
+      '[role="menuitem"],[role="menuitemradio"]',
+    ),
   ).filter(
     (el) =>
       !el.hasAttribute("disabled") &&
@@ -255,27 +270,56 @@ export function PopoverContent({
 export interface PopoverItemProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
+  /**
+   * Opt into single-select (radio) semantics. When provided, the item
+   * renders `role="menuitemradio"` + `aria-checked={selected}` and shows a
+   * leading checkmark in its selected state — the shape a sort menu (or any
+   * "pick exactly one" menu) needs. Omit it for plain action items, which
+   * keep `role="menuitem"` and no checkmark slot.
+   *
+   * Arrow-key roving (see getMenuItems in <PopoverContent>) matches both
+   * roles, so keyboard navigation is identical either way.
+   */
+  selected?: boolean;
 }
 
 export function PopoverItem({
   children,
   className = "",
   tabIndex,
+  selected,
   ...props
 }: PopoverItemProps) {
+  // `selected` is the opt-in to radio semantics: undefined => plain action
+  // item (role="menuitem", no checkmark slot); boolean => single-select item
+  // (role="menuitemradio", aria-checked, reserved leading checkmark column).
+  const isRadio = selected !== undefined;
   return (
     <button
       type="button"
-      role="menuitem"
+      role={isRadio ? "menuitemradio" : "menuitem"}
+      // Only emit aria-checked for radio items; a plain menuitem must not
+      // carry it (the role doesn't support a checked state).
+      aria-checked={isRadio ? selected : undefined}
       // Roving focus: items are removed from the sequential Tab order so a
       // single Tab moves past the whole menu; arrow keys (handled by
       // <PopoverContent>) move focus between items. <PopoverContent>
       // focuses the first item on open. Callers can still override.
       tabIndex={tabIndex ?? -1}
-      className={`w-full text-left px-3 py-2 text-sm text-[var(--fg-primary)] rounded hover:bg-[var(--overlay-weak)] focus:bg-[var(--overlay-weak)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      className={`w-full ${isRadio ? "flex items-center gap-2" : "text-left"} px-3 py-2 text-sm text-[var(--fg-primary)] rounded hover:bg-[var(--overlay-weak)] focus:bg-[var(--overlay-weak)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
       {...props}
     >
-      {children}
+      {isRadio && (
+        // Reserved leading column so labels stay aligned whether or not the
+        // row is the selected one. The checkmark only paints when selected;
+        // aria-hidden because aria-checked already conveys state.
+        <Check
+          className={`h-3.5 w-3.5 shrink-0 ${selected ? "opacity-100" : "opacity-0"}`}
+          strokeWidth={3}
+          aria-hidden="true"
+        />
+      )}
+      {isRadio ? <span className="flex-1 text-left">{children}</span> : children}
     </button>
   );
 }
