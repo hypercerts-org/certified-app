@@ -1,4 +1,4 @@
-import Brandmark from "@/components/ui/brandmark";
+import Brandmark from "./brandmark";
 
 export default function ProviderRedirectOverlay() {
   return (

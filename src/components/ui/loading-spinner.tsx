@@ -1,6 +1,6 @@
 import React from "react";
 import { Loader2 } from "lucide-react";
-import Brandmark from "@/components/ui/brandmark";
+import Brandmark from "./brandmark";
 
 export interface LoadingSpinnerProps {
   size?: "sm" | "md" | "lg";

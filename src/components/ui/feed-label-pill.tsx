@@ -1,7 +1,7 @@
 import React from "react";
 import type { LabelValue } from "@/lib/atproto/labeller";
 import { LABEL_DISPLAY } from "@/lib/atproto/labeller";
-import Badge, { type BadgeVariant } from "@/components/ui/badge";
+import Badge, { type BadgeVariant } from "./badge";
 
 const LABEL_VARIANT: Record<LabelValue, BadgeVariant> = {
   "high-quality": "high-quality",

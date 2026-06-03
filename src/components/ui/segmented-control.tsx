@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { RadioGroup, Radio } from "@/components/ui/radio";
+import { RadioGroup, Radio } from "./radio";
 
 /**
  * SegmentedControl + ToggleGroup — two related "segmented" primitives that

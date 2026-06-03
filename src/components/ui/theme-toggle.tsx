@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { Monitor, Moon, Sun } from "lucide-react";
-import { RadioGroup, Radio } from "@/components/ui/radio";
+import { RadioGroup, Radio } from "./radio";
 
 type ThemeValue = "light" | "dark" | "system";
 

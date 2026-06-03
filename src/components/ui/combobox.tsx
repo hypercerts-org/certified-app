@@ -7,7 +7,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import Input, { type InputProps } from "@/components/ui/input";
+import Input, { type InputProps } from "./input";
 
 /**
  * Generic typeahead Combobox primitive.

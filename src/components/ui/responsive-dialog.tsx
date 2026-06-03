@@ -2,8 +2,8 @@
 
 import { type ReactNode, type RefObject } from "react"
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
-import AppDialog from "@/components/ui/app-dialog"
-import BottomSheet from "@/components/ui/bottom-sheet"
+import AppDialog from "./app-dialog"
+import BottomSheet from "./bottom-sheet"
 
 /**
  * Responsive modal shell (DESIGN §14.6): renders an `<AppDialog>` at the
