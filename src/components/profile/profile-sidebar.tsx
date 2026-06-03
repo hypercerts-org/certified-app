@@ -20,6 +20,7 @@ import {
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
+import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import SmartLink from "@/components/ui/smart-link"
 import { getInitials } from "@/lib/utils/initials"
@@ -235,15 +236,25 @@ export default function ProfileSidebar({
 
       <div className="profile-sidebar__name-block">
         {isEditing && hasInline ? (
-          <input
-            type="text"
-            className="profile-sidebar__name-input"
-            value={drafts?.displayName ?? ""}
-            maxLength={64}
-            placeholder="Display name"
-            aria-label="Display name"
-            onChange={(e) => onDraftChange?.("displayName", e.target.value)}
-          />
+          // Bare Input inside the H1 context so it inherits the serif H1
+          // scale (font/size/weight/leading cascade from
+          // `.profile-sidebar__name`). `borderWeight="hover"` reproduces the
+          // 1.5px --border-hover resting / --fg-primary + --overlay-weak focus
+          // chrome the legacy `.profile-sidebar__name-input` used.
+          <h1 className="profile-sidebar__name">
+            <Input
+              size="bare"
+              flush
+              borderWeight="hover"
+              type="text"
+              className="py-1.5 px-2.5"
+              value={drafts?.displayName ?? ""}
+              maxLength={64}
+              placeholder="Display name"
+              aria-label="Display name"
+              onChange={(e) => onDraftChange?.("displayName", e.target.value)}
+            />
+          </h1>
         ) : (
           <h1 className="profile-sidebar__name">{displayName}</h1>
         )}
@@ -391,10 +402,18 @@ export default function ProfileSidebar({
             <li className="profile-sidebar__details-header">Main website</li>
             <li className="profile-sidebar__website-edit">
               <LinkIcon size={16} strokeWidth={1.75} aria-hidden />
-              <input
+              {/* flex:1 bare Input beside the icon. `borderWeight="hover"`
+                  matches the legacy `.profile-sidebar__website-input`
+                  1.5px --border-hover resting / --fg-primary focus chrome;
+                  font-size cascades from `.profile-sidebar__details li`
+                  (0.875rem). */}
+              <Input
+                size="bare"
+                flush
+                borderWeight="hover"
                 type="url"
                 inputMode="url"
-                className="profile-sidebar__website-input"
+                className="flex-1 min-w-0 py-1.5 px-2.5"
                 value={drafts?.website ?? ""}
                 maxLength={256}
                 placeholder="https://example.com"
@@ -437,9 +456,15 @@ export default function ProfileSidebar({
           <li className="profile-sidebar__org-field-edit">
             <Calendar size={16} strokeWidth={1.75} aria-hidden />
             <span className="profile-sidebar__org-field-label">Founded</span>
-            <input
+            {/* flex:1 bare Input. `borderWeight="default"` matches the legacy
+                `.profile-sidebar__org-input` 1px --border-default resting
+                border; font-size cascades from the details-list row. */}
+            <Input
+              size="bare"
+              flush
+              borderWeight="default"
               type="date"
-              className="profile-sidebar__org-input"
+              className="flex-1 min-w-0 py-1.5 px-2.5"
               value={drafts?.foundedDate ?? ""}
               aria-label="Founded date"
               onChange={(e) => onDraftChange?.("foundedDate", e.target.value)}
@@ -544,10 +569,16 @@ function OrgUrlListEditor({ rows, onChange }: OrgUrlListEditorProps) {
         return (
           <li key={row.id} className="profile-sidebar__org-url-edit">
             <LinkIcon size={16} strokeWidth={1.75} aria-hidden />
-            <input
+            {/* flex:1 bare Input beside the icon. `borderWeight="default"`
+                matches the legacy `.profile-sidebar__org-input` 1px
+                --border-default resting border. */}
+            <Input
+              size="bare"
+              flush
+              borderWeight="default"
               type="url"
               inputMode="url"
-              className="profile-sidebar__org-input"
+              className="flex-1 min-w-0 py-1.5 px-2.5"
               value={row.url}
               placeholder="https://example.com"
               aria-label="URL"

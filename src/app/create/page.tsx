@@ -17,6 +17,7 @@ import { useOrg } from "@/lib/groups/org-context"
 import { authFetch } from "@/lib/auth/fetch"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
+import Input from "@/components/ui/input"
 import LeafletEditor from "@/components/leaflet/leaflet-editor"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
@@ -661,21 +662,37 @@ export default function CreatePage() {
                       either way. The displayed text format is
                       controlled by the browser/OS locale and can't
                       be overridden without dropping the picker UI. */}
-                  <input
+                  {/* flex-[1_1_0] + min-w-0 reproduce the legacy
+                      `.create-cert__date-row .cert-detail__meta-input`
+                      rule so the two date fields split the row evenly
+                      (the bare input is otherwise content-width). */}
+                  <Input
+                    flush
+                    density="compact"
+                    borderWeight="hover"
                     type="date"
                     aria-label="Start date"
-                    className="cert-detail__meta-input"
+                    className="flex-[1_1_0] min-w-0"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                   />
                   <span aria-hidden>→</span>
-                  <input
+                  <Input
+                    flush
+                    density="compact"
+                    borderWeight="hover"
                     type="date"
                     aria-label="End date"
+                    // Preserve the exact legacy invalid treatment from
+                    // `.create-cert__contrib-id-input--invalid` (solid
+                    // --color-error border + red focus ring), which is a
+                    // heavier cue than the primitive's translucent
+                    // `error` border. Applied via className so it wins
+                    // over the borderWeight="hover" resting border.
                     className={
                       datesValid
-                        ? "cert-detail__meta-input"
-                        : "cert-detail__meta-input create-cert__contrib-id-input--invalid"
+                        ? "flex-[1_1_0] min-w-0"
+                        : "flex-[1_1_0] min-w-0 !border-[var(--color-error)] focus:!border-[var(--color-error)] focus:!ring-2 focus:!ring-[var(--color-error)]/15"
                     }
                     aria-invalid={!datesValid}
                     value={endDate}
@@ -699,10 +716,13 @@ export default function CreatePage() {
                 Work scope
               </dt>
               <dd className="cert-detail__meta-value">
-                <input
+                <Input
+                  flush
+                  density="compact"
+                  borderWeight="hover"
                   type="text"
                   aria-label="Work scope"
-                  className="cert-detail__meta-input create-cert__field--full"
+                  className="create-cert__field--full"
                   placeholder="e.g. mentorship, code review…"
                   value={workScope}
                   maxLength={256}
@@ -777,6 +797,15 @@ export default function CreatePage() {
                     None available
                   </span>
                 ) : (
+                  // NOTE: left as a native <select> with the compact
+                  // `cert-detail__meta-input` chrome. The <Select>
+                  // primitive only exposes a sm/md/lg size axis (no
+                  // `density="compact"`), and its smallest size (sm =
+                  // h-9, 1px --border-default) is taller and lighter
+                  // than this 0.8125rem / 1.5px --border-hover meta
+                  // field — adopting it would change the inline meta-row
+                  // rhythm. Migrate once <Select> grows a compact
+                  // density that matches the meta-input scale.
                   <select
                     className="cert-detail__meta-input"
                     aria-label="Rights"
@@ -799,11 +828,22 @@ export default function CreatePage() {
         <div className="page-layout__main cert-detail__main">
           <header className="cert-detail__headline">
             <div className="create-cert__input-with-counter">
-              <input
+              {/* Bare/flush <Input> so the title typography cascades.
+                  The serif headline scale, weight, tracking, and the
+                  1.375rem create-form size are carried inline here
+                  (the legacy `.cert-detail__title-input` +
+                  `.create-cert .cert-detail__title-input` rules that
+                  used to supply them are now dead). borderWeight="hover"
+                  reproduces the 1.5px --border-hover / --fg-primary
+                  focus chrome the legacy class painted. */}
+              <Input
+                flush
+                size="bare"
+                borderWeight="hover"
                 type="text"
-                className="cert-detail__title-input"
                 aria-label="Title"
                 placeholder="Title for your activity"
+                className="flex-[1_1_auto] min-w-0 font-headline !text-[1.375rem] font-bold !leading-[1.15] tracking-[-0.015em] text-[var(--fg-primary)] !px-2.5 py-1"
                 value={title}
                 maxLength={TITLE_MAX}
                 onChange={(e) => setTitle(e.target.value)}
@@ -958,9 +998,11 @@ export default function CreatePage() {
                         excludeIdentities={otherIdentities}
                       />
                     )}
-                    <input
+                    <Input
+                      flush
+                      density="compact"
+                      borderWeight="hover"
                       type="text"
-                      className="cert-detail__meta-input"
                       aria-label={`Contributor ${idx + 1} role (optional)`}
                       placeholder="Role (optional)"
                       value={c.role}
@@ -975,13 +1017,21 @@ export default function CreatePage() {
                         )
                       }
                     />
-                    <input
+                    <Input
+                      flush
+                      density="compact"
+                      borderWeight="hover"
                       type="text"
                       inputMode="decimal"
+                      // `create-cert__contrib-weight` keeps the row's
+                      // text-align:left layout. Invalid border matches
+                      // the legacy `--invalid` (solid --color-error +
+                      // red focus ring), applied via className so it
+                      // wins over borderWeight="hover".
                       className={
                         weightValid
-                          ? "cert-detail__meta-input create-cert__contrib-weight"
-                          : "cert-detail__meta-input create-cert__contrib-weight create-cert__contrib-id-input--invalid"
+                          ? "create-cert__contrib-weight"
+                          : "create-cert__contrib-weight !border-[var(--color-error)] focus:!border-[var(--color-error)] focus:!ring-2 focus:!ring-[var(--color-error)]/15"
                       }
                       aria-label={`Contributor ${idx + 1} weight (optional)`}
                       aria-invalid={!weightValid}

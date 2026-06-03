@@ -500,16 +500,19 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                   {urlRows.map((row) => (
                     <div key={row.id} className="pe__url-item">
                       <div className="pe__url-row">
-                        <input
+                        {/* flush Input as a direct grid child. `error` drives
+                            the error border + aria-invalid; the row keeps its
+                            own `.pe__field-error` <p> below (flush mode renders
+                            no error block), so aria-describedby is wired by
+                            hand to point at it. */}
+                        <Input
+                          flush
                           type="url"
                           inputMode="url"
-                          className={`pe__input${
-                            row.error ? " pe__input--invalid" : ""
-                          }`}
                           value={row.url}
                           placeholder="https://example.com"
                           aria-label="URL"
-                          aria-invalid={row.error ? true : undefined}
+                          error={row.error}
                           aria-describedby={
                             row.error ? `${row.id}-error` : undefined
                           }
@@ -517,9 +520,9 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                             updateUrlRow(row.id, { url: e.target.value })
                           }
                         />
-                        <input
+                        <Input
+                          flush
                           type="text"
-                          className="pe__input"
                           value={row.label}
                           maxLength={48}
                           placeholder="Label"

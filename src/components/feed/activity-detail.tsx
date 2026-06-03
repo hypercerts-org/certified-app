@@ -32,6 +32,7 @@ import { useRights } from "@/hooks/use-rights"
 import { getInitials } from "@/lib/utils/initials"
 import { formatShortDate } from "@/lib/utils/format-date"
 import Avatar from "@/components/ui/avatar"
+import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EditBanner from "@/components/ui/edit-banner"
 import { useCertProjects } from "@/hooks/use-cert-projects"
@@ -700,9 +701,18 @@ export default function ActivityDetail({
     <header className="cert-detail__headline">
       <div className="cert-detail__title-row">
         {editing ? (
-          <input
+          // Bare/flush <Input> for the inline title edit. The detail
+          // page keeps the full 1.875rem serif headline scale (the
+          // create form shrinks it to 1.375rem); carried inline here
+          // since the legacy `.cert-detail__title-input` rule is now
+          // dead. borderWeight="hover" reproduces its 1.5px
+          // --border-hover / --fg-primary focus chrome.
+          <Input
+            flush
+            size="bare"
+            borderWeight="hover"
             type="text"
-            className="cert-detail__title-input"
+            className="flex-[1_1_auto] min-w-0 font-headline !text-[1.875rem] font-bold !leading-[1.15] tracking-[-0.015em] text-[var(--fg-primary)] !px-2.5 py-1"
             value={drafts.title}
             maxLength={256}
             placeholder="Activity title"
@@ -886,20 +896,31 @@ export default function ActivityDetail({
                 /* Two date inputs in place of the rendered label.
                    Empty input drops the field on save (#75). */
                 <span className="cert-detail__meta-edit">
-                  <input
+                  {/* `!w-auto max-w-full min-w-0` reproduces the legacy
+                      `.cert-detail__meta-input` sizing (no fixed width,
+                      max-width:100%, min-width:0) — the primitive's
+                      flush `w-full` would otherwise stretch each date
+                      field inside this inline-flex meta-edit row. */}
+                  <Input
+                    flush
+                    density="compact"
+                    borderWeight="hover"
                     type="date"
                     aria-label="Start date"
-                    className="cert-detail__meta-input"
+                    className="!w-auto max-w-full min-w-0"
                     value={drafts.startDate}
                     onChange={(e) =>
                       setDrafts((d) => ({ ...d, startDate: e.target.value }))
                     }
                   />
                   <span aria-hidden="true">–</span>
-                  <input
+                  <Input
+                    flush
+                    density="compact"
+                    borderWeight="hover"
                     type="date"
                     aria-label="End date"
-                    className="cert-detail__meta-input"
+                    className="!w-auto max-w-full min-w-0"
                     value={drafts.endDate}
                     onChange={(e) =>
                       setDrafts((d) => ({ ...d, endDate: e.target.value }))
@@ -923,11 +944,17 @@ export default function ActivityDetail({
                   /* Plain text input. Serialised as the
                      `WorkScopeString` lexicon variant on save;
                      complex CEL workscope authoring lives
-                     elsewhere (#75 trade-off). */
-                  <input
+                     elsewhere (#75 trade-off).
+                     `!w-auto max-w-full min-w-0` reproduces the legacy
+                     `.cert-detail__meta-input` sizing (intrinsic width,
+                     not the primitive's flush `w-full`). */
+                  <Input
+                    flush
+                    density="compact"
+                    borderWeight="hover"
                     type="text"
                     aria-label="Work scope"
-                    className="cert-detail__meta-input"
+                    className="!w-auto max-w-full min-w-0"
                     placeholder="e.g. mentorship, code review…"
                     value={drafts.workScope}
                     maxLength={256}
