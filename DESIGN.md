@@ -1,10 +1,12 @@
-# DESIGN.md — Certs.social
+# DESIGN.md — Certified (certified-app)
 
 > **AI agents: read §14 first.** It locks in the post-consolidation rules (2026-05-28) and supersedes earlier sections where they contradict. Read the "Rules at a glance" callout in `AGENTS.md` §0 in parallel — it's the executive summary of what to do and not do.
+>
+> **certified-app's `src/components/ui/` is the canonical, portable, barrel-exported component library** (`src/components/ui/index.ts` re-exports every primitive). It is the source of truth reused by other hypercerts-org apps — treat changes here as changes to a shared dependency. The library is now self-contained Tailwind: primitives express their chrome inline as Tailwind utilities + token arbitrary values (e.g. `bg-[var(--bg-elevated)]`), not legacy BEM classes. Intra-`ui` imports are relative (`./button`), so the directory ports cleanly into another app. Two files (`feed-label-pill`, `feedback-modal`) are app-coupled and excluded from the portable surface — see the barrel header.
 
 ## 1. Visual Theme & Atmosphere
 
-Certs.social feels like a notary's ledger reimagined as a mobile app — austere, monochrome, and quietly authoritative. The near-absence of color forces attention onto the content: serif headlines anchor each card like a document title, while the surrounding chrome recedes into warm grays. It's deliberately under-decorated — no gradients, no brand accent hue, no playful illustrations. The restraint *is* the brand.
+Certified feels like a notary's ledger reimagined as a mobile app — austere, monochrome, and quietly authoritative. The near-absence of color forces attention onto the content: serif headlines anchor each card like a document title, while the surrounding chrome recedes into warm grays. It's deliberately under-decorated — no gradients, no brand accent hue, no playful illustrations. The restraint *is* the brand.
 
 Underneath the calm surface sits a social feed. Activity cards scroll by like entries in a shared register; endorsements carry the weight of a countersignature. The tension between institutional formality (certificates, seals, identity) and casual social patterns (feeds, follows, tabs) is the defining character of the design.
 
@@ -70,6 +72,20 @@ Borders use transparent black/white overlays so they adapt naturally:
 | Warning | `--color-warning` | `#F5A623` | `#F5A623` | Warning icons |
 | Verified bg/fg | `--badge-success-bg/fg` | `#e8f5e9` / `#1b7a3d` | `rgba(46,204,113,0.15)` / `#6ee7a7` | "High quality" label, verified badge |
 | Pending bg/fg | `--badge-warning-bg/fg` | `#fff3e0` / `#b37100` | `rgba(245,166,35,0.15)` / `#fbbf24` | "Pending" badge |
+| Count bg/fg | `--badge-count-bg/fg` | `#b91c1c` / `#ffffff` | `#dc2626` / `#ffffff` | Notification count chip (`Badge variant="count"`) |
+
+### Badge tones (danger / accent)
+
+Two additional badge tone triplets ship with the canonical library for cross-app parity. They are **additive** (not yet referenced by a certified-app call site today), but live in the token map so consuming apps inherit them. Each is a `bg` / `fg` / `border` set:
+
+| Name | Token | Light | Dark | Role |
+|---|---|---|---|---|
+| Danger bg | `--badge-danger-bg` | `#fdecea` | `rgba(248,113,113,0.15)` | Destructive / error-toned badge surface (derives from `--color-error`) |
+| Danger fg | `--badge-danger-fg` | `#9f1717` | `#f87171` | Danger badge text |
+| Danger border | `--badge-danger-border` | `#f4c7c3` | `rgba(248,113,113,0.3)` | Danger badge border |
+| Accent bg | `--badge-accent-bg` | `#ededed` | `rgba(255,255,255,0.08)` | Neutral-accent badge surface |
+| Accent fg | `--badge-accent-fg` | `#454747` | `#c7c7cc` | Accent badge text |
+| Accent border | `--badge-accent-border` | `#dcdcdc` | `rgba(255,255,255,0.14)` | Accent badge border |
 
 ### Primary Button (theme-inverting)
 
@@ -97,8 +113,9 @@ The primary button **inverts** in dark mode so it always pops off the canvas:
 |---|---|---|
 | `--font-inter` | Inter (300–700) | All UI text: body, labels, buttons, navigation |
 | `--font-headline` | Noto Serif (400, 700, normal+italic) | Headlines, card titles, feed titles, empty-state headings |
+| `--font-mono` | `ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace` | Monospace contexts: DID strings, AT URIs, code blocks. System stack (no web font load); additive token — some CSS already referenced this stack inline. |
 
-Both fonts loaded via `next/font/google` with `display: swap`.
+Inter and Noto Serif are loaded via `next/font/google` with `display: swap`. `--font-mono` is a system stack — no font load.
 
 ### OpenType Features
 
@@ -150,8 +167,9 @@ The `<Button>` component (`src/components/ui/button.tsx`) defines four variants 
 | `sm` | 6px 16px | 0.75rem |
 | `md` | 10px 24px | 0.875rem |
 | `lg` | 12px 32px | 0.875rem |
+| `icon` | 40 × 40 square | — |
 
-All buttons: `border-radius: var(--radius)` (2px), `font-weight: 500`, `tracking-wider`, 150ms transition.
+`size="icon"` is the canonical icon-only button (requires `aria-label` — enforced by the TS discriminated union). See the Icons subsection. All buttons: `border-radius: var(--radius)` (2px), `font-weight: 500`, `tracking-wider`, 150ms transition.
 
 ### Cards
 
@@ -167,21 +185,35 @@ All buttons: `border-radius: var(--radius)` (2px), `font-weight: 500`, `tracking
 
 **Textarea** (`src/components/ui/textarea.tsx`): Same styling as input, `resize-y`, 12px vertical padding.
 
-**Sign-in Input** (`.signin-modal__input`): Larger variant — 56px height, 1.5px border, 8px radius, 20px padding. This is intentionally different from the app input: it's a first-touch experience with more generous sizing.
+**Input sizes / variants**: `<Input>` carries `size="sm|md|lg"` (36 / 44 / 56 px) and `variant="default|underline|inline-edit"`. The old `.signin-modal__input` BEM is gone — the sign-in field is now `<Input size="lg">` (56px) at `var(--radius)` (2px, not the retired 8px), and the delete-record typed-confirmation field is `<Input variant="inline-edit">`.
 
 **iOS auto-zoom rule**: any focusable `<input>` / `<textarea>` must have **font-size ≥ 16px on mobile** (`@media (max-width: 768px)`). Below 16px, iOS Safari auto-zooms on focus and overflows the viewport. Desktop can stay at 14–15px for visual density, but mobile must override to 16px. See the override blocks at the bottom of `feed.css`, `components.css`, and `pages.css`.
 
 ### Badges
 
-Three variants via `<Badge>` component:
+`<Badge>` (`src/components/ui/badge.tsx`) is the single badge primitive — it absorbed the old `.feed-card__label*` quality variants and `.org-list__item-role`. Variants:
 
-| Variant | Background | Text | Icon |
-|---|---|---|---|
-| `verified` | `--badge-success-bg` | `--badge-success-fg` | CheckCircle |
-| `pending` | `--badge-warning-bg` | `--badge-warning-fg` | Clock |
-| `unverified` | `--badge-neutral-bg` | `--badge-neutral-fg` | none |
+| Variant | Background | Text | Icon | Notes |
+|---|---|---|---|---|
+| `verified` | `--badge-success-bg` | `--badge-success-fg` | CheckCircle | Status (full density) |
+| `pending` | `--badge-warning-bg` | `--badge-warning-fg` | Clock | Status (full density) |
+| `unverified` | `--badge-neutral-bg` | `--badge-neutral-fg` + border | none | Status (full density) |
+| `tag` | `--bg-sunken` | `--fg-secondary` | none | Uppercase label chip (compact) |
+| `role` | `--bg-canvas` | `--fg-muted` | none | Membership role chip (compact) |
+| `count` | `--badge-count-bg` | `--badge-count-fg` | none | Notification count pill (compact) |
+| `count-bare` | — | `--fg-muted` | none | Chromeless muted tabular number (no pill / border / padding) — for right-aligned section counts |
+| `high-quality` | `--badge-success-bg` | `--badge-success-fg` | none | Feed quality label (compact) |
+| `standard` | `--bg-sunken` | `--fg-secondary` | none | Feed quality label (compact) |
+| `draft` | `--badge-warning-bg` | `--badge-warning-fg` | none | Feed quality label (compact) |
+| `test` | `--bg-raised` | `--fg-muted` | none | Feed quality label (compact) |
 
-All badges: `border-radius: 999px` (pill), `font-weight: 500`, `0.875rem` text.
+**Shape.** Defaults to `pill` (`999px`, one-shape-per-semantic). `shape="square"` renders a small `var(--radius)` (2px) uppercase chip whose palette is selected by `tone` (`error` / `warn` / `success` / `neutral`; `warn` is an error-toned alias) — mirrors the legacy `home-feed__preview-tag` look.
+
+**Tone.** For `variant="count"`, `tone="default"` is the red attention pill; `tone="neutral"` repaints it as a muted `--bg-sunken` / `--fg-muted` pill for non-attention counts. Every other pill variant ignores `tone`.
+
+**Density.** The `compact` prop overrides the per-variant default (`px-2 py-0.5 text-caption` compact vs. `px-3 py-1 text-body-sm` full). Status variants are full by default; tag / role / count / quality variants are compact by default.
+
+**CountBadge.** There is no separate `CountBadge` component — a count badge is `<Badge variant="count">` (red pill, white text). Pair it with the `formatCountBadge(count, more?)` helper (`src/lib/utils/format-count-badge.ts`), which returns `null` for counts ≤ 0, the number for 1–98, and `"99+"` at ≥ 99 or when `more` is true. This consolidates the bottom-nav / left-rail / mobile-sidebar count formatters.
 
 ### Feed Label Pills
 
@@ -211,30 +243,54 @@ All icons from **Lucide React**. Conventions:
 | Success/error callouts | 14–16px | default | AlertCircle, CheckCircle |
 | Large success states | 40px | default | CheckCircle2 (domain verification) |
 
+**Icon-only buttons are `<Button size="icon" aria-label="…">`** (40 × 40 square; the TypeScript discriminated union enforces `aria-label`). This absorbed the old `.desktop-top-bar__icon-btn` and similar one-off icon buttons. Don't hand-roll a bare `<button>` with an icon.
+
 ### Modals
 
-**Standard sign-in modal** (`.signin-modal` only): Centered on desktop, full-width on mobile. `bg-elevated`, 1px `border-default`, `shadow-lg`. Entry animation: `modalFadeIn` (backdrop 200ms) + `modalSlideUp` (content 300ms, spring easing). 20px radius + 40px hero padding. This shape is **reserved for the sign-in surface** — it's an intentional exception to the 2px system because sign-in is a once-per-session, branded surface.
+**All modals are `<AppDialog>` — self-contained Tailwind, no global modal CSS.** The legacy `signin-modal` / `app-modal` BEM pair is gone: `AppDialog` (`src/components/ui/app-dialog.tsx`) now expresses the modal chrome inline as Tailwind utilities + token arbitrary values (radius `var(--radius)`, surface `--color-off-white`, border `--border-default`, shadow `0 24px 64px var(--navy-overlay-30)`, `backdrop:bg-[var(--modal-backdrop)]`, `modalSlideUp` 300ms spring entry). The translation is at strict visual parity with the old resolved cascade. There is no separate sign-in shape anymore — sign-in is just an `AppDialog` at `var(--radius)` (2px), in line with §14.1 #1.
 
-**App modals** (every other in-app dialog — endorse-people, create-list, sync-social-graph, future): use `<dialog className="signin-modal app-modal …">`. The `.app-modal` modifier inherits the sign-in chrome (backdrop / animation / close button / focus styling) but overrides:
+`AppDialog` owns the full modal skeleton so consumers don't re-implement it: native `<dialog>` + `showModal()`, per-layer Escape via the browser's native `close` event, a Tab focus-trap that wraps, focus restore on close, backdrop-click close (suppressible mid-save via `disableBackdropClose`), and optional `autoFocusFirst` / `initialFocusRef`.
 
-- `border-radius: var(--radius)` (2px — matches cards, dropdowns, inputs).
-- Padding trimmed to `16px 20px 12px` header / `0 20px 20px` body — denser than the sign-in surface, which is right for form-style and list-style modals.
+Three composable slots ship alongside it:
 
-If you're building a new modal that isn't the sign-in flow, **always** add `app-modal` alongside `signin-modal`. Forgetting it makes the dialog read as a chunky sign-in surface and breaks the 2px system everywhere else.
+- **`<AppDialogHeader title onClose? disabled?>`** — title on the left, close X (18px) on the right. Omit `onClose` to hide the X (for `alertdialog` modals whose only exits are footer buttons).
+- **`<AppDialogBody className?>`** — the padded content slot (`px-5 pb-5 pt-0`). The `<dialog>` shell owns the scroll; the body is purely the padded region. This is the new slot — use it instead of a hand-written content `<div>`.
+- Footer/actions are provided by the consumer.
 
-**Bottom sheet** (mobile account switcher, mobile feedback): Fixed to bottom, draggable handle, swipe-down-to-dismiss. `bg-elevated`, top border-radius. Expandable via swipe-up.
+`<ConfirmDialog>` and `<DeleteRecordDialog>` wrap `AppDialog` for the common confirm / typed-confirmation flows. Build new modals from `AppDialog` (+ its slots) — never hand-roll a backdrop + focus-trap. (`AddOrgModal` and `MembershipSyncModal` were already migrated to it; `CustomDomainModal` is the remaining deferred migration — see §14.4.)
+
+**Bottom sheet** (`<BottomSheet>`, mobile account switcher / mobile feedback): Fixed to bottom, draggable handle, swipe-down-to-dismiss, expandable via swipe-up. `bg-elevated`, top border-radius. Self-contained Tailwind. Modal vs. sheet is selected by viewport via `<ResponsiveDialog>` (dropdown/AppDialog ≥800px, sheet below).
 
 ### Empty State
 
-`<EmptyState>` component (`src/components/ui/empty-state.tsx`) for lists and sections with no content. Props: optional `icon` (LucideIcon, rendered at 40px/1.2 stroke), `title`, `description`, and `children` (CTA slot). Centered layout, serif title, 48px vertical padding.
+`<EmptyState>` (`src/components/ui/empty-state.tsx`, self-contained Tailwind) for lists and sections with no content. Props: optional `icon` (accepts Lucide icons and our own wrappers like `CertIcon`, rendered at 40px/1.2 stroke in rich mode), `title`, optional `description`, `children` (CTA slot), and `variant`.
+
+- `variant="rich"` (default): centered block with optional icon, serif headline title, description, and CTA slot — for full-section placeholders.
+- `variant="inline"`: a single muted line of text — no icon, no headline weight, no container, zero margin. Canonical replacement for the ~12 one-off `*__empty` BEM hints (`home-section__empty`, `org-list__empty`, `right-rail__empty`, …).
+- `variant="compact"`: back-compat alias of `inline`; new code should prefer `inline`.
+
+### Identity Row
+
+`<IdentityRow>` (`src/components/ui/identity-row.tsx`) — the canonical avatar + name + `@handle` byline. Replaces the four hand-rolled byline rows (activity-author, activity-contributor, endorsement-row, notification-row). Built on `<Avatar>` + `<Skeleton>`.
+
+- Props: `did` (required), `handle`, `displayName`, `avatarUrl`, `href` (makes the whole row a link), `size` (`sm` 32px avatar / `md` 48px avatar, default `md`), `loading` (renders the skeleton placeholder), `className`.
+- Primary line resolution: `displayName` → `handle` → `truncateDid(did)`. The `@handle` secondary line shows only when a real handle (distinct from the DID) is present.
+- Primary line is `font-medium` `--fg-primary`; handle is `--fg-muted`. Both truncate.
+
+### Pagination
+
+`<Pagination>` (`src/components/ui/pagination.tsx`) — a centered Previous / "Page X of Y" / Next cluster of bordered (`Button variant="secondary" size="sm"`) controls around a `tabular-nums`, `aria-live="polite"` status. Buttons disable at the bounds; the whole control returns `null` when `pageCount <= 1`.
+
+- Props: `page` (1-based), `pageCount`, `onChange(page)`, optional `label` (nav landmark, default "Pagination"), `className`.
+- This is the **numbered/explicit** pager. It ships **alongside** `<LoadMoreSentinel>` (infinite-scroll, IntersectionObserver-driven) — pick numbered pagination or the load-more sentinel per surface; they are not combined.
 
 ### Feed Label Pill
 
-`<FeedLabelPill>` component (`src/components/ui/feed-label-pill.tsx`) extracts the quality label badge from activity cards. Takes a `label` prop (LabelValue) and renders the appropriate colored pill.
+`<FeedLabelPill>` (`src/components/ui/feed-label-pill.tsx`) renders the quality label for an activity card from a `label` prop (LabelValue). It now **composes `<Badge>`** (the `high-quality` / `standard` / `draft` / `test` variants) rather than carrying its own styles. App-coupled (imports app context) — not part of the portable surface; consuming apps keep their own copy.
 
 ### Distinctive Components
 
-These components define the visual identity of certs.social — they are what makes the app recognizable:
+These components define the visual identity of Certified — they are what makes the app recognizable:
 
 **Frosted navbar with three modes.** The navbar isn't just sticky — it shapeshifts. In *default* mode: brandmark center, hamburger/avatar on the sides, frosted glass background. In *titled page* mode: back arrow left, page title center, empty right — like a native mobile app. In *profile overlay* mode: fully transparent, only a floating back-arrow pill over the full-bleed banner. The transition between these is instantaneous on route change.
 
@@ -327,12 +383,13 @@ Key usage patterns:
 
 | Value | Token / Literal | Use |
 |---|---|---|
-| `2px` | `var(--radius)` | Default: cards, buttons, inputs, modals, badges in app chrome |
+| `2px` | `var(--radius)` | Default: cards, buttons, inputs, modals (incl. sign-in — no longer a 20px exception), badges in app chrome |
 | `4px` | `calc(var(--radius) * 2)` | Desktop feed card images |
 | `16px` | literal | Bottom sheet top corners — signals "draggable" on mobile |
-| `999px` | literal | Pill shapes: avatar, badge pills, feed labels, sign-in submit |
-| `20px` | literal | Sign-in modal (welcoming, soft first-touch) |
+| `999px` | `var(--radius-pill)` | Pill shapes: badge pills, feed labels. Token added to codify hard-rule #1 (use it instead of the `999px` literal). |
 | `50%` | literal | Circles: avatars, dots, step numbers |
+
+> **Note:** the old `20px` sign-in-modal exception is retired (see §14.1 #1) — every modal, including sign-in, uses `var(--radius)` (2px). `--radius-pill` (999px) is the canonical pill token; prefer it over a raw `999px`.
 
 ### Image Treatment
 
@@ -413,7 +470,8 @@ Shadows are intentionally subtle in light mode and stronger in dark mode (where 
 |---|---|---|---|
 | `--overlay-weak` | `rgba(0,0,0,0.04)` | `rgba(255,255,255,0.04)` | Ghost button hover |
 | `--overlay-medium` | `rgba(0,0,0,0.08)` | `rgba(255,255,255,0.08)` | Focus ring glow |
-| `--navy-overlay-70` | `rgba(0,0,0,0.7)` | `rgba(0,0,0,0.8)` | Modal backdrops |
+| `--navy-overlay-70` | `rgba(0,0,0,0.7)` | `rgba(0,0,0,0.8)` | Generic dark overlay |
+| `--modal-backdrop` | `rgba(0,0,0,0.5)` | `var(--navy-overlay-70)` | The `::backdrop` fill behind a native modal `<dialog>` (AppDialog). Tokenized so the AppDialog engine references it from TSX (`backdrop:bg-[var(--modal-backdrop)]`) without a raw rgb() literal. |
 
 ## 7. Do's and Don'ts
 
@@ -509,7 +567,7 @@ The single 769px breakpoint that this section previously described was replaced 
 "Create a card with #FFFFFF background, 1px border rgba(0,0,0,0.08), border-radius 2px, 24px padding. Label above in Inter 0.6875rem/600, uppercase, letter-spacing 0.08em, color #7e7576."
 
 **Sign-in modal:**
-"Full-screen backdrop with rgba(0,0,0,0.25) + blur(8px). Centered card max-width 460px, white background, 20px border-radius, 40px padding, shadow 0 12px 32px rgba(0,0,0,0.12). Brandmark centered. Input: 56px height, 1.5px border, 8px radius. Submit: full-width 56px pill button (999px radius) in primary colors."
+"Use `<AppDialog ariaLabel="Sign in">` with `<AppDialogHeader>` + `<AppDialogBody>`. Backdrop is `var(--modal-backdrop)`; centered card max-width ~420px, `--color-off-white` background, `var(--radius)` (2px) corners, `0 24px 64px var(--navy-overlay-30)` shadow, `modalSlideUp` 300ms spring entry. Brandmark centered. Field: `<Input size=\"lg\">` (56px, 2px radius). Submit: full-width primary `<Button>` (2px radius). Don't hand-roll the backdrop or use the old 20px/8px sign-in chrome — it's retired."
 
 **Bottom nav bar:**
 "Fixed to bottom, 56px height + safe area inset. White background, 1px top border rgba(0,0,0,0.04). 5 equally-spaced Lucide icons at 24px, strokeWidth 1.5 default / 2.5 active. Active: #111111, inactive: #7e7576. No labels on current build."
