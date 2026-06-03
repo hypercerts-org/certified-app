@@ -14,8 +14,22 @@ import type { Group } from "./types"
 
 const ACTIVE_ORG_KEY = "certified_active_org"
 
+/**
+ * `activeOrg` is READ-SCOPE ONLY.
+ *
+ * As of the per-action posting-as model (Wave 2), the active org sets
+ * the lens the viewer reads/operates a group THROUGH — managed feeds,
+ * the "Operating <group>" mode bar, group-scoped aggregation. It does
+ * NOT, and must not, decide who a write is authored AS. Every write
+ * target comes from an explicit per-action identity (`<PostingAs>` /
+ * `usePostingIdentity`, default You) or the owner DID of the record
+ * being edited — never silently from `activeOrg`. New code must not
+ * derive a `targetDid` / write repo from `activeOrg`; if you need the
+ * write identity, take it from the picker.
+ */
 interface OrgContextValue {
-  /** The group the user is currently acting as, or null for personal account */
+  /** The group the user is currently acting as (READ-SCOPE only — see the
+   *  module note above), or null for the personal account. */
   activeOrg: Group | null
   /** All groups the user belongs to */
   groups: Group[]

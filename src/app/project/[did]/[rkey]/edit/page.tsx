@@ -82,6 +82,13 @@ export default function ProjectEditPage() {
   const { isAuthenticated, isLoading: authLoading, did: sessionDid } = useAuth()
   const { activeOrg } = useOrg()
 
+  // Edits write back into the repo the record LIVES in (`did`, the route
+  // owner) — never a target derived from the active org. `activeOrg` is
+  // read here ONLY to gate eligibility: editing a group-owned project
+  // requires the operator to be operating that same group with an
+  // owner/admin role (the BFF re-checks this server-side). The write
+  // target is always the record's own repo; the active org just unlocks
+  // the affordance.
   const canEditAsActiveOrg =
     !!activeOrg &&
     !!did &&
@@ -90,6 +97,8 @@ export default function ProjectEditPage() {
   const isOwner = activeOrg
     ? canEditAsActiveOrg
     : !!sessionDid && sessionDid === did
+  // `editTargetDid` is the record-owner repo (group) when editing a
+  // group-owned project, else undefined → the viewer's own PDS.
   const editTargetDid = canEditAsActiveOrg ? did : undefined
 
   const { project, isLoading: projectLoading, error: projectError } = useProject(
@@ -115,8 +124,12 @@ export default function ProjectEditPage() {
     useState<string | null>(null)
   const [bannerRemoved, setBannerRemoved] = useState(false)
 
-  // Author's own certs — quick-pick list. Same fetch as /project/new.
-  const { ownCerts, isLoading: ownCertsLoading } = useOwnCerts(sessionDid)
+  // Quick-pick activities list — scoped to the repo this project LIVES
+  // in (`did`, the record owner). For a group-owned project that's the
+  // group's repo, so the checklist offers the group's activities (the
+  // ones whose strongRefs can be added here); for a personal project
+  // it's the viewer's own. Not derived from the active read-scope org.
+  const { ownCerts, isLoading: ownCertsLoading } = useOwnCerts(did)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -279,7 +292,12 @@ export default function ProjectEditPage() {
         return previewUrl
       })
       setBannerRemoved(false)
-      const targetDid = activeOrg ? activeOrg.groupDid : null
+      // Edits write back into the repo the record LIVES in — the blob
+      // must land there too. `editTargetDid` is the group repo when this
+      // project is group-owned (and the operator admins it), otherwise
+      // undefined → the viewer's own PDS. It is NOT derived from the
+      // active read-scope org.
+      const targetDid = editTargetDid ?? null
       try {
         const blob = await uploadBlob(
           file,
@@ -299,7 +317,7 @@ export default function ProjectEditPage() {
         })
       }
     },
-    [activeOrg],
+    [editTargetDid],
   )
 
   const handleBannerRemove = useCallback(() => {
@@ -663,7 +681,7 @@ export default function ProjectEditPage() {
               onImageUpload={(file) =>
                 uploadBlob(
                   file,
-                  activeOrg ? { targetDid: activeOrg.groupDid } : undefined,
+                  editTargetDid ? { targetDid: editTargetDid } : undefined,
                 )
               }
             />
@@ -799,7 +817,7 @@ export default function ProjectEditPage() {
       {isLocationDialogOpen && sessionDid ? (
         <LocationPickerDialog
           ownDid={sessionDid}
-          targetDid={activeOrg ? activeOrg.groupDid : sessionDid}
+          targetDid={editTargetDid ?? sessionDid}
           onClose={() => setIsLocationDialogOpen(false)}
           onPick={(added) => {
             setLocation(added)

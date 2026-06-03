@@ -180,15 +180,21 @@ export default function ActivityEditPage() {
   const { isAuthenticated, isLoading: authLoading, did: sessionDid } = useAuth()
   const { activeOrg } = useOrg()
 
-  // The edit endpoint to call: own repo via XRPC proxy when the
-  // viewer's session DID matches the cert's owner; the group BFF
-  // when the cert is owned by the active org and the role permits.
+  // Edits write back into the repo the record LIVES in (`did`, the route
+  // owner) — never a target derived from the active org. `activeOrg` is
+  // read here ONLY to gate eligibility: editing a group-owned cert
+  // requires the operator to be operating that same group with an
+  // owner/admin role (the BFF re-checks this server-side). The write
+  // target is always the record's own repo; the active org just unlocks
+  // the affordance.
   const canEditAsActiveOrg =
     !!activeOrg && !!did && activeOrg.groupDid === did &&
     (activeOrg.role === "owner" || activeOrg.role === "admin")
   const isCreator = activeOrg
     ? canEditAsActiveOrg
     : !!sessionDid && sessionDid === did
+  // `editTargetDid` is the record-owner repo (group) when editing a
+  // group-owned cert, else undefined → the viewer's own PDS via XRPC.
   const editTargetDid = canEditAsActiveOrg ? did : undefined
 
   const { activity, isLoading: activityLoading, error: activityError } =
@@ -231,10 +237,12 @@ export default function ActivityEditPage() {
   } | null>(null)
   const seededRef = useRef(false)
 
-  // "Add me" needs the publishing identity's @handle/DID. Same logic
-  // as /create — group DID when acting as a group, otherwise own DID.
+  // "Add me" + new-location target need the repo this cert LIVES in —
+  // the record-owner repo (`editTargetDid` = the group when editing a
+  // group-owned cert), else the viewer's own DID. Not the active
+  // read-scope org; edits always write back to the record's repo.
   const effectivePublisherDid: string =
-    activeOrg?.groupDid ?? sessionDid ?? ""
+    editTargetDid ?? sessionDid ?? ""
   const { info: selfInfo } = useAuthorInfo(effectivePublisherDid)
 
   // -------------------------------------------------------------------
@@ -418,14 +426,17 @@ export default function ActivityEditPage() {
         return previewUrl
       })
       setImageRemoved(false)
-      const targetDid = activeOrg ? activeOrg.groupDid : null
+      // Blob lands in the repo the cert lives in (record owner), not the
+      // active read-scope org. `editTargetDid` is the group repo for a
+      // group-owned cert, else undefined → the viewer's own PDS.
+      const targetDid = editTargetDid ?? null
       const blob = await uploadBlob(
         file,
         targetDid ? { targetDid } : undefined,
       )
       setPendingImageBlob(blob)
     },
-    [activeOrg],
+    [editTargetDid],
   )
 
   const handleImageRemove = useCallback(() => {
@@ -1025,7 +1036,7 @@ export default function ActivityEditPage() {
               onImageUpload={(file) =>
                 uploadBlob(
                   file,
-                  activeOrg ? { targetDid: activeOrg.groupDid } : undefined,
+                  editTargetDid ? { targetDid: editTargetDid } : undefined,
                 )
               }
             />

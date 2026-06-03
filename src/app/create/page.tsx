@@ -13,8 +13,9 @@ import {
   X,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
-import { useOrg } from "@/lib/groups/org-context"
 import { authFetch } from "@/lib/auth/fetch"
+import PostingAs from "@/components/create/posting-as"
+import { usePostingIdentity } from "@/hooks/use-posting-identity"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
 import Input from "@/components/ui/input"
@@ -133,17 +134,20 @@ interface RightsOption {
 export default function CreatePage() {
   usePageTitle("New activity")
   const { isAuthenticated, isLoading, did } = useAuth()
-  const { activeOrg } = useOrg()
   const router = useRouter()
-  // "Effective identity" — the DID the cert is published as on
-  // this page. When the user has switched into a group, that's the
-  // group's DID; otherwise their own session DID. Used anywhere
-  // "self" matters here (Add me shortcut, blob target repo,
-  // submit destination) so the form treats the active identity as
-  // a first-class subject rather than always falling through to the
-  // personal user.
-  const effectiveDid: string =
-    activeOrg?.groupDid ?? did ?? ""
+  // Per-action posting identity. The write target is chosen EXPLICITLY
+  // here via <PostingAs> (default You) rather than inherited from the
+  // active org — acting-as is read-scope only. `posting.value.did` is
+  // the repo this cert publishes into; `posting.value.kind === 'group'`
+  // is what flips the submit/blob/location paths onto the group BFF.
+  const posting = usePostingIdentity()
+  const postingDid = posting.value.did
+  const postingIsGroup = posting.value.kind === "group"
+  // "Effective identity" — the DID the cert is published as on this
+  // page. Comes straight from the per-action picker. Used anywhere
+  // "self" matters here (Add me shortcut, blob target repo, location
+  // target repo, submit destination).
+  const effectiveDid: string = postingDid || did || ""
   // Author info for whoever is currently publishing — feeds the
   // "Add me" shortcut on the contributors row. `useAuthorInfo`
   // resolves the handle (preferred) and falls back to the DID.
@@ -309,9 +313,9 @@ export default function CreatePage() {
       if (prev) URL.revokeObjectURL(prev)
       return previewUrl
     })
-    // Route the blob upload to the group's repo when the active
-    // identity is a group; otherwise the user's own.
-    const targetDid = activeOrg ? activeOrg.groupDid : null
+    // Route the blob upload to the picked identity's repo when posting
+    // as a group; otherwise the viewer's own (targetDid undefined).
+    const targetDid = postingIsGroup ? postingDid : null
     try {
       const blob = await uploadBlob(
         file,
@@ -330,7 +334,7 @@ export default function CreatePage() {
         return null
       })
     }
-  }, [activeOrg])
+  }, [postingIsGroup, postingDid])
 
   const handleImageRemove = useCallback(() => {
     setPendingImageBlob(null)
@@ -516,11 +520,13 @@ export default function CreatePage() {
     }
 
     try {
-      // Route through the group BFF when the user has switched into
-      // a group identity; otherwise use the xrpc proxy on the
-      // viewer's own repo. The BFF's PUT route accepts
-      // `{ record }` with no rkey → createRecord on the group repo.
-      const useGroupRoute = activeOrg !== null
+      // Route through the group BFF only when the PICKED posting
+      // identity is a group; otherwise use the xrpc proxy on the
+      // viewer's own repo. The choice comes from <PostingAs> (default
+      // You), never from the active read-scope org. The BFF's PUT route
+      // accepts `{ record }` with no rkey → createRecord on the group
+      // repo (and re-checks the operator's owner/admin role server-side).
+      const useGroupRoute = postingIsGroup
       const url = useGroupRoute
         ? `/api/groups/${encodeURIComponent(effectiveDid)}/activity`
         : "/api/xrpc/com/atproto/repo/createRecord"
@@ -826,6 +832,20 @@ export default function CreatePage() {
         </aside>
 
         <div className="page-layout__main cert-detail__main">
+          {/* Per-action posting identity. Defaults to You; the picker
+              is the ONLY thing that targets a group repo here (the
+              active read-scope org never silently becomes the write
+              target). When the viewer admins no groups this renders a
+              static "Posting as You" label. */}
+          <div className="flex items-center">
+            <PostingAs
+              value={posting.value}
+              onChange={posting.setValue}
+              options={posting.options}
+              size="sm"
+              aria-label="Posting activity as"
+            />
+          </div>
           <header className="cert-detail__headline">
             <div className="create-cert__input-with-counter">
               {/* Bare/flush <Input> so the title typography cascades.
@@ -902,7 +922,7 @@ export default function CreatePage() {
               onImageUpload={(file) =>
                 uploadBlob(
                   file,
-                  activeOrg ? { targetDid: activeOrg.groupDid } : undefined,
+                  postingIsGroup ? { targetDid: postingDid } : undefined,
                 )
               }
             />

@@ -29,7 +29,6 @@ import { useProfilePds } from "@/hooks/use-profile-pds"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useSession } from "@/hooks/use-session"
 import { useOrg } from "@/lib/groups/org-context"
-import type { Group } from "@/lib/groups/types"
 import { useFollowing } from "@/hooks/use-following"
 import { useFollowers } from "@/hooks/use-followers"
 import { useGivenEndorsements } from "@/hooks/use-endorsements"
@@ -44,6 +43,11 @@ import EndorseReasonModal, {
   type EndorseReasonActingAs,
 } from "@/components/profile/endorse-reason-modal"
 import { runEndorseReasonConfirm } from "@/components/profile/endorse-reason-confirm"
+import PostingAs, {
+  PostingAsConfirm,
+} from "@/components/create/posting-as"
+import { usePostingIdentity } from "@/hooks/use-posting-identity"
+import type { PostingIdentity } from "@/lib/groups/posting-identity"
 import { createFollow, deleteFollow, listFollowing } from "@/lib/atproto/follow"
 import {
   createEndorsementAward,
@@ -179,21 +183,29 @@ export default function ProfileSidebar({
   // own profile (no Follow button to render in either case).
   const { did: viewerDid, isAuthenticated } = useAuth()
   const { handle: operatorHandle } = useSession()
-  // Acting-as-group context. With the group BFF write paths in place
-  // (createFollow / createEndorsementAward / deleteFollow all accept a
-  // `targetDid` that routes the write to the group's repo), Follow /
-  // Endorse now act AS the active group: the operator authors the record
-  // on the group's behalf instead of their personal repo. The DID whose
-  // follow / given-endorsement set drives button state therefore tracks
-  // the group when one is active, and the viewer otherwise.
+  // Acting-as-group context is READ-SCOPE ONLY here. `activeOrg` decides
+  // whose follow / given-endorsement set the button READS to render its
+  // Follow/Following + Endorse/Endorsed state, so the strip reflects the
+  // group's relationships while you're operating it. It does NOT decide
+  // who the Follow / Endorse write is authored AS — that comes from a
+  // per-action posting identity (default You), threaded into the write
+  // helpers' `targetDid` seam separately. Splitting the two means a
+  // viewer operating a group sees the group's state but still writes as
+  // themselves unless they explicitly pick the group in the action.
   const { activeOrg } = useOrg()
   const isOwnProfile = !!viewerDid && viewerDid === did
-  // The repo we're acting as — the active group, or the viewer when
-  // personal. Drives the Follow / Endorse button state below.
+  // READ-STATE repo — the active group (when operating one), else the
+  // viewer. Drives the displayed Follow / Endorse button state below.
+  // NOT a write target.
   const actingDid = activeOrg?.groupDid ?? viewerDid
-  // The acting repo's "following" set. Note this is keyed to `actingDid`
-  // (the group when delegating) — NOT the foreign profile — so the
-  // Follow button reflects whether the GROUP already follows the subject.
+  // Per-action WRITE identity for the social actions on this profile.
+  // Defaults to You; the Follow control offers an inline "Follow as
+  // <group>" switch and Endorse routes a group choice through a
+  // high-stakes confirm. Never seeded from `activeOrg`.
+  const posting = usePostingIdentity()
+  // The acting repo's "following" set. Keyed to `actingDid` (the group
+  // when operating one) — NOT the foreign profile — so the Follow button
+  // reflects whether the READ-SCOPE repo already follows the subject.
   const viewerFollowing = useFollowing(
     isAuthenticated && !isOwnProfile ? actingDid : null,
   )
@@ -294,29 +306,29 @@ export default function ProfileSidebar({
             <FollowButton
               viewerDid={viewerDid}
               subjectDid={did}
-              targetDid={activeOrg?.groupDid}
+              postingOptions={posting.options}
               isFollowing={viewerFollowing.subjects.has(did)}
               isLoading={viewerFollowing.isLoading}
-              onFollowed={(uri, cid) => {
-                // Both surfaces update instantly: the acting repo's
-                // "following" set gains the subject; the foreign
-                // profile's follower list (count + grid) gains the
-                // acting repo (group when delegating, viewer otherwise).
-                // Real server-side data refreshes on the next tab-mount
-                // / focus-revalidate.
+              onFollowed={(uri, cid, writerDid) => {
+                // Optimistic update reflects the WRITE identity (the
+                // per-action posting choice), not the read-scope repo:
+                // the read-state set still keys on `actingDid`, while the
+                // foreign profile's follower list gains whoever actually
+                // authored the follow. Real server data refreshes on the
+                // next tab-mount / focus-revalidate.
                 viewerFollowing.addFollow(did, uri, cid)
-                viewedFollowers.addFollower(actingDid, uri, cid)
+                viewedFollowers.addFollower(writerDid, uri, cid)
               }}
-              onUnfollowed={() => {
+              onUnfollowed={(writerDid) => {
                 viewerFollowing.removeFollow(did)
-                viewedFollowers.removeFollower(actingDid)
+                viewedFollowers.removeFollower(writerDid)
               }}
             />
             <EndorseButton
               viewerDid={viewerDid}
               subjectDid={did}
               actingDid={actingDid}
-              activeOrg={activeOrg}
+              postingOptions={posting.options}
               operatorHandle={operatorHandle}
             />
             {/* Endorsement lists are personal-only — the Add-to-list
@@ -730,52 +742,63 @@ function AvatarEditOverlay({ onFile, isUploading, hasPending }: AvatarEditOverla
 interface FollowButtonProps {
   viewerDid: string
   subjectDid: string
-  /** When set (acting-as-group), the follow write routes to the group's
-   *  repo via the BFF instead of the viewer's personal PDS. */
-  targetDid?: string
+  /** Per-action posting options (You first, then writable groups). The
+   *  Follow write target is chosen here, defaulting to You — never
+   *  inherited from the active read-scope org. A single option (You)
+   *  renders no picker. */
+  postingOptions: PostingIdentity[]
   isFollowing: boolean
   isLoading: boolean
-  /** Fired after a successful createFollow with the new record's
-   *  strong ref. Caller does the optimistic state update on both
-   *  the viewer's "following" hook and the subject's "followers"
-   *  hook. */
-  onFollowed: (uri: string, cid: string) => void
-  /** Fired after a successful deleteFollow. Caller does the
-   *  optimistic state update mirroring `onFollowed`. */
-  onUnfollowed: () => void
+  /** Fired after a successful createFollow with the new record's strong
+   *  ref and the DID it was authored as (the chosen write identity). */
+  onFollowed: (uri: string, cid: string, writerDid: string) => void
+  /** Fired after a successful deleteFollow with the DID the record was
+   *  authored as. */
+  onUnfollowed: (writerDid: string) => void
 }
 
 function FollowButton({
   viewerDid,
   subjectDid,
-  targetDid,
+  postingOptions,
   isFollowing,
   isLoading,
   onFollowed,
   onUnfollowed,
 }: FollowButtonProps) {
   const [isWriting, setIsWriting] = useState(false)
+  // Per-action write identity for THIS Follow. Default You; the picker
+  // below lets the operator opt into "Follow as <group>". Follow is
+  // low-stakes, so there's no confirm gate — just the inline choice.
+  const [posting, setPosting] = useState<PostingIdentity>(
+    () => postingOptions[0] ?? { did: viewerDid, kind: "personal", label: "You" },
+  )
   const disabled = isLoading || isWriting
-  // The repo the follow record lives in — the group when delegating, the
-  // viewer otherwise. Drives both the rkey lookup (list the right repo)
-  // and which repo's follows we delete from.
+  // Group writes route to the group's repo via the BFF (`targetDid`);
+  // personal writes leave `targetDid` undefined → the viewer's own PDS.
+  const targetDid = posting.kind === "group" ? posting.did : undefined
+  // The repo the follow record lives in — the chosen write identity's
+  // repo. Drives the rkey lookup + which repo's follows we delete from.
   const actingRepo = targetDid ?? viewerDid
+  // Only surface the "Follow as" picker when there's more than one
+  // option (i.e. the viewer admins at least one group).
+  const showPicker = postingOptions.length > 1
 
   const handleClick = async () => {
     if (disabled) return
     const next = !isFollowing
+    const writerDid = actingRepo
     setIsWriting(true)
     try {
       if (next) {
         const result = await createFollow(viewerDid, subjectDid, { targetDid })
-        // Hand the new ref to the parent so the acting repo's following
-        // set and the subject's follower list update instantly.
-        onFollowed(result.uri, result.cid)
+        // Hand the new ref + the write identity to the parent so the
+        // following set and the subject's follower list update instantly.
+        onFollowed(result.uri, result.cid, writerDid)
       } else {
-        // Unfollow path: walk the acting repo's follows to find the rkey
-        // targeting this subject. Fetched fresh here to handle the
+        // Unfollow path: walk the chosen write repo's follows to find the
+        // rkey targeting this subject. Fetched fresh here to handle the
         // duplicate-follow edge case (delete the most recent record).
-        // When acting as a group, the records live in the group's repo.
         const { records } = await listFollowing(actingRepo, undefined, {
           noCache: true,
         })
@@ -787,7 +810,7 @@ function FollowButton({
         if (match) {
           await deleteFollow(viewerDid, match.rkey, { targetDid })
         }
-        onUnfollowed()
+        onUnfollowed(writerDid)
       }
     } catch (err) {
       console.error("Follow toggle failed:", err)
@@ -797,20 +820,31 @@ function FollowButton({
   }
 
   return (
-    <Button
-      variant={isFollowing ? "secondary" : "primary"}
-      size="sm"
-      onClick={handleClick}
-      disabled={disabled}
-      aria-pressed={isFollowing}
-    >
-      {isFollowing ? (
-        <Check size={14} strokeWidth={1.75} aria-hidden />
-      ) : (
-        <UserPlus size={14} strokeWidth={1.75} aria-hidden />
-      )}
-      {isFollowing ? "Following" : "Follow"}
-    </Button>
+    <div className="flex flex-col gap-1.5 items-start">
+      <Button
+        variant={isFollowing ? "secondary" : "primary"}
+        size="sm"
+        onClick={handleClick}
+        disabled={disabled}
+        aria-pressed={isFollowing}
+      >
+        {isFollowing ? (
+          <Check size={14} strokeWidth={1.75} aria-hidden />
+        ) : (
+          <UserPlus size={14} strokeWidth={1.75} aria-hidden />
+        )}
+        {isFollowing ? "Following" : "Follow"}
+      </Button>
+      {showPicker && !isFollowing ? (
+        <PostingAs
+          value={posting}
+          onChange={setPosting}
+          options={postingOptions}
+          size="sm"
+          aria-label="Follow as"
+        />
+      ) : null}
+    </div>
   )
 }
 
@@ -846,16 +880,18 @@ function formatGraphCount(
 interface EndorseButtonProps {
   viewerDid: string
   subjectDid: string
-  /** The DID the endorsement is authored AS — the active group when
-   *  delegating, the viewer otherwise. Drives the given-endorsements
-   *  set that decides Endorse / Endorsed and the revoke rkey lookup. */
+  /** READ-STATE repo — the active group (when operating one) or the
+   *  viewer. Drives the given-endorsements set that decides the
+   *  displayed Endorse / Endorsed state and the revoke rkey lookup. NOT
+   *  the write target — that comes from the per-action posting picker. */
   actingDid: string
-  /** The active group, when the viewer is acting as one. `null` for the
-   *  personal path. Used to route the write to the group's repo and to
-   *  name the parties in the reason modal. */
-  activeOrg: Group | null
+  /** Per-action posting options (You first, then writable groups). The
+   *  endorsement write target is chosen here, defaulting to You. Endorse
+   *  is HIGH-STAKES, so a group choice routes through a
+   *  `<PostingAsConfirm>` gate naming endorser / operator / subject. */
+  postingOptions: PostingIdentity[]
   /** The signed-in operator's handle, surfaced in the delegation header
-   *  of the reason modal. */
+   *  of the reason modal + the high-stakes confirm. */
   operatorHandle: string | null
 }
 
@@ -863,21 +899,41 @@ function EndorseButton({
   viewerDid,
   subjectDid,
   actingDid,
-  activeOrg,
+  postingOptions,
   operatorHandle,
 }: EndorseButtonProps) {
-  // Acting-as-group flag + the group DID the write routes to.
-  const targetDid = activeOrg?.groupDid
+  // Per-action WRITE identity for this endorsement. Default You; the
+  // picker lets the operator opt into a group, which then routes through
+  // the high-stakes confirm before committing. Never seeded from the
+  // active read-scope org.
+  const [posting, setPosting] = useState<PostingIdentity>(
+    () => postingOptions[0] ?? { did: viewerDid, kind: "personal", label: "You" },
+  )
+  const postingIsGroup = posting.kind === "group"
+  // The group DID the write routes to (undefined when posting as You →
+  // the viewer's own repo via the personal path).
+  const targetDid = postingIsGroup ? posting.did : undefined
+  // READ-STATE set — the active group's given-endorsements when
+  // operating one, the viewer's otherwise. Decides Endorse/Endorsed.
   const ownGiven = useGivenEndorsements(actingDid)
   // Endorsement lists are personal-only — never load or surface them
-  // while acting as a group (the reason modal hides the picker too).
-  const ownLists = useEndorsementLists(activeOrg ? null : viewerDid)
+  // when the WRITE identity is a group (the reason modal hides the
+  // picker too).
+  const ownLists = useEndorsementLists(postingIsGroup ? null : viewerDid)
   const { info: subjectInfo } = useAuthorInfo(subjectDid)
   const subjectLabel =
     subjectInfo?.displayName || subjectInfo?.handle || subjectDid
   const [isWriting, setIsWriting] = useState(false)
   const [confirmRevoke, setConfirmRevoke] = useState(false)
   const [reasonOpen, setReasonOpen] = useState(false)
+  // Pending {note, listRkey} captured by the reason modal, held while the
+  // high-stakes <PostingAsConfirm> is shown for a group-authored award.
+  const [pendingAward, setPendingAward] = useState<{
+    note: string
+    listRkey: string | null
+  } | null>(null)
+  // Only show the "Endorse as" picker when there's more than one option.
+  const showPicker = postingOptions.length > 1
   // Optimistic flip — mirrors FollowButton. The hook's `endorsements`
   // refetch may lag the PDS write by a beat, so we override locally
   // until the parent value catches up.
@@ -908,7 +964,11 @@ function EndorseButton({
     setReasonOpen(true)
   }
 
-  const handleReasonConfirm = async (note: string, listRkey: string | null) => {
+  // The actual award write — issued AS the chosen posting identity. The
+  // issuer recorded in the optimistic received-overlay is the WRITE
+  // identity (`posting.did`), so the subject's "Endorsed by N" reflects
+  // who actually authored the award.
+  const runAwardWrite = async (note: string, listRkey: string | null) => {
     setOptimistic(true)
     setIsWriting(true)
     try {
@@ -926,12 +986,12 @@ function EndorseButton({
         // received-endorsements overlay so the subject's "Endorsed by N"
         // counter and the Endorsements tab reflect it immediately, ahead
         // of the 5-min scan cache / indexer catching up. The issuer is
-        // the acting repo (the group when delegating).
+        // the chosen WRITE identity (the group when posting as one).
         onAwardCreated: (award) =>
           addOptimisticReceivedEndorsement(subjectDid, {
             uri: award.uri,
             cid: award.cid,
-            issuerDid: actingDid,
+            issuerDid: posting.did,
             createdAt: new Date().toISOString(),
             note: note || undefined,
             responseState: null,
@@ -941,14 +1001,41 @@ function EndorseButton({
         refetchLists: () => ownLists.refetch(),
         setOptimistic,
       })
-      setReasonOpen(false)
-    } catch (err) {
-      // The optimistic flag is managed inside the orchestrator: cleared
-      // on an award failure, kept on a list-append failure. Just rethrow
-      // so the modal surfaces the error and stays open.
-      throw err
     } finally {
       setIsWriting(false)
+    }
+  }
+
+  // Reason-modal confirm. For a personal (You) endorse this writes
+  // immediately; for a GROUP-authored endorse (high-stakes) it stashes
+  // the note and hands off to the <PostingAsConfirm> gate, which spells
+  // out endorser / operator / subject before the irreversible-feeling,
+  // reputation-bearing record lands under the group's identity.
+  const handleReasonConfirm = async (note: string, listRkey: string | null) => {
+    if (postingIsGroup) {
+      setPendingAward({ note, listRkey })
+      setReasonOpen(false)
+      return
+    }
+    try {
+      await runAwardWrite(note, listRkey)
+      setReasonOpen(false)
+    } catch (err) {
+      // Optimistic flag managed inside the orchestrator. Rethrow so the
+      // modal surfaces the error and stays open.
+      throw err
+    }
+  }
+
+  // High-stakes confirm → commit the stashed group-authored award.
+  const handlePostingConfirm = async () => {
+    if (!pendingAward) return
+    try {
+      await runAwardWrite(pendingAward.note, pendingAward.listRkey)
+      setPendingAward(null)
+    } catch (err) {
+      console.error("Endorse-as-group failed:", err)
+      // Keep the confirm open so the operator can retry / cancel.
     }
   }
 
@@ -969,34 +1056,49 @@ function EndorseButton({
     }
   }
 
-  // Delegation naming for the reason modal — names the group, the
-  // operator, and the subject when acting as a group. `null` on the
-  // personal path leaves the modal in its default single-party shape.
-  const actingAs: EndorseReasonActingAs | undefined = activeOrg
+  // Delegation naming for the reason modal — names the chosen group, the
+  // operator, and the subject when the WRITE identity is a group.
+  // `undefined` on the personal (You) path leaves the modal in its
+  // default single-party shape. Derived from the per-action posting
+  // choice, NOT the active read-scope org.
+  const actingAs: EndorseReasonActingAs | undefined = postingIsGroup
     ? {
-        orgName: activeOrg.displayName || activeOrg.handle,
-        orgHandle: activeOrg.handle,
+        orgName: posting.label,
+        orgHandle: posting.handle ?? "",
         operatorHandle: operatorHandle ?? "you",
-        operatorRole: activeOrg.role,
+        // Group posting options always carry the viewer's role; fall back
+        // defensively so the type stays total.
+        operatorRole: posting.role ?? "admin",
       }
     : undefined
 
   return (
     <>
-      <Button
-        variant={isEndorsed ? "secondary" : "primary"}
-        size="sm"
-        onClick={isEndorsed ? () => setConfirmRevoke(true) : handleEndorseClick}
-        disabled={disabled}
-        aria-pressed={isEndorsed}
-      >
-        {isEndorsed ? (
-          <Check size={14} strokeWidth={1.75} aria-hidden />
-        ) : (
-          <ThumbsUp size={14} strokeWidth={1.75} aria-hidden />
-        )}
-        {isEndorsed ? "Endorsed" : "Endorse"}
-      </Button>
+      <div className="flex flex-col gap-1.5 items-start">
+        <Button
+          variant={isEndorsed ? "secondary" : "primary"}
+          size="sm"
+          onClick={isEndorsed ? () => setConfirmRevoke(true) : handleEndorseClick}
+          disabled={disabled}
+          aria-pressed={isEndorsed}
+        >
+          {isEndorsed ? (
+            <Check size={14} strokeWidth={1.75} aria-hidden />
+          ) : (
+            <ThumbsUp size={14} strokeWidth={1.75} aria-hidden />
+          )}
+          {isEndorsed ? "Endorsed" : "Endorse"}
+        </Button>
+        {showPicker && !isEndorsed ? (
+          <PostingAs
+            value={posting}
+            onChange={setPosting}
+            options={postingOptions}
+            size="sm"
+            aria-label="Endorse as"
+          />
+        ) : null}
+      </div>
       {reasonOpen ? (
         <EndorseReasonModal
           subjectLabel={subjectLabel}
@@ -1004,6 +1106,28 @@ function EndorseButton({
           lists={ownLists.lists.map((l) => ({ rkey: l.rkey, title: l.title }))}
           onConfirm={handleReasonConfirm}
           onClose={() => setReasonOpen(false)}
+        />
+      ) : null}
+      {pendingAward ? (
+        <PostingAsConfirm
+          endorser={posting}
+          operator={{
+            label: operatorHandle ?? "you",
+            handle: operatorHandle ?? undefined,
+            role: posting.role,
+          }}
+          subject={subjectLabel}
+          actionLabel="endorse"
+          confirmLabel="Endorse"
+          isConfirming={isWriting}
+          onConfirm={handlePostingConfirm}
+          onCancel={() => {
+            if (!isWriting) {
+              // Bail out of the group-authored endorse without writing.
+              setPendingAward(null)
+              setOptimistic(null)
+            }
+          }}
         />
       ) : null}
       {confirmRevoke ? (

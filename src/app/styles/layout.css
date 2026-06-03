@@ -1292,12 +1292,16 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   }
 }
 
-/* Acting-as-group delegation bar. Mounted above all page chrome whenever
-   the viewer is operating a group, so the elevated, inverted treatment
-   reads as a persistent "you are not yourself right now" reminder.
-   Mirrors the primary button: dark bg / light text in light theme, and
-   inverts under [data-theme="dark"] via the same --btn-primary-* tokens.
-   Scrolls with the page (no sticky) so it never overlaps fixed chrome. */
+/* Acting-as-group "mode" bar. Mounted above all page chrome whenever the
+   viewer is operating a group. Treatment is a NEUTRAL elevated strip with
+   an accent left-rule — deliberately not the warning/amber-style inverted
+   primary it used to be: acting-as is READ-SCOPE, not a write-identity
+   switch, so the bar must read as a quiet "you're viewing/operating as a
+   group" mode marker rather than "everything you post goes out as the
+   group." The "Posts ask each time" hint (`.acting-as-bar__hint`) spells
+   that out. All colours are theme-aware tokens, so the bar flips under
+   [data-theme="dark"] for free. Scrolls with the page (no sticky) so it
+   never overlaps fixed chrome. */
 .acting-as-bar {
   display: flex;
   align-items: center;
@@ -1306,22 +1310,41 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   flex-wrap: wrap;
   width: 100%;
   padding: 8px 16px;
-  background: var(--btn-primary-bg);
-  color: var(--btn-primary-fg);
+  background: var(--bg-elevated);
+  color: var(--fg-secondary);
+  border-bottom: 1px solid var(--border-default);
+  border-left: 3px solid var(--color-accent);
+}
+
+.acting-as-bar__body {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  min-width: 0;
 }
 
 .acting-as-bar__text {
   margin: 0;
   font-size: 0.8125rem;
   line-height: 1.4;
+  color: var(--fg-secondary);
 }
 
 .acting-as-bar__text b {
   font-weight: 600;
+  color: var(--fg-primary);
 }
 
-/* Outlined control that stays legible against the inverted bar — borrows
-   the bar's own foreground for border + text so it tracks the theme flip. */
+/* Quiet reminder that the write identity is per-action, not this bar. */
+.acting-as-bar__hint {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--fg-muted);
+}
+
+/* Neutral outlined control — tracks the theme flip via --fg-secondary /
+   --border-default rather than an inverted foreground. */
 .acting-as-bar__switch {
   flex-shrink: 0;
   display: inline-flex;
@@ -1331,16 +1354,19 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   font-family: inherit;
   font-size: 0.8125rem;
   font-weight: 500;
-  color: var(--btn-primary-fg);
+  color: var(--fg-secondary);
   background: transparent;
-  border: 1px solid var(--btn-primary-fg);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius);
   cursor: pointer;
-  transition: opacity var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .acting-as-bar__switch:hover {
-  opacity: 0.8;
+  background: var(--overlay-weak);
+  border-color: var(--border-hover);
 }
 
 /* Logged-out sign-in card. At narrow rail widths (800-1299) the card
