@@ -132,6 +132,14 @@
   /* Notification count badge — saturated red, white text, WCAG-compliant in both themes */
   --badge-count-bg: #b91c1c;
   --badge-count-fg: #ffffff;
+  /* Danger + accent badge tones — additive for cross-app canonical parity
+     (danger derives from --color-error #ba1a1a). Unreferenced today. */
+  --badge-danger-bg: #fdecea;
+  --badge-danger-fg: #9f1717;
+  --badge-danger-border: #f4c7c3;
+  --badge-accent-bg: #ededed;
+  --badge-accent-fg: #454747;
+  --badge-accent-border: #dcdcdc;
 
   /* Primary button (inverts in dark mode) */
   --btn-primary-bg: var(--color-primary);
@@ -144,6 +152,10 @@
 
   /* Radius */
   --radius: 2px;
+  --radius-pill: 999px;            /* pills — codifies hard-rule #1 */
+
+  /* Monospace stack — additive; some CSS already references it with a fallback */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* Navbar */
   --navbar-height: 64px;
@@ -267,6 +279,13 @@
   /* Notification count badge — brighter red on dark surfaces for contrast */
   --badge-count-bg: #dc2626;
   --badge-count-fg: #ffffff;
+  /* Danger + accent badge tones — dark (additive, cross-app parity). */
+  --badge-danger-bg: rgba(248, 113, 113, 0.15);
+  --badge-danger-fg: #f87171;
+  --badge-danger-border: rgba(248, 113, 113, 0.3);
+  --badge-accent-bg: rgba(255, 255, 255, 0.08);
+  --badge-accent-fg: #c7c7cc;
+  --badge-accent-border: rgba(255, 255, 255, 0.14);
 
   /* Primary button inverts so it pops off the dark canvas */
   --btn-primary-bg: #f5f5f7;
