@@ -16,6 +16,7 @@ import { FeedbackProvider } from "@/lib/feedback-context";
 import { NotificationsProvider } from "@/lib/notifications-context";
 import BottomNav from "@/components/layout/bottom-nav";
 import ActingAsBar from "@/components/layout/acting-as-bar";
+import { ToastProvider } from "@/components/ui/toast";
 import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
@@ -146,6 +147,10 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} ${notoSerif.variable} min-h-screen flex flex-col`}>
         <Providers>
+          {/* App-wide toast region. Mounted high in the tree so any
+              client component below can call useToast(); ToastProvider
+              renders its own portal-backed Toaster. */}
+          <ToastProvider>
           <AuthProvider>
             <OrgProvider>
               <OnboardingProvider>
@@ -175,6 +180,7 @@ export default function RootLayout({
               </OnboardingProvider>
             </OrgProvider>
           </AuthProvider>
+          </ToastProvider>
         </Providers>
         <Analytics />
       </body>

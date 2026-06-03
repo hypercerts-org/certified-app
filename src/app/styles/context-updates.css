@@ -81,7 +81,7 @@
   padding: 14px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
-  background: var(--bg-primary, transparent);
+  background: var(--bg-elevated);
 }
 
 .context-updates__item-head {
@@ -131,7 +131,7 @@
   background: linear-gradient(
     to bottom,
     transparent,
-    var(--bg-primary, var(--bg-base, #fff))
+    var(--bg-elevated)
   );
   pointer-events: none;
 }
@@ -215,7 +215,7 @@
   display: block;
   width: 88px;
   height: 88px;
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
   overflow: hidden;
   padding: 0;
 }
@@ -228,7 +228,7 @@
 }
 
 .context-updates__attachment--image .context-updates__attachment-link:hover {
-  outline: 2px solid var(--border-strong, var(--fg-secondary));
+  outline: 2px solid var(--border-hover);
   outline-offset: -2px;
 }
 
@@ -249,7 +249,7 @@
   height: 88px;
   border-radius: var(--radius);
   overflow: hidden;
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
 .context-updates__attachment-thumb-img {
@@ -272,8 +272,10 @@
   width: 32px;
   height: 32px;
   padding: 6px;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.55);
+  /* Play glyph sits over a media thumbnail — intentionally a fixed
+     white-on-dark scrim regardless of theme. */
+  color: var(--color-white);
+  background: var(--navy-overlay-70);
   border-radius: 999px;
 }
 
@@ -285,7 +287,7 @@
 
 .context-updates__attachment--video .context-updates__attachment-link:hover
   .context-updates__attachment-thumb {
-  outline: 2px solid var(--border-strong, var(--fg-secondary));
+  outline: 2px solid var(--border-hover);
   outline-offset: -2px;
 }
 
@@ -294,14 +296,14 @@
 .context-updates__attachment--uri .context-updates__attachment-link {
   padding: 8px 12px;
   border: 1px solid var(--border-subtle);
-  background: var(--bg-primary, transparent);
+  background: var(--bg-elevated);
   max-width: 260px;
 }
 
 .context-updates__attachment--file .context-updates__attachment-link:hover,
 .context-updates__attachment--uri .context-updates__attachment-link:hover {
-  border-color: var(--border-strong, var(--fg-secondary));
-  background: var(--bg-subtle, transparent);
+  border-color: var(--border-hover);
+  background: var(--bg-sunken);
 }
 
 .context-updates__attachment-icon {
@@ -332,7 +334,7 @@
   white-space: nowrap;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 799px) {
   .context-updates__item {
     padding: 12px;
   }

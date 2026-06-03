@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import Avatar from "@/components/ui/avatar"
+import Skeleton from "@/components/ui/skeleton"
 import {
   useContributorInfo,
   isAtprotoIdentity,
@@ -139,10 +140,10 @@ export default function ActivityContributor({
         className="activity-detail__contributor activity-detail__contributor--skeleton"
         aria-hidden="true"
       >
-        <div className="activity-detail__contributor-avatar-skel" />
+        <Skeleton circle width={32} />
         <div className="activity-detail__contributor-meta">
-          <div className="activity-detail__contributor-name-skel" />
-          <div className="activity-detail__contributor-handle-skel" />
+          <Skeleton variant="line" width={120} height={12} className="mb-1" />
+          <Skeleton variant="line" width={80} height={10} />
         </div>
         {role ? (
           <span className="activity-detail__contributor-role">{role}</span>

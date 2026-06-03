@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import Button from "@/components/ui/button"
 
 interface LoadMoreSentinelProps {
   onLoadMore: () => void
@@ -8,7 +9,9 @@ interface LoadMoreSentinelProps {
   /** Override the wrapper class when the sentinel needs to fit
    *  a surface's existing layout (e.g. `explore__load-more`). */
   className?: string
-  /** Override the button class for the same reason. */
+  /** Escape hatch: render a raw `<button>` with this class instead of the
+   *  shared `<Button variant="secondary">`. Omit it (the default) to get the
+   *  primitive. Kept for surfaces with bespoke load-more chrome. */
   buttonClassName?: string
   /** Override the button label. */
   label?: string
@@ -59,16 +62,29 @@ export default function LoadMoreSentinel({
     obs.observe(el)
     return () => obs.disconnect()
   }, [])
+  const content = isLoading ? "Loading…" : label
   return (
     <div ref={ref} className={className}>
-      <button
-        type="button"
-        className={buttonClassName}
-        onClick={onLoadMore}
-        disabled={isLoading}
-      >
-        {isLoading ? "Loading…" : label}
-      </button>
+      {buttonClassName ? (
+        <button
+          type="button"
+          className={buttonClassName}
+          onClick={onLoadMore}
+          disabled={isLoading}
+          aria-busy={isLoading}
+        >
+          {content}
+        </button>
+      ) : (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onLoadMore}
+          loading={isLoading}
+        >
+          {content}
+        </Button>
+      )}
     </div>
   )
 }

@@ -574,12 +574,12 @@
 
 .project-detail__delete-btn:hover {
   background: var(--bg-sunken);
-  border-color: var(--color-error, #b91c1c);
-  color: var(--color-error, #b91c1c);
+  border-color: var(--color-error);
+  color: var(--color-error);
 }
 
 .project-detail__delete-btn:focus-visible {
-  outline: 2px solid var(--color-error, #b91c1c);
+  outline: 2px solid var(--color-error);
   outline-offset: 2px;
 }
 
@@ -830,44 +830,11 @@
   outline: none;
 }
 
-/* Popover. Sits below the trigger button, right-aligned to the
-   card edge. z-index above the grid so it floats over neighboring
-   cells. */
-.project-detail__cert-menu-pop {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  min-width: 180px;
-  padding: 4px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-  z-index: var(--z-popover);
-}
-
-.project-detail__cert-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 10px;
-  font: inherit;
-  font-size: 0.8125rem;
-  color: var(--fg-primary);
-  background: transparent;
-  border: none;
-  border-radius: var(--radius);
-  cursor: pointer;
-  text-align: left;
-  transition: background var(--transition-fast);
-}
-
-.project-detail__cert-menu-item:hover,
-.project-detail__cert-menu-item:focus-visible {
-  background: var(--overlay-weak);
-  outline: none;
-}
+/* The per-card ⋯ menu popover + items now render via the shared
+   <Popover>/<PopoverItem> primitives (token-driven chrome lives in
+   the primitive), so the former `.project-detail__cert-menu-pop` /
+   `.project-detail__cert-menu-item` blocks were removed. The trigger
+   button keeps `.project-detail__cert-menu-btn` above. */
 
 /* =====================================================================
    /groups/create — identity row (avatar circle + banner side-by-side)
@@ -911,7 +878,7 @@
   width: 100%;
   aspect-ratio: 1 / 1;
   border-radius: 50%;
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -923,7 +890,7 @@
      dropzone reads as a clear "tap to add" affordance rather than
      fading into the background. */
   border: 2px dashed var(--border-medium);
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
 .create-group__avatar-img {

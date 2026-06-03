@@ -11,7 +11,6 @@ import Link from "next/link"
 import {
   ArrowLeft,
   ArrowUpDown,
-  Check,
   ClipboardPaste,
   ListIcon,
   Pencil,
@@ -20,15 +19,21 @@ import {
   X,
 } from "lucide-react"
 import { resolveHandleToDid } from "@/lib/atproto/did"
-import { useClickOutsideClose } from "@/hooks/use-click-outside-close"
 import { parseSubjectInput } from "@/lib/utils/parse-subject-input"
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverItem,
+} from "@/components/ui/popover"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import EmptyState from "@/components/ui/empty-state"
 import EndorsePeopleModal from "@/components/profile/endorse-people-modal"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import Skeleton from "@/components/ui/skeleton"
 import {
   useEndorsementLists,
   type EndorsementList,
@@ -115,9 +120,6 @@ export default function EndorsementLists({
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-
-  const sortWrapRef = useRef<HTMLDivElement>(null)
-  useClickOutsideClose(sortOpen, sortWrapRef, () => setSortOpen(false))
 
   const sortedLists = useMemo(() => sortLists(lists, sort), [lists, sort])
   const selectedList = useMemo(
@@ -271,48 +273,33 @@ export default function EndorsementLists({
           ) : null}
         </h2>
         <div className="endorsement-lists__actions">
-          <div className="endorsement-lists__sort-wrap" ref={sortWrapRef}>
-            <button
-              type="button"
-              className="endorsement-lists__sort-btn"
-              onClick={() => setSortOpen((v) => !v)}
-              aria-haspopup="menu"
-              aria-expanded={sortOpen}
-              aria-label="Sort lists"
-              title="Sort"
-            >
-              <ArrowUpDown size={16} strokeWidth={1.75} aria-hidden />
-            </button>
-            {sortOpen ? (
-              <div
-                className="endorsement-lists__sort-menu"
-                role="menu"
-              >
-                {SORT_OPTIONS.map((opt) => {
-                  const active = opt.key === sort
-                  return (
-                    <button
-                      key={opt.key}
-                      type="button"
-                      role="menuitemradio"
-                      aria-checked={active}
-                      className="endorsement-lists__sort-item"
-                      onClick={() => {
-                        setSort(opt.key)
-                        setSortOpen(false)
-                      }}
-                    >
-                      <span className="endorsement-lists__sort-item-check">
-                        {active ? (
-                          <Check size={14} strokeWidth={2} aria-hidden />
-                        ) : null}
-                      </span>
-                      {opt.label}
-                    </button>
-                  )
-                })}
-              </div>
-            ) : null}
+          <div className="endorsement-lists__sort-wrap">
+            <Popover open={sortOpen} onOpenChange={setSortOpen}>
+              <PopoverTrigger>
+                <button
+                  type="button"
+                  className="endorsement-lists__sort-btn"
+                  aria-label="Sort lists"
+                  title="Sort"
+                >
+                  <ArrowUpDown size={16} strokeWidth={1.75} aria-hidden />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end">
+                {SORT_OPTIONS.map((opt) => (
+                  <PopoverItem
+                    key={opt.key}
+                    selected={opt.key === sort}
+                    onClick={() => {
+                      setSort(opt.key)
+                      setSortOpen(false)
+                    }}
+                  >
+                    {opt.label}
+                  </PopoverItem>
+                ))}
+              </PopoverContent>
+            </Popover>
           </div>
           {viewerIsOwner ? (
             <Button
@@ -612,10 +599,7 @@ function ListItemRow({ subjectDid, createdAt, note, revoke }: ListItemRowProps) 
   const body = (
     <>
       {isLoading && !info ? (
-        <div
-          className="endorsement-lists__item-avatar-skel"
-          aria-hidden="true"
-        />
+        <Skeleton circle animate={false} width={32} height={32} />
       ) : (
         <Avatar
           size="md"

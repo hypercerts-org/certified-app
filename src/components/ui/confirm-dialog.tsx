@@ -2,6 +2,7 @@
 
 import Button from "@/components/ui/button"
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
+import { DIALOG_FOOTER_ACTIONS_CLASS } from "@/components/ui/form-dialog"
 
 interface ConfirmDialogProps {
   readonly title: string
@@ -43,9 +44,7 @@ export default function ConfirmDialog({
         <p className="dash-card__desc" style={{ marginBottom: 20 }}>
           {message}
         </p>
-        <div
-          style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}
-        >
+        <div className={DIALOG_FOOTER_ACTIONS_CLASS}>
           <Button
             variant="ghost"
             onClick={onCancel}

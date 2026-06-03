@@ -187,7 +187,7 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
-  z-index: 30;
+  z-index: var(--z-popover);
   min-width: 180px;
   padding: 8px 0;
 }
@@ -433,44 +433,9 @@
   pointer-events: none;
 }
 
-.feed-card__author-avatar-skel {
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  background: var(--overlay-weak);
-  animation: feed-author-skel-pulse 1.4s ease-in-out infinite;
-  flex-shrink: 0;
-}
-
-.feed-card__author-name-skel {
-  width: 96px;
-  height: 11px;
-  border-radius: var(--radius);
-  background: var(--overlay-weak);
-  animation: feed-author-skel-pulse 1.4s ease-in-out infinite;
-}
-
-.feed-card__author-handle-skel {
-  width: 64px;
-  height: 9px;
-  border-radius: var(--radius);
-  background: var(--overlay-weak);
-  animation: feed-author-skel-pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes feed-author-skel-pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.8; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .feed-card__author-avatar-skel,
-  .feed-card__author-name-skel,
-  .feed-card__author-handle-skel {
-    animation: none;
-    opacity: 0.5;
-  }
-}
+/* Author-byline skeleton bars now render via the <Skeleton> primitive
+   (animate-pulse). The hand-rolled *-skel rules + feed-author-skel-pulse
+   keyframe were removed in the component-library consolidation. */
 
 .feed-card__image-wrap {
   width: 100%;
@@ -592,54 +557,14 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.feed-skeleton__image {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  border-radius: var(--radius);
-  background: var(--bg-sunken);
-  margin-bottom: 12px;
-  animation: skeleton-pulse 1.5s ease-in-out infinite;
-}
-
-.feed-skeleton__title {
-  height: 20px;
-  width: 70%;
-  border-radius: var(--radius);
-  background: var(--bg-sunken);
-  margin-bottom: 8px;
-  animation: skeleton-pulse 1.5s ease-in-out infinite;
-}
-
-.feed-skeleton__line {
-  height: 14px;
-  width: 100%;
-  border-radius: var(--radius);
-  background: var(--bg-sunken);
-  margin-bottom: 6px;
-  animation: skeleton-pulse 1.5s ease-in-out infinite;
-}
-
-.feed-skeleton__line--short {
-  width: 45%;
-}
+/* Inner skeleton bars (image/title/line/pill) now render via the
+   <Skeleton> primitive (animate-pulse). The hand-rolled *-skel rules +
+   skeleton-pulse keyframe were removed in the consolidation. */
 
 .feed-skeleton__meta {
   display: flex;
   gap: 8px;
   margin-top: 12px;
-}
-
-.feed-skeleton__pill {
-  height: 18px;
-  width: 72px;
-  border-radius: 999px;
-  background: var(--bg-sunken);
-  animation: skeleton-pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes skeleton-pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
 }
 
 /* ---- Desktop enhancements ---- */
@@ -671,148 +596,14 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .feed-skeleton__image,
-  .feed-skeleton__title,
-  .feed-skeleton__line,
-  .feed-skeleton__pill {
-    animation: none;
-    opacity: 0.6;
-  }
-}
-
 
 /* ========== Activity detail page ========== */
 
-.activity-detail-page {
-  padding: 16px 0 48px;
-}
-
-.activity-detail {
-  padding: 0 16px;
-  max-width: 720px;
-  margin: 0 auto;
-}
-
-.activity-detail__loading,
-.activity-detail__error {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 24px;
-  text-align: center;
-}
-
-.activity-detail__error-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--fg-primary);
-  margin: 0 0 6px;
-}
-
-.activity-detail__error-desc {
-  font-size: 0.875rem;
-  color: var(--fg-muted);
-  margin: 0;
-  max-width: 32ch;
-  line-height: 1.5;
-}
-
-.activity-detail__image-wrap {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  border-radius: var(--radius);
-  background: var(--bg-sunken);
-  margin: 16px 0 24px;
-}
-
-.activity-detail__image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.activity-detail__title {
-  font-family: var(--font-headline), "Noto Serif", serif;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--fg-primary);
-  line-height: 1.2;
-  letter-spacing: -0.01em;
-  margin: 16px 0 12px;
-}
-
-.activity-detail__short-desc {
-  font-size: 1rem;
-  line-height: 1.55;
-  color: var(--fg-secondary);
-  margin: 0 0 24px;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.activity-detail__meta {
-  margin: 0 0 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 20px 0;
-  border-top: 1px solid var(--border-subtle);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.activity-detail__meta-row {
-  display: grid;
-  grid-template-columns: 120px 1fr;
-  gap: 12px;
-  align-items: start;
-}
-
-.activity-detail__meta-row dt {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--fg-muted);
-  padding-top: 2px;
-}
-
-.activity-detail__meta-row dd {
-  font-size: 0.9375rem;
-  color: var(--fg-primary);
-  margin: 0;
-  min-width: 0;
-  word-break: break-word;
-}
-
-.activity-detail__meta-aux {
-  color: var(--fg-muted);
-  font-size: 0.8125rem;
-}
-
-.activity-detail__list,
-.activity-detail__contributors {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.activity-detail__contributors li,
 .activity-detail__contributor {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-}
-
-.activity-detail__contributor--text {
-  align-items: baseline;
 }
 
 .activity-detail__contributor-link {
@@ -868,93 +659,8 @@
   color: var(--fg-muted);
 }
 
-.activity-detail__contributor-avatar-skel {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--bg-elevated, rgba(128, 128, 128, 0.15));
-}
-
-.activity-detail__contributor-name-skel {
-  width: 120px;
-  height: 12px;
-  border-radius: var(--radius);
-  background: var(--bg-elevated, rgba(128, 128, 128, 0.15));
-  margin-bottom: 4px;
-}
-
-.activity-detail__contributor-handle-skel {
-  width: 80px;
-  height: 10px;
-  border-radius: var(--radius);
-  background: var(--bg-elevated, rgba(128, 128, 128, 0.1));
-}
-
-.activity-detail__uri {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.8125rem;
-  color: var(--fg-secondary);
-  word-break: break-all;
-}
-
-.activity-detail__raw {
-  margin-top: 24px;
-  border-top: 1px solid var(--border-subtle);
-  padding-top: 16px;
-}
-
-.activity-detail__raw summary {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--fg-muted);
-  cursor: pointer;
-  list-style: none;
-  padding: 6px 0;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.activity-detail__raw summary::-webkit-details-marker {
-  display: none;
-}
-
-.activity-detail__raw[open] summary {
-  color: var(--fg-primary);
-  margin-bottom: 8px;
-}
-
-.activity-detail__raw pre {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.75rem;
-  line-height: 1.5;
-  color: var(--fg-secondary);
-  background: var(--bg-raised);
-  padding: 12px;
-  border-radius: var(--radius);
-  overflow-x: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 50vh;
-}
-
-@media (max-width: 520px) {
-  .activity-detail {
-    padding: 0 16px;
-  }
-
-  .activity-detail__title {
-    font-size: 1.375rem;
-  }
-
-  .activity-detail__meta-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-
-  .activity-detail__meta-row dt {
-    padding-top: 0;
-  }
-}
+/* Contributor-row skeleton bars now render via the <Skeleton> primitive.
+   The hand-rolled *-skel rules were removed in the consolidation. */
 
 /* ========== Location cards (activity detail) ========== */
 
@@ -1070,51 +776,9 @@
   word-break: break-all;
 }
 
-/* Skeleton while the record is being fetched */
-.location-card--skeleton {
-  pointer-events: none;
-}
-
-.location-card--skeleton .location-card__icon-skel {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  background: var(--overlay-weak);
-  animation: location-card-pulse 1.4s ease-in-out infinite;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.location-card--skeleton .location-card__name-skel {
-  width: 60%;
-  height: 12px;
-  border-radius: var(--radius);
-  background: var(--overlay-weak);
-  margin-bottom: 6px;
-  animation: location-card-pulse 1.4s ease-in-out infinite;
-}
-
-.location-card--skeleton .location-card__detail-skel {
-  width: 40%;
-  height: 10px;
-  border-radius: var(--radius);
-  background: var(--overlay-weak);
-  animation: location-card-pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes location-card-pulse {
-  0%, 100% { opacity: 0.35; }
-  50% { opacity: 0.7; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .location-card--skeleton .location-card__icon-skel,
-  .location-card--skeleton .location-card__name-skel,
-  .location-card--skeleton .location-card__detail-skel {
-    animation: none;
-    opacity: 0.45;
-  }
-}
+/* The .location-card skeleton (icon/name/detail bars + location-card-pulse
+   keyframe) was dead CSS — no TSX consumer — and was removed in the
+   consolidation. */
 
 /* ========== Map (Leaflet wrapper) ========== */
 
@@ -1245,15 +909,13 @@
   margin-bottom: 16px;
 }
 
-.page-tabs,
-.endorsements-tabs {
+.page-tabs {
   display: flex;
   gap: 4px;
   align-self: flex-end;
 }
 
-.page-tabs__tab,
-.endorsements-tabs__tab {
+.page-tabs__tab {
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
@@ -1266,13 +928,11 @@
   transition: color 0.15s ease, border-color 0.15s ease;
 }
 
-.page-tabs__tab:hover,
-.endorsements-tabs__tab:hover {
+.page-tabs__tab:hover {
   color: var(--fg-primary);
 }
 
-.page-tabs__tab--active,
-.endorsements-tabs__tab--active {
+.page-tabs__tab--active {
   color: var(--fg-primary);
   border-bottom-color: var(--fg-primary);
 }
@@ -1329,7 +989,7 @@
   gap: 12px;
   padding: 16px;
   margin-bottom: 16px;
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.05));
+  background: var(--overlay-weak);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
 }
@@ -1362,7 +1022,7 @@
 }
 
 .endorsement-panel__close:hover:not(:disabled) {
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.12));
+  background: var(--overlay-weak);
   color: var(--fg-primary);
 }
 
@@ -1414,7 +1074,7 @@
   font-size: 0.8125rem;
   line-height: 1.55;
   color: var(--fg-secondary);
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.05));
+  background: var(--overlay-weak);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
 }
@@ -1463,14 +1123,6 @@
 
 .endorsement-row__main:hover .endorsement-row__name {
   text-decoration: underline;
-}
-
-.endorsement-row__avatar-skel {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.15));
-  flex-shrink: 0;
 }
 
 .endorsement-row__meta {
@@ -1651,11 +1303,11 @@
    a status-coloured checkmark / X. Click still opens the menu so
    the user can change their mind or reset. */
 .response-menu__trigger--accepted {
-  color: var(--color-success, #2c8a3e);
+  color: var(--color-success);
 }
 
 .response-menu__trigger--rejected {
-  color: var(--color-warning, #b04a2a);
+  color: var(--color-warning);
 }
 
 .response-menu__trigger--accepted:hover:not(:disabled),
@@ -1692,15 +1344,15 @@
 }
 
 .response-menu__quick-btn--accept:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-success, #2c8a3e) 12%, transparent);
-  border-color: var(--color-success, #2c8a3e);
-  color: var(--color-success, #2c8a3e);
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+  border-color: var(--color-success);
+  color: var(--color-success);
 }
 
 .response-menu__quick-btn--reject:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-warning, #b04a2a) 12%, transparent);
-  border-color: var(--color-warning, #b04a2a);
-  color: var(--color-warning, #b04a2a);
+  background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+  border-color: var(--color-warning);
+  color: var(--color-warning);
 }
 
 /* Active state — filled background + white glyph so the
@@ -1709,29 +1361,29 @@
    handler in response-menu.tsx swaps `writeResponse` for
    `resetToDefault` when the button matches the current state). */
 .response-menu__quick-btn--accept.response-menu__quick-btn--active {
-  background: var(--color-success, #2c8a3e);
-  border-color: var(--color-success, #2c8a3e);
-  color: var(--bg-canvas, #fff);
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: var(--bg-canvas);
 }
 
 .response-menu__quick-btn--accept.response-menu__quick-btn--active:hover:not(:disabled) {
   /* Slightly darker on hover to surface the "click to reset"
      affordance without losing the filled-active read. */
-  background: color-mix(in srgb, var(--color-success, #2c8a3e) 85%, black);
-  border-color: color-mix(in srgb, var(--color-success, #2c8a3e) 85%, black);
-  color: var(--bg-canvas, #fff);
+  background: color-mix(in srgb, var(--color-success) 85%, black);
+  border-color: color-mix(in srgb, var(--color-success) 85%, black);
+  color: var(--bg-canvas);
 }
 
 .response-menu__quick-btn--reject.response-menu__quick-btn--active {
-  background: var(--color-warning, #b04a2a);
-  border-color: var(--color-warning, #b04a2a);
-  color: var(--bg-canvas, #fff);
+  background: var(--color-warning);
+  border-color: var(--color-warning);
+  color: var(--bg-canvas);
 }
 
 .response-menu__quick-btn--reject.response-menu__quick-btn--active:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-warning, #b04a2a) 85%, black);
-  border-color: color-mix(in srgb, var(--color-warning, #b04a2a) 85%, black);
-  color: var(--bg-canvas, #fff);
+  background: color-mix(in srgb, var(--color-warning) 85%, black);
+  border-color: color-mix(in srgb, var(--color-warning) 85%, black);
+  color: var(--bg-canvas);
 }
 
 .response-menu__quick-btn:focus-visible {
@@ -1754,7 +1406,7 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
-  z-index: 10;
+  z-index: var(--z-popover);
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -1828,7 +1480,7 @@
   border-radius: var(--radius);
   font-size: 0.75rem;
   box-shadow: var(--shadow-md);
-  z-index: 10;
+  z-index: var(--z-popover);
 }
 
 .response-menu__toast-undo {
@@ -1885,7 +1537,7 @@
   align-items: center;
   gap: 12px;
   padding: 12px;
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.08));
+  background: var(--overlay-weak);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
 }
@@ -1926,7 +1578,7 @@
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.08));
+  background: var(--overlay-weak);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
 }
@@ -1979,13 +1631,13 @@
 }
 
 .endorsement-multi-row__status--success {
-  background: var(--success, #2a8);
-  color: white;
+  background: var(--color-success);
+  color: var(--color-white);
 }
 
 .endorsement-multi-row__status--error {
   background: var(--color-error);
-  color: white;
+  color: var(--color-white);
 }
 
 @keyframes endorsement-multi-spin {
@@ -2005,7 +1657,7 @@
 }
 
 .endorsement-multi-row__remove:hover {
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.12));
+  background: var(--overlay-weak);
   color: var(--fg-primary);
 }
 
@@ -2067,7 +1719,7 @@
 }
 
 .profile-endorsements__endorse-btn:hover:not(:disabled) {
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.08));
+  background: var(--overlay-weak);
   border-color: var(--fg-primary);
 }
 
@@ -2080,7 +1732,7 @@
    Filled background so the click affordance (= "revoke") reads
    distinctly from the empty Endorse state. */
 .profile-endorsements__endorse-btn--active {
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.12));
+  background: var(--overlay-weak);
   border-color: var(--fg-primary);
   color: var(--fg-primary);
 }
@@ -2125,7 +1777,7 @@
 }
 
 .profile-endorsements__pagination-btn:hover:not(:disabled) {
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.08));
+  background: var(--overlay-weak);
   color: var(--fg-primary);
 }
 
@@ -2176,7 +1828,7 @@
   align-items: center;
   gap: 6px;
   padding: 4px 10px 4px 4px;
-  background: var(--overlay-weak, rgba(128, 128, 128, 0.08));
+  background: var(--overlay-weak);
   border: 1px solid var(--border-default);
   border-radius: 9999px;
   text-decoration: none;
@@ -2187,7 +1839,7 @@
 }
 
 .endorser-chip:hover {
-  background: var(--overlay-medium, rgba(128, 128, 128, 0.15));
+  background: var(--overlay-medium);
 }
 
 .endorser-chip__name {

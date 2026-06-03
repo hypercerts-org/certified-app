@@ -122,11 +122,10 @@
   transition: color var(--transition-fast);
 }
 
+/* Positioning only — colour / weight / tabular-nums come from the
+   <Badge variant="count-bare"> primitive this class is applied to. */
 .home-section__count {
   margin-left: auto;
-  font-size: 0.7rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--fg-muted);
 }
 
 .home-section__list {
@@ -160,7 +159,7 @@
   flex-shrink: 0;
   border-radius: var(--radius);
   overflow: hidden;
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -188,11 +187,11 @@
   min-width: 0;
 }
 
+/* Padding/alignment only — text colour and size come from the
+   <EmptyState variant="inline"> primitive this class is applied to,
+   so the empty hint lines up with the 8px-inset list rows above it. */
 .home-section__empty {
-  margin: 0;
   padding: 2px 8px;
-  font-size: 0.8rem;
-  color: var(--fg-muted);
 }
 
 .home-section__loading {
@@ -396,6 +395,13 @@
   padding-top: 2px;
 }
 
+/* The "Show all / Show fewer" toggle is a <Button variant="ghost"
+   size="sm">; keep it sized to its label inside the flex-column row
+   content (the primitive is inline-flex and would otherwise stretch). */
+.home-feed__group-toggle {
+  align-self: flex-start;
+}
+
 .home-feed__loading {
   display: flex;
   justify-content: center;
@@ -425,7 +431,7 @@
 
 a.home-feed__preview:hover {
   border-color: var(--fg-secondary);
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
 .home-feed__preview-thumb {
@@ -433,7 +439,7 @@ a.home-feed__preview:hover {
   height: 56px;
   border-radius: var(--radius);
   overflow: hidden;
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -480,29 +486,6 @@ a.home-feed__preview:hover {
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
-}
-
-.home-feed__preview-tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 1px 6px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border-medium);
-  background: var(--bg-sunken);
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  line-height: 1.4;
-  color: var(--fg-secondary);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.home-feed__preview-tag--warn {
-  color: var(--color-error, #b91c1c);
-  border-color: var(--color-error, #b91c1c);
-  background: transparent;
 }
 
 .home-feed__preview-desc {
@@ -601,7 +584,7 @@ a.home-feed__preview:hover {
 
 .home-feed__filter-btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--focus-ring, var(--fg-primary));
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 /* When any tier is excluded, give the trigger a subtle filled state
@@ -616,7 +599,7 @@ a.home-feed__preview:hover {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  z-index: 50;
+  z-index: var(--z-popover);
   min-width: 184px;
   padding: 10px 8px 8px;
   background: var(--bg-elevated);
@@ -702,7 +685,7 @@ a.home-feed__preview:hover {
 }
 
 .home-feed__filter-reset:disabled {
-  color: var(--fg-muted, #b7bdc6);
+  color: var(--fg-muted);
   cursor: default;
 }
 
@@ -747,7 +730,7 @@ a.home-feed__preview:hover {
 
 .home-feed__evaluator-link:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--focus-ring, var(--fg-primary));
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .home-feed__evaluator-name {

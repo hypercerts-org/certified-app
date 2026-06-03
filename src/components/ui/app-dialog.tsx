@@ -48,7 +48,54 @@ export interface AppDialogProps {
   disableBackdropClose?: boolean
   /** Optional ref for the inner content wrapper. */
   contentRef?: RefObject<HTMLDivElement | null>
+  /** When true, focus the first focusable element on open (or
+   *  `initialFocusRef` if provided). Lets consumers drop their own
+   *  `useEffect(() => ref.current?.focus(), [])` boilerplate. */
+  autoFocusFirst?: boolean
+  /** Optional element to focus on open instead of the first focusable
+   *  child. Only consulted when `autoFocusFirst` is true. */
+  initialFocusRef?: RefObject<HTMLElement | null>
   children: ReactNode
+}
+
+/**
+ * Selector matching the focusable elements we cycle through for the
+ * Tab trap. Mirrors the common "tabbable" set; `[tabindex='-1']` is
+ * excluded so programmatically-focusable-only nodes don't trap Tab.
+ */
+const FOCUSABLE_SELECTOR = [
+  "a[href]",
+  "area[href]",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "button:not([disabled])",
+  "iframe",
+  "object",
+  "embed",
+  "[contenteditable='true']",
+  "[tabindex]:not([tabindex='-1'])",
+].join(",")
+
+/**
+ * Collect the visible, focusable descendants of `root` in DOM order.
+ * Elements hidden via `display:none` (offsetParent === null) are
+ * filtered out so Tab doesn't land on a collapsed section. The
+ * `hidden` attribute and `disabled` are already excluded by the
+ * selector / offsetParent check.
+ */
+function getFocusable(root: HTMLElement): HTMLElement[] {
+  return Array.from(
+    root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+  ).filter(
+    (el) =>
+      !el.hasAttribute("hidden") &&
+      el.getAttribute("aria-hidden") !== "true" &&
+      // offsetParent is null for display:none nodes (and fixed nodes,
+      // but dialogs aren't position:fixed children here). Cheap enough
+      // for the handful of controls a modal holds.
+      (el.offsetParent !== null || el.getClientRects().length > 0),
+  )
 }
 
 /**
@@ -98,6 +145,8 @@ export default function AppDialog({
   onClose,
   disableBackdropClose = false,
   contentRef,
+  autoFocusFirst = false,
+  initialFocusRef,
   children,
 }: AppDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
@@ -107,6 +156,13 @@ export default function AppDialog({
   // `InvalidStateError`, unmounting the modal mid-task).
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
+  // Stash the auto-focus props in refs so the mount-once effect below
+  // reads their latest values without taking them as deps (which would
+  // re-run the effect and re-call `showModal()` → InvalidStateError).
+  const autoFocusFirstRef = useRef(autoFocusFirst)
+  autoFocusFirstRef.current = autoFocusFirst
+  const initialFocusRef_ = useRef(initialFocusRef)
+  initialFocusRef_.current = initialFocusRef
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -114,8 +170,6 @@ export default function AppDialog({
     // Save the previously-focused element so we can restore focus
     // when the dialog closes. A11y: keyboard users should land back
     // on the trigger that opened the modal, not on `<body>`.
-    // (Round-2 a11y finding A-2 — partial fix; a full Tab-cycle
-    // focus trap remains deferred to round 3.)
     const previouslyFocused =
       typeof document !== "undefined" &&
       document.activeElement instanceof HTMLElement
@@ -138,8 +192,60 @@ export default function AppDialog({
     }
     const handleClose = () => onCloseRef.current()
     dialog.addEventListener("close", handleClose)
+
+    // Tab-cycle focus trap. The native modal `<dialog>` already
+    // confines Tab to its subtree in spec-compliant browsers, but it
+    // does NOT wrap at the ends — Tab past the last focusable lands on
+    // the browser chrome. Handle Tab ourselves so the focus order is a
+    // closed loop scoped to the dialog (round-3 a11y finding A-2).
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return
+      const focusable = getFocusable(dialog)
+      if (focusable.length === 0) {
+        // Nothing focusable — keep focus on the dialog itself rather
+        // than letting it escape to the page behind the backdrop.
+        e.preventDefault()
+        return
+      }
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      const active = document.activeElement
+      if (e.shiftKey) {
+        // Shift+Tab from the first (or from outside the set, e.g. the
+        // dialog element itself) wraps to the last.
+        if (active === first || !dialog.contains(active)) {
+          e.preventDefault()
+          last.focus()
+        }
+      } else {
+        // Tab from the last (or from outside the set) wraps to the
+        // first.
+        if (active === last || !dialog.contains(active)) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
+    }
+    dialog.addEventListener("keydown", handleKeyDown)
+
+    // Optional auto-focus on open. Prefer an explicit `initialFocusRef`
+    // target; otherwise focus the first focusable element. Saves every
+    // consumer from re-implementing the same focus `useEffect`.
+    if (autoFocusFirstRef.current) {
+      const target =
+        initialFocusRef_.current?.current ?? getFocusable(dialog)[0] ?? null
+      if (target) {
+        try {
+          target.focus()
+        } catch {
+          // swallow — auto-focus is best-effort.
+        }
+      }
+    }
+
     return () => {
       dialog.removeEventListener("close", handleClose)
+      dialog.removeEventListener("keydown", handleKeyDown)
       // Restore focus to whichever element had it before the modal
       // opened. Guard against the previous element being torn out
       // of the DOM (e.g. on a route navigation that closes the

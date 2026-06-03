@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useId, useMemo } from "react"
+import Input from "@/components/ui/input"
+import Textarea from "@/components/ui/textarea"
 
 /**
  * Draft state for the onboarding profile step. Held entirely in the
@@ -146,10 +148,9 @@ export default function StepProfile({
               {draft.displayName.length}/64
             </span>
           </label>
-          <input
+          <Input
             id={displayNameId}
             type="text"
-            className="onboarding-step__input"
             value={draft.displayName}
             maxLength={64}
             placeholder="Your name"
@@ -165,9 +166,8 @@ export default function StepProfile({
               {draft.description.length}/256
             </span>
           </label>
-          <textarea
+          <Textarea
             id={descriptionId}
-            className="onboarding-step__textarea"
             rows={3}
             maxLength={256}
             value={draft.description}
@@ -180,11 +180,10 @@ export default function StepProfile({
           <label htmlFor={websiteId} className="onboarding-step__label">
             <span>Website</span>
           </label>
-          <input
+          <Input
             id={websiteId}
             type="url"
             inputMode="url"
-            className="onboarding-step__input"
             value={draft.website}
             maxLength={256}
             placeholder="https://example.com"

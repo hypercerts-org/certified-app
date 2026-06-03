@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Search as SearchIcon, X } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
+import Input from "@/components/ui/input"
 import {
   fetchIndexerActivities,
   fetchUserIndexerActivities,
@@ -301,44 +302,40 @@ export default function CertSearch({
       className={`cert-search ${className}`}
       role="search"
     >
-      <div className="cert-search__field">
-        <SearchIcon
-          size={16}
-          className="cert-search__icon"
-          aria-hidden="true"
-        />
-        <input
-          ref={inputRef}
-          type="text"
-          className="cert-search__input"
-          value={query}
-          placeholder={placeholder}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={() => {
-            if (results.length > 0) setIsOpen(true)
-          }}
-          role="combobox"
-          aria-label={placeholder}
-          aria-autocomplete="list"
-          aria-expanded={showDropdown}
-          aria-controls={showDropdown ? listboxId : undefined}
-          aria-activedescendant={activeId}
-          autoComplete="off"
-          autoFocus={autoFocus}
-          spellCheck={false}
-        />
-        {query ? (
-          <button
-            type="button"
-            className="cert-search__clear"
-            onClick={handleClear}
-            aria-label="Clear search"
-          >
-            <X size={14} aria-hidden="true" />
-          </button>
-        ) : null}
-      </div>
+      <Input
+        ref={inputRef}
+        type="text"
+        size="md"
+        value={query}
+        placeholder={placeholder}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onFocus={() => {
+          if (results.length > 0) setIsOpen(true)
+        }}
+        role="combobox"
+        aria-label={placeholder}
+        aria-autocomplete="list"
+        aria-expanded={showDropdown}
+        aria-controls={showDropdown ? listboxId : undefined}
+        aria-activedescendant={activeId}
+        autoComplete="off"
+        autoFocus={autoFocus}
+        spellCheck={false}
+        leadingIcon={<SearchIcon size={16} aria-hidden="true" />}
+        trailingButton={
+          query ? (
+            <button
+              type="button"
+              className="cert-search__clear"
+              onClick={handleClear}
+              aria-label="Clear search"
+            >
+              <X size={14} aria-hidden="true" />
+            </button>
+          ) : undefined
+        }
+      />
 
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {liveStatus}

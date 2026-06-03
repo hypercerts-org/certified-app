@@ -10,6 +10,25 @@ export interface InputProps
   helperText?: string;
   size?: InputSize;
   variant?: InputVariant;
+  /**
+   * Optional addon glyph rendered inside the field, before the text. The
+   * wrapper positions it and the input is padded so text never overlaps it.
+   * A bare <Input> with no icons renders exactly as before (no wrapper cost).
+   */
+  leadingIcon?: React.ReactNode;
+  /** Optional decorative addon glyph rendered inside the field, after the text. */
+  trailingIcon?: React.ReactNode;
+  /**
+   * Optional INTERACTIVE element rendered at the trailing edge inside the field
+   * (e.g. a combobox clear/submit button). Unlike `trailingIcon` it is NOT
+   * decorative: it keeps pointer events and is not aria-hidden, so callers can
+   * pass a real `<button>`. Pass a fully-formed interactive node (it should be
+   * focusable and carry its own `aria-label`). When both `trailingIcon` and
+   * `trailingButton` are supplied, `trailingButton` wins the trailing slot and
+   * the decorative icon is not rendered. The input picks up the same trailing
+   * padding as `trailingIcon` so text never overlaps the control.
+   */
+  trailingButton?: React.ReactNode;
 }
 
 const sizeClasses: Record<InputSize, string> = {
@@ -17,6 +36,31 @@ const sizeClasses: Record<InputSize, string> = {
   sm: "h-9 px-3 text-sm",
   md: "h-11 px-4 text-base md:text-sm",
   lg: "h-14 px-5 text-base",
+};
+
+// Horizontal padding the input picks up when an icon occupies that side, so
+// the caret/text clears the glyph. Mirrors sizeClasses' base px per size.
+const leadingPadClasses: Record<InputSize, string> = {
+  sm: "pl-9",
+  md: "pl-11",
+  lg: "pl-12",
+};
+const trailingPadClasses: Record<InputSize, string> = {
+  sm: "pr-9",
+  md: "pr-11",
+  lg: "pr-12",
+};
+
+// Where the absolutely-positioned icon sits, per side and size.
+const leadingIconPos: Record<InputSize, string> = {
+  sm: "left-3",
+  md: "left-4",
+  lg: "left-5",
+};
+const trailingIconPos: Record<InputSize, string> = {
+  sm: "right-3",
+  md: "right-4",
+  lg: "right-5",
 };
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
@@ -28,7 +72,11 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       size = "md",
       variant = "default",
       className = "",
+      leadingIcon,
+      trailingIcon,
+      trailingButton,
       id,
+      disabled,
       ...props
     },
     ref
@@ -40,7 +88,13 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const describedBy = [errorId, helperId].filter(Boolean).join(" ") || undefined;
 
     const baseChrome =
-      "w-full bg-[var(--bg-elevated)] text-[var(--fg-primary)] placeholder:text-[var(--fg-muted)] focus:outline-none transition-all duration-150";
+      "w-full bg-[var(--bg-elevated)] text-[var(--fg-primary)] placeholder:text-[var(--fg-muted)] focus:outline-none transition-all duration-150 motion-reduce:transition-none";
+
+    // Muted fill + not-allowed cursor when disabled. Semantic tokens keep the
+    // treatment correct in dark mode.
+    const disabledChrome = disabled
+      ? "disabled:cursor-not-allowed disabled:opacity-60 disabled:bg-[var(--bg-sunken)]"
+      : "";
 
     const variantChrome = (() => {
       switch (variant) {
@@ -48,7 +102,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           // No box, no radius — just a bottom-border that intensifies on focus.
           // Used by typeahead inputs that should disappear into their container.
           return `border-0 border-b ${
-            error ? "border-error/40" : "border-[var(--border-medium)]"
+            error
+              ? "border-[var(--color-error-border)]"
+              : "border-[var(--border-medium)]"
           } rounded-none bg-transparent focus:border-[var(--fg-primary)]`;
         case "inline-edit":
           // Slightly thicker border (1.5 px) signals "currently editable" —
@@ -56,16 +112,77 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           // identical to the default chrome.
           return `border-[1.5px] ${
             error
-              ? "border-error/40"
+              ? "border-[var(--color-error-border)]"
               : "border-[var(--border-hover)] focus:border-[var(--focus-ring)]"
           } rounded`;
         case "default":
         default:
           return `border ${
-            error ? "border-error/40" : "border-[var(--border-default)]"
+            error
+              ? "border-[var(--color-error-border)]"
+              : "border-[var(--border-default)]"
           } rounded focus:border-[var(--focus-ring)] focus:ring-1 focus:ring-[var(--focus-ring)]/20`;
       }
     })();
+
+    // The interactive trailing button takes priority over the decorative icon
+    // for the trailing slot; only one occupies it at a time.
+    const showTrailingButton = Boolean(trailingButton);
+    const showTrailingIcon = Boolean(trailingIcon) && !showTrailingButton;
+    const hasTrailingAddon = showTrailingButton || showTrailingIcon;
+
+    const iconPad = `${leadingIcon ? leadingPadClasses[size] : ""} ${
+      hasTrailingAddon ? trailingPadClasses[size] : ""
+    }`;
+
+    const inputEl = (
+      <input
+        ref={ref}
+        id={inputId}
+        disabled={disabled}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy}
+        className={`${sizeClasses[size]} ${iconPad} ${baseChrome} ${variantChrome} ${disabledChrome} ${className}`}
+        {...props}
+      />
+    );
+
+    // Only pay for the relative wrapper + absolute addons when one exists.
+    const field =
+      leadingIcon || hasTrailingAddon ? (
+        <div className="relative w-full">
+          {leadingIcon && (
+            <span
+              aria-hidden="true"
+              className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${leadingIconPos[size]} flex items-center text-[var(--fg-muted)]`}
+            >
+              {leadingIcon}
+            </span>
+          )}
+          {inputEl}
+          {showTrailingButton ? (
+            // Interactive slot: keeps pointer events, NOT aria-hidden. The caller
+            // supplies a focusable control (e.g. a clear/submit <button> with its
+            // own aria-label) that a combobox can wire up.
+            <span
+              className={`absolute top-1/2 -translate-y-1/2 ${trailingIconPos[size]} flex items-center`}
+            >
+              {trailingButton}
+            </span>
+          ) : (
+            showTrailingIcon && (
+              <span
+                aria-hidden="true"
+                className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${trailingIconPos[size]} flex items-center text-[var(--fg-muted)]`}
+              >
+                {trailingIcon}
+              </span>
+            )
+          )}
+        </div>
+      ) : (
+        inputEl
+      );
 
     return (
       <div className="w-full">
@@ -74,19 +191,20 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {label}
           </label>
         )}
-        <input
-          ref={ref}
-          id={inputId}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={describedBy}
-          className={`${sizeClasses[size]} ${baseChrome} ${variantChrome} ${className}`}
-          {...props}
-        />
+        {field}
         {error && (
-          <p id={errorId} role="alert" className="mt-1.5 text-xs text-error">{error}</p>
+          <p
+            id={errorId}
+            role="alert"
+            className="mt-1.5 text-xs text-[var(--color-error)]"
+          >
+            {error}
+          </p>
         )}
         {!error && helperText && (
-          <p id={helperId} className="mt-1.5 text-xs text-[var(--fg-muted)]">{helperText}</p>
+          <p id={helperId} className="mt-1.5 text-xs text-[var(--fg-muted)]">
+            {helperText}
+          </p>
         )}
       </div>
     );

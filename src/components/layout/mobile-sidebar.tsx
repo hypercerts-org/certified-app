@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Newspaper, Search, PlusCircle, Building2, Award, Bell, MessageSquare, User, Settings, LayoutGrid } from "lucide-react";
@@ -14,11 +13,9 @@ import { useOrgProfile } from "@/hooks/use-org-profile";
 import { usePendingAwardsCount } from "@/hooks/use-pending-awards-count";
 import { useFeedback } from "@/lib/feedback-context";
 import { useNotifications } from "@/lib/notifications-context";
-import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
-import { useFocusTrap } from "@/hooks/use-focus-trap";
-import { useMounted } from "@/hooks/use-mounted";
 import Avatar from "@/components/ui/avatar";
 import ThemeToggle from "@/components/ui/theme-toggle";
+import Drawer from "@/components/ui/drawer";
 import { getInitials } from "@/lib/utils/initials";
 
 interface MobileSidebarProps {
@@ -46,22 +43,9 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
     ? unreadMore || unreadCount >= 99 ? "99+" : String(unreadCount)
     : null;
 
-  // Lock body scroll when open
-  useBodyScrollLock(isOpen);
-
-  // Trap focus inside the sidebar so Tab/Shift+Tab cycle within it while
-  // it's open and don't drift to background content behind the backdrop.
-  const focusTrapRef = useFocusTrap<HTMLElement>(isOpen);
-
-  // Close on Escape key
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  // Body-scroll lock, focus trap, Esc-to-close, backdrop-click, the
+  // portal shell + slide animation, and `inert` on the off-canvas
+  // panel all come from the <Drawer> primitive below.
 
   // Close on navigation. Intentionally not dependent on onClose: the
   // parent passes an inline arrow that re-creates each render, and we
@@ -70,9 +54,6 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
     onClose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
-
-  // Portal mount
-  const mounted = useMounted();
 
   // When acting as a group, the entire sidebar identity row (avatar,
   // name, handle) and the profile link should reflect the group the
@@ -129,26 +110,8 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
     { href: "/imprint", label: "Imprint" },
   ];
 
-  if (!mounted) return null;
-
-  return createPortal(
-    <>
-      {isOpen && (
-        <div className="mobile-sidebar__backdrop" onClick={onClose} />
-      )}
-      <aside
-        ref={focusTrapRef}
-        className={`mobile-sidebar ${isOpen ? "mobile-sidebar--open" : ""}`}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Navigation menu"
-        // The portaled <aside> stays in the DOM and slides off-canvas
-        // via CSS transform when closed. Without `inert`, Tab from the
-        // navbar would reach off-screen Profile/Settings/Theme links
-        // — invisible focus targets. `inert` makes the whole subtree
-        // non-focusable + hidden from a11y tree only when closed.
-        inert={!isOpen}
-      >
+  return (
+    <Drawer open={isOpen} onClose={onClose} side="left" ariaLabel="Navigation menu">
         {/* Section 1: Profile (top-left, taps through to user profile) +
             theme toggle (top-right) */}
         <div className="mobile-sidebar__section mobile-sidebar__section--profile">
@@ -236,8 +199,6 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
             </span>
           ))}
         </div>
-      </aside>
-    </>,
-    document.body
+    </Drawer>
   );
 }

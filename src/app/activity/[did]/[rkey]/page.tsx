@@ -6,6 +6,7 @@ import { usePageTitleBreadcrumb } from "@/lib/navbar-context"
 import { useActivity } from "@/hooks/use-activity"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import ActivityDetail from "@/components/feed/activity-detail"
+import ErrorMessage from "@/components/ui/error-message"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
 
@@ -67,15 +68,10 @@ export default function ActivityDetailPage() {
   if (error || !activity) {
     return (
       <div className="cert-detail-page">
-        <div className="cert-detail__error">
-          <p className="cert-detail__error-title">
-            {error || "Activity not found"}
-          </p>
-          <p className="cert-detail__error-desc">
-            This activity claim may have been deleted or is on a PDS we
-            can&rsquo;t reach.
-          </p>
-        </div>
+        <ErrorMessage
+          title={error || "Activity not found"}
+          message="This activity claim may have been deleted or is on a PDS we can't reach."
+        />
       </div>
     )
   }

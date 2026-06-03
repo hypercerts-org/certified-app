@@ -22,6 +22,8 @@ import { deleteFollow } from "@/lib/atproto/follow"
 import PersonCard from "@/components/profile/person-card"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import Badge from "@/components/ui/badge"
+import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
 import type { FollowRecord } from "@/lib/atproto/follow"
 
 interface ProfileFollowersProps {
@@ -155,46 +157,37 @@ export default function ProfileFollowers({ did }: ProfileFollowersProps) {
     tab === "followers" ? FOLLOWERS_SORT_OPTIONS : FOLLOWING_SORT_OPTIONS
 
   return (
-    <div className="profile-endorsements-v2">
+    <Tabs
+      value={tab}
+      onChange={(v) => setTab(v as SubTab)}
+      className="profile-endorsements-v2"
+    >
       <div className="profile-endorsements-v2__toolbar">
-        <nav
-          className="profile-endorsements-v2__subtabs"
-          role="tablist"
+        {/* The .profile-endorsements-v2__toolbar already draws the strip's
+            shared bottom border, so drop TabList's own and pin it to the
+            toolbar's bottom edge. Count chips use the neutral Badge (muted
+            grey) to match the pre-migration pill. */}
+        <TabList
           aria-label="Followers sections"
+          className="border-0 self-end"
         >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "followers"}
-            className={`profile-endorsements-v2__subtab ${
-              tab === "followers" ? "profile-endorsements-v2__subtab--active" : ""
-            }`}
-            onClick={() => setTab("followers")}
-          >
+          <Tab value="followers">
             Followers
             {followersCountLabel ? (
-              <span className="profile-endorsements-v2__subtab-count">
+              <Badge variant="count" tone="neutral" compact>
                 {followersCountLabel}
-              </span>
+              </Badge>
             ) : null}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "following"}
-            className={`profile-endorsements-v2__subtab ${
-              tab === "following" ? "profile-endorsements-v2__subtab--active" : ""
-            }`}
-            onClick={() => setTab("following")}
-          >
+          </Tab>
+          <Tab value="following">
             Following
             {followingCountLabel ? (
-              <span className="profile-endorsements-v2__subtab-count">
+              <Badge variant="count" tone="neutral" compact>
                 {followingCountLabel}
-              </span>
+              </Badge>
             ) : null}
-          </button>
-        </nav>
+          </Tab>
+        </TabList>
 
         <div className="profile-endorsements-v2__controls">
           <label className="profile-endorsements-v2__search">
@@ -260,7 +253,7 @@ export default function ProfileFollowers({ did }: ProfileFollowersProps) {
         </div>
       </div>
 
-      {tab === "followers" ? (
+      <TabPanel value="followers">
         <FollowersGrid
           entries={followers.entries}
           isLoading={followers.isLoading}
@@ -269,7 +262,8 @@ export default function ProfileFollowers({ did }: ProfileFollowersProps) {
           sort={sort}
           names={names}
         />
-      ) : (
+      </TabPanel>
+      <TabPanel value="following">
         <FollowingGrid
           records={following.records}
           isLoading={following.isLoading}
@@ -282,8 +276,8 @@ export default function ProfileFollowers({ did }: ProfileFollowersProps) {
           targetDid={activeOrg?.groupDid}
           onAfterUnfollow={() => following.refetch()}
         />
-      )}
-    </div>
+      </TabPanel>
+    </Tabs>
   )
 }
 

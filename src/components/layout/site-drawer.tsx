@@ -1,12 +1,12 @@
 "use client"
 
-import { useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Compass, Home, Settings, User, X } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useSession } from "@/hooks/use-session"
 import { useOrg } from "@/lib/groups/org-context"
+import Drawer from "@/components/ui/drawer"
 
 /**
  * GitHub-style site-nav drawer.
@@ -16,8 +16,10 @@ import { useOrg } from "@/lib/groups/org-context"
  * wordmark at the top-left, an X close button at the top-right, and
  * a vertical list of primary destinations below.
  *
- * Closing behavior: explicit X, click on the dimmed overlay, or the
- * Escape key. Body scroll is locked while open.
+ * Composes the canonical <Drawer> primitive for the portal shell,
+ * backdrop scrim, focus trap, body-scroll lock, Esc-to-close and the
+ * slide animation. This component owns only the drawer's inner
+ * content (head + nav).
  */
 export default function SiteDrawer({
   open,
@@ -37,21 +39,6 @@ export default function SiteDrawer({
   // falls back to the personal handle. Matches the convention the
   // desktop top bar and the mobile sidebar already use.
   const activeHandle = activeOrg?.handle ?? personalHandle
-
-  // Lock body scroll + bind Escape while open.
-  useEffect(() => {
-    if (!open) return
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose()
-    }
-    window.addEventListener("keydown", onKey)
-    return () => {
-      document.body.style.overflow = prevOverflow
-      window.removeEventListener("keydown", onKey)
-    }
-  }, [open, onClose])
 
   // Profile target: active identity's profile when signed in (group's
   // when acting as a group, personal otherwise); sign-in prompt
@@ -83,19 +70,7 @@ export default function SiteDrawer({
   ]
 
   return (
-    <>
-      <div
-        className={`site-drawer__scrim${open ? " site-drawer__scrim--open" : ""}`}
-        onClick={onClose}
-        aria-hidden={!open}
-      />
-      <aside
-        className={`site-drawer${open ? " site-drawer--open" : ""}`}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Site navigation"
-        aria-hidden={!open}
-      >
+    <Drawer open={open} onClose={onClose} side="left" ariaLabel="Site navigation">
         <header className="site-drawer__head">
           <Link
             href={!isLoading && !isAuthenticated ? "/welcome" : "/home"}
@@ -155,7 +130,6 @@ export default function SiteDrawer({
             )
           })}
         </nav>
-      </aside>
-    </>
+    </Drawer>
   )
 }

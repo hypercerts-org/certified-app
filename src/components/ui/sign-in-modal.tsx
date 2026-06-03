@@ -1,9 +1,10 @@
 "use client"
 
 import React, { useEffect, useRef, useState } from "react"
-import { useFocusTrap } from "@/hooks/use-focus-trap"
-import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock"
+import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import Brandmark from "@/components/ui/brandmark"
+import Button from "@/components/ui/button"
+import Checkbox from "@/components/ui/checkbox"
 import Input from "@/components/ui/input"
 
 interface SignInModalProps {
@@ -23,14 +24,14 @@ export default function SignInModal({
   onSubmitEmail,
   onSubmitHandle,
 }: SignInModalProps) {
-  const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen)
   const inputRef = useRef<HTMLInputElement>(null)
   const [view, setView] = useState<ModalView>("certified")
   const [inputValue, setInputValue] = useState("")
   const [rememberMe, setRememberMe] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Reset state when modal opens/closes
+  // Reset state when the modal opens. Backdrop/Esc/focus-trap/scroll-lock
+  // are all owned by <AppDialog> now; we only manage the form state here.
   useEffect(() => {
     if (isOpen) {
       setView("certified")
@@ -40,26 +41,15 @@ export default function SignInModal({
     }
   }, [isOpen])
 
-  // Focus input when switching views
+  // Focus input when switching views.
   useEffect(() => {
     if (isOpen) {
       requestAnimationFrame(() => inputRef.current?.focus())
     }
   }, [view, isOpen])
 
-  // Close on Escape key
-  useEffect(() => {
-    if (!isOpen) return
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose()
-    }
-    document.addEventListener("keydown", handleKeyDown)
-    return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen, onClose])
-
-  // Prevent body scroll when modal is open
-  useBodyScrollLock(isOpen)
-
+  // <AppDialog> calls showModal() on mount and has no `open` prop, so gate
+  // the mount here to match the previous isOpen-driven render.
   if (!isOpen) return null
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -87,90 +77,64 @@ export default function SignInModal({
   const submitLabel = isSubmitting ? "Connecting..." : "Continue"
 
   return (
-    <div
-      className="signin-modal__backdrop"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Sign in"
-    >
-      <div className="signin-modal__wrapper" ref={focusTrapRef}>
-        <button
-          type="button"
-          className="signin-modal__close"
-          onClick={onClose}
-          aria-label="Close"
-        >
-          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <path d="M4 4l8 8M12 4l-8 8" />
-          </svg>
-        </button>
+    <AppDialog ariaLabel="Sign in" onClose={onClose}>
+      <AppDialogHeader title="" onClose={onClose} />
 
-        <div className="signin-modal">
-          <div className="signin-modal__brandmark-wrap">
-            <Brandmark size={72} title="" aria-hidden="true" className="signin-modal__brandmark" />
+      <div className="signin-modal__body">
+        <div className="signin-modal__brandmark-wrap">
+          <Brandmark size={72} decorative className="signin-modal__brandmark" />
+        </div>
+
+        <form onSubmit={handleSubmit} className="signin-modal__form" method="post" aria-label="Sign in">
+          <label className="signin-modal__heading" htmlFor={isCertified ? "email" : "username"}>
+            {heading}
+          </label>
+          <Input
+            ref={inputRef}
+            id={isCertified ? "email" : "username"}
+            name={isCertified ? "email" : "username"}
+            type={isCertified ? "email" : "text"}
+            inputMode={isCertified ? "email" : "text"}
+            size="lg"
+            placeholder={placeholder}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            required
+            autoComplete={isCertified ? "email" : "username"}
+            disabled={isSubmitting}
+            error={error ?? undefined}
+          />
+
+          <div className="mt-4">
+            <Checkbox
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              label="Remember me on this device"
+            />
           </div>
 
-          <form onSubmit={handleSubmit} className="signin-modal__form" method="post" aria-label="Sign in">
-            <label className="signin-modal__heading" htmlFor={isCertified ? "email" : "username"}>
-              {heading}
-            </label>
-            <Input
-              ref={inputRef}
-              id={isCertified ? "email" : "username"}
-              name={isCertified ? "email" : "username"}
-              type={isCertified ? "email" : "text"}
-              inputMode={isCertified ? "email" : "text"}
-              size="lg"
-              placeholder={placeholder}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              required
-              autoComplete={isCertified ? "email" : "username"}
-              disabled={isSubmitting}
-              aria-invalid={error ? true : undefined}
-              aria-describedby={error ? "signin-error" : undefined}
-            />
+          <Button
+            type="submit"
+            size="lg"
+            loading={isSubmitting}
+            disabled={isSubmitting || !inputValue.trim()}
+            className="mt-4 w-full"
+          >
+            {submitLabel}
+          </Button>
 
-            <label className="signin-modal__remember">
-              <input
-                type="checkbox"
-                className="signin-modal__remember-input"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-              />
-              <span className="signin-modal__remember-box" aria-hidden="true">
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 8.5 L6.5 12 L13 4" />
-                </svg>
-              </span>
-              <span className="signin-modal__remember-label">Remember me on this device</span>
-            </label>
-
-            {error && (
-              <p id="signin-error" className="signin-modal__error" role="alert">{error}</p>
-            )}
-
-            <button
-              type="submit"
-              className="signin-modal__submit"
-              disabled={isSubmitting || !inputValue.trim()}
-            >
-              {submitLabel}
-            </button>
-
-            <button
-              type="button"
-              className="signin-modal__alt"
-              onClick={() => {
-                setView(isCertified ? "atproto" : "certified")
-                setInputValue("")
-              }}
-            >
-              {switchLabel}
-            </button>
-          </form>
-        </div>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setView(isCertified ? "atproto" : "certified")
+              setInputValue("")
+            }}
+            className="mt-2 w-full"
+          >
+            {switchLabel}
+          </Button>
+        </form>
 
         <div
           className="signin-modal__powered"
@@ -178,6 +142,6 @@ export default function SignInModal({
           aria-label="Powered by Certified"
         />
       </div>
-    </div>
+    </AppDialog>
   )
 }

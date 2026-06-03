@@ -1,12 +1,18 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Copy, ListPlus, MoreVertical, X } from "lucide-react"
+import { Copy, ListPlus, MoreVertical } from "lucide-react"
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
+import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverItem,
+} from "@/components/ui/popover"
 import { useAuth } from "@/lib/auth/auth-context"
-import { useClickOutsideClose } from "@/hooks/use-click-outside-close"
 import { useTypedLists } from "@/hooks/use-typed-lists"
 import {
   itemUriMatchesType,
@@ -53,9 +59,6 @@ export default function AddToListMenu({
   const [open, setOpen] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [copied, setCopied] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
-
-  useClickOutsideClose(open, wrapRef, () => setOpen(false))
 
   // Reset the brief "Copied" affordance whenever the popover opens
   // again, so the previous run's feedback doesn't leak across opens.
@@ -82,43 +85,32 @@ export default function AddToListMenu({
 
   return (
     <>
-      <div className="add-to-list" ref={wrapRef}>
-        <button
-          type="button"
-          className="add-to-list__trigger"
-          onClick={() => setOpen((v) => !v)}
-          aria-haspopup="true"
-          aria-expanded={open}
-          aria-label="Open list actions"
-        >
-          <MoreVertical size={16} strokeWidth={1.75} aria-hidden />
-        </button>
-        {open ? (
-          <div className="add-to-list__pop" role="menu">
-            <button
-              type="button"
-              role="menuitem"
-              className="add-to-list__pop-item"
-              onClick={() => {
-                setOpen(false)
-                setModalOpen(true)
-              }}
-            >
-              <ListPlus size={13} strokeWidth={1.75} aria-hidden />
-              Add to list
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              className="add-to-list__pop-item"
-              onClick={handleCopy}
-            >
-              <Copy size={13} strokeWidth={1.75} aria-hidden />
-              {copied ? "Copied" : "Copy AT URI"}
-            </button>
-          </div>
-        ) : null}
-      </div>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger>
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label="Open list actions"
+          >
+            <MoreVertical size={16} strokeWidth={1.75} aria-hidden />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end">
+          <PopoverItem
+            onClick={() => {
+              setOpen(false)
+              setModalOpen(true)
+            }}
+          >
+            <ListPlus size={13} strokeWidth={1.75} aria-hidden />
+            Add to list
+          </PopoverItem>
+          <PopoverItem onClick={handleCopy}>
+            <Copy size={13} strokeWidth={1.75} aria-hidden />
+            {copied ? "Copied" : "Copy AT URI"}
+          </PopoverItem>
+        </PopoverContent>
+      </Popover>
       {modalOpen && viewerDid ? (
         <AddToListModal
           viewerDid={viewerDid}
@@ -308,10 +300,10 @@ function AddToListModal({
         ) : null}
         {creating ? (
           <form className="add-to-list__create" onSubmit={handleCreateAndAdd}>
-            <input
+            <Input
               ref={newInputRef}
               type="text"
-              className="add-to-list__create-input"
+              size="sm"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               placeholder="New list name"

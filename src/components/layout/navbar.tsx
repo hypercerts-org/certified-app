@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { createPortal } from "react-dom";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -14,12 +13,12 @@ import { useOrg } from "@/lib/groups/org-context";
 import { routeForActorSwitch } from "@/lib/groups/navigation";
 import { useOrgProfile } from "@/hooks/use-org-profile";
 import { useScrollHideNavbar } from "@/hooks/use-scroll-hide-navbar";
-import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { Menu, X, ChevronDown, ArrowLeft } from "lucide-react";
 import MobileSidebar from "./mobile-sidebar";
 import AccountSwitcherList from "./account-switcher-list";
 import Brandmark from "@/components/ui/brandmark";
 import ThemeToggle from "@/components/ui/theme-toggle";
+import BottomSheet from "@/components/ui/bottom-sheet";
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints";
 
 const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
@@ -47,7 +46,6 @@ const Navbar: React.FC = () => {
     });
   }, [groups]);
   const switcherRef = useRef<HTMLDivElement>(null);
-  const mobileSwitcherRef = useRef<HTMLDivElement>(null);
   const { scrolled, navHidden } = useScrollHideNavbar();
   const { isDesktop } = useLayoutBreakpoints();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -67,78 +65,26 @@ const Navbar: React.FC = () => {
     setSwitcherOpen(false);
   }, [isDesktop]);
 
-  // Bottom sheet drag handle + expand/collapse/dismiss
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const [sheetExpanded, setSheetExpanded] = useState(false);
-  const dragStartY = useRef(0);
-  const isDragging = useRef(false);
-
-  // Close account switcher on outside click
+  // Close account switcher on outside click. Governs the inline
+  // `.account-switcher__menu` dropdown. The mobile <BottomSheet> portals
+  // its content (and backdrop) to document.body — outside `switcherRef`
+  // — so we skip mousedowns landing inside the sheet here and let the
+  // sheet own its own dismissal (backdrop tap / Esc / drag).
   useEffect(() => {
     if (!switcherOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
       const inDesktop = switcherRef.current?.contains(target);
-      const inMobile = mobileSwitcherRef.current?.contains(target);
-      const inSheet = sheetRef.current?.contains(target);
-      const inBackdrop = (target as Element).classList?.contains("bottom-sheet__backdrop");
-      if (!inDesktop && !inMobile && !inSheet && !inBackdrop) {
+      const inSheet =
+        target instanceof Element &&
+        target.closest(".bottom-sheet, .bottom-sheet__backdrop") !== null;
+      if (!inDesktop && !inSheet) {
         setSwitcherOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [switcherOpen]);
-
-  // Lock body scroll when bottom sheet is open. The early-return below
-  // unmounts the entire navbar on desktop, so isDesktop is always false
-  // when this is reached — but keep the explicit guard so the hook still
-  // does the right thing during the resize-crossover render.
-  useBodyScrollLock(switcherOpen && !isDesktop);
-
-  // Reset expanded state when sheet closes
-  useEffect(() => {
-    if (!switcherOpen) setSheetExpanded(false);
-  }, [switcherOpen]);
-
-  const onHandleTouchStart = useCallback((e: React.TouchEvent) => {
-    dragStartY.current = e.touches[0].clientY;
-    isDragging.current = true;
-    if (sheetRef.current) {
-      sheetRef.current.style.transition = "none";
-    }
-  }, []);
-
-  const onHandleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isDragging.current || !sheetRef.current) return;
-    e.preventDefault();
-    const dy = e.touches[0].clientY - dragStartY.current;
-    // Dragging down: translate sheet down (only positive values)
-    // Dragging up: no transform needed, we'll expand on release
-    if (dy > 0) {
-      sheetRef.current.style.transform = `translateY(${dy}px)`;
-    }
-  }, []);
-
-  const onHandleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (!isDragging.current || !sheetRef.current) return;
-    isDragging.current = false;
-    const dy = e.changedTouches[0].clientY - dragStartY.current;
-    sheetRef.current.style.transition = "transform 0.3s ease-out, max-height 0.3s ease-out";
-    sheetRef.current.style.transform = "translateY(0)";
-
-    if (dy > 80) {
-      // Swiped down far enough — dismiss
-      sheetRef.current.style.transform = "translateY(100%)";
-      setTimeout(() => setSwitcherOpen(false), 250);
-    } else if (dy < -40) {
-      // Swiped up — expand to full height
-      setSheetExpanded(true);
-    } else if (dy > 20 && sheetExpanded) {
-      // Small swipe down while expanded — collapse back
-      setSheetExpanded(false);
-    }
-  }, [sheetExpanded]);
 
   // Derive display state from org context (avatar is the only display
   // field the navbar actually uses — nav links, display name and
@@ -364,43 +310,32 @@ const Navbar: React.FC = () => {
                 )}
               </div>
 
-            {/* Mobile bottom sheet for account switcher */}
-            {switcherOpen && createPortal(
-              <>
-                <div className="bottom-sheet__backdrop" onClick={() => setSwitcherOpen(false)} />
-                <div
-                  className={`bottom-sheet ${sheetExpanded ? "bottom-sheet--expanded" : ""}`}
-                  ref={sheetRef}
-                >
-                  <div
-                    className="bottom-sheet__handle"
-                    onTouchStart={onHandleTouchStart}
-                    onTouchMove={onHandleTouchMove}
-                    onTouchEnd={onHandleTouchEnd}
-                  />
-                  <div className="bottom-sheet__content">
-                    <AccountSwitcherList
-                      session={{ handle }}
-                      profile={profile}
-                      avatarUrl={avatarUrl || undefined}
-                      sortedOrgs={sortedOrgs}
-                      activeOrg={activeOrg}
-                      switchOrg={switchOrg}
-                      onAfterSwitch={(next) => {
-                        setSwitcherOpen(false);
-                        router.push(routeForActorSwitch(pathname, next));
-                      }}
-                      onSignOut={signOut}
-                      onSwitchAccount={() => {
-                        setSwitcherOpen(false);
-                        openSignIn();
-                      }}
-                    />
-                  </div>
-                </div>
-              </>,
-              document.body
-            )}
+            {/* Mobile bottom sheet for account switcher — the canonical
+                BottomSheet primitive owns the portal shell, backdrop,
+                drag-to-dismiss, Esc, focus trap and scroll lock. */}
+            <BottomSheet
+              open={switcherOpen}
+              onClose={() => setSwitcherOpen(false)}
+              ariaLabel="Switch account"
+            >
+              <AccountSwitcherList
+                session={{ handle }}
+                profile={profile}
+                avatarUrl={avatarUrl || undefined}
+                sortedOrgs={sortedOrgs}
+                activeOrg={activeOrg}
+                switchOrg={switchOrg}
+                onAfterSwitch={(next) => {
+                  setSwitcherOpen(false);
+                  router.push(routeForActorSwitch(pathname, next));
+                }}
+                onSignOut={signOut}
+                onSwitchAccount={() => {
+                  setSwitcherOpen(false);
+                  openSignIn();
+                }}
+              />
+            </BottomSheet>
 
             {/* Mobile sidebar (hamburger menu). The early-return at the top
                 of this component already guarantees we're on mobile here. */}

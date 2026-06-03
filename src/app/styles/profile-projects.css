@@ -42,7 +42,7 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-@media (min-width: 600px) {
+@media (min-width: 800px) {
   .profile-projects__box-head {
     flex-direction: row;
     align-items: flex-start;
@@ -68,7 +68,7 @@
   border: 1px solid var(--border-subtle);
 }
 
-@media (min-width: 600px) {
+@media (min-width: 800px) {
   .profile-projects__box-image {
     width: 200px;
     height: 200px;

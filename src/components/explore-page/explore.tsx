@@ -23,6 +23,8 @@ import {
   type OrglabelTier,
 } from "@/lib/atproto/labels"
 import CertIcon from "@/components/ui/cert-icon"
+import Input from "@/components/ui/input"
+import Checkbox from "@/components/ui/checkbox"
 import {
   Popover as UiPopover,
   PopoverContent,
@@ -630,17 +632,19 @@ export default function Explore() {
               />
             ) : null}
 
-            <label className="explore__search">
-              <Search size={14} strokeWidth={1.75} aria-hidden />
-              <input
+            <div className="explore__search-field">
+              <Input
                 type="search"
+                size="sm"
+                leadingIcon={
+                  <Search size={14} strokeWidth={1.75} aria-hidden />
+                }
                 placeholder={searchPlaceholder(kind)}
                 value={localQuery}
                 onChange={(e) => setLocalQuery(e.target.value)}
-                className="explore__search-input"
                 aria-label={searchPlaceholder(kind)}
               />
-            </label>
+            </div>
 
             <div className="explore__chrome-actions">
               <div
@@ -710,10 +714,8 @@ export default function Explore() {
                   filtering is keyed off the author's org label, not
                   the project itself. */}
               {kind === "activities" || kind === "accounts" || kind === "projects" ? (
-                <Popover
-                  open={qualityOpen}
-                  onClose={() => setQualityOpen(false)}
-                  trigger={
+                <UiPopover open={qualityOpen} onOpenChange={setQualityOpen}>
+                  <PopoverTrigger>
                     <button
                       type="button"
                       className={`explore__chrome-btn explore__chrome-btn--icon${
@@ -722,9 +724,6 @@ export default function Explore() {
                           ? " explore__chrome-btn--active"
                           : ""
                       }`}
-                      onClick={() => setQualityOpen((v) => !v)}
-                      aria-expanded={qualityOpen}
-                      aria-haspopup="menu"
                       aria-label={`Filter by quality${
                         (kind === "activities" && !qualityIsDefault) ||
                         !orgQualityIsDefault
@@ -735,32 +734,30 @@ export default function Explore() {
                     >
                       <FilterIcon size={13} strokeWidth={1.75} aria-hidden />
                     </button>
-                  }
-                >
+                  </PopoverTrigger>
+                  <PopoverContent align="end">
                   {kind === "activities" ? (
                     <>
                       <p className="popover__section-heading">Activity quality</p>
                       {HYPERLABEL_DISPLAY_ORDER.map((tier) => (
-                        <label
+                        <div
                           key={tier}
                           className="popover__item popover__item--check"
                         >
-                          <input
-                            type="checkbox"
+                          <Checkbox
+                            label={HYPERLABEL_DISPLAY_LABELS[tier]}
                             checked={qualityIncluded.has(tier)}
                             onChange={() => onQualityToggle(tier)}
                           />
-                          {HYPERLABEL_DISPLAY_LABELS[tier]}
-                        </label>
+                        </div>
                       ))}
-                      <label className="popover__item popover__item--check">
-                        <input
-                          type="checkbox"
+                      <div className="popover__item popover__item--check">
+                        <Checkbox
+                          label={UNLABELED_LABEL}
                           checked={qualityIncluded.has(UNLABELED_SLUG)}
                           onChange={() => onQualityToggle(UNLABELED_SLUG)}
                         />
-                        {UNLABELED_LABEL}
-                      </label>
+                      </div>
                       <hr className="popover__divider" aria-hidden="true" />
                     </>
                   ) : null}
@@ -770,26 +767,24 @@ export default function Explore() {
                       the top of the popover. */}
                   <p className="popover__section-heading">Account quality</p>
                   {ORG_TIER_SLUGS.map((slug) => (
-                    <label
+                    <div
                       key={slug}
                       className="popover__item popover__item--check"
                     >
-                      <input
-                        type="checkbox"
+                      <Checkbox
+                        label={ORG_TIER_DISPLAY_LABEL[slug]}
                         checked={orgQualityIncluded.has(slug)}
                         onChange={() => onOrgQualityToggle(slug)}
                       />
-                      {ORG_TIER_DISPLAY_LABEL[slug]}
-                    </label>
+                    </div>
                   ))}
-                  <label className="popover__item popover__item--check">
-                    <input
-                      type="checkbox"
+                  <div className="popover__item popover__item--check">
+                    <Checkbox
+                      label={UNLABELED_LABEL}
                       checked={orgQualityIncluded.has(UNLABELED_SLUG)}
                       onChange={() => onOrgQualityToggle(UNLABELED_SLUG)}
                     />
-                    {UNLABELED_LABEL}
-                  </label>
+                  </div>
                   {/* Reset returns every section in this popover to
                       its default selection by clearing the URL params
                       it owns. Disabled when nothing has been customised
@@ -807,7 +802,8 @@ export default function Explore() {
                   >
                     Reset to default
                   </button>
-                </Popover>
+                  </PopoverContent>
+                </UiPopover>
               ) : null}
             </div>
           </div>
@@ -1022,64 +1018,6 @@ function searchPlaceholder(kind: ExploreKind): string {
   if (kind === "accounts") return "Search accounts by name…"
   if (kind === "projects") return "Search projects…"
   return "Search activities…"
-}
-
-function Popover({
-  open,
-  onClose,
-  trigger,
-  children,
-  align = "right",
-}: {
-  open: boolean
-  onClose: () => void
-  trigger: React.ReactNode
-  children: React.ReactNode
-  /** Which edge of the menu aligns with the trigger.
-   *  "right" (default) — menu's right edge under trigger's right (good
-   *  for trailing controls like sort/filter).
-   *  "left" — menu's left edge under trigger's left (good for leading
-   *  controls like the sub-category dropdown at the start of the chrome). */
-  align?: "left" | "right"
-}) {
-  // Escape closes the popover. Keyboard-only users would otherwise be
-  // stuck inside the menu without a way to dismiss without a mouse
-  // (round-2 a11y finding A-1). Stash onClose in a ref so the
-  // listener always picks up the latest closure without re-attaching
-  // every render.
-  const onCloseRef = useRef(onClose)
-  useEffect(() => {
-    onCloseRef.current = onClose
-  })
-  useEffect(() => {
-    if (!open) return
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCloseRef.current()
-    }
-    document.addEventListener("keydown", handleKey)
-    return () => document.removeEventListener("keydown", handleKey)
-  }, [open])
-
-  return (
-    <div className="popover">
-      {trigger}
-      {open ? (
-        <>
-          <div
-            className="popover__overlay"
-            onClick={onClose}
-            aria-hidden
-          />
-          <div
-            className={`popover__menu popover__menu--${align}`}
-            role="menu"
-          >
-            {children}
-          </div>
-        </>
-      ) : null}
-    </div>
-  )
 }
 
 /** Render whatever the data hook returned, applying client-side sort

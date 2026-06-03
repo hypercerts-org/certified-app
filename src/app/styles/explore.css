@@ -176,7 +176,7 @@
 }
 
 .explore__sub-dropdown-trigger:hover {
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
   border-color: var(--fg-secondary);
 }
 
@@ -199,30 +199,13 @@
   flex-wrap: wrap;
 }
 
-.explore__search {
+/* Search field grows to fill the chrome row. The field chrome (border,
+   fill, focus ring, leading search glyph) now comes from the canonical
+   <Input leadingIcon> primitive; this wrapper only carries the flex
+   sizing the bespoke <label> used to own. */
+.explore__search-field {
   flex: 1;
   min-width: 200px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
-  background: var(--bg-elevated);
-  color: var(--fg-secondary);
-}
-
-.explore__search:focus-within {
-  border-color: var(--fg-primary);
-}
-
-.explore__search-input {
-  flex: 1;
-  border: 0;
-  background: transparent;
-  outline: none;
-  font-size: 0.875rem;
-  color: var(--fg-primary);
 }
 
 .explore__chrome-actions {
@@ -245,7 +228,7 @@
 }
 
 .explore__chrome-btn:hover {
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
 /* Icon-only chrome variant — square 32×32, drops the horizontal
@@ -303,43 +286,12 @@
   cursor: progress;
 }
 
-/* ---------- Popover (sort + filter dropdowns) ---------- */
-
-.popover {
-  position: relative;
-  /* Lift the dropdown's stacking context above the main-pane content
-     (cards, list rows) so the menu paints on top instead of being
-     covered by hovered cards / images. */
-  z-index: 50;
-}
-
-.popover__overlay {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-popover);
-}
-
-.popover__menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  z-index: var(--z-popover);
-  display: flex;
-  flex-direction: column;
-  min-width: 200px;
-  padding: 4px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-}
-
-.popover__menu--right {
-  right: 0;
-}
-
-.popover__menu--left {
-  left: 0;
-}
+/* ---------- Popover content (quality filter) ----------
+   The popover container, overlay, and menu chrome now come from the
+   canonical <Popover> primitive (src/components/ui/popover.tsx). These
+   classes style only the *content* the quality filter renders inside
+   <PopoverContent>: the tier checkboxes, section headings, divider,
+   and reset button. */
 
 .popover__item {
   display: flex;
@@ -356,19 +308,14 @@
 }
 
 .popover__item:hover {
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
-.popover__item--active {
-  font-weight: 500;
-}
-
+/* Row wrapper for a quality-filter <Checkbox>. The box + label chrome
+   come from the canonical <Checkbox> primitive; this only supplies the
+   menu-row padding (inherited from .popover__item) and full-row hover. */
 .popover__item--check {
   cursor: pointer;
-}
-
-.popover__item--check input {
-  margin: 0;
 }
 
 /* Sub-section heading inside a popover — used by the certs-tab
@@ -420,7 +367,7 @@
 }
 
 .popover__reset-btn:disabled {
-  color: var(--fg-muted, #b7bdc6);
+  color: var(--fg-muted);
   cursor: default;
 }
 
@@ -472,7 +419,7 @@
 }
 
 .explore__view-btn:hover {
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
   color: var(--fg-primary);
 }
 
@@ -540,7 +487,7 @@
   flex-shrink: 0;
   border-radius: var(--radius);
   overflow: hidden;
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -592,7 +539,7 @@
 }
 
 .cert-list-row__meta-sep {
-  color: var(--fg-muted, #b7bdc6);
+  color: var(--fg-muted);
 }
 
 .cert-list-row__meta-icon {
@@ -675,7 +622,7 @@
 
 .explore-user-card:hover {
   border-color: var(--fg-secondary);
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
   /* Subtle lift on hover — distinguishes the account cards from the
      flat cert/project cards so the kind switch is visually felt. */
   box-shadow: 0 1px 2px color-mix(in srgb, var(--fg-primary) 6%, transparent);
@@ -828,7 +775,7 @@
   flex-shrink: 0;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 799px) {
   .account-list-row {
     grid-template-columns: minmax(0, 1fr);
     gap: 6px;
@@ -856,7 +803,7 @@
 
 .explore-project-card:hover {
   border-color: var(--fg-secondary);
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
 .explore-project-card__image-wrap {
@@ -866,7 +813,7 @@
   aspect-ratio: 3 / 1;
   border-radius: var(--radius);
   overflow: hidden;
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
 .explore-project-card__image {
@@ -954,8 +901,8 @@
 
 .explore__degree-pill {
   border: 1px solid var(--border-default);
-  background: var(--surface-2);
-  color: var(--text-secondary);
+  background: var(--bg-sunken);
+  color: var(--fg-secondary);
   padding: 4px 12px;
   border-radius: 999px;
   font-size: 13px;
@@ -965,19 +912,19 @@
 }
 
 .explore__degree-pill:hover {
-  background: var(--surface-3);
-  color: var(--text-primary);
+  background: var(--bg-raised);
+  color: var(--fg-primary);
 }
 
 .explore__degree-pill--active {
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  border-color: var(--accent-strong);
+  background: var(--fg-primary);
+  color: var(--bg-canvas);
+  border-color: var(--fg-primary);
 }
 
 .explore__degree-truncated {
   font-size: 12px;
-  color: var(--text-tertiary);
+  color: var(--fg-muted);
   margin: 0;
   font-style: italic;
 }
@@ -1005,23 +952,23 @@
 /* Color tiers — densest for direct endorsements, lighter for the
  * wider rings. Keeps the visual hierarchy obvious at a glance. */
 .endorsement-row-badge__degree--d1 {
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  border-color: var(--accent-strong);
+  background: var(--fg-primary);
+  color: var(--bg-canvas);
+  border-color: var(--fg-primary);
 }
 .endorsement-row-badge__degree--d2 {
-  background: var(--surface-3);
-  color: var(--text-primary);
+  background: var(--bg-raised);
+  color: var(--fg-primary);
   border-color: var(--border-default);
 }
 .endorsement-row-badge__degree--d3 {
-  background: var(--surface-2);
-  color: var(--text-secondary);
+  background: var(--bg-sunken);
+  color: var(--fg-secondary);
   border-color: var(--border-subtle);
 }
 
 .endorsement-row-badge__sep {
-  color: var(--text-tertiary);
+  color: var(--fg-muted);
   font-size: 12px;
   line-height: 1;
 }

@@ -157,7 +157,7 @@
   gap: 16px;
 }
 
-@media (min-width: 600px) {
+@media (min-width: 800px) {
   .pe__row--split {
     display: grid;
     grid-template-columns: 1fr 160px;
@@ -192,8 +192,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.pe__input,
-.pe__textarea {
+.pe__input {
   width: 100%;
   /* Belt-and-braces against any inherited box-sizing surprises — without
      this, an extra-wide URL placeholder can push the row sideways and
@@ -213,43 +212,27 @@
     background var(--transition-fast);
 }
 
-.pe__input::placeholder,
-.pe__textarea::placeholder {
+.pe__input::placeholder {
   color: var(--fg-muted);
   font-weight: 400;
 }
 
-.pe__input:hover,
-.pe__textarea:hover {
+.pe__input:hover {
   border-color: var(--border-hover, var(--fg-muted));
 }
 
-.pe__input:focus,
-.pe__textarea:focus {
+.pe__input:focus {
   outline: none;
   border-color: var(--fg-primary);
 }
 
-.pe__textarea {
-  resize: vertical;
-  min-height: 96px;
-  line-height: 1.55;
-}
-
-.pe__input--invalid,
-.pe__textarea--invalid {
-  border-color: var(--color-error, #d4453d);
-}
-
-.pe__field-help {
-  font-size: 0.75rem;
-  color: var(--fg-muted);
-  margin: 0;
+.pe__input--invalid {
+  border-color: var(--color-error);
 }
 
 .pe__field-error {
   font-size: 0.75rem;
-  color: var(--color-error, #d4453d);
+  color: var(--color-error);
   margin: 0;
 }
 
@@ -416,10 +399,10 @@
 
 /* ------------------------------------------------------------------------
    Mobile tweaks.
-   The 600px breakpoint matches the desktop column threshold, so we
+   The 800px breakpoint matches the desktop column threshold, so we
    collapse the split row and URL grid below it.
    ------------------------------------------------------------------------ */
-@media (max-width: 600px) {
+@media (max-width: 799px) {
   .pe {
     padding: 0 0 96px;
   }

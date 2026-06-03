@@ -4,6 +4,9 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { Filter as FilterIcon, Inbox, MapPin, UserCheck, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
+import Badge, { type BadgeTone } from "@/components/ui/badge"
+import Banner from "@/components/ui/banner"
+import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import LoadMoreSentinel from "@/components/ui/load-more-sentinel"
@@ -241,9 +244,9 @@ function HomeFeedBody({
   }
   if (followsError) {
     return (
-      <div className="feed__warning" role="alert">
+      <Banner variant="warning">
         Could not load your follow list. Please try again later.
-      </div>
+      </Banner>
     )
   }
   if (followedCount === 0) {
@@ -257,9 +260,9 @@ function HomeFeedBody({
   }
   if (error) {
     return (
-      <div className="feed__warning" role="alert">
+      <Banner variant="warning">
         Could not load activity: {error}
-      </div>
+      </Banner>
     )
   }
   if (events.length === 0) {
@@ -639,14 +642,16 @@ function EndorsementGroupRow({ group }: { group: EndorsementGroupItem }) {
             othersCount={othersCount}
           />
         </p>
-        <button
-          type="button"
-          className="home-feed__group-toggle"
+        <Button
+          variant="ghost"
+          size="sm"
+          pressed={expanded}
           aria-expanded={expanded}
+          className="home-feed__group-toggle"
           onClick={() => setExpanded((v) => !v)}
         >
           {expanded ? "Show fewer" : "Show all"}
-        </button>
+        </Button>
         {expanded ? (
           <ul className="home-feed__group-list">
             {group.subjectDids.map((did) => (
@@ -918,15 +923,19 @@ function EndorsementSentence({ subjectDid }: { subjectDid: string }) {
 
 // ---------------------------------- Cert preview ----------------------------
 
-const QUALITY_TAGS: Record<string, { label: string; tone: "neutral" | "warn" }> = {
-  draft: { label: "Draft", tone: "neutral" },
-  "likely-test": { label: "Likely test", tone: "warn" },
+// Square-tag tone per quality label. The Badge square variant treats
+// "warn" as error-toned (red), so draft reads error-tone and
+// likely-test reads neutral — preserving the legacy
+// home-feed__preview-tag look (--warn = red, base = muted).
+const QUALITY_TAGS: Record<string, { label: string; tone: BadgeTone }> = {
+  draft: { label: "Draft", tone: "warn" },
+  "likely-test": { label: "Likely test", tone: "neutral" },
 }
 
-function certQualityTags(labels: readonly string[]): { key: string; label: string; tone: string }[] {
+function certQualityTags(labels: readonly string[]): { key: string; label: string; tone: BadgeTone }[] {
   return labels
     .map((l) => (QUALITY_TAGS[l] ? { key: l, ...QUALITY_TAGS[l] } : null))
-    .filter((x): x is { key: string; label: string; tone: "neutral" | "warn" } => !!x)
+    .filter((x): x is { key: string; label: string; tone: BadgeTone } => !!x)
 }
 
 export function CertPreview({
@@ -1103,7 +1112,7 @@ function PreviewCard({
 }: {
   href: string | null
   title: string
-  tags?: { key: string; label: string; tone: string }[]
+  tags?: { key: string; label: string; tone: BadgeTone }[]
   imageUrl: string | null
   description: string | null
   meta: ReactNode[]
@@ -1120,12 +1129,9 @@ function PreviewCard({
         <span className="home-feed__preview-title-row">
           <span className="home-feed__preview-title">{title}</span>
           {tags?.map((t) => (
-            <span
-              key={t.key}
-              className={`home-feed__preview-tag home-feed__preview-tag--${t.tone}`}
-            >
+            <Badge key={t.key} variant="tag" shape="square" tone={t.tone}>
               {t.label}
-            </span>
+            </Badge>
           ))}
         </span>
         {description ? (

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, X, ChevronLeft } from "lucide-react";
 import ErrorMessage from "@/components/ui/error-message";
+import Input from "@/components/ui/input";
+import Textarea from "@/components/ui/textarea";
 import AvatarUpload from "@/components/profile/avatar-upload";
 import BannerUpload from "@/components/profile/banner-upload";
 import type {
@@ -369,12 +371,9 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                 <span>Display name</span>
                 <span className="pe__label-count">{displayName.length}/64</span>
               </label>
-              <input
+              <Input
                 id={displayNameId}
                 type="text"
-                className={`pe__input${
-                  displayNameError ? " pe__input--invalid" : ""
-                }`}
                 value={displayName}
                 maxLength={64}
                 placeholder={isOrg ? "Organization name" : "Your name"}
@@ -382,20 +381,8 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                   setDisplayName(e.target.value);
                   validateDisplayName(e.target.value);
                 }}
-                aria-invalid={displayNameError ? true : undefined}
-                aria-describedby={
-                  displayNameError ? `${displayNameId}-error` : undefined
-                }
+                error={displayNameError || undefined}
               />
-              {displayNameError ? (
-                <p
-                  id={`${displayNameId}-error`}
-                  className="pe__field-error"
-                  role="alert"
-                >
-                  {displayNameError}
-                </p>
-              ) : null}
             </div>
 
             {!isOrg ? (
@@ -404,12 +391,9 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                   <span>Pronouns</span>
                   <span className="pe__label-count">{pronouns.length}/20</span>
                 </label>
-                <input
+                <Input
                   id={pronounsId}
                   type="text"
-                  className={`pe__input${
-                    pronounsError ? " pe__input--invalid" : ""
-                  }`}
                   value={pronouns}
                   maxLength={20}
                   placeholder="they/them"
@@ -417,20 +401,8 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                     setPronouns(e.target.value);
                     validatePronouns(e.target.value);
                   }}
-                  aria-invalid={pronounsError ? true : undefined}
-                  aria-describedby={
-                    pronounsError ? `${pronounsId}-error` : undefined
-                  }
+                  error={pronounsError || undefined}
                 />
-                {pronounsError ? (
-                  <p
-                    id={`${pronounsId}-error`}
-                    className="pe__field-error"
-                    role="alert"
-                  >
-                    {pronounsError}
-                  </p>
-                ) : null}
               </div>
             ) : null}
           </div>
@@ -451,15 +423,12 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
           <div className="pe__field">
             <label className="pe__label" htmlFor={descriptionId}>
               <span>About</span>
-              <span className="pe__label-count">{description.length}/256</span>
             </label>
-            <textarea
+            <Textarea
               id={descriptionId}
-              className={`pe__textarea${
-                descriptionError ? " pe__textarea--invalid" : ""
-              }`}
               rows={4}
               maxLength={256}
+              showCount
               value={description}
               placeholder={
                 isOrg
@@ -470,20 +439,8 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                 setDescription(e.target.value);
                 validateDescription(e.target.value);
               }}
-              aria-invalid={descriptionError ? true : undefined}
-              aria-describedby={
-                descriptionError ? `${descriptionId}-error` : undefined
-              }
+              error={descriptionError || undefined}
             />
-            {descriptionError ? (
-              <p
-                id={`${descriptionId}-error`}
-                className="pe__field-error"
-                role="alert"
-              >
-                {descriptionError}
-              </p>
-            ) : null}
           </div>
         </div>
       </div>
@@ -503,11 +460,10 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
             <label className="pe__label" htmlFor={websiteId}>
               <span>Website</span>
             </label>
-            <input
+            <Input
               id={websiteId}
               type="url"
               inputMode="url"
-              className={`pe__input${websiteError ? " pe__input--invalid" : ""}`}
               value={website}
               maxLength={256}
               placeholder="https://example.com"
@@ -515,24 +471,9 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                 setWebsite(e.target.value);
                 validateWebsite(e.target.value);
               }}
-              aria-invalid={websiteError ? true : undefined}
-              aria-describedby={
-                websiteError ? `${websiteId}-error` : `${websiteId}-help`
-              }
+              error={websiteError || undefined}
+              helperText="Include https://."
             />
-            {websiteError ? (
-              <p
-                id={`${websiteId}-error`}
-                className="pe__field-error"
-                role="alert"
-              >
-                {websiteError}
-              </p>
-            ) : (
-              <p id={`${websiteId}-help`} className="pe__field-help">
-                Include https://.
-              </p>
-            )}
           </div>
         </div>
       </div>

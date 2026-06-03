@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import React, {
   createContext,
   useCallback,
@@ -28,6 +29,13 @@ import React, {
  *  - aria-controls / aria-expanded wired between trigger and content
  *  - content positions absolutely relative to the trigger; align
  *    controls horizontal alignment ("start" | "center" | "end").
+ *  - arrow-key roving focus over the menu's items.
+ *
+ * Item roles: <PopoverItem> is a plain action item (role="menuitem") by
+ * default. Pass `selected` (boolean) to turn it into a single-select
+ * option — role="menuitemradio" + aria-checked, with a leading checkmark
+ * on the selected row — which is what a "Sort:" or other "pick exactly
+ * one" menu needs. Both roles participate in arrow-key roving.
  *
  * Replaces the four ad-hoc menu implementations:
  *  - account switcher menu (layout.css)
@@ -157,6 +165,30 @@ const alignClass: Record<PopoverAlign, string> = {
   end: "right-0",
 };
 
+/**
+ * Collect the non-disabled menu items inside a content element, in DOM
+ * order. Used for roving focus. Disabled items (native `disabled` or
+ * `aria-disabled="true"`) are skipped so arrow navigation never lands on
+ * an unactionable option.
+ *
+ * Both `role="menuitem"` (action items) and `role="menuitemradio"`
+ * (single-select / sort-menu items, see <PopoverItem selected>) are
+ * collected, so arrow-key roving works identically whichever role the
+ * caller adopts.
+ */
+function getMenuItems(content: HTMLElement | null): HTMLElement[] {
+  if (!content) return [];
+  return Array.from(
+    content.querySelectorAll<HTMLElement>(
+      '[role="menuitem"],[role="menuitemradio"]',
+    ),
+  ).filter(
+    (el) =>
+      !el.hasAttribute("disabled") &&
+      el.getAttribute("aria-disabled") !== "true",
+  );
+}
+
 export function PopoverContent({
   align = "start",
   offset = 4,
@@ -164,18 +196,68 @@ export function PopoverContent({
   className = "",
   style,
   children,
+  onKeyDown,
   ...props
 }: PopoverContentProps) {
   // Pull ref + id out of the context locally — the React 19 strict-refs
   // lint rule is overly cautious about accessing context-held refs in JSX.
   const { open, contentRef, contentId } = usePopover("PopoverContent");
+
+  // Focus the first menu item when the menu opens, so keyboard users land
+  // inside the menu (matching native <select>/menu semantics). Esc-to-close
+  // and focus-return-to-trigger live in <Popover>.
+  useEffect(() => {
+    if (!open) return;
+    const items = getMenuItems(contentRef.current);
+    items[0]?.focus();
+  }, [open, contentRef]);
+
   if (!open) return null;
+
+  // Arrow-key roving focus among menu items. Home/End jump to the
+  // first/last. Disabled items are skipped (see getMenuItems). Escape is
+  // intentionally left to <Popover>'s document-level handler so focus
+  // returns to the trigger from anywhere in the menu.
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const items = getMenuItems(contentRef.current);
+    if (items.length > 0) {
+      const current = items.indexOf(
+        document.activeElement as HTMLElement,
+      );
+      let next = -1;
+      switch (e.key) {
+        case "ArrowDown":
+          next = current < 0 ? 0 : (current + 1) % items.length;
+          break;
+        case "ArrowUp":
+          next =
+            current < 0
+              ? items.length - 1
+              : (current - 1 + items.length) % items.length;
+          break;
+        case "Home":
+          next = 0;
+          break;
+        case "End":
+          next = items.length - 1;
+          break;
+        default:
+          break;
+      }
+      if (next !== -1) {
+        e.preventDefault();
+        items[next]?.focus();
+      }
+    }
+    onKeyDown?.(e);
+  };
 
   return (
     <div
       ref={contentRef}
       id={contentId}
       role="menu"
+      onKeyDown={handleKeyDown}
       className={`absolute top-full z-[var(--z-popover)] mt-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded shadow-md p-1 ${alignClass[align]} ${className}`}
       style={{ minWidth, marginTop: offset, ...style }}
       {...props}
@@ -188,21 +270,56 @@ export function PopoverContent({
 export interface PopoverItemProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
+  /**
+   * Opt into single-select (radio) semantics. When provided, the item
+   * renders `role="menuitemradio"` + `aria-checked={selected}` and shows a
+   * leading checkmark in its selected state — the shape a sort menu (or any
+   * "pick exactly one" menu) needs. Omit it for plain action items, which
+   * keep `role="menuitem"` and no checkmark slot.
+   *
+   * Arrow-key roving (see getMenuItems in <PopoverContent>) matches both
+   * roles, so keyboard navigation is identical either way.
+   */
+  selected?: boolean;
 }
 
 export function PopoverItem({
   children,
   className = "",
+  tabIndex,
+  selected,
   ...props
 }: PopoverItemProps) {
+  // `selected` is the opt-in to radio semantics: undefined => plain action
+  // item (role="menuitem", no checkmark slot); boolean => single-select item
+  // (role="menuitemradio", aria-checked, reserved leading checkmark column).
+  const isRadio = selected !== undefined;
   return (
     <button
       type="button"
-      role="menuitem"
-      className={`w-full text-left px-3 py-2 text-sm text-[var(--fg-primary)] rounded hover:bg-[var(--overlay-weak)] focus:bg-[var(--overlay-weak)] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      role={isRadio ? "menuitemradio" : "menuitem"}
+      // Only emit aria-checked for radio items; a plain menuitem must not
+      // carry it (the role doesn't support a checked state).
+      aria-checked={isRadio ? selected : undefined}
+      // Roving focus: items are removed from the sequential Tab order so a
+      // single Tab moves past the whole menu; arrow keys (handled by
+      // <PopoverContent>) move focus between items. <PopoverContent>
+      // focuses the first item on open. Callers can still override.
+      tabIndex={tabIndex ?? -1}
+      className={`w-full ${isRadio ? "flex items-center gap-2" : "text-left"} px-3 py-2 text-sm text-[var(--fg-primary)] rounded hover:bg-[var(--overlay-weak)] focus:bg-[var(--overlay-weak)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
       {...props}
     >
-      {children}
+      {isRadio && (
+        // Reserved leading column so labels stay aligned whether or not the
+        // row is the selected one. The checkmark only paints when selected;
+        // aria-hidden because aria-checked already conveys state.
+        <Check
+          className={`h-3.5 w-3.5 shrink-0 ${selected ? "opacity-100" : "opacity-0"}`}
+          strokeWidth={3}
+          aria-hidden="true"
+        />
+      )}
+      {isRadio ? <span className="flex-1 text-left">{children}</span> : children}
     </button>
   );
 }

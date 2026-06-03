@@ -4,6 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverItem,
+} from "@/components/ui/popover"
 import { authFetch } from "@/lib/auth/fetch"
 import {
   ChevronRight,
@@ -228,27 +234,9 @@ export default function ProjectDetail({
     if (editing) titleInputRef.current?.focus()
   }, [editing])
 
-  // Close the per-card ⋯ menu when clicking outside it, or on ESC.
-  // The menu lives inside `.project-detail__cert-menu`, so a click on
-  // anything not in that container collapses it.
-  useEffect(() => {
-    if (!openMenuUri) return
-    const onMouseDown = (e: MouseEvent) => {
-      const target = e.target
-      if (!(target instanceof Element)) return
-      if (target.closest(".project-detail__cert-menu")) return
-      setOpenMenuUri(null)
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpenMenuUri(null)
-    }
-    document.addEventListener("mousedown", onMouseDown)
-    document.addEventListener("keydown", onKey)
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown)
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [openMenuUri])
+  // The per-card ⋯ menu is a <Popover> (controlled via `openMenuUri`);
+  // the primitive owns click-outside + Esc-to-close + focus return, so
+  // no hand-rolled document listeners are needed here.
 
   const title =
     asString(effectiveValue.title) ||
@@ -1290,35 +1278,28 @@ export default function ProjectDetail({
                       did={didByUri.get(rec.uri) ?? did}
                     />
                     <div className="project-detail__cert-menu">
-                      <button
-                        type="button"
-                        className="project-detail__cert-menu-btn"
-                        aria-label="Activity actions"
-                        aria-haspopup="menu"
-                        aria-expanded={openMenuUri === rec.uri}
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          setOpenMenuUri((prev) =>
-                            prev === rec.uri ? null : rec.uri,
-                          )
-                        }}
+                      <Popover
+                        open={openMenuUri === rec.uri}
+                        onOpenChange={(next) =>
+                          setOpenMenuUri(next ? rec.uri : null)
+                        }
                       >
-                        <MoreVertical
-                          size={16}
-                          strokeWidth={1.75}
-                          aria-hidden
-                        />
-                      </button>
-                      {openMenuUri === rec.uri ? (
-                        <div
-                          role="menu"
-                          className="project-detail__cert-menu-pop"
-                        >
+                        <PopoverTrigger>
                           <button
                             type="button"
-                            role="menuitem"
-                            className="project-detail__cert-menu-item"
+                            className="project-detail__cert-menu-btn"
+                            aria-label="Activity actions"
+                          >
+                            <MoreVertical
+                              size={16}
+                              strokeWidth={1.75}
+                              aria-hidden
+                            />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end">
+                          <PopoverItem
+                            className="flex items-center gap-2 whitespace-nowrap"
                             onClick={() => handleRemoveCert(rec.uri)}
                           >
                             <Trash2
@@ -1327,9 +1308,9 @@ export default function ProjectDetail({
                               aria-hidden
                             />
                             Remove from project
-                          </button>
-                        </div>
-                      ) : null}
+                          </PopoverItem>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
                 ))

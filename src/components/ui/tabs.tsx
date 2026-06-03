@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import React, {
   createContext,
   useCallback,
@@ -8,6 +9,8 @@ import React, {
   useMemo,
   useRef,
 } from "react";
+
+import Badge from "./badge";
 
 /**
  * Canonical Tabs/Tab/TabPanel components with proper ARIA semantics:
@@ -33,13 +36,20 @@ import React, {
  *   </Tabs>
  */
 
+/** Visual treatment of the tab strip. `underline` is the canonical
+ *  underline-on-active strip; `segmented` is a sunken pill container with
+ *  the active tab as a raised pill. */
+export type TabsVariant = "underline" | "segmented";
+
 interface TabsContextValue {
   value: string;
   onChange: (next: string) => void;
   /** Stable id shared across tablist + tabs + panels. */
   baseId: string;
+  /** Visual treatment, shared so TabList + Tab style themselves consistently. */
+  variant: TabsVariant;
   /** Ordered list of tab values, used by arrow-key navigation. */
-  registerTab: (value: string) => void;
+  registerTab: (value: string, disabled: boolean) => void;
   focusTab: (value: string) => void;
 }
 
@@ -59,20 +69,35 @@ export interface TabsProps {
   children: React.ReactNode;
   /** Optional className on the outer wrapper. */
   className?: string;
+  /** Visual treatment of the strip. Defaults to `underline` (the canonical
+   *  underline-on-active look). `segmented` renders a sunken pill container
+   *  with the active tab as a raised pill. */
+  variant?: TabsVariant;
 }
 
-export function Tabs({ value, onChange, children, className = "" }: TabsProps) {
+export function Tabs({
+  value,
+  onChange,
+  children,
+  className = "",
+  variant = "underline",
+}: TabsProps) {
   const baseId = useId();
   // Ordered list of tab values, used to compute prev/next for arrow keys.
   // useRef so registration doesn't trigger re-renders.
   const orderRef = useRef<string[]>([]);
-  // Map value → button DOM node, so we can focus it from the context.
-  const buttonsRef = useRef<Map<string, HTMLButtonElement>>(new Map());
+  // Set of disabled tab values, so arrow-key navigation can skip them.
+  const disabledRef = useRef<Set<string>>(new Set());
+  // Map value → tab DOM node, so we can focus it from the context. Stores
+  // HTMLElement because a tab may render as a <button> or a <Link> (<a>).
+  const buttonsRef = useRef<Map<string, HTMLElement>>(new Map());
 
-  const registerTab = useCallback((v: string) => {
+  const registerTab = useCallback((v: string, disabled: boolean) => {
     if (!orderRef.current.includes(v)) {
       orderRef.current.push(v);
     }
+    if (disabled) disabledRef.current.add(v);
+    else disabledRef.current.delete(v);
   }, []);
 
   const focusTab = useCallback((v: string) => {
@@ -80,15 +105,15 @@ export function Tabs({ value, onChange, children, className = "" }: TabsProps) {
   }, []);
 
   const ctx = useMemo<TabsContextValue>(
-    () => ({ value, onChange, baseId, registerTab, focusTab }),
-    [value, onChange, baseId, registerTab, focusTab],
+    () => ({ value, onChange, baseId, variant, registerTab, focusTab }),
+    [value, onChange, baseId, variant, registerTab, focusTab],
   );
 
   // Expose buttonsRef + orderRef via a separate context so Tab can register
   // its DOM node without re-rendering siblings on every render.
   return (
     <TabsContext.Provider value={ctx}>
-      <TabsRegistryContext.Provider value={{ buttonsRef, orderRef }}>
+      <TabsRegistryContext.Provider value={{ buttonsRef, orderRef, disabledRef }}>
         <div className={className}>{children}</div>
       </TabsRegistryContext.Provider>
     </TabsContext.Provider>
@@ -96,49 +121,109 @@ export function Tabs({ value, onChange, children, className = "" }: TabsProps) {
 }
 
 interface TabsRegistry {
-  buttonsRef: React.MutableRefObject<Map<string, HTMLButtonElement>>;
+  /** value → tab DOM node. HTMLElement, since a tab may be a <button> or <a>. */
+  buttonsRef: React.MutableRefObject<Map<string, HTMLElement>>;
   orderRef: React.MutableRefObject<string[]>;
+  disabledRef: React.MutableRefObject<Set<string>>;
 }
 
 const TabsRegistryContext = createContext<TabsRegistry | null>(null);
+
+// Resolved variant for a given TabList subtree. TabList publishes the value it
+// actually rendered with (its own prop, falling back to the Tabs-level
+// variant) so its Tab children style themselves identically — the container
+// and its tabs can never disagree. Falls back to the Tabs context (then
+// "underline") when a Tab is somehow rendered outside a TabList.
+const TabListVariantContext = createContext<TabsVariant | null>(null);
 
 export interface TabListProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Required for screen readers — describes the purpose of the tab strip. */
   "aria-label": string;
   children: React.ReactNode;
+  /** Override the variant inherited from `<Tabs>`. Defaults to the Tabs value. */
+  variant?: TabsVariant;
 }
 
-export function TabList({ children, className = "", ...props }: TabListProps) {
+export function TabList({
+  children,
+  className = "",
+  variant,
+  ...props
+}: TabListProps) {
+  const ctx = useTabsContext("TabList");
+  // The TabList prop (if any) wins, otherwise inherit the Tabs-level variant.
+  const resolved = variant ?? ctx.variant;
+
+  // Underline path is byte-for-byte identical to today.
+  const variantClassName =
+    resolved === "segmented"
+      ? "inline-flex gap-1 p-1 bg-[var(--bg-sunken)] rounded"
+      : "inline-flex gap-4 border-b border-[var(--border-subtle)]";
+
   return (
-    <div
-      role="tablist"
-      className={`inline-flex gap-4 border-b border-[var(--border-subtle)] ${className}`}
-      {...props}
-    >
-      {children}
-    </div>
+    <TabListVariantContext.Provider value={resolved}>
+      <div role="tablist" className={`${variantClassName} ${className}`} {...props}>
+        {children}
+      </div>
+    </TabListVariantContext.Provider>
   );
 }
 
 export interface TabProps
-  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children" | "value"> {
+  extends Omit<
+    React.ButtonHTMLAttributes<HTMLButtonElement>,
+    "children" | "value"
+  > {
   value: string;
   children: React.ReactNode;
+  /** When true, the tab is non-interactive: it ignores clicks, is skipped by
+   *  arrow-key / Home / End navigation, is removed from the roving tab order,
+   *  and is announced via `aria-disabled`. */
+  disabled?: boolean;
+  /** Optional count/badge rendered after the label via the Badge primitive
+   *  (the neutral `count` chip). Accepts a number or short string. */
+  count?: number | string;
+  /** When set, the tab renders as a Next `<Link href>` (an anchor) instead of
+   *  a `<button>` — for URL-router tab strips where each tab is a route. The
+   *  same role="tab" / aria-selected / aria-controls, roving tabIndex, and
+   *  arrow / Home / End keyboard navigation apply. `onChange` still fires on
+   *  activation so controlled `value` stays in sync; navigation is left to the
+   *  router. Ignored when `disabled`. */
+  href?: string;
 }
 
-export function Tab({ value, children, className = "", ...props }: TabProps) {
+export function Tab({
+  value,
+  children,
+  disabled = false,
+  count,
+  href,
+  className = "",
+  ...props
+}: TabProps) {
   const ctx = useTabsContext("Tab");
   const registry = useContext(TabsRegistryContext);
+  // Resolve the variant from the enclosing TabList (which already merged any
+  // TabList-level override with the Tabs-level value), falling back to the
+  // Tabs context if a Tab is rendered outside a TabList.
+  const variant = useContext(TabListVariantContext) ?? ctx.variant;
   const isActive = ctx.value === value;
   const tabId = `${ctx.baseId}-tab-${value}`;
   const panelId = `${ctx.baseId}-panel-${value}`;
+  const hasCount = count !== undefined && count !== null && count !== "";
+  // A tab is a link only when an href is supplied AND it is enabled. A
+  // disabled link tab falls back to the non-interactive button so it stays
+  // out of the tab order and ignores activation, exactly like a disabled tab.
+  const isLink = href !== undefined && !disabled;
 
-  // Register the tab + DOM node refs on every render. This is cheap
-  // (Map.set + array.includes) and avoids effect-ordering subtleties.
-  ctx.registerTab(value);
+  // Register the tab + its disabled state on every render. This is cheap
+  // (Set/Map ops + array.includes) and avoids effect-ordering subtleties.
+  ctx.registerTab(value, disabled);
 
+  // One ref callback for either element type — both are HTMLElement, which is
+  // all `focusTab` needs to call `.focus()`.
   const handleRef = useCallback(
-    (node: HTMLButtonElement | null) => {
+    (node: HTMLElement | null) => {
       if (!registry) return;
       if (node) registry.buttonsRef.current.set(value, node);
       else registry.buttonsRef.current.delete(value);
@@ -146,43 +231,123 @@ export function Tab({ value, children, className = "", ...props }: TabProps) {
     [registry, value],
   );
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+  // Shared by both the button and the link paths so arrow / Home / End move
+  // focus across tabs regardless of which element each tab rendered as.
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
     if (!registry) return;
     const order = registry.orderRef.current;
+    const disabledSet = registry.disabledRef.current;
     const idx = order.indexOf(value);
     if (idx < 0) return;
-    let next: number | null = null;
-    if (e.key === "ArrowRight") next = (idx + 1) % order.length;
-    else if (e.key === "ArrowLeft") next = (idx - 1 + order.length) % order.length;
-    else if (e.key === "Home") next = 0;
-    else if (e.key === "End") next = order.length - 1;
-    if (next !== null) {
-      e.preventDefault();
-      const nextValue = order[next];
+
+    // Step in `dir` from `idx`, skipping disabled tabs, wrapping once.
+    // Returns null if every other tab is disabled.
+    const step = (dir: 1 | -1): string | null => {
+      for (let i = 1; i <= order.length; i++) {
+        const candidate = order[(idx + dir * i + order.length * i) % order.length];
+        if (!disabledSet.has(candidate)) return candidate;
+      }
+      return null;
+    };
+    // Find the first/last enabled tab for Home/End.
+    const edge = (from: "start" | "end"): string | null => {
+      const seq = from === "start" ? order : [...order].reverse();
+      for (const candidate of seq) {
+        if (!disabledSet.has(candidate)) return candidate;
+      }
+      return null;
+    };
+
+    let nextValue: string | null = null;
+    if (e.key === "ArrowRight") nextValue = step(1);
+    else if (e.key === "ArrowLeft") nextValue = step(-1);
+    else if (e.key === "Home") nextValue = edge("start");
+    else if (e.key === "End") nextValue = edge("end");
+    else return;
+
+    e.preventDefault();
+    if (nextValue !== null) {
       ctx.onChange(nextValue);
       ctx.focusTab(nextValue);
     }
   };
 
+  // Underline classes are byte-for-byte identical to the pre-segmented Tab so
+  // every existing call site renders unchanged.
+  const underlineClassName = `inline-flex items-center gap-2 px-1 py-3 text-sm border-b-2 transition-colors duration-150 motion-reduce:transition-none ${
+    disabled
+      ? "text-[var(--fg-muted)] border-transparent opacity-50 cursor-not-allowed"
+      : isActive
+        ? "text-[var(--fg-primary)] border-[var(--fg-primary)] font-semibold cursor-pointer"
+        : "text-[var(--fg-muted)] border-transparent hover:text-[var(--fg-primary)] cursor-pointer"
+  }`;
+
+  // Segmented: the active tab is a raised pill (elevated bg + small shadow),
+  // inactive tabs are flat within the sunken container.
+  const segmentedClassName = `inline-flex items-center justify-center gap-2 px-3 py-1.5 text-sm rounded transition-colors duration-150 motion-reduce:transition-none ${
+    disabled
+      ? "text-[var(--fg-muted)] opacity-50 cursor-not-allowed"
+      : isActive
+        ? "text-[var(--fg-primary)] bg-[var(--bg-elevated)] shadow-[var(--shadow-sm)] font-semibold cursor-pointer"
+        : "text-[var(--fg-muted)] hover:text-[var(--fg-primary)] cursor-pointer"
+  }`;
+
+  const tabClassName = `${
+    variant === "segmented" ? segmentedClassName : underlineClassName
+  } ${className}`;
+
+  // Shared ARIA + roving-tabindex contract for both element types. Disabled
+  // tabs stay out of the roving tab order entirely; the active (and only the
+  // active) enabled tab is the single Tab-key stop.
+  const sharedProps = {
+    role: "tab" as const,
+    id: tabId,
+    "aria-controls": panelId,
+    "aria-selected": isActive,
+    "aria-disabled": disabled || undefined,
+    tabIndex: disabled ? -1 : isActive ? 0 : -1,
+    onKeyDown: handleKeyDown,
+    className: tabClassName,
+  };
+
+  const label = (
+    <>
+      {children}
+      {hasCount && (
+        <Badge variant="count" compact>
+          {count}
+        </Badge>
+      )}
+    </>
+  );
+
+  if (isLink) {
+    return (
+      <Link
+        ref={handleRef as React.Ref<HTMLAnchorElement>}
+        href={href}
+        // Keep the controlled `value` in sync; the router handles navigation.
+        onClick={() => ctx.onChange(value)}
+        {...sharedProps}
+        {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
+      >
+        {label}
+      </Link>
+    );
+  }
+
   return (
     <button
-      ref={handleRef}
+      ref={handleRef as React.Ref<HTMLButtonElement>}
       type="button"
-      role="tab"
-      id={tabId}
-      aria-controls={panelId}
-      aria-selected={isActive}
-      tabIndex={isActive ? 0 : -1}
-      onClick={() => ctx.onChange(value)}
-      onKeyDown={handleKeyDown}
-      className={`px-1 py-3 text-sm cursor-pointer border-b-2 transition-colors duration-150 ${
-        isActive
-          ? "text-[var(--fg-primary)] border-[var(--fg-primary)] font-semibold"
-          : "text-[var(--fg-muted)] border-transparent hover:text-[var(--fg-primary)]"
-      } ${className}`}
+      onClick={() => {
+        if (disabled) return;
+        ctx.onChange(value);
+      }}
+      {...sharedProps}
       {...props}
     >
-      {children}
+      {label}
     </button>
   );
 }

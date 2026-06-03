@@ -36,35 +36,6 @@
   color: var(--fg-secondary);
 }
 
-.workspace__layouts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  border-bottom: 1px solid var(--border-subtle);
-  margin-bottom: 20px;
-}
-
-.workspace__layout-tab {
-  padding: 8px 12px;
-  background: none;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--fg-secondary);
-  cursor: pointer;
-  transition: color var(--transition-fast), border-color var(--transition-fast);
-}
-
-.workspace__layout-tab:hover {
-  color: var(--fg-primary);
-}
-
-.workspace__layout-tab--active {
-  color: var(--fg-primary);
-  border-bottom-color: var(--fg-primary);
-}
-
 .workspace__loading {
   display: flex;
   justify-content: center;
@@ -80,7 +51,7 @@
   padding: 20px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
-  background: var(--bg-primary, transparent);
+  background: var(--bg-elevated);
 }
 
 .wks-pane__head {
@@ -116,7 +87,7 @@
   flex-direction: column;
   padding: 10px 12px;
   border-radius: var(--radius);
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
 .wks-pane__grid-label {
@@ -177,14 +148,14 @@
   padding: 4px 10px;
   border: 1px solid var(--border-subtle);
   border-radius: 999px;
-  background: var(--bg-primary, transparent);
+  background: var(--bg-elevated);
   color: var(--fg-primary);
   font-size: inherit;
   cursor: pointer;
 }
 
 .wks-breadcrumb__crumb:hover {
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
 .wks-breadcrumb__menu {
@@ -193,11 +164,11 @@
   padding: 6px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
-  background: var(--bg-primary, var(--bg-subtle));
+  background: var(--bg-elevated);
   max-width: 360px;
   max-height: 320px;
   overflow-y: auto;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-md);
 }
 
 .wks-breadcrumb__menu-item {
@@ -216,7 +187,7 @@
 }
 
 .wks-breadcrumb__menu-item:hover {
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
 .wks-breadcrumb__main {
@@ -277,7 +248,7 @@
 }
 
 .wks-notion__node:hover {
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
 .wks-notion__node--active {
@@ -301,13 +272,13 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
   object-fit: cover;
   flex-shrink: 0;
 }
 
 .wks-notion__avatar--ph {
-  background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+  background: var(--bg-raised);
 }
 
 /* ============================================================ */
@@ -347,7 +318,7 @@
 }
 
 .wks-mail__network:hover {
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
 .wks-mail__network--active {
@@ -378,24 +349,24 @@
 }
 
 .wks-mail__account-head:hover {
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
 .wks-mail__account-head--active {
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
 .wks-mail__avatar {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
   object-fit: cover;
   flex-shrink: 0;
 }
 
 .wks-mail__avatar--ph {
-  background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+  background: var(--bg-raised);
 }
 
 .wks-mail__account-label {
@@ -428,7 +399,7 @@
 }
 
 .wks-mail__folder:hover {
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
   color: var(--fg-primary);
 }
 
@@ -468,7 +439,7 @@
   padding: 6px 12px;
   border: 1px solid var(--border-subtle);
   border-radius: 999px;
-  background: var(--bg-primary, transparent);
+  background: var(--bg-elevated);
   color: var(--fg-primary);
   font-size: 0.9rem;
   font-weight: 500;
@@ -476,19 +447,19 @@
 }
 
 .wks-blue__switcher:hover {
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
 .wks-blue__avatar {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
   object-fit: cover;
 }
 
 .wks-blue__avatar--ph {
-  background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+  background: var(--bg-raised);
 }
 
 .wks-blue__menu {
@@ -499,7 +470,7 @@
   list-style: none;
   margin: 0;
   padding: 6px;
-  background: var(--bg-primary, var(--bg-subtle));
+  background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
   min-width: 280px;
@@ -524,7 +495,7 @@
 }
 
 .wks-blue__menu-item:hover {
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
 .wks-blue__chips {
@@ -557,7 +528,7 @@
   height: 40px;
   border-radius: var(--radius);
   border: 0;
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
   color: var(--fg-primary);
   cursor: pointer;
   display: flex;
@@ -628,7 +599,7 @@
 }
 
 .wks-slack__lex:hover {
-  background: var(--bg-subtle);
+  background: var(--bg-sunken);
 }
 
 .wks-slack__lex--active {

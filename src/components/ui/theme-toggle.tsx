@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { Monitor, Moon, Sun } from "lucide-react";
+import { RadioGroup, Radio } from "@/components/ui/radio";
 
 type ThemeValue = "light" | "dark" | "system";
 
@@ -90,30 +91,47 @@ export default function ThemeToggle({
     );
   }
 
+  // Container mirrors the former `.theme-toggle` BEM rules: a sunken, bordered
+  // track that holds the three options. `compact` drops the max-width so it
+  // hugs its content (former `.theme-toggle--compact`).
+  const groupClassName = [
+    "inline-flex items-stretch gap-0.5 rounded border border-[var(--border-default)] bg-[var(--bg-sunken)] p-[3px]",
+    compact ? "w-auto" : "w-full max-w-[360px]",
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <div
-      className={`theme-toggle ${compact ? "theme-toggle--compact" : ""} ${className}`}
-      role="radiogroup"
+    <RadioGroup
+      value={current}
+      onValueChange={(v) => setTheme(v)}
       aria-label="Theme"
+      className={groupClassName}
     >
       {OPTIONS.map((opt) => {
         const selected = current === opt.value;
+        // Per-option styling replaces the former `.theme-toggle__option` /
+        // `--selected` rules. Radius is `rounded` (= var(--radius)); the old CSS
+        // used the off-spec calc(var(--radius) + 1px). The Radio base already
+        // supplies `rounded`, the focus-visible ring, and roving tabindex.
+        const optionClassName = [
+          "flex-1 justify-center font-medium text-[13px]",
+          compact ? "px-2.5 py-1.5" : "px-3 py-2",
+          selected
+            ? "bg-[var(--bg-elevated)] text-[var(--fg-primary)] shadow-[var(--shadow-sm)]"
+            : "text-[var(--fg-muted)] hover:text-[var(--fg-primary)]",
+        ].join(" ");
+
         return (
-          <button
-            key={opt.value}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            className={`theme-toggle__option ${selected ? "theme-toggle__option--selected" : ""}`}
-            onClick={() => setTheme(opt.value)}
-          >
-            <span className="theme-toggle__icon" aria-hidden="true">
+          <Radio key={opt.value} value={opt.value} className={optionClassName}>
+            <span className="inline-flex items-center" aria-hidden="true">
               {opt.icon}
             </span>
-            {!compact && <span className="theme-toggle__label">{opt.label}</span>}
-          </button>
+            {!compact && <span className="leading-none">{opt.label}</span>}
+          </Radio>
         );
       })}
-    </div>
+    </RadioGroup>
   );
 }

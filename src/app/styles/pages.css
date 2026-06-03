@@ -1,54 +1,41 @@
-/* ========== Handle Search (typeahead) ========== */
+/* ========== Handle Search (typeahead) ==========
+   The field is the shared <Input variant="underline"> primitive
+   (leading search icon + interactive trailing clear button). Only the
+   dropdown listbox + its rows remain bespoke here. */
 .handle-search {
   position: relative;
 }
 
-.handle-search__label {
-  display: block;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: var(--fg-muted);
-  margin-bottom: 6px;
-}
-
-.handle-search__input {
-  width: 100%;
-  height: 40px;
-  padding: 0 12px;
+/* Interactive clear button rendered in <Input>'s trailingButton slot. */
+.handle-search__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
   border: none;
-  border-bottom: 1px solid var(--border-medium);
-  border-radius: 0;
-  font-size: 0.875rem;
-  color: var(--fg-primary);
+  border-radius: var(--radius);
   background: transparent;
-  outline: none;
-  transition: border-color var(--transition-fast);
-}
-
-.handle-search__input:focus {
-  border-bottom-color: var(--fg-primary);
-}
-
-.handle-search__input::placeholder {
   color: var(--fg-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
 }
 
-.handle-search__input-wrap {
-  position: relative;
+.handle-search__clear:hover {
+  color: var(--fg-primary);
+  background: var(--overlay-weak);
 }
 
-.handle-search__spinner {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--border-medium);
-  border-top-color: var(--fg-primary);
-  border-radius: 50%;
-  animation: spin 600ms linear infinite;
+.handle-search__clear:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.handle-search__error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-error);
 }
 
 .handle-search__dropdown {
@@ -352,73 +339,6 @@
   margin-top: 2px;
 }
 
-.org-members__item-role-badge {
-  font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--fg-muted);
-  background: var(--bg-canvas);
-  padding: 4px 8px;
-  border-radius: var(--radius);
-  flex-shrink: 0;
-}
-
-.org-members__item-role-select {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.org-members__role-dropdown {
-  appearance: none;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--fg-primary);
-  background: var(--bg-canvas);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  padding: 6px 28px 6px 10px;
-  cursor: pointer;
-  transition: border-color var(--transition-fast);
-}
-
-.org-members__role-dropdown:hover {
-  border-color: var(--border-hover);
-}
-
-.org-members__role-dropdown:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-.org-members__role-icon {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-  color: var(--fg-muted);
-}
-
-.org-members__remove-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: none;
-  color: var(--fg-muted);
-  cursor: pointer;
-  border-radius: var(--radius);
-  transition: background var(--transition-fast), color var(--transition-fast);
-  flex-shrink: 0;
-}
-
-.org-members__remove-btn:hover {
-  background: rgba(186, 26, 26, 0.08);
-  color: var(--color-error);
-}
 
 /* Add member form */
 .org-members__add {
@@ -492,7 +412,7 @@
 
 .org-members__selected-remove:hover {
   color: var(--color-error);
-  background: rgba(186, 26, 26, 0.08);
+  background: var(--color-error-bg);
 }
 
 /* Audit log */
@@ -586,12 +506,12 @@
 
 .org-audit__result--permitted {
   color: var(--color-success-text);
-  background: rgba(46, 204, 113, 0.1);
+  background: var(--color-success-bg);
 }
 
 .org-audit__result--denied {
   color: var(--color-error);
-  background: rgba(186, 26, 26, 0.08);
+  background: var(--color-error-bg);
 }
 
 /* Account switcher in navbar */
@@ -758,7 +678,7 @@
 
 .account-switcher__signout:hover {
   color: var(--color-error);
-  background: rgba(186, 26, 26, 0.06);
+  background: var(--color-error-bg);
 }
 
 /* Bottom Sign-out row: full-width menu item that lives in its own
@@ -783,7 +703,7 @@
 
 .account-switcher__signout-row:hover {
   color: var(--color-error);
-  background: rgba(186, 26, 26, 0.06);
+  background: var(--color-error-bg);
 }
 
 .account-switcher__signout-row:focus-visible {
@@ -805,7 +725,7 @@
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.4);
+    background: var(--navy-overlay-30);
     z-index: 70;
     animation: bottomSheetFadeIn 0.2s ease-out;
   }
@@ -844,7 +764,7 @@
     width: 36px;
     height: 4px;
     background: var(--border-default);
-    border-radius: 2px;
+    border-radius: var(--radius);
   }
 
   .bottom-sheet__content {
@@ -887,11 +807,6 @@
     width: 100%;
   }
 
-  .org-members__remove-btn {
-    width: 44px;
-    height: 44px;
-  }
-
   /* Larger touch target for selected-tag remove buttons */
   .org-members__selected-remove {
     width: 28px;
@@ -904,14 +819,6 @@
   }
 
 }
-
-@media (max-width: 799px) {
-  .handle-search__input {
-    font-size: 16px;
-  }
-}
-
-
 
 /* ============================================================================
    /apps — App-store directory
@@ -1016,8 +923,7 @@
   justify-content: center;
   width: 64px;
   height: 64px;
-  /* iOS squircle ratio — ~22% of side length. */
-  border-radius: 22%;
+  border-radius: var(--radius);
   overflow: hidden;
   flex-shrink: 0;
   background: var(--bg-sunken);
@@ -1081,7 +987,7 @@
   }
 }
 
-@media (max-width: 599px) {
+@media (max-width: 799px) {
   .apps-store__tile {
     padding: 14px 14px 16px;
   }

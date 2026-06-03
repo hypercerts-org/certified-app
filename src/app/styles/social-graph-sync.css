@@ -20,7 +20,7 @@
   gap: 10px;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 799px) {
   .social-graph-sync__stats {
     /* Single column on narrow viewports so the labels don't get
        chopped on small phones. */
@@ -99,6 +99,13 @@
   gap: 12px;
 }
 
+/* Wraps the optional back button + the title text inside
+   AppDialogHeader's title slot so the glyph and text align. */
+.social-graph-sync__modal-title-row {
+  display: inline-flex;
+  align-items: center;
+}
+
 .social-graph-sync__modal-back {
   display: inline-flex;
   align-items: center;
@@ -141,7 +148,7 @@
   gap: 8px;
 }
 
-@media (min-width: 520px) {
+@media (min-width: 800px) {
   .social-graph-sync__modal-choices {
     grid-template-columns: 1fr 1fr;
   }
@@ -211,46 +218,9 @@
 }
 
 /* ---- Search + meta inside the select step ---- */
-
-.social-graph-sync__modal-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: var(--bg-canvas);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-}
-
-.social-graph-sync__modal-search:focus-within {
-  border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
-}
-
-.social-graph-sync__modal-search-icon {
-  color: var(--fg-muted);
-  flex: 0 0 auto;
-}
-
-.social-graph-sync__modal-search-input {
-  flex: 1;
-  min-width: 0;
-  background: transparent;
-  border: none;
-  outline: none;
-  font: inherit;
-  font-size: 0.9375rem;
-  color: var(--fg-primary);
-}
-
-.social-graph-sync__modal-search-input::placeholder {
-  color: var(--fg-muted);
-}
-
-.social-graph-sync__modal-search-input::-webkit-search-cancel-button {
-  -webkit-appearance: none;
-  appearance: none;
-}
+/* The select-step search field now uses the shared <Input leadingIcon>
+   primitive; the bespoke .social-graph-sync__modal-search* chrome was
+   removed in the component-library consolidation. */
 
 .social-graph-sync__modal-meta {
   display: flex;
@@ -307,13 +277,11 @@
   border-bottom: none;
 }
 
+/* The row hosts a <Checkbox> primitive whose internal label slot holds the
+   avatar + name block. We pad/hover the primitive's wrapper so the whole row
+   reads as one hit target, and let the inner label stretch full-width. */
 .social-graph-sync__modal-row-label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
   padding: 8px 12px;
-  cursor: pointer;
   transition: background var(--transition-fast);
 }
 
@@ -321,20 +289,16 @@
   background: var(--overlay-weak);
 }
 
-.social-graph-sync__modal-checkbox {
-  flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
-  accent-color: var(--fg-primary);
-  cursor: pointer;
+.social-graph-sync__modal-row-label label {
+  flex: 1;
+  min-width: 0;
 }
 
-.social-graph-sync__modal-avatar-skel {
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  background: var(--overlay-weak);
-  flex: 0 0 auto;
+.social-graph-sync__modal-row-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .social-graph-sync__modal-row-info {
@@ -377,28 +341,6 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-}
-
-.social-graph-sync__modal-page-btn {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  padding: 4px 10px;
-  font: inherit;
-  font-size: 0.8125rem;
-  color: var(--fg-primary);
-  cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-}
-
-.social-graph-sync__modal-page-btn:hover:not(:disabled) {
-  background: var(--overlay-weak);
-  border-color: var(--border-hover);
-}
-
-.social-graph-sync__modal-page-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .social-graph-sync__modal-page-status {

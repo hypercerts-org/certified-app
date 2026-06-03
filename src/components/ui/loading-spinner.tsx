@@ -20,6 +20,8 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   // Primary: pulsing brandmark (uses currentColor so it adapts to theme)
   return (
     <div
+      role="status"
+      aria-live="polite"
       className={`flex items-center justify-center ${className}`}
       style={{ color: "var(--fg-primary)" }}
     >

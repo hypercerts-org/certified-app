@@ -2,6 +2,7 @@
 
 import React from "react"
 import Link from "next/link"
+import Button from "@/components/ui/button"
 
 /**
  * Shared fallback used by Next.js segment `error.tsx` files. Renders a
@@ -39,24 +40,20 @@ export default function ErrorBoundaryFallback({
           <div className="dash-card">
             <p className="dash-card__desc">{message}</p>
             {error.digest ? (
-              <p
-                className="dash-card__desc"
-                style={{ fontSize: "0.85em", opacity: 0.7 }}
-              >
+              <p className="dash-card__desc text-xs text-[var(--fg-muted)]">
                 Reference: {error.digest}
               </p>
             ) : null}
-            <button
-              type="button"
-              onClick={onReset}
-              className="dashboard__back-btn"
-              style={{ marginBottom: "0.5rem" }}
-            >
-              Try again
-            </button>
-            <Link href="/" className="dashboard__back-btn">
-              Go home
-            </Link>
+            <div className="flex flex-wrap gap-3">
+              <Button variant="secondary" size="sm" onClick={onReset}>
+                Try again
+              </Button>
+              <Link href="/">
+                <Button variant="ghost" size="sm">
+                  Go home
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </div>

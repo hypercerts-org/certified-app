@@ -3,11 +3,14 @@ import { render, cleanup, fireEvent } from "@testing-library/react"
 
 import ProfileEditForm from "../profile-edit-form"
 
-// quality-056-profile-edit-3: the raw <input>/<textarea> fields surface
-// validation errors in a sibling <p class="pe__field-error">, but they
-// did not point screen readers at that text. Each field that can show an
-// error must set aria-describedby to the error <p>'s matching id when the
-// error is present, so assistive tech announces why the field is invalid.
+// quality-056-profile-edit-3: the validated text fields surface their error
+// to screen readers via aria-describedby pointing at the error text's id.
+// The display-name, pronouns, and website fields now render through the
+// <Input> primitive, which owns that wiring: when `error` is set it renders
+// a <p id="<input-id>-error" role="alert"> and points the input's
+// aria-describedby at it. The bio field is still a raw <textarea> that wires
+// aria-describedby by hand. Either way, each field that can show an error
+// must link to its error text so assistive tech announces why it's invalid.
 
 // next/navigation is required by the form (useRouter for Cancel/back nav).
 vi.mock("next/navigation", () => ({
@@ -38,17 +41,20 @@ describe("ProfileEditForm error aria-describedby", () => {
       <ProfileEditForm {...baseProps} isOrg={false} />,
     )
 
+    // First text input in the (non-org) form is the display name.
     const input = container.querySelector(
-      "input.pe__input",
+      'input[type="text"]',
     ) as HTMLInputElement
     expect(input).toBeTruthy()
 
     // Trigger the >64 char validation error.
     fireEvent.change(input, { target: { value: "a".repeat(65) } })
 
-    const error = container.querySelector(
-      ".pe__field-error",
-    ) as HTMLParagraphElement | null
+    // The <Input> primitive renders the error as <p role="alert"> and points
+    // the field's aria-describedby at its id.
+    const error = input
+      .closest(".pe__field")
+      ?.querySelector('p[role="alert"]') as HTMLParagraphElement | null
     expect(error).toBeTruthy()
     expect(error!.id).toBeTruthy()
 
@@ -62,18 +68,25 @@ describe("ProfileEditForm error aria-describedby", () => {
     )
 
     const textarea = container.querySelector(
-      "textarea.pe__textarea",
+      "textarea",
     ) as HTMLTextAreaElement
     expect(textarea).toBeTruthy()
 
     fireEvent.change(textarea, { target: { value: "x".repeat(257) } })
 
+    // The bio field now renders through the <Textarea> primitive, which owns
+    // the error wiring: it renders <p id="<id>-error" role="alert"> and points
+    // the textarea's aria-describedby at it. With showCount the field also has
+    // a counter node, so aria-describedby is space-joined ("<id>-error
+    // <id>-count") — assert the error id is among the described-by tokens.
     const error = textarea
       .closest(".pe__field")
-      ?.querySelector(".pe__field-error") as HTMLParagraphElement | null
+      ?.querySelector('p[role="alert"]') as HTMLParagraphElement | null
     expect(error).toBeTruthy()
     expect(error!.id).toBeTruthy()
-    expect(textarea.getAttribute("aria-describedby")).toBe(error!.id)
+    const describedBy = textarea.getAttribute("aria-describedby")
+    expect(describedBy).toBeTruthy()
+    expect(describedBy!.split(" ")).toContain(error!.id)
   })
 
   it("links the website input to its error text when invalid", () => {
@@ -88,9 +101,10 @@ describe("ProfileEditForm error aria-describedby", () => {
 
     fireEvent.change(website, { target: { value: "not a url" } })
 
+    // Website renders through <Input>; its error is a <p role="alert">.
     const field = website.closest(".pe__field")
     const error = field?.querySelector(
-      ".pe__field-error",
+      'p[role="alert"]',
     ) as HTMLParagraphElement | null
     expect(error).toBeTruthy()
     expect(error!.id).toBeTruthy()
@@ -102,11 +116,15 @@ describe("ProfileEditForm error aria-describedby", () => {
       <ProfileEditForm {...baseProps} isOrg={false} />,
     )
 
+    // The display name (first text input) has no error and no helper text,
+    // so a valid value must leave aria-describedby unset.
     const input = container.querySelector(
-      "input.pe__input",
+      'input[type="text"]',
     ) as HTMLInputElement
     // No error rendered for an empty/short display name.
-    expect(container.querySelector(".pe__field-error")).toBeNull()
+    expect(
+      input.closest(".pe__field")?.querySelector('p[role="alert"]'),
+    ).toBeFalsy()
     expect(input.getAttribute("aria-describedby")).toBeNull()
   })
 })

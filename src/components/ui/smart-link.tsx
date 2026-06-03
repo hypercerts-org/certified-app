@@ -38,6 +38,12 @@ const ICON_PROPS = {
   "aria-hidden": true as const,
 }
 
+// Focus ring that must apply even when a caller passes a custom className.
+// Appended (not substituted) so the keyboard-focus affordance can never be
+// dropped by an override that forgets it.
+const FOCUS_RING =
+  "rounded focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
+
 export default function SmartLink({ url, className }: SmartLinkProps) {
   const href = normaliseHref(url)
   if (!href) {
@@ -54,17 +60,24 @@ export default function SmartLink({ url, className }: SmartLinkProps) {
   const match = detectService(parsed)
   const { Icon, display } = match
 
+  const anchorClass = `${
+    className ?? "profile-sidebar__detail-link smart-link__anchor"
+  } ${FOCUS_RING}`
+
   return (
     <>
       <Icon {...ICON_PROPS} />
       <a
         href={href}
-        className={className ?? "profile-sidebar__detail-link smart-link__anchor"}
+        className={anchorClass}
         target="_blank"
         rel="noopener noreferrer"
         title={href}
       >
         {display}
+        {/* External links open a new tab; announce it for AT users. The
+            sighted cue is the new-tab behaviour itself + the title. */}
+        <span className="sr-only"> (opens in new tab)</span>
       </a>
     </>
   )

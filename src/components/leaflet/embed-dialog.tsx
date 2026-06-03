@@ -1,8 +1,7 @@
 "use client"
 
-import { useEffect, useRef, useState, useCallback } from "react"
-import Button from "@/components/ui/button"
-import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
+import { useRef, useState } from "react"
+import FormDialog from "@/components/ui/form-dialog"
 import { normaliseEmbedUrl } from "@/lib/leaflet/embed-url"
 
 export interface EmbedDialogResult {
@@ -20,6 +19,12 @@ export interface EmbedDialogProps {
  * Site-styled URL input for embedding a video (YouTube / Vimeo).
  * Validates the URL against `normaliseEmbedUrl` and only enables
  * the confirm button when the input matches a recognised provider.
+ *
+ * FormDialog owns the AppDialog chrome, header, body <form>, the
+ * submit preventDefault + stopPropagation guard (so the inner submit
+ * doesn't bubble through the React tree to the LeafletEditor's parent
+ * <form> on /create and /project/new and publish the cert/project),
+ * and the standardized Cancel/Submit footer.
  */
 export default function EmbedDialog({
   initialUrl = "",
@@ -32,68 +37,44 @@ export default function EmbedDialog({
   const normalised = normaliseEmbedUrl(url)
   const isValid = normalised !== null
 
-  useEffect(() => {
-    requestAnimationFrame(() => urlInputRef.current?.focus())
-  }, [])
-
-  const handleSubmit = useCallback(
-    (e: React.FormEvent<HTMLFormElement>) => {
-      e.preventDefault()
-      // The dialog is rendered inside a portal at document.body so
-      // the DOM doesn't nest forms, but React synthetic events
-      // bubble through the *React* tree — which still threads
-      // through the LeafletEditor's parent <form> on /create and
-      // /project/new. Without stopPropagation the inner submit
-      // bubbles up to the page form and publishes the cert /
-      // project the moment the user clicks "Embed".
-      e.stopPropagation()
-      if (!normalised) return
-      onConfirm({
-        url: normalised.embedUrl,
-        aspectRatio: normalised.aspectRatio,
-      })
-    },
-    [normalised, onConfirm],
-  )
-
   return (
-    <AppDialog ariaLabel="Embed video" maxWidth={440} onClose={onCancel}>
-      <AppDialogHeader title="Embed video" onClose={onCancel} />
-      <form className="signin-modal__body" onSubmit={handleSubmit}>
-        <label className="link-dialog__field">
-          <span className="link-dialog__label">YouTube or Vimeo URL</span>
-          <input
-            ref={urlInputRef}
-            type="url"
-            inputMode="url"
-            className="link-dialog__input"
-            value={url}
-            placeholder="https://www.youtube.com/watch?v=…"
-            onChange={(e) => setUrl(e.target.value)}
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-          />
-          <span className="link-dialog__hint">
-            {url.length === 0
-              ? "Paste a YouTube or Vimeo URL — we'll convert it to an embed."
-              : isValid
-                ? `Recognised as ${normalised.provider}.`
-                : "Doesn't look like a supported YouTube or Vimeo URL."}
-          </span>
-        </label>
-
-        <div className="link-dialog__actions">
-          <div className="link-dialog__actions-right">
-            <Button type="button" variant="ghost" onClick={onCancel}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary" disabled={!isValid}>
-              Embed
-            </Button>
-          </div>
-        </div>
-      </form>
-    </AppDialog>
+    <FormDialog
+      title="Embed video"
+      onClose={onCancel}
+      onSubmit={() => {
+        if (!normalised) return
+        onConfirm({
+          url: normalised.embedUrl,
+          aspectRatio: normalised.aspectRatio,
+        })
+      }}
+      canSubmit={isValid}
+      submitLabel="Embed"
+      autoFocusFirst
+      initialFocusRef={urlInputRef}
+    >
+      <label className="link-dialog__field">
+        <span className="link-dialog__label">YouTube or Vimeo URL</span>
+        <input
+          ref={urlInputRef}
+          type="url"
+          inputMode="url"
+          className="link-dialog__input"
+          value={url}
+          placeholder="https://www.youtube.com/watch?v=…"
+          onChange={(e) => setUrl(e.target.value)}
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+        />
+        <span className="link-dialog__hint">
+          {url.length === 0
+            ? "Paste a YouTube or Vimeo URL — we'll convert it to an embed."
+            : isValid
+              ? `Recognised as ${normalised.provider}.`
+              : "Doesn't look like a supported YouTube or Vimeo URL."}
+        </span>
+      </label>
+    </FormDialog>
   )
 }
