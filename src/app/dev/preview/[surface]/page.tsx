@@ -33,6 +33,19 @@
 
 import { Suspense, useMemo } from "react"
 import { notFound, useParams, useSearchParams } from "next/navigation"
+// Next resolves `useParams()` from this client context. The /dev/preview
+// route's own param is `{ surface }`, so inside the profile surface
+// `useParams().handle` is undefined — which makes `useUserProfile(null)`
+// short-circuit (no resolve-did call) and the page render "Profile not
+// found". We re-provide the param context with the fixture handle around
+// the profile surface ONLY, so the real page resolves the own-profile
+// identity through the unchanged mocked /api/resolve-did path. This is the
+// single handle/identity entry point — the surface internals stay
+// byte-identical to production.
+import {
+  PathParamsContext,
+  NavigationPromisesContext,
+} from "next/dist/shared/lib/hooks-client-context.shared-runtime"
 
 // Real providers — same imports app/layout.tsx uses.
 import { Providers } from "@/lib/providers"
@@ -48,6 +61,7 @@ import MockFetchProvider, {
   type MockScenario,
 } from "@/components/dev/mock-fetch-provider"
 import type { ProfileScenario } from "@/lib/dev/fixtures/profile"
+import { MOCK_HANDLE } from "@/lib/dev/fixtures/session"
 
 // Real composed surfaces.
 import UserProfilePage from "@/app/profile/[handle]/page"
@@ -73,12 +87,31 @@ function SurfaceBody({ surface }: { surface: Surface }) {
   switch (surface) {
     case "profile":
     case "profile-org":
-      // UserProfilePage reads the handle from useParams(); in this route
-      // the param is `surface`, but the page only uses it to seed the
-      // resolve-did call, which the mock ignores (it always returns the
-      // viewer's own profile). isOwnProfile resolves true because the
-      // resolved DID equals the fixture session DID.
-      return <UserProfilePage />
+      // UserProfilePage reads the viewed handle from `useParams().handle`.
+      // This route's real param is `{ surface }`, so without an override the
+      // handle is undefined → `useUserProfile(null)` short-circuits (no
+      // resolve-did fetch) → `!did` → "Profile not found". We re-provide the
+      // param context with the fixture handle so the page resolves the
+      // own-profile identity through the mocked /api/resolve-did. The mock
+      // resolves both profile + profile-org to the SESSION DID, so
+      // `isOwnProfile` (and `canEditInline`) hold and the owner-only
+      // affordances render; `profileScenario` controls the org marker.
+      // In dev, Next's `useParams`/`useSearchParams`/`usePathname` first
+      // read `NavigationPromisesContext`; when it's non-null they return
+      // ITS promise-backed values, ignoring the plain `PathParamsContext`.
+      // So we null that context out (the hooks then fall through to the
+      // plain contexts) AND supply `PathParamsContext` with the fixture
+      // handle. `useSearchParams`/`usePathname` fall back to the plain
+      // SearchParams/Pathname contexts the app-router still mounts above,
+      // so the real ?tab= + pathname keep working — only `handle` is
+      // synthesized.
+      return (
+        <NavigationPromisesContext.Provider value={null}>
+          <PathParamsContext.Provider value={{ handle: MOCK_HANDLE }}>
+            <UserProfilePage />
+          </PathParamsContext.Provider>
+        </NavigationPromisesContext.Provider>
+      )
     case "feed":
       return <Home />
     case "settings":

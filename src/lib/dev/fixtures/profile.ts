@@ -27,8 +27,12 @@ import {
   MOCK_HANDLE,
 } from "./session"
 
-/** Org identity variant — a second consistent identity used by the
- *  `profile-org` surface. Same `did:plc:` shape as MOCK_DID. */
+/** A second consistent org identity. Same `did:plc:` shape as MOCK_DID.
+ *  NOTE: the `profile-org` PREVIEW no longer resolves to this DID — it
+ *  renders the org as the viewer's OWN identity (MOCK_DID + an org marker)
+ *  so `isOwnProfile`/`canEditInline` hold. These constants remain for any
+ *  byline/contributor fixture that wants a distinct foreign org actor and
+ *  are re-exported by the mock-fetch provider. */
 export const MOCK_ORG_DID = "did:plc:previeworg0000000000000000000"
 export const MOCK_ORG_HANDLE = "earthfund.certified.app"
 
@@ -44,14 +48,24 @@ const ORG_DESCRIPTION =
 
 /** Resolved-profile payload for `/api/resolve-did` and the per-identity
  *  entries of `/api/resolve-dids`. `hasCertifiedProfile: true` so the
- *  own-profile view does NOT suppress the values as a bsky fallback. */
+ *  own-profile view does NOT suppress the values as a bsky fallback.
+ *
+ *  Both scenarios resolve to the SESSION identity ({@link MOCK_DID} /
+ *  {@link MOCK_HANDLE}) — only the display content (and, for `org`, the
+ *  org marker fetched separately) differs. Keying the org preview to the
+ *  viewer's own DID is what makes `isOwnProfile === true` (and therefore
+ *  `canEditInline === true`, so the owner-only inline-edit + response
+ *  affordances render). The dedicated MOCK_ORG_* identity is retained for
+ *  byline/contributor fixtures but is intentionally NOT the viewed DID:
+ *  a distinct org DID would make `isOwnProfile` false and, with no group
+ *  membership in the fixtures, leave the org preview read-only. */
 export function resolvedProfile(
   scenario: ProfileScenario = "individual",
 ): ResolvedProfilePayload {
   const isOrg = scenario === "org"
   return {
-    did: isOrg ? MOCK_ORG_DID : MOCK_DID,
-    handle: isOrg ? MOCK_ORG_HANDLE : MOCK_HANDLE,
+    did: MOCK_DID,
+    handle: MOCK_HANDLE,
     displayName: isOrg ? ORG_DISPLAY_NAME : INDIVIDUAL_DISPLAY_NAME,
     description: isOrg ? ORG_DESCRIPTION : INDIVIDUAL_DESCRIPTION,
     pronouns: isOrg ? undefined : "she/her",
@@ -75,7 +89,10 @@ export function certsProfileRecord(scenario: ProfileScenario = "individual"): {
   value: CertifiedProfile
 } {
   const isOrg = scenario === "org"
-  const did = isOrg ? MOCK_ORG_DID : MOCK_DID
+  // Keyed to the session DID for both scenarios — the inline-edit base
+  // (`getProfileWithCid`) fetches getRecord(repo=did) where `did` is the
+  // resolved (own) DID, which is now MOCK_DID in both cases.
+  const did = MOCK_DID
   const value: CertifiedProfile = {
     $type: "app.certified.actor.profile",
     displayName: isOrg ? ORG_DISPLAY_NAME : INDIVIDUAL_DISPLAY_NAME,
@@ -113,7 +130,9 @@ export function orgMarkerRecord(): {
     createdAt: "2022-03-01T00:00:00.000Z",
   }
   return {
-    uri: `at://${MOCK_ORG_DID}/app.certified.actor.organization/self`,
+    // Marker lives on the viewed (session) DID so `useOrgMarker(did)`
+    // resolves it for the own-profile org preview.
+    uri: `at://${MOCK_DID}/app.certified.actor.organization/self`,
     cid: "bafyreiorgmarker00000000000000000000000000000000000000000000",
     value,
   }

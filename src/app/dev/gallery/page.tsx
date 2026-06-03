@@ -1,8 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { notFound } from "next/navigation";
-import { Search, X, Inbox, Star } from "lucide-react";
+import {
+  Search,
+  X,
+  Inbox,
+  Star,
+  List,
+  LayoutGrid,
+  Check,
+} from "lucide-react";
 
 import Badge from "@/components/ui/badge";
 import Button from "@/components/ui/button";
@@ -20,6 +28,8 @@ import Skeleton from "@/components/ui/skeleton";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import ErrorMessage from "@/components/ui/error-message";
 import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs";
+import Combobox from "@/components/ui/combobox";
+import SegmentedControl, { ToggleGroup } from "@/components/ui/segmented-control";
 import {
   Popover,
   PopoverTrigger,
@@ -91,6 +101,13 @@ export default function GalleryPage() {
   const [comboValue, setComboValue] = useState("acme");
   const [trailingValue, setTrailingValue] = useState("clearable text");
 
+  // NEW primitives — local-only state for the live demos below.
+  const [typeahead, setTypeahead] = useState("a");
+  const [typeaheadOpen, setTypeaheadOpen] = useState(true);
+  const [iconView, setIconView] = useState("list");
+  const [pillView, setPillView] = useState("week");
+  const [responses, setResponses] = useState<string[]>(["accept"]);
+
   // Overlay open-flags.
   const [appDialogOpen, setAppDialogOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -100,6 +117,28 @@ export default function GalleryPage() {
   const [responsiveOpen, setResponsiveOpen] = useState(false);
 
   const { toast } = useToast();
+
+  // Static mock list for the working Combobox typeahead; filtered by the
+  // typed value (case-insensitive substring). Local-only — no fetch.
+  const TYPEAHEAD_ITEMS = useMemo(
+    () => [
+      { id: "ada", name: "Ada Lovelace", handle: "@ada" },
+      { id: "alan", name: "Alan Turing", handle: "@alan" },
+      { id: "grace", name: "Grace Hopper", handle: "@grace" },
+      { id: "katherine", name: "Katherine Johnson", handle: "@katherine" },
+      { id: "linus", name: "Linus Torvalds", handle: "@linus" },
+    ],
+    [],
+  );
+  const typeaheadResults = useMemo(() => {
+    const q = typeahead.trim().toLowerCase();
+    if (!q) return TYPEAHEAD_ITEMS;
+    return TYPEAHEAD_ITEMS.filter(
+      (it) =>
+        it.name.toLowerCase().includes(q) ||
+        it.handle.toLowerCase().includes(q),
+    );
+  }, [typeahead, TYPEAHEAD_ITEMS]);
 
   return (
     <div className="min-h-screen w-full bg-[var(--bg-canvas)] px-6 py-12">
@@ -564,6 +603,250 @@ export default function GalleryPage() {
                   </Tab>
                 </TabList>
               </Tabs>
+            </div>
+          </Row>
+        </Section>
+
+        {/* ================================================================ */}
+        {/* NEW PRIMITIVES                                                   */}
+        {/* ================================================================ */}
+        <Section title="New primitives">
+          {/* ----- Combobox: working typeahead -------------------------- */}
+          <Row label="Combobox — working typeahead (NEW: open with results)">
+            <div className="w-full max-w-[360px]" data-testid="combobox-demo">
+              <Combobox
+                value={typeahead}
+                onValueChange={(next) => {
+                  setTypeahead(next);
+                  setTypeaheadOpen(true);
+                }}
+                items={typeaheadResults}
+                getItemKey={(item) => item.id}
+                open={typeaheadOpen}
+                onOpenChange={setTypeaheadOpen}
+                onSelect={(item) => {
+                  setTypeahead(item.name);
+                  setTypeaheadOpen(false);
+                }}
+                role="search"
+                inputProps={{
+                  "aria-label": "Search people",
+                  placeholder: "Search people",
+                  leadingIcon: <Search className="h-4 w-4" />,
+                }}
+                trailingButton={
+                  typeahead ? (
+                    <button
+                      type="button"
+                      aria-label="Clear search"
+                      data-testid="combobox-clear"
+                      onClick={() => {
+                        setTypeahead("");
+                        setTypeaheadOpen(true);
+                      }}
+                      className="inline-flex h-6 w-6 items-center justify-center rounded text-[var(--fg-muted)] transition-colors duration-150 hover:bg-[var(--overlay-weak)] hover:text-[var(--fg-primary)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 motion-reduce:transition-none"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  ) : null
+                }
+                listboxClassName="mt-1 max-h-64 overflow-auto rounded border border-[var(--border-default)] bg-[var(--bg-elevated)] p-1 shadow-md"
+                renderEmpty={() => (
+                  <li
+                    role="presentation"
+                    className="px-3 py-2 text-body-sm text-[var(--fg-muted)]"
+                  >
+                    No matches.
+                  </li>
+                )}
+                renderOption={({
+                  item,
+                  highlighted,
+                  optionId,
+                  onHover,
+                  onSelect,
+                }) => (
+                  <li
+                    role="option"
+                    id={optionId}
+                    data-combobox-option
+                    aria-selected={highlighted}
+                    data-testid={`combobox-option-${item.id}`}
+                    onMouseEnter={onHover}
+                    onMouseDown={onSelect}
+                    className={`flex cursor-pointer items-center justify-between rounded px-3 py-2 text-body-sm ${
+                      highlighted
+                        ? "bg-[var(--overlay-weak)] text-[var(--fg-primary)]"
+                        : "text-[var(--fg-secondary)]"
+                    }`}
+                  >
+                    <span className="text-[var(--fg-primary)]">{item.name}</span>
+                    <span className="text-[var(--fg-muted)]">{item.handle}</span>
+                  </li>
+                )}
+              />
+            </div>
+          </Row>
+
+          {/* ----- SegmentedControl: single-select --------------------- */}
+          <Row label="SegmentedControl — icon-only joined square (md)">
+            <SegmentedControl
+              aria-label="View mode"
+              value={iconView}
+              onValueChange={setIconView}
+              size="md"
+              joined
+              shape="square"
+              iconOnly
+              options={[
+                {
+                  value: "list",
+                  icon: <List size={16} />,
+                  ariaLabel: "List view",
+                },
+                {
+                  value: "gallery",
+                  icon: <LayoutGrid size={16} />,
+                  ariaLabel: "Gallery view",
+                },
+              ]}
+            />
+            <span
+              className="text-body-sm text-[var(--fg-muted)]"
+              data-testid="segmented-icon-value"
+            >
+              {iconView}
+            </span>
+          </Row>
+
+          <Row label="SegmentedControl — text pills (joined=false, shape=pill)">
+            <SegmentedControl
+              aria-label="Date range"
+              value={pillView}
+              onValueChange={setPillView}
+              joined={false}
+              shape="pill"
+              options={[
+                { value: "day", label: "Day" },
+                { value: "week", label: "Week" },
+                { value: "month", label: "Month" },
+              ]}
+            />
+          </Row>
+
+          {/* ----- ToggleGroup: multi-select with tone variants -------- */}
+          <Row label="ToggleGroup — multi-select tones (neutral / success / warn)">
+            <div
+              className="flex flex-wrap items-center gap-4"
+              data-testid="toggle-group-demo"
+            >
+              {/* Color-coded accept (green) / reject (amber) pair — both
+                  togglable, multi-select (either, both, or neither). */}
+              <ToggleGroup
+                aria-label="Response"
+                value={responses}
+                onValueChange={setResponses}
+                shape="pill"
+                joined={false}
+                options={[
+                  {
+                    value: "accept",
+                    label: "Accept",
+                    tone: "success",
+                    icon: <Check size={14} />,
+                  },
+                  {
+                    value: "reject",
+                    label: "Reject",
+                    tone: "warn",
+                    icon: <X size={14} />,
+                  },
+                ]}
+              />
+              {/* A joined neutral-tone multi-select for contrast. */}
+              <ToggleGroup
+                aria-label="Text formatting"
+                value={responses.filter((v) => v === "bold" || v === "italic")}
+                onValueChange={(next) =>
+                  setResponses((prev) => [
+                    ...prev.filter((v) => v !== "bold" && v !== "italic"),
+                    ...next,
+                  ])
+                }
+                tone="neutral"
+                joined
+                shape="square"
+                options={[
+                  { value: "bold", label: "Bold" },
+                  { value: "italic", label: "Italic" },
+                ]}
+              />
+            </div>
+          </Row>
+
+          {/* ----- Popover portal -------------------------------------- */}
+          <Row label="Popover — portal + side/align (NEW)">
+            <Popover>
+              <PopoverTrigger>
+                <Button
+                  variant="secondary"
+                  data-testid="open-popover-portal"
+                >
+                  Open portal menu
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent portal side="bottom" align="start" minWidth={220}>
+                <PopoverItem data-testid="popover-portal-item-rename">
+                  Rename
+                </PopoverItem>
+                <PopoverItem>Move to…</PopoverItem>
+                <PopoverItem>Export</PopoverItem>
+                <PopoverItem disabled>Delete (disabled)</PopoverItem>
+              </PopoverContent>
+            </Popover>
+          </Row>
+
+          {/* ----- Input variants -------------------------------------- */}
+          <Row label="Input — bare (inherits heading font)">
+            <div className="w-full font-headline text-h2 text-[var(--fg-primary)]">
+              <Input
+                size="bare"
+                aria-label="Bare heading input"
+                data-testid="input-bare"
+                defaultValue="Untitled certificate"
+              />
+            </div>
+          </Row>
+
+          <Row label="Input — density=compact">
+            <div className="w-full max-w-[280px]">
+              <Input
+                density="compact"
+                aria-label="Compact meta input"
+                data-testid="input-compact"
+                placeholder="Compact meta field"
+              />
+            </div>
+          </Row>
+
+          <Row label="Input — flush (in a flex row)">
+            <div className="flex w-full max-w-[360px] items-center gap-2 rounded border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2">
+              <Search className="h-4 w-4 shrink-0 text-[var(--fg-muted)]" />
+              <Input
+                flush
+                aria-label="Flush row input"
+                data-testid="input-flush"
+                placeholder="Flush field — no wrapper"
+                className="bg-transparent"
+              />
+              <button
+                type="button"
+                aria-label="Clear flush field"
+                data-testid="input-flush-clear"
+                className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-[var(--fg-muted)] hover:bg-[var(--overlay-weak)] hover:text-[var(--fg-primary)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           </Row>
         </Section>
