@@ -192,44 +192,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.pe__input {
-  width: 100%;
-  /* Belt-and-braces against any inherited box-sizing surprises — without
-     this, an extra-wide URL placeholder can push the row sideways and
-     cause horizontal scroll inside the 600px column. */
-  box-sizing: border-box;
-  min-width: 0;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  padding: 8px 12px;
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.875rem;
-  font-weight: 450;
-  color: var(--fg-primary);
-  transition:
-    border-color var(--transition-fast),
-    background var(--transition-fast);
-}
-
-.pe__input::placeholder {
-  color: var(--fg-muted);
-  font-weight: 400;
-}
-
-.pe__input:hover {
-  border-color: var(--border-hover, var(--fg-muted));
-}
-
-.pe__input:focus {
-  outline: none;
-  border-color: var(--fg-primary);
-}
-
-.pe__input--invalid {
-  border-color: var(--color-error);
-}
-
 .pe__field-error {
   font-size: 0.75rem;
   color: var(--color-error);

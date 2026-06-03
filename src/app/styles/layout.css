@@ -1250,17 +1250,6 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   .left-rail__switcher svg { display: block; }
 }
 
-/* Portaled to <body>; positioned via inline style (fixed + computed
-   bottom/left). This rule only carries appearance, not layout. */
-.account-switcher__menu--rail {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-  padding: 8px;
-  z-index: var(--z-popover);
-}
-
 /* Primary "New activity" button. Full-width pill at >=1300; 44px
    square at 800-1299. NEVER a circular FAB (2px radius matches
    the rest of the brand's primary buttons per DESIGN.md). */
@@ -1645,45 +1634,6 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   width: 100%;
 }
 
-.people-search__field {
-  position: relative;
-  display: flex;
-  align-items: center;
-  height: 44px;
-  padding: 0 12px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  transition: border-color var(--transition-fast);
-}
-
-.people-search__field:focus-within {
-  border-color: var(--border-hover);
-}
-
-.people-search__icon {
-  flex: 0 0 auto;
-  color: var(--fg-muted);
-  margin-right: 8px;
-}
-
-.people-search__input {
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 100%;
-  border: none;
-  background: transparent;
-  outline: none;
-  font: inherit;
-  font-size: 0.875rem;
-  color: var(--fg-primary);
-  padding: 0;
-}
-
-.people-search__input::placeholder {
-  color: var(--fg-muted);
-}
-
 .people-search__clear {
   flex: 0 0 auto;
   display: inline-flex;
@@ -1996,32 +1946,6 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   border-bottom: 1px solid var(--border-medium);
 }
 
-/* Align the first tab's TEXT with the hamburger icon above (not
-   just the button left-edges). The hamburger button sits at the
-   row's 12px padding-left and is 36px wide with an 18px icon
-   centered inside, so the icon's left edge lands at x=21 (= 12 +
-   9). With a 12px padding-left the tab text starts at x=24 — a
-   touch right of the icon's left edge, which reads cleaner than
-   pixel-matching the icon. Skipped when the row carries a back
-   button (cert / project detail pages) — the back button already
-   owns the left gutter there. */
-.desktop-top-bar__row--tabs:not(:has(.desktop-top-bar__back))
-  .desktop-top-bar__tab:first-of-type {
-  padding-left: 12px;
-}
-
-/* The active-tab underline reserves 18px of gutter at each end of
-   the button via `left: 18px; right: 18px` (see the .--active::after
-   rule below). When we shrink the first tab's left padding to 12px
-   the default 18px underline-left leaves the underline 6px short on
-   the left — so it doesn't extend under the start of "Certs".
-   Match the underline-left to the new padding so the bar tracks the
-   text width. */
-.desktop-top-bar__row--tabs:not(:has(.desktop-top-bar__back))
-  .desktop-top-bar__tab:first-of-type.desktop-top-bar__tab--active::after {
-  left: 12px;
-}
-
 .desktop-top-bar__left {
   display: flex;
   align-items: center;
@@ -2119,21 +2043,6 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   .desktop-top-bar__search {
     width: 300px;
   }
-}
-
-/* Shrink the PeopleSearch field when it lives in the top bar — the
-   44px default is too tall for a navbar control and made row 1
-   feel cramped. Drop to 32px (still keyboard-accessible, matches
-   the chrome buttons on /explore). Focus border matches the
-   explore-page search input (--fg-primary) so the affordance reads
-   the same across the two search surfaces. */
-.desktop-top-bar__search .people-search__field {
-  height: 32px;
-  border-radius: var(--radius);
-}
-
-.desktop-top-bar__search .people-search__field:focus-within {
-  border-color: var(--fg-primary);
 }
 
 .desktop-top-bar__icon-btn {
@@ -2260,16 +2169,6 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   display: block;
 }
 
-/* Profile tabs strip (row 2). Underline-active style mirrors the
-   in-page tabs used on mobile (.profile-tabs__tab) — keep them visually
-   identical so switching between viewports doesn't surprise users. */
-.desktop-top-bar__tabs {
-  display: flex;
-  align-items: stretch;
-  gap: 0;
-  height: 100%;
-}
-
 /* Back affordance rendered in the row-2 slot on cert / project detail
    pages. Left-aligned, sits at the same height as the tab strip. */
 .desktop-top-bar__back {
@@ -2297,57 +2196,6 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   outline-offset: 2px;
 }
 
-.desktop-top-bar__tab {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  padding: 0 18px;
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--fg-muted);
-  text-decoration: none;
-  white-space: nowrap;
-  transition: color var(--transition-fast);
-}
-
-.desktop-top-bar__tab:hover {
-  color: var(--fg-primary);
-}
-
-.desktop-top-bar__tab--active {
-  color: var(--fg-primary);
-  font-weight: 600;
-}
-
-.desktop-top-bar__tab--active::after {
-  content: "";
-  position: absolute;
-  left: 18px;
-  right: 18px;
-  bottom: 0;
-  height: 2px;
-  background: var(--fg-primary);
-  border-radius: var(--radius);
-}
-
-.desktop-top-bar__tab:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: -2px;
-  border-radius: 2px;
-}
-
-/* Top-bar variant of the account switcher menu — sits below the trigger
-   instead of above it. Position is supplied inline. */
-.account-switcher__menu--top-bar {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-  padding: 8px;
-  z-index: var(--z-popover);
-}
-
 /* "+" create-menu trigger wrapper — kept as a wrapper so the
    open/close effects can anchor against a stable DOM node even
    when the button itself re-renders. */
@@ -2355,9 +2203,9 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   display: inline-flex;
 }
 
-/* Dropdown panel rendered via createPortal — same surface
-   treatment as `.account-switcher__menu--top-bar` so the three
-   shortcuts visually read as the same "menu" family. */
+/* Dropdown panel rendered via createPortal — elevated surface
+   treatment (border + --shadow-md) so the three shortcuts visually
+   read as the same "menu" family as the other portaled menus. */
 .desktop-top-bar__create-menu {
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);

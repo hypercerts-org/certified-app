@@ -538,30 +538,6 @@
   background: var(--bg-canvas);
 }
 
-.account-switcher__menu {
-  display: none;
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  min-width: 260px;
-  max-height: 70vh;
-  overflow-y: auto;
-  /* Reserve scrollbar space so a long org list doesn't crowd item
-     content into the avatar when the scrollbar appears. */
-  scrollbar-gutter: stable;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-  z-index: 60;
-}
-
-@media (min-width: 800px) {
-  .account-switcher__menu {
-    display: block;
-  }
-}
-
 .account-switcher__section-label {
   font-size: 0.6875rem;
   font-weight: 600;

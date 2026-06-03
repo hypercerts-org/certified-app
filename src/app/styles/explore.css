@@ -394,49 +394,6 @@
   color: var(--fg-primary);
 }
 
-/* ---------- View toggle (certs + projects) ---------- */
-
-.explore__view-toggle {
-  display: inline-flex;
-  align-items: stretch;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
-  overflow: hidden;
-  background: var(--bg-elevated);
-}
-
-.explore__view-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 0;
-  background: transparent;
-  color: var(--fg-secondary);
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.explore__view-btn:hover {
-  background: var(--bg-sunken);
-  color: var(--fg-primary);
-}
-
-.explore__view-btn--active {
-  background: var(--fg-primary);
-  color: var(--bg-canvas);
-}
-
-.explore__view-btn--active:hover {
-  background: var(--fg-primary);
-  color: var(--bg-canvas);
-}
-
-.explore__view-btn + .explore__view-btn {
-  border-left: 1px solid var(--border-subtle);
-}
-
 /* ---------- List view (certs + projects) ---------- */
 
 .explore__list {
@@ -897,29 +854,6 @@
 .explore__degree-pills {
   display: inline-flex;
   gap: 4px;
-}
-
-.explore__degree-pill {
-  border: 1px solid var(--border-default);
-  background: var(--bg-sunken);
-  color: var(--fg-secondary);
-  padding: 4px 12px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
-}
-
-.explore__degree-pill:hover {
-  background: var(--bg-raised);
-  color: var(--fg-primary);
-}
-
-.explore__degree-pill--active {
-  background: var(--fg-primary);
-  color: var(--bg-canvas);
-  border-color: var(--fg-primary);
 }
 
 .explore__degree-truncated {

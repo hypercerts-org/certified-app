@@ -1859,7 +1859,6 @@
    and in the right rail; ensure that and the create-form inputs hit
    the threshold. */
 @media (max-width: 799px) {
-  .people-search__input,
   .create-form__input,
   .create-form__textarea {
     font-size: 16px;
