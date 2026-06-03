@@ -43,6 +43,18 @@ import FormDialog from "@/components/ui/form-dialog";
 import BottomSheet from "@/components/ui/bottom-sheet";
 import Drawer from "@/components/ui/drawer";
 import ResponsiveDialog from "@/components/ui/responsive-dialog";
+import Brandmark from "@/components/ui/brandmark";
+import ThemeToggle from "@/components/ui/theme-toggle";
+import CertIcon from "@/components/ui/cert-icon";
+import IdentityRow from "@/components/ui/identity-row";
+import SmartLink from "@/components/ui/smart-link";
+import FeedLabelPill from "@/components/ui/feed-label-pill";
+import Pagination from "@/components/ui/pagination";
+import LoadMoreSentinel from "@/components/ui/load-more-sentinel";
+import EditBanner from "@/components/ui/edit-banner";
+import DeleteRecordDialog from "@/components/ui/delete-record-dialog";
+import SignInModal from "@/components/ui/sign-in-modal";
+import { useFeedback } from "@/lib/feedback-context";
 
 /* -------------------------------------------------------------------------- *
  * Layout helpers (gallery-local; not part of the design system).             *
@@ -115,8 +127,17 @@ export default function GalleryPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [responsiveOpen, setResponsiveOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
+
+  // Pagination — interactive 1-based page within a 5-page range.
+  const [pageNum, setPageNum] = useState(2);
+  // LoadMoreSentinel — flips to a loading state on click (reset shortly after,
+  // so the demo doesn't get stuck spinning).
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const { toast } = useToast();
+  const { openFeedback } = useFeedback();
 
   // Static mock list for the working Combobox typeahead; filtered by the
   // typed value (case-insensitive substring). Local-only — no fetch.
@@ -852,6 +873,174 @@ export default function GalleryPage() {
         </Section>
 
         {/* ================================================================ */}
+        {/* BRAND, THEME & APP CHROME                                        */}
+        {/* ================================================================ */}
+        <Section title="Brand, theme & app chrome">
+          <Row label="Brandmark — sizes (inherits color from --fg-primary)">
+            <div className="flex items-center gap-4 text-[var(--fg-primary)]">
+              <Brandmark size={24} />
+              <Brandmark size={40} />
+              <Brandmark size={56} />
+              {/* decorative: hidden from a11y tree, no role/title. */}
+              <Brandmark size={40} decorative />
+            </div>
+          </Row>
+
+          <Row label="CertIcon — sizes + labelled">
+            <div className="flex items-center gap-4 text-[var(--fg-primary)]">
+              <CertIcon size={16} />
+              <CertIcon size={24} />
+              <CertIcon size={32} />
+              <span className="inline-flex items-center gap-1.5 text-body-sm text-[var(--fg-secondary)]">
+                <CertIcon size={18} />
+                Certificate
+              </span>
+              {/* Standalone, labelled (role=img, exposed to AT). */}
+              <CertIcon size={24} aria-label="Certified" />
+            </div>
+          </Row>
+
+          <Row label="ThemeToggle — segmented (full)">
+            <div className="w-full max-w-[360px]" data-testid="theme-toggle-segmented">
+              <ThemeToggle variant="segmented" />
+            </div>
+          </Row>
+
+          <Row label="ThemeToggle — segmented compact + cycle">
+            <ThemeToggle variant="segmented" compact />
+            <ThemeToggle variant="cycle" />
+          </Row>
+
+          <Row label="EditBanner — idle / saving / error">
+            <div className="-mx-6 flex w-[calc(100%+3rem)] flex-col gap-3">
+              <EditBanner
+                label="Editing profile"
+                onCancel={() => {}}
+                onSave={() => {}}
+              />
+              <EditBanner
+                label="Editing cert"
+                isSaving
+                onCancel={() => {}}
+                onSave={() => {}}
+              />
+              <EditBanner
+                label="Editing cert"
+                canSave={false}
+                error="Duplicate contributor"
+                onCancel={() => {}}
+                onSave={() => {}}
+              />
+            </div>
+          </Row>
+        </Section>
+
+        {/* ================================================================ */}
+        {/* IDENTITY & LINKS                                                 */}
+        {/* ================================================================ */}
+        <Section title="Identity & links">
+          <Row label="IdentityRow — sizes + states">
+            <div className="flex w-full max-w-[420px] flex-col gap-3">
+              {/* md, full identity (display name + @handle). */}
+              <IdentityRow
+                did="did:plc:abcdef1234567890"
+                handle="ada.bsky.social"
+                displayName="Ada Lovelace"
+              />
+              {/* sm size variant. */}
+              <IdentityRow
+                size="sm"
+                did="did:plc:zyxwvu0987654321"
+                handle="grace.bsky.social"
+                displayName="Grace Hopper"
+              />
+              {/* handle only — no display name, byline shows @handle. */}
+              <IdentityRow
+                did="did:plc:handleonly00000000"
+                handle="alan.bsky.social"
+              />
+              {/* DID only — primary line falls back to a truncated DID. */}
+              <IdentityRow did="did:plc:didonly1234567890abcdef" />
+              {/* As a link (whole row navigates). */}
+              <IdentityRow
+                href="/dev/gallery"
+                did="did:plc:linkrow00000000000"
+                handle="linus.bsky.social"
+                displayName="Linus Torvalds"
+              />
+              {/* Loading skeleton placeholder. */}
+              <IdentityRow loading did="did:plc:loading000000000000" />
+            </div>
+          </Row>
+
+          <Row label="SmartLink — brand detection + fallback (rendered as list)">
+            {/* SmartLink emits an icon as a sibling of the <a>; the sidebar
+                rules key on `li > svg`, so mirror that wrapper here. */}
+            <ul className="flex w-full max-w-[420px] flex-col gap-2 [&_li]:flex [&_li]:items-center [&_li]:gap-2 [&_li>svg]:shrink-0 [&_li>svg]:text-[var(--fg-muted)]">
+              <li>
+                <SmartLink url="https://github.com/hypercerts-org/certified-app" />
+              </li>
+              <li>
+                <SmartLink url="https://x.com/certified" />
+              </li>
+              <li>
+                <SmartLink url="https://bsky.app/profile/ada.bsky.social" />
+              </li>
+              <li>
+                <SmartLink url="https://linkedin.com/in/ada-lovelace" />
+              </li>
+              {/* Unrecognised host → generic link icon + bare hostname. */}
+              <li>
+                <SmartLink url="https://example.org/some/path" />
+              </li>
+            </ul>
+          </Row>
+
+          <Row label="FeedLabelPill — all quality labels">
+            <FeedLabelPill label="high-quality" />
+            <FeedLabelPill label="standard" />
+            <FeedLabelPill label="draft" />
+            <FeedLabelPill label="likely-test" />
+          </Row>
+        </Section>
+
+        {/* ================================================================ */}
+        {/* PAGINATION & INFINITE SCROLL                                     */}
+        {/* ================================================================ */}
+        <Section title="Pagination & infinite scroll">
+          <Row label="Pagination — interactive (1-based, 5 pages)">
+            <div className="w-full" data-testid="pagination-demo">
+              <Pagination
+                page={pageNum}
+                pageCount={5}
+                onChange={setPageNum}
+                label="Gallery pagination demo"
+              />
+            </div>
+          </Row>
+
+          <Row label="LoadMoreSentinel — idle / loading">
+            <div className="flex w-full flex-col gap-4">
+              {/* Idle: clicking flips to the loading affordance briefly. */}
+              <LoadMoreSentinel
+                isLoading={loadingMore}
+                onLoadMore={() => {
+                  setLoadingMore(true);
+                  setTimeout(() => setLoadingMore(false), 1200);
+                }}
+                className="flex justify-center"
+              />
+              {/* Pinned loading state so the spinner label is always snapshot. */}
+              <LoadMoreSentinel
+                isLoading
+                onLoadMore={() => {}}
+                className="flex justify-center"
+              />
+            </div>
+          </Row>
+        </Section>
+
+        {/* ================================================================ */}
         {/* OVERLAYS — interactive triggers                                  */}
         {/* ================================================================ */}
         <Section title="Overlays (interactive triggers)">
@@ -935,6 +1124,26 @@ export default function GalleryPage() {
               onClick={() => setResponsiveOpen(true)}
             >
               Open ResponsiveDialog
+            </Button>
+            <Button
+              variant="destructive"
+              data-testid="open-deletedialog"
+              onClick={() => setDeleteOpen(true)}
+            >
+              Open DeleteRecordDialog
+            </Button>
+            <Button
+              data-testid="open-signinmodal"
+              onClick={() => setSignInOpen(true)}
+            >
+              Open SignInModal
+            </Button>
+            <Button
+              variant="secondary"
+              data-testid="open-feedbackmodal"
+              onClick={() => openFeedback()}
+            >
+              Open FeedbackModal
             </Button>
           </Row>
         </Section>
@@ -1044,6 +1253,29 @@ export default function GalleryPage() {
           </p>
         </AppDialogBody>
       </ResponsiveDialog>
+
+      {deleteOpen && (
+        <DeleteRecordDialog
+          title="Delete this cert"
+          recordName="Climate Action 2026"
+          recordTypeLabel="cert"
+          onCancel={() => setDeleteOpen(false)}
+          onConfirm={() => setDeleteOpen(false)}
+        />
+      )}
+
+      {/* SignInModal owns its own mount gate via isOpen; render unconditionally
+          and drive it with the open flag. onSubmit handlers just close it. */}
+      <SignInModal
+        isOpen={signInOpen}
+        error={null}
+        onClose={() => setSignInOpen(false)}
+        onSubmitEmail={async () => setSignInOpen(false)}
+        onSubmitHandle={async () => setSignInOpen(false)}
+      />
+
+      {/* FeedbackModal is mounted globally by the root layout and driven by
+          the feedback context; the trigger above calls openFeedback(). */}
     </div>
   );
 }
