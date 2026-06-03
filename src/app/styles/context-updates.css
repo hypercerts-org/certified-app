@@ -334,7 +334,7 @@
   white-space: nowrap;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 799px) {
   .context-updates__item {
     padding: 12px;
   }

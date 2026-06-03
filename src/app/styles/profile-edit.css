@@ -157,7 +157,7 @@
   gap: 16px;
 }
 
-@media (min-width: 600px) {
+@media (min-width: 800px) {
   .pe__row--split {
     display: grid;
     grid-template-columns: 1fr 160px;
@@ -239,12 +239,6 @@
 .pe__input--invalid,
 .pe__textarea--invalid {
   border-color: var(--color-error);
-}
-
-.pe__field-help {
-  font-size: 0.75rem;
-  color: var(--fg-muted);
-  margin: 0;
 }
 
 .pe__field-error {
@@ -416,10 +410,10 @@
 
 /* ------------------------------------------------------------------------
    Mobile tweaks.
-   The 600px breakpoint matches the desktop column threshold, so we
+   The 800px breakpoint matches the desktop column threshold, so we
    collapse the split row and URL grid below it.
    ------------------------------------------------------------------------ */
-@media (max-width: 600px) {
+@media (max-width: 799px) {
   .pe {
     padding: 0 0 96px;
   }

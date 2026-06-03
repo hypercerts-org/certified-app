@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Pencil } from "lucide-react";
+import Banner from "@/components/ui/banner";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import { authFetch } from "@/lib/auth/fetch";
@@ -171,7 +172,9 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
             />
           </div>
           {formError && (
-            <p className="password-section__error" role="alert">{formError}</p>
+            <Banner variant="error" className="mt-2">
+              {formError}
+            </Banner>
           )}
           <div className="password-section__actions">
             <Button size="sm" onClick={handleSubmit} disabled={saving}>
@@ -217,7 +220,9 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
         </p>
       )}
       {idleError && (
-        <p className="password-section__error" role="alert">{idleError}</p>
+        <Banner variant="error" className="mt-3">
+          {idleError}
+        </Banner>
       )}
     </div>
   );

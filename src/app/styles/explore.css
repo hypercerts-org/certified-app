@@ -199,30 +199,13 @@
   flex-wrap: wrap;
 }
 
-.explore__search {
+/* Search field grows to fill the chrome row. The field chrome (border,
+   fill, focus ring, leading search glyph) now comes from the canonical
+   <Input leadingIcon> primitive; this wrapper only carries the flex
+   sizing the bespoke <label> used to own. */
+.explore__search-field {
   flex: 1;
   min-width: 200px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
-  background: var(--bg-elevated);
-  color: var(--fg-secondary);
-}
-
-.explore__search:focus-within {
-  border-color: var(--fg-primary);
-}
-
-.explore__search-input {
-  flex: 1;
-  border: 0;
-  background: transparent;
-  outline: none;
-  font-size: 0.875rem;
-  color: var(--fg-primary);
 }
 
 .explore__chrome-actions {
@@ -328,12 +311,11 @@
   background: var(--bg-sunken);
 }
 
+/* Row wrapper for a quality-filter <Checkbox>. The box + label chrome
+   come from the canonical <Checkbox> primitive; this only supplies the
+   menu-row padding (inherited from .popover__item) and full-row hover. */
 .popover__item--check {
   cursor: pointer;
-}
-
-.popover__item--check input {
-  margin: 0;
 }
 
 /* Sub-section heading inside a popover — used by the certs-tab
@@ -793,7 +775,7 @@
   flex-shrink: 0;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 799px) {
   .account-list-row {
     grid-template-columns: minmax(0, 1fr);
     gap: 6px;

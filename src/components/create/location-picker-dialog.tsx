@@ -5,6 +5,7 @@ import { Search } from "lucide-react"
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
 import Map from "@/components/map/map-dynamic"
 import { authFetch } from "@/lib/auth/fetch"
 import {
@@ -333,49 +334,29 @@ export default function LocationPickerDialog({
       onClose={onClose}
     >
       <AppDialogHeader title="Add location" onClose={onClose} />
-      <div className="create-cert__loc-dialog-body">
+      <Tabs
+        value={mode}
+        onChange={(next) => setMode(next as "new" | "existing")}
+        variant="segmented"
+        className="create-cert__loc-dialog-body"
+      >
         {/* The tab strip is only useful when there's more than one
             option to choose between. Hide it entirely when the
             user has no published locations — the dialog body
             then renders the New flow directly without a single-
             tab strip on top of it. */}
         {showExistingTab ? (
-          <div
-            role="tablist"
-            aria-label="Location source"
-            className="create-cert__loc-tabs"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "existing"}
-              className={
-                mode === "existing"
-                  ? "create-cert__loc-tab create-cert__loc-tab--active"
-                  : "create-cert__loc-tab"
-              }
-              onClick={() => setMode("existing")}
-            >
-              My locations
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "new"}
-              className={
-                mode === "new"
-                  ? "create-cert__loc-tab create-cert__loc-tab--active"
-                  : "create-cert__loc-tab"
-              }
-              onClick={() => setMode("new")}
-            >
-              New
-            </button>
-          </div>
+          <TabList aria-label="Location source" className="self-start">
+            <Tab value="existing">My locations</Tab>
+            <Tab value="new">New</Tab>
+          </TabList>
         ) : null}
 
-        {mode === "new" ? (
-          <>
+        {/* `display: contents` (the `contents` class) lets each panel's
+            children participate directly in the dialog-body flex column so
+            the inter-element gap is unchanged; only the active panel mounts
+            (default unmount) so we never run two Leaflet maps at once. */}
+        <TabPanel value="new" className="contents">
             <p className="create-cert__loc-hint">
               Type a place to search, or click anywhere on the map to
               drop a pin. After picking, you can rename the field to
@@ -513,9 +494,9 @@ export default function LocationPickerDialog({
                     ? `Pinned at ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`
                     : "Search above or click the map to drop a pin"}
             </p>
-          </>
-        ) : (
-          <>
+        </TabPanel>
+
+        <TabPanel value="existing" className="contents">
             <label
               htmlFor="create-cert-loc-existing"
               className="create-cert__loc-uri-label"
@@ -566,8 +547,7 @@ export default function LocationPickerDialog({
                 </p>
               </>
             )}
-          </>
-        )}
+        </TabPanel>
 
         {reusedExistingName ? (
           <p className="create-cert__loc-reused" role="status">
@@ -613,7 +593,7 @@ export default function LocationPickerDialog({
           )}
         </div>
         {isSaving ? <LoadingSpinner size="sm" /> : null}
-      </div>
+      </Tabs>
     </AppDialog>
   )
 }

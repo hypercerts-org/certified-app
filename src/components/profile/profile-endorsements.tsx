@@ -35,6 +35,8 @@ import PersonCard from "@/components/profile/person-card"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import Badge from "@/components/ui/badge"
+import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
 
 interface ProfileEndorsementsProps {
   /** DID of the profile being viewed. */
@@ -206,7 +208,11 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
   const sortOptions = tab === "received" ? RECEIVED_SORT_OPTIONS : GIVEN_SORT_OPTIONS
 
   return (
-    <div className="profile-endorsements-v2">
+    <Tabs
+      value={tab}
+      onChange={(v) => setTab(v as SubTab)}
+      className="profile-endorsements-v2"
+    >
       {/* Lists section is owner-only — per issue #72, foreign
           viewers don't see the list curation UI. Hides the
           create / rename / member-add affordances + the list
@@ -216,44 +222,31 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
       ) : null}
 
       <div className="profile-endorsements-v2__toolbar">
-        <nav
-          className="profile-endorsements-v2__subtabs"
-          role="tablist"
+        {/* The .profile-endorsements-v2__toolbar already draws the strip's
+            shared bottom border, so drop TabList's own and pin it to the
+            toolbar's bottom edge. Count chips use the neutral Badge (muted
+            grey) to match the pre-migration pill. */}
+        <TabList
           aria-label="Endorsements sections"
+          className="border-0 self-end"
         >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "received"}
-            className={`profile-endorsements-v2__subtab ${
-              tab === "received" ? "profile-endorsements-v2__subtab--active" : ""
-            }`}
-            onClick={() => setTab("received")}
-          >
+          <Tab value="received">
             Received
             {receivedCountLabel ? (
-              <span className="profile-endorsements-v2__subtab-count">
+              <Badge variant="count" tone="neutral" compact>
                 {receivedCountLabel}
-              </span>
+              </Badge>
             ) : null}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "given"}
-            className={`profile-endorsements-v2__subtab ${
-              tab === "given" ? "profile-endorsements-v2__subtab--active" : ""
-            }`}
-            onClick={() => setTab("given")}
-          >
+          </Tab>
+          <Tab value="given">
             Given
             {givenCountLabel ? (
-              <span className="profile-endorsements-v2__subtab-count">
+              <Badge variant="count" tone="neutral" compact>
                 {givenCountLabel}
-              </span>
+              </Badge>
             ) : null}
-          </button>
-        </nav>
+          </Tab>
+        </TabList>
 
         <div className="profile-endorsements-v2__controls">
           {canManage ? (
@@ -384,34 +377,33 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
         </div>
       </div>
 
-      {tab === "received" ? (
-        <>
-          {canManage ? (
-            <p className="profile-endorsements-v2__response-note">
-              Endorsements with no response are shown on your profile by
-              default. Rejected endorsements are hidden from your profile.
-            </p>
-          ) : null}
-          <ReceivedGrid
-            endorsements={filteredReceived}
-            isLoading={received.isLoading}
-            error={received.error}
-            query={query}
-            sort={sort}
-            names={names}
-            viewerIsOwner={canManage}
-            viewerDid={viewerDid}
-            targetDid={manageTargetDid}
-            responseFilter={responseFilter}
-            resolve={ownStates.resolve}
-            allResponses={ownStates.responses}
-            onAfterWrite={async () => {
-              ownStates.invalidate()
-              await ownStates.refetch()
-            }}
-          />
-        </>
-      ) : (
+      <TabPanel value="received">
+        {canManage ? (
+          <p className="profile-endorsements-v2__response-note">
+            Endorsements with no response are shown on your profile by
+            default. Rejected endorsements are hidden from your profile.
+          </p>
+        ) : null}
+        <ReceivedGrid
+          endorsements={filteredReceived}
+          isLoading={received.isLoading}
+          error={received.error}
+          query={query}
+          sort={sort}
+          names={names}
+          viewerIsOwner={canManage}
+          viewerDid={viewerDid}
+          targetDid={manageTargetDid}
+          responseFilter={responseFilter}
+          resolve={ownStates.resolve}
+          allResponses={ownStates.responses}
+          onAfterWrite={async () => {
+            ownStates.invalidate()
+            await ownStates.refetch()
+          }}
+        />
+      </TabPanel>
+      <TabPanel value="given">
         <GivenGrid
           endorsements={given.endorsements}
           isLoading={given.isLoading}
@@ -424,7 +416,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
           targetDid={manageTargetDid}
           onAfterRevoke={() => given.refetch()}
         />
-      )}
+      </TabPanel>
 
       {isEndorseModalOpen && canManage && viewerDid ? (
         <EndorsePeopleModal
@@ -449,7 +441,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
           }}
         />
       ) : null}
-    </div>
+    </Tabs>
   )
 }
 

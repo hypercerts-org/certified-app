@@ -122,11 +122,10 @@
   transition: color var(--transition-fast);
 }
 
+/* Positioning only — colour / weight / tabular-nums come from the
+   <Badge variant="count-bare"> primitive this class is applied to. */
 .home-section__count {
   margin-left: auto;
-  font-size: 0.7rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--fg-muted);
 }
 
 .home-section__list {
@@ -188,11 +187,11 @@
   min-width: 0;
 }
 
+/* Padding/alignment only — text colour and size come from the
+   <EmptyState variant="inline"> primitive this class is applied to,
+   so the empty hint lines up with the 8px-inset list rows above it. */
 .home-section__empty {
-  margin: 0;
   padding: 2px 8px;
-  font-size: 0.8rem;
-  color: var(--fg-muted);
 }
 
 .home-section__loading {
@@ -394,6 +393,13 @@
   color: var(--fg-secondary);
   white-space: nowrap;
   padding-top: 2px;
+}
+
+/* The "Show all / Show fewer" toggle is a <Button variant="ghost"
+   size="sm">; keep it sized to its label inside the flex-column row
+   content (the primitive is inline-flex and would otherwise stretch). */
+.home-feed__group-toggle {
+  align-self: flex-start;
 }
 
 .home-feed__loading {

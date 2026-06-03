@@ -16,9 +16,11 @@ import ResponseButtons from "@/components/badges/response-buttons"
 import EndorsementRow from "@/components/endorsements/endorsement-row"
 import NewEndorsementPanel from "@/components/endorsements/new-endorsement-panel"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
+import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import ErrorMessage from "@/components/ui/error-message"
+import Skeleton from "@/components/ui/skeleton"
 import { formatShortDate } from "@/lib/utils/format-date"
 import { getInitials } from "@/lib/utils/initials"
 
@@ -113,7 +115,7 @@ function ReceivedRow({
     <li className="endorsement-row">
       <Link href={href} className="endorsement-row__main">
         {isLoading && !info ? (
-          <div className="endorsement-row__avatar-skel" aria-hidden="true" />
+          <Skeleton circle animate={false} width={48} height={48} />
         ) : (
           <Avatar size="md" src={info?.avatarUrl || undefined} alt="" fallbackInitials={initials} />
         )}
@@ -308,50 +310,40 @@ export default function EndorsementsPage() {
     <div className="dashboard">
       <div className="dashboard__body dashboard__body--single">
         <div className="dashboard__main">
-          <div className="endorsements-tabs-bar">
-            <div
-              className="endorsements-tabs"
-              role="tablist"
-              aria-label="Endorsements"
-            >
-              {TABS.map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  role="tab"
-                  id={`tab-${tab.key}`}
-                  aria-selected={activeTab === tab.key}
-                  aria-controls={`tabpanel-${tab.key}`}
-                  className={`endorsements-tabs__tab ${
-                    activeTab === tab.key ? "endorsements-tabs__tab--active" : ""
-                  }`}
-                  onClick={() => changeTab(tab.key)}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {activeTab === "given" && !isPanelOpen ? (
-              <button
-                type="button"
-                className="endorsements-new-btn"
-                onClick={() => setIsPanelOpen(true)}
-                disabled={!did}
-                aria-label="New endorsement"
+          <Tabs value={activeTab} onChange={(v) => changeTab(v as TabKey)}>
+            <div className="endorsements-tabs-bar">
+              {/* The surrounding .endorsements-tabs-bar (feed.css, cross-track)
+                  already draws the strip's bottom border, so drop TabList's
+                  own and pin it to the bar's bottom edge. */}
+              <TabList
+                aria-label="Endorsements"
+                className="border-0 self-end"
               >
-                <Plus size={16} />
-                <span>New</span>
-              </button>
-            ) : null}
-          </div>
+                {TABS.map((tab) => (
+                  <Tab key={tab.key} value={tab.key}>
+                    {tab.label}
+                  </Tab>
+                ))}
+              </TabList>
 
-          {activeTab === "received" ? (
-            <div role="tabpanel" id="tabpanel-received" aria-labelledby="tab-received">
-              <ReceivedEndorsementsList />
+              {activeTab === "given" && !isPanelOpen ? (
+                <button
+                  type="button"
+                  className="endorsements-new-btn"
+                  onClick={() => setIsPanelOpen(true)}
+                  disabled={!did}
+                  aria-label="New endorsement"
+                >
+                  <Plus size={16} />
+                  <span>New</span>
+                </button>
+              ) : null}
             </div>
-          ) : (
-            <div role="tabpanel" id="tabpanel-given" aria-labelledby="tab-given">
+
+            <TabPanel value="received">
+              <ReceivedEndorsementsList />
+            </TabPanel>
+            <TabPanel value="given">
               {did && isPanelOpen ? (
                 <NewEndorsementPanel
                   ownDid={did}
@@ -372,8 +364,8 @@ export default function EndorsementsPage() {
                 revokingRkey={revokingRkey}
                 onRevoke={setConfirmRkey}
               />
-            </div>
-          )}
+            </TabPanel>
+          </Tabs>
         </div>
       </div>
 

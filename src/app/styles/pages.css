@@ -1,54 +1,41 @@
-/* ========== Handle Search (typeahead) ========== */
+/* ========== Handle Search (typeahead) ==========
+   The field is the shared <Input variant="underline"> primitive
+   (leading search icon + interactive trailing clear button). Only the
+   dropdown listbox + its rows remain bespoke here. */
 .handle-search {
   position: relative;
 }
 
-.handle-search__label {
-  display: block;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: var(--fg-muted);
-  margin-bottom: 6px;
-}
-
-.handle-search__input {
-  width: 100%;
-  height: 40px;
-  padding: 0 12px;
+/* Interactive clear button rendered in <Input>'s trailingButton slot. */
+.handle-search__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
   border: none;
-  border-bottom: 1px solid var(--border-medium);
-  border-radius: 0;
-  font-size: 0.875rem;
-  color: var(--fg-primary);
+  border-radius: var(--radius);
   background: transparent;
-  outline: none;
-  transition: border-color var(--transition-fast);
-}
-
-.handle-search__input:focus {
-  border-bottom-color: var(--fg-primary);
-}
-
-.handle-search__input::placeholder {
   color: var(--fg-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
 }
 
-.handle-search__input-wrap {
-  position: relative;
+.handle-search__clear:hover {
+  color: var(--fg-primary);
+  background: var(--overlay-weak);
 }
 
-.handle-search__spinner {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--border-medium);
-  border-top-color: var(--fg-primary);
-  border-radius: 50%;
-  animation: spin 600ms linear infinite;
+.handle-search__clear:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.handle-search__error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-error);
 }
 
 .handle-search__dropdown {
@@ -833,14 +820,6 @@
 
 }
 
-@media (max-width: 799px) {
-  .handle-search__input {
-    font-size: 16px;
-  }
-}
-
-
-
 /* ============================================================================
    /apps — App-store directory
    Editorial-card layout inspired by Apple's App Store. The entire tile is
@@ -1008,7 +987,7 @@
   }
 }
 
-@media (max-width: 599px) {
+@media (max-width: 799px) {
   .apps-store__tile {
     padding: 14px 14px 16px;
   }

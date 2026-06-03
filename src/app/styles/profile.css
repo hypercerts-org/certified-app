@@ -147,24 +147,13 @@
   word-break: break-word;
 }
 
-@media (min-width: 640px) {
-  .profile-hero__banner {
-    height: 220px;
-  }
-
-  .profile-hero__banner--empty {
-    height: 110px;
-  }
-
-  .profile-hero__body {
-    padding: 0 24px 24px;
-  }
-}
-
 /* Desktop: banner is center-column-bleed (not viewport-bleed) and the
    column is 600px wide. Keep close to 3:1 aspect so the banner still
    reads as a panoramic header rather than a letterbox card. 200px on
-   600px column = 3:1, matching bsky. */
+   600px column = 3:1, matching bsky. The wider body padding, lifted
+   avatar overlap, and larger name (previously gated at the off-spec
+   640px tablet breakpoint) fold into this canonical 800px desktop
+   step. */
 @media (min-width: 800px) {
   .profile-hero__banner {
     height: 200px;
@@ -173,9 +162,11 @@
   .profile-hero__banner--empty {
     height: 100px;
   }
-}
 
-@media (min-width: 640px) {
+  .profile-hero__body {
+    padding: 0 24px 24px;
+  }
+
   .profile-hero__row {
     margin-top: -56px;
   }

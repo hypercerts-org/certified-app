@@ -1783,52 +1783,14 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   white-space: nowrap;
 }
 
-/* Cert search typeahead. Mirrors the people-search combobox shape
-   so the two read as the same control family — used by the project
-   edit page's add-cert flow and by the top-bar global search. */
+/* Cert search typeahead. Used by the project edit page's add-cert
+   flow. The field chrome (box, border, leading icon) is now the
+   <Input> primitive; only the wrapper + dropdown/result rows + the
+   interactive clear button remain bespoke here. */
 
 .cert-search {
   position: relative;
   width: 100%;
-}
-
-.cert-search__field {
-  position: relative;
-  display: flex;
-  align-items: center;
-  height: 40px;
-  padding: 0 12px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  transition: border-color var(--transition-fast);
-}
-
-.cert-search__field:focus-within {
-  border-color: var(--border-hover);
-}
-
-.cert-search__icon {
-  flex: 0 0 auto;
-  color: var(--fg-muted);
-  margin-right: 8px;
-}
-
-.cert-search__input {
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 100%;
-  border: none;
-  background: transparent;
-  outline: none;
-  font: inherit;
-  font-size: 0.875rem;
-  color: var(--fg-primary);
-  padding: 0;
-}
-
-.cert-search__input::placeholder {
-  color: var(--fg-muted);
 }
 
 .cert-search__clear {
@@ -3018,7 +2980,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   gap: 12px;
 }
 
-@media (min-width: 900px) {
+@media (min-width: 1100px) {
   .profile-overview__about-block--with-map {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 280px;

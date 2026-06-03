@@ -1014,12 +1014,6 @@ dialog.signin-modal.app-modal .signin-modal__body {
   margin-top: 12px;
 }
 
-.password-section__error {
-  font-size: 0.8125rem;
-  color: var(--color-error);
-  margin-top: 8px;
-}
-
 /* ========== Email Section ========== */
 .email-section__header {
   display: flex;
@@ -2314,7 +2308,7 @@ dialog.signin-modal.app-modal .signin-modal__body {
   gap: 12px;
 }
 
-@media (max-width: 599px) {
+@media (max-width: 799px) {
   .onboarding-step__row--split {
     grid-template-columns: 1fr;
   }

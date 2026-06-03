@@ -10,8 +10,10 @@ import {
 import { ArrowLeft, RefreshCw, Search, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
+import Checkbox from "@/components/ui/checkbox"
 import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import Skeleton from "@/components/ui/skeleton"
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import {
@@ -492,25 +494,25 @@ function SelectStep({
 
       {totalPages > 1 ? (
         <div className="social-graph-sync__modal-pagination">
-          <button
-            type="button"
-            className="social-graph-sync__modal-page-btn"
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => setPage((p) => Math.max(0, p - 1))}
             disabled={safePage === 0 || isImporting}
           >
             Previous
-          </button>
+          </Button>
           <span className="social-graph-sync__modal-page-status">
             Page {safePage + 1} of {totalPages}
           </span>
-          <button
-            type="button"
-            className="social-graph-sync__modal-page-btn"
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
             disabled={safePage >= totalPages - 1 || isImporting}
           >
             Next
-          </button>
+          </Button>
         </div>
       ) : null}
 
@@ -553,33 +555,33 @@ function CandidateRow({ did, checked, onToggle, disabled }: CandidateRowProps) {
 
   return (
     <li className="social-graph-sync__modal-row">
-      <label className="social-graph-sync__modal-row-label">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={onToggle}
-          disabled={disabled}
-          className="social-graph-sync__modal-checkbox"
-        />
-        {isLoading && !info ? (
-          <div
-            className="social-graph-sync__modal-avatar-skel"
-            aria-hidden="true"
-          />
-        ) : (
-          <Avatar
-            size="sm"
-            src={info?.avatarUrl || undefined}
-            fallbackInitials={getInitials(info?.displayName, did)}
-          />
-        )}
-        <div className="social-graph-sync__modal-row-info">
-          <span className="social-graph-sync__modal-row-name">{name}</span>
-          {handle ? (
-            <span className="social-graph-sync__modal-row-handle">@{handle}</span>
-          ) : null}
-        </div>
-      </label>
+      <Checkbox
+        checked={checked}
+        onChange={onToggle}
+        disabled={disabled}
+        className="social-graph-sync__modal-row-label"
+        label={
+          <span className="social-graph-sync__modal-row-content">
+            {isLoading && !info ? (
+              <Skeleton circle width={32} height={32} animate={false} />
+            ) : (
+              <Avatar
+                size="sm"
+                src={info?.avatarUrl || undefined}
+                fallbackInitials={getInitials(info?.displayName, did)}
+              />
+            )}
+            <span className="social-graph-sync__modal-row-info">
+              <span className="social-graph-sync__modal-row-name">{name}</span>
+              {handle ? (
+                <span className="social-graph-sync__modal-row-handle">
+                  @{handle}
+                </span>
+              ) : null}
+            </span>
+          </span>
+        }
+      />
     </li>
   )
 }

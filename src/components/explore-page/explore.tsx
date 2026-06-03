@@ -23,6 +23,8 @@ import {
   type OrglabelTier,
 } from "@/lib/atproto/labels"
 import CertIcon from "@/components/ui/cert-icon"
+import Input from "@/components/ui/input"
+import Checkbox from "@/components/ui/checkbox"
 import {
   Popover as UiPopover,
   PopoverContent,
@@ -630,17 +632,19 @@ export default function Explore() {
               />
             ) : null}
 
-            <label className="explore__search">
-              <Search size={14} strokeWidth={1.75} aria-hidden />
-              <input
+            <div className="explore__search-field">
+              <Input
                 type="search"
+                size="sm"
+                leadingIcon={
+                  <Search size={14} strokeWidth={1.75} aria-hidden />
+                }
                 placeholder={searchPlaceholder(kind)}
                 value={localQuery}
                 onChange={(e) => setLocalQuery(e.target.value)}
-                className="explore__search-input"
                 aria-label={searchPlaceholder(kind)}
               />
-            </label>
+            </div>
 
             <div className="explore__chrome-actions">
               <div
@@ -736,26 +740,24 @@ export default function Explore() {
                     <>
                       <p className="popover__section-heading">Activity quality</p>
                       {HYPERLABEL_DISPLAY_ORDER.map((tier) => (
-                        <label
+                        <div
                           key={tier}
                           className="popover__item popover__item--check"
                         >
-                          <input
-                            type="checkbox"
+                          <Checkbox
+                            label={HYPERLABEL_DISPLAY_LABELS[tier]}
                             checked={qualityIncluded.has(tier)}
                             onChange={() => onQualityToggle(tier)}
                           />
-                          {HYPERLABEL_DISPLAY_LABELS[tier]}
-                        </label>
+                        </div>
                       ))}
-                      <label className="popover__item popover__item--check">
-                        <input
-                          type="checkbox"
+                      <div className="popover__item popover__item--check">
+                        <Checkbox
+                          label={UNLABELED_LABEL}
                           checked={qualityIncluded.has(UNLABELED_SLUG)}
                           onChange={() => onQualityToggle(UNLABELED_SLUG)}
                         />
-                        {UNLABELED_LABEL}
-                      </label>
+                      </div>
                       <hr className="popover__divider" aria-hidden="true" />
                     </>
                   ) : null}
@@ -765,26 +767,24 @@ export default function Explore() {
                       the top of the popover. */}
                   <p className="popover__section-heading">Account quality</p>
                   {ORG_TIER_SLUGS.map((slug) => (
-                    <label
+                    <div
                       key={slug}
                       className="popover__item popover__item--check"
                     >
-                      <input
-                        type="checkbox"
+                      <Checkbox
+                        label={ORG_TIER_DISPLAY_LABEL[slug]}
                         checked={orgQualityIncluded.has(slug)}
                         onChange={() => onOrgQualityToggle(slug)}
                       />
-                      {ORG_TIER_DISPLAY_LABEL[slug]}
-                    </label>
+                    </div>
                   ))}
-                  <label className="popover__item popover__item--check">
-                    <input
-                      type="checkbox"
+                  <div className="popover__item popover__item--check">
+                    <Checkbox
+                      label={UNLABELED_LABEL}
                       checked={orgQualityIncluded.has(UNLABELED_SLUG)}
                       onChange={() => onOrgQualityToggle(UNLABELED_SLUG)}
                     />
-                    {UNLABELED_LABEL}
-                  </label>
+                  </div>
                   {/* Reset returns every section in this popover to
                       its default selection by clearing the URL params
                       it owns. Disabled when nothing has been customised

@@ -12,6 +12,8 @@ import { useUserActivities } from "@/hooks/use-user-activities"
 import { usePageTitle } from "@/lib/navbar-context"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Avatar from "@/components/ui/avatar"
+import Badge from "@/components/ui/badge"
+import EmptyState from "@/components/ui/empty-state"
 import HomeFeed from "@/components/home/home-feed"
 import NewsSection from "@/components/right-rail/news-section"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
@@ -197,7 +199,9 @@ function SidebarSection<T>({
           <h2 className="home-section__title">{title}</h2>
         </Link>
         {total > 0 ? (
-          <span className="home-section__count">{total}</span>
+          <Badge variant="count-bare" className="home-section__count">
+            {total}
+          </Badge>
         ) : null}
       </header>
       {isLoading ? (
@@ -205,7 +209,7 @@ function SidebarSection<T>({
           <LoadingSpinner size="sm" />
         </div>
       ) : items.length === 0 ? (
-        <p className="home-section__empty">{emptyLabel}</p>
+        <EmptyState variant="inline" title={emptyLabel} className="home-section__empty" />
       ) : (
         <ul className="home-section__list">{items.map(renderItem)}</ul>
       )}

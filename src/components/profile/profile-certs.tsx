@@ -7,6 +7,8 @@ import { useUserIndexerActivities } from "@/hooks/use-user-indexer-activities"
 import FeedLayout from "@/components/feed/feed-layout"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
+import Badge from "@/components/ui/badge"
+import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 
 interface ProfileCertsProps {
@@ -111,47 +113,51 @@ export default function ProfileCerts({ did, viewerIsOwner }: ProfileCertsProps) 
       />
     ) : undefined
 
+  const feed = (
+    <FeedLayout
+      activities={visible}
+      getDid={(uri) => dids.get(uri) ?? did ?? ""}
+      isLoading={isLoading}
+      isLoadingMore={isLoadingMore}
+      error={error}
+      hasMore={hasMore}
+      loadMore={loadMore}
+      emptyState={emptyState}
+    />
+  )
+
   return (
-    <div className="profile-certs">
+    <Tabs
+      value={tab}
+      onChange={(v) => setTab(v as SubTab)}
+      className="profile-certs"
+    >
       <div className="profile-certs__toolbar">
-        <nav
-          className="profile-certs__subtabs"
-          role="tablist"
+        {/* The .profile-certs__toolbar (layout.css, cross-track) already
+            draws the strip's shared bottom border, so drop TabList's own
+            and pin it to the toolbar's bottom edge. Count chips render via
+            the neutral Badge (muted grey, not the attention red). */}
+        <TabList
           aria-label="Activities sections"
+          className="border-0 self-end"
         >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "created"}
-            className={`profile-certs__subtab ${
-              tab === "created" ? "profile-certs__subtab--active" : ""
-            }`}
-            onClick={() => setTab("created")}
-          >
+          <Tab value="created">
             Created
             {createdCountLabel ? (
-              <span className="profile-certs__subtab-count">
+              <Badge variant="count" tone="neutral" compact>
                 {createdCountLabel}
-              </span>
+              </Badge>
             ) : null}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "contributed"}
-            className={`profile-certs__subtab ${
-              tab === "contributed" ? "profile-certs__subtab--active" : ""
-            }`}
-            onClick={() => setTab("contributed")}
-          >
+          </Tab>
+          <Tab value="contributed">
             Contributed to
             {contributedCountLabel ? (
-              <span className="profile-certs__subtab-count">
+              <Badge variant="count" tone="neutral" compact>
                 {contributedCountLabel}
-              </span>
+              </Badge>
             ) : null}
-          </button>
-        </nav>
+          </Tab>
+        </TabList>
 
         <div className="profile-certs__controls">
           {viewerIsOwner ? (
@@ -225,17 +231,12 @@ export default function ProfileCerts({ did, viewerIsOwner }: ProfileCertsProps) 
         </div>
       </div>
 
-      <FeedLayout
-        activities={visible}
-        getDid={(uri) => dids.get(uri) ?? did ?? ""}
-        isLoading={isLoading}
-        isLoadingMore={isLoadingMore}
-        error={error}
-        hasMore={hasMore}
-        loadMore={loadMore}
-        emptyState={emptyState}
-      />
-    </div>
+      {/* `visible` + `emptyState` are already keyed off the active sub-tab,
+          so the feed body is identical in either panel; only the active
+          one mounts. Two panels keep both tabs' aria-controls resolvable. */}
+      <TabPanel value="created">{feed}</TabPanel>
+      <TabPanel value="contributed">{feed}</TabPanel>
+    </Tabs>
   )
 }
 

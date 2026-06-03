@@ -833,25 +833,6 @@
   max-height: 50vh;
 }
 
-@media (max-width: 520px) {
-  .activity-detail {
-    padding: 0 16px;
-  }
-
-  .activity-detail__title {
-    font-size: 1.375rem;
-  }
-
-  .activity-detail__meta-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-
-  .activity-detail__meta-row dt {
-    padding-top: 0;
-  }
-}
-
 /* ========== Location cards (activity detail) ========== */
 
 .location-list {

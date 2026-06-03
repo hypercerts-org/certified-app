@@ -4,6 +4,7 @@ import Link from "next/link"
 import { X } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import Skeleton from "@/components/ui/skeleton"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { getInitials } from "@/lib/utils/initials"
 import { formatShortDate } from "@/lib/utils/format-date"
@@ -48,7 +49,7 @@ export default function EndorsementRow({
     <li className="endorsement-row">
       <Link href={href} className="endorsement-row__main">
         {isLoading && !info ? (
-          <div className="endorsement-row__avatar-skel" aria-hidden="true" />
+          <Skeleton circle animate={false} width={48} height={48} />
         ) : (
           <Avatar
             size="md"

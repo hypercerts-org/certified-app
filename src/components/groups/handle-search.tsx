@@ -1,8 +1,10 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
+import { Loader2, Search, X } from "lucide-react"
 import { authFetch } from "@/lib/auth/fetch"
 import Avatar from "@/components/ui/avatar"
+import Input from "@/components/ui/input"
 
 interface Actor {
   did: string
@@ -37,6 +39,7 @@ export default function HandleSearch({
   const [focusedIndex, setFocusedIndex] = useState(-1)
   const [searchError, setSearchError] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null)
 
   // Reset focused index when results change
@@ -191,28 +194,56 @@ export default function HandleSearch({
 
   return (
     <div className="handle-search" ref={containerRef}>
-      {label && (
-        <label className="handle-search__label">{label}</label>
-      )}
-      <div className="handle-search__input-wrap">
-        <input
-          type="text"
-          className="handle-search__input"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          aria-label={label || "Search for user"}
-          role="combobox"
-          aria-expanded={isOpen}
-          aria-controls="handle-search-listbox"
-          aria-autocomplete="list"
-          aria-activedescendant={focusedIndex >= 0 ? `handle-option-${focusedIndex}` : undefined}
-        />
-        {isSearching && (
-          <span className="handle-search__spinner" />
-        )}
-      </div>
+      <Input
+        ref={inputRef}
+        type="text"
+        size="sm"
+        variant="underline"
+        label={label || undefined}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        autoComplete="off"
+        spellCheck={false}
+        aria-label={label ? undefined : "Search for user"}
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-controls="handle-search-listbox"
+        aria-autocomplete="list"
+        aria-activedescendant={
+          focusedIndex >= 0 ? `handle-option-${focusedIndex}` : undefined
+        }
+        leadingIcon={<Search size={16} strokeWidth={1.75} aria-hidden />}
+        trailingIcon={
+          isSearching ? (
+            <Loader2
+              size={14}
+              strokeWidth={2}
+              className="animate-spin motion-reduce:animate-none"
+              aria-hidden
+            />
+          ) : undefined
+        }
+        trailingButton={
+          !isSearching && query ? (
+            <button
+              type="button"
+              className="handle-search__clear"
+              aria-label="Clear search"
+              onClick={() => {
+                setQuery("")
+                setResults([])
+                setResolvedDid(null)
+                setIsOpen(false)
+                inputRef.current?.focus()
+              }}
+            >
+              <X size={14} strokeWidth={2} aria-hidden />
+            </button>
+          ) : undefined
+        }
+      />
       {isOpen && searchError && (
         <div className="handle-search__dropdown" role="status">
           <p className="handle-search__error">{searchError}</p>

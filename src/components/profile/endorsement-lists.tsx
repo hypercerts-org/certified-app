@@ -29,6 +29,7 @@ import ConfirmDialog from "@/components/ui/confirm-dialog"
 import EmptyState from "@/components/ui/empty-state"
 import EndorsePeopleModal from "@/components/profile/endorse-people-modal"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import Skeleton from "@/components/ui/skeleton"
 import {
   useEndorsementLists,
   type EndorsementList,
@@ -612,10 +613,7 @@ function ListItemRow({ subjectDid, createdAt, note, revoke }: ListItemRowProps) 
   const body = (
     <>
       {isLoading && !info ? (
-        <div
-          className="endorsement-lists__item-avatar-skel"
-          aria-hidden="true"
-        />
+        <Skeleton circle animate={false} width={32} height={32} />
       ) : (
         <Avatar
           size="md"

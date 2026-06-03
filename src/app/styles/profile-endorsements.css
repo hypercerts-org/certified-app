@@ -440,7 +440,7 @@
   }
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 1300px) {
   .profile-endorsements-v2__grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -848,14 +848,6 @@
   padding: 10px 12px;
   text-decoration: none;
   color: inherit;
-}
-
-.endorsement-lists__item-avatar-skel {
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  background: var(--overlay-weak);
-  flex: 0 0 auto;
 }
 
 .endorsement-lists__item-body {

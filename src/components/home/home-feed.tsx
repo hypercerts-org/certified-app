@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Filter as FilterIcon, Inbox, MapPin, UserCheck, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Banner from "@/components/ui/banner"
+import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import LoadMoreSentinel from "@/components/ui/load-more-sentinel"
@@ -640,14 +641,16 @@ function EndorsementGroupRow({ group }: { group: EndorsementGroupItem }) {
             othersCount={othersCount}
           />
         </p>
-        <button
-          type="button"
-          className="home-feed__group-toggle"
+        <Button
+          variant="ghost"
+          size="sm"
+          pressed={expanded}
           aria-expanded={expanded}
+          className="home-feed__group-toggle"
           onClick={() => setExpanded((v) => !v)}
         >
           {expanded ? "Show fewer" : "Show all"}
-        </button>
+        </Button>
         {expanded ? (
           <ul className="home-feed__group-list">
             {group.subjectDids.map((did) => (

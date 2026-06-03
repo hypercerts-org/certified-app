@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search as SearchIcon, X } from "lucide-react";
 import Avatar from "@/components/ui/avatar";
+import Input from "@/components/ui/input";
 import { getInitials } from "@/lib/utils/initials";
 
 interface Actor {
@@ -282,40 +283,40 @@ export default function PeopleSearch({
       className={`people-search ${className}`}
       role="search"
     >
-      <div className="people-search__field">
-        <SearchIcon size={16} className="people-search__icon" aria-hidden="true" />
-        <input
-          ref={inputRef}
-          type="text"
-          className="people-search__input"
-          value={query}
-          placeholder={placeholder}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={() => {
-            if (results.length > 0) setIsOpen(true);
-          }}
-          role="combobox"
-          aria-label="Search people on atproto"
-          aria-autocomplete="list"
-          aria-expanded={showDropdown}
-          aria-controls={showDropdown ? listboxId : undefined}
-          aria-activedescendant={activeId}
-          autoComplete="off"
-          autoFocus={autoFocus}
-          spellCheck={false}
-        />
-        {query ? (
-          <button
-            type="button"
-            className="people-search__clear"
-            onClick={handleClear}
-            aria-label="Clear search"
-          >
-            <X size={14} aria-hidden="true" />
-          </button>
-        ) : null}
-      </div>
+      <Input
+        ref={inputRef}
+        type="text"
+        size="md"
+        value={query}
+        placeholder={placeholder}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onFocus={() => {
+          if (results.length > 0) setIsOpen(true);
+        }}
+        role="combobox"
+        aria-label="Search people on atproto"
+        aria-autocomplete="list"
+        aria-expanded={showDropdown}
+        aria-controls={showDropdown ? listboxId : undefined}
+        aria-activedescendant={activeId}
+        autoComplete="off"
+        autoFocus={autoFocus}
+        spellCheck={false}
+        leadingIcon={<SearchIcon size={16} aria-hidden="true" />}
+        trailingButton={
+          query ? (
+            <button
+              type="button"
+              className="people-search__clear"
+              onClick={handleClear}
+              aria-label="Clear search"
+            >
+              <X size={14} aria-hidden="true" />
+            </button>
+          ) : undefined
+        }
+      />
 
       {/* Visually-hidden live region — announces search state to SR users.
           Polite so it doesn't interrupt mid-utterance. */}
