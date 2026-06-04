@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Compass, Home, Settings, User, X } from "lucide-react"
+import { Compass, Home, LayoutGrid, Settings, User, X } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useSession } from "@/hooks/use-session"
 import { useOrg } from "@/lib/groups/org-context"
@@ -59,6 +59,7 @@ export default function SiteDrawer({
   }[] = [
     { key: "home", label: "Home", href: "/home", icon: Home },
     { key: "explore", label: "Explore", href: "/explore", icon: Compass },
+    { key: "apps", label: "Apps", href: "/apps", icon: LayoutGrid },
     {
       key: "profile",
       label: "My profile",
