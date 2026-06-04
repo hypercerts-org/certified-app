@@ -372,7 +372,12 @@
    resolved yet. */
 .home-feed__row {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) auto;
+  /* Date column is a fixed 84px track (same as the explore list's
+     `.cert-list-row__time`) so a relative "2d ago" reserves the same
+     box as an absolute "2026-05-20" — the dates line up in a single
+     column across every row instead of each row sizing to its own
+     content. 84px comfortably fits the YYYY-MM-DD fallback at 0.75rem. */
+  grid-template-columns: 32px minmax(0, 1fr) 84px;
   align-items: start;
   gap: 12px;
   padding: 12px 6px;
@@ -442,6 +447,9 @@
   color: var(--fg-secondary);
   white-space: nowrap;
   padding-top: 2px;
+  /* Right-align inside the fixed date track so every row's date ends at
+     the same edge (matches the explore list's time column). */
+  text-align: right;
 }
 
 /* The "Show all / Show fewer" toggle is a <Button variant="ghost"
@@ -575,6 +583,9 @@ a.home-feed__preview:hover {
     grid-column: 2 / 3;
     padding-top: 0;
     align-self: start;
+    /* Reflowed under the sentence on mobile — left-align it there
+       (the desktop right-align only makes sense in the fixed column). */
+    text-align: left;
   }
   .home-feed__sentence {
     -webkit-line-clamp: 3;
