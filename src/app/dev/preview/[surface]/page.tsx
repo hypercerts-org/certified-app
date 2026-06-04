@@ -143,10 +143,20 @@ export default function PreviewPage() {
     [rawSurface],
   )
 
+  // `?managed=1` opts the surface into the managed scenario — the mock
+  // session owns/admins groups and the indexer serves the org-aggregation
+  // connections — so the inline "by {group}" aggregation on Home + the
+  // profile tabs can be verified with groups present.
+  const managedScenario = searchParams?.get("managed") === "1"
+
   if (!isSurface(rawSurface)) notFound()
 
   return (
-    <MockFetchProvider profileScenario={profileScenario} scenario={scenario}>
+    <MockFetchProvider
+      profileScenario={profileScenario}
+      scenario={scenario}
+      managedScenario={managedScenario}
+    >
       {/* SAME provider order as app/layout.tsx, re-instantiated under the
           fetch mock so the fixture session is the one this subtree reads. */}
       <Providers>
