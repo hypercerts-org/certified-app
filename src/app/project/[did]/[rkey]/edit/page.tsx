@@ -6,7 +6,7 @@ import Link from "next/link"
 import { MapPin, Plus, X, FolderGit2 } from "lucide-react"
 import Image from "next/image"
 import { useAuth } from "@/lib/auth/auth-context"
-import { useManagedAuthors } from "@/hooks/use-managed-authors"
+import { useOrg } from "@/lib/groups/org-context"
 import { authFetch } from "@/lib/auth/fetch"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
@@ -80,24 +80,17 @@ export default function ProjectEditPage() {
   }, [params.rkey])
 
   const { isAuthenticated, isLoading: authLoading, did: sessionDid } = useAuth()
-  // Eligibility derives from the viewer's MANAGED identities (personal +
-  // the groups they own/admin), NOT the transient org switcher. This is
-  // what lets the read-aggregation→edit path work: a record surfaced via
-  // /managed or Home is editable without first switching the switcher to
-  // its group. `byDid` holds exactly the personal identity + owner/admin
-  // groups (member groups excluded); the BFF re-checks role server-side.
-  const { byDid, isLoading: managedLoading } = useManagedAuthors()
+  const { activeOrg } = useOrg()
 
-  const isPersonalRecord = !!did && !!sessionDid && sessionDid === did
-  // byDid only contains owner/admin groups (+ the personal identity), so a
-  // 'group' hit here means the viewer owns/admins the owning repo.
-  const isOwnedOrAdminGroup = !!did && byDid.get(did)?.kind === "group"
-  const isOwner = isPersonalRecord || isOwnedOrAdminGroup
-  // Edits write back into the repo the record LIVES in. For a group-owned
-  // record that's the group repo (`editTargetDid` = did); a personal record
-  // writes to the viewer's own PDS (undefined target). The write target is
-  // always the record's own repo — never derived from a read-scope org.
-  const editTargetDid = isOwnedOrAdminGroup ? did : undefined
+  const canEditAsActiveOrg =
+    !!activeOrg &&
+    !!did &&
+    activeOrg.groupDid === did &&
+    (activeOrg.role === "owner" || activeOrg.role === "admin")
+  const isOwner = activeOrg
+    ? canEditAsActiveOrg
+    : !!sessionDid && sessionDid === did
+  const editTargetDid = canEditAsActiveOrg ? did : undefined
 
   const { project, isLoading: projectLoading, error: projectError } = useProject(
     did,
@@ -122,12 +115,8 @@ export default function ProjectEditPage() {
     useState<string | null>(null)
   const [bannerRemoved, setBannerRemoved] = useState(false)
 
-  // Quick-pick activities list — scoped to the repo this project LIVES
-  // in (`did`, the record owner). For a group-owned project that's the
-  // group's repo, so the checklist offers the group's activities (the
-  // ones whose strongRefs can be added here); for a personal project
-  // it's the viewer's own. Not derived from the active read-scope org.
-  const { ownCerts, isLoading: ownCertsLoading } = useOwnCerts(did)
+  // Author's own certs — quick-pick list. Same fetch as /project/new.
+  const { ownCerts, isLoading: ownCertsLoading } = useOwnCerts(sessionDid)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -290,12 +279,7 @@ export default function ProjectEditPage() {
         return previewUrl
       })
       setBannerRemoved(false)
-      // Edits write back into the repo the record LIVES in — the blob
-      // must land there too. `editTargetDid` is the group repo when this
-      // project is group-owned (and the operator admins it), otherwise
-      // undefined → the viewer's own PDS. It is NOT derived from the
-      // active read-scope org.
-      const targetDid = editTargetDid ?? null
+      const targetDid = activeOrg ? activeOrg.groupDid : null
       try {
         const blob = await uploadBlob(
           file,
@@ -315,7 +299,7 @@ export default function ProjectEditPage() {
         })
       }
     },
-    [editTargetDid],
+    [activeOrg],
   )
 
   const handleBannerRemove = useCallback(() => {
@@ -345,10 +329,8 @@ export default function ProjectEditPage() {
       : null
   const displayBannerUrl = pendingBannerPreviewUrl ?? existingBannerUrl
 
-  // Loading / sign-in gates. For a non-personal record we also wait on the
-  // managed-author set so a group record the viewer manages doesn't flash
-  // "you can't edit" before the owner/admin roles resolve.
-  if (authLoading || projectLoading || (!isPersonalRecord && managedLoading)) {
+  // Loading / sign-in gates.
+  if (authLoading || projectLoading) {
     return (
       <div className="dashboard">
         <div className="dashboard__body">
@@ -681,7 +663,7 @@ export default function ProjectEditPage() {
               onImageUpload={(file) =>
                 uploadBlob(
                   file,
-                  editTargetDid ? { targetDid: editTargetDid } : undefined,
+                  activeOrg ? { targetDid: activeOrg.groupDid } : undefined,
                 )
               }
             />
@@ -817,7 +799,7 @@ export default function ProjectEditPage() {
       {isLocationDialogOpen && sessionDid ? (
         <LocationPickerDialog
           ownDid={sessionDid}
-          targetDid={editTargetDid ?? sessionDid}
+          targetDid={activeOrg ? activeOrg.groupDid : sessionDid}
           onClose={() => setIsLocationDialogOpen(false)}
           onPick={(added) => {
             setLocation(added)

@@ -2,11 +2,10 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Briefcase, Compass, Home, Settings, User, X } from "lucide-react"
+import { Compass, Home, Settings, User, X } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useSession } from "@/hooks/use-session"
 import { useOrg } from "@/lib/groups/org-context"
-import { useManagesAnyGroup } from "@/lib/groups/managed"
 import Drawer from "@/components/ui/drawer"
 
 /**
@@ -33,10 +32,6 @@ export default function SiteDrawer({
   const { isLoading, isAuthenticated } = useAuth()
   const { handle: personalHandle } = useSession()
   const { activeOrg } = useOrg()
-  // The Managed hub is only meaningful to viewers who own or admin at
-  // least one group — for everyone else there's nothing to aggregate
-  // beyond their own work, so the item stays hidden entirely.
-  const managesAnyGroup = useManagesAnyGroup()
   // The "My profile" item — and any future identity-bound link added
   // to this drawer — must route to the account the user is currently
   // *acting as*, not their personal identity. When the account
@@ -71,17 +66,6 @@ export default function SiteDrawer({
       icon: User,
       requiresAuth: true,
     },
-    ...(managesAnyGroup
-      ? [
-          {
-            key: "managed",
-            label: "Managed",
-            href: "/managed",
-            icon: Briefcase,
-            requiresAuth: true,
-          },
-        ]
-      : []),
     { key: "settings", label: "Settings", href: "/settings", icon: Settings },
   ]
 

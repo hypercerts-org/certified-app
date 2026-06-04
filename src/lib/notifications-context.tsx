@@ -3,8 +3,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from "react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { fetchUnreadCount, NotificationsUnauthenticatedError } from "@/lib/atproto/notifications"
-import { useManagedAuthors } from "@/hooks/use-managed-authors"
-import { NOTIFICATIONS_AGGREGATION_ENABLED } from "@/lib/utils/config"
 
 const POLL_INTERVAL_MS = 60_000
 
@@ -23,20 +21,6 @@ const NotificationsContext = createContext<NotificationsContextValue | null>(nul
 
 export function NotificationsProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading: authLoading, did } = useAuth()
-  // The badge counts unread across the viewer's managed identities when
-  // aggregation is on. `authors` is [viewerDid, ...owned/admin groups];
-  // a lone viewer (length <= 1) needs no `recipients` arg, so the default
-  // (personal) count path runs unchanged. Safe to call here:
-  // NotificationsProvider is mounted under OrgProvider in app/layout.tsx.
-  const { authors } = useManagedAuthors()
-  const authorsKey = authors.join(",")
-  const recipients = useMemo(
-    () =>
-      NOTIFICATIONS_AGGREGATION_ENABLED && authors.length > 1 ? authors : undefined,
-    // authorsKey is the stable identity of `authors`.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [authorsKey],
-  )
   const [count, setCount] = useState(0)
   const [more, setMore] = useState(false)
   const [ready, setReady] = useState(false)
@@ -48,7 +32,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     const controller = new AbortController()
     abortRef.current = controller
     try {
-      const result = await fetchUnreadCount(recipients, controller.signal)
+      const result = await fetchUnreadCount(controller.signal)
       if (!controller.signal.aborted) {
         setCount(result.count)
         setMore(result.more)
@@ -70,7 +54,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       // silently zeroing the badge. Next poll tick will retry.
       console.warn("[Notifications] unread count refresh failed:", err)
     }
-  }, [authLoading, isAuthenticated, did, recipients])
+  }, [authLoading, isAuthenticated, did])
 
   const markOptimisticallyZero = useCallback(() => {
     setCount(0)

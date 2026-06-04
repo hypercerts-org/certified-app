@@ -6,9 +6,8 @@ import Link from "next/link"
 import { MapPin, Plus, X, FolderGit2 } from "lucide-react"
 import Image from "next/image"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useOrg } from "@/lib/groups/org-context"
 import { authFetch } from "@/lib/auth/fetch"
-import PostingAs from "@/components/create/posting-as"
-import { usePostingIdentity } from "@/hooks/use-posting-identity"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -66,16 +65,8 @@ interface SelectedCert {
 export default function CreateProjectPage() {
   usePageTitle("New project")
   const { isAuthenticated, isLoading, did } = useAuth()
+  const { activeOrg } = useOrg()
   const router = useRouter()
-  // Per-action posting identity. The write target is chosen EXPLICITLY
-  // here via <PostingAs> (default You), never inherited from the active
-  // read-scope org. `posting.value.did` is the repo this project lands
-  // in; `kind === 'group'` flips the submit/blob/location/quick-pick
-  // paths onto the group BFF + the group's repo.
-  const posting = usePostingIdentity()
-  const postingDid = posting.value.did
-  const postingIsGroup = posting.value.kind === "group"
-  const effectiveDid: string = postingDid || did || ""
 
   const [arrivedFromInApp] = useState(() => {
     if (typeof window === "undefined") return false
@@ -99,12 +90,11 @@ export default function CreateProjectPage() {
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false)
 
   // "Your certs" quick-pick. Fetched on mount via listRecords on the
-  // PICKED posting identity's repo (own DID, or the group's DID when
-  // posting as a group) so the checklist scopes to the repo the new
-  // project will actually land in — re-fetches when the user changes the
-  // posting picker. The typeahead stays below for finding certs that
-  // aren't theirs.
-  const { ownCerts, isLoading: ownCertsLoading } = useOwnCerts(effectiveDid)
+  // active repo (own DID or active group's DID) so the author can
+  // toggle entries straight from a checklist without first typing
+  // into the CertSearch typeahead. The typeahead stays below for
+  // finding certs that aren't theirs.
+  const { ownCerts, isLoading: ownCertsLoading } = useOwnCerts(did)
 
   const [pendingBannerBlob, setPendingBannerBlob] =
     useState<UploadedBlob | null>(null)
@@ -150,7 +140,7 @@ export default function CreateProjectPage() {
         if (prev) URL.revokeObjectURL(prev)
         return previewUrl
       })
-      const targetDid = postingIsGroup ? postingDid : null
+      const targetDid = activeOrg ? activeOrg.groupDid : null
       try {
         const blob = await uploadBlob(
           file,
@@ -171,7 +161,7 @@ export default function CreateProjectPage() {
         })
       }
     },
-    [postingIsGroup, postingDid],
+    [activeOrg],
   )
 
   const handleBannerRemove = useCallback(() => {
@@ -260,14 +250,12 @@ export default function CreateProjectPage() {
     }
 
     try {
-      // Posting-as-group → group BFF (PUT with no rkey → createRecord
-      // on the group's repo, server re-checks the operator's role).
-      // Personal → xrpc proxy on the viewer's own repo. The choice comes
-      // from <PostingAs> (default You), never from the active read-scope
-      // org. Both routes return the same `{ uri, cid }` shape so the
+      // Group-active → group BFF (PUT with no rkey → createRecord
+      // on the group's repo). Personal → xrpc proxy. The two
+      // routes return the same `{ uri, cid }` shape so the
       // redirect logic below doesn't care which path was used.
-      const targetDid = postingIsGroup ? postingDid : did
-      const useGroupRoute = postingIsGroup
+      const targetDid = activeOrg ? activeOrg.groupDid : did
+      const useGroupRoute = activeOrg !== null
       const url = useGroupRoute
         ? `/api/groups/${encodeURIComponent(targetDid)}/project`
         : "/api/xrpc/com/atproto/repo/createRecord"
@@ -352,20 +340,6 @@ export default function CreateProjectPage() {
             />
           </div>
 
-          {/* Per-action posting identity. Defaults to You; the picker
-              is the ONLY thing that targets a group repo here (the
-              active read-scope org never silently becomes the write
-              target). Static "Posting as You" label when the viewer
-              admins no groups. */}
-          <div className="flex items-center">
-            <PostingAs
-              value={posting.value}
-              onChange={posting.setValue}
-              options={posting.options}
-              size="sm"
-              aria-label="Posting project as"
-            />
-          </div>
           <header className="cert-detail__headline">
             <div className="create-cert__input-with-counter">
               <input
@@ -427,7 +401,7 @@ export default function CreateProjectPage() {
               onImageUpload={(file) =>
                 uploadBlob(
                   file,
-                  postingIsGroup ? { targetDid: postingDid } : undefined,
+                  activeOrg ? { targetDid: activeOrg.groupDid } : undefined,
                 )
               }
             />
@@ -605,7 +579,7 @@ export default function CreateProjectPage() {
       {isLocationDialogOpen && did ? (
         <LocationPickerDialog
           ownDid={did}
-          targetDid={effectiveDid}
+          targetDid={activeOrg ? activeOrg.groupDid : did}
           onClose={() => setIsLocationDialogOpen(false)}
           onPick={(added) => {
             // Projects carry a single location — replace, don't push.
