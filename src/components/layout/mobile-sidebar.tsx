@@ -3,12 +3,11 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Newspaper, Search, PlusCircle, Building2, Briefcase, Award, Bell, MessageSquare, User, Settings, LayoutGrid } from "lucide-react";
+import { Newspaper, Search, PlusCircle, Building2, Award, Bell, MessageSquare, User, Settings, LayoutGrid } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
 import { useOrg } from "@/lib/groups/org-context";
-import { useManagesAnyGroup } from "@/lib/groups/managed";
 import { isRouteVisibleToActor } from "@/lib/groups/personal-only";
 import { useOrgProfile } from "@/hooks/use-org-profile";
 import { usePendingAwardsCount } from "@/hooks/use-pending-awards-count";
@@ -31,7 +30,6 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   const { handle } = useSession();
   const { activeOrg } = useOrg();
   const { orgAvatarUrl } = useOrgProfile();
-  const managesAnyGroup = useManagesAnyGroup();
   const { openFeedback } = useFeedback();
   const { count: unreadCount, more: unreadMore, ready: notificationsReady } = useNotifications();
   const pendingAwardsCount = usePendingAwardsCount();
@@ -91,17 +89,12 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   const showCreate = isRouteVisibleToActor("create", isActingAsOrg);
   const showGroups = isRouteVisibleToActor("groups", isActingAsOrg);
   const showEndorsements = isRouteVisibleToActor("endorsements", isActingAsOrg);
-  // The Managed hub is gated on owning/admining at least one group —
-  // same source of truth (useManagesAnyGroup) as the desktop drawer, so
-  // the two navs can't drift.
-  const showManaged = managesAnyGroup;
   const navLinks = [
     { href: profileHref, label: "Profile", icon: User },
     { href: "/home", label: "Home", icon: Newspaper },
     { href: "/search", label: "Explore", icon: Search },
     ...(showCreate ? [{ href: "/create", label: "Create", icon: PlusCircle }] : []),
     ...(showGroups ? [{ href: "/groups", label: "Groups", icon: Building2 }] : []),
-    ...(showManaged ? [{ href: "/managed", label: "Managed", icon: Briefcase }] : []),
     ...(showEndorsements ? [{ href: "/endorsements", label: "Endorsements", icon: Award }] : []),
     { href: "/notifications", label: "Notifications", icon: Bell },
     { href: "/apps", label: "Apps", icon: LayoutGrid },

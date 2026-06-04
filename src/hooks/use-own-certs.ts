@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useOrg } from "@/lib/groups/org-context"
 import { authFetch } from "@/lib/auth/fetch"
 
 export interface OwnCert {
@@ -11,16 +12,11 @@ export interface OwnCert {
 
 /**
  * "Your certs" quick-pick fetch shared by `/project/new` and the
- * project edit page. Fetches certs once via `listRecords` on the
- * passed `did` so the quick-pick checklist can render straight away.
- *
- * The `did` is the PICKED write target — the caller threads in whichever
- * identity the per-action `<PostingAs>` picker (or the record's own
- * owner, on edit) resolves to, so the quick-pick scopes to the repo the
- * new project will actually land in. It is NOT derived from
- * `activeOrg` here: act-as is read-scope only, and the write target is
- * per-action (default You). When `did` is null (signed-out / pre-auth)
- * the fetch is skipped.
+ * project edit page. Fetches the author's own certs once via
+ * `listRecords` on the active repo (the active group's DID when one is
+ * selected, otherwise the passed personal `did`) so the quick-pick
+ * checklist can render straight away — the source repo always matches
+ * the publish target.
  *
  * 50 is `listRecords`' default page size; it covers the typical use
  * case without pagination plumbing. The fetch is best-effort: on
@@ -32,11 +28,12 @@ export function useOwnCerts(did: string | null): {
   ownCerts: OwnCert[]
   isLoading: boolean
 } {
+  const { activeOrg } = useOrg()
   const [ownCerts, setOwnCerts] = useState<OwnCert[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const sourceDid = did
+    const sourceDid = activeOrg ? activeOrg.groupDid : did
     if (!sourceDid) return
     const controller = new AbortController()
     setIsLoading(true)
@@ -87,7 +84,7 @@ export function useOwnCerts(did: string | null): {
         if (!controller.signal.aborted) setIsLoading(false)
       })
     return () => controller.abort()
-  }, [did])
+  }, [did, activeOrg])
 
   return { ownCerts, isLoading }
 }

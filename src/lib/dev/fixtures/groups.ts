@@ -208,11 +208,3 @@ export function groupsMembershipsResponse(): {
 } {
   return { groups: [], cursor: null }
 }
-
-/** Managed-scenario `/api/groups/memberships` — the three managed groups
- *  (owner / admin / member) with their roles, so `useOrg().groups`
- *  resolves to them under the managed/write-as-org preview. Re-exported
- *  from the managed fixture so the CGS shape has a single source of
- *  truth; the member group is filtered out of AGGREGATION (not the
- *  membership list) by the surface, not here. */
-export { managedGroupsMembershipsResponse } from "./managed"

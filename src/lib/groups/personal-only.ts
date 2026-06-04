@@ -5,24 +5,19 @@
  * drift out of sync as features are added.
  *
  * The constraints are real, not cosmetic:
+ *   - "create"       : xrpc proxy validates `repo === sessionDid` for
+ *                      write methods, so a group-acting user can't
+ *                      write a record to the group repo here.
  *   - "groups"       : would be self-referential when already in a
  *                      group context — the group is reachable via the
  *                      account switcher.
  *   - "endorsements" : the underlying record lives in the personal
  *                      repo only; no group analogue exists.
- *
- * Note: "create" used to live here because the write target was derived
- * from the (sticky) active org, which the xrpc proxy then rejected as a
- * cross-repo write. As of the per-action posting-as model the Create
- * flow chooses its write target explicitly via `<PostingAs>` (default
- * You, opt into a group through the picker / group BFF), so Create is
- * available regardless of the active read-scope. It is therefore no
- * longer personal-only — the route key is kept in the union so existing
- * callers/tests that reference it still type-check.
  */
 export type PersonalOnlyRoute = "create" | "groups" | "endorsements"
 
 const PERSONAL_ONLY_ROUTES: readonly PersonalOnlyRoute[] = [
+  "create",
   "groups",
   "endorsements",
 ]

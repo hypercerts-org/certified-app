@@ -26,15 +26,8 @@ vi.mock("@/lib/auth/auth-context", () => ({
   useAuth: () => ({ isAuthenticated: true, isLoading: false, did: DID }),
 }))
 
-vi.mock("@/hooks/use-managed-authors", () => ({
-  // The viewer is the record owner (DID) — a personal record, so an empty
-  // managed-identity map is enough for `isPersonalRecord` to grant edit.
-  useManagedAuthors: () => ({
-    authors: [DID],
-    identities: [{ did: DID, kind: "personal", label: "You" }],
-    byDid: new Map([[DID, { did: DID, kind: "personal", label: "You" }]]),
-    isLoading: false,
-  }),
+vi.mock("@/lib/groups/org-context", () => ({
+  useOrg: () => ({ activeOrg: null }),
 }))
 
 vi.mock("@/lib/navbar-context", () => ({

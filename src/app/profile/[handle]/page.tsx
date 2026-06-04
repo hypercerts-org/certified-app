@@ -433,7 +433,6 @@ export default function UserProfilePage() {
                   did={did}
                   profile={effectiveProfile}
                   basePath={pathname || ""}
-                  isOwnProfile={isOwnProfile}
                   isEditing={editing}
                   drafts={drafts}
                   onDraftChange={handleDraftChange}

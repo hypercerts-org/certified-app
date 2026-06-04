@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
-import { useManagedAuthors } from "@/hooks/use-managed-authors"
+import { useOrg } from "@/lib/groups/org-context"
 import { authFetch } from "@/lib/auth/fetch"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
@@ -178,20 +178,18 @@ export default function ActivityEditPage() {
   }, [params.rkey])
 
   const { isAuthenticated, isLoading: authLoading, did: sessionDid } = useAuth()
-  // Eligibility derives from the viewer's MANAGED identities (personal +
-  // owned/admin groups), NOT the transient org switcher — so a cert
-  // surfaced via read-aggregation is editable without first switching the
-  // switcher to its group. `byDid` holds the personal identity + owner/admin
-  // groups (member groups excluded); the BFF re-checks role server-side.
-  const { byDid, isLoading: managedLoading } = useManagedAuthors()
+  const { activeOrg } = useOrg()
 
-  const isPersonalRecord = !!did && !!sessionDid && sessionDid === did
-  const isOwnedOrAdminGroup = !!did && byDid.get(did)?.kind === "group"
-  const isCreator = isPersonalRecord || isOwnedOrAdminGroup
-  // Edits write back into the repo the record LIVES in: the group repo for
-  // a group-owned cert (`editTargetDid` = did), else the viewer's own PDS
-  // (undefined target). Never derived from a read-scope org.
-  const editTargetDid = isOwnedOrAdminGroup ? did : undefined
+  // The edit endpoint to call: own repo via XRPC proxy when the
+  // viewer's session DID matches the cert's owner; the group BFF
+  // when the cert is owned by the active org and the role permits.
+  const canEditAsActiveOrg =
+    !!activeOrg && !!did && activeOrg.groupDid === did &&
+    (activeOrg.role === "owner" || activeOrg.role === "admin")
+  const isCreator = activeOrg
+    ? canEditAsActiveOrg
+    : !!sessionDid && sessionDid === did
+  const editTargetDid = canEditAsActiveOrg ? did : undefined
 
   const { activity, isLoading: activityLoading, error: activityError } =
     useActivity(did, rkey)
@@ -233,12 +231,10 @@ export default function ActivityEditPage() {
   } | null>(null)
   const seededRef = useRef(false)
 
-  // "Add me" + new-location target need the repo this cert LIVES in —
-  // the record-owner repo (`editTargetDid` = the group when editing a
-  // group-owned cert), else the viewer's own DID. Not the active
-  // read-scope org; edits always write back to the record's repo.
+  // "Add me" needs the publishing identity's @handle/DID. Same logic
+  // as /create — group DID when acting as a group, otherwise own DID.
   const effectivePublisherDid: string =
-    editTargetDid ?? sessionDid ?? ""
+    activeOrg?.groupDid ?? sessionDid ?? ""
   const { info: selfInfo } = useAuthorInfo(effectivePublisherDid)
 
   // -------------------------------------------------------------------
@@ -422,17 +418,14 @@ export default function ActivityEditPage() {
         return previewUrl
       })
       setImageRemoved(false)
-      // Blob lands in the repo the cert lives in (record owner), not the
-      // active read-scope org. `editTargetDid` is the group repo for a
-      // group-owned cert, else undefined → the viewer's own PDS.
-      const targetDid = editTargetDid ?? null
+      const targetDid = activeOrg ? activeOrg.groupDid : null
       const blob = await uploadBlob(
         file,
         targetDid ? { targetDid } : undefined,
       )
       setPendingImageBlob(blob)
     },
-    [editTargetDid],
+    [activeOrg],
   )
 
   const handleImageRemove = useCallback(() => {
@@ -452,10 +445,8 @@ export default function ActivityEditPage() {
       : null
   const displayImageUrl = pendingImagePreviewUrl ?? existingImageUrl
 
-  // Auth-loading / signed-out states. Mirrors /create's gates. For a
-  // non-personal record we also wait on the managed-author set so a group
-  // cert the viewer manages doesn't flash "you can't edit" before roles resolve.
-  if (authLoading || activityLoading || (!isPersonalRecord && managedLoading)) {
+  // Auth-loading / signed-out states. Mirrors /create's gates.
+  if (authLoading || activityLoading) {
     return (
       <div className="dashboard">
         <div className="dashboard__body">
@@ -1034,7 +1025,7 @@ export default function ActivityEditPage() {
               onImageUpload={(file) =>
                 uploadBlob(
                   file,
-                  editTargetDid ? { targetDid: editTargetDid } : undefined,
+                  activeOrg ? { targetDid: activeOrg.groupDid } : undefined,
                 )
               }
             />

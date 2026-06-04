@@ -393,38 +393,3 @@
   justify-content: center;
   padding: 24px 0;
 }
-
-/* ========== Managed bridge (own-profile overview link-out) ========== */
-/* Positioning only — the surface, border, padding and dismiss button
-   all come from the <Banner variant="info"> primitive this class sits
-   on. We only add a gap below it so it doesn't crowd the banner image /
-   About block that follows in the overview. */
-.profile-managed-bridge {
-  margin-bottom: 16px;
-}
-
-.profile-managed-bridge__text {
-  color: var(--fg-secondary);
-}
-
-.profile-managed-bridge__link {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 500;
-  color: var(--fg-primary);
-  text-decoration: none;
-  white-space: nowrap;
-  border-radius: var(--radius);
-  transition: color var(--transition-fast);
-}
-
-.profile-managed-bridge__link:hover {
-  color: var(--color-accent-hover);
-  text-decoration: underline;
-}
-
-.profile-managed-bridge__link:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}

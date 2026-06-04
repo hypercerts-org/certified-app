@@ -73,27 +73,16 @@ const FOLLOWING_SORT_OPTIONS: { key: SortKey; label: string }[] = [
 export default function ProfileFollowers({ did }: ProfileFollowersProps) {
   const followers = useFollowers(did)
   const following = useFollowing(did)
-  // Only the profile owner (or a group admin operating the group whose
-  // profile this is) can revoke its follows. The × renders on the
-  // Following sub-tab accordingly.
+  // Only the profile owner can revoke their own follows. We compare
+  // the signed-in viewer's DID to the profile's DID to decide
+  // whether the per-card × renders on the Following sub-tab.
   const { did: viewerDid } = useAuth()
-  // A follow delete writes back into the repo the record LIVES in — the
-  // profile being viewed (`did`). `activeOrg` is read ONLY to gate the
-  // group case (am I operating THIS group with owner/admin?), never to
-  // pick a different write target than the record's own repo. This
-  // avoids silently routing a personal unfollow (own profile) to a group
-  // repo just because an org is active.
+  // When acting as a group, follow deletes must route to the group's
+  // repo via the BFF. The unfollow × only renders on the own-profile
+  // Following list (which, when delegating, is the group's profile), so
+  // the records being revoked live in the group's repo.
   const { activeOrg } = useOrg()
   const isOwnProfile = !!viewerDid && viewerDid === did
-  const canRevokeAsGroup =
-    !!activeOrg &&
-    activeOrg.groupDid === did &&
-    (activeOrg.role === "owner" || activeOrg.role === "admin")
-  // Eligible to unfollow when this is the viewer's own profile or a
-  // group they operate with owner/admin. Write target = the record's
-  // own repo: `did` for the group case (BFF), undefined for own (XRPC).
-  const canRevoke = isOwnProfile || canRevokeAsGroup
-  const revokeTargetDid = canRevokeAsGroup ? did : undefined
 
   // Sub-tab is read from the URL (`?sub=followers|following`) so the
   // sidebar counts can deep-link straight into the right list.
@@ -282,9 +271,9 @@ export default function ProfileFollowers({ did }: ProfileFollowersProps) {
           query={query}
           sort={sort}
           names={names}
-          canUnfollow={canRevoke}
+          canUnfollow={isOwnProfile}
           viewerDid={viewerDid}
-          targetDid={revokeTargetDid}
+          targetDid={activeOrg?.groupDid}
           onAfterUnfollow={() => following.refetch()}
         />
       </TabPanel>

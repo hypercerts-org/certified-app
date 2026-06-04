@@ -14,14 +14,6 @@ export interface Notification {
   latestRecordCid: string
   latestAuthor: string
   isRead: boolean
-  /**
-   * The DID whose notification this is. Only present on the aggregated
-   * path (when `recipients` was sent and the indexer supports it); the
-   * personal path leaves it undefined (it would always equal the viewer).
-   * Used to tag aggregated rows "via {group}". See
-   * docs/org-identity/indexer-notifications-aggregation.md.
-   */
-  recipient?: string
 }
 
 export interface NotificationsPage {
@@ -122,37 +114,22 @@ async function callProxy<T>(
 export async function fetchNotifications(options: {
   first?: number
   after?: string | null
-  /**
-   * DIDs whose notifications to aggregate (the viewer + groups they
-   * own/admin). Sent to the proxy only when non-empty; the route then
-   * selects the `recipients` query variant — but only if the
-   * NOTIFICATIONS_AGGREGATION flag is on server-side, so an indexer that
-   * doesn't support it never sees the argument.
-   */
-  recipients?: string[]
   signal?: AbortSignal
 } = {}): Promise<NotificationsPage> {
-  const { first = 50, after, recipients, signal } = options
-  const variables: Record<string, unknown> = { first, after: after ?? null }
-  if (recipients && recipients.length > 0) variables.recipients = recipients
+  const { first = 50, after, signal } = options
   const json = await callProxy<{
     notifications?: {
       edges: { cursor: string; node: Notification | null }[]
       pageInfo: { hasNextPage: boolean; endCursor: string | null }
     } | null
-  }>("notifications", variables, signal)
+  }>("notifications", { first, after: after ?? null }, signal)
   return parseNotificationsPage(json)
 }
 
-export async function fetchUnreadCount(
-  recipients?: string[],
-  signal?: AbortSignal,
-): Promise<UnreadCount> {
-  const variables: Record<string, unknown> = {}
-  if (recipients && recipients.length > 0) variables.recipients = recipients
+export async function fetchUnreadCount(signal?: AbortSignal): Promise<UnreadCount> {
   const json = await callProxy<{
     unreadNotificationCount?: { count: number; more: boolean } | null
-  }>("unreadNotificationCount", variables, signal)
+  }>("unreadNotificationCount", {}, signal)
   const u = json.data?.unreadNotificationCount
   if (!u) {
     if (json.errors?.length) {

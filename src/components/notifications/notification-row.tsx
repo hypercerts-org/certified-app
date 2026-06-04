@@ -13,10 +13,8 @@ import { truncateDid } from "@/lib/utils/did"
 import { getInitials } from "@/lib/utils/initials"
 import Avatar from "@/components/ui/avatar"
 import ResponseButtons from "@/components/badges/response-buttons"
-import ViaByline from "@/components/ui/via-byline"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
-import type { Group, OrgRole } from "@/lib/groups/types"
 
 function reasonText(
   notification: Notification,
@@ -27,8 +25,7 @@ function reasonText(
   const actor = <strong>{isHandle ? `@${displayName}` : displayName}</strong>
   if (reason === "endorsement") {
     if (count > 1) {
-      const others = count - 1
-      return <>{actor} and {others} {others === 1 ? "other" : "others"} endorsed you</>
+      return <>{actor} and {count - 1} others endorsed you</>
     }
     return <>{actor} endorsed you</>
   }
@@ -38,36 +35,14 @@ function reasonText(
   return <>{actor} {reason}</>
 }
 
-/** Provenance for an aggregated notification owned by a group the viewer
- *  manages — drives the "via {group}" byline. Omitted/null for personal
- *  notifications and whenever a single group is already focused. */
-export interface NotificationVia {
-  group: Group
-  role?: OrgRole
-}
-
 interface NotificationRowProps {
   notification: Notification
   /** Snapshot of read state from when the page mounted, so the row
    *  styling stays stable even after mark-seen fires. */
   wasUnreadOnMount: boolean
-  /** When set, render a "via {group}" line under the notification text
-   *  (aggregated view, group-owned row). */
-  via?: NotificationVia | null
-  /** True when this notification belongs to a GROUP the viewer manages
-   *  (aggregated view). The endorsement accept/reject control is suppressed
-   *  for these rows: responding would act as the viewer's PERSONAL account
-   *  against an award made to the group — a cross-identity action this
-   *  read-aggregation phase deliberately doesn't allow. */
-  isGroupOwned?: boolean
 }
 
-export default function NotificationRow({
-  notification,
-  wasUnreadOnMount,
-  via = null,
-  isGroupOwned = false,
-}: NotificationRowProps) {
+export default function NotificationRow({ notification, wasUnreadOnMount }: NotificationRowProps) {
   const { did: ownerDid } = useAuth()
   // Notifications are the personal account's. While delegated (acting as a
   // group) the accept/reject control is hidden — responding to your personal
@@ -109,7 +84,6 @@ export default function NotificationRow({
       </div>
       <div className="notification-row__body">
         <p className="notification-row__text">{reasonText(notification, displayName, hasHandle)}</p>
-        {via ? <ViaByline group={via.group} role={via.role} /> : null}
         <time
           dateTime={notification.sortAt}
           title={absoluteTime}
@@ -149,7 +123,7 @@ export default function NotificationRow({
   return (
     <div className={className}>
       {content}
-      {isBadgeAward && !activeOrg && !isGroupOwned ? (
+      {isBadgeAward && !activeOrg ? (
         <ResponseButtons
           awardUri={notification.latestRecordUri}
           awardCid={notification.latestRecordCid}

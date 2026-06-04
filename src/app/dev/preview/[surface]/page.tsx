@@ -68,9 +68,6 @@ import UserProfilePage from "@/app/profile/[handle]/page"
 import Home from "@/components/home/home"
 import SettingsPanel from "@/components/settings/settings-panel"
 import Workspace from "@/components/workspace/workspace"
-import Managed from "@/components/managed/managed"
-import CreatePage from "@/app/create/page"
-import NotificationsPage from "@/app/notifications/page"
 
 const SURFACES = [
   "profile",
@@ -78,9 +75,6 @@ const SURFACES = [
   "feed",
   "settings",
   "workspace",
-  "managed",
-  "write-as-org",
-  "notifications",
 ] as const
 type Surface = (typeof SURFACES)[number]
 
@@ -130,34 +124,6 @@ function SurfaceBody({ surface }: { surface: Surface }) {
           </Suspense>
         </div>
       )
-    case "managed":
-      // The /managed hub: aggregates records owned by the groups the (mock)
-      // session user owns/admins. Suspense because Managed reads useSearchParams.
-      return (
-        <div className="managed-page">
-          <Suspense fallback={null}>
-            <Managed />
-          </Suspense>
-        </div>
-      )
-    case "write-as-org":
-      // The create form with the <PostingAs> picker — under the managed
-      // scenario the user owns/admins groups, so the picker offers them.
-      return (
-        <Suspense fallback={null}>
-          <CreatePage />
-        </Suspense>
-      )
-    case "notifications":
-      // The notifications page. Under the managed scenario + the
-      // NOTIFICATIONS_AGGREGATION flag it aggregates across the viewer's
-      // groups (identity focus filter + "via {group}" rows); otherwise it
-      // renders the personal feed.
-      return (
-        <Suspense fallback={null}>
-          <NotificationsPage />
-        </Suspense>
-      )
   }
 }
 
@@ -177,25 +143,10 @@ export default function PreviewPage() {
     [rawSurface],
   )
 
-  // The managed + write-as-org surfaces need the session user to own/admin
-  // groups (so aggregation + the PostingAs picker have group identities).
-  // `?managed=1` opts any other surface (e.g. feed, profile) into the same
-  // scenario so the inline Home aggregation + the self-profile bridge can be
-  // verified with groups present.
-  const managedScenario =
-    rawSurface === "managed" ||
-    rawSurface === "write-as-org" ||
-    rawSurface === "notifications" ||
-    searchParams?.get("managed") === "1"
-
   if (!isSurface(rawSurface)) notFound()
 
   return (
-    <MockFetchProvider
-      profileScenario={profileScenario}
-      scenario={scenario}
-      managedScenario={managedScenario}
-    >
+    <MockFetchProvider profileScenario={profileScenario} scenario={scenario}>
       {/* SAME provider order as app/layout.tsx, re-instantiated under the
           fetch mock so the fixture session is the one this subtree reads. */}
       <Providers>
