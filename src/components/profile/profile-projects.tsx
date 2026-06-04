@@ -8,11 +8,14 @@ import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { useUserProjects } from "@/hooks/use-user-projects"
+import { useManagedProjects } from "@/hooks/use-managed-projects"
 import { useProjectItems, type ProjectItemResolution } from "@/hooks/use-project-items"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { activityDetailHref, parseAtUri } from "@/lib/atproto/activity-uri"
 import { formatShortDate } from "@/lib/utils/format-date"
+import OwnerByline from "@/components/ui/owner-byline"
 import type { CollectionRecord } from "@/lib/atproto/collection"
+import type { OwnerTag } from "@/lib/atproto/owner-tag"
 
 interface ProfileProjectsProps {
   did: string
@@ -20,6 +23,10 @@ interface ProfileProjectsProps {
    *  acting-as the group whose profile is shown). Controls whether
    *  the Create new project CTA renders. */
   viewerIsOwner?: boolean
+  /** True only on the viewer's OWN personal profile (not acting-as a
+   *  group). When set, the tab aggregates projects owned by the groups
+   *  the viewer owns/admins, each tagged "by {group}". */
+  aggregateOwned?: boolean
 }
 
 /** Cert rows shown inline per project before deferring to the project
@@ -36,8 +43,31 @@ const CERTS_PER_PROJECT_PREVIEW = 5
  * CTA at the top; it links to `/project/new` (currently a
  * coming-soon placeholder while the editor is being built).
  */
-export default function ProfileProjects({ did, viewerIsOwner }: ProfileProjectsProps) {
-  const { projects, isLoading, error } = useUserProjects(did)
+export default function ProfileProjects({
+  did,
+  viewerIsOwner,
+  aggregateOwned = false,
+}: ProfileProjectsProps) {
+  // On the viewer's own personal profile, aggregate projects owned by the
+  // groups they own/admin (each tagged "by {group}"); elsewhere show just
+  // this profile's own projects. Both hooks are always called; the inactive
+  // one is disabled so it does no fetch.
+  const single = useUserProjects(aggregateOwned ? null : did)
+  const managed = useManagedProjects({ enabled: aggregateOwned })
+
+  const projects = aggregateOwned
+    ? managed.items.map((it) => it.record)
+    : single.projects
+  const ownerByUri = aggregateOwned
+    ? new Map(managed.items.map((it) => [it.record.uri, it.owner]))
+    : null
+  const isLoading = aggregateOwned ? managed.isLoading : single.isLoading
+  const error = aggregateOwned ? managed.error : single.error
+  // The aggregated set (personal + every managed group) can exceed one
+  // page, so the own-profile view paginates. The single-DID path is a
+  // single capped fetch (unchanged), so it never offers "Load more".
+  const hasMore = aggregateOwned && managed.hasMore
+  const isLoadingMore = aggregateOwned && managed.isLoadingMore
 
   const createCta = viewerIsOwner ? (
     <div className="profile-projects__toolbar">
@@ -95,17 +125,32 @@ export default function ProfileProjects({ did, viewerIsOwner }: ProfileProjectsP
     <div className="profile-projects">
       {createCta}
       {projects.map((p) => (
-        <ProjectBox key={p.uri} project={p} />
+        <ProjectBox key={p.uri} project={p} owner={ownerByUri?.get(p.uri)} />
       ))}
+      {hasMore ? (
+        <div className="profile-projects__more">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => managed.loadMore()}
+            disabled={isLoadingMore}
+          >
+            {isLoadingMore ? "Loading…" : "Load more"}
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }
 
 interface ProjectBoxProps {
   project: CollectionRecord
+  /** Provenance tag when aggregating an own-profile view; group-owned
+   *  boxes render a "by {group}" byline under the title. */
+  owner?: OwnerTag
 }
 
-function ProjectBox({ project }: ProjectBoxProps) {
+function ProjectBox({ project, owner }: ProjectBoxProps) {
   const { value, uri } = project
   const parsed = parseAtUri(uri)
   const projectDid = parsed?.did ?? ""
@@ -172,6 +217,13 @@ function ProjectBox({ project }: ProjectBoxProps) {
         <div className="profile-projects__box-titleline">
           <h2 className="profile-projects__box-title">{title}</h2>
         </div>
+        {owner && owner.kind === "group" && owner.group ? (
+          <OwnerByline
+            group={owner.group}
+            role={owner.role}
+            className="profile-projects__box-by"
+          />
+        ) : null}
         {shortDesc ? (
           <p className="profile-projects__box-desc">{shortDesc}</p>
         ) : null}

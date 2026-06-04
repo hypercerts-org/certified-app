@@ -491,7 +491,11 @@ export default function UserProfilePage() {
                 id="tabpanel-activities"
                 aria-labelledby="tab-activities"
               >
-                <ProfileCerts did={did} viewerIsOwner={isViewerThisEntity} />
+                <ProfileCerts
+                  did={did}
+                  viewerIsOwner={isViewerThisEntity}
+                  aggregateOwned={isOwnProfile && !activeOrg}
+                />
               </div>
             )}
             {activeTab === "projects" && (
@@ -503,6 +507,7 @@ export default function UserProfilePage() {
                 <ProfileProjects
                   did={did}
                   viewerIsOwner={isViewerThisEntity}
+                  aggregateOwned={isOwnProfile && !activeOrg}
                 />
               </div>
             )}

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import Link from "next/link"
 import { ArrowUpDown, Inbox, Plus, Search } from "lucide-react"
 import { useUserIndexerActivities } from "@/hooks/use-user-indexer-activities"
+import { useManagedAuthors } from "@/hooks/use-managed-authors"
 import FeedLayout from "@/components/feed/feed-layout"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
@@ -23,6 +24,11 @@ interface ProfileCertsProps {
   /** When true the viewer is looking at their own profile — surface a
    *  Create-cert CTA in the toolbar that links to the /create flow. */
   viewerIsOwner?: boolean
+  /** True only on the viewer's OWN personal profile (not acting-as a
+   *  group). When set, the Created bucket aggregates activities authored
+   *  by the groups the viewer owns/admins — each card shows the owning
+   *  group as its author. */
+  aggregateOwned?: boolean
 }
 
 type SubTab = "created" | "contributed"
@@ -56,7 +62,17 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
  * match the indexer's contributor filter and will be missing here —
  * see the indexer notes on producer-side handle storage.
  */
-export default function ProfileCerts({ did, viewerIsOwner }: ProfileCertsProps) {
+export default function ProfileCerts({
+  did,
+  viewerIsOwner,
+  aggregateOwned = false,
+}: ProfileCertsProps) {
+  // On the viewer's own personal profile, the Created bucket aggregates
+  // activities authored by the viewer + every group they own/admin; the
+  // Contributed bucket stays the viewer's personal contributions. The
+  // owning DID per card comes from the hook's `dids` map, so a
+  // group-authored card shows the group as its author.
+  const { authors } = useManagedAuthors()
   const {
     created,
     contributed,
@@ -66,7 +82,9 @@ export default function ProfileCerts({ did, viewerIsOwner }: ProfileCertsProps) 
     error,
     hasMore,
     loadMore,
-  } = useUserIndexerActivities(did)
+  } = useUserIndexerActivities(did, {
+    authoredAuthors: aggregateOwned ? authors : undefined,
+  })
 
   const [tab, setTab] = useState<SubTab>("created")
   const [query, setQuery] = useState("")

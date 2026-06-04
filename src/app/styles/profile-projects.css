@@ -133,6 +133,21 @@
   margin: 0;
 }
 
+/* "by {group}" provenance under the title when aggregating the viewer's
+   own profile. Left-aligned (not stretched) and pulled up tight to the
+   title; the base appearance comes from the shared .owner-byline. */
+.profile-projects__box-by {
+  align-self: flex-start;
+  margin-top: -2px;
+}
+
+/* "Load more" affordance for the aggregated own-profile projects view. */
+.profile-projects__more {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 4px;
+}
+
 .profile-projects__box-desc {
   font-size: 0.9375rem;
   line-height: 1.5;
