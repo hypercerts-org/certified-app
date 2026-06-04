@@ -4,6 +4,8 @@ import { getOAuthClient } from "@/lib/auth/oauth-client"
 import { getSessionDid, deleteSession } from "@/lib/auth/session"
 import { checkCsrf } from "@/lib/auth/csrf"
 import { getServiceAuthToken } from "@/lib/atproto/service-auth"
+import { NOTIFICATIONS_AGGREGATION_ENABLED } from "@/lib/utils/config"
+import { OPERATIONS, buildVariables, selectQuery } from "./operations"
 
 /**
  * Trust boundary between the client and the indexer's service-auth
@@ -44,79 +46,11 @@ if (process.env.NODE_ENV === "production" && !INDEXER_DID) {
 const UPSTREAM_TIMEOUT_MS = 15_000
 const SERVICE_AUTH_TIMEOUT_MS = 5_000
 const MAX_BODY_SIZE = 16 * 1024
-const MAX_FIRST = 100
 
-/** Allowlist of GraphQL operations we forward. The client sends only
- *  operationName + variables; the query string is held server-side.
- *  The indexer derives the acting DID from the JWT, so these queries
- *  don't take a `$did` variable. */
-const OPERATIONS: Record<string, string> = {
-  notifications: `
-    query notifications($first: Int!, $after: String) {
-      notifications(first: $first, after: $after) {
-        edges {
-          cursor
-          node {
-            id
-            reason
-            reasonSubject
-            sortAt
-            count
-            latestRecordUri
-            latestRecordCid
-            latestAuthor
-            isRead
-          }
-        }
-        pageInfo { hasNextPage endCursor }
-      }
-    }`,
-  unreadNotificationCount: `
-    query unreadNotificationCount {
-      unreadNotificationCount { count more }
-    }`,
-  updateNotificationsSeen: `
-    mutation updateNotificationsSeen($seenAt: String) {
-      updateNotificationsSeen(seenAt: $seenAt)
-    }`,
-}
-
-type ClientVariables = {
-  first?: unknown
-  after?: unknown
-  seenAt?: unknown
-}
-
-/** Normalize client-supplied variables per-operation. */
-function buildVariables(
-  operationName: string,
-  vars: ClientVariables,
-): Record<string, unknown> | null {
-  switch (operationName) {
-    case "notifications": {
-      const first = typeof vars.first === "number" && Number.isFinite(vars.first)
-        ? Math.min(Math.max(1, Math.floor(vars.first)), MAX_FIRST)
-        : 50
-      const after =
-        typeof vars.after === "string" && vars.after.length > 0 && vars.after.length <= 512
-          ? vars.after
-          : null
-      return { first, after }
-    }
-    case "unreadNotificationCount": {
-      return {}
-    }
-    case "updateNotificationsSeen": {
-      let seenAt: string = new Date().toISOString()
-      if (typeof vars.seenAt === "string" && Number.isFinite(Date.parse(vars.seenAt))) {
-        seenAt = vars.seenAt
-      }
-      return { seenAt }
-    }
-    default:
-      return null
-  }
-}
+// The allowlist, query variants, recipient validation, and per-operation
+// variable normalization live in ./operations so they're unit-testable
+// without the full route (session, OAuth, service-auth). The aggregation
+// flag is injected from config here.
 
 export async function POST(request: NextRequest) {
   const csrfError = checkCsrf(request)
@@ -154,16 +88,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "operationName is required" }, { status: 400 })
   }
 
-  const query = OPERATIONS[parsed.operationName]
-  if (!query) {
+  // OPERATIONS is the allowlist; the aggregated variants share the same
+  // names, so allowlisting against OPERATIONS covers both.
+  if (!OPERATIONS[parsed.operationName]) {
     return NextResponse.json({ error: "Unknown operation" }, { status: 400 })
   }
 
-  const clientVars = (parsed.variables ?? {}) as ClientVariables
-  const variables = buildVariables(parsed.operationName, clientVars)
+  const clientVars = (parsed.variables ?? {}) as Record<string, unknown>
+  const variables = buildVariables(
+    parsed.operationName,
+    clientVars,
+    NOTIFICATIONS_AGGREGATION_ENABLED,
+  )
   if (!variables) {
     return NextResponse.json({ error: "Unknown operation" }, { status: 400 })
   }
+
+  // `selectQuery` picks the aggregated variant only when `buildVariables`
+  // produced a `recipients` arg (flag on + valid input); otherwise the
+  // default query goes out unchanged — the indexer never sees the new arg.
+  const query = selectQuery(parsed.operationName, variables)!
 
   // Restore OAuth agent — mirror the XRPC proxy pattern. If restore
   // fails, the session is stale: delete it and return 401 so the

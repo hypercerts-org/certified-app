@@ -58,6 +58,18 @@ import {
   groupsMembershipsResponse,
 } from "@/lib/dev/fixtures/groups"
 import { searchActorsResponse } from "@/lib/dev/fixtures/search"
+import {
+  isManagedAuthorsRequest,
+  managedProjectsConnection,
+  managedActivitiesConnection,
+  managedGroupsMembershipsResponse,
+  managedMembershipRecords,
+  managedOrgProfile,
+  managedPlcDidDocument,
+  managedNotificationsConnection,
+  managedUnreadCount,
+} from "@/lib/dev/fixtures/managed"
+import { ORG_MEMBERSHIP_COLLECTION } from "@/lib/groups/constants"
 
 export type MockScenario = "populated" | "empty"
 
@@ -68,6 +80,13 @@ interface MockFetchProviderProps {
   /** Fixture density. `empty` makes every list/connection empty so
    *  empty-state surfaces can be screenshotted too. */
   scenario?: MockScenario
+  /** Managed / write-as-org scenario. When on, the viewer belongs to the
+   *  mock managed groups (owner/admin/member) and the `/api/indexer`
+   *  Projects/Activities ops serve the org-aggregation connections for
+   *  requests that carry the managed group DIDs in `authors[]`. Default
+   *  OFF so every existing preview (profile / feed / settings / workspace)
+   *  renders byte-identically. */
+  managedScenario?: boolean
 }
 
 const JSON_HEADERS = { "Content-Type": "application/json" } as const
@@ -87,7 +106,7 @@ type IndexerBody = { operationName?: string; variables?: Record<string, unknown>
  *  fetchers treat a missing root field as an empty result). */
 function indexerResponse(
   body: IndexerBody,
-  opts: { empty: boolean },
+  opts: { empty: boolean; managed: boolean },
 ): Response {
   const op = body.operationName
   const vars = body.variables ?? {}
@@ -97,6 +116,36 @@ function indexerResponse(
     totalCount: 0,
     edges: [],
     pageInfo: { hasNextPage: false, endCursor: null },
+  }
+
+  // --- managed / write-as-org aggregation ---------------------------
+  // Only for the managed scenario AND only when the request actually
+  // carries the managed group DIDs in `authors[]` (the org-aggregation
+  // request). Every other Projects/Activities request — including the
+  // managed scenario's own per-DID profile fetches — falls through to
+  // today's behaviour, so nothing else is disturbed.
+  if (opts.managed && Array.isArray(vars.authors)) {
+    const authors = (vars.authors as unknown[]).filter(
+      (a): a is string => typeof a === "string",
+    )
+    if (isManagedAuthorsRequest(authors)) {
+      if (op === "Projects" || op === "UserProjects") {
+        return json({
+          data: { orgHypercertsCollection: managedProjectsConnection(authors) },
+        })
+      }
+      if (
+        op === "Activities" ||
+        op === "AuthoredActivities" ||
+        op === "ContributedActivities"
+      ) {
+        return json({
+          data: {
+            orgHypercertsClaimActivity: managedActivitiesConnection(authors),
+          },
+        })
+      }
+    }
   }
 
   switch (op) {
@@ -223,6 +272,7 @@ function xrpcResponse(
   url: URL,
   scenario: ProfileScenario,
   empty: boolean,
+  managed: boolean,
 ): Response {
   const method = url.pathname.replace(/^\/api\/xrpc\//, "").replace(/\//g, ".")
   const params = url.searchParams
@@ -251,6 +301,13 @@ function xrpcResponse(
     if (collection === "app.certified.graph.follow") {
       return json(empty ? { records: [] } : followRecords())
     }
+    // Managed scenario: the viewer's local membership records, so
+    // `resolveGroups` marks each managed group `accepted: true`. Only
+    // intercepts the membership collection — every other listRecords
+    // (activities-by-PDS, etc.) still returns an empty list.
+    if (managed && collection === ORG_MEMBERSHIP_COLLECTION) {
+      return json(managedMembershipRecords())
+    }
     // Memberships, activities-by-PDS, and anything else → empty list.
     return json({ records: [] })
   }
@@ -263,6 +320,7 @@ function xrpcResponse(
 function installMockFetch(
   profileScenario: ProfileScenario,
   scenario: MockScenario,
+  managed: boolean,
 ): () => void {
   if (typeof window === "undefined") return () => {}
   const realFetch = window.fetch
@@ -291,6 +349,17 @@ function installMockFetch(
 
     // --- PLC directory (resolvePdsUrl / resolveHandle fetch it directly) ---
     if (url.hostname === "plc.directory") {
+      // Managed scenario: serve a per-group DID document so each managed
+      // group's handle resolves (the path segment after the host is the
+      // DID). Falls back to the viewer's doc for any other DID so the
+      // existing own-identity resolution is unchanged.
+      if (managed) {
+        const requestedDid = decodeURIComponent(
+          path.replace(/^\//, "").split("/")[0] ?? "",
+        )
+        const groupDoc = managedPlcDidDocument(requestedDid)
+        if (groupDoc) return json(groupDoc)
+      }
       return json(plcDidDocument())
     }
 
@@ -328,7 +397,7 @@ function installMockFetch(
         } catch {
           /* fall through with empty body → default op */
         }
-        return indexerResponse(parsed, { empty })
+        return indexerResponse(parsed, { empty, managed })
       }
       if (path === "/api/resolve-did") {
         // Single resolve — the viewer's own profile (or org variant).
@@ -349,13 +418,31 @@ function installMockFetch(
         return json({ results: resolveDidsResults(identities) })
       }
       if (path.startsWith("/api/xrpc/")) {
-        return xrpcResponse(url, profileScenario, empty)
+        return xrpcResponse(url, profileScenario, empty, managed)
       }
       if (path === "/api/search-actors") {
         return json(searchActorsResponse(url.searchParams.get("q") ?? ""))
       }
       if (path === "/api/groups/memberships") {
-        return json(groupsMembershipsResponse())
+        // Managed scenario: the three managed groups (owner/admin/member)
+        // so `useOrg().groups` resolves to them. Otherwise an empty list,
+        // keeping the personal identity active for the existing previews.
+        return json(
+          managed
+            ? managedGroupsMembershipsResponse()
+            : groupsMembershipsResponse(),
+        )
+      }
+      if (managed && /^\/api\/groups\/[^/]+\/profile$/.test(path)) {
+        // Per-group org profile (`getOrgProfile`) — drives `displayName`
+        // on the resolved groups. The DID segment is URL-encoded; decode
+        // it back to `did:plc:…`. A 404-shaped miss for an unknown DID
+        // lets `resolveGroups` fall back to the handle.
+        const segment = path.split("/")[3] ?? ""
+        const groupDid = decodeURIComponent(segment)
+        const profile = managedOrgProfile(groupDid)
+        if (profile) return json(profile)
+        return json({ error: "NotFound" }, 404)
       }
       if (path === "/api/notifications") {
         // The notifications client (`lib/atproto/notifications.ts`) POSTs
@@ -364,6 +451,7 @@ function installMockFetch(
         // throws "Unread count unavailable" if the field is missing, so
         // every op the provider polls needs a valid envelope here.
         let op: string | undefined
+        let recipients: string[] | null = null
         try {
           const text =
             typeof init?.body === "string"
@@ -371,25 +459,47 @@ function installMockFetch(
               : init?.body
                 ? String(init.body)
                 : "{}"
-          op = (JSON.parse(text) as { operationName?: string }).operationName
+          const parsedBody = JSON.parse(text) as {
+            operationName?: string
+            variables?: { recipients?: unknown }
+          }
+          op = parsedBody.operationName
+          const rawRecipients = parsedBody.variables?.recipients
+          if (Array.isArray(rawRecipients)) {
+            recipients = rawRecipients.filter(
+              (r): r is string => typeof r === "string",
+            )
+          }
         } catch {
           /* fall through → default empty notifications page */
         }
+        // The aggregated path: the client sent `recipients` AND we're in the
+        // managed scenario, so serve per-recipient notices (with the new
+        // `recipient` field). Outside the managed scenario, recipients are
+        // still honoured but only the viewer has notices.
+        const aggregated = managed && recipients !== null
         if (op === "unreadNotificationCount") {
           return json({
-            data: { unreadNotificationCount: { count: 0, more: false } },
+            data: {
+              unreadNotificationCount: aggregated
+                ? managedUnreadCount(recipients)
+                : { count: 0, more: false },
+            },
           })
         }
         if (op === "updateNotificationsSeen") {
           return json({ data: { updateNotificationsSeen: { seenAt: null } } })
         }
-        // `notifications` (list) and anything else → empty, valid page.
+        // `notifications` (list) and anything else → empty, valid page,
+        // or the managed connection on the aggregated path.
         return json({
           data: {
-            notifications: {
-              edges: [],
-              pageInfo: { hasNextPage: false, endCursor: null },
-            },
+            notifications: aggregated
+              ? managedNotificationsConnection(recipients)
+              : {
+                  edges: [],
+                  pageInfo: { hasNextPage: false, endCursor: null },
+                },
           },
         })
       }
@@ -412,6 +522,7 @@ export default function MockFetchProvider({
   children,
   profileScenario = "individual",
   scenario = "populated",
+  managedScenario = false,
 }: MockFetchProviderProps) {
   // Install synchronously during the FIRST render (via the useState lazy
   // initializer) so the patch is in place before any child provider's
@@ -419,7 +530,7 @@ export default function MockFetchProvider({
   // fn, which is held in state and called on unmount. Storing it in
   // state (not a ref) keeps render side-effect-free per react-hooks/refs.
   const [teardown] = useState<() => void>(() =>
-    installMockFetch(profileScenario, scenario),
+    installMockFetch(profileScenario, scenario, managedScenario),
   )
 
   useEffect(() => {

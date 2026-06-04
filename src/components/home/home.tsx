@@ -7,13 +7,14 @@ import { FolderGit2, User, Users } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
-import { useUserProjects } from "@/hooks/use-user-projects"
-import { useUserActivities } from "@/hooks/use-user-activities"
+import { useManagedProjects } from "@/hooks/use-managed-projects"
+import { useManagedActivities } from "@/hooks/use-managed-activities"
 import { usePageTitle } from "@/lib/navbar-context"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Avatar from "@/components/ui/avatar"
 import Badge from "@/components/ui/badge"
 import EmptyState from "@/components/ui/empty-state"
+import ViaByline from "@/components/ui/via-byline"
 import HomeFeed from "@/components/home/home-feed"
 import NewsSection from "@/components/right-rail/news-section"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
@@ -21,6 +22,7 @@ import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { getInitials } from "@/lib/utils/initials"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
+import type { OwnerTag } from "@/lib/atproto/owner-tag"
 import type { Group } from "@/lib/groups/types"
 
 /** DID of the actor whose Bluesky timeline powers the home page's
@@ -111,9 +113,16 @@ export default function Home() {
 
 function HomeSidebar({ activeDid }: { activeDid: string }) {
   const { groups, isLoading: groupsLoading } = useOrg()
-  const { projects, isLoading: projectsLoading } = useUserProjects(activeDid)
-  const { activities: certs, isLoading: certsLoading } =
-    useUserActivities(activeDid)
+  // Aggregated across the viewer's managed identities (personal + every
+  // owned/admin group), so group-owned projects/activities surface here
+  // too. The managed hooks anchor on the viewer's PERSONAL DID internally
+  // (via useAuth), so this aggregate is the same regardless of which
+  // identity the page is focused on — acting-as is read-scope and never
+  // changes what's "yours" here. Every group-owned row keeps its "via
+  // {group}" provenance; the dedicated /managed hub is where the focus
+  // filter narrows to a single owner.
+  const { items: projects, isLoading: projectsLoading } = useManagedProjects()
+  const { items: certs, isLoading: certsLoading } = useManagedActivities()
 
   const previewGroups = groups.slice(0, SIDEBAR_PREVIEW_LIMIT)
   const previewProjects = projects.slice(0, SIDEBAR_PREVIEW_LIMIT)
@@ -149,8 +158,10 @@ function HomeSidebar({ activeDid }: { activeDid: string }) {
         isLoading={projectsLoading && previewProjects.length === 0}
         items={previewProjects}
         total={projects.length}
-        renderItem={(p) => <ProjectRow key={p.uri} project={p} />}
-        moreHref={`${profileBase}?tab=projects`}
+        renderItem={(p) => (
+          <ProjectRow key={p.record.uri} project={p.record} owner={p.owner} />
+        )}
+        moreHref="/managed"
         emptyLabel="No projects yet."
       />
       <SidebarSection
@@ -159,8 +170,15 @@ function HomeSidebar({ activeDid }: { activeDid: string }) {
         isLoading={certsLoading && previewCerts.length === 0}
         items={previewCerts}
         total={certs.length}
-        renderItem={(c) => <CertRow key={c.uri} record={c} fallbackDid={activeDid} />}
-        moreHref={`${profileBase}?tab=activities`}
+        renderItem={(c) => (
+          <CertRow
+            key={c.record.uri}
+            record={c.record}
+            owner={c.owner}
+            fallbackDid={activeDid}
+          />
+        )}
+        moreHref="/managed"
         emptyLabel="No activities yet."
       />
     </>
@@ -245,7 +263,13 @@ function GroupRow({ group }: { group: Group }) {
   )
 }
 
-function ProjectRow({ project }: { project: CollectionRecord }) {
+function ProjectRow({
+  project,
+  owner,
+}: {
+  project: CollectionRecord
+  owner: OwnerTag
+}) {
   const parsed = parseAtUri(project.uri)
   const did = parsed?.did ?? ""
   const href = parsed
@@ -267,6 +291,10 @@ function ProjectRow({ project }: { project: CollectionRecord }) {
         )
       : null
 
+  // Only group-owned records carry a provenance line; personal records
+  // are the viewer's own, so no "via" is shown.
+  const via = owner.kind === "group" && owner.group ? owner.group : null
+
   return (
     <li>
       <Link href={href} className="home-row">
@@ -283,7 +311,10 @@ function ProjectRow({ project }: { project: CollectionRecord }) {
             />
           )}
         </span>
-        <span className="home-row__label">{title}</span>
+        <span className="home-row__text">
+          <span className="home-row__label">{title}</span>
+          {via ? <ViaByline group={via} role={owner.role} /> : null}
+        </span>
       </Link>
     </li>
   )
@@ -291,9 +322,11 @@ function ProjectRow({ project }: { project: CollectionRecord }) {
 
 function CertRow({
   record,
+  owner,
   fallbackDid,
 }: {
   record: ActivityRecord
+  owner: OwnerTag
   fallbackDid: string
 }) {
   const parsed = parseAtUri(record.uri)
@@ -305,6 +338,10 @@ function CertRow({
   const imageUrl = record.value.image
     ? resolveActivityImageUrl(record.value.image, did)
     : null
+
+  // Only group-owned records carry a provenance line; personal records
+  // are the viewer's own, so no "via" is shown.
+  const via = owner.kind === "group" && owner.group ? owner.group : null
 
   return (
     <li>
@@ -322,8 +359,11 @@ function CertRow({
             />
           )}
         </span>
-        <span className="home-row__label">
-          {record.value.title || "Untitled activity"}
+        <span className="home-row__text">
+          <span className="home-row__label">
+            {record.value.title || "Untitled activity"}
+          </span>
+          {via ? <ViaByline group={via} role={owner.role} /> : null}
         </span>
       </Link>
     </li>

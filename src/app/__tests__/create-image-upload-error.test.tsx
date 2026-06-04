@@ -10,8 +10,12 @@ vi.mock("@/lib/auth/auth-context", () => ({
   useAuth: () => ({ did: "did:plc:me", isAuthenticated: true, isLoading: false }),
 }))
 
+// `groups` feeds the per-action posting picker (usePostingIdentity →
+// buildPostingOptions); the real OrgContext always supplies an array, so
+// stub it as empty here (the viewer admins no groups → static "Posting
+// as You" label, no picker).
 vi.mock("@/lib/groups/org-context", () => ({
-  useOrg: () => ({ activeOrg: null }),
+  useOrg: () => ({ activeOrg: null, groups: [] }),
 }))
 
 vi.mock("next/navigation", () => ({

@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { parseNotificationsPage } from "../notifications"
+import {
+  parseNotificationsPage,
+  fetchNotifications,
+  fetchUnreadCount,
+} from "../notifications"
 
 /** Build a fully-populated, valid notification node. */
 function validNode(overrides: Record<string, unknown> = {}) {
@@ -79,5 +83,67 @@ describe("parseNotificationsPage — load-bearing field validation", () => {
     const page = parseNotificationsPage(pageWith([validNode(), partial]))
     expect(page.records).toHaveLength(1)
     expect(page.records[0].id).toBe("notif-1")
+  })
+
+  it("passes through the aggregated `recipient` field", () => {
+    const page = parseNotificationsPage(
+      pageWith([validNode({ recipient: "did:plc:group" })]),
+    )
+    expect(page.records).toHaveLength(1)
+    expect(page.records[0].recipient).toBe("did:plc:group")
+  })
+})
+
+describe("recipients wiring — fetchNotifications / fetchUnreadCount", () => {
+  let lastBody: { operationName?: string; variables?: Record<string, unknown> }
+
+  beforeEach(() => {
+    lastBody = {}
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        lastBody = JSON.parse((init?.body as string) ?? "{}")
+        const op = lastBody.operationName
+        const data =
+          op === "unreadNotificationCount"
+            ? { unreadNotificationCount: { count: 0, more: false } }
+            : {
+                notifications: {
+                  edges: [],
+                  pageInfo: { hasNextPage: false, endCursor: null },
+                },
+              }
+        return new Response(JSON.stringify({ data }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      }),
+    )
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it("omits `recipients` from the body when none are passed", async () => {
+    await fetchNotifications({ first: 10 })
+    expect(lastBody.variables).toEqual({ first: 10, after: null })
+    expect(lastBody.variables).not.toHaveProperty("recipients")
+  })
+
+  it("omits `recipients` when an empty array is passed", async () => {
+    await fetchNotifications({ first: 10, recipients: [] })
+    expect(lastBody.variables).not.toHaveProperty("recipients")
+  })
+
+  it("includes `recipients` in the notifications body when non-empty", async () => {
+    await fetchNotifications({ first: 10, recipients: ["did:plc:me", "did:plc:grp"] })
+    expect(lastBody.variables?.recipients).toEqual(["did:plc:me", "did:plc:grp"])
+  })
+
+  it("sends `recipients` for the unread count but omits it by default", async () => {
+    await fetchUnreadCount()
+    expect(lastBody.variables).toEqual({})
+    await fetchUnreadCount(["did:plc:me", "did:plc:grp"])
+    expect(lastBody.variables?.recipients).toEqual(["did:plc:me", "did:plc:grp"])
   })
 })

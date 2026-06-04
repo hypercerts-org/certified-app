@@ -1,0 +1,221 @@
+/* ========== /managed — the org-identity hub ==========
+   A single-column list aggregating everything the viewer is responsible
+   for (personal + owned/admin groups). Row chrome mirrors the home
+   sidebar rows (`.home-row`) but at the larger list density of a hub
+   page; the focus filter sits above the list.
+
+   The default app-shell reading column caps content at 600px on
+   desktop, which clips this list to a cramped width. The `:has()`
+   override below widens the content slot for /managed only — scoped to
+   the page wrapper so no other route is affected (same pattern as
+   `.app-shell:has(.cert-detail--wide)` and
+   `.app-shell__content:has(.apps-store)`). */
+
+.app-shell:has(.managed-page) .app-shell__content {
+  max-width: 720px;
+}
+
+@media (min-width: 800px) {
+  .app-shell:has(.managed-page) .app-shell__content {
+    max-width: 860px;
+  }
+}
+
+.managed-page__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ---- Header: title + sub on the left, "New" affordance on the right ---- */
+.managed-page__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 16px;
+}
+
+.managed-page__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.managed-page__title {
+  margin: 0;
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--fg-primary);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.managed-page__sub {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--fg-muted);
+  line-height: 1.45;
+  max-width: 52ch;
+}
+
+/* Shared "New" pill — used in the header and in the empty-state CTA.
+   Mirrors `.page-tabs-bar__new` so the affordance reads the same as the
+   one on /groups. */
+.managed-page__new {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  color: var(--fg-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.managed-page__new:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-sunken);
+}
+
+.managed-page__new:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ---- Focus filter row ---- */
+/* Horizontally scrollable on narrow viewports so a long identity list
+   (segmented strip) never overflows or wraps; the strip keeps its
+   intrinsic width and the row scrolls instead. Scrollbar hidden to match
+   the rest of the chrome. */
+.managed-page__filter {
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.managed-page__filter::-webkit-scrollbar {
+  display: none;
+}
+
+.managed-page__filter > * {
+  flex-shrink: 0;
+}
+
+.managed-page__filter-select {
+  max-width: 280px;
+}
+
+/* ---- States ---- */
+.managed-page__loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+.managed-page__more {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 24px;
+}
+
+/* ---- List + rows ---- */
+.managed-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.managed-list__item {
+  border-bottom: 1px solid var(--border-default);
+}
+
+.managed-list__item:last-child {
+  border-bottom: none;
+}
+
+.managed-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 8px;
+  border-radius: var(--radius);
+  color: var(--fg-primary);
+  text-decoration: none;
+  min-width: 0;
+  transition: background var(--transition-fast);
+}
+
+.managed-row:hover {
+  background: var(--bg-sunken);
+}
+
+.managed-row:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.managed-row__thumb {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-sunken);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-secondary);
+}
+
+.managed-row__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.managed-row__thumb-icon {
+  color: var(--fg-secondary);
+}
+
+.managed-row__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.managed-row__title {
+  font-size: 0.9375rem;
+  color: var(--fg-primary);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.managed-row__via {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.managed-row__via-role {
+  color: var(--fg-muted);
+}
