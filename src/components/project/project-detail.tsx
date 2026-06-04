@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
+import ConfirmDialog from "@/components/ui/confirm-dialog"
 import {
   Popover,
   PopoverTrigger,
@@ -156,7 +157,7 @@ export default function ProjectDetail({
 }: ProjectDetailProps) {
   // Edit-eligibility mirrors `activity-detail.tsx:165-184`.
   const { did: sessionDid, isAuthenticated } = useAuth()
-  const { activeOrg } = useOrg()
+  const { activeOrg, groups, switchOrg } = useOrg()
   const canEditAsActiveOrg =
     !!activeOrg &&
     activeOrg.groupDid === did &&
@@ -169,6 +170,20 @@ export default function ProjectDetail({
     ? canEditAsActiveOrg
     : !!sessionDid && sessionDid === did
   const editTargetDid = canEditAsActiveOrg ? did : undefined
+  // Group-edit affordance — the viewer is NOT a direct owner (own project
+  // or active-org owner/admin), but they ARE an owner/admin of the group
+  // that owns this project while signed in under a different identity.
+  // Offer an Edit button that, on confirm, switches them into the owning
+  // group before opening the editor (mirrors activity-detail.tsx).
+  const editAsGroup = isOwner
+    ? null
+    : groups.find(
+        (g) =>
+          g.groupDid === did &&
+          (g.role === "owner" || g.role === "admin"),
+      ) ?? null
+  const [groupEditOpen, setGroupEditOpen] = useState(false)
+  const editHref = `/project/${encodeURIComponent(did)}/${encodeURIComponent(rkey ?? "")}/edit`
 
   // -------------------------------------------------------------------
   // Inline edit state — same pattern as cert detail. Drafts seeded
@@ -938,29 +953,44 @@ export default function ProjectDetail({
           </div>
           <div className="project-detail__head-actions">
             <ActivityAuthor did={did} />
-            {!editing && isOwner ? (
+            {!editing && (isOwner || editAsGroup) ? (
               <>
-                <Link
-                  href={`/project/${encodeURIComponent(did)}/${encodeURIComponent(rkey ?? "")}/edit`}
-                  className="project-detail__edit-btn"
-                  aria-label="Edit project"
-                  title="Edit project"
-                >
-                  <Pencil size={14} strokeWidth={1.75} aria-hidden />
-                  Edit
-                </Link>
-                <button
-                  type="button"
-                  className="project-detail__delete-btn"
-                  aria-label="Delete project"
-                  title="Delete project"
-                  onClick={() => {
-                    setDeleteError(null)
-                    setDeleteOpen(true)
-                  }}
-                >
-                  <Trash2 size={14} strokeWidth={1.75} aria-hidden />
-                </button>
+                {isOwner ? (
+                  <Link
+                    href={editHref}
+                    className="project-detail__edit-btn"
+                    aria-label="Edit project"
+                    title="Edit project"
+                  >
+                    <Pencil size={14} strokeWidth={1.75} aria-hidden />
+                    Edit
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    className="project-detail__edit-btn"
+                    aria-label="Edit project"
+                    title={`Edit as ${editAsGroup!.displayName || editAsGroup!.handle}`}
+                    onClick={() => setGroupEditOpen(true)}
+                  >
+                    <Pencil size={14} strokeWidth={1.75} aria-hidden />
+                    Edit
+                  </button>
+                )}
+                {isOwner ? (
+                  <button
+                    type="button"
+                    className="project-detail__delete-btn"
+                    aria-label="Delete project"
+                    title="Delete project"
+                    onClick={() => {
+                      setDeleteError(null)
+                      setDeleteOpen(true)
+                    }}
+                  >
+                    <Trash2 size={14} strokeWidth={1.75} aria-hidden />
+                  </button>
+                ) : null}
               </>
             ) : null}
           </div>
@@ -1355,6 +1385,20 @@ export default function ProjectDetail({
             if (!isDeleting) setDeleteOpen(false)
           }}
           onConfirm={handleDeleteConfirm}
+        />
+      ) : null}
+      {groupEditOpen && editAsGroup ? (
+        <ConfirmDialog
+          title="Edit as group"
+          message={`This project is published by ${editAsGroup.displayName || editAsGroup.handle}. You'll switch to acting as that group to edit it — your changes are saved as the group, not your personal account.`}
+          confirmLabel="Continue as group"
+          confirmVariant="primary"
+          onCancel={() => setGroupEditOpen(false)}
+          onConfirm={() => {
+            switchOrg(editAsGroup)
+            setGroupEditOpen(false)
+            router.push(editHref)
+          }}
         />
       ) : null}
     </>

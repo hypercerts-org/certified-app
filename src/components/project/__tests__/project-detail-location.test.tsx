@@ -12,7 +12,7 @@ vi.mock("@/lib/auth/auth-context", () => ({
 }))
 
 vi.mock("@/lib/groups/org-context", () => ({
-  useOrg: () => ({ activeOrg: null }),
+  useOrg: () => ({ activeOrg: null, groups: [], switchOrg: () => {} }),
 }))
 
 vi.mock("next/navigation", () => ({

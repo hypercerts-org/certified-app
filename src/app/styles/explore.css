@@ -514,6 +514,12 @@
   font-size: 0.8rem;
 }
 
+/* In list rows the author byline is a centered grid cell — drop the
+   card-view bottom margin so it sits vertically centered. */
+.cert-list-row__author-col .feed-card__author {
+  margin-bottom: 0;
+}
+
 .cert-list-row__time {
   font-size: 0.75rem;
   color: var(--fg-secondary);

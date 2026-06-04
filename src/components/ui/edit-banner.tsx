@@ -37,6 +37,11 @@ export interface EditBannerProps {
   /** Override the Save / Cancel button labels. */
   saveLabel?: string
   cancelLabel?: string
+  /** Extra class on the banner root — lets a surface constrain the
+   *  banner's width to its own reading column (e.g. the project editor
+   *  caps it to match the centered article). Appended after the base
+   *  layout classes. */
+  className?: string
 }
 
 export default function EditBanner({
@@ -48,15 +53,19 @@ export default function EditBanner({
   onSave,
   saveLabel = "Save",
   cancelLabel = "Cancel",
+  className = "",
 }: EditBannerProps) {
   // Shared button chrome (mirrors `.edit-banner__btn` in profile-inline-edit.css).
   const btnBase =
     "inline-flex h-8 items-center justify-center gap-1.5 rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3.5 font-[inherit] text-[0.8125rem] font-medium leading-none text-[var(--fg-primary)] cursor-pointer transition-[background-color,border-color] duration-150 ease-out enabled:hover:bg-[var(--overlay-weak)] disabled:cursor-not-allowed disabled:opacity-60"
   // Primary modifier (`.edit-banner__btn--primary`): dark fill that stays dark on
   // hover (opacity affordance), re-pinning bg + border so the ghost-hover rule
-  // above can't repaint it near-white.
+  // above can't repaint it near-white. The text color is forced (`!`) because
+  // `btnBase` already sets `text-[var(--fg-primary)]`; two equal-specificity
+  // arbitrary text utilities resolve by stylesheet order, which left the Save
+  // label rendering dark-on-dark (black-on-black in light mode).
   const btnPrimary =
-    "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] border-[var(--btn-primary-bg)] enabled:hover:bg-[var(--btn-primary-bg)] enabled:hover:border-[var(--btn-primary-bg)] enabled:hover:opacity-[0.92]"
+    "bg-[var(--btn-primary-bg)] !text-[var(--btn-primary-fg)] border-[var(--btn-primary-bg)] enabled:hover:bg-[var(--btn-primary-bg)] enabled:hover:border-[var(--btn-primary-bg)] enabled:hover:opacity-[0.92]"
 
   // `edit-banner` class retained on the root only as the hook for the profile
   // inline-edit click guard (`target.closest(".edit-banner")` in
@@ -64,7 +73,7 @@ export default function EditBanner({
   // mirroring the `.edit-banner*` rules in profile-inline-edit.css.
   return (
     <div
-      className="edit-banner mx-6 mt-4 flex items-center gap-3 rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--bg-elevated)] px-4 py-2.5"
+      className={`edit-banner mx-6 mt-4 flex items-center gap-3 rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--bg-elevated)] px-4 py-2.5${className ? ` ${className}` : ""}`}
       role="region"
       aria-label={label}
     >

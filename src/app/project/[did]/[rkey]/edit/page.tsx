@@ -567,6 +567,10 @@ export default function ProjectEditPage() {
         onSave={() => {
           void doSave()
         }}
+        // Cap the banner to the same centered reading column as the
+        // article below (.project-detail), so it doesn't span the full
+        // 1280px `.project-detail--wide` content area.
+        className="edit-banner--project"
       />
       <article className="project-detail-page project-detail--wide create-project">
         <div className="project-detail">

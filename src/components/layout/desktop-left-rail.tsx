@@ -157,6 +157,7 @@ export default function DesktopLeftRail() {
     { href: profileHref, label: "Profile", icon: User, matchPrefix: true },
     { href: "/home", label: "Home", icon: Rss, matchPrefix: true },
     { href: "/search", label: "Explore", icon: Search },
+    { href: "/apps", label: "Apps", icon: LayoutGrid, matchPrefix: true },
     ...(showEndorsements
       ? [{ href: "/endorsements", label: "Endorsements", icon: Award, badge: pendingBadge, badgeUnit: "pending", matchPrefix: true }]
       : []),
@@ -164,7 +165,6 @@ export default function DesktopLeftRail() {
     ...(showGroups
       ? [{ href: "/groups", label: "Groups", icon: Building2, matchPrefix: true }]
       : []),
-    { href: "/apps", label: "Apps", icon: LayoutGrid, matchPrefix: true },
     { href: "/settings", label: "Settings", icon: Settings, matchPrefix: true },
   ];
 

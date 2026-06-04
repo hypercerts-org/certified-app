@@ -8,12 +8,15 @@ import {
   ArrowLeft,
   Building2,
   ChevronDown,
+  Compass,
   FileBadge,
   FolderKanban,
+  Home,
   LayoutGrid,
   Menu,
   Plus,
   Settings,
+  User,
 } from "lucide-react";
 import SiteDrawer from "./site-drawer";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -166,6 +169,13 @@ export default function DesktopTopBar() {
         initials: getInitials(profile?.displayName, did),
       };
 
+  // Profile shortcut target — mirrors the left rail. When acting as a
+  // group, identity.handle is the group handle, so "My profile" follows
+  // the active identity just like the avatar switcher does.
+  const profileHref = identity.handle
+    ? `/profile/${encodeURIComponent(identity.handle)}`
+    : "/profile";
+
   const isOnProfile = pathname?.startsWith("/profile/") ?? false;
   const isOnSettings =
     pathname === "/settings" || (pathname?.startsWith("/settings/") ?? false);
@@ -186,7 +196,12 @@ export default function DesktopTopBar() {
     pathname !== "/project/new" &&
     !(pathname?.endsWith("/edit") ?? false);
   const isOnExplore = pathname === "/explore";
-  const showBackRow = isOnCertDetail || isOnProjectDetail;
+  // Create flows (`/create`, `/project/new`) are single-page forms with
+  // no tab strip, but they still get a row-2 Back affordance so the
+  // navigation rhythm matches detail pages. The form's own Cancel button
+  // stays the primary "discard" action.
+  const isOnCreatePage = pathname === "/create" || pathname === "/project/new";
+  const showBackRow = isOnCertDetail || isOnProjectDetail || isOnCreatePage;
   // Settings is its own standalone surface now (reachable from the
   // site drawer); no tab strip there.
   const showTabsRow = isOnProfile || isOnExplore;
@@ -413,6 +428,26 @@ export default function DesktopTopBar() {
             </div>
           ) : null}
 
+          {isAuthenticated ? (
+            <Link
+              href="/home"
+              className="desktop-top-bar__icon-btn"
+              aria-label="Home"
+              title="Home"
+            >
+              <Home size={20} strokeWidth={1.5} aria-hidden />
+            </Link>
+          ) : null}
+
+          <Link
+            href="/search"
+            className="desktop-top-bar__icon-btn"
+            aria-label="Explore"
+            title="Explore"
+          >
+            <Compass size={20} strokeWidth={1.5} aria-hidden />
+          </Link>
+
           <Link
             href="/apps"
             className="desktop-top-bar__icon-btn"
@@ -421,6 +456,17 @@ export default function DesktopTopBar() {
           >
             <LayoutGrid size={20} strokeWidth={1.5} aria-hidden />
           </Link>
+
+          {isAuthenticated ? (
+            <Link
+              href={profileHref}
+              className="desktop-top-bar__icon-btn"
+              aria-label="My profile"
+              title="My profile"
+            >
+              <User size={20} strokeWidth={1.5} aria-hidden />
+            </Link>
+          ) : null}
 
           {isAuthenticated ? (
             <Link

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
+import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { authFetch } from "@/lib/auth/fetch"
 import {
   Calendar,
@@ -231,7 +232,7 @@ export default function ActivityDetail({
   //     so we hide the affordance rather than land them on a
   //     write-rejected edit page.
   const { did: sessionDid, isAuthenticated } = useAuth()
-  const { activeOrg } = useOrg()
+  const { activeOrg, groups, switchOrg } = useOrg()
   const canEditAsActiveOrg =
     !!activeOrg &&
     activeOrg.groupDid === did &&
@@ -248,6 +249,21 @@ export default function ActivityDetail({
   // When the creator is acting as the group, writes route through
   // the BFF (target ≠ session); otherwise straight XRPC.
   const editTargetDid = canEditAsActiveOrg ? did : undefined
+  // Group-edit affordance — the viewer is NOT a direct editor (own cert
+  // or active-org owner/admin), but they ARE an owner/admin of the group
+  // that owns this cert while signed in under a different identity
+  // (personal, or another org). Offer an Edit button that, on confirm,
+  // switches them into the owning group before opening the editor — the
+  // edit page's own gate then passes and writes route through the group.
+  const editAsGroup = isCreator
+    ? null
+    : groups.find(
+        (g) =>
+          g.groupDid === did &&
+          (g.role === "owner" || g.role === "admin"),
+      ) ?? null
+  const [groupEditOpen, setGroupEditOpen] = useState(false)
+  const editHref = `/activity/${encodeURIComponent(did)}/${encodeURIComponent(rkey ?? "")}/edit`
   const descriptionHref = pathname
     ? `${pathname}?tab=description`
     : null
@@ -724,29 +740,44 @@ export default function ActivityDetail({
         ) : (
           <h1 className="cert-detail__title">{effectiveValue.title}</h1>
         )}
-        {!editing && isCreator ? (
+        {!editing && (isCreator || editAsGroup) ? (
           <>
-            <Link
-              href={`/activity/${encodeURIComponent(did)}/${encodeURIComponent(rkey ?? "")}/edit`}
-              className="cert-detail__edit-btn"
-              aria-label="Edit activity"
-              title="Edit activity"
-            >
-              <Pencil size={14} strokeWidth={1.75} aria-hidden />
-              Edit
-            </Link>
-            <button
-              type="button"
-              className="cert-detail__delete-btn"
-              aria-label="Delete activity"
-              title="Delete activity"
-              onClick={() => {
-                setDeleteError(null)
-                setDeleteOpen(true)
-              }}
-            >
-              <Trash2 size={14} strokeWidth={1.75} aria-hidden />
-            </button>
+            {isCreator ? (
+              <Link
+                href={editHref}
+                className="cert-detail__edit-btn"
+                aria-label="Edit activity"
+                title="Edit activity"
+              >
+                <Pencil size={14} strokeWidth={1.75} aria-hidden />
+                Edit
+              </Link>
+            ) : (
+              <button
+                type="button"
+                className="cert-detail__edit-btn"
+                aria-label="Edit activity"
+                title={`Edit as ${editAsGroup!.displayName || editAsGroup!.handle}`}
+                onClick={() => setGroupEditOpen(true)}
+              >
+                <Pencil size={14} strokeWidth={1.75} aria-hidden />
+                Edit
+              </button>
+            )}
+            {isCreator ? (
+              <button
+                type="button"
+                className="cert-detail__delete-btn"
+                aria-label="Delete activity"
+                title="Delete activity"
+                onClick={() => {
+                  setDeleteError(null)
+                  setDeleteOpen(true)
+                }}
+              >
+                <Trash2 size={14} strokeWidth={1.75} aria-hidden />
+              </button>
+            ) : null}
           </>
         ) : null}
       </div>
@@ -1204,6 +1235,20 @@ export default function ActivityDetail({
           if (!isDeleting) setDeleteOpen(false)
         }}
         onConfirm={handleDeleteConfirm}
+      />
+    ) : null}
+    {groupEditOpen && editAsGroup ? (
+      <ConfirmDialog
+        title="Edit as group"
+        message={`This activity is published by ${editAsGroup.displayName || editAsGroup.handle}. You'll switch to acting as that group to edit it — your changes are saved as the group, not your personal account.`}
+        confirmLabel="Continue as group"
+        confirmVariant="primary"
+        onCancel={() => setGroupEditOpen(false)}
+        onConfirm={() => {
+          switchOrg(editAsGroup)
+          setGroupEditOpen(false)
+          router.push(editHref)
+        }}
       />
     ) : null}
     </>

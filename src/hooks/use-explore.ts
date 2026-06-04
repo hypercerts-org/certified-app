@@ -246,6 +246,18 @@ export function useExploreData(opts: {
     () => new Set(groups.map((g) => g.groupDid)),
     [groups],
   )
+  // Minimal group metadata threaded to the "My organizations" loader so it
+  // can stub-render every group (not just indexed actor profiles). Mapped to
+  // a stable, narrow shape so its reference tracks the `groups` content.
+  const myGroups = useMemo(
+    () =>
+      groups.map((g) => ({
+        groupDid: g.groupDid,
+        displayName: g.displayName,
+        avatarUrl: g.avatarUrl,
+      })),
+    [groups],
+  )
   // Author set for the "My projects" / "My activities" filters. Acting-as
   // a group keeps the current behaviour (just that group's records). In the
   // personal context it aggregates the viewer's own records PLUS every
@@ -295,6 +307,7 @@ export function useExploreData(opts: {
           viewerDid,
           followedDids,
           myGroupDids,
+          myGroups,
           managedAuthorDids,
           cursor: null,
           signal: controller.signal,
@@ -336,6 +349,7 @@ export function useExploreData(opts: {
     viewerDid,
     followedDids,
     myGroupDids,
+    myGroups,
     managedAuthorDids,
     degree,
     noEndorsementRings,
@@ -372,6 +386,7 @@ export function useExploreData(opts: {
             viewerDid,
             followedDids,
             myGroupDids,
+            myGroups,
             managedAuthorDids,
             cursor,
             signal,
@@ -435,6 +450,7 @@ export function useExploreData(opts: {
     viewerDid,
     followedDids,
     myGroupDids,
+    myGroups,
     managedAuthorDids,
     degree,
     noEndorsementRings,
@@ -498,6 +514,14 @@ interface LoadArgs {
   viewerDid: string | null
   followedDids: Set<string>
   myGroupDids: Set<string>
+  /** Full metadata for the viewer's groups, in display order. Drives the
+   *  "My organizations" filter: every group renders (and hydrates per-row),
+   *  not just the ones the indexer has an actor profile for. */
+  myGroups: readonly {
+    groupDid: string
+    displayName?: string
+    avatarUrl?: string
+  }[]
   /** Author DIDs for the "My projects" / "My activities" filters:
    *  the viewer + every group they own/admin (personal context), or just
    *  the active group (acting-as). */
@@ -694,6 +718,7 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
     viewerDid,
     followedDids,
     myGroupDids,
+    myGroups,
     cursor,
     signal,
     degree,
@@ -744,11 +769,29 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
     if (cursor !== null) return EMPTY_PAGE
     if (myGroupDids.size === 0) return EMPTY_PAGE
     if (sub === "people") return EMPTY_PAGE
-    let scoped = await fetchNetworkActorsByDids(
+    // Pull the indexed actor profiles, then render a row for EVERY group the
+    // viewer belongs to — using the fetched actor when the indexer has one,
+    // otherwise a stub built from the group's own metadata so the row still
+    // appears and AccountListRow / ExploreUserCard hydrate it per-row via
+    // `useAuthorInfo`. Mapping over `myGroups` (not just the fetched set)
+    // is what stops orgs without an `app.certified.actor.profile` from being
+    // silently dropped.
+    const fetched = await fetchNetworkActorsByDids(
       Array.from(myGroupDids),
       signal ?? undefined,
     )
     if (signal?.aborted) return EMPTY_PAGE
+    const byDid = new Map(fetched.map((a) => [a.did, a]))
+    let scoped: NetworkActor[] = myGroups.map(
+      (g) =>
+        byDid.get(g.groupDid) ?? {
+          did: g.groupDid,
+          displayName: g.displayName ?? null,
+          description: null,
+          avatarUrl: g.avatarUrl ?? null,
+          createdAt: null,
+        },
+    )
     if (search.trim().length > 0) {
       const q = search.trim().toLowerCase()
       scoped = scoped.filter(

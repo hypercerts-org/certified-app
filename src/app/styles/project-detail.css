@@ -43,6 +43,27 @@
   .project-detail {
     max-width: 960px;
   }
+
+  /* The edit banner sits above the article inside the widened (1280px)
+     content area. Cap + center it to the same 960px reading column as
+     `.project-detail` so it lines up with the form instead of running
+     the full content width. Two-class selector outranks the base
+     `.edit-banner` margin + the `mx-6` utility, so margin-inline:auto
+     wins reliably. */
+  .edit-banner.edit-banner--project {
+    max-width: 960px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+@media (max-width: 799px) {
+  /* Below desktop the article caps at 720px; match it. */
+  .edit-banner.edit-banner--project {
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
 
 /* ---------- Loading / error ---------- */
