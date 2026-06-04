@@ -32,6 +32,7 @@ import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
+import { managedAuthorDids as computeManagedAuthorDids } from "@/lib/groups/managed"
 import { useFollowing } from "@/hooks/use-following"
 import { fetchGivenEndorsementDids } from "@/lib/atproto/badges"
 import {
@@ -245,6 +246,15 @@ export function useExploreData(opts: {
     () => new Set(groups.map((g) => g.groupDid)),
     [groups],
   )
+  // Author set for the "My projects" / "My activities" filters. Acting-as
+  // a group keeps the current behaviour (just that group's records). In the
+  // personal context it aggregates the viewer's own records PLUS every
+  // group they own or admin, so group-owned records surface under "My X"
+  // attributed to the group (the row's author column shows the owning DID).
+  const managedAuthorDids = useMemo<string[]>(
+    () => computeManagedAuthorDids(activeOrg, personalDid, groups),
+    [activeOrg, personalDid, groups],
+  )
 
   // Subscribe to the closure-cache invalidation token. When an
   // endorsement mutation calls invalidateEndorsementClosure() the
@@ -285,6 +295,7 @@ export function useExploreData(opts: {
           viewerDid,
           followedDids,
           myGroupDids,
+          managedAuthorDids,
           cursor: null,
           signal: controller.signal,
           degree,
@@ -325,6 +336,7 @@ export function useExploreData(opts: {
     viewerDid,
     followedDids,
     myGroupDids,
+    managedAuthorDids,
     degree,
     noEndorsementRings,
     closureVersion,
@@ -360,6 +372,7 @@ export function useExploreData(opts: {
             viewerDid,
             followedDids,
             myGroupDids,
+            managedAuthorDids,
             cursor,
             signal,
             degree,
@@ -422,6 +435,7 @@ export function useExploreData(opts: {
     viewerDid,
     followedDids,
     myGroupDids,
+    managedAuthorDids,
     degree,
     noEndorsementRings,
     closureVersion,
@@ -484,6 +498,10 @@ interface LoadArgs {
   viewerDid: string | null
   followedDids: Set<string>
   myGroupDids: Set<string>
+  /** Author DIDs for the "My projects" / "My activities" filters:
+   *  the viewer + every group they own/admin (personal context), or just
+   *  the active group (acting-as). */
+  managedAuthorDids: string[]
   cursor: string | null
   signal: AbortSignal | null
   degree: 1 | 2 | 3
@@ -717,6 +735,33 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
     return { ...EMPTY_PAGE, users: scoped }
   }
 
+  // "My organizations" — resolve the viewer's group DIDs DIRECTLY rather
+  // than scanning the most-recently-indexed top-100 actors and
+  // client-filtering, which silently dropped any org outside that window
+  // (so a user whose orgs weren't recently active saw an empty list).
+  // Groups are organizations, so the People sub-toggle yields nothing.
+  if (filter === "my-groups") {
+    if (cursor !== null) return EMPTY_PAGE
+    if (myGroupDids.size === 0) return EMPTY_PAGE
+    if (sub === "people") return EMPTY_PAGE
+    let scoped = await fetchNetworkActorsByDids(
+      Array.from(myGroupDids),
+      signal ?? undefined,
+    )
+    if (signal?.aborted) return EMPTY_PAGE
+    if (search.trim().length > 0) {
+      const q = search.trim().toLowerCase()
+      scoped = scoped.filter(
+        (a) =>
+          (a.displayName ?? "").toLowerCase().includes(q) ||
+          (a.description ?? "").toLowerCase().includes(q) ||
+          a.did.includes(q),
+      )
+    }
+    scoped = await applyOrgExcludeFilter(scoped, excludeOrgLabels ?? null, signal)
+    return { ...EMPTY_PAGE, users: scoped }
+  }
+
   if (filter === MA_EARTH_FILTER) {
     if (cursor !== null) return EMPTY_PAGE
     const itemUris = await loadFeaturedItemUris(
@@ -775,10 +820,12 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
   }
 
   // Filters that aren't server-backed: short-circuit pagination.
-  // The follows / recent / my-groups filters fetch a NetworkActors
-  // window (bounded by the indexer's MAX_FIRST = 100) and intersect
-  // client-side — accounts outside the most-recently-active top-N
-  // drop out (known limitation).
+  // The follows / recent filters fetch a NetworkActors window (bounded by
+  // the indexer's MAX_FIRST = 100) and intersect client-side — accounts
+  // outside the most-recently-active top-N drop out (known limitation).
+  // (my-groups is NOT here: it resolves the viewer's group DIDs directly
+  // via fetchNetworkActorsByDids in its own early branch above, so it
+  // never hits the top-100 cap.)
   // The endorsed filter sources its actors directly from the closure
   // response's inline issuer block (magic-indexer #117 returns the
   // denormalised actor profile per closure DID), so it doesn't share
@@ -786,8 +833,7 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
   if (
     filter === "follows" ||
     filter === "endorsed" ||
-    filter === "recent" ||
-    filter === "my-groups"
+    filter === "recent"
   ) {
     if (cursor !== null) return EMPTY_PAGE
     if (filter === "endorsed") {
@@ -849,9 +895,6 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
     if (filter === "follows") {
       if (!viewerDid) return EMPTY_PAGE
       scoped = scoped.filter((a) => followedDids.has(a.did))
-    } else if (filter === "my-groups") {
-      if (!viewerDid || myGroupDids.size === 0) return EMPTY_PAGE
-      scoped = scoped.filter((a) => myGroupDids.has(a.did))
     } else if (filter === "recent") {
       const recent = getRecentlyViewed("user")
       const recentSet = new Set(recent)
@@ -905,7 +948,7 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
 // ----------------------------- Projects --------------------------------
 
 async function loadProjectsPage(args: LoadArgs): Promise<LoadedPage> {
-  const { filter, search, viewerDid, followedDids, cursor, signal, degree } = args
+  const { filter, search, viewerDid, followedDids, managedAuthorDids, cursor, signal, degree } = args
 
   if (filter === MA_EARTH_FILTER) {
     if (cursor !== null) return EMPTY_PAGE
@@ -974,8 +1017,11 @@ async function loadProjectsPage(args: LoadArgs): Promise<LoadedPage> {
 
   let authors: string[] | undefined
   if (filter === "by-me") {
-    if (!viewerDid) return EMPTY_PAGE
-    authors = [viewerDid]
+    // "My projects" = the viewer's own + every group they own/admin
+    // (or just the active group when acting-as). Group-owned projects
+    // surface here, attributed to the group by the row's author column.
+    if (managedAuthorDids.length === 0) return EMPTY_PAGE
+    authors = managedAuthorDids
   } else if (filter === "by-follows") {
     if (!viewerDid || followedDids.size === 0) return EMPTY_PAGE
     authors = Array.from(followedDids)
@@ -1005,6 +1051,7 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
     search,
     viewerDid,
     followedDids,
+    managedAuthorDids,
     cursor,
     signal,
     degree,
@@ -1201,8 +1248,11 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
 
   let authors: string[] | undefined
   if (filter === "by-me") {
-    if (!viewerDid) return EMPTY_PAGE
-    authors = [viewerDid]
+    // "My activities" = the viewer's own + every group they own/admin
+    // (or just the active group when acting-as). Group-owned activities
+    // surface here, attributed to the group by the row's author column.
+    if (managedAuthorDids.length === 0) return EMPTY_PAGE
+    authors = managedAuthorDids
   } else if (filter === "by-follows") {
     if (!viewerDid || followedDids.size === 0) return EMPTY_PAGE
     authors = Array.from(followedDids)
