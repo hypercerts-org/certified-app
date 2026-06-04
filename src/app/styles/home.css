@@ -177,10 +177,59 @@
   color: var(--fg-secondary);
 }
 
+/* Column wrapping the label + optional "by {group}" byline so a
+   group-owned row reads as two stacked lines while a personal row stays
+   a single line. The thumb stays vertically centred against either. */
+.home-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .home-row__label {
   font-size: 0.85rem;
   color: var(--fg-primary);
   line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Shared "by {group}" provenance byline (src/components/ui/owner-byline.tsx).
+   Defined here because home.css is imported globally; reused by the
+   profile Projects tab. Compact single muted line: a 14px group avatar
+   between the "by" label and the group name. */
+.owner-byline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  color: var(--fg-muted);
+}
+
+.owner-byline__label {
+  flex-shrink: 0;
+}
+
+.owner-byline__avatar {
+  flex-shrink: 0;
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+}
+
+.owner-byline__avatar > div {
+  width: 14px;
+  height: 14px;
+  font-size: 0.5rem;
+}
+
+.owner-byline__name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
