@@ -440,7 +440,7 @@ export default function DesktopTopBar() {
           ) : null}
 
           <Link
-            href="/search"
+            href="/explore"
             className="desktop-top-bar__icon-btn"
             aria-label="Explore"
             title="Explore"
