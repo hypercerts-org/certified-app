@@ -45,22 +45,24 @@
   }
 
   /* The edit banner sits above the article inside the widened (1280px)
-     content area. Cap + center it to the same 960px reading column as
-     `.project-detail` so it lines up with the form instead of running
-     the full content width. Two-class selector outranks the base
-     `.edit-banner` margin + the `mx-6` utility, so margin-inline:auto
-     wins reliably. */
+     content area. Align its border box with the visible content below:
+     the article column (`.project-detail`) is 960px wide with 16px side
+     padding, so the hero/title sit in a 928px box. Cap the banner to
+     that (960 − 2×16) and center it so its edges line up with the hero
+     and title, not the column's padding edge. Two-class selector
+     outranks the base `.edit-banner` margin + the `mx-6` utility, so
+     margin-inline:auto wins reliably. */
   .edit-banner.edit-banner--project {
-    max-width: 960px;
+    max-width: calc(960px - 32px);
     margin-left: auto;
     margin-right: auto;
   }
 }
 
 @media (max-width: 799px) {
-  /* Below desktop the article caps at 720px; match it. */
+  /* Below desktop the column caps at 720px (same 16px side padding). */
   .edit-banner.edit-banner--project {
-    max-width: 720px;
+    max-width: calc(720px - 32px);
     margin-left: auto;
     margin-right: auto;
   }
