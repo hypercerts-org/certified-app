@@ -6,7 +6,7 @@ import robots from "@/app/robots"
  * risk-006: authenticated / app-only surfaces must not be crawlable.
  * AGENTS.md §18 mandates app-only pages stay out of the index. Since auth
  * is fully client-side (no middleware), the unauthenticated shells of
- * /home, /explore, /search and /activity render a 200 that Googlebot can
+ * /home, /explore and /activity render a 200 that Googlebot can
  * index. Cover them via robots.ts disallow (the client-component routes
  * /activity and /notifications cannot export `metadata`).
  */
@@ -17,7 +17,7 @@ describe("robots.ts disallow covers app-only surfaces", () => {
     Array.isArray(rule?.disallow) ? rule.disallow : [rule?.disallow]
   ).filter((v): v is string => typeof v === "string")
 
-  it.each(["/home", "/explore", "/search", "/activity"])(
+  it.each(["/home", "/explore", "/activity"])(
     "disallows the app-only route %s",
     (route) => {
       expect(disallow).toContain(route)

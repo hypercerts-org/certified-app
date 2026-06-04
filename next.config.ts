@@ -77,6 +77,13 @@ const nextConfig: NextConfig = {
         destination: "/settings",
         permanent: true,
       },
+      // The standalone /search (people-search) page was folded into
+      // /explore. Redirect old / indexed links so they don't 404.
+      {
+        source: "/search",
+        destination: "/explore",
+        permanent: true,
+      },
       // Preserved from the prior certified-app: any existing inbound
       // links to the old /connected-apps page land on the new /apps.
       {

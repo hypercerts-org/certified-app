@@ -92,7 +92,7 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   const navLinks = [
     { href: profileHref, label: "Profile", icon: User },
     { href: "/home", label: "Home", icon: Newspaper },
-    { href: "/search", label: "Explore", icon: Search },
+    { href: "/explore", label: "Explore", icon: Search },
     ...(showCreate ? [{ href: "/create", label: "Create", icon: PlusCircle }] : []),
     ...(showGroups ? [{ href: "/groups", label: "Groups", icon: Building2 }] : []),
     ...(showEndorsements ? [{ href: "/endorsements", label: "Endorsements", icon: Award }] : []),

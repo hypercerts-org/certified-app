@@ -156,7 +156,7 @@ export default function DesktopLeftRail() {
   const authedItems: NavItem[] = [
     { href: profileHref, label: "Profile", icon: User, matchPrefix: true },
     { href: "/home", label: "Home", icon: Rss, matchPrefix: true },
-    { href: "/search", label: "Explore", icon: Search },
+    { href: "/explore", label: "Explore", icon: Search },
     { href: "/apps", label: "Apps", icon: LayoutGrid, matchPrefix: true },
     ...(showEndorsements
       ? [{ href: "/endorsements", label: "Endorsements", icon: Award, badge: pendingBadge, badgeUnit: "pending", matchPrefix: true }]
@@ -169,7 +169,7 @@ export default function DesktopLeftRail() {
   ];
 
   const unauthedItems: NavItem[] = [
-    { href: "/search", label: "Explore", icon: Search },
+    { href: "/explore", label: "Explore", icon: Search },
     { href: "/apps", label: "Apps", icon: LayoutGrid, matchPrefix: true },
     { href: "/about", label: "About", icon: Info },
   ];
