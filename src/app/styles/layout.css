@@ -2047,10 +2047,13 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 
 .desktop-top-bar__icon-btn {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 40px;
+  gap: 2px;
+  min-width: 56px;
   height: 40px;
+  padding: 0 6px;
   color: var(--fg-secondary);
   background: transparent;
   border-radius: var(--radius);
@@ -2058,6 +2061,14 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   text-decoration: none;
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.desktop-top-bar__icon-label {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .desktop-top-bar__icon-btn:hover {

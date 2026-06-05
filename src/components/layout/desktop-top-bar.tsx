@@ -433,9 +433,9 @@ export default function DesktopTopBar() {
               href="/home"
               className="desktop-top-bar__icon-btn"
               aria-label="Home"
-              title="Home"
             >
               <Home size={20} strokeWidth={1.5} aria-hidden />
+              <span className="desktop-top-bar__icon-label">Home</span>
             </Link>
           ) : null}
 
@@ -443,18 +443,18 @@ export default function DesktopTopBar() {
             href="/explore"
             className="desktop-top-bar__icon-btn"
             aria-label="Explore"
-            title="Explore"
           >
             <Compass size={20} strokeWidth={1.5} aria-hidden />
+            <span className="desktop-top-bar__icon-label">Explore</span>
           </Link>
 
           <Link
             href="/apps"
             className="desktop-top-bar__icon-btn"
             aria-label="Apps"
-            title="Apps"
           >
             <LayoutGrid size={20} strokeWidth={1.5} aria-hidden />
+            <span className="desktop-top-bar__icon-label">Apps</span>
           </Link>
 
           {isAuthenticated ? (
@@ -462,9 +462,9 @@ export default function DesktopTopBar() {
               href={profileHref}
               className="desktop-top-bar__icon-btn"
               aria-label="My profile"
-              title="My profile"
             >
               <User size={20} strokeWidth={1.5} aria-hidden />
+              <span className="desktop-top-bar__icon-label">Profile</span>
             </Link>
           ) : null}
 
@@ -473,9 +473,9 @@ export default function DesktopTopBar() {
               href="/settings"
               className="desktop-top-bar__icon-btn"
               aria-label="Settings"
-              title="Settings"
             >
               <Settings size={20} strokeWidth={1.5} aria-hidden />
+              <span className="desktop-top-bar__icon-label">Settings</span>
             </Link>
           ) : null}
 
