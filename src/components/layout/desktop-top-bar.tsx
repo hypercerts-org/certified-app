@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { profileUrl } from "@/lib/urls"
+import { parseActor, profileUrl } from "@/lib/urls"
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -173,7 +173,18 @@ export default function DesktopTopBar() {
     ? profileUrl(identity.handle)
     : "/profile";
 
-  const isOnProfile = pathname?.startsWith("/profile/") ?? false;
+  // Under the handle-forward URL scheme a profile lives at the root
+  // `/{actor}` (a handle has a dot, a DID starts with `did:`). A record
+  // detail page is `/{actor}/{type}/{rkey}` — more than one segment — so the
+  // tab strip shows only on the bare actor route. `parseActor` decodes the
+  // slug and rejects reserved top-level routes (explore, settings, …).
+  const profileHandleFromUrl = useMemo(() => {
+    const segments = (pathname ?? "").split("/").filter(Boolean);
+    if (segments.length !== 1) return null;
+    const parsed = parseActor(segments[0]);
+    return parsed.kind === "invalid" ? null : parsed.value;
+  }, [pathname]);
+  const isOnProfile = profileHandleFromUrl !== null;
   const isOnSettings =
     pathname === "/settings" || (pathname?.startsWith("/settings/") ?? false);
   // Cert / project detail pages get a thin row-2 with just a back
@@ -204,16 +215,6 @@ export default function DesktopTopBar() {
   // Compare the URL handle slug to the signed-in user's handle to decide
   // whether to show own-only tabs (e.g. Settings). Activeorg switches the
   // "you" identity to the org, so we compare against `identity.handle`.
-  const profileHandleFromUrl = useMemo(() => {
-    if (!isOnProfile || !pathname) return null;
-    const slug = pathname.split("/")[2];
-    if (!slug) return null;
-    try {
-      return decodeURIComponent(slug);
-    } catch {
-      return slug;
-    }
-  }, [isOnProfile, pathname]);
   const isOnOwnProfile =
     !!identity.handle && !!profileHandleFromUrl &&
     profileHandleFromUrl.toLowerCase() === identity.handle.toLowerCase();
