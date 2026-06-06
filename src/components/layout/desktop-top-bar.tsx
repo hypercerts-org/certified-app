@@ -38,6 +38,12 @@ import { Tabs, TabList, Tab } from "@/components/ui/tabs";
 
 const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
 
+// Temporarily hide the top-left hamburger (site-navigation drawer trigger).
+// We're considering removing it entirely; flip this back to `true` to restore.
+// The button + <SiteDrawer> wiring is kept intact below so nothing has to be
+// rebuilt if we decide to bring it back.
+const SHOW_SITE_NAV_HAMBURGER = false;
+
 interface ProfileTab {
   key: string;
   label: string;
@@ -82,16 +88,6 @@ const PROFILE_TABS: ProfileTab[] = [
  *  (`<pathname>/<subRoute>`) instead — used by `Explore` which has
  *  its own page. */
 type DetailTab = { key: string; label: string; subRoute?: string };
-
-/** /explore page tabs. Mirror the kind switcher that lived inside
- *  the explore main pane (Certs / Projects / Accounts). Switching
- *  tabs replaces ?kind= on /explore and clears the kind-specific
- *  state to match the on-page behavior. */
-const EXPLORE_TABS: { key: string; label: string }[] = [
-  { key: "activities", label: "Activities" },
-  { key: "projects", label: "Projects" },
-  { key: "accounts", label: "Accounts" },
-];
 
 const CERT_DETAIL_TABS: DetailTab[] = [
   { key: "overview", label: "Overview" },
@@ -195,7 +191,6 @@ export default function DesktopTopBar() {
     (pathname?.startsWith("/project/") ?? false) &&
     pathname !== "/project/new" &&
     !(pathname?.endsWith("/edit") ?? false);
-  const isOnExplore = pathname === "/explore";
   // Create flows (`/create`, `/project/new`) are single-page forms with
   // no tab strip, but they still get a row-2 Back affordance so the
   // navigation rhythm matches detail pages. The form's own Cancel button
@@ -204,7 +199,7 @@ export default function DesktopTopBar() {
   const showBackRow = isOnCertDetail || isOnProjectDetail || isOnCreatePage;
   // Settings is its own standalone surface now (reachable from the
   // site drawer); no tab strip there.
-  const showTabsRow = isOnProfile || isOnExplore;
+  const showTabsRow = isOnProfile;
   // Compare the URL handle slug to the signed-in user's handle to decide
   // whether to show own-only tabs (e.g. Settings). Activeorg switches the
   // "you" identity to the org, so we compare against `identity.handle`.
@@ -238,20 +233,6 @@ export default function DesktopTopBar() {
     if (v && visibleProfileTabs.some((t) => t.key === v)) return v;
     return "overview";
   }, [searchParams, visibleProfileTabs]);
-
-  // Active /explore kind — reads ?kind= with the same migration shim
-  // <Explore> uses (users / profiles legacy → accounts; certs → activities).
-  // Drives the explore tab strip's selected state.
-  const exploreKind = useMemo(() => {
-    const raw = searchParams?.get("kind") ?? null;
-    return raw === "accounts" || raw === "projects" || raw === "activities"
-      ? raw
-      : raw === "users" || raw === "profiles"
-        ? "accounts"
-        : raw === "certs"
-          ? "activities"
-          : "activities";
-  }, [searchParams]);
 
   // Switcher dropdown — now the canonical <Popover> (portal + side="bottom"
   // + align="end"), which escapes the bar's overflow/transform context and
@@ -360,15 +341,17 @@ export default function DesktopTopBar() {
       <SiteDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       <div className="desktop-top-bar__row desktop-top-bar__row--chrome">
         <div className="desktop-top-bar__left">
-          <button
-            type="button"
-            className="desktop-top-bar__menu"
-            aria-label="Open site navigation"
-            aria-expanded={drawerOpen}
-            onClick={() => setDrawerOpen(true)}
-          >
-            <Menu size={18} strokeWidth={1.75} aria-hidden />
-          </button>
+          {SHOW_SITE_NAV_HAMBURGER ? (
+            <button
+              type="button"
+              className="desktop-top-bar__menu"
+              aria-label="Open site navigation"
+              aria-expanded={drawerOpen}
+              onClick={() => setDrawerOpen(true)}
+            >
+              <Menu size={18} strokeWidth={1.75} aria-hidden />
+            </button>
+          ) : null}
           <Link
             href={brandHref}
             className={`desktop-top-bar__brand${breadcrumb || pageTitle ? "" : " desktop-top-bar__brand--wordmark"}`}
@@ -557,31 +540,7 @@ export default function DesktopTopBar() {
         </div>
       </div>
 
-      {isOnExplore ? (
-        <div className="desktop-top-bar__row desktop-top-bar__row--tabs">
-          {/* Explore kind strip — canonical <Tabs> (underline). The row
-              wrapper owns the bottom border, so TabList drops its own
-              (border-0). onChange replaces ?kind= in place with
-              scroll:false to match the on-page kind switcher (which resets
-              filter/sub/q/sort/view/attrs). */}
-          <Tabs
-            value={exploreKind}
-            onChange={(next) => {
-              const params = new URLSearchParams();
-              params.set("kind", next);
-              router.replace(`/explore?${params.toString()}`, { scroll: false });
-            }}
-          >
-            <TabList aria-label="Explore sections" className="border-0">
-              {EXPLORE_TABS.map((t) => (
-                <Tab key={t.key} value={t.key}>
-                  {t.label}
-                </Tab>
-              ))}
-            </TabList>
-          </Tabs>
-        </div>
-      ) : showTabsRow ? (
+      {showTabsRow ? (
         <div className="desktop-top-bar__row desktop-top-bar__row--tabs">
           {/* Profile ?tab= strip — canonical <Tabs> (underline). onChange
               pushes the ?tab= URL (scroll:false) so the page mirrors it,

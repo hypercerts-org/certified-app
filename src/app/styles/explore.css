@@ -394,6 +394,112 @@
   color: var(--fg-primary);
 }
 
+/* ---------- Combined "All" view (search across kinds) ---------- */
+
+.explore__all {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.explore__all-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.explore__all-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.explore__all-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-secondary);
+}
+
+/* Thin "Show all" row — the last <li> inside a capped block's list, so
+   it sits flush against the rows above (no gap) and shares the list's
+   border + clipped corners. Clicking collapses the All view to that
+   single category. */
+.explore__show-all {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  padding: 5px;
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.explore__show-all:hover {
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
+/* All view, single-category mode: the row that hosts the inline
+   sub-option pills and/or the endorsement-degree pills, in place of the
+   chrome's sub-dropdown + the standalone degree bar. Low vertical
+   footprint so it doesn't read as a tall band under the chrome. */
+.explore__inline-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* Light vertical rule between the sub-option pills and the degree pills
+   when both are shown. */
+.explore__inline-divider {
+  width: 1px;
+  align-self: stretch;
+  min-height: 20px;
+  background: var(--border-medium);
+}
+
+/* Inline variant of the degree bar — drops the standalone bar's block
+   padding/margin so the pills sit flush in the inline-controls row.
+   Doubled class so it beats the base `.explore__degree-bar` rule, which
+   is declared later in this file. */
+.explore__degree-bar.explore__degree-bar--inline {
+  padding: 0;
+  margin: 0;
+}
+
+.explore__all-empty {
+  margin: 0;
+  padding: 14px;
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+}
+
+.explore__all-loading {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+}
+
 /* ---------- List view (certs + projects) ---------- */
 
 .explore__list {

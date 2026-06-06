@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowUpDown,
   ChevronDown,
+  ChevronRight,
   Filter as FilterIcon,
   FolderGit2,
   LayoutGrid,
@@ -43,10 +44,12 @@ import ProjectListRow from "./project-list-row"
 import AccountListRow from "./account-list-row"
 import {
   SUB_OPTIONS,
-  defaultFilterForKind,
-  filtersForKind,
+  defaultFilterForView,
+  filtersForView,
   parseSubForKind,
+  viewFilterToKindFilter,
   type ExploreKind,
+  type FilterOption,
   type SortOrder,
 } from "./explore-types"
 import { useExploreData } from "@/hooks/use-explore"
@@ -105,16 +108,6 @@ const ORG_TIER_BY_VALUE = {
 const DEFAULT_ORG_TIER_SLUGS: readonly OrgTierSlug[] = ORG_TIER_SLUGS.filter(
   (slug) => !DEFAULT_HIDDEN_ORG_LABELS.includes(ORG_TIER_BY_SLUG[slug]),
 )
-
-function parseKind(v: string | null): ExploreKind {
-  if (v === "accounts" || v === "projects" || v === "activities") return v
-  // Migration shim — old URLs with ?kind=users or ?kind=profiles resolve
-  // to accounts, and the legacy ?kind=certs resolves to activities, so
-  // external links keep working.
-  if (v === "users" || v === "profiles") return "accounts"
-  if (v === "certs") return "activities"
-  return "activities"
-}
 
 function parseSort(v: string | null): SortOrder {
   if (v === "newest" || v === "oldest" || v === "alphabetical") return v
@@ -202,21 +195,62 @@ function isEndorsementFilter(kind: ExploreKind, filter: string): boolean {
   return filter === "by-endorsed"
 }
 
-
-function isValidFilter(kind: ExploreKind, filter: string): boolean {
-  return filtersForKind(kind).some((f) => f.key === filter)
+/**
+ * /explore entry point. The page is always the combined "All" view now
+ * (the old per-kind top tabs were removed); category switching happens
+ * via the on-page dropdown, which drives `?show=`. {@link ExploreAll}
+ * branches that into the three-block layout or a single-category pane.
+ */
+export default function Explore() {
+  // Register the page title in the top bar's title slot — mirrors the
+  // convention every other top-level page uses (Apps, Settings…).
+  usePageTitle("Explore")
+  return <ExploreAll />
 }
 
-export default function Explore() {
+/** Icon component shape shared by lucide icons + the bespoke CertIcon —
+ *  used for the All view's per-section headers. */
+type SectionIcon = React.ComponentType<{
+  size?: number
+  strokeWidth?: number
+  "aria-hidden"?: boolean
+}>
+
+interface ExploreMainProps {
+  kind: ExploreKind
+  /** Already resolved to the kind-specific filter key. The All view
+   *  maps its unified key through `viewFilterToKindFilter` before
+   *  passing it here; the single-kind tab passes the URL filter as-is. */
+  filter: string
+  /** Optional control rendered at the start of the chrome row, before
+   *  the sub-dropdown. The All view hosts its category dropdown here. */
+  leadingControl?: React.ReactNode
+  /** Render the endorsement-degree control in its compact, low-padding
+   *  variant instead of the standalone bar. Used by the All view's
+   *  single-category mode (no section header there, so the pills sit
+   *  tight under the chrome). */
+  compactDegrees?: boolean
+}
+
+/**
+ * The single-kind chrome + results pane (everything right of the filter
+ * sidebar). Shared by the dedicated Activities/Projects/Accounts tabs
+ * and by the All view when one category is selected from its dropdown —
+ * which is what gives that mode the same sub-dropdown, view toggle,
+ * sort, and quality controls as the real tabs. `kind` + `filter` come
+ * in as props; everything else (sub / sort / view / quality / degrees /
+ * q) is read from and written to the URL.
+ */
+function ExploreMain({
+  kind,
+  filter,
+  leadingControl,
+  compactDegrees,
+}: ExploreMainProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  const kind = parseKind(searchParams?.get("kind") ?? null)
-  const rawFilter = searchParams?.get("filter") ?? null
-  const filter = rawFilter && isValidFilter(kind, rawFilter)
-    ? rawFilter
-    : defaultFilterForKind(kind)
   const sub = parseSubForKind(kind, searchParams?.get("sub") ?? null)
   const search = searchParams?.get("q") ?? ""
   const sort = parseSort(searchParams?.get("sort") ?? null)
@@ -364,22 +398,12 @@ export default function Explore() {
 
   // Read the target's `data-*` attribute instead of capturing the
   // iteration variable in a closure. The SWC minifier (Next 16's
-  // default prod-build pipeline) was hoisting `f` out of the per-
-  // iteration `.map()` scope and sharing it across every button's
-  // onClick — meaning every sidebar filter ended up calling
-  // setUrl({ filter: <last_filter_key> }), which on certs is "all"
-  // and produces no observable change. Reading from the DOM dataset
-  // is minifier-proof because there's no captured variable. Same
-  // pattern applied to the sub-category dropdown's option buttons
-  // below.
-  const onFilterButtonClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      const key = e.currentTarget.dataset.filterKey
-      if (key) setUrl({ filter: key })
-    },
-    [setUrl],
-  )
-
+  // default prod-build pipeline) was hoisting the loop variable out of
+  // the per-iteration `.map()` scope and sharing it across every
+  // button's onClick. Reading from the DOM dataset is minifier-proof
+  // because there's no captured variable. (The sidebar filter buttons
+  // use the same pattern; their handler lives in the parent that owns
+  // the sidebar.)
   const onSubOptionClick = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
       const key = e.currentTarget.dataset.subKey
@@ -551,70 +575,18 @@ export default function Explore() {
   const [qualityOpen, setQualityOpen] = useState(false)
   const [subPrefixOpen, setSubPrefixOpen] = useState(false)
 
-  // Register the page title in the top bar's title slot — the chrome
-  // already pairs the brandmark with this. Mirrors the convention
-  // every other top-level page uses (Apps, Settings, Endorsements…).
-  usePageTitle("Explore")
-
   return (
-    <div className="explore">
-      <div className="explore__layout">
-        <aside className="explore__sidebar" aria-label="Explore filters">
-          {/* Kind switcher used to live here but didn't fit in 220px
-              with three labels; promoted to the top of the main pane
-              (see below). Sidebar is now filter-list-only. */}
-          {(() => {
-            const all = filtersForKind(kind)
-            const featured = all.filter((f) => f.featured)
-            const standard = all.filter((f) => !f.featured)
-            return (
-              <>
-                <ul className="explore__filter-list">
-                  {standard.map((f) => (
-                    <li key={f.key}>
-                      <button
-                        type="button"
-                        className={`explore__filter${filter === f.key ? " explore__filter--active" : ""}`}
-                        data-filter-key={f.key}
-                        onClick={onFilterButtonClick}
-                      >
-                        {f.label}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                {featured.length > 0 ? (
-                  <>
-                    <hr className="explore__filter-divider" aria-hidden="true" />
-                    <h3 className="explore__filter-heading">Featured</h3>
-                    <ul className="explore__filter-list explore__filter-list--indented">
-                      {featured.map((f) => (
-                        <li key={f.key}>
-                          <button
-                            type="button"
-                            className={`explore__filter${filter === f.key ? " explore__filter--active" : ""}`}
-                            data-filter-key={f.key}
-                            onClick={onFilterButtonClick}
-                          >
-                            {f.label}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                ) : null}
-              </>
-            )
-          })()}
-        </aside>
-
-        <main className="explore__main">
+    <main className="explore__main">
           {/* Kind switcher (Certs / Projects / Accounts) is now
               rendered as a second row in the top navbar — same
               pattern profile pages use for their tab strip. See
               EXPLORE_TABS in desktop-top-bar.tsx. */}
           <div className="explore__chrome">
-            {SUB_OPTIONS[kind].length > 0 ? (
+            {leadingControl}
+            {/* The All view's single-category mode renders the sub-options
+                as inline pills below the chrome (see the inline-controls
+                row), so the dropdown is suppressed there. */}
+            {!compactDegrees && SUB_OPTIONS[kind].length > 0 ? (
               <SubPrefixDropdown
                 kind={kind}
                 sub={sub}
@@ -805,7 +777,46 @@ export default function Explore() {
             </div>
           </div>
 
-          {showsDegreeControl ? (
+          {compactDegrees ? (
+            // All-view single-category mode: the sub-options (e.g.
+            // People / Organizations) and the endorsement-degree pills
+            // share one inline row in place of the chrome's sub-dropdown
+            // and the standalone degree bar. A light divider separates
+            // them when both are present.
+            SUB_OPTIONS[kind].length > 0 || showsDegreeControl ? (
+              <div className="explore__inline-controls">
+                {SUB_OPTIONS[kind].length > 0 ? (
+                  <SegmentedControl
+                    aria-label={`${kind === "accounts" ? "Account" : "Activity"} sub-category`}
+                    value={sub}
+                    onValueChange={(next) =>
+                      setUrl({ sub: next === "all" ? null : next })
+                    }
+                    options={SUB_OPTIONS[kind].map((o) => ({
+                      value: o.key,
+                      label: o.label,
+                      disabled: !!o.requiresAuth && !viewerDid,
+                    }))}
+                    size="sm"
+                    shape="pill"
+                    joined={false}
+                  />
+                ) : null}
+                {SUB_OPTIONS[kind].length > 0 && showsDegreeControl ? (
+                  <span className="explore__inline-divider" aria-hidden="true" />
+                ) : null}
+                {showsDegreeControl ? (
+                  <EndorsementDegreeBar
+                    degrees={degrees}
+                    onChange={onDegreesChange}
+                    onReset={onResetDegrees}
+                    meta={data.endorsementClosure}
+                    inline
+                  />
+                ) : null}
+              </div>
+            ) : null
+          ) : showsDegreeControl ? (
             <EndorsementDegreeBar
               degrees={degrees}
               onChange={onDegreesChange}
@@ -826,9 +837,468 @@ export default function Explore() {
               isLoading={data.isLoadingMore}
             />
           ) : null}
+    </main>
+  )
+}
+
+/**
+ * The filter list in the left rail. Shared by the single-kind browser
+ * and the All view — each passes the filter set its view exposes
+ * (`filtersForKind` vs the trimmed `filtersForView("all")`). Splits
+ * the list into a standard group and a "Featured" group below a
+ * divider; the active filter is highlighted. Click handling is hoisted
+ * to the parent via `data-filter-key` so the SWC minifier can't share
+ * a hoisted loop variable across buttons (see `onFilterButtonClick`).
+ */
+function ExploreFilterSidebar({
+  filters,
+  activeFilter,
+  onFilterClick,
+}: {
+  filters: FilterOption[]
+  activeFilter: string
+  onFilterClick: (e: React.MouseEvent<HTMLButtonElement>) => void
+}) {
+  const featured = filters.filter((f) => f.featured)
+  const standard = filters.filter((f) => !f.featured)
+  return (
+    <aside className="explore__sidebar" aria-label="Explore filters">
+      <ul className="explore__filter-list">
+        {standard.map((f) => (
+          <li key={f.key}>
+            <button
+              type="button"
+              className={`explore__filter${activeFilter === f.key ? " explore__filter--active" : ""}`}
+              data-filter-key={f.key}
+              onClick={onFilterClick}
+            >
+              {f.label}
+            </button>
+          </li>
+        ))}
+      </ul>
+      {featured.length > 0 ? (
+        <>
+          <hr className="explore__filter-divider" aria-hidden="true" />
+          <h3 className="explore__filter-heading">Featured</h3>
+          <ul className="explore__filter-list explore__filter-list--indented">
+            {featured.map((f) => (
+              <li key={f.key}>
+                <button
+                  type="button"
+                  className={`explore__filter${activeFilter === f.key ? " explore__filter--active" : ""}`}
+                  data-filter-key={f.key}
+                  onClick={onFilterClick}
+                >
+                  {f.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </aside>
+  )
+}
+
+// ----------------------------- All view -------------------------------------
+
+/** How many results each block on the All view shows. The loader still
+ *  fetches a full page per kind; we just render the head of each list. */
+const ALL_VIEW_BLOCK_SIZE = 5
+
+function isValidViewFilter(filter: string): boolean {
+  return filtersForView("all").some((f) => f.key === filter)
+}
+
+/** Which category the All view is showing. "all" renders all three
+ *  capped blocks; a concrete kind collapses to that one section shown
+ *  in full (with pagination). Backed by the `?show=` URL param. */
+type AllShow = "all" | ExploreKind
+
+function parseAllShow(v: string | null): AllShow {
+  if (v === "activities" || v === "projects" || v === "accounts") return v
+  return "all"
+}
+
+const SHOW_OPTIONS: { key: AllShow; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "activities", label: "Activities" },
+  { key: "projects", label: "Projects" },
+  { key: "accounts", label: "Accounts" },
+]
+
+/** Shared URL state for the All view — the unified sidebar filter, the
+ *  `?show=` category, and the writers both All-view modes need. */
+function useAllView() {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
+  const rawFilter = searchParams?.get("filter") ?? null
+  const filter =
+    rawFilter && isValidViewFilter(rawFilter)
+      ? rawFilter
+      : defaultFilterForView("all")
+  const show = parseAllShow(searchParams?.get("show") ?? null)
+
+  const setUrl = useCallback(
+    (patch: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams?.toString() ?? "")
+      for (const [k, v] of Object.entries(patch)) {
+        if (v === null || v === "") params.delete(k)
+        else params.set(k, v)
+      }
+      const qs = params.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    },
+    [pathname, searchParams, router],
+  )
+
+  const onFilterButtonClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const key = e.currentTarget.dataset.filterKey
+      if (key) setUrl({ filter: key === defaultFilterForView("all") ? null : key })
+    },
+    [setUrl],
+  )
+
+  // Category selection — "all" is the default, so it clears the param.
+  const setShow = useCallback(
+    (next: AllShow) => setUrl({ show: next === "all" ? null : next }),
+    [setUrl],
+  )
+  const [showOpen, setShowOpen] = useState(false)
+  const onShowOptionClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const key = e.currentTarget.dataset.showKey as AllShow | undefined
+      if (key) {
+        setShow(key)
+        setShowOpen(false)
+      }
+    },
+    [setShow],
+  )
+
+  return {
+    filter,
+    show,
+    setUrl,
+    onFilterButtonClick,
+    setShow,
+    showOpen,
+    setShowOpen,
+    onShowOptionClick,
+  }
+}
+
+/**
+ * Combined "All" view. A category dropdown sits before the search field.
+ * Its default ("All") shows the first {@link ALL_VIEW_BLOCK_SIZE} of
+ * each kind as its own block (Activities, Projects, Accounts), each
+ * ending in a thin "Show all" row. Picking a concrete category — via the
+ * dropdown OR a "Show all" row — collapses to that one category, shown
+ * with the full single-kind chrome (sub / view / sort / quality) through
+ * {@link ExploreMain}. Selection rides the `?show=` URL param.
+ *
+ * Split so the two modes are separate components: the blocks mode runs
+ * three loaders, the single mode runs exactly one (inside ExploreMain).
+ * Branching at this boundary keeps the other two loaders from firing
+ * wasted queries while a single category is selected.
+ */
+function ExploreAll() {
+  const searchParams = useSearchParams()
+  const show = parseAllShow(searchParams?.get("show") ?? null)
+  return show === "all" ? <ExploreAllBlocks /> : <ExploreAllSingle show={show} />
+}
+
+/** All view, default mode: three capped blocks side by side. */
+function ExploreAllBlocks() {
+  const {
+    filter,
+    setUrl,
+    onFilterButtonClick,
+    setShow,
+    showOpen,
+    setShowOpen,
+    onShowOptionClick,
+  } = useAllView()
+  const searchParams = useSearchParams()
+  const search = searchParams?.get("q") ?? ""
+
+  // Search debounce — same pattern as the single-kind view. Keeps
+  // typing snappy, hits the indexer once typing stops, and reconciles
+  // external URL changes (filter switch / back-forward) into the input.
+  const [localQuery, setLocalQuery] = useState(search)
+  const lastWroteToUrlRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (search === lastWroteToUrlRef.current) return
+    setLocalQuery(search)
+  }, [search])
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (localQuery !== search) {
+        lastWroteToUrlRef.current = localQuery
+        setUrl({ q: localQuery || null })
+      }
+    }, 350)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localQuery])
+
+  // Three independent loaders — one per kind. Each maps the unified
+  // All-view filter to that kind's concrete filter key. `sub` is pinned
+  // to "all" (the All view has no People/Created sub-toggle).
+  const activities = useExploreData({
+    kind: "activities",
+    filter: viewFilterToKindFilter(filter, "activities"),
+    sub: "all",
+    search,
+  })
+  const projects = useExploreData({
+    kind: "projects",
+    filter: viewFilterToKindFilter(filter, "projects"),
+    sub: "all",
+    search,
+  })
+  const accounts = useExploreData({
+    kind: "accounts",
+    filter: viewFilterToKindFilter(filter, "accounts"),
+    sub: "all",
+    search,
+  })
+
+  const activityItems = useMemo(
+    () => sortCerts(activities.certs, "newest").slice(0, ALL_VIEW_BLOCK_SIZE),
+    [activities.certs],
+  )
+  const projectItems = useMemo(
+    () => sortProjects(projects.projects, "newest").slice(0, ALL_VIEW_BLOCK_SIZE),
+    [projects.projects],
+  )
+  const accountItems = useMemo(
+    () => sortUsers(accounts.users, "newest").slice(0, ALL_VIEW_BLOCK_SIZE),
+    [accounts.users],
+  )
+
+  return (
+    <div className="explore">
+      <div className="explore__layout">
+        <ExploreFilterSidebar
+          filters={filtersForView("all")}
+          activeFilter={filter}
+          onFilterClick={onFilterButtonClick}
+        />
+
+        <main className="explore__main">
+          <div className="explore__chrome">
+            <AllCategoryDropdown
+              show="all"
+              onSelect={onShowOptionClick}
+              open={showOpen}
+              setOpen={setShowOpen}
+            />
+
+            <div className="explore__search-field">
+              <Input
+                type="search"
+                size="sm"
+                leadingIcon={<Search size={14} strokeWidth={1.75} aria-hidden />}
+                placeholder="Search Certified"
+                value={localQuery}
+                onChange={(e) => setLocalQuery(e.target.value)}
+                aria-label="Search Certified"
+              />
+            </div>
+          </div>
+
+          <div className="explore__all">
+            <AllSection
+              title="Activities"
+              icon={CertIcon}
+              isLoading={activities.isLoading}
+              isEmpty={activityItems.length === 0}
+            >
+              <ul className="explore__list explore__list--certs">
+                {activityItems.map((rec) => {
+                  const did = activities.certDids.get(rec.uri) ?? ""
+                  return (
+                    <li key={rec.uri}>
+                      <CertListRow record={rec} did={did} />
+                    </li>
+                  )
+                })}
+                <ShowAllRow onClick={() => setShow("activities")} />
+              </ul>
+            </AllSection>
+
+            <AllSection
+              title="Projects"
+              icon={FolderGit2}
+              isLoading={projects.isLoading}
+              isEmpty={projectItems.length === 0}
+            >
+              <ul className="explore__list explore__list--projects">
+                {projectItems.map((p) => (
+                  <li key={p.uri}>
+                    <ProjectListRow project={p} />
+                  </li>
+                ))}
+                <ShowAllRow onClick={() => setShow("projects")} />
+              </ul>
+            </AllSection>
+
+            <AllSection
+              title="Accounts"
+              icon={Users}
+              isLoading={accounts.isLoading}
+              isEmpty={accountItems.length === 0}
+            >
+              <ul className="explore__list explore__list--accounts">
+                {accountItems.map((a) => (
+                  <li key={a.did}>
+                    <AccountListRow actor={a} />
+                  </li>
+                ))}
+                <ShowAllRow onClick={() => setShow("accounts")} />
+              </ul>
+            </AllSection>
+          </div>
         </main>
       </div>
     </div>
+  )
+}
+
+/** All view, single-category mode: the chosen kind rendered with the
+ *  full single-kind chrome via {@link ExploreMain}, behind the trimmed
+ *  All-view sidebar and the category dropdown. */
+function ExploreAllSingle({ show }: { show: ExploreKind }) {
+  const {
+    filter,
+    onFilterButtonClick,
+    showOpen,
+    setShowOpen,
+    onShowOptionClick,
+  } = useAllView()
+  return (
+    <div className="explore">
+      <div className="explore__layout">
+        <ExploreFilterSidebar
+          filters={filtersForView("all")}
+          activeFilter={filter}
+          onFilterClick={onFilterButtonClick}
+        />
+        <ExploreMain
+          kind={show}
+          filter={viewFilterToKindFilter(filter, show)}
+          compactDegrees
+          leadingControl={
+            <AllCategoryDropdown
+              show={show}
+              onSelect={onShowOptionClick}
+              open={showOpen}
+              setOpen={setShowOpen}
+            />
+          }
+        />
+      </div>
+    </div>
+  )
+}
+
+/** The thin "Show all" row pinned as the last item inside a capped
+ *  block's list — collapses the All view to that single category. Lives
+ *  inside the bordered list so it reads as the list's final row (no gap
+ *  to the rows above). */
+function ShowAllRow({ onClick }: { onClick: () => void }) {
+  return (
+    <li>
+      <button type="button" className="explore__show-all" onClick={onClick}>
+        Show all
+        <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
+      </button>
+    </li>
+  )
+}
+
+/** Category dropdown that sits before the All view's search field —
+ *  All / Activities / Projects / Accounts. Mirrors the single-kind
+ *  SubPrefixDropdown's chrome + the data-attr click handoff (so the SWC
+ *  minifier can't share a hoisted loop variable across the options). */
+function AllCategoryDropdown({
+  show,
+  onSelect,
+  open,
+  setOpen,
+}: {
+  show: AllShow
+  onSelect: (e: React.MouseEvent<HTMLButtonElement>) => void
+  open: boolean
+  setOpen: (next: boolean) => void
+}) {
+  const active = SHOW_OPTIONS.find((o) => o.key === show) ?? SHOW_OPTIONS[0]
+  return (
+    <UiPopover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger>
+        <button type="button" className="explore__sub-dropdown-trigger">
+          <span className="explore__sub-dropdown-label">{active.label}</span>
+          <ChevronDown size={13} strokeWidth={1.75} aria-hidden />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start">
+        {SHOW_OPTIONS.map((opt) => (
+          <PopoverItem
+            key={opt.key}
+            className={show === opt.key ? "font-medium" : ""}
+            data-show-key={opt.key}
+            onClick={onSelect}
+          >
+            {opt.label}
+          </PopoverItem>
+        ))}
+      </PopoverContent>
+    </UiPopover>
+  )
+}
+
+/**
+ * One block on the All view's default (three-block) layout: an uppercase
+ * section heading, then either a spinner (still loading), a muted empty
+ * line (no matches), or the result list passed as children. The list
+ * itself carries the trailing {@link ShowAllRow}.
+ */
+function AllSection({
+  title,
+  icon: Icon,
+  isLoading,
+  isEmpty,
+  children,
+}: {
+  title: string
+  icon: SectionIcon
+  isLoading: boolean
+  isEmpty: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <section className="explore__all-section">
+      <div className="explore__all-section-head">
+        <h2 className="explore__all-section-title">
+          <Icon size={14} strokeWidth={1.75} aria-hidden />
+          {title}
+        </h2>
+      </div>
+      {isLoading ? (
+        <div className="explore__all-loading">
+          <LoadingSpinner size="sm" />
+        </div>
+      ) : isEmpty ? (
+        <p className="explore__all-empty">No {title.toLowerCase()} found</p>
+      ) : (
+        children
+      )}
+    </section>
   )
 }
 
@@ -866,18 +1336,25 @@ function EndorsementDegreeBar({
   onChange,
   onReset,
   meta,
+  inline = false,
 }: {
   degrees: Set<Degree>
   onChange: (next: Set<Degree>) => void
   onReset: () => void
   meta: ReturnType<typeof useExploreData>["endorsementClosure"]
+  /** Compact layout for the All view's single-category section header —
+   *  drops the standalone bar's block padding so the pills sit inline
+   *  next to the section title. */
+  inline?: boolean
 }) {
   // Default is {1}. Hide the reset affordance when we're already
   // there so the inline control doesn't read as "active" on a fresh
   // visit.
   const isDefault = degrees.size === 1 && degrees.has(1)
   return (
-    <div className="explore__degree-bar">
+    <div
+      className={`explore__degree-bar${inline ? " explore__degree-bar--inline" : ""}`}
+    >
       <div className="explore__degree-pills">
         <ToggleGroup
           aria-label="Endorsement rings — mark one or more"

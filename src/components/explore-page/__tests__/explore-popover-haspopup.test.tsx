@@ -5,8 +5,10 @@ import { render, screen, cleanup } from "@testing-library/react"
 // buttons in Explore omitted `aria-haspopup`, unlike the sibling
 // sub-prefix dropdown trigger (and the home-feed menu buttons) which
 // already announce a popup to assistive tech. This test mounts Explore
-// on its default (`kind=certs`) state — where both triggers render —
-// and pins that each trigger advertises a popup via `aria-haspopup`.
+// in a single-kind state (`?show=accounts`) — where the Sort and quality
+// triggers render — and pins that each advertises a popup via
+// `aria-haspopup`. (The default `?show=all` landing renders the
+// capped-blocks view, which has no single-kind toolbar.)
 //
 // Explore pulls in auth, navbar, navigation, and the explore-data hook;
 // none of those are under test, so they're stubbed to inert defaults
@@ -23,7 +25,7 @@ vi.mock("@/lib/navbar-context", () => ({
 vi.mock("next/navigation", () => ({
   usePathname: () => "/explore",
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(""),
+  useSearchParams: () => new URLSearchParams("show=accounts"),
 }))
 
 vi.mock("@/hooks/use-explore", () => ({
