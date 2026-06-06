@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { profileUrl, recordUrl } from "@/lib/urls"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
@@ -263,7 +264,7 @@ export default function ActivityDetail({
           (g.role === "owner" || g.role === "admin"),
       ) ?? null
   const [groupEditOpen, setGroupEditOpen] = useState(false)
-  const editHref = `/activity/${encodeURIComponent(did)}/${encodeURIComponent(rkey ?? "")}/edit`
+  const editHref = `${recordUrl(did, "activity", rkey ?? "")}/edit`
   const descriptionHref = pathname
     ? `${pathname}?tab=description`
     : null
@@ -428,9 +429,9 @@ export default function ActivityDetail({
       // — otherwise the just-deleted cert can linger in the
       // profile grid until the next refresh.
       if (typeof window !== "undefined") {
-        window.location.href = `/profile/${encodeURIComponent(did)}`
+        window.location.href = profileUrl(did)
       } else {
-        router.push(`/profile/${encodeURIComponent(did)}`)
+        router.push(profileUrl(did))
       }
     } catch (err) {
       setDeleteError(
@@ -1369,7 +1370,7 @@ function ContributorRow({ contributor, role, weight }: ContributorRowProps) {
   const handle = info?.handle && info.handle !== info.did ? info.handle : null
   const avatarUrl = info?.avatarUrl || contribInfo?.image?.uri || null
   const profileHref = info?.did
-    ? `/profile/${encodeURIComponent(info.handle || info.did)}`
+    ? profileUrl(info.handle || info.did)
     : null
   const initials = getInitials(
     info?.displayName || contribInfo?.displayName || null,
@@ -1491,7 +1492,7 @@ function CertHeadlineColumns({
           (() => {
             const displayName = info.displayName || info.handle || "Anonymous"
             const initials = getInitials(info.displayName, did)
-            const profileHref = `/profile/${encodeURIComponent(info.handle || did)}`
+            const profileHref = profileUrl(info.handle || did)
             return (
               <Link
                 href={profileHref}
@@ -1551,7 +1552,7 @@ function CertHeadlineColumns({
               /^at:\/\/([^/]+)\/[^/]+\/(.+)$/,
             )
             const firstHref = firstParts
-              ? `/project/${encodeURIComponent(firstParts[1])}/${encodeURIComponent(firstParts[2])}`
+              ? recordUrl(firstParts[1], "project", firstParts[2])
               : null
             const v = first.value as Record<string, unknown>
             const title =

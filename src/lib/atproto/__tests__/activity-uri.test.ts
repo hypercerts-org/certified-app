@@ -89,9 +89,9 @@ describe("parseActivityUri", () => {
 })
 
 describe("activityDetailHref", () => {
-  it("URL-encodes did + rkey segments", () => {
+  it("builds the handle-forward record URL (actor-first, DID verbatim)", () => {
     expect(activityDetailHref("did:plc:abc", "rkey1")).toBe(
-      "/activity/did%3Aplc%3Aabc/rkey1",
+      "/did:plc:abc/activity/rkey1",
     )
   })
 })
@@ -102,7 +102,7 @@ describe("activityDetailHrefFromUri", () => {
       activityDetailHrefFromUri(
         "at://did:plc:abc/org.hypercerts.claim.activity/rkey1",
       ),
-    ).toBe("/activity/did%3Aplc%3Aabc/rkey1")
+    ).toBe("/did:plc:abc/activity/rkey1")
   })
 
   it("returns null when the collection is not the activity NSID", () => {

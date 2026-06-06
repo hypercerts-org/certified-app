@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { profileUrl } from "@/lib/urls"
 import Avatar from "@/components/ui/avatar"
 import Skeleton from "@/components/ui/skeleton"
 import {
@@ -54,7 +55,7 @@ function deriveContributorDisplay(
   const avatarUrl = info?.avatarUrl || contribInfo?.image?.uri || null
 
   const profileHref = info?.did
-    ? `/profile/${encodeURIComponent(info.handle || info.did)}`
+    ? profileUrl(info.handle || info.did)
     : null
 
   const initials = getInitials(

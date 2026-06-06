@@ -8,9 +8,9 @@
  *   - handle (`alice.bsky.social` or `@alice.bsky.social`) →
  *     `{ kind: "handle" }`; the caller resolves it via the public
  *     appView
- *   - profile URL (`https://<host>/profile/<segment>`) → splits on
- *     `/profile/`, returns the trailing segment as either a DID or
- *     a handle depending on shape
+ *   - profile URL — the handle-forward form (`https://<host>/<segment>`)
+ *     or the legacy `https://<host>/profile/<segment>` — returns the
+ *     segment as either a DID or a handle depending on shape
  *   - actor at-URI (`at://did:plc:.../...` or just `at://did:plc:...`)
  *     → extracts the DID
  *
@@ -52,6 +52,18 @@ export function parseSubjectInput(raw: string): ParsedSubjectInput | null {
       return { kind: "did", value: segment }
     }
     return { kind: "handle", value: segment }
+  }
+
+  // Handle-forward profile URL: the first path segment is the actor.
+  const urlMatch = trimmed.match(/^https?:\/\/[^/]+\/([^/?#]+)/)
+  if (urlMatch) {
+    const segment = decodeURIComponent(urlMatch[1])
+    if (DID_RE.test(segment)) {
+      return { kind: "did", value: segment }
+    }
+    if (HANDLE_RE.test(segment)) {
+      return { kind: "handle", value: segment }
+    }
   }
 
   if (HANDLE_RE.test(trimmed)) {

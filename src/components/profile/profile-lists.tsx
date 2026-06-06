@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { profileUrl, recordUrl } from "@/lib/urls"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useUrlParam } from "@/hooks/use-url-param"
@@ -549,7 +550,7 @@ function AccountItemRow({
   const { info } = useAuthorInfo(did)
   const display = info?.displayName || info?.handle || did || "Unknown"
   const initials = getInitials(info?.displayName, did ?? undefined)
-  const href = did ? `/profile/${encodeURIComponent(info?.handle || did)}` : null
+  const href = did ? profileUrl(info?.handle || did) : null
   return (
     <ItemRowShell
       href={href}
@@ -589,7 +590,7 @@ function CertItemRow({
       ? resolveActivityImageUrl(activity.value.image, parsed.did)
       : null
   const href = parsed
-    ? `/activity/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
+    ? recordUrl(parsed.did, "activity", parsed.rkey)
     : null
   return (
     <ItemRowShell

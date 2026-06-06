@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { recordUrl } from "@/lib/urls"
 import { useRouter } from "next/navigation"
 import {
   Calendar,
@@ -548,7 +549,7 @@ export default function CreatePage() {
       if (match) {
         const [, ownerDid, , rkey] = match
         router.push(
-          `/activity/${encodeURIComponent(ownerDid)}/${encodeURIComponent(rkey)}`,
+          recordUrl(ownerDid, "activity", rkey),
         )
       } else {
         router.push("/")

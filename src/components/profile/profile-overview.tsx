@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { profileUrl } from "@/lib/urls"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { ArrowRight, MapPin, X } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
@@ -553,7 +554,7 @@ function EndorsementPreviewRow({ endorsement }: EndorsementPreviewRowProps) {
     idxIssuer?.avatarCid,
   )
   const avatarSrc = indexerAvatar || info?.avatarUrl || undefined
-  const href = `/profile/${encodeURIComponent(handle || endorsement.issuerDid)}`
+  const href = profileUrl(handle || endorsement.issuerDid)
 
   return (
     <li className="profile-overview__endorse-item">

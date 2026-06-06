@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { usePathname, useParams, useSearchParams } from "next/navigation"
+import { usePathname, useParams, useSearchParams, useRouter } from "next/navigation"
+import { profileUrl } from "@/lib/urls"
 import {
   useProfileNavbar,
   usePageTitle,
@@ -76,7 +77,8 @@ export default function UserProfilePage() {
   useProfileNavbar()
 
   const params = useParams()
-  const rawHandle = params.handle as string | undefined
+  const router = useRouter()
+  const rawHandle = params.actor as string | undefined
   const handleOrDid = useMemo(
     () => (rawHandle ? decodeURIComponent(rawHandle) : null),
     [rawHandle]
@@ -107,7 +109,7 @@ export default function UserProfilePage() {
       ? {
           left: {
             text: resolvedHandle,
-            href: `/profile/${encodeURIComponent(resolvedHandle)}`,
+            href: profileUrl(resolvedHandle),
           },
         }
       : null,
@@ -329,6 +331,18 @@ export default function UserProfilePage() {
     return v && TABS.some((t) => t.key === v) ? (v as TabKey) : "overview"
   }, [searchParams])
   const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl)
+
+  // Canonicalize the address bar to the handle form. When the profile was
+  // opened by its durable DID (e.g. a shared link), swap to `/{handle}` once
+  // the handle resolves — preserving any ?tab= query. The DID can't rot, so
+  // the link stays correct; the handle is just the pretty display form.
+  useEffect(() => {
+    if (!handleOrDid || !resolvedHandle) return
+    if (handleOrDid.startsWith("did:") && resolvedHandle !== handleOrDid) {
+      const qs = searchParams?.toString()
+      router.replace(profileUrl(resolvedHandle) + (qs ? `?${qs}` : ""))
+    }
+  }, [handleOrDid, resolvedHandle, searchParams, router])
 
   if (tabFromUrl !== activeTab && TABS.some((t) => t.key === tabFromUrl)) {
     setActiveTab(tabFromUrl)

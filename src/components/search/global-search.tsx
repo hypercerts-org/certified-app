@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { profileUrl } from "@/lib/urls"
 import { useRouter } from "next/navigation"
 import { Search as SearchIcon, X } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
@@ -196,7 +197,7 @@ export default function GlobalSearch({
       suppressNextSearchRef.current = true
       if (row.kind === "person") {
         setQuery(row.actor.displayName || row.actor.handle)
-        router.push(`/profile/${encodeURIComponent(row.actor.did)}`)
+        router.push(profileUrl(row.actor.did))
       } else {
         setQuery(row.record.value.title || "")
         const href = activityDetailHrefFromRecord(row.record.uri)

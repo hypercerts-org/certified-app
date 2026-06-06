@@ -1,7 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { recordUrl } from "@/lib/urls"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { MapPin, Plus, X, FolderGit2 } from "lucide-react"
 import Image from "next/image"
@@ -66,18 +67,23 @@ function asString(v: unknown): string {
   return typeof v === "string" ? v : ""
 }
 
-export default function ProjectEditPage() {
+/**
+ * `/{actor}/project/{rkey}/edit` — full-page project editor. `actor` is
+ * resolved to a DID by the parent route; this component takes the resolved
+ * `did` + `rkey` as props (`resolving` holds the loading state while that
+ * resolution is in flight).
+ */
+export default function ProjectEditRoute({
+  did,
+  rkey,
+  resolving,
+}: {
+  did: string | null
+  rkey: string | null
+  resolving: boolean
+}) {
   usePageTitle("Edit project")
   const router = useRouter()
-  const params = useParams()
-  const did = useMemo(() => {
-    const raw = params.did
-    return typeof raw === "string" ? decodeURIComponent(raw) : null
-  }, [params.did])
-  const rkey = useMemo(() => {
-    const raw = params.rkey
-    return typeof raw === "string" ? decodeURIComponent(raw) : null
-  }, [params.rkey])
 
   const { isAuthenticated, isLoading: authLoading, did: sessionDid } = useAuth()
   const { activeOrg } = useOrg()
@@ -330,7 +336,7 @@ export default function ProjectEditPage() {
   const displayBannerUrl = pendingBannerPreviewUrl ?? existingBannerUrl
 
   // Loading / sign-in gates.
-  if (authLoading || projectLoading) {
+  if (resolving || authLoading || projectLoading) {
     return (
       <div className="dashboard">
         <div className="dashboard__body">
@@ -527,7 +533,7 @@ export default function ProjectEditPage() {
       }
 
       router.push(
-        `/project/${encodeURIComponent(did)}/${encodeURIComponent(rkey)}`,
+        recordUrl(did, "project", rkey),
       )
     } catch (err) {
       if (err instanceof InvalidSwapError) {
@@ -544,7 +550,7 @@ export default function ProjectEditPage() {
   const handleCancel = () => {
     if (did && rkey) {
       router.push(
-        `/project/${encodeURIComponent(did)}/${encodeURIComponent(rkey)}`,
+        recordUrl(did, "project", rkey),
       )
     } else {
       router.back()

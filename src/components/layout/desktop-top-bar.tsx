@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { profileUrl } from "@/lib/urls"
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -173,7 +174,7 @@ export default function DesktopTopBar() {
   // group, identity.handle is the group handle, so "My profile" follows
   // the active identity just like the avatar switcher does.
   const profileHref = identity.handle
-    ? `/profile/${encodeURIComponent(identity.handle)}`
+    ? profileUrl(identity.handle)
     : "/profile";
 
   const isOnProfile = pathname?.startsWith("/profile/") ?? false;

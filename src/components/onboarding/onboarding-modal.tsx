@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { profileUrl } from "@/lib/urls"
 import AppDialog from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -152,7 +153,7 @@ export default function OnboardingModal() {
         ? URL.createObjectURL(profileDraft.replacementAvatarFile)
         : profileDraft.sourceAvatarUrl) || null
     const goToProfile = () => {
-      const target = handle ? `/profile/${encodeURIComponent(handle)}` : "/"
+      const target = handle ? profileUrl(handle) : "/"
       window.location.assign(target)
     }
     return (

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { profileUrl } from "@/lib/urls"
 import { User } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import { useAuthorInfo } from "@/hooks/use-author-info"
@@ -42,7 +43,7 @@ export default function AccountListRow({
   const handle = info?.handle ?? null
   const avatarUrl = actor.avatarUrl || info?.avatarUrl || null
   const initials = getInitials(displayName, actor.did)
-  const profileHref = `/profile/${encodeURIComponent(handle || actor.did)}`
+  const profileHref = profileUrl(handle || actor.did)
 
   return (
     <article className="account-list-row">

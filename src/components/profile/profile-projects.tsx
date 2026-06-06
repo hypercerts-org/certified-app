@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { recordUrl } from "@/lib/urls"
 import Link from "next/link"
 import { ArrowRight, ArrowUpDown, Calendar, FolderGit2, Plus, Search } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
@@ -239,7 +240,7 @@ function ProjectBox({ project, owner }: ProjectBoxProps) {
   const parsed = parseAtUri(uri)
   const projectDid = parsed?.did ?? ""
   const detailHref = parsed
-    ? `/project/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
+    ? recordUrl(parsed.did, "project", parsed.rkey)
     : null
 
   const title =

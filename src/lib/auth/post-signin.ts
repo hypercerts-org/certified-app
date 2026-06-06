@@ -8,6 +8,8 @@
  * looking at, not at `/`.
  */
 
+import { profileUrl } from "@/lib/urls"
+
 const PATH_KEY = "post-signin-path"
 const HANDLE_KEY = "pre-signin-handle"
 
@@ -56,13 +58,16 @@ export function consumePreSigninLocation(): {
 }
 
 /**
- * Rewrite a saved pre-signin path so any `/profile/<old-handle>`
- * segments point at the newly signed-in identity. The profile route
- * accepts a DID just as happily as a handle, so we substitute the
- * new identity's DID (no extra handle-resolution round-trip).
+ * Rewrite a saved pre-signin path so a leading `/<old-handle>` profile
+ * segment points at the newly signed-in identity. Under the handle-forward
+ * scheme the profile (and the user's own record pages) live at the root —
+ * `/<handle>`, `/<handle>/activity/<rkey>` — so we swap the first path
+ * segment when it matches the old handle. The route accepts a DID just as
+ * happily as a handle, so we substitute the new identity's DID (no extra
+ * handle-resolution round-trip; it canonicalizes to the handle on load).
  *
- * Falls through unchanged for paths that don't reference the old
- * handle — feed pages, cert detail, /explore, etc. all stay put.
+ * Falls through unchanged for paths that don't start with the old handle —
+ * feed pages, record detail for other users, /explore, etc. stay put.
  */
 export function rewritePathForNewIdentity(
   currentPath: string,
@@ -70,11 +75,21 @@ export function rewritePathForNewIdentity(
   newIdentifier: string | null,
 ): string {
   if (!prevHandle || !newIdentifier) return currentPath
-  const enc = encodeURIComponent(prevHandle)
-  if (!currentPath.includes(`/profile/${enc}`)) return currentPath
-  return currentPath.split(`/profile/${enc}`).join(
-    `/profile/${encodeURIComponent(newIdentifier)}`,
-  )
+  const queryIndex = currentPath.indexOf("?")
+  const pathname =
+    queryIndex === -1 ? currentPath : currentPath.slice(0, queryIndex)
+  const query = queryIndex === -1 ? "" : currentPath.slice(queryIndex)
+  const segments = pathname.split("/")
+  // segments[0] is "" (leading slash); segments[1] is the first segment.
+  let first = segments[1] ?? ""
+  try {
+    first = decodeURIComponent(first)
+  } catch {
+    // keep raw on malformed escape
+  }
+  if (first !== prevHandle) return currentPath
+  segments[1] = newIdentifier
+  return segments.join("/") + query
 }
 
 /**
@@ -110,7 +125,7 @@ export function resolvePostSigninPath(newIdentifier: string | null): string {
   const { path, handle } = consumePreSigninLocation()
   if (!path) return "/"
   if (newIdentifier && isMarketingPath(path)) {
-    return `/profile/${encodeURIComponent(newIdentifier)}`
+    return profileUrl(newIdentifier)
   }
   return rewritePathForNewIdentity(path, handle, newIdentifier)
 }

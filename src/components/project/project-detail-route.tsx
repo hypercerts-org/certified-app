@@ -1,33 +1,36 @@
 "use client"
 
-import { useEffect, useMemo } from "react"
-import { useParams } from "next/navigation"
+import { useEffect } from "react"
 import { usePageTitle, usePageTitleBreadcrumb } from "@/lib/navbar-context"
 import { useProject } from "@/hooks/use-project"
-import { useAuthorInfo } from "@/hooks/use-author-info"
 import ProjectDetail from "@/components/project/project-detail"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
+import { profileUrl, recordUrl } from "@/lib/urls"
 
-export default function ProjectDetailPage() {
+/**
+ * Project detail body, rendered by the handle-forward record route
+ * `/{actor}/project/{rkey}`. The actor is resolved to a DID + handle by the
+ * parent route; this component fetches and renders the record.
+ *
+ * `resolving` is true while the parent is still turning the actor segment
+ * into a DID — we stay in the loading state instead of flashing "not found".
+ */
+export default function ProjectDetailRoute({
+  did,
+  handle,
+  rkey,
+  resolving,
+}: {
+  did: string | null
+  handle: string | null
+  rkey: string | null
+  resolving: boolean
+}) {
   // Plain-string fallback while author/project data is still resolving.
-  // The breadcrumb below takes precedence once both pieces are available.
   usePageTitle("Project")
 
-  const params = useParams()
-  const did = useMemo(() => {
-    const raw = params.did
-    if (typeof raw !== "string") return null
-    return decodeURIComponent(raw)
-  }, [params.did])
-  const rkey = useMemo(() => {
-    const raw = params.rkey
-    if (typeof raw !== "string") return null
-    return decodeURIComponent(raw)
-  }, [params.rkey])
-
   const { project, isLoading, error } = useProject(did, rkey)
-  const { info: authorInfo } = useAuthorInfo(did)
 
   // Recently-viewed: record the at:// URI once the project resolves so
   // the /explore "Recently viewed" filter can surface it later.
@@ -35,27 +38,20 @@ export default function ProjectDetailPage() {
     if (project?.uri) trackRecentlyViewed("project", project.uri)
   }, [project?.uri])
 
-  const handle = authorInfo?.handle ?? null
   const projectTitle =
     (typeof project?.value.title === "string" && project.value.title) ||
     (typeof project?.value.name === "string" && project.value.name) ||
     null
   usePageTitleBreadcrumb(
-    handle && projectTitle && did && rkey
+    handle && projectTitle && rkey
       ? {
-          left: {
-            text: handle,
-            href: `/profile/${encodeURIComponent(handle)}`,
-          },
-          right: {
-            text: projectTitle,
-            href: `/project/${encodeURIComponent(did)}/${encodeURIComponent(rkey)}`,
-          },
+          left: { text: handle, href: profileUrl(handle) },
+          right: { text: projectTitle, href: recordUrl(handle, "project", rkey) },
         }
       : null,
   )
 
-  if (isLoading) {
+  if (resolving || isLoading) {
     return (
       <div className="project-detail-page">
         <div className="project-detail__loading">

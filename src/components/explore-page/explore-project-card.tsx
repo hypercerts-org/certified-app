@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { recordUrl } from "@/lib/urls"
 import Link from "next/link"
 import { FolderGit2 } from "lucide-react"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
@@ -23,7 +24,7 @@ export default function ExploreProjectCard({
   const parsed = parseAtUri(uri)
   const projectDid = parsed?.did ?? ""
   const detailHref = parsed
-    ? `/project/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
+    ? recordUrl(parsed.did, "project", parsed.rkey)
     : "#"
 
   const title =

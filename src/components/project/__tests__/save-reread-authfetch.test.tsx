@@ -66,7 +66,7 @@ vi.mock("@/lib/atproto/project", () => ({
   putProjectRecord: (...args: unknown[]) => putProjectRecord(...args),
 }))
 
-import ProjectEditPage from "../page"
+import ProjectEditRoute from "../project-edit-route"
 
 beforeEach(() => {
   cleanup()
@@ -98,7 +98,7 @@ describe("project edit save — conflict re-read uses authFetch", () => {
     })
     vi.stubGlobal("fetch", fetchMock)
 
-    render(<ProjectEditPage />)
+    render(<ProjectEditRoute did={DID} rkey={RKEY} resolving={false} />)
 
     // The Save button comes from the sticky EditBanner. It's enabled
     // because the seeded title is >= 5 graphemes and a mountSnapshot is set.

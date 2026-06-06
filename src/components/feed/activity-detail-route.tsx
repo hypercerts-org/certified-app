@@ -1,61 +1,52 @@
 "use client"
 
-import { useEffect, useMemo } from "react"
-import { useParams } from "next/navigation"
+import { useEffect } from "react"
 import { usePageTitleBreadcrumb } from "@/lib/navbar-context"
 import { useActivity } from "@/hooks/use-activity"
-import { useAuthorInfo } from "@/hooks/use-author-info"
 import ActivityDetail from "@/components/feed/activity-detail"
 import ErrorMessage from "@/components/ui/error-message"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
+import { profileUrl, recordUrl } from "@/lib/urls"
 
-export default function ActivityDetailPage() {
-  // No plain-string fallback — the breadcrumb below renders once
-  // author + cert data resolve; until then the top-bar title slot
-  // stays empty rather than flashing a generic "Activity" word that
-  // never matches what the user clicked.
-
-  const params = useParams()
-  const did = useMemo(() => {
-    const raw = params.did
-    if (typeof raw !== "string") return null
-    return decodeURIComponent(raw)
-  }, [params.did])
-  const rkey = useMemo(() => {
-    const raw = params.rkey
-    if (typeof raw !== "string") return null
-    return decodeURIComponent(raw)
-  }, [params.rkey])
-
+/**
+ * Activity (cert) detail body, rendered by the handle-forward record route
+ * `/{actor}/activity/{rkey}`. The actor is resolved to a DID + handle by the
+ * parent route; this component fetches and renders the record.
+ *
+ * `resolving` is true while the parent is still turning the actor segment
+ * into a DID — we stay in the loading state instead of flashing "not found".
+ */
+export default function ActivityDetailRoute({
+  did,
+  handle,
+  rkey,
+  resolving,
+}: {
+  did: string | null
+  handle: string | null
+  rkey: string | null
+  resolving: boolean
+}) {
   const { activity, isLoading, error } = useActivity(did, rkey)
-  const { info: authorInfo } = useAuthorInfo(did)
 
   // Recently-viewed: record the at:// URI once the cert resolves so the
-  // /explore "Recently viewed" filter can surface it later. Keyed by
-  // URI (not did/rkey) because the cache stores at:// URIs verbatim.
+  // /explore "Recently viewed" filter can surface it later.
   useEffect(() => {
     if (activity?.uri) trackRecentlyViewed("cert", activity.uri)
   }, [activity?.uri])
 
-  const handle = authorInfo?.handle ?? null
   const certTitle = activity?.value.title ?? null
   usePageTitleBreadcrumb(
-    handle && certTitle && did && rkey
+    handle && certTitle && rkey
       ? {
-          left: {
-            text: handle,
-            href: `/profile/${encodeURIComponent(handle)}`,
-          },
-          right: {
-            text: certTitle,
-            href: `/activity/${encodeURIComponent(did)}/${encodeURIComponent(rkey)}`,
-          },
+          left: { text: handle, href: profileUrl(handle) },
+          right: { text: certTitle, href: recordUrl(handle, "activity", rkey) },
         }
-      : null
+      : null,
   )
 
-  if (isLoading) {
+  if (resolving || isLoading) {
     return (
       <div className="cert-detail-page">
         <div className="cert-detail__loading">

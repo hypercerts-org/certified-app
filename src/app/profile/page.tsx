@@ -7,10 +7,11 @@ import { useOrg } from "@/lib/groups/org-context"
 import { useSession } from "@/hooks/use-session"
 import { useProfileNavbar } from "@/lib/navbar-context"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import { profileUrl } from "@/lib/urls"
 
 /**
- * `/profile` — redirect stub. The canonical profile view lives at
- * `/profile/[handle]`. When authenticated we resolve the **active**
+ * `/profile` — redirect stub. The canonical profile view lives at the
+ * root, `/{handle}`. When authenticated we resolve the **active**
  * identity (the group from the account switcher, or the personal
  * handle when no group is active) and forward there. Unauthenticated
  * visitors get bounced to `/`.
@@ -39,7 +40,7 @@ export default function ProfileRedirectPage() {
     if (isSessionLoading || orgsLoading) return
     const activeHandle = activeOrg?.handle ?? personalHandle
     if (activeHandle) {
-      router.replace(`/profile/${encodeURIComponent(activeHandle)}`)
+      router.replace(profileUrl(activeHandle))
     } else {
       router.replace("/")
     }

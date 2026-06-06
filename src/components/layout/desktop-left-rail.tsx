@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
+import { profileUrl } from "@/lib/urls"
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -132,7 +133,7 @@ export default function DesktopLeftRail() {
       };
 
   const profileHref = identity.handle
-    ? `/profile/${encodeURIComponent(identity.handle)}`
+    ? profileUrl(identity.handle)
     : "/profile";
 
   // Brand link points at "where I currently am" — personal profile

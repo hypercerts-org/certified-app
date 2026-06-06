@@ -1,6 +1,7 @@
 "use client";
 
 import { useSession } from "@/hooks/use-session";
+import { profileUrl } from "@/lib/urls"
 import { useOrg } from "@/lib/groups/org-context";
 import {
   usePageTitle,
@@ -28,7 +29,7 @@ export default function SettingsPage() {
   usePageTitle("Settings");
   usePageTitleBreadcrumb(
     activeHandle
-      ? { left: { text: activeHandle, href: `/profile/${activeHandle}` } }
+      ? { left: { text: activeHandle, href: profileUrl(activeHandle) } }
       : null,
   );
   return <SettingsPanel />;

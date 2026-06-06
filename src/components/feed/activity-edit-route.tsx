@@ -1,7 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { recordUrl } from "@/lib/urls"
+import { useRouter } from "next/navigation"
 import {
   Calendar,
   FileText,
@@ -164,18 +165,23 @@ function parseAtUri(uri: string): { did: string; collection: string; rkey: strin
   return { did: m[1], collection: m[2], rkey: m[3] }
 }
 
-export default function ActivityEditPage() {
+/**
+ * `/{actor}/activity/{rkey}/edit` — full-page cert editor. `actor` is
+ * resolved to a DID by the parent route; this component takes the resolved
+ * `did` + `rkey` as props (`resolving` is true while that resolution is in
+ * flight, so we hold the loading state instead of flashing "not found").
+ */
+export default function ActivityEditRoute({
+  did,
+  rkey,
+  resolving,
+}: {
+  did: string | null
+  rkey: string | null
+  resolving: boolean
+}) {
   usePageTitle("Edit activity")
   const router = useRouter()
-  const params = useParams()
-  const did = useMemo(() => {
-    const raw = params.did
-    return typeof raw === "string" ? decodeURIComponent(raw) : null
-  }, [params.did])
-  const rkey = useMemo(() => {
-    const raw = params.rkey
-    return typeof raw === "string" ? decodeURIComponent(raw) : null
-  }, [params.rkey])
 
   const { isAuthenticated, isLoading: authLoading, did: sessionDid } = useAuth()
   const { activeOrg } = useOrg()
@@ -446,7 +452,7 @@ export default function ActivityEditPage() {
   const displayImageUrl = pendingImagePreviewUrl ?? existingImageUrl
 
   // Auth-loading / signed-out states. Mirrors /create's gates.
-  if (authLoading || activityLoading) {
+  if (resolving || authLoading || activityLoading) {
     return (
       <div className="dashboard">
         <div className="dashboard__body">
@@ -752,7 +758,7 @@ export default function ActivityEditPage() {
       }
 
       router.push(
-        `/activity/${encodeURIComponent(did)}/${encodeURIComponent(rkey)}`,
+        recordUrl(did, "activity", rkey),
       )
     } catch (err) {
       if (err instanceof InvalidSwapError) {
@@ -769,7 +775,7 @@ export default function ActivityEditPage() {
   const handleCancel = () => {
     if (did && rkey) {
       router.push(
-        `/activity/${encodeURIComponent(did)}/${encodeURIComponent(rkey)}`,
+        recordUrl(did, "activity", rkey),
       )
     } else {
       router.back()

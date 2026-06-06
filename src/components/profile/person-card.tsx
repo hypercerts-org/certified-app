@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { profileUrl } from "@/lib/urls"
 import type { AuthorInfo } from "@/hooks/use-author-info"
 import Avatar from "@/components/ui/avatar"
 import { formatShortDate } from "@/lib/utils/format-date"
@@ -45,7 +46,7 @@ export default function PersonCard({
   const displayName = info?.displayName || info?.handle || did
   const handle = info?.handle && info.handle !== info.did ? info.handle : null
   const initials = getInitials(info?.displayName, did)
-  const href = `/profile/${encodeURIComponent(info?.handle || did)}`
+  const href = profileUrl(info?.handle || did)
 
   return (
     <li className="profile-endorsements-v2__card">

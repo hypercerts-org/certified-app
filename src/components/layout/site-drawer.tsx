@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { profileUrl } from "@/lib/urls"
 import { usePathname } from "next/navigation"
 import { Compass, Home, LayoutGrid, Settings, User, X } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -47,7 +48,7 @@ export default function SiteDrawer({
   // in the chrome.
   const profileHref =
     isAuthenticated && activeHandle
-      ? `/profile/${encodeURIComponent(activeHandle)}`
+      ? profileUrl(activeHandle)
       : null
 
   const items: {

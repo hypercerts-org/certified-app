@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import { profileUrl, recordUrl } from "@/lib/urls"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { FolderGit2, User, Users } from "lucide-react"
@@ -127,7 +128,7 @@ function HomeSidebar({ activeDid }: { activeDid: string }) {
 
   // Profile detail accepts the DID under the [handle] slot, so
   // "Show more" stays correct even before we've resolved the handle.
-  const profileBase = `/profile/${encodeURIComponent(activeDid)}`
+  const profileBase = profileUrl(activeDid)
 
   return (
     <>
@@ -270,7 +271,7 @@ function ProjectRow({
   const parsed = parseAtUri(project.uri)
   const did = parsed?.did ?? ""
   const href = parsed
-    ? `/project/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
+    ? recordUrl(parsed.did, "project", parsed.rkey)
     : "#"
 
   const title =
@@ -328,7 +329,7 @@ function CertRow({
 }) {
   const parsed = parseAtUri(record.uri)
   const href = parsed
-    ? `/activity/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
+    ? recordUrl(parsed.did, "activity", parsed.rkey)
     : "#"
   const did = parsed?.did ?? fallbackDid
 

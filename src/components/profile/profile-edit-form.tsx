@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useId } from "react";
+import { profileUrl } from "@/lib/urls"
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, X, ChevronLeft } from "lucide-react";
@@ -319,7 +320,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
   // Cancel and back-link destinations. When we know the user's handle we
   // route back to their public profile by handle (canonical URL); otherwise
   // fall back to `/profile` which redirects to the current user's profile.
-  const profileHref = handle ? `/profile/${handle}` : "/profile";
+  const profileHref = handle ? profileUrl(handle) : "/profile";
 
   const handleCancel = () => {
     router.push(profileHref);
