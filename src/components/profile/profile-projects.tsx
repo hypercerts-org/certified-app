@@ -1,12 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
-import { ArrowRight, Calendar, FolderGit2, Plus } from "lucide-react"
+import { ArrowRight, ArrowUpDown, Calendar, FolderGit2, Plus, Search } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
 import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverItem,
+} from "@/components/ui/popover"
 import { useUserProjects } from "@/hooks/use-user-projects"
 import { useManagedProjects } from "@/hooks/use-managed-projects"
 import { useProjectItems, type ProjectItemResolution } from "@/hooks/use-project-items"
@@ -28,6 +34,19 @@ interface ProfileProjectsProps {
    *  the viewer owns/admins, each tagged "by {group}". */
   aggregateOwned?: boolean
 }
+
+type SortKey =
+  | "created-desc"
+  | "created-asc"
+  | "alpha-asc"
+  | "alpha-desc"
+
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: "created-desc", label: "Newest first" },
+  { key: "created-asc", label: "Oldest first" },
+  { key: "alpha-asc", label: "Title A → Z" },
+  { key: "alpha-desc", label: "Title Z → A" },
+]
 
 /** Cert rows shown inline per project before deferring to the project
  *  detail page via the "See all →" link. */
@@ -55,6 +74,10 @@ export default function ProfileProjects({
   const single = useUserProjects(aggregateOwned ? null : did)
   const managed = useManagedProjects({ enabled: aggregateOwned })
 
+  const [query, setQuery] = useState("")
+  const [sort, setSort] = useState<SortKey>("created-desc")
+  const [sortOpen, setSortOpen] = useState(false)
+
   const projects = aggregateOwned
     ? managed.items.map((it) => it.record)
     : single.projects
@@ -69,21 +92,75 @@ export default function ProfileProjects({
   const hasMore = aggregateOwned && managed.hasMore
   const isLoadingMore = aggregateOwned && managed.isLoadingMore
 
-  const createCta = viewerIsOwner ? (
+  const visible = useMemo(
+    () => filterAndSort(projects, query, sort),
+    [projects, query, sort],
+  )
+
+  const toolbar = (
     <div className="profile-projects__toolbar">
-      <Link href="/project/new">
-        <Button variant="primary" size="sm">
-          <Plus size={14} strokeWidth={1.75} aria-hidden />
-          New project
-        </Button>
-      </Link>
+      <div className="profile-projects__controls">
+        {viewerIsOwner ? (
+          <Link href="/project/new">
+            <Button variant="primary" size="sm">
+              <Plus size={14} strokeWidth={1.75} aria-hidden />
+              New project
+            </Button>
+          </Link>
+        ) : null}
+        <label className="profile-certs__search">
+          <Search
+            size={16}
+            strokeWidth={1.75}
+            className="profile-certs__search-icon"
+            aria-hidden
+          />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search projects"
+            aria-label="Search projects"
+            className="profile-certs__search-input"
+          />
+        </label>
+
+        <div className="profile-certs__sort-wrap">
+          <Popover open={sortOpen} onOpenChange={setSortOpen}>
+            <PopoverTrigger>
+              <button
+                type="button"
+                className="profile-certs__sort-btn"
+                aria-label="Sort projects"
+                title="Sort"
+              >
+                <ArrowUpDown size={16} strokeWidth={1.75} aria-hidden />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end">
+              {SORT_OPTIONS.map((opt) => (
+                <PopoverItem
+                  key={opt.key}
+                  selected={opt.key === sort}
+                  onClick={() => {
+                    setSort(opt.key)
+                    setSortOpen(false)
+                  }}
+                >
+                  {opt.label}
+                </PopoverItem>
+              ))}
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
     </div>
-  ) : null
+  )
 
   if (isLoading && projects.length === 0) {
     return (
       <div className="profile-projects">
-        {createCta}
+        {toolbar}
         <div className="profile-projects__loading">
           <LoadingSpinner size="sm" />
         </div>
@@ -94,7 +171,7 @@ export default function ProfileProjects({
   if (error) {
     return (
       <div className="profile-projects">
-        {createCta}
+        {toolbar}
         <EmptyState
           icon={FolderGit2}
           title="Couldn't load projects"
@@ -107,7 +184,7 @@ export default function ProfileProjects({
   if (projects.length === 0) {
     return (
       <div className="profile-projects">
-        {createCta}
+        {toolbar}
         <EmptyState
           icon={FolderGit2}
           title="No projects yet"
@@ -123,8 +200,15 @@ export default function ProfileProjects({
 
   return (
     <div className="profile-projects">
-      {createCta}
-      {projects.map((p) => (
+      {toolbar}
+      {visible.length === 0 ? (
+        <EmptyState
+          icon={FolderGit2}
+          title="No projects match"
+          description="Try a different search term."
+        />
+      ) : null}
+      {visible.map((p) => (
         <ProjectBox key={p.uri} project={p} owner={ownerByUri?.get(p.uri)} />
       ))}
       {hasMore ? (
@@ -352,6 +436,44 @@ function CertThumb({ url }: { url: string | null }) {
 
 function asString(v: unknown): string | null {
   return typeof v === "string" && v.length > 0 ? v : null
+}
+
+function projectTitle(p: CollectionRecord): string {
+  return asString(p.value.title) || asString(p.value.name) || "Untitled project"
+}
+
+function filterAndSort(
+  projects: CollectionRecord[],
+  query: string,
+  sort: SortKey,
+): CollectionRecord[] {
+  const q = query.trim().toLowerCase()
+  const matches = q
+    ? projects.filter((p) => {
+        const t = projectTitle(p).toLowerCase()
+        const d = (asString(p.value.shortDescription) ?? "").toLowerCase()
+        return t.includes(q) || d.includes(q)
+      })
+    : projects
+
+  const sorted = matches.slice()
+  sorted.sort((a, b) => {
+    switch (sort) {
+      case "created-desc":
+        return compareDate(asString(b.value.createdAt) ?? "", asString(a.value.createdAt) ?? "")
+      case "created-asc":
+        return compareDate(asString(a.value.createdAt) ?? "", asString(b.value.createdAt) ?? "")
+      case "alpha-asc":
+        return projectTitle(a).localeCompare(projectTitle(b))
+      case "alpha-desc":
+        return projectTitle(b).localeCompare(projectTitle(a))
+    }
+  })
+  return sorted
+}
+
+function compareDate(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0
 }
 
 /**

@@ -23,6 +23,17 @@
   justify-content: flex-end;
 }
 
+/* Search + sort chrome on the Projects tab. Mirrors the Activities
+   (.profile-certs__controls) toolbar so the two tabs read identically;
+   the search box and sort button themselves reuse the shared
+   .profile-certs__search / .profile-certs__sort-* styles. */
+.profile-projects__controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
 /* ---------- Project box ---------- */
 
 .profile-projects__box {
