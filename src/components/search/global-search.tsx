@@ -52,8 +52,10 @@ const CERTS_LIMIT = 6
  *     full-text matches
  *
  * Results render in two grouped sections in one dropdown
- * ("People" / "Activities"). Arrow keys walk the combined list; Enter
- * activates the highlighted row.
+ * ("People" / "Activities"). Arrow keys walk the combined list and a
+ * row is activated by click; pressing Enter instead submits the typed
+ * query to the Explore page (`/explore?q=…`), where the search box is
+ * seeded from the URL and the full results render.
  *
  * The input + dropdown + keyboard + ARIA machinery is the shared
  * `Combobox` primitive; this surface keeps its own two-source fetch,
@@ -217,6 +219,24 @@ export default function GlobalSearch({
     inputRef.current?.focus()
   }
 
+  // Enter submits the typed query to the full Explore results page
+  // (seeded via `?q=`), rather than activating a dropdown row. Typing
+  // still shows the live dropdown; clicking a row still deep-links to
+  // that person/activity. Trimmed-empty queries are a no-op.
+  const handleSubmitQuery = useCallback(
+    (raw: string) => {
+      const q = raw.trim()
+      if (!q) return
+      setPeople([])
+      setCerts([])
+      setIsOpen(false)
+      setIsSearching(false)
+      inputRef.current?.blur()
+      router.push(`/explore?q=${encodeURIComponent(q)}`)
+    },
+    [router],
+  )
+
   const peopleCount = people.length
 
   return (
@@ -233,6 +253,7 @@ export default function GlobalSearch({
       open={isOpen}
       onOpenChange={setIsOpen}
       onSelect={select}
+      onSubmit={handleSubmitQuery}
       inputRef={inputRef}
       listboxClassName="people-search__dropdown"
       liveStatus={{
