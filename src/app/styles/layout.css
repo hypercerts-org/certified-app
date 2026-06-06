@@ -122,6 +122,32 @@ html[data-theme="dark"] .signin-mark__img--light {
   color: var(--fg-primary);
 }
 
+.loading-screen__link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+  color: var(--fg-primary);
+}
+
+/* Mobile: bump the error text + return link to a readable 16px, give the link
+   a 44px tap target, and keep the inner box off the viewport edge. */
+@media (max-width: 799px) {
+  .loading-screen__inner {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+  .loading-screen__error {
+    font-size: 1rem;
+  }
+  .loading-screen__link {
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 12px;
+  }
+}
+
 /* ========== Navbar ========== */
 .navbar {
   position: fixed;
@@ -684,18 +710,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
      the min-height so the content slot is exactly 100vh tall. */
   box-sizing: border-box;
 }
-
-/* Mobile reading gutter. DESIGN.md §8 specifies 16px horizontal padding on
-   mobile, but the base rule keeps 32px at all widths; below 800px we narrow
-   it to 16px so narrow phones recover ~32px of content width. Desktop (≥800px)
-   is unchanged. Full-bleed (profile) and page-frame (home/explore) pages set
-   their own lateral padding at higher specificity, so they are unaffected. */
-@media (max-width: 799px) {
-  .app-shell__content {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-}
+/* Note: the <800px reading gutter (16px horizontal + max-width:100%) is set
+   in components.css's mobile block, which loads after this file and wins. */
 
 /* Desktop: reading width narrows to 600px (matches bsky/x). The flanking
    rails (mounted in PR2) provide the lateral context the mobile column
@@ -3450,6 +3466,18 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
     font-size: 1.125rem;
     line-height: 1.35;
   }
+  /* Trim list indentation so deeply-nested items keep usable width on phones
+     (Tailwind `pl-6` = 24px is generous for a ~300px column). */
+  .legal-page :is(ul, ol) {
+    padding-left: 1.25rem;
+  }
+}
+
+/* Keyboard focus affordance for inline links in long-form legal/about copy. */
+.legal-page a:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
 }
 
 .site-footer__brand {

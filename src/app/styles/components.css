@@ -1535,10 +1535,16 @@
     width: 100%;
   }
 
-  /* Dashboard back button */
+  /* Dashboard back/action buttons: on mobile they stack full-width with a
+     44px tap target and readable text (desktop keeps the compact inline pill
+     from the base rule). Previously this shrank them to ~26px. */
   .dashboard__back-btn {
-    padding: 6px 12px;
-    font-size: 0.75rem;
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+    padding: 12px 16px;
+    font-size: 0.875rem;
   }
 
   /* Right sidebar cards: reduce desc margin */
