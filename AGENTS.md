@@ -211,13 +211,15 @@ Scoped providers (mounted only where used):
 
 | Route | Type | Auth | Notes |
 |---|---|---|---|
-| `/` | client redirector (`HomeClient`) | mixed | Sends unauth → `/welcome`; sends auth → `/profile/{did}` (or `{activeOrg.groupDid}` if a group is active). The redirect is client-side only — there is no edge proxy/middleware. The canonical landing for crawlers is `/welcome` (priority-1 in `sitemap.ts`, allowed in `robots.ts`). |
+| `/` | client redirector (`HomeClient`) | mixed | Sends unauth → `/welcome`; sends auth → `/{handle}` (or the active group's handle/DID). The redirect is client-side only. The canonical landing for crawlers is `/welcome` (priority-1 in `sitemap.ts`, allowed in `robots.ts`). |
 | `/welcome` | server | public | Landing page. Sets transparent navbar variant. JSON-LD: SoftwareApplication + FAQPage. |
 | `/about` | server | public | About page. |
 | `/terms` | server | public | Terms of Service. |
 | `/privacy` | server | public | Privacy Policy. |
 | `/dsa` | server | public | DSA compliance. |
-| `/profile/[did]` | client | open (renders any DID) | Canonical profile URL. Handles both personal and group DIDs. |
+| `/[actor]` | client | open | **Canonical profile URL** (handle-forward). `actor` is a handle (canonical/displayed) or a DID (durable). A DID-addressed URL canonicalizes to the handle form on load. Handles personal and group identities. |
+| `/[actor]/[type]/[rkey]` | client | open | **Canonical record URL.** `type` ∈ `activity \| project` (friendly segment ↔ collection NSID, mapped in `src/lib/urls.ts`). Resolves `actor`→DID, fetches the record, canonicalizes a DID-addressed URL to the handle form. |
+| `/[actor]/[type]/[rkey]/edit` | client | gated (owner) | Record editor. Dispatches to the activity/project editor by `type`; same actor→DID resolution + canonicalization as the read route. |
 | `/settings` | client | gated (AuthGuard) | If `activeOrg`, renders `OrgSettings`; otherwise account settings (handle, email, password, app-passwords placeholder, 2FA placeholder). |
 | `/settings/edit-profile` | client | gated | Edit personal profile. |
 | `/settings/my-data` | client | gated | Data export / view. |
@@ -237,9 +239,14 @@ Scoped providers (mounted only where used):
 Permanent redirects (in `next.config.ts`):
 - `/settings/security` → `/settings`
 - `/settings/account` → `/settings`
-- `/settings/connected-apps` → `/connected-apps`
+- `/search` → `/explore`; `/connected-apps` → `/apps`
+- **URL migration (handle-forward scheme):** `/profile/:handle` → `/:handle`; `/activity/:did/:rkey` → `/:did/activity/:rkey`; `/project/:did/:rkey` → `/:did/project/:rkey`. The `:did` segment may be a handle or a DID — either resolves on the new route. Record **detail** and **edit** both moved to the root scheme (`/[actor]/[type]/[rkey]` and `/[actor]/[type]/[rkey]/edit`). The old `*/edit` paths are NOT redirected (owner-only, never shared); they render a graceful not-found.
 
-**Edge proxy / middleware** — none. There is no `src/proxy.ts` (nor `middleware.ts`). The `/` route redirect runs entirely client-side via `HomeClient` (unauth → `/welcome`, auth → `/profile/{did}`). All auth-gated pages rely on `AuthGuard` client-side. Because there is no edge redirect, SEO crawlers should be pointed at the canonical landing directly: `/welcome` is the priority-1 entry in `sitemap.ts` and is allowed in `robots.ts`.
+**URL builders — `src/lib/urls.ts` is the single source of truth.** Never hand-build `/profile`/`/activity`/`/project` paths; use `profileUrl(actor)` / `recordUrl(actor, type, rkey)` (and `shareProfileUrl`/`shareRecordUrl` for the absolute DID form used when sharing). Identifiers are NOT percent-encoded (handles are domains, DIDs use path-legal `:`, rkeys are TIDs) — that's what keeps the URLs clean.
+
+**Root-level `[actor]` invariant.** Because the profile route lives at the root, the `[actor]` segment must be disambiguated from real app routes. AT Protocol handles always contain a dot; DIDs start with `did:`; **every top-level app route is a dotless bare word** (`home`, `explore`, `settings`, …). This is enforced by `RESERVED_ROUTES` + `parseActor` in `src/lib/urls.ts`. **Any new top-level route MUST be a dotless word** or it will collide with the handle namespace.
+
+**Edge proxy — `src/proxy.ts`** (Next 16's renamed `middleware`). Added for pdsls.dev interop only: a pasted at-uri path (`/at://did/collection/rkey`, `/at:/…`, or the host-safe `/at/…`) is parsed and 308-redirected into the handle-forward scheme. Every other request passes straight through (single `startsWith("/at")` check). The `/` route redirect still runs client-side via `HomeClient`; auth-gated pages still rely on `AuthGuard`. SEO crawlers are pointed at `/welcome` (priority-1 in `sitemap.ts`, allowed in `robots.ts`).
 
 ## 8. Authentication Flow
 

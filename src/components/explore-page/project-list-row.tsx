@@ -1,6 +1,7 @@
 "use client"
 
 import { FolderGit2, MapPin } from "lucide-react"
+import { recordUrl } from "@/lib/urls"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { useLocation } from "@/hooks/use-location"
@@ -28,7 +29,7 @@ export default function ProjectListRow({
   const parsed = parseAtUri(uri)
   const did = parsed?.did ?? ""
   const detailHref = parsed
-    ? `/project/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
+    ? recordUrl(parsed.did, "project", parsed.rkey)
     : null
 
   const title =

@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { recordUrl } from "@/lib/urls"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { MapPin, Plus, X, FolderGit2 } from "lucide-react"
@@ -283,7 +284,7 @@ export default function CreateProjectPage() {
       if (match) {
         const [, ownerDid, , rkey] = match
         router.push(
-          `/project/${encodeURIComponent(ownerDid)}/${encodeURIComponent(rkey)}`,
+          recordUrl(ownerDid, "project", rkey),
         )
       } else {
         router.push("/")

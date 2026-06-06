@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { profileUrl, recordUrl } from "@/lib/urls"
 import Link from "next/link"
 import { Filter as FilterIcon, Inbox, MapPin, UserCheck, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
@@ -487,7 +488,7 @@ function EvaluatorOption({
   const { info } = useAuthorInfo(did)
   const label = info?.displayName || (info?.handle ? `@${info.handle}` : did.slice(0, 14) + "…")
   const initials = getInitials(info?.displayName, did)
-  const profileHref = `/profile/${encodeURIComponent(info?.handle || did)}`
+  const profileHref = profileUrl(info?.handle || did)
   return (
     <div className="home-feed__evaluator-row">
       <input
@@ -532,9 +533,9 @@ function HomeFeedRow({ event }: { event: HomeFeedEvent }) {
     lookup?.displayName ?? indexer.displayName,
     event.actor,
   )
-  const profileHref = `/profile/${encodeURIComponent(
+  const profileHref = profileUrl(
     lookup?.handle || indexer.handle || event.actor,
-  )}`
+  )
 
   return (
     <article className="home-feed__row">
@@ -610,9 +611,9 @@ function EndorsementGroupRow({ group }: { group: EndorsementGroupItem }) {
     lookup?.displayName ?? indexer.displayName,
     group.actor,
   )
-  const profileHref = `/profile/${encodeURIComponent(
+  const profileHref = profileUrl(
     lookup?.handle || indexer.handle || group.actor,
-  )}`
+  )
 
   const othersCount = group.subjectDids.length - 1
   const [expanded, setExpanded] = useState(false)
@@ -682,7 +683,7 @@ function EndorsementGroupSummary({
 }) {
   const { info } = useAuthorInfo(firstDid)
   const name = info?.displayName || (info?.handle ? `@${info.handle}` : null)
-  const href = `/profile/${encodeURIComponent(info?.handle || firstDid)}`
+  const href = profileUrl(info?.handle || firstDid)
   return (
     <>
       <Link href={href} className="home-feed__target">
@@ -701,7 +702,7 @@ function EndorsementGroupSummary({
 function EndorsedAccountLink({ did }: { did: string }) {
   const { info } = useAuthorInfo(did)
   const name = info?.displayName || (info?.handle ? `@${info.handle}` : null)
-  const href = `/profile/${encodeURIComponent(info?.handle || did)}`
+  const href = profileUrl(info?.handle || did)
   return (
     <Link href={href} className="home-feed__target">
       {name ?? did.slice(0, 16)}
@@ -755,7 +756,7 @@ function CertTargetSentence({
   }
   const parsed = parseAtUri(targetUri)
   const href = parsed
-    ? `/activity/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
+    ? recordUrl(parsed.did, "activity", parsed.rkey)
     : null
   return (
     <>
@@ -813,7 +814,7 @@ function TargetSentence({
     return <CertTargetSentence verb={verb} targetUri={targetUri} />
   }
   if (parsed.collection === "org.hypercerts.collection") {
-    const href = `/project/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
+    const href = recordUrl(parsed.did, "project", parsed.rkey)
     return (
       <>
         {verb}{" "}
@@ -910,7 +911,7 @@ function CollectionSentence({ record }: { record: CollectionRecord }) {
 function EndorsementSentence({ subjectDid }: { subjectDid: string }) {
   const { info } = useAuthorInfo(subjectDid)
   const name = info?.displayName || (info?.handle ? `@${info.handle}` : null)
-  const href = `/profile/${encodeURIComponent(info?.handle || subjectDid)}`
+  const href = profileUrl(info?.handle || subjectDid)
   return (
     <>
       endorsed{" "}
@@ -949,7 +950,7 @@ export function CertPreview({
 }) {
   const parsed = parseAtUri(uri)
   const href = parsed
-    ? `/activity/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
+    ? recordUrl(parsed.did, "activity", parsed.rkey)
     : null
   const title =
     typeof record.value.title === "string" && record.value.title.length > 0
@@ -1003,7 +1004,7 @@ function CollectionPreview({
 }) {
   const parsed = parseAtUri(uri)
   const href = parsed
-    ? `/project/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
+    ? recordUrl(parsed.did, "project", parsed.rkey)
     : null
   const v = record.value as Record<string, unknown>
   const collectionType =
@@ -1084,9 +1085,9 @@ function UpdatePreview({
   const parsed = targetUri ? parseAtUri(targetUri) : null
   const href = parsed
     ? parsed.collection === "org.hypercerts.claim.activity"
-      ? `/activity/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
+      ? recordUrl(parsed.did, "activity", parsed.rkey)
       : parsed.collection === "org.hypercerts.collection"
-        ? `/project/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
+        ? recordUrl(parsed.did, "project", parsed.rkey)
         : null
     : null
   return (

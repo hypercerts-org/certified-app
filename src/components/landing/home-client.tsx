@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { profileUrl } from "@/lib/urls"
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useOrg } from "@/lib/groups/org-context";
@@ -23,7 +24,7 @@ export default function HomeClient() {
     }
     if (orgsLoading || !did) return;
     const targetDid = activeOrg?.groupDid || did;
-    router.replace(`/profile/${encodeURIComponent(targetDid)}`);
+    router.replace(profileUrl(targetDid));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- router is stable
   }, [isLoading, isAuthenticated, orgsLoading, did, activeOrg?.groupDid]);
 

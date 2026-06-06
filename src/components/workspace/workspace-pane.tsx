@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { profileUrl } from "@/lib/urls"
 import { ArrowRight, Globe } from "lucide-react"
 import {
   WORKSPACE_LEXICON_LABEL,
@@ -85,7 +86,7 @@ export default function WorkspacePane({
           Pick a lexicon on the left to see the list.
         </p>
         <Link
-          href={`/profile/${encodeURIComponent(actor.did)}`}
+          href={profileUrl(actor.did)}
           className="wks-pane__cta"
         >
           Open profile
@@ -125,7 +126,7 @@ function truncateDid(did: string): string {
 }
 
 function hrefForLexicon(did: string, lex: WorkspaceLexicon): string {
-  const base = `/profile/${encodeURIComponent(did)}`
+  const base = profileUrl(did)
   if (lex === "certs") return `${base}?tab=activities`
   if (lex === "projects") return `${base}?tab=projects`
   if (lex === "lists") return `${base}?tab=lists`

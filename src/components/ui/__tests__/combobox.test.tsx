@@ -31,6 +31,7 @@ interface HarnessProps {
   isLoading?: boolean;
   onSelect?: (item: Item, index: number) => void;
   onSubmitNoMatch?: (raw: string) => void;
+  onSubmit?: (raw: string) => void;
   escapeStage?: "two-stage" | "close-only";
   enableHomeEnd?: boolean;
   withLiveStatus?: boolean;
@@ -46,6 +47,7 @@ function Harness({
   isLoading = false,
   onSelect = () => undefined,
   onSubmitNoMatch,
+  onSubmit,
   escapeStage = "two-stage",
   enableHomeEnd = true,
   withLiveStatus = false,
@@ -63,6 +65,7 @@ function Harness({
       onOpenChange={setOpen}
       onSelect={onSelect}
       onSubmitNoMatch={onSubmitNoMatch}
+      onSubmit={onSubmit}
       escapeStage={escapeStage}
       enableHomeEnd={enableHomeEnd}
       inputProps={{ "aria-label": "Search", placeholder: "Search" }}
@@ -216,6 +219,30 @@ describe("Combobox — keyboard", () => {
     fireEvent.keyDown(input, { key: "Enter" });
     expect(onSelect).not.toHaveBeenCalled();
     expect(onSubmitNoMatch).toHaveBeenCalledWith("alice.social");
+  });
+
+  it("Enter calls onSubmit with the trimmed value, taking precedence over row selection", () => {
+    const onSelect = vi.fn();
+    const onSubmit = vi.fn();
+    render(<Harness onSelect={onSelect} onSubmit={onSubmit} />);
+    const input = getInput();
+    // A row is highlighted (index 0 on mount), but onSubmit wins.
+    fireEvent.change(input, { target: { value: "  climate  " } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onSubmit).toHaveBeenCalledWith("climate");
+  });
+
+  it("does not call onSubmit when the typed value is empty", () => {
+    const onSelect = vi.fn();
+    const onSubmit = vi.fn();
+    render(<Harness onSelect={onSelect} onSubmit={onSubmit} />);
+    const input = getInput();
+    fireEvent.change(input, { target: { value: "   " } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onSubmit).not.toHaveBeenCalled();
+    // Falls back to the normal commit path (first row highlighted).
+    expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
   it("mouse selecting a row fires onSelect with that item + index", () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { profileUrl } from "@/lib/urls"
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
@@ -91,7 +92,7 @@ export default function EditProfilePage() {
   usePageTitleBreadcrumb(
     handle
       ? {
-          left: { text: handle, href: `/profile/${handle}` },
+          left: { text: handle, href: profileUrl(handle) },
           right: {
             text: "Edit profile",
             href: "/settings/edit-profile",

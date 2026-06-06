@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { profileUrl } from "@/lib/urls"
 import { User } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import { useAuthorInfo } from "@/hooks/use-author-info"
@@ -41,7 +42,7 @@ export default function ExploreUserCard({
   const initials = getInitials(displayName, actor.did)
   // Profile route accepts either a handle or a DID in the [handle]
   // slot — prefer the handle so the URL is readable.
-  const profileHref = `/profile/${encodeURIComponent(handle || actor.did)}`
+  const profileHref = profileUrl(handle || actor.did)
 
   return (
     <Link href={profileHref} className="explore-user-card">

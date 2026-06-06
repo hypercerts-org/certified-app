@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react"
+import { profileUrl } from "@/lib/urls"
 import Link from "next/link"
 import {
   ArrowLeft,
@@ -593,7 +594,7 @@ function ListItemRow({ subjectDid, createdAt, note, revoke }: ListItemRowProps) 
   const handle = info?.handle && info.handle !== info.did ? info.handle : null
   const initials = getInitials(info?.displayName, subjectDid ?? undefined)
   const href = subjectDid
-    ? `/profile/${encodeURIComponent(info?.handle || subjectDid)}`
+    ? profileUrl(info?.handle || subjectDid)
     : null
 
   const body = (

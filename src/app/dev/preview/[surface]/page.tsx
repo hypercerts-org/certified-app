@@ -64,7 +64,7 @@ import type { ProfileScenario } from "@/lib/dev/fixtures/profile"
 import { MOCK_HANDLE } from "@/lib/dev/fixtures/session"
 
 // Real composed surfaces.
-import UserProfilePage from "@/app/profile/[handle]/page"
+import UserProfilePage from "@/app/[actor]/page"
 import Home from "@/components/home/home"
 import SettingsPanel from "@/components/settings/settings-panel"
 import Workspace from "@/components/workspace/workspace"
@@ -87,9 +87,9 @@ function SurfaceBody({ surface }: { surface: Surface }) {
   switch (surface) {
     case "profile":
     case "profile-org":
-      // UserProfilePage reads the viewed handle from `useParams().handle`.
+      // UserProfilePage reads the viewed actor from `useParams().actor`.
       // This route's real param is `{ surface }`, so without an override the
-      // handle is undefined → `useUserProfile(null)` short-circuits (no
+      // actor is undefined → `useUserProfile(null)` short-circuits (no
       // resolve-did fetch) → `!did` → "Profile not found". We re-provide the
       // param context with the fixture handle so the page resolves the
       // own-profile identity through the mocked /api/resolve-did. The mock
@@ -103,11 +103,11 @@ function SurfaceBody({ surface }: { surface: Surface }) {
       // plain contexts) AND supply `PathParamsContext` with the fixture
       // handle. `useSearchParams`/`usePathname` fall back to the plain
       // SearchParams/Pathname contexts the app-router still mounts above,
-      // so the real ?tab= + pathname keep working — only `handle` is
+      // so the real ?tab= + pathname keep working — only `actor` is
       // synthesized.
       return (
         <NavigationPromisesContext.Provider value={null}>
-          <PathParamsContext.Provider value={{ handle: MOCK_HANDLE }}>
+          <PathParamsContext.Provider value={{ actor: MOCK_HANDLE }}>
             <UserProfilePage />
           </PathParamsContext.Provider>
         </NavigationPromisesContext.Provider>

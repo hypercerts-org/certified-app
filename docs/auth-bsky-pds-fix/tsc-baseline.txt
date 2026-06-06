@@ -1,3 +1,0 @@
-src/config/__tests__/trusted-evaluators.test.ts(1,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
-src/config/__tests__/trusted-evaluators.test.ts(17,50): error TS7006: Parameter '_index' implicitly has an 'any' type.
-src/config/__tests__/trusted-evaluators.test.ts(17,58): error TS7006: Parameter 'did' implicitly has an 'any' type.

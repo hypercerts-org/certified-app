@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import { profileUrl } from "@/lib/urls"
 import { resolveHandle } from "@/lib/atproto/did"
 
 /**
@@ -26,5 +27,5 @@ export default async function GroupProfileRedirect({
   // whose plc.directory record hasn't propagated yet.
   if (!handle) redirect("/groups")
 
-  redirect(`/profile/${encodeURIComponent(handle)}`)
+  redirect(profileUrl(handle))
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { profileUrl } from "@/lib/urls"
 import { X } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -43,7 +44,7 @@ export default function EndorsementRow({
   const displayName = info?.displayName || info?.handle || subjectDid
   const handle = info?.handle && info.handle !== info.did ? info.handle : null
   const initials = getInitials(info?.displayName, subjectDid)
-  const href = `/profile/${encodeURIComponent(info?.handle || subjectDid)}`
+  const href = profileUrl(info?.handle || subjectDid)
 
   return (
     <li className="endorsement-row">

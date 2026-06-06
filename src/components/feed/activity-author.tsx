@@ -1,6 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
+import { profileUrl } from "@/lib/urls"
 import Link from "next/link"
 import Avatar from "@/components/ui/avatar"
 import Skeleton from "@/components/ui/skeleton"
@@ -44,7 +45,7 @@ export default function ActivityAuthor({ did, nameSuffix }: ActivityAuthorProps)
 
   const displayName = info.displayName || info.handle || "Anonymous"
   const initials = getInitials(info.displayName, did)
-  const profileHref = `/profile/${encodeURIComponent(info.handle || did)}`
+  const profileHref = profileUrl(info.handle || did)
 
   return (
     <Link

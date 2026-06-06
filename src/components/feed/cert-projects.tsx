@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { recordUrl } from "@/lib/urls"
 import Link from "next/link"
 import { FolderGit2 } from "lucide-react"
 import { useCertProjects } from "@/hooks/use-cert-projects"
@@ -56,7 +57,7 @@ function ProjectRow({ project }: ProjectRowProps) {
   const { uri, value } = project
   const parsed = parseAtUri(uri)
   const detailHref = parsed
-    ? `/project/${encodeURIComponent(parsed.did)}/${encodeURIComponent(parsed.rkey)}`
+    ? recordUrl(parsed.did, "project", parsed.rkey)
     : null
 
   const title =

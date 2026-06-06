@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { profileUrl } from "@/lib/urls"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowUpDown, Building2, Check, LogIn, Plus, Search } from "lucide-react"
@@ -228,7 +229,7 @@ function GroupRow({ group }: GroupRowProps) {
     <li className="profile-groups__item">
       <div className="profile-groups__row">
         <Link
-          href={`/profile/${encodeURIComponent(group.handle)}`}
+          href={profileUrl(group.handle)}
           className="profile-groups__row-link"
           title={`${name} (@${group.handle})`}
         >

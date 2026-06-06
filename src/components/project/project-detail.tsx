@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { profileUrl, recordUrl } from "@/lib/urls"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
@@ -183,7 +184,7 @@ export default function ProjectDetail({
           (g.role === "owner" || g.role === "admin"),
       ) ?? null
   const [groupEditOpen, setGroupEditOpen] = useState(false)
-  const editHref = `/project/${encodeURIComponent(did)}/${encodeURIComponent(rkey ?? "")}/edit`
+  const editHref = `${recordUrl(did, "project", rkey ?? "")}/edit`
 
   // -------------------------------------------------------------------
   // Inline edit state — same pattern as cert detail. Drafts seeded
@@ -537,9 +538,9 @@ export default function ProjectDetail({
       // projects + certs lists, module-level memoised fetches)
       // don't leave the just-deleted project sitting in the grid.
       if (typeof window !== "undefined") {
-        window.location.href = `/profile/${encodeURIComponent(did)}`
+        window.location.href = profileUrl(did)
       } else {
-        router.push(`/profile/${encodeURIComponent(did)}`)
+        router.push(profileUrl(did))
       }
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : "Delete failed")

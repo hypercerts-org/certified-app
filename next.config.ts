@@ -91,6 +91,26 @@ const nextConfig: NextConfig = {
         destination: "/apps",
         permanent: true,
       },
+      // Handle-forward URL migration. Profiles and record detail pages
+      // moved to the root, handle-first scheme; the legacy DID-based
+      // paths 308 to the new form so previously shared links don't die.
+      // The `:did` segment may be a handle or a DID — either resolves on
+      // the new route (a DID then canonicalizes to the handle on load).
+      {
+        source: "/profile/:handle",
+        destination: "/:handle",
+        permanent: true,
+      },
+      {
+        source: "/activity/:did/:rkey",
+        destination: "/:did/activity/:rkey",
+        permanent: true,
+      },
+      {
+        source: "/project/:did/:rkey",
+        destination: "/:did/project/:rkey",
+        permanent: true,
+      },
     ];
   },
 };

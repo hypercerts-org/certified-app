@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { profileUrl } from "@/lib/urls"
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Newspaper, Search, PlusCircle, Building2, Award, Bell, MessageSquare, User, Settings, LayoutGrid } from "lucide-react";
@@ -79,7 +80,7 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   // the handle, so clicking it skips the /profile redirect hop. When
   // acting as a group, point at the group's profile.
   const profileHref = displayHandle
-    ? `/profile/${encodeURIComponent(displayHandle)}`
+    ? profileUrl(displayHandle)
     : "/profile";
 
   // Personal-only visibility (Create, Groups, Endorsements) is decided

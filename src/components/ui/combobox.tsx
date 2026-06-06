@@ -111,6 +111,15 @@ export interface ComboboxProps<T> {
    * Return value is ignored.
    */
   onSubmitNoMatch?: (raw: string) => void;
+  /**
+   * Optional: fired on Enter and takes PRECEDENCE over committing a
+   * highlighted row. When provided and the typed value is non-empty,
+   * Enter calls this with the trimmed value instead of selecting a
+   * result — used by global search to jump to the full results page
+   * regardless of what the live dropdown is showing. Arrow-key and
+   * mouse selection of dropdown rows are unaffected.
+   */
+  onSubmit?: (raw: string) => void;
 
   /** Render one option row. See {@link ComboboxOptionRenderProps}. */
   renderOption: (props: ComboboxOptionRenderProps<T>) => React.ReactNode;
@@ -196,6 +205,7 @@ function Combobox<T>({
   onOpenChange,
   onSelect,
   onSubmitNoMatch,
+  onSubmit,
   renderOption,
   renderEmpty,
   renderListHeader,
@@ -313,6 +323,15 @@ function Combobox<T>({
           moveHighlight(-1);
           return;
         case "Enter": {
+          // A surface-level submit handler (e.g. global search → explore)
+          // takes precedence over row selection: Enter on a non-empty
+          // query jumps to the full results page rather than committing
+          // whatever row the live dropdown happens to be highlighting.
+          if (onSubmit && value.trim().length > 0) {
+            e.preventDefault();
+            onSubmit(value.trim());
+            return;
+          }
           // Enter commits. Always preventDefault when there's anything
           // to commit (a row, or a no-match handler with a typed value)
           // so the surrounding form doesn't submit out from under us.
@@ -347,6 +366,7 @@ function Combobox<T>({
       moveHighlight,
       commitHighlighted,
       handleEscape,
+      onSubmit,
       onSubmitNoMatch,
       value,
     ],
