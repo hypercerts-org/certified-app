@@ -107,6 +107,11 @@
     max-height: none;
     overflow: visible;
   }
+  /* Settings menu items meet the 44px tap target on mobile (the compact
+     ~32px desktop padding is too small to tap reliably). */
+  .sx-menu__item {
+    min-height: 44px;
+  }
 }
 
 .sx-menu {

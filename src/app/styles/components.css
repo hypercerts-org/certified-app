@@ -1408,16 +1408,9 @@
 
 /* Tighter rows on small screens. Drop the description to keep each
    row compact — the user can tap through for more. */
-@media (max-width: 520px) {
-  .connected-apps__item {
-    gap: 10px;
-    padding: 12px;
-  }
-
-  .connected-apps__desc {
-    display: none;
-  }
-}
+/* (Removed a non-canonical `@media (max-width: 520px)` block that tightened
+   `.connected-apps__item` and hid `.connected-apps__desc`; the ≤799px block
+   below already does both across the whole mobile range, so it was redundant.) */
 
 /* ========== Responsive: Dashboard & Pages (≤799px / mobile) ========== */
 @media (max-width: 799px) {
@@ -1637,6 +1630,10 @@
   .domain-modal__input {
     font-size: 16px;
   }
+  /* 44px tap target on mobile (the bottom-border field is 40px on desktop). */
+  .username-card__subdomain-input {
+    height: 44px;
+  }
 }
 
 /* ==================================================================
@@ -1686,6 +1683,16 @@
 .image-edit-overlay__btn:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
+}
+
+/* Mobile: the image-edit pills (Change / Remove over an avatar or banner)
+   meet the 44px tap target instead of the compact ~26px desktop pill. */
+@media (max-width: 799px) {
+  .image-edit-overlay__btn {
+    min-height: 44px;
+    padding: 10px 16px;
+    font-size: 0.8125rem;
+  }
 }
 
 /* Quiet variant — same shape as the primary pill but a brighter,

@@ -794,6 +794,16 @@
     justify-content: center;
   }
 
+  /* Add-member row (label + role select + button) stacks full-width so the
+     controls don't crowd; the member-row actions wrap instead of overflowing. */
+  .org-members__add-submit {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .org-members__item-actions {
+    flex-wrap: wrap;
+  }
 }
 
 /* ============================================================================
@@ -955,9 +965,9 @@
   text-align: center;
 }
 
-/* Two-column grid once there's room — caps at two so each card stays
-   wide and the editorial feel is preserved. */
-@media (min-width: 700px) {
+/* Two-column grid at the canonical desktop step (was a non-canonical 700px) —
+   caps at two so each card stays wide and the editorial feel is preserved. */
+@media (min-width: 800px) {
   .apps-store__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

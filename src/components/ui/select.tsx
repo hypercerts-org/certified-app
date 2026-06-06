@@ -12,8 +12,10 @@ export interface SelectProps
 }
 
 // Mirrors Input's size axis. Right padding leaves room for the chevron overlay.
+// `sm` keeps its compact 36px height on desktop but meets the 44px tap target
+// below the canonical 800px breakpoint (mirrors Button's mobile bump).
 const sizeClasses: Record<SelectSize, string> = {
-  sm: "h-9 pl-3 pr-9 text-sm",
+  sm: "h-9 pl-3 pr-9 text-sm min-h-11 md:min-h-0",
   md: "h-11 pl-4 pr-10 text-base md:text-sm",
   lg: "h-14 pl-5 pr-11 text-base",
 };

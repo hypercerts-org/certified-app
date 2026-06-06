@@ -1518,7 +1518,11 @@
 @media (max-width: 799px) {
   .response-buttons__btn {
     min-height: 44px;
+    min-width: 44px;
     padding: 8px 14px;
+    font-size: 0.8125rem;
+  }
+  .response-buttons__error {
     font-size: 0.8125rem;
   }
   .response-menu__trigger {
@@ -1528,6 +1532,23 @@
   .response-menu__item {
     min-height: 44px;
     padding: 10px 12px;
+  }
+  /* Endorsement row controls → 44px tap targets. */
+  .endorsement-panel__close,
+  .endorsement-row__revoke {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px;
+  }
+  /* Tab-bar tabs + "New" buttons (endorsements, groups) → 44px tall. */
+  .page-tabs__tab {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .page-tabs-bar__new,
+  .endorsements-new-btn {
+    min-height: 44px;
   }
 }
 
@@ -1659,6 +1680,15 @@
 .endorsement-multi-row__remove:hover {
   background: var(--overlay-weak);
   color: var(--fg-primary);
+}
+
+/* Mobile: the multi-recipient row's remove button → 44px tap target. */
+@media (max-width: 799px) {
+  .endorsement-multi-row__remove {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px;
+  }
 }
 
 .endorsement-multi-summary {
