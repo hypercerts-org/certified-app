@@ -13,5 +13,3 @@ export const ORG_TYPE_PRESETS = [
   "Government",
   "Indigenous Group",
 ] as const
-
-export type OrgTypePreset = (typeof ORG_TYPE_PRESETS)[number]
