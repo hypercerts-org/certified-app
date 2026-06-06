@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
@@ -301,9 +302,9 @@ export default function TermsPage() {
             <p className="mt-4">
               Reports of illegal content may be submitted in accordance with the notice-and-action
               procedure described in our{" "}
-              <a href="/dsa" className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]">
+              <Link href="/dsa" className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]">
                 DSA Compliance Page
-              </a>
+              </Link>
               .
             </p>
             <p className="mt-4">

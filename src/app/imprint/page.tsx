@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Imprint",
@@ -96,9 +97,9 @@ export default function ImprintPage() {
             </p>
             <p className="mt-4">
               Notice-and-action procedures for content reports are described on the{" "}
-              <a href="/dsa" className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]">
+              <Link href="/dsa" className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]">
                 DSA Compliance Page
-              </a>
+              </Link>
               .
             </p>
           </section>

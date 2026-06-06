@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Digital Services Act — Compliance Information",
@@ -195,9 +196,9 @@ export default function DsaPage() {
             </h2>
             <p>
               As described in the{" "}
-              <a href="/terms" className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]">
+              <Link href="/terms" className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]">
                 Terms of Service
-              </a>
+              </Link>
               , the Hypercerts Foundation may restrict access to content or suspend accounts in
               the following circumstances:
             </p>
