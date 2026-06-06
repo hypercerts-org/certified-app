@@ -1,0 +1,332 @@
+[
+  {
+    "url": "/",
+    "file": "src/app/page.tsx",
+    "auth": "public",
+    "title": "Root Redirect",
+    "keyComponents": [
+      "LoadingSpinner"
+    ],
+    "summary": "Client-side router that redirects authenticated users to /home and unauthenticated users to /welcome. Shows a loading spinner during the redirect."
+  },
+  {
+    "url": "/welcome",
+    "file": "src/app/welcome/page.tsx",
+    "auth": "public",
+    "title": "Landing Page",
+    "keyComponents": [
+      "LandingPage"
+    ],
+    "summary": "Marketing landing page with FAQ, testimonials, and value prop for passwordless AT Protocol identity. Full-bleed hero and bento layout sections."
+  },
+  {
+    "url": "/home",
+    "file": "src/app/home/page.tsx",
+    "auth": "auth-gated",
+    "title": "Activity Feed",
+    "keyComponents": [
+      "Home"
+    ],
+    "summary": "Signed-in home feed showing activities, endorsements, and network activity. Two-pane layout with sidebar and scrollable feed main content."
+  },
+  {
+    "url": "/profile",
+    "file": "src/app/profile/page.tsx",
+    "auth": "auth-gated",
+    "title": "Profile Redirect",
+    "keyComponents": [
+      "LoadingSpinner"
+    ],
+    "summary": "Redirect stub that resolves the active identity (personal or active org) and forwards to /{handle} with loading spinner."
+  },
+  {
+    "url": "/{handle}",
+    "file": "src/app/[actor]/page.tsx",
+    "auth": "public",
+    "title": "User/Group Profile",
+    "keyComponents": [
+      "ProfileHeader",
+      "ProfileSidebar",
+      "ProfileOverview",
+      "ProfileCerts",
+      "ProfileEndorsements",
+      "ProfileFollowers",
+      "ProfileGroups",
+      "SettingsPanel"
+    ],
+    "summary": "Unified profile page for individuals and groups with tabbed interface: Overview, Activities, Projects, Groups, Endorsements, Followers, Lists, About (org-only), Settings (own-profile only). Sidebar with avatar, name, stats. Desktop two-pane, mobile stacked."
+  },
+  {
+    "url": "/{actor}/{type}/{rkey}",
+    "file": "src/app/[actor]/[type]/[rkey]/page.tsx",
+    "auth": "public",
+    "title": "Activity or Project Detail",
+    "keyComponents": [
+      "ActivityDetailRoute",
+      "ProjectDetailRoute"
+    ],
+    "summary": "Record detail page that routes to either activity or project display. Resolves actor handle/DID, canonicalizes URL to handle form. Shows full record with metadata, contributors, locations."
+  },
+  {
+    "url": "/{actor}/{type}/{rkey}/edit",
+    "file": "src/app/[actor]/[type]/[rkey]/edit/page.tsx",
+    "auth": "auth-gated",
+    "title": "Activity or Project Editor",
+    "keyComponents": [
+      "ActivityEditRoute",
+      "ProjectEditRoute"
+    ],
+    "summary": "In-place editor for activities or projects. Routes to the matching editor component based on record type. Validates ownership before allowing edit."
+  },
+  {
+    "url": "/create",
+    "file": "src/app/create/page.tsx",
+    "auth": "auth-gated",
+    "title": "New Activity",
+    "keyComponents": [
+      "LeafletEditor",
+      "ContributorIdentityField",
+      "LocationPickerDialog",
+      "ImageEditOverlay"
+    ],
+    "summary": "Activity creation form with title, short description, full description editor, date range, work scope, contributors, image, locations, and rights selector. Mirrors detail page layout. Wide sidebar + main form."
+  },
+  {
+    "url": "/project/new",
+    "file": "src/app/project/new/page.tsx",
+    "auth": "auth-gated",
+    "title": "New Project",
+    "keyComponents": [
+      "LeafletEditor",
+      "LocationPickerDialog",
+      "ImageEditOverlay"
+    ],
+    "summary": "Project creation form with title, short description, banner image, full description, location picker, and activity selector (checklist of user's own certs). Wide hero + main form."
+  },
+  {
+    "url": "/explore",
+    "file": "src/app/explore/page.tsx",
+    "auth": "public",
+    "title": "Explore",
+    "keyComponents": [
+      "Explore"
+    ],
+    "summary": "Browsable directory of users, projects, and activities with multi-faceted filters (kind, filter, sub, sort, view, degree). Dynamic search params-driven interface with sidebar filters."
+  },
+  {
+    "url": "/endorsements",
+    "file": "src/app/endorsements/page.tsx",
+    "auth": "auth-gated",
+    "title": "Endorsements",
+    "keyComponents": [
+      "EndorsementRow",
+      "NewEndorsementPanel",
+      "ResponseButtons"
+    ],
+    "summary": "Tabbed endorsement manager (Received/Given). Received tab shows accept/reject controls. Given tab shows issued endorsements with revoke. Tabpanel interface with 'New' button."
+  },
+  {
+    "url": "/notifications",
+    "file": "src/app/notifications/page.tsx",
+    "auth": "auth-gated",
+    "title": "Notifications",
+    "keyComponents": [
+      "NotificationRow",
+      "NotificationRowSkeleton"
+    ],
+    "summary": "Infinite-scroll notification feed showing endorsements and contributor mentions. Marks all as seen on first load. Dashboard single-column layout."
+  },
+  {
+    "url": "/apps",
+    "file": "src/app/apps/page.tsx",
+    "auth": "public",
+    "title": "Apps",
+    "keyComponents": [
+      "Image"
+    ],
+    "summary": "Ecosystem apps directory showing apps built on AT Protocol. Grid of app cards with logo, name, description, and deep-link SSO URLs for signed-in users."
+  },
+  {
+    "url": "/groups",
+    "file": "src/app/groups/page.tsx",
+    "auth": "auth-gated",
+    "title": "Group Membership",
+    "keyComponents": [
+      "Avatar",
+      "Badge",
+      "Tabs",
+      "ConfirmDialog"
+    ],
+    "summary": "Group/organization membership manager with Public (accepted) and Private (pending) tabs. Shows role, membership actions (Make public/private, Leave). 'New group' link in tab bar."
+  },
+  {
+    "url": "/groups/create",
+    "file": "src/app/groups/create/page.tsx",
+    "auth": "auth-gated",
+    "title": "New Group",
+    "keyComponents": [
+      "ImageEditOverlay",
+      "Input",
+      "Textarea"
+    ],
+    "summary": "Group creation form with avatar picker, banner picker, display name, short description, handle, website, founded date, organization type. Validates handle availability. Wide hero + form."
+  },
+  {
+    "url": "/groups/[groupDid]",
+    "file": "src/app/groups/[groupDid]/page.tsx",
+    "auth": "public",
+    "title": "Group Profile Redirect",
+    "keyComponents": [],
+    "summary": "Server-side redirect from legacy group-detail URL to /{group-handle}. Resolves group DID to handle and redirects to profile page."
+  },
+  {
+    "url": "/groups/[groupDid]/edit-profile",
+    "file": "src/app/groups/[groupDid]/edit-profile/page.tsx",
+    "auth": "auth-gated",
+    "title": "Edit Group Profile",
+    "keyComponents": [
+      "AvatarUpload",
+      "BannerUpload",
+      "Input",
+      "Textarea"
+    ],
+    "summary": "Group admin form to edit display name, description, website, founded date. Banner + avatar upload. Dashboard topbar + single-column card layout."
+  },
+  {
+    "url": "/groups/[groupDid]/settings",
+    "file": "src/app/groups/[groupDid]/settings/page.tsx",
+    "auth": "auth-gated",
+    "title": "Group Settings",
+    "keyComponents": [
+      "OrgSettings"
+    ],
+    "summary": "Group admin settings panel. Delegates to OrgSettings component which shows membership, roles, and organizational configuration."
+  },
+  {
+    "url": "/settings",
+    "file": "src/app/settings/page.tsx",
+    "auth": "auth-gated",
+    "title": "Settings",
+    "keyComponents": [
+      "SettingsPanel"
+    ],
+    "summary": "Standalone deep-link entry point to settings. Same panel as /profile/{handle}?tab=settings. Breadcrumb above showing current identity link."
+  },
+  {
+    "url": "/settings/edit-profile",
+    "file": "src/app/settings/edit-profile/page.tsx",
+    "auth": "auth-gated",
+    "title": "Edit Profile",
+    "keyComponents": [
+      "ProfileEditForm"
+    ],
+    "summary": "Personal profile editor (text fields, avatar, banner, org URLs if account is org). Fetches raw certs record with blob refs to avoid data loss. Breadcrumb navigation."
+  },
+  {
+    "url": "/oauth/callback",
+    "file": "src/app/oauth/callback/page.tsx",
+    "auth": "public",
+    "title": "OAuth Callback",
+    "keyComponents": [
+      "Brandmark"
+    ],
+    "summary": "OAuth/OIDC callback handler. Processes callback query params, validates session, and redirects to post-signin path. Shows brandmark while processing."
+  },
+  {
+    "url": "/about",
+    "file": "src/app/about/page.tsx",
+    "auth": "public",
+    "title": "About",
+    "keyComponents": [],
+    "summary": "Static about page explaining Certified, AT Protocol, portability, and operator (Hypercerts Foundation). Full-width prose sections with links to privacy/DSA pages."
+  },
+  {
+    "url": "/privacy",
+    "file": "src/app/privacy/page.tsx",
+    "auth": "public",
+    "title": "Privacy Policy",
+    "keyComponents": [],
+    "summary": "GDPR-compliant privacy policy covering data processing, storage, retention, rights, federated architecture implications, and EU representative details."
+  },
+  {
+    "url": "/terms",
+    "file": "src/app/terms/page.tsx",
+    "auth": "public",
+    "title": "Terms of Service",
+    "keyComponents": [],
+    "summary": "Terms of service covering acceptable use, AT Protocol identity ownership, federated network disclaimers, account termination, and liability limitations."
+  },
+  {
+    "url": "/dsa",
+    "file": "src/app/dsa/page.tsx",
+    "auth": "public",
+    "title": "DSA Compliance",
+    "keyComponents": [],
+    "summary": "Digital Services Act (EU 2022/2065) compliance page. Notice-and-action procedure for illegal content reports, trusted flagger info, transparency reporting, and contact details."
+  },
+  {
+    "url": "/imprint",
+    "file": "src/app/imprint/page.tsx",
+    "auth": "public",
+    "title": "Imprint (Impressum)",
+    "keyComponents": [],
+    "summary": "German/EU legal imprint (Impressum) with operator details, authorized representatives, EU representative for GDPR/DSA, and legal contact info."
+  },
+  {
+    "url": "/workspace",
+    "file": "src/app/workspace/page.tsx",
+    "auth": "public",
+    "title": "Workspace",
+    "keyComponents": [
+      "Workspace"
+    ],
+    "summary": "Dev tool: navigation structure comparison explorer. Compare routing between network, actors, per-lexicon listings. Search params-driven dynamic content."
+  },
+  {
+    "url": "/dev/gallery",
+    "file": "src/app/dev/gallery/page.tsx",
+    "auth": "public",
+    "title": "Component Gallery",
+    "keyComponents": [
+      "Button",
+      "Badge",
+      "Card",
+      "Avatar",
+      "Input",
+      "Textarea",
+      "Tabs",
+      "Dialog"
+    ],
+    "summary": "Dev-only interactive component gallery rendering all @/components/ui primitives with variants and states. Centered column on canvas background. 404 in production."
+  },
+  {
+    "url": "/dev/preview/[surface]",
+    "file": "src/app/dev/preview/[surface]/page.tsx",
+    "auth": "public",
+    "title": "Preview Harness",
+    "keyComponents": [
+      "MockFetchProvider",
+      "UserProfilePage",
+      "Home",
+      "SettingsPanel",
+      "Workspace"
+    ],
+    "summary": "Dev-only preview harness rendering auth-gated surfaces (profile/feed/settings/workspace) with mocked fixture data. Surfaces: profile, profile-org, feed, settings, workspace. 404 in production."
+  },
+  {
+    "url": "/error",
+    "file": "src/app/error.tsx",
+    "auth": "public",
+    "title": "Error Boundary",
+    "keyComponents": [],
+    "summary": "Root error boundary catching segment-level errors. Shows error message with digest. Offers 'Try again' and 'Go home' links."
+  },
+  {
+    "url": "/not-found",
+    "file": "src/app/not-found.tsx",
+    "auth": "public",
+    "title": "404 Not Found",
+    "keyComponents": [],
+    "summary": "Catch-all 404 page. Shows 'page not found' message with 'Go home' link. Dashboard-style single-card layout."
+  }
+]

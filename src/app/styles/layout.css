@@ -685,6 +685,18 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   box-sizing: border-box;
 }
 
+/* Mobile reading gutter. DESIGN.md §8 specifies 16px horizontal padding on
+   mobile, but the base rule keeps 32px at all widths; below 800px we narrow
+   it to 16px so narrow phones recover ~32px of content width. Desktop (≥800px)
+   is unchanged. Full-bleed (profile) and page-frame (home/explore) pages set
+   their own lateral padding at higher specificity, so they are unaffected. */
+@media (max-width: 799px) {
+  .app-shell__content {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
 /* Desktop: reading width narrows to 600px (matches bsky/x). The flanking
    rails (mounted in PR2) provide the lateral context the mobile column
    had to carry alone. */
@@ -3418,6 +3430,26 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
    This bumps it to ~880px on both mobile and desktop. */
 .app-shell:has(.legal-page) .app-shell__content {
   max-width: 880px;
+}
+
+/* Mobile heading scale for prose pages. The `text-h1..h3` Tailwind tokens are
+   fixed (2.25/1.75/1.375rem) and eat the narrow column on phones. Scoped to
+   `.legal-page`, these out-specify the utility class (0,1,1 > 0,1,0) and shrink
+   the headings below 800px only — app feed/card headings elsewhere are
+   untouched, and desktop (≥800px) keeps the full scale. */
+@media (max-width: 799px) {
+  .legal-page :is(h1, .text-h1) {
+    font-size: 1.75rem;
+    line-height: 1.25;
+  }
+  .legal-page :is(h2, .text-h2) {
+    font-size: 1.375rem;
+    line-height: 1.3;
+  }
+  .legal-page :is(h3, .text-h3) {
+    font-size: 1.125rem;
+    line-height: 1.35;
+  }
 }
 
 .site-footer__brand {
