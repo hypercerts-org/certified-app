@@ -173,36 +173,35 @@ export default function DesktopTopBar() {
     ? profileUrl(identity.handle)
     : "/profile";
 
-  // Under the handle-forward URL scheme a profile lives at the root
-  // `/{actor}` (a handle has a dot, a DID starts with `did:`). A record
-  // detail page is `/{actor}/{type}/{rkey}` — more than one segment — so the
-  // tab strip shows only on the bare actor route. `parseActor` decodes the
-  // slug and rejects reserved top-level routes (explore, settings, …).
-  const profileHandleFromUrl = useMemo(() => {
-    const segments = (pathname ?? "").split("/").filter(Boolean);
-    if (segments.length !== 1) return null;
+  // Routes rooted at an actor — `/{actor}` (profile) and
+  // `/{actor}/{type}/{rkey}` (a record that belongs to that profile) — all
+  // share the handle-forward scheme: segment 0 is a handle (has a dot) or a
+  // DID (`did:` prefix). `parseActor` decodes it and rejects reserved
+  // top-level routes (explore, settings, …) so those never read as an actor.
+  const segments = useMemo(
+    () => (pathname ?? "").split("/").filter(Boolean),
+    [pathname],
+  );
+  const routeActor = useMemo(() => {
+    if (segments.length === 0) return null;
     const parsed = parseActor(segments[0]);
     return parsed.kind === "invalid" ? null : parsed.value;
-  }, [pathname]);
-  const isOnProfile = profileHandleFromUrl !== null;
+  }, [segments]);
+  // Own-profile comparison + own-only tabs key off the URL actor.
+  const profileHandleFromUrl = routeActor;
+  // Bare `/{actor}` is the profile page (gets the profile tab strip).
+  const isOnProfile = routeActor !== null && segments.length === 1;
   const isOnSettings =
     pathname === "/settings" || (pathname?.startsWith("/settings/") ?? false);
-  // Cert / project detail pages get a thin row-2 with just a back
-  // affordance so the navigation rhythm stays consistent across the app.
-  // The cert *editor* (`/activity/<did>/<rkey>/edit`) is a single-page
-  // form like `/create` — no tab strip, no back row; the form's own
-  // Cancel button is the way out. Same exclusion logic as `/project/new`.
+  // Record detail pages — `/{actor}/activity|project/{rkey}` — belong to a
+  // profile and get their own row-2: a Back button + the record's section
+  // tabs. The *editor* adds a trailing `/edit` (4 segments) and is excluded
+  // — like `/create` and `/project/new` it's a single-page form whose own
+  // Cancel button is the way out.
   const isOnCertDetail =
-    (pathname?.startsWith("/activity/") ?? false) &&
-    !(pathname?.endsWith("/edit") ?? false);
-  // `/project/new` is the create form, not a record detail page —
-  // the second-row tabs (Description / Certs / Updates) only make
-  // sense for an existing project. `/project/<did>/<rkey>/edit` is
-  // the editor (mirrors /project/new) — same reasoning, no tab row.
+    routeActor !== null && segments.length === 3 && segments[1] === "activity";
   const isOnProjectDetail =
-    (pathname?.startsWith("/project/") ?? false) &&
-    pathname !== "/project/new" &&
-    !(pathname?.endsWith("/edit") ?? false);
+    routeActor !== null && segments.length === 3 && segments[1] === "project";
   // Create flows (`/create`, `/project/new`) are single-page forms with
   // no tab strip, but they still get a row-2 Back affordance so the
   // navigation rhythm matches detail pages. The form's own Cancel button
