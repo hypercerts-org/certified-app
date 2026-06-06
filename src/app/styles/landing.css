@@ -152,11 +152,17 @@
 
 @media (max-width: 799px) {
   .hero {
-    padding: calc(var(--navbar-height) + 32px) 20px 32px;
+    padding: calc(var(--navbar-height) + 24px) 20px 32px;
     min-height: auto;
   }
   .hero--landing {
     min-height: 100vh;
+  }
+  /* The fluid title floors at 5rem (80px) — far too tall on a phone, where it
+     ate ~half the viewport. Re-scale it down for small screens. */
+  .hero__title {
+    font-size: clamp(2rem, 9vw, 3rem);
+    margin-bottom: 20px;
   }
 }
 
@@ -480,8 +486,9 @@
   .feedback-trigger {
     bottom: 16px;
     right: 16px;
-    padding: 8px 12px;
-    font-size: 0.75rem;
+    min-height: 44px;
+    padding: 10px 16px;
+    font-size: 0.8125rem;
   }
 
   .feedback-modal__backdrop--desktop {
@@ -532,6 +539,16 @@
   max-width: 1024px;
   margin: 0 auto;
   padding: 32px 24px;
+}
+
+/* On mobile the app-shell already supplies the 16px lateral gutter, so the
+   inner wrapper drops its 24px horizontal padding — otherwise legal/app pages
+   carried ~40px of combined inset and a cramped reading column. */
+@media (max-width: 799px) {
+  .app-page__inner {
+    padding-left: 0;
+    padding-right: 0;
+  }
 }
 
 /* ========== Cards (app pages) ========== */
@@ -719,8 +736,19 @@
 }
 
 @media (max-width: 799px) {
+  /* Single column on mobile: the 2-up grid squeezed each cell to ~119px of
+     usable width, wrapping the description badly. */
   .landing-network {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
+  }
+  .landing-network__cell {
+    padding: 24px 20px;
+  }
+  /* The description is revealed on hover on desktop; touch devices can't hover,
+     so show it by default and let it use the full cell width. */
+  .landing-network__desc {
+    opacity: 1;
+    max-width: none;
   }
 }
 
@@ -864,6 +892,11 @@
 @media (max-width: 799px) {
   .landing-bento {
     grid-template-columns: 1fr;
+  }
+  /* Slightly tighter cards on a single-column phone layout. */
+  .landing-bento__card {
+    padding: 24px;
+    min-height: 0;
   }
 }
 
@@ -1169,9 +1202,11 @@
     padding: 24px;
     border-width: 8px;
   }
+  /* 400px ate most of a 375px-tall viewport; 280px keeps the decorative card
+     present without crowding out the surrounding copy. */
   .landing-protocol__card {
     aspect-ratio: auto;
-    min-height: 400px;
+    min-height: 280px;
   }
 }
 
@@ -1243,13 +1278,15 @@
   gap: 12px;
 }
 
-@media (min-width: 600px) {
+/* Canonical breakpoints (was 600px / 900px): single column on mobile, two at
+   the 800px desktop step, the full five-up at 1100px. */
+@media (min-width: 800px) {
   .network-stats__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (min-width: 900px) {
+@media (min-width: 1100px) {
   .network-stats__grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
@@ -1285,7 +1322,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-@media (min-width: 900px) {
+@media (min-width: 1100px) {
   .network-stats__value {
     font-size: 2.25rem;
   }

@@ -1227,20 +1227,9 @@
   padding: 4px 0 8px;
 }
 
-@media (max-width: 520px) {
-  .edit-profile__actions {
-    flex-direction: column-reverse;
-    gap: 10px;
-  }
-  .edit-profile__actions > * {
-    width: 100%;
-  }
-  .edit-profile__actions :is(button, a) {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-  }
-}
+/* (Removed a non-canonical `@media (max-width: 520px)` block for
+   `.edit-profile__actions`; the ≤799px block already stacks the actions
+   full-width across the whole mobile range.) */
 
 /* Dashboard body single-column variant (kept for compatibility) */
 .dashboard__body--single {
@@ -1518,14 +1507,18 @@
     gap: 6px;
   }
 
-  /* Edit profile */
+  /* Edit profile: actions stack full-width on mobile (covers both <button>
+     Save and <a> Cancel). Consolidated here from a separate, mostly-overridden
+     520px block. */
   .edit-profile__actions {
     flex-direction: column;
     gap: 8px;
   }
 
-  .edit-profile__actions button {
+  .edit-profile__actions :is(button, a) {
     width: 100%;
+    display: flex;
+    justify-content: center;
   }
 
   /* Dashboard back/action buttons: on mobile they stack full-width with a
