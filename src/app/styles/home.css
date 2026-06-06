@@ -655,6 +655,25 @@ a.home-feed__preview:hover {
   background: var(--bg-sunken);
 }
 
+/* Mobile: 44px tap targets for the feed filter trigger and sidebar/list
+   rows, roomier checkbox rows, and a viewport-constrained popover so the
+   right-anchored menu can't overflow off a narrow screen. */
+@media (max-width: 799px) {
+  .home-feed__filter-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .home-feed__filter-pop {
+    max-width: calc(100vw - 32px);
+  }
+  .home-feed__filter-item {
+    padding: 10px 8px;
+  }
+  .home-row {
+    min-height: 44px;
+  }
+}
+
 .home-feed__filter-pop {
   position: absolute;
   top: calc(100% + 6px);

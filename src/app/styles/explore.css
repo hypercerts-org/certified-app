@@ -249,6 +249,24 @@
   background: var(--bg-sunken);
 }
 
+/* Mobile: chrome filter buttons meet the 44px tap target (the chrome row
+   already wraps, so taller buttons just reflow), and the search field may
+   shrink below its 200px desktop minimum on very narrow phones. */
+@media (max-width: 799px) {
+  .explore__chrome-btn {
+    min-height: 44px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .explore__chrome-btn--icon {
+    width: 44px;
+    height: 44px;
+  }
+  .explore__search-field {
+    min-width: 0;
+  }
+}
+
 .explore__loading {
   display: flex;
   justify-content: center;

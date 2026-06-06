@@ -278,10 +278,10 @@ export default function UserProfilePage() {
   // when they have content OR when an admin can edit / is editing.
   const aboutEditingForOrg = isEditing && canEditInline && sidebarIsOrg
   const isViewerThisEntity = isOwnProfile || isActingAsThisGroup
-  useProfileAboutAvailable(
+  const aboutAvailable =
     sidebarIsOrg &&
-      (!!displayLongDescription || isViewerThisEntity || aboutEditingForOrg),
-  )
+    (!!displayLongDescription || isViewerThisEntity || aboutEditingForOrg)
+  useProfileAboutAvailable(aboutAvailable)
   // Gate the Groups tab: only visible when the viewer's currently
   // *active* identity matches the viewed profile. So the personal
   // user sees it on their own profile only when no org is active;
@@ -293,6 +293,21 @@ export default function UserProfilePage() {
   const isActiveIdentityThisProfile =
     (isOwnProfile && !activeOrg) || isActingAsThisGroup
   useProfileGroupsAvailable(isActiveIdentityThisProfile)
+
+  // Mobile profile tab strip. The desktop top bar's row-2 tabs are the only
+  // tab navigation, and that bar is hidden below 800px — so without this strip
+  // mobile users can't switch profile sections at all. Mirror the desktop
+  // `visibleProfileTabs` gating exactly (Settings stays drawer-only on both).
+  const mobileTabs = useMemo<{ key: TabKey; label: string }[]>(
+    () =>
+      TABS.filter((t) => {
+        if (t.key === "settings") return false
+        if (t.key === "groups") return isActiveIdentityThisProfile
+        if (t.key === "about") return aboutAvailable
+        return true
+      }),
+    [isActiveIdentityThisProfile, aboutAvailable],
+  )
 
   // Mobile <ProfileHeader> still uses the legacy edit pages as a
   // fallback (inline edit isn't wired on the compact mobile header
@@ -388,8 +403,35 @@ export default function UserProfilePage() {
           settingsHref={settingsHref}
           eyebrow={eyebrow}
           hasCertifiedProfile={hasCertifiedProfile}
+          basePath={pathname || ""}
         />
       </div>
+
+      {/* Mobile-only tab strip (hidden ≥800px, where the top bar carries the
+          tabs). Horizontally scrollable; reuses the .profile-tabs styling. */}
+      <nav
+        className="profile-page__mobile-tabs profile-tabs"
+        aria-label="Profile sections"
+      >
+        {mobileTabs.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            aria-current={activeTab === t.key ? "page" : undefined}
+            className={`profile-tabs__tab${
+              activeTab === t.key ? " profile-tabs__tab--active" : ""
+            }`}
+            onClick={() =>
+              router.push(
+                t.key === "overview" ? pathname : `${pathname}?tab=${t.key}`,
+                { scroll: false },
+              )
+            }
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
 
       {editing ? (
         <EditBanner

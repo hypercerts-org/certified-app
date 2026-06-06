@@ -2,10 +2,14 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Pencil, UserPlus, Settings as SettingsIcon } from "lucide-react"
+import { Pencil, UserPlus, Settings as SettingsIcon, Users, ThumbsUp } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import { getInitials } from "@/lib/utils/initials"
+import { formatGraphCount } from "@/lib/utils/format-graph-count"
+import { useFollowers } from "@/hooks/use-followers"
+import { useFollowing } from "@/hooks/use-following"
+import { useReceivedEndorsements } from "@/hooks/use-received-endorsements"
 import type { CertifiedProfile } from "@/lib/atproto/types"
 
 interface ProfileHeaderProps {
@@ -25,6 +29,10 @@ interface ProfileHeaderProps {
   /** Small uppercase tag above the display name ("Your profile",
    *  "Acting as this group", etc.). */
   eyebrow?: string
+  /** Current profile path (e.g. "/alice.certified.one"), used to link the
+   *  follower / following / endorsed-by counts to their tabs. Mirrors the
+   *  desktop sidebar's `basePath`. */
+  basePath?: string
   /** True when an `app.certified.actor.profile` record with a
    *  populated displayName exists. When false, the displayName /
    *  description / avatar / banner all came from `app.bsky.actor.profile`
@@ -57,9 +65,18 @@ export default function ProfileHeader({
   settingsHref,
   eyebrow,
   hasCertifiedProfile = false,
+  basePath = "",
 }: ProfileHeaderProps) {
   const displayName = profile?.displayName || (handle ? `@${handle}` : "Anonymous")
   const initials = getInitials(profile?.displayName, did)
+
+  // Follower / following / endorsed-by counts for THIS profile. The desktop
+  // sidebar (always mounted, just CSS-hidden on mobile) already fetches these,
+  // so reading them here is a cache hit — it surfaces the same social signal on
+  // mobile that the ≥1300px sidebar shows, closing the parity gap.
+  const viewedFollowers = useFollowers(did)
+  const viewedFollowing = useFollowing(did)
+  const viewedReceived = useReceivedEndorsements(did)
 
   // Track banner load failures so we fall back to the plain gradient
   // instead of showing the browser's broken-image icon. Reset the flag
@@ -151,12 +168,65 @@ export default function ProfileHeader({
           </p>
         ) : null}
 
+        {profile?.pronouns ? (
+          <p className="profile-hero__pronouns">{profile.pronouns}</p>
+        ) : null}
+
         <p className="profile-hero__count">
           <span className="profile-hero__count-value">{activityCountLabel}</span>
           <span className="profile-hero__count-label">
             {activityCountLabel === "1" ? "activity claim" : "activity claims"}
           </span>
         </p>
+
+        {/* Social-graph strip — mirrors the desktop sidebar so mobile viewers
+            see follower / following / endorsed-by counts too. */}
+        <div className="profile-hero__graph">
+          <p className="profile-hero__graph-row" aria-label="Followers and following">
+            <Users size={16} strokeWidth={1.75} aria-hidden />
+            <span>
+              <span className="profile-hero__graph-count">
+                {formatGraphCount(viewedFollowers.count ?? viewedFollowers.entries.length)}
+              </span>{" "}
+              <Link href={`${basePath}?tab=followers`} scroll={false} className="profile-hero__graph-link">
+                followers
+              </Link>
+            </span>
+            <span aria-hidden className="profile-hero__graph-sep">·</span>
+            <span>
+              <span
+                className="profile-hero__graph-count"
+                title={
+                  viewedFollowing.truncated
+                    ? "Hit the 10,000 follow display cap; the underlying repo has more."
+                    : undefined
+                }
+              >
+                {formatGraphCount(viewedFollowing.count, viewedFollowing.truncated)}
+              </span>{" "}
+              <Link
+                href={`${basePath}?tab=followers&sub=following`}
+                scroll={false}
+                className="profile-hero__graph-link"
+              >
+                following
+              </Link>
+            </span>
+          </p>
+          <p className="profile-hero__graph-row" aria-label="Endorsed by">
+            <ThumbsUp size={16} strokeWidth={1.75} aria-hidden />
+            <Link
+              href={`${basePath}?tab=endorsements&sub=received`}
+              scroll={false}
+              className="profile-hero__graph-link"
+            >
+              Endorsed by{" "}
+              <span className="profile-hero__graph-count">
+                {formatGraphCount(viewedReceived.endorsements.length)}
+              </span>
+            </Link>
+          </p>
+        </div>
 
         {profile?.description ? (
           <p className="profile-hero__bio">{profile.description}</p>
