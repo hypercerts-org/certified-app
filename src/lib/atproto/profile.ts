@@ -162,10 +162,14 @@ export interface UploadedBlob {
  */
 export async function uploadBlob(
   file: File,
-  options?: { targetDid?: string }
+  options?: { targetDid?: string; allowAnyType?: boolean }
 ): Promise<UploadedBlob> {
-  // Validate file type
-  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+  // Validate file type. Image-only by default (avatars, banners, hero
+  // images, rich-text embeds); `allowAnyType` opts out for surfaces that
+  // accept arbitrary file attachments (e.g. update `content[]` blobs).
+  // The upload itself is type-agnostic — it streams the raw bytes — so
+  // skipping the check is safe; the PDS enforces its own size limits.
+  if (!options?.allowAnyType && !ALLOWED_IMAGE_TYPES.includes(file.type)) {
     throw new Error(
       `Invalid file type: ${file.type}. Allowed types: ${ALLOWED_IMAGE_TYPES.join(", ")}`
     );

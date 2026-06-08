@@ -20,6 +20,7 @@ const UPDATE_COLLECTION = "org.hypercerts.context.attachment"
 // `/profile`, `/location`) — see AGENTS.md §17 #6.
 const ALLOWED_UPDATE_FIELDS = [
   "title",
+  "shortDescription",
   "contentType",
   "subjects",
   "content",

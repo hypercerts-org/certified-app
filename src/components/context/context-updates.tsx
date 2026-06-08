@@ -273,6 +273,11 @@ function UpdateCard({
     typeof value.title === "string" && value.title.length > 0
       ? value.title
       : null
+  const shortDesc =
+    typeof value.shortDescription === "string" &&
+    value.shortDescription.length > 0
+      ? value.shortDescription
+      : null
   const createdAt =
     typeof value.createdAt === "string" ? value.createdAt : null
   const createdLabel = createdAt ? formatShortDate(createdAt) : null
@@ -342,6 +347,8 @@ function UpdateCard({
           </span>
         ) : null}
       </header>
+
+      {shortDesc ? <p className="context-updates__lead">{shortDesc}</p> : null}
 
       {value.description ? (
         <>

@@ -1,17 +1,27 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import { Paperclip, X } from "lucide-react"
 import LeafletEditor from "@/components/leaflet/leaflet-editor"
 import Input from "@/components/ui/input"
+import Textarea from "@/components/ui/textarea"
 import Button from "@/components/ui/button"
 import ErrorMessage from "@/components/ui/error-message"
-import { uploadBlob } from "@/lib/atproto/profile"
+import { uploadBlob, buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 import {
   writeContextUpdate,
+  resolveAttachment,
+  mimeTypeLabel,
+  formatAttachmentSize,
+  ATTACHMENT_BLOB_TYPE,
   type ContextAttachmentValue,
+  type ContextAttachmentContentBlob,
 } from "@/lib/atproto/context-attachment"
 import type { LinearDocument } from "@/lib/leaflet/types"
+
+// Client-side cap; the PDS enforces its own hard blob limit.
+const MAX_ATTACHMENT_SIZE = 25 * 1024 * 1024
 
 interface UpdateFormProps {
   /** Viewer's personal session DID — `writeToRepo`'s `ownDid`. */
@@ -31,16 +41,17 @@ interface UpdateFormProps {
   /** Edit only — rkey of the update being edited. */
   rkey?: string
   /** Edit only — the existing record value (round-tripped so unknown /
-   *  unedited fields like `content` survive) and its CID (swapRecord). */
+   *  unedited fields survive) and its CID (swapRecord). */
   initialValue?: ContextAttachmentValue
   initialCid?: string
 }
 
 /**
  * Shared create / edit form for an `org.hypercerts.context.attachment`
- * "update". The two modes differ only in whether a new record is minted
- * or an existing one is overwritten (with a swapRecord guard) — the
- * fields and layout are identical.
+ * "update": a short summary, a rich-text body, and file attachments
+ * (the lexicon's `content[]`). The two modes differ only in whether a
+ * new record is minted or an existing one is overwritten (with a
+ * swapRecord guard) — the fields and layout are identical.
  */
 export default function UpdateForm({
   ownDid,
@@ -57,22 +68,69 @@ export default function UpdateForm({
   const [title, setTitle] = useState(() =>
     typeof initialValue?.title === "string" ? initialValue.title : "",
   )
+  const [shortDescription, setShortDescription] = useState(() =>
+    typeof initialValue?.shortDescription === "string"
+      ? initialValue.shortDescription
+      : "",
+  )
   const [description, setDescription] = useState<LinearDocument | null>(
     () => (initialValue?.description as LinearDocument | undefined) ?? null,
   )
+  // Attachment entries (`content[]`) — existing ones round-trip, new
+  // uploads append as `org.hypercerts.defs#smallBlob` envelopes.
+  const [content, setContent] = useState<ContextAttachmentContentBlob[]>(
+    () => initialValue?.content ?? [],
+  )
+  const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   // A group write is one where the subject (and so the update) lives in
-  // a different repo than the viewer's own — image uploads then target
-  // that group's blob store too.
+  // a different repo than the viewer's own — uploads target that group's
+  // blob store too.
   const isGroupWrite = targetDid !== ownDid
-  // New updates need the subject's CID for the strongRef; edits reuse
-  // the subjects already on the record.
   const canSave =
     title.trim().length > 0 &&
     (mode === "edit" || !!subjectCid) &&
-    !saving
+    !saving &&
+    !uploading
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = "" // allow re-selecting the same file
+    if (!file) return
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      setError(
+        `Attachment is too large (max ${MAX_ATTACHMENT_SIZE / 1024 / 1024}MB).`,
+      )
+      return
+    }
+    setUploading(true)
+    setError(null)
+    try {
+      const blob = await uploadBlob(file, {
+        ...(isGroupWrite ? { targetDid } : {}),
+        allowAnyType: true,
+      })
+      setContent((prev) => [
+        ...prev,
+        {
+          $type: ATTACHMENT_BLOB_TYPE,
+          blob: blob as ContextAttachmentContentBlob["blob"],
+        },
+      ])
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to upload attachment",
+      )
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const removeAttachment = (idx: number) =>
+    setContent((prev) => prev.filter((_, i) => i !== idx))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -84,11 +142,13 @@ export default function UpdateForm({
         initialValue?.subjects ??
         (subjectCid ? [{ uri: subjectUri, cid: subjectCid }] : [])
       const record: ContextAttachmentValue = {
-        // Round-trip unknown / unedited fields (e.g. `content`) on edit.
+        // Round-trip unknown / unedited fields on edit.
         ...(initialValue ?? {}),
         contentType: "update",
         title: title.trim(),
+        shortDescription: shortDescription.trim() || undefined,
         description: description ?? undefined,
+        content: content.length > 0 ? content : undefined,
         subjects,
         // Preserve the original post time on edit; stamp now on create.
         createdAt: initialValue?.createdAt ?? new Date().toISOString(),
@@ -118,6 +178,15 @@ export default function UpdateForm({
         placeholder="What's the update?"
       />
 
+      <Textarea
+        label="Short description"
+        value={shortDescription}
+        onChange={(e) => setShortDescription(e.target.value)}
+        rows={2}
+        maxLength={500}
+        placeholder="A one- or two-line summary (optional)."
+      />
+
       <div className="flex flex-col gap-1.5">
         <label className="text-sm font-medium text-[var(--fg-primary)]">
           Description
@@ -132,6 +201,78 @@ export default function UpdateForm({
             uploadBlob(file, isGroupWrite ? { targetDid } : undefined)
           }
         />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <label className="text-sm font-medium text-[var(--fg-primary)]">
+          Attachments
+        </label>
+        {content.length > 0 ? (
+          <ul className="flex flex-wrap gap-2">
+            {content.map((entry, i) => {
+              const a = resolveAttachment(entry)
+              if (!a) return null
+              const imgUrl =
+                a.kind === "image"
+                  ? buildAvatarUrlFromCid(targetDid, a.cid)
+                  : null
+              return (
+                <li
+                  key={`${i}-${a.kind === "uri" ? a.uri : a.cid}`}
+                  className="relative flex items-center gap-2 rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-1.5 pr-7"
+                >
+                  {imgUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={imgUrl}
+                      alt=""
+                      className="h-10 w-10 rounded-[var(--radius)] object-cover"
+                    />
+                  ) : (
+                    <span className="flex flex-col text-xs">
+                      <span className="font-medium text-[var(--fg-primary)]">
+                        {a.kind === "uri"
+                          ? "Link"
+                          : mimeTypeLabel(a.mimeType)}
+                      </span>
+                      {a.kind !== "uri" && formatAttachmentSize(a.size) ? (
+                        <span className="text-[var(--fg-muted)]">
+                          {formatAttachmentSize(a.size)}
+                        </span>
+                      ) : null}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    aria-label="Remove attachment"
+                    onClick={() => removeAttachment(i)}
+                    className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-[var(--radius)] text-[var(--fg-muted)] hover:bg-[var(--overlay-weak)] hover:text-[var(--fg-primary)]"
+                  >
+                    <X size={13} strokeWidth={2} aria-hidden />
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        ) : null}
+        <input
+          ref={fileRef}
+          type="file"
+          className="hidden"
+          onChange={handleFile}
+        />
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="self-start"
+          loading={uploading}
+          disabled={uploading || saving}
+          onClick={() => fileRef.current?.click()}
+        >
+          <Paperclip size={14} strokeWidth={1.75} aria-hidden />
+          Add attachment
+        </Button>
       </div>
 
       {error ? <ErrorMessage message={error} /> : null}

@@ -107,6 +107,13 @@
   white-space: nowrap;
 }
 
+/* Short summary line shown above the rich-text body. */
+.context-updates__lead {
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+  margin: 0 0 8px;
+}
+
 .context-updates__doc-wrap {
   /* Wrapper around the LeafletDocument so we can clamp via line-clamp
      while letting the renderer keep its own block-level layout. */

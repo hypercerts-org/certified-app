@@ -53,6 +53,8 @@ export interface ContextAttachmentContentBlob {
 export interface ContextAttachmentValue {
   $type?: string
   title?: string
+  /** One- or two-line summary shown above the rich-text description. */
+  shortDescription?: string
   contentType?: string
   subjects?: ContextAttachmentSubject[]
   content?: ContextAttachmentContentBlob[]
@@ -60,6 +62,9 @@ export interface ContextAttachmentValue {
   createdAt?: string
   [key: string]: unknown
 }
+
+/** `$type` discriminator for a file/image blob entry in `content[]`. */
+export const ATTACHMENT_BLOB_TYPE = "org.hypercerts.defs#smallBlob"
 
 export interface ContextAttachmentRecord {
   uri: string
