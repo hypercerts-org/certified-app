@@ -194,11 +194,16 @@ export default function DesktopTopBar() {
   const isOnProfile = routeActor !== null && segments.length === 1;
   const isOnSettings =
     pathname === "/settings" || (pathname?.startsWith("/settings/") ?? false);
-  // The personal edit-profile page is reached from the "Edit profile"
-  // button on the Overview tab, so it keeps the profile tab strip for
-  // context — but locked to Overview: the active tab stays highlighted
-  // and the others render disabled so the editor can't tab away mid-edit.
-  const isOnEditProfile = pathname === "/settings/edit-profile";
+  // The standalone edit-profile pages — personal (/settings/edit-profile)
+  // and group (/groups/{did}/edit-profile) — are reached from the "Edit
+  // profile" affordance, so they keep the profile tab strip for context
+  // but locked to Overview: the active tab stays highlighted and the
+  // others render disabled so the editor can't tab away mid-edit.
+  const isOnEditProfile =
+    pathname === "/settings/edit-profile" ||
+    (segments.length === 3 &&
+      segments[0] === "groups" &&
+      segments[2] === "edit-profile");
   // The tab strip locks (non-switchable) in two cases: the standalone
   // edit-profile page above, and inline-editing on the profile page
   // (`profileEditing`, published by the profile page). In both, only the
