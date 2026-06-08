@@ -193,6 +193,11 @@ export default function DesktopTopBar() {
   const isOnProfile = routeActor !== null && segments.length === 1;
   const isOnSettings =
     pathname === "/settings" || (pathname?.startsWith("/settings/") ?? false);
+  // The personal edit-profile page is reached from the "Edit profile"
+  // button on the Overview tab, so it keeps the profile tab strip for
+  // context — but locked to Overview: the active tab stays highlighted
+  // and the others render disabled so the editor can't tab away mid-edit.
+  const isOnEditProfile = pathname === "/settings/edit-profile";
   // Record detail pages — `/{actor}/activity|project/{rkey}` — belong to a
   // profile and get their own row-2: a Back button + the record's section
   // tabs. The *editor* adds a trailing `/edit` (4 segments) and is excluded
@@ -209,8 +214,11 @@ export default function DesktopTopBar() {
   const isOnCreatePage = pathname === "/create" || pathname === "/project/new";
   const showBackRow = isOnCertDetail || isOnProjectDetail || isOnCreatePage;
   // Settings is its own standalone surface now (reachable from the
-  // site drawer); no tab strip there.
-  const showTabsRow = isOnProfile;
+  // site drawer); no tab strip there. The edit-profile page is the one
+  // exception — it borrows the profile strip (locked to Overview, see
+  // `isOnEditProfile`) so the chrome doesn't drop a row when you enter
+  // edit mode.
+  const showTabsRow = isOnProfile || isOnEditProfile;
   // Compare the URL handle slug to the signed-in user's handle to decide
   // whether to show own-only tabs (e.g. Settings). Activeorg switches the
   // "you" identity to the org, so we compare against `identity.handle`.
@@ -547,15 +555,23 @@ export default function DesktopTopBar() {
               pushes the ?tab= URL (scroll:false) so the page mirrors it,
               matching the prior <Link scroll={false}> default-push. */}
           <Tabs
-            value={activeTab}
+            value={isOnEditProfile ? "overview" : activeTab}
             onChange={(next) => {
+              // Editing locks the strip to Overview — swallow switches.
+              if (isOnEditProfile) return;
               const tab = visibleProfileTabs.find((t) => t.key === next);
               if (tab) router.push(tabHref(tab), { scroll: false });
             }}
           >
             <TabList aria-label="Profile sections" className="border-0">
               {visibleProfileTabs.map((tab) => (
-                <Tab key={tab.key} value={tab.key}>
+                <Tab
+                  key={tab.key}
+                  value={tab.key}
+                  // On the edit-profile page only Overview stays active;
+                  // every other tab is disabled so you can't switch away.
+                  disabled={isOnEditProfile && tab.key !== "overview"}
+                >
                   {tab.label}
                 </Tab>
               ))}
