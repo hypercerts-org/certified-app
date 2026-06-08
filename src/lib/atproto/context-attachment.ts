@@ -1,6 +1,8 @@
 import { authFetch } from "@/lib/auth/fetch"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { safeHttpUrl } from "@/lib/utils/safe-url"
+import { writeToRepo } from "@/lib/atproto/repo-write"
+import { extractError, xrpcGetRecordPath } from "@/lib/utils/api"
 
 export const CONTEXT_ATTACHMENT_COLLECTION = "org.hypercerts.context.attachment"
 
@@ -153,6 +155,132 @@ export async function fetchContextUpdates(
       return !!recordAuthor && recordAuthor === subjectAuthor
     }),
   )
+}
+
+/**
+ * Create, or overwrite (when `opts.rkey` is given), an
+ * `org.hypercerts.context.attachment` record. Dual-path via writeToRepo:
+ *
+ *   - `targetDid === ownDid` → the viewer writes to their own repo via
+ *     the XRPC proxy (`createRecord` when minting, `putRecord` when
+ *     editing in place).
+ *   - `targetDid !== ownDid` → the viewer is acting as a group they
+ *     admin → the BFF route at `/api/groups/<did>/update`.
+ *
+ * Updates are creator-only, so `targetDid` is always the author of the
+ * subject the update targets (the repo the record lives in). Returns
+ * `{ uri, cid }` so the caller can mirror the new commit without a
+ * re-read. `opts.swapRecord` is only honoured on the edit path.
+ */
+export async function writeContextUpdate(
+  ownDid: string,
+  targetDid: string,
+  record: ContextAttachmentValue,
+  opts?: { rkey?: string; swapRecord?: string },
+): Promise<{ uri: string; cid: string }> {
+  const rkey = opts?.rkey
+  const swap = opts?.swapRecord
+  const body = { ...record, $type: CONTEXT_ATTACHMENT_COLLECTION }
+  return writeToRepo<{ uri: string; cid: string }>({
+    ownDid,
+    targetDid,
+    ownPath: rkey
+      ? {
+          url: "/api/xrpc/com/atproto/repo/putRecord",
+          method: "POST",
+          body: {
+            repo: ownDid,
+            collection: CONTEXT_ATTACHMENT_COLLECTION,
+            rkey,
+            record: body,
+            ...(swap ? { swapRecord: swap } : {}),
+          },
+        }
+      : {
+          url: "/api/xrpc/com/atproto/repo/createRecord",
+          method: "POST",
+          body: {
+            repo: ownDid,
+            collection: CONTEXT_ATTACHMENT_COLLECTION,
+            record: body,
+          },
+        },
+    groupPath: {
+      url: `/api/groups/${encodeURIComponent(targetDid)}/update`,
+      method: "PUT",
+      body: {
+        ...(rkey ? { rkey } : {}),
+        record: body,
+        ...(rkey && swap ? { swapRecord: swap } : {}),
+      },
+    },
+    errorFallback: "Failed to save update",
+  })
+}
+
+/**
+ * Delete an `org.hypercerts.context.attachment` record by rkey. Mirrors
+ * `writeContextUpdate`'s dual-path routing: the viewer's own repo via
+ * the XRPC proxy `deleteRecord`, or a group's repo via the BFF DELETE
+ * route.
+ */
+export async function deleteContextUpdate(
+  ownDid: string,
+  targetDid: string,
+  rkey: string,
+): Promise<void> {
+  if (targetDid !== ownDid) {
+    const res = await authFetch(
+      `/api/groups/${encodeURIComponent(targetDid)}/update`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rkey }),
+      },
+    )
+    if (!res.ok) {
+      throw new Error(await extractError(res, "Failed to delete update"))
+    }
+    return
+  }
+  const res = await authFetch("/api/xrpc/com/atproto/repo/deleteRecord", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      repo: ownDid,
+      collection: CONTEXT_ATTACHMENT_COLLECTION,
+      rkey,
+    }),
+  })
+  if (!res.ok) {
+    throw new Error(await extractError(res, "Failed to delete update"))
+  }
+}
+
+/**
+ * Fetch a single `org.hypercerts.context.attachment` record by rkey from
+ * `authorDid`'s repo (via the XRPC `getRecord` proxy). Returns null on
+ * 400/404 (no such record). Used by the edit-update page to prefill the
+ * form from the existing record.
+ */
+export async function getContextAttachment(
+  authorDid: string,
+  rkey: string,
+  signal?: AbortSignal,
+): Promise<ContextAttachmentRecord | null> {
+  const res = await authFetch(
+    xrpcGetRecordPath({
+      repo: authorDid,
+      collection: CONTEXT_ATTACHMENT_COLLECTION,
+      rkey,
+    }),
+    signal ? { signal } : undefined,
+  )
+  if (!res.ok) {
+    if (res.status === 400 || res.status === 404) return null
+    throw new Error(`Failed to fetch update: ${res.status}`)
+  }
+  return (await res.json()) as ContextAttachmentRecord
 }
 
 /**

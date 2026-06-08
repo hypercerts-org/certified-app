@@ -1220,6 +1220,8 @@ export default function ActivityDetail({
             <ContextUpdates
               subjectUri={`at://${did}/org.hypercerts.claim.activity/${rkey}`}
               variant="full"
+              canEdit={isCreator || !!editAsGroup}
+              viewerDid={sessionDid}
             />
           ) : null
         ) : null}

@@ -2,18 +2,25 @@
 
 import { useLayoutEffect, useRef, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import Button from "@/components/ui/button"
 import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
   File,
   MessageSquareText,
+  Pencil,
   Play,
+  Plus,
+  Trash2,
 } from "lucide-react"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
+import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { useContextUpdates } from "@/hooks/use-context-updates"
 import {
+  deleteContextUpdate,
   formatAttachmentSize,
   mimeTypeLabel,
   resolveAttachment,
@@ -24,6 +31,7 @@ import {
 } from "@/lib/atproto/context-attachment"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
+import { recordUrlFromAtUri } from "@/lib/urls"
 import { formatShortDate } from "@/lib/utils/format-date"
 
 interface ContextUpdatesProps {
@@ -51,6 +59,17 @@ interface ContextUpdatesProps {
    * Unset = render every update.
    */
   maxItems?: number
+  /**
+   * When true (and variant is "full"), the viewer can manage updates:
+   * a "New update" button is shown in the header / empty state, and
+   * each card gets Edit + Delete affordances. Set by the detail pages
+   * when the viewer is the subject's author (own profile or a group
+   * they admin).
+   */
+  canEdit?: boolean
+  /** Viewer's personal session DID — the `ownDid` for delete writes.
+   *  Required for the delete affordance to function. */
+  viewerDid?: string | null
 }
 
 /**
@@ -67,10 +86,36 @@ export default function ContextUpdates({
   variant = "full",
   seeAllHref = null,
   maxItems,
+  canEdit = false,
+  viewerDid = null,
 }: ContextUpdatesProps) {
-  const { updates, isLoading, error } = useContextUpdates(subjectUri)
+  const { updates, isLoading, error, refetch } = useContextUpdates(subjectUri)
   const visibleUpdates =
     typeof maxItems === "number" ? updates.slice(0, maxItems) : updates
+
+  // Management affordances (New / Edit / Delete) live on the dedicated
+  // Updates tab only — the overview preview stays read-only.
+  const manage = canEdit && variant === "full"
+  // Base record URL the update routes hang off — `/{actor}/{type}/{rkey}`
+  // derived from the subject's at:// URI (actor is the DID; the route
+  // canonicalizes to the handle form on load).
+  const base = recordUrlFromAtUri(subjectUri)
+  const newHref = base ? `${base}/update/new` : null
+  const router = useRouter()
+
+  const newButton =
+    manage && newHref ? (
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        className="ml-auto"
+        onClick={() => router.push(newHref)}
+      >
+        <Plus size={14} strokeWidth={1.75} aria-hidden />
+        New update
+      </Button>
+    ) : null
 
   if (isLoading) {
     return (
@@ -108,6 +153,7 @@ export default function ContextUpdates({
             <h2 id="context-updates-heading" className="context-updates__heading">
               {heading}
             </h2>
+            {newButton}
           </header>
           <p className="context-updates__empty">No updates yet.</p>
         </section>
@@ -146,13 +192,21 @@ export default function ContextUpdates({
             See all →
           </Link>
         ) : null}
+        {newButton}
       </header>
       <ul className="context-updates__list">
         {visibleUpdates.map((u) => (
           // Clamp in both variants — the dedicated Updates subtab gets
           // the same Read more / Show less affordance as the overview
           // preview, so a single long update doesn't dominate the tab.
-          <UpdateCard key={u.uri} record={u} clamp />
+          <UpdateCard
+            key={u.uri}
+            record={u}
+            clamp
+            base={manage ? base : null}
+            viewerDid={viewerDid}
+            onChanged={refetch}
+          />
         ))}
       </ul>
     </section>
@@ -164,16 +218,56 @@ interface UpdateCardProps {
   /** When true, clamp the description to a few lines and surface a
    *  "Read more" affordance if the content overflows. */
   clamp: boolean
+  /** Base record URL (`/{actor}/{type}/{rkey}`) the edit route hangs
+   *  off. Non-null ONLY in manage mode — when set, the card renders
+   *  Edit + Delete affordances. */
+  base?: string | null
+  /** Viewer's personal session DID — the `ownDid` for the delete write. */
+  viewerDid?: string | null
+  /** Called after a successful delete so the list re-fetches. */
+  onChanged?: () => void
 }
 
-function UpdateCard({ record, clamp }: UpdateCardProps) {
+function UpdateCard({
+  record,
+  clamp,
+  base = null,
+  viewerDid = null,
+  onChanged,
+}: UpdateCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [isTruncated, setIsTruncated] = useState(false)
   const docWrapRef = useRef<HTMLDivElement | null>(null)
+  const router = useRouter()
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const { value, uri } = record
   const parsed = parseAtUri(uri)
   const authorDid = parsed?.did ?? null
+  const updateRkey = parsed?.rkey ?? null
+  // Manage affordances need the edit route base, the record's rkey, and
+  // (for delete) both the viewer's DID and the record's author DID.
+  const canManage = !!base && !!updateRkey
+  const editHref = canManage ? `${base}/update/${updateRkey}/edit` : null
+
+  const handleDelete = async () => {
+    if (!viewerDid || !authorDid || !updateRkey) return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await deleteContextUpdate(viewerDid, authorDid, updateRkey)
+      setConfirmingDelete(false)
+      onChanged?.()
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : "Failed to delete update",
+      )
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const title =
     typeof value.title === "string" && value.title.length > 0
@@ -221,6 +315,32 @@ function UpdateCard({ record, clamp }: UpdateCardProps) {
             {createdLabel}
           </time>
         ) : null}
+        {canManage ? (
+          <span className="ml-auto flex items-center gap-1">
+            {editHref ? (
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                aria-label="Edit update"
+                onClick={() => router.push(editHref)}
+              >
+                <Pencil size={15} strokeWidth={1.75} aria-hidden />
+              </Button>
+            ) : null}
+            {viewerDid ? (
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                aria-label="Delete update"
+                onClick={() => setConfirmingDelete(true)}
+              >
+                <Trash2 size={15} strokeWidth={1.75} aria-hidden />
+              </Button>
+            ) : null}
+          </span>
+        ) : null}
       </header>
 
       {value.description ? (
@@ -265,6 +385,25 @@ function UpdateCard({ record, clamp }: UpdateCardProps) {
             <AttachmentTile key={`${i}-${attachmentKey(a)}`} attachment={a} did={authorDid} />
           ))}
         </ul>
+      ) : null}
+
+      {confirmingDelete ? (
+        <ConfirmDialog
+          title="Delete update"
+          message={
+            deleteError ??
+            "This update will be permanently removed. This can't be undone."
+          }
+          confirmLabel="Delete"
+          confirmVariant="destructive"
+          isConfirming={deleting}
+          onCancel={() => {
+            if (deleting) return
+            setConfirmingDelete(false)
+            setDeleteError(null)
+          }}
+          onConfirm={handleDelete}
+        />
       ) : null}
     </li>
   )

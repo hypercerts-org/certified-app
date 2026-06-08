@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   fetchContextUpdates,
   type ContextAttachmentRecord,
@@ -25,10 +25,15 @@ export function useContextUpdates(subjectUri: string | null): {
   updates: ContextAttachmentRecord[]
   isLoading: boolean
   error: string | null
+  /** Force a re-fetch — call after creating / deleting an update so the
+   *  list reflects the change without a full page reload. */
+  refetch: () => void
 } {
   const [updates, setUpdates] = useState<ContextAttachmentRecord[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
+  const refetch = useCallback(() => setReloadKey((k) => k + 1), [])
 
   useEffect(() => {
     if (!subjectUri) {
@@ -72,7 +77,7 @@ export function useContextUpdates(subjectUri: string | null): {
       })
 
     return () => controller.abort()
-  }, [subjectUri])
+  }, [subjectUri, reloadKey])
 
-  return { updates, isLoading, error }
+  return { updates, isLoading, error, refetch }
 }

@@ -1378,6 +1378,8 @@ export default function ProjectDetail({
           <ContextUpdates
             subjectUri={`at://${did}/org.hypercerts.collection/${rkey}`}
             variant="full"
+            canEdit={isOwner || !!editAsGroup}
+            viewerDid={sessionDid}
           />
         ) : null}
       </article>
