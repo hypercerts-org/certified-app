@@ -258,16 +258,6 @@ function validCoord(c: LatLng): LatLng | null {
   return c
 }
 
-/** Format a lat/lng pair for display (6 decimals ~= 11 cm precision). */
-export function formatCoords({ lat, lng }: LatLng): string {
-  return `${lat.toFixed(6)}, ${lng.toFixed(6)}`
-}
-
-/** Build an OpenStreetMap URL centered on the coordinates with a pin. */
-export function osmUrl({ lat, lng }: LatLng, zoom = 14): string {
-  return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=${zoom}/${lat}/${lng}`
-}
-
 // ====================================================================
 // Write helpers for `app.certified.location` records.
 //

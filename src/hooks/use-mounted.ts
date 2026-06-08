@@ -13,9 +13,8 @@ import { useEffect, useState } from "react"
  *
  * The standard pattern of `const [mounted, setMounted] = useState(false)
  * + useEffect(() => setMounted(true), [])` was duplicated across the
- * three layout chrome components (`navbar`, `desktop-left-rail`,
- * `desktop-top-bar`'s portaled switcher menus, plus `mobile-sidebar`'s
- * portal). Consolidate here.
+ * layout chrome components (`navbar`, `desktop-top-bar`'s portaled
+ * switcher menus, plus `mobile-sidebar`'s portal). Consolidate here.
  */
 export function useMounted(): boolean {
   const [mounted, setMounted] = useState(false)

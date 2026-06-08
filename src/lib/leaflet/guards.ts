@@ -1,7 +1,6 @@
 import type {
   LinearDocument,
   LinearBlockEntry,
-  StrongRef,
 } from "./types"
 import { LINEAR_DOC_TYPE } from "./types"
 
@@ -28,25 +27,6 @@ export function asLinearDocument(value: unknown): LinearDocument | null {
     $type: LINEAR_DOC_TYPE,
     blocks: blocks as LinearBlockEntry[],
   }
-}
-
-/** True when the value is a strong-ref `{ uri, cid }`. */
-export function asStrongRef(value: unknown): StrongRef | null {
-  if (!value || typeof value !== "object") return null
-  const obj = value as Record<string, unknown>
-  if (typeof obj.uri !== "string" || typeof obj.cid !== "string") return null
-  return { uri: obj.uri, cid: obj.cid }
-}
-
-/** True when the renderer can produce non-empty output for this value. */
-export function isRenderableLongDescription(value: unknown): boolean {
-  if (typeof value === "string") return value.trim().length > 0
-  const doc = asLinearDocument(value)
-  if (doc && doc.blocks.length > 0) return true
-  // Strong refs are renderable (as a "see linked document" affordance)
-  // but the inline renderer doesn't fetch them; callers must resolve
-  // first. Treat as non-renderable here.
-  return false
 }
 
 /** True when the value is "empty" — useful for the save handler to
