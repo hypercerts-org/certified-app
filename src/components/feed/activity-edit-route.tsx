@@ -1220,13 +1220,22 @@ export default function ActivityEditRoute({
                     selfInfo.handle && selfInfo.handle !== selfInfo.did
                       ? `@${selfInfo.handle}`
                       : selfInfo.did
-                  const selfNormalised = normalizeIdentity(
-                    selfIdentity,
-                  ).toLowerCase()
-                  const alreadyAdded = contributors.some(
-                    (c) =>
-                      normalizeIdentity(c.identity).toLowerCase() ===
-                      selfNormalised,
+                  // Match the signed-in user against contributor rows by
+                  // EITHER their handle or their DID — a row may hold
+                  // either form (an existing activity stores contributor
+                  // DIDs; a typeahead pick may store a handle), and
+                  // comparing only `selfIdentity` would miss the other
+                  // form and wrongly leave "Add me" enabled for someone
+                  // already on the list.
+                  const selfKeys = new Set(
+                    [selfInfo.handle, selfInfo.did]
+                      .filter((v): v is string => !!v)
+                      .map((v) => normalizeIdentity(v).toLowerCase()),
+                  )
+                  const alreadyAdded = contributors.some((c) =>
+                    selfKeys.has(
+                      normalizeIdentity(c.identity).toLowerCase(),
+                    ),
                   )
                   return (
                     <Button
