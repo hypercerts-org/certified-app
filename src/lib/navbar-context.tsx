@@ -44,6 +44,13 @@ interface NavbarContextValue {
    *  Drives whether the "Groups" tab renders in the top-bar tab strip. */
   profileGroupsAvailable: boolean;
   setProfileGroupsAvailable: (v: boolean) => void;
+  /** True while the viewer is inline-editing the profile. The top-bar
+   *  (and mobile) tab strips lock to the editable section(s) — Overview,
+   *  plus About for orgs — and disable the rest so you can't tab away to
+   *  read-only sections mid-edit. Set by the profile page, read by
+   *  `<DesktopTopBar />`. */
+  profileEditing: boolean;
+  setProfileEditing: (v: boolean) => void;
 }
 
 const NavbarContext = createContext<NavbarContextValue>({
@@ -57,6 +64,8 @@ const NavbarContext = createContext<NavbarContextValue>({
   setProfileAboutAvailable: () => {},
   profileGroupsAvailable: false,
   setProfileGroupsAvailable: () => {},
+  profileEditing: false,
+  setProfileEditing: () => {},
 });
 
 export function NavbarProvider({ children }: { children: ReactNode }) {
@@ -67,6 +76,7 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
     useState<boolean>(false);
   const [profileGroupsAvailable, setProfileGroupsAvailable] =
     useState<boolean>(false);
+  const [profileEditing, setProfileEditing] = useState<boolean>(false);
   const value = useMemo(
     () => ({
       pageTitle,
@@ -79,6 +89,8 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
       setProfileAboutAvailable,
       profileGroupsAvailable,
       setProfileGroupsAvailable,
+      profileEditing,
+      setProfileEditing,
     }),
     [
       pageTitle,
@@ -86,6 +98,7 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
       profileOverlay,
       profileAboutAvailable,
       profileGroupsAvailable,
+      profileEditing,
     ]
   );
   return (
@@ -185,4 +198,18 @@ export function useProfileGroupsAvailable(available: boolean) {
     setProfileGroupsAvailable(available);
     return () => setProfileGroupsAvailable(false);
   }, [setProfileGroupsAvailable, available]);
+}
+
+/**
+ * Publish to the navbar whether the viewer is currently inline-editing
+ * the profile. While set, the top-bar tab strip locks to the editable
+ * section(s) so the viewer can't tab away to a read-only section mid-edit.
+ * Reset to false on unmount so the lock doesn't bleed into the next page.
+ */
+export function useProfileEditing(editing: boolean) {
+  const { setProfileEditing } = useContext(NavbarContext);
+  useEffect(() => {
+    setProfileEditing(editing);
+    return () => setProfileEditing(false);
+  }, [setProfileEditing, editing]);
 }

@@ -134,6 +134,7 @@ export default function DesktopTopBar() {
     breadcrumb,
     profileAboutAvailable,
     profileGroupsAvailable,
+    profileEditing,
   } = useNavbarContext();
   const { profile, avatarUrl } = useProfile();
   const { handle } = useSession();
@@ -198,6 +199,14 @@ export default function DesktopTopBar() {
   // context — but locked to Overview: the active tab stays highlighted
   // and the others render disabled so the editor can't tab away mid-edit.
   const isOnEditProfile = pathname === "/settings/edit-profile";
+  // The tab strip locks (non-switchable) in two cases: the standalone
+  // edit-profile page above, and inline-editing on the profile page
+  // (`profileEditing`, published by the profile page). In both, only the
+  // editable section(s) stay active — Overview always, plus About when
+  // the viewed profile is an org exposing it.
+  const lockTabs = isOnEditProfile || profileEditing;
+  const isTabEditable = (key: string) =>
+    key === "overview" || (profileAboutAvailable && key === "about");
   // Record detail pages — `/{actor}/activity|project/{rkey}` — belong to a
   // profile and get their own row-2: a Back button + the record's section
   // tabs. The *editor* adds a trailing `/edit` (4 segments) and is excluded
@@ -555,10 +564,10 @@ export default function DesktopTopBar() {
               pushes the ?tab= URL (scroll:false) so the page mirrors it,
               matching the prior <Link scroll={false}> default-push. */}
           <Tabs
-            value={isOnEditProfile ? "overview" : activeTab}
+            value={lockTabs && !isTabEditable(activeTab) ? "overview" : activeTab}
             onChange={(next) => {
-              // Editing locks the strip to Overview — swallow switches.
-              if (isOnEditProfile) return;
+              // While locked, swallow switches to non-editable sections.
+              if (lockTabs && !isTabEditable(next)) return;
               const tab = visibleProfileTabs.find((t) => t.key === next);
               if (tab) router.push(tabHref(tab), { scroll: false });
             }}
@@ -568,9 +577,10 @@ export default function DesktopTopBar() {
                 <Tab
                   key={tab.key}
                   value={tab.key}
-                  // On the edit-profile page only Overview stays active;
-                  // every other tab is disabled so you can't switch away.
-                  disabled={isOnEditProfile && tab.key !== "overview"}
+                  // While editing, disable every non-editable section so
+                  // you can't tab away mid-edit; Overview (and About for
+                  // orgs) stay active.
+                  disabled={lockTabs && !isTabEditable(tab.key)}
                 >
                   {tab.label}
                 </Tab>

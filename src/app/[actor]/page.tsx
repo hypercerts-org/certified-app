@@ -9,6 +9,7 @@ import {
   usePageTitleBreadcrumb,
   useProfileAboutAvailable,
   useProfileGroupsAvailable,
+  useProfileEditing,
 } from "@/lib/navbar-context"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { getProfileWithCid } from "@/lib/atproto/profile"
@@ -293,6 +294,10 @@ export default function UserProfilePage() {
   const isActiveIdentityThisProfile =
     (isOwnProfile && !activeOrg) || isActingAsThisGroup
   useProfileGroupsAvailable(isActiveIdentityThisProfile)
+  // Lock the top-bar / mobile tab strips to the editable section(s)
+  // while inline-editing. Published unconditionally (before the early
+  // returns below) so the hook order stays stable across renders.
+  useProfileEditing(isEditing && canEditInline)
 
   // Mobile profile tab strip. The desktop top bar's row-2 tabs are the only
   // tab navigation, and that bar is hidden below 800px — so without this strip
@@ -413,24 +418,34 @@ export default function UserProfilePage() {
         className="profile-page__mobile-tabs profile-tabs"
         aria-label="Profile sections"
       >
-        {mobileTabs.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            aria-current={activeTab === t.key ? "page" : undefined}
-            className={`profile-tabs__tab${
-              activeTab === t.key ? " profile-tabs__tab--active" : ""
-            }`}
-            onClick={() =>
-              router.push(
-                t.key === "overview" ? pathname : `${pathname}?tab=${t.key}`,
-                { scroll: false },
-              )
-            }
-          >
-            {t.label}
-          </button>
-        ))}
+        {mobileTabs.map((t) => {
+          // While editing, only the editable section(s) stay switchable —
+          // Overview always, plus About for orgs. Everything else is
+          // disabled so you can't tab away to a read-only section mid-edit.
+          const editable = t.key === "overview" || (sidebarIsOrg && t.key === "about")
+          const locked = editing && !editable
+          return (
+            <button
+              key={t.key}
+              type="button"
+              aria-current={activeTab === t.key ? "page" : undefined}
+              aria-disabled={locked || undefined}
+              disabled={locked}
+              className={`profile-tabs__tab${
+                activeTab === t.key ? " profile-tabs__tab--active" : ""
+              }`}
+              onClick={() => {
+                if (locked) return
+                router.push(
+                  t.key === "overview" ? pathname : `${pathname}?tab=${t.key}`,
+                  { scroll: false },
+                )
+              }}
+            >
+              {t.label}
+            </button>
+          )
+        })}
       </nav>
 
       {editing ? (
