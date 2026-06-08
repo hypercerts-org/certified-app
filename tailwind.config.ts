@@ -8,6 +8,18 @@ export default {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
+    /* Breakpoints are the design system's canonical set ONLY (DESIGN.md /
+       CLAUDE.md hard rule): 800 / 1100 / 1300. Defining `screens` here
+       (not under `extend`) REPLACES Tailwind's defaults (640/768/1024/…),
+       so a stray `md:`/`lg:` utility can never resolve to a non-canonical
+       breakpoint. `md` = the "gt-mobile" 800px threshold — this is why
+       `md:text-sm` on inputs now flips at 800px (16px below it → no iOS
+       auto-zoom on focus), instead of Tailwind's old 768px default. */
+    screens: {
+      md: "800px",
+      lg: "1100px",
+      xl: "1300px",
+    },
     extend: {
       colors: {
         /* Semantic status colors — used sparingly via Tailwind utilities.

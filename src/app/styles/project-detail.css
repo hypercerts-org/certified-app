@@ -326,12 +326,10 @@
   border-radius: var(--radius);
 }
 
-@media (min-width: 640px) {
-  .project-detail__meta {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
+/* Single column below the canonical 800px breakpoint, three columns at
+   desktop. (Previously stepped to two columns at a non-canonical 640px; that
+   band is mobile, so dropping it just keeps the meta strip single-column on
+   phones — the ≥800px desktop layout is unchanged.) */
 @media (min-width: 800px) {
   .project-detail__meta {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -463,13 +461,15 @@
   justify-content: start;
 }
 
-@media (min-width: 600px) {
+/* Canonical breakpoints (was 600px / 900px): one column on mobile, two at the
+   800px desktop step, three at 1100px. */
+@media (min-width: 800px) {
   .project-detail__certs .feed {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (min-width: 900px) {
+@media (min-width: 1100px) {
   .project-detail__certs .feed {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -887,6 +887,15 @@
   gap: 20px;
   align-items: stretch;
   margin-bottom: 24px;
+}
+
+/* On mobile the 1fr/3fr split squeezed the avatar tile to ~64px; stack the
+   avatar above the banner so both are full-width and comfortably tappable. */
+@media (max-width: 799px) {
+  .create-group__identity-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
 
 /* Circular avatar dropzone. Important: the tile itself does NOT clip

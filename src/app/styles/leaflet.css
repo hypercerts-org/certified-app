@@ -213,6 +213,15 @@ ol.leaflet-doc__list {
   cursor: not-allowed;
 }
 
+/* Mobile: format-toolbar buttons meet the 44px tap target. The toolbar
+   already wraps (flex-wrap), so the larger buttons reflow cleanly. */
+@media (max-width: 799px) {
+  .leaflet-editor__btn {
+    width: 44px;
+    height: 44px;
+  }
+}
+
 .leaflet-editor__content {
   border: 1.5px solid var(--border-hover);
   border-radius: var(--radius);

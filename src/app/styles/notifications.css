@@ -27,7 +27,9 @@
   border-bottom: none;
 }
 
-a.notification-row:hover {
+/* `:active` gives touch devices (no hover) a press affordance on tap. */
+a.notification-row:hover,
+a.notification-row:active {
   background: var(--bg-raised);
 }
 

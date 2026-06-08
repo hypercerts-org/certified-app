@@ -56,12 +56,17 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         "bg-[var(--color-error-bg)] text-[var(--color-error)] border border-[var(--color-error-border)] hover:opacity-90",
     };
 
+    // Mobile tap targets: every size meets the 44px WCAG 2.5.5 minimum below
+    // 800px, then reverts to its compact desktop dimensions at `md` (= 800px,
+    // the canonical breakpoint). `min-h-11` (44px) wins over the smaller
+    // padding-driven height on mobile without touching the desktop look.
     const sizeStyles: Record<ButtonSize, string> = {
-      sm: "py-1.5 px-4 text-xs",
-      md: "py-2.5 px-6 text-sm",
+      sm: "py-1.5 px-4 text-xs min-h-11 md:min-h-0",
+      md: "py-2.5 px-6 text-sm min-h-11 md:min-h-0",
       lg: "py-3 px-8 text-sm",
-      // 40 x 40 square. Padding zeroed; children (an icon) sit in the centered flex slot.
-      icon: "h-10 w-10 p-0 text-sm",
+      // 44 x 44 on mobile, 40 x 40 on desktop. Padding zeroed; the icon child
+      // sits in the centered flex slot.
+      icon: "h-11 w-11 md:h-10 md:w-10 p-0 text-sm",
     };
 
     const disabledStyles = disabled || loading ? "opacity-50 cursor-not-allowed" : "";

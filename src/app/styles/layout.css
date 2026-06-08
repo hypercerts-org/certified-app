@@ -122,6 +122,32 @@ html[data-theme="dark"] .signin-mark__img--light {
   color: var(--fg-primary);
 }
 
+.loading-screen__link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+  color: var(--fg-primary);
+}
+
+/* Mobile: bump the error text + return link to a readable 16px, give the link
+   a 44px tap target, and keep the inner box off the viewport edge. */
+@media (max-width: 799px) {
+  .loading-screen__inner {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+  .loading-screen__error {
+    font-size: 1rem;
+  }
+  .loading-screen__link {
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 12px;
+  }
+}
+
 /* ========== Navbar ========== */
 .navbar {
   position: fixed;
@@ -684,6 +710,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
      the min-height so the content slot is exactly 100vh tall. */
   box-sizing: border-box;
 }
+/* Note: the <800px reading gutter (16px horizontal + max-width:100%) is set
+   in components.css's mobile block, which loads after this file and wins. */
 
 /* Desktop: reading width narrows to 600px (matches bsky/x). The flanking
    rails (mounted in PR2) provide the lateral context the mobile column
@@ -3418,6 +3446,38 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
    This bumps it to ~880px on both mobile and desktop. */
 .app-shell:has(.legal-page) .app-shell__content {
   max-width: 880px;
+}
+
+/* Mobile heading scale for prose pages. The `text-h1..h3` Tailwind tokens are
+   fixed (2.25/1.75/1.375rem) and eat the narrow column on phones. Scoped to
+   `.legal-page`, these out-specify the utility class (0,1,1 > 0,1,0) and shrink
+   the headings below 800px only — app feed/card headings elsewhere are
+   untouched, and desktop (≥800px) keeps the full scale. */
+@media (max-width: 799px) {
+  .legal-page :is(h1, .text-h1) {
+    font-size: 1.75rem;
+    line-height: 1.25;
+  }
+  .legal-page :is(h2, .text-h2) {
+    font-size: 1.375rem;
+    line-height: 1.3;
+  }
+  .legal-page :is(h3, .text-h3) {
+    font-size: 1.125rem;
+    line-height: 1.35;
+  }
+  /* Trim list indentation so deeply-nested items keep usable width on phones
+     (Tailwind `pl-6` = 24px is generous for a ~300px column). */
+  .legal-page :is(ul, ol) {
+    padding-left: 1.25rem;
+  }
+}
+
+/* Keyboard focus affordance for inline links in long-form legal/about copy. */
+.legal-page a:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
 }
 
 .site-footer__brand {

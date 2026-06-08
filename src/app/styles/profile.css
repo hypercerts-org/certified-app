@@ -147,6 +147,59 @@
   word-break: break-word;
 }
 
+/* Pronouns + social-graph strip. Mobile-only (this whole header is hidden at
+   ≥800px); mirrors the desktop sidebar so mobile reaches information parity. */
+.profile-hero__pronouns {
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+.profile-hero__graph {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.profile-hero__graph-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+  flex-wrap: wrap;
+}
+
+.profile-hero__graph-count {
+  font-weight: 600;
+  color: var(--fg-primary);
+}
+
+.profile-hero__graph-link {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.profile-hero__graph-link:hover,
+.profile-hero__graph-link:focus-visible {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.profile-hero__graph-sep {
+  color: var(--fg-muted);
+}
+
+/* Endorsed-by count sits inside its link (unlike the followers row), so it
+   inherits the link colour and the whole string lights up together on hover. */
+.profile-hero__graph-row[aria-label="Endorsed by"] .profile-hero__graph-count {
+  color: inherit;
+}
+
 /* Desktop: banner is center-column-bleed (not viewport-bleed) and the
    column is 600px wide. Keep close to 3:1 aspect so the banner still
    reads as a panoramic header rather than a letterbox card. 200px on
@@ -189,6 +242,14 @@
   overflow-y: hidden;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+}
+
+/* The in-page tab strip is mobile-only — on desktop the top bar's row 2
+   carries the profile tabs. Hidden at ≥800px to avoid a duplicate strip. */
+@media (min-width: 800px) {
+  .profile-page__mobile-tabs {
+    display: none;
+  }
 }
 
 .profile-tabs::-webkit-scrollbar {

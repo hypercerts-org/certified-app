@@ -32,6 +32,7 @@ import { useOrg } from "@/lib/groups/org-context"
 import type { Group } from "@/lib/groups/types"
 import { useFollowing } from "@/hooks/use-following"
 import { useFollowers } from "@/hooks/use-followers"
+import { formatGraphCount } from "@/lib/utils/format-graph-count"
 import { useGivenEndorsements } from "@/hooks/use-endorsements"
 import {
   useReceivedEndorsements,
@@ -820,14 +821,8 @@ function FollowButton({
  * a real, meaningful value to viewers ("nobody follows this account
  * yet").
  */
-function formatGraphCount(
-  n: number | null | undefined,
-  truncated = false,
-): string {
-  if (n === null || n === undefined) return "—"
-  const formatted = new Intl.NumberFormat().format(n)
-  return truncated ? `${formatted}+` : formatted
-}
+/* `formatGraphCount` now lives in @/lib/utils/format-graph-count and is shared
+   with the mobile <ProfileHeader> so both surfaces render identical counts. */
 
 /* ----------------------------- Endorse ------------------------------
  *

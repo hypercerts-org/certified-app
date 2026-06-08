@@ -19,7 +19,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
           <div className="dash-card">
             <p className="dash-card__desc">An unexpected error occurred.</p>
             {error.digest && (
-              <p className="dash-card__desc" style={{ fontSize: "0.85em", opacity: 0.7 }}>
+              <p className="dash-card__desc" style={{ opacity: 0.7 }}>
                 Reference: {error.digest}
               </p>
             )}

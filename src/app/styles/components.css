@@ -1227,20 +1227,9 @@
   padding: 4px 0 8px;
 }
 
-@media (max-width: 520px) {
-  .edit-profile__actions {
-    flex-direction: column-reverse;
-    gap: 10px;
-  }
-  .edit-profile__actions > * {
-    width: 100%;
-  }
-  .edit-profile__actions :is(button, a) {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-  }
-}
+/* (Removed a non-canonical `@media (max-width: 520px)` block for
+   `.edit-profile__actions`; the ≤799px block already stacks the actions
+   full-width across the whole mobile range.) */
 
 /* Dashboard body single-column variant (kept for compatibility) */
 .dashboard__body--single {
@@ -1408,16 +1397,9 @@
 
 /* Tighter rows on small screens. Drop the description to keep each
    row compact — the user can tap through for more. */
-@media (max-width: 520px) {
-  .connected-apps__item {
-    gap: 10px;
-    padding: 12px;
-  }
-
-  .connected-apps__desc {
-    display: none;
-  }
-}
+/* (Removed a non-canonical `@media (max-width: 520px)` block that tightened
+   `.connected-apps__item` and hid `.connected-apps__desc`; the ≤799px block
+   below already does both across the whole mobile range, so it was redundant.) */
 
 /* ========== Responsive: Dashboard & Pages (≤799px / mobile) ========== */
 @media (max-width: 799px) {
@@ -1525,20 +1507,30 @@
     gap: 6px;
   }
 
-  /* Edit profile */
+  /* Edit profile: actions stack full-width on mobile (covers both <button>
+     Save and <a> Cancel). Consolidated here from a separate, mostly-overridden
+     520px block. */
   .edit-profile__actions {
     flex-direction: column;
     gap: 8px;
   }
 
-  .edit-profile__actions button {
+  .edit-profile__actions :is(button, a) {
     width: 100%;
+    display: flex;
+    justify-content: center;
   }
 
-  /* Dashboard back button */
+  /* Dashboard back/action buttons: on mobile they stack full-width with a
+     44px tap target and readable text (desktop keeps the compact inline pill
+     from the base rule). Previously this shrank them to ~26px. */
   .dashboard__back-btn {
-    padding: 6px 12px;
-    font-size: 0.75rem;
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+    padding: 12px 16px;
+    font-size: 0.875rem;
   }
 
   /* Right sidebar cards: reduce desc margin */
@@ -1631,6 +1623,10 @@
   .domain-modal__input {
     font-size: 16px;
   }
+  /* 44px tap target on mobile (the bottom-border field is 40px on desktop). */
+  .username-card__subdomain-input {
+    height: 44px;
+  }
 }
 
 /* ==================================================================
@@ -1680,6 +1676,16 @@
 .image-edit-overlay__btn:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
+}
+
+/* Mobile: the image-edit pills (Change / Remove over an avatar or banner)
+   meet the 44px tap target instead of the compact ~26px desktop pill. */
+@media (max-width: 799px) {
+  .image-edit-overlay__btn {
+    min-height: 44px;
+    padding: 10px 16px;
+    font-size: 0.8125rem;
+  }
 }
 
 /* Quiet variant — same shape as the primary pill but a brighter,
