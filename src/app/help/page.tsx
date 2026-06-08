@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import PageTitle from "@/components/layout/page-title";
+import HelpFeedbackLink from "@/components/help/help-feedback-link";
 
 export const metadata: Metadata = {
   title: "Help",
@@ -29,9 +30,9 @@ export default function HelpPage() {
             </h1>
             <p>
               Certified is a place to record and recognize real work and impact. You publish
-              <strong> activities</strong> — verifiable claims about what was done — group them into
+              <strong> activities</strong> — verifiable claims about work and impact — group them into
               <strong> projects</strong>, organize as <strong>groups</strong>, and back each
-              other&apos;s work with <strong>endorsements</strong>. Because Certified is built on the
+              other with <strong>endorsements</strong>. Because Certified is built on the
               open{" "}
               <a
                 href="https://atproto.com"
@@ -42,15 +43,12 @@ export default function HelpPage() {
                 AT Protocol
               </a>{" "}
               — the same network that powers Bluesky — your account and everything you create is
-              portable across compatible apps rather than locked into one company.
+              portable across compatible apps rather than locked into one platform.
             </p>
             <p className="mt-4">
               This page walks through the core concepts and the main surfaces of the app. If you
-              still have questions, see the{" "}
-              <Link href="/about" className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]">
-                About
-              </Link>{" "}
-              page or reach out via the contact details there.
+              still have questions or spot something that&apos;s off, fill out the{" "}
+              <HelpFeedbackLink />.
             </p>
           </section>
 
@@ -58,14 +56,14 @@ export default function HelpPage() {
             <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">Activities</h2>
             <p>
               An <strong>activity</strong> is the basic unit of impact on Certified: a record of
-              something that was done. Each activity captures the essentials of a verifiable claim —
-              what the work was, who contributed to it, the time period it covers, its scope, and
-              where it happened.
+              something that was done — or something that is planned. Each activity captures the
+              essentials of a verifiable claim — what the work is, who contributes to it, the time
+              period it covers, its scope, and where it happens.
             </p>
             <p className="mt-4">
-              Think of an activity as a structured, shareable statement: &quot;this work was carried
-              out, by these people, over this period.&quot; Contributors can be recognized, and
-              others can endorse the activity to add their support and credibility.
+              Think of an activity as a structured, shareable statement: &quot;this work is being
+              carried out, by these people, over this period.&quot; Contributors can be recognized
+              for their part in the work.
             </p>
           </section>
 
@@ -90,44 +88,26 @@ export default function HelpPage() {
               individual account.
             </p>
             <p className="mt-4">
-              Groups have <strong>members</strong> and <strong>admins</strong>. Admins manage the
-              group and who belongs to it, while members contribute under the group&apos;s identity.
-              When you switch to acting as a group, the activities you create and the endorsements
-              you give are attributed to that group rather than to you personally.
+              Groups have an <strong>owner</strong>, <strong>admins</strong>, and{" "}
+              <strong>members</strong>. The owner and admins manage the group and who belongs to it,
+              while members contribute under the group&apos;s identity. When you switch to acting as
+              a group, the activities you create and the endorsements you give are attributed to
+              that group rather than to you personally.
             </p>
           </section>
 
           <section>
             <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">Endorsements</h2>
             <p>
-              An <strong>endorsement</strong> is a public vouch or attestation. People and groups use
-              endorsements to back an account or a specific piece of its work, signalling &quot;I
-              stand behind this.&quot;
+              An <strong>endorsement</strong>{" "}is a public vouch or attestation. People and
+              groups use endorsements to back an <strong>account</strong>, signalling &quot;I stand
+              behind this account.&quot;
             </p>
             <p className="mt-4">
               Taken together, endorsements build a <strong>web of trust</strong>: rather than relying
               on a single authority to verify claims, credibility emerges from who is willing to
-              publicly stake their reputation on whom. The more an account and its work are endorsed
-              by others you trust, the more confidence you can place in it.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
-              Followers &amp; Bluesky
-            </h2>
-            <p>
-              Certified is built on the <strong>AT Protocol</strong>, the same open network as
-              Bluesky. Your account is an AT Protocol identity — a <strong>handle</strong> (a
-              human-readable name) paired with a <strong>DID</strong> (a stable, cryptographic
-              identifier) — and your data lives on a <strong>Personal Data Server (PDS)</strong> that
-              you control.
-            </p>
-            <p className="mt-4">
-              Because of that shared foundation, your identity and your social graph are portable
-              across apps on the same protocol. Following works on this common social layer, so your
-              connections interoperate with the wider AT Protocol and Bluesky ecosystem rather than
-              being trapped inside a single app.
+              publicly stake their reputation on whom. The more an account is endorsed by others you
+              trust, the more confidence you can place in it.
             </p>
           </section>
 
@@ -148,8 +128,8 @@ export default function HelpPage() {
           <section>
             <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">Your feed</h2>
             <p>
-              Your <strong>feed</strong> is the home stream of recent activity from the accounts and
-              groups you follow. It&apos;s the place to keep up with new activities, projects, and
+              Your <strong>feed</strong>{" "}is the home stream of recent activity from the accounts
+              and groups you follow. It&apos;s the place to keep up with new activities, projects, and
               endorsements from the people and organizations you care about.
             </p>
             <p className="mt-4">
@@ -161,7 +141,7 @@ export default function HelpPage() {
           <section>
             <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">The Explore page</h2>
             <p>
-              <strong>Explore</strong> is the discovery surface. While your feed shows the accounts
+              <strong>Explore</strong>{" "}is the discovery surface. While your feed shows the accounts
               you already follow, Explore helps you find activities, projects, and accounts you
               don&apos;t yet — a way to broaden your view and discover new work and people across
               Certified.
@@ -175,7 +155,7 @@ export default function HelpPage() {
             <p>
               Every account has two names that work together. Your{" "}
               <strong>handle</strong> (your username) is the human-readable one
-              — something like <code>@you.certified.app</code>. It&apos;s how
+              — something like <code>@you.certified.one</code>. It&apos;s how
               people find, mention, and recognize you, and it can be changed
               later; you can even bring your own domain to use as your handle.
             </p>
@@ -196,13 +176,29 @@ export default function HelpPage() {
           </section>
 
           <section>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">Followers</h2>
+            <p>
+              Following on Certified runs on its own <strong>Certified follow graph</strong> — a
+              record of who follows whom that is kept separately from your Bluesky follows. So the
+              people who follow you here, and the accounts you follow, may not be exactly the same
+              set as on Bluesky.
+            </p>
+            <p className="mt-4">
+              Because both apps are built on the same AT Protocol identities, the two graphs
+              aren&apos;t locked apart: you can easily sync your Bluesky follows into Certified, so
+              you don&apos;t have to rebuild your network from scratch. Either way, your follows stay
+              tied to your portable identity.
+            </p>
+          </section>
+
+          <section>
             <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               Your Certified account
             </h2>
             <p>
-              Your <strong>Certified account</strong> is a portable AT Protocol identity: a handle
-              plus a DID, with your data stored on a Personal Data Server you control. Unlike a
-              traditional login, it isn&apos;t locked inside one company&apos;s database.
+              Your <strong>Certified account</strong>{" "}is a portable AT Protocol identity: a
+              handle plus a DID, with your data stored on a Personal Data Server you control. Unlike
+              a traditional login, it isn&apos;t locked inside one platform.
             </p>
             <p className="mt-4">
               That portability is the point. You can use the same account across compatible apps, and
