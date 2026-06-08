@@ -22,6 +22,8 @@ import type { LinearDocument } from "@/lib/leaflet/types"
 
 // Client-side cap; the PDS enforces its own hard blob limit.
 const MAX_ATTACHMENT_SIZE = 25 * 1024 * 1024
+// Character limit for the short summary (kept in sync with the count UI).
+const SHORT_DESCRIPTION_MAX = 500
 
 interface UpdateFormProps {
   /** Viewer's personal session DID — `writeToRepo`'s `ownDid`. */
@@ -178,14 +180,19 @@ export default function UpdateForm({
         placeholder="What's the update?"
       />
 
-      <Textarea
-        label="Short description"
-        value={shortDescription}
-        onChange={(e) => setShortDescription(e.target.value)}
-        rows={2}
-        maxLength={500}
-        placeholder="A one- or two-line summary (optional)."
-      />
+      <div className="flex flex-col gap-1">
+        <Textarea
+          label="Short description"
+          value={shortDescription}
+          onChange={(e) => setShortDescription(e.target.value)}
+          rows={2}
+          maxLength={SHORT_DESCRIPTION_MAX}
+          placeholder="A one- or two-line summary (optional)."
+        />
+        <span className="self-end text-xs text-[var(--fg-muted)]">
+          {shortDescription.length}/{SHORT_DESCRIPTION_MAX} characters
+        </span>
+      </div>
 
       <div className="flex flex-col gap-1.5">
         <label className="text-sm font-medium text-[var(--fg-primary)]">
