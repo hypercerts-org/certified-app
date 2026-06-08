@@ -659,12 +659,24 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 .app-shell {
   min-height: 100vh;
   background: var(--bg-canvas);
+  /* Sticky-footer column: the grid flex-grows to fill the viewport,
+     pushing SiteFooter (the shell's last child) to the bottom. This
+     replaces the old per-layer `min-height: 100vh` chain, which forced
+     the content slot to a full viewport AND stacked the footer below
+     it as an extra sibling — so the footer was always pushed a full
+     screen past the fold, leaving a near-viewport gap on short pages. */
+  display: flex;
+  flex-direction: column;
 }
 
 .app-shell__grid {
   max-width: 1300px;
+  width: 100%;
   margin: 0 auto;
-  min-height: 100vh;
+  /* Grow to absorb the leftover viewport height (minus the footer) so
+     short pages still reach the bottom; long pages push the footer down
+     naturally. Replaces `min-height: 100vh`. */
+  flex: 1 0 auto;
 }
 
 /* On desktop the global navbar is hidden — the left rail hosts the
@@ -695,19 +707,22 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 }
 
 .app-shell__center {
-  min-height: 100vh;
+  /* Fill the (flex-grown) grid rather than minting a fresh 100vh — the
+     grid already owns the viewport-height stretch. */
+  min-height: 100%;
 }
 
 .app-shell__content {
   max-width: 720px;
   margin: 0 auto;
   padding: calc(var(--navbar-height) + 16px) 32px calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 24px);
-  min-height: 100vh;
-  /* `min-height: 100vh` plus the padding above would otherwise stack
-     to 100vh + ~160px (navbar + safe-area + breathing room) under
-     content-box, forcing a scrollbar on every page even when the
-     content fits the viewport. Border-box folds the padding into
-     the min-height so the content slot is exactly 100vh tall. */
+  /* Fill the center cell (which fills the flex-grown grid) so pages that
+     stretch internally — home/explore — still reach the footer, while
+     short pages let the grid's flex-grow do the pushing. Was `100vh`,
+     which over-stacked against the footer sibling. Border-box folds the
+     padding into the min-height so the slot stays exactly one cell tall
+     rather than one viewport + ~160px. */
+  min-height: 100%;
   box-sizing: border-box;
 }
 /* Note: the <800px reading gutter (16px horizontal + max-width:100%) is set
