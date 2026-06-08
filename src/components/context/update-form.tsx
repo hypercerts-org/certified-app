@@ -22,8 +22,9 @@ import type { LinearDocument } from "@/lib/leaflet/types"
 
 // Client-side cap; the PDS enforces its own hard blob limit.
 const MAX_ATTACHMENT_SIZE = 25 * 1024 * 1024
-// Character limit for the short summary (kept in sync with the count UI).
-const SHORT_DESCRIPTION_MAX = 500
+// Character limit for the short summary — matches the lexicon's 300-char
+// cap (kept in sync with the count UI and the textarea maxLength).
+const SHORT_DESCRIPTION_MAX = 300
 
 interface UpdateFormProps {
   /** Viewer's personal session DID — `writeToRepo`'s `ownDid`. */
