@@ -167,6 +167,13 @@
   /* Navbar */
   --navbar-height: 64px;
 
+  /* Bottom nav (mobile-first). Base height lives here so the desktop
+     zeroing in the @media block below actually wins — defining the base
+     in layout.css (imported AFTER this file) clobbered the override and
+     left `.app-shell__content` with ~56px of phantom bottom padding on
+     desktop. Zeroed at ≥800px below. */
+  --bottom-nav-height: 56px;
+
   /* Desktop top bar (rendered ≥800px). Row 1 is chrome
      (brandmark + page title + search + icon buttons + switcher); row 2
      is the profile tabs strip, conditional on /profile/[handle]. The

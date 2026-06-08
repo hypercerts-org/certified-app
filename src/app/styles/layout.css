@@ -435,11 +435,9 @@ html[data-theme="dark"] .signin-mark__img--light {
 
 
 
-/* ========== Bottom Nav (mobile-first) ========== */
-
-:root {
-  --bottom-nav-height: 56px;
-}
+/* ========== Bottom Nav (mobile-first) ==========
+   `--bottom-nav-height` is defined in tokens.css (base 56px, zeroed at
+   ≥800px) so the desktop override isn't clobbered by import order. */
 
 .bottom-nav {
   position: fixed;
