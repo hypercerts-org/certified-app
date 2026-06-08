@@ -12,6 +12,7 @@ import {
   Compass,
   FileBadge,
   FolderKanban,
+  HelpCircle,
   Home,
   LayoutGrid,
   Menu,
@@ -484,6 +485,15 @@ export default function DesktopTopBar() {
               <span className="desktop-top-bar__icon-label">Settings</span>
             </Link>
           ) : null}
+
+          <Link
+            href="/help"
+            className="desktop-top-bar__icon-btn"
+            aria-label="Help"
+          >
+            <HelpCircle size={20} strokeWidth={1.5} aria-hidden />
+            <span className="desktop-top-bar__icon-label">Help</span>
+          </Link>
 
           {isAuthenticated ? (
             <div className="desktop-top-bar__switcher-wrap">

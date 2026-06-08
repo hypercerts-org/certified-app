@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { profileUrl } from "@/lib/urls"
 import { usePathname } from "next/navigation"
-import { Compass, Home, LayoutGrid, Settings, User, X } from "lucide-react"
+import { Compass, HelpCircle, Home, LayoutGrid, Settings, User, X } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useSession } from "@/hooks/use-session"
 import { useOrg } from "@/lib/groups/org-context"
@@ -69,6 +69,7 @@ export default function SiteDrawer({
       requiresAuth: true,
     },
     { key: "settings", label: "Settings", href: "/settings", icon: Settings },
+    { key: "help", label: "Help", href: "/help", icon: HelpCircle },
   ]
 
   return (
