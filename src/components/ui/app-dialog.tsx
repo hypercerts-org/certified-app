@@ -335,8 +335,16 @@ export default function AppDialog({
   // The inline `maxWidth` prop still wins over max-w-[420px] via the
   // style attribute. Backdrop uses the added --modal-backdrop token
   // (black at 50% alpha in light / --navy-overlay-70 in dark).
+  // `text-[var(--fg-primary)] font-normal normal-case tracking-normal`
+  // establish a clean typographic baseline so the modal renders normal
+  // body text regardless of the DOM context it's mounted in. A native
+  // <dialog> inherits CSS from its DOM parent (top-layer rendering does
+  // NOT reset inheritance), so a modal opened from inside, e.g., the
+  // cert-detail meta-label <dt> (uppercase/semibold/letter-spaced/muted)
+  // would otherwise pick up all of that. No-op for modals mounted in
+  // normal text.
   const baseChrome =
-    "relative inset-0 m-auto flex w-[90vw] max-w-[420px] max-h-[calc(100vh-40px)] flex-col items-stretch overflow-x-hidden overflow-y-auto rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--color-off-white)] p-0 shadow-[0_24px_64px_var(--navy-overlay-30)] backdrop:bg-[var(--modal-backdrop)] motion-safe:animate-[modalSlideUp_300ms_cubic-bezier(0.16,1,0.3,1)] max-[799px]:w-full max-[799px]:max-w-none"
+    "relative inset-0 m-auto flex w-[90vw] max-w-[420px] max-h-[calc(100vh-40px)] flex-col items-stretch overflow-x-hidden overflow-y-auto rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--color-off-white)] p-0 text-[var(--fg-primary)] font-normal normal-case tracking-normal shadow-[0_24px_64px_var(--navy-overlay-30)] backdrop:bg-[var(--modal-backdrop)] motion-safe:animate-[modalSlideUp_300ms_cubic-bezier(0.16,1,0.3,1)] max-[799px]:w-full max-[799px]:max-w-none"
 
   const composedClassName = className
     ? `${baseChrome} ${className}`

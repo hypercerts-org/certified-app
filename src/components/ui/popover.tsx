@@ -559,7 +559,14 @@ export function PopoverItem({
       // <PopoverContent>) move focus between items. <PopoverContent>
       // focuses the first item on open. Callers can still override.
       tabIndex={tabIndex ?? -1}
-      className={`w-full ${isRadio ? "flex items-center gap-2" : "text-left"} px-3 py-2 text-sm text-[var(--fg-primary)] rounded hover:bg-[var(--overlay-weak)] focus:bg-[var(--overlay-weak)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      // Always a flex row so a leading icon (block-level <svg> under
+      // Tailwind preflight) sits inline with the label instead of
+      // breaking onto its own line. `font-normal normal-case
+      // tracking-normal` re-establish normal body text so the item
+      // isn't dragged into uppercase/semibold/letter-spaced styling by
+      // an ambient container (e.g. the cert-detail meta-label <dt> that
+      // hosts the "Add to list" menu).
+      className={`flex w-full items-center gap-2 px-3 py-2 text-sm font-normal normal-case tracking-normal text-left text-[var(--fg-primary)] rounded hover:bg-[var(--overlay-weak)] focus:bg-[var(--overlay-weak)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
       {...props}
     >
       {isRadio && (

@@ -593,7 +593,7 @@
 .add-to-list__row-title {
   flex: 1;
   min-width: 0;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   color: var(--fg-primary);
   overflow: hidden;
   text-overflow: ellipsis;
