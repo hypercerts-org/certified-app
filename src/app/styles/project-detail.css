@@ -320,7 +320,9 @@
   grid-template-columns: 1fr;
   gap: 14px 24px;
   padding: 16px;
-  margin: 0 0 32px;
+  /* Top margin separates the box from the preceding "Read full
+     description" link (and lead text when that link is absent). */
+  margin: 24px 0 32px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);

@@ -1020,43 +1020,49 @@ export default function ProjectDetail({
                 </time>
               </p>
             ) : null}
-            <div
-              className={
-                editing
-                  ? "project-detail__hero project-detail__hero--editing"
-                  : "project-detail__hero"
-              }
-            >
-              {effectiveImageUrl && !imageFailed ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={effectiveImageUrl}
-                  alt=""
-                  className="project-detail__hero-img"
-                  onError={() => setImageFailed(true)}
-                />
-              ) : (
-                <div
-                  className="project-detail__hero-placeholder"
-                  aria-hidden="true"
-                >
-                  <FolderGit2
-                    size={72}
-                    strokeWidth={1.25}
-                    className="project-detail__hero-placeholder-icon"
+            {/* Hero renders only when there's an image, or in edit mode
+                (where the placeholder is the upload target). A project
+                without an image shows no placeholder in the read-only
+                view — just no hero. */}
+            {(effectiveImageUrl && !imageFailed) || editing ? (
+              <div
+                className={
+                  editing
+                    ? "project-detail__hero project-detail__hero--editing"
+                    : "project-detail__hero"
+                }
+              >
+                {effectiveImageUrl && !imageFailed ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={effectiveImageUrl}
+                    alt=""
+                    className="project-detail__hero-img"
+                    onError={() => setImageFailed(true)}
                   />
-                </div>
-              )}
-              {editing ? (
-                <ImageEditOverlay
-                  onFile={handleImageFile}
-                  hasPending={!!pendingImageBlob}
-                  variant="with-remove"
-                  onRemove={handleImageRemove}
-                  hasImage={!!effectiveImageUrl}
-                />
-              ) : null}
-            </div>
+                ) : (
+                  <div
+                    className="project-detail__hero-placeholder"
+                    aria-hidden="true"
+                  >
+                    <FolderGit2
+                      size={72}
+                      strokeWidth={1.25}
+                      className="project-detail__hero-placeholder-icon"
+                    />
+                  </div>
+                )}
+                {editing ? (
+                  <ImageEditOverlay
+                    onFile={handleImageFile}
+                    hasPending={!!pendingImageBlob}
+                    variant="with-remove"
+                    onRemove={handleImageRemove}
+                    hasImage={!!effectiveImageUrl}
+                  />
+                ) : null}
+              </div>
+            ) : null}
 
             {editing ? (
               <textarea
