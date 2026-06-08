@@ -168,7 +168,7 @@ export default function RootLayout({
                 <Suspense fallback={<div className="desktop-top-bar desktop-top-bar--placeholder" aria-hidden />}>
                   <DesktopTopBar />
                 </Suspense>
-                <main id="main-content" className="flex-1">
+                <main id="main-content" className="flex-1 flex flex-col">
                   <AppShell>{children}</AppShell>
                 </main>
                 <BottomNav />
