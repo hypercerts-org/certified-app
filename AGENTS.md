@@ -121,6 +121,8 @@ npx tsc --noEmit         # type check only
 
 When the user asks for a dev server, run `npm run dev` from the repo root. When verifying changes before reporting done, run `npm run build` — it is the only automated quality signal in the repo.
 
+**Don't visually verify by default.** The automated gates (`npx tsc --noEmit`, `npm run lint`, `npm run build`) are the default signal. Do NOT spin up a browser, take screenshots, or drive Chrome DevTools to visually confirm a change unless the user explicitly asks you to verify the results. Make the code change, run the automated gates, and report plainly what they show plus anything left unverified — let the user do the visual check unless they ask you to.
+
 ## 4. Environment Variables
 
 Source: `.env.local.example` and `src/lib/utils/config.ts`.
