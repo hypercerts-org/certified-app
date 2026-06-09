@@ -8,6 +8,7 @@ import Avatar from "@/components/ui/avatar"
 import Badge, { type BadgeTone } from "@/components/ui/badge"
 import Banner from "@/components/ui/banner"
 import Button from "@/components/ui/button"
+import Tooltip from "@/components/ui/tooltip"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import LoadMoreSentinel from "@/components/ui/load-more-sentinel"
@@ -340,17 +341,18 @@ function QualityFilter({
 
   return (
     <div className="home-feed__filter" ref={wrapRef}>
-      <button
-        type="button"
-        className={`home-feed__filter-btn${filtered ? " home-feed__filter-btn--active" : ""}`}
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="true"
-        aria-expanded={open}
-        aria-label="Filter feed by activity quality"
-        title="Filter by activity quality"
-      >
-        <FilterIcon size={14} strokeWidth={1.75} aria-hidden />
-      </button>
+      <Tooltip label="Filter by activity quality">
+        <button
+          type="button"
+          className={`home-feed__filter-btn${filtered ? " home-feed__filter-btn--active" : ""}`}
+          onClick={() => setOpen((v) => !v)}
+          aria-haspopup="true"
+          aria-expanded={open}
+          aria-label="Filter feed by activity quality"
+        >
+          <FilterIcon size={14} strokeWidth={1.75} aria-hidden />
+        </button>
+      </Tooltip>
       {open ? (
         <div className="home-feed__filter-pop" role="dialog" aria-label="Activity quality filters">
           <p className="home-feed__filter-title">Activities quality</p>
@@ -436,16 +438,18 @@ function EvaluatorFilter({
 
   return (
     <div className="home-feed__filter" ref={wrapRef}>
-      <button
-        type="button"
-        className={`home-feed__filter-btn${partial ? " home-feed__filter-btn--active" : ""}`}
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="true"
-        aria-expanded={open}
-        aria-label="Trusted-evaluator settings"
-      >
-        <UserCheck size={14} strokeWidth={1.75} aria-hidden />
-      </button>
+      <Tooltip label="Trusted-evaluator settings">
+        <button
+          type="button"
+          className={`home-feed__filter-btn${partial ? " home-feed__filter-btn--active" : ""}`}
+          onClick={() => setOpen((v) => !v)}
+          aria-haspopup="true"
+          aria-expanded={open}
+          aria-label="Trusted-evaluator settings"
+        >
+          <UserCheck size={14} strokeWidth={1.75} aria-hidden />
+        </button>
+      </Tooltip>
       {open ? (
         <div className="home-feed__filter-pop home-feed__filter-pop--evaluators" role="dialog" aria-label="Trusted evaluators">
           <p className="home-feed__filter-help">
