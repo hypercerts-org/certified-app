@@ -289,6 +289,16 @@
   display: none;
 }
 
+/* Those headers are `flex; justify-content: space-between` so the title
+   sits left and the Edit button right. With the duplicate title hidden
+   above, `space-between` leaves the lone Edit button stranded on the
+   LEFT — right-align it so it reads as a top-right section action
+   instead. */
+.sx-panel__body .username-card__header,
+.sx-panel__body .password-section__header {
+  justify-content: flex-end;
+}
+
 /* ------------------------------------------------------------------------
    Mobile tweaks. Match the profile-page breakpoint (800px) — under
    that, .page-layout collapses to a single stack and the sidebar
