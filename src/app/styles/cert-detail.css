@@ -1414,8 +1414,13 @@
 .cert-detail__headline-project-title {
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* Allow the project title to wrap to two lines before truncating
+     (was a single-line ellipsis). */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 799px) {
