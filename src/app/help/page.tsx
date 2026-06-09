@@ -46,6 +46,15 @@ export default function HelpPage() {
               portable across compatible apps rather than locked into one platform.
             </p>
             <p className="mt-4">
+              Certified is the place to explore the <strong>whole network</strong> — the accounts,
+              activities, projects, and endorsements across it, no matter which app they were
+              created in. Other apps on the same protocol focus on more specific use cases:{" "}
+              <strong>Ma Earth</strong>, for example, is built around funding regenerative land
+              projects. We&apos;d love to see many more of these focused apps — for funding and for
+              recognizing impactful work — each serving its own community while building on the same
+              shared, open data.
+            </p>
+            <p className="mt-4">
               This page walks through the core concepts and the main surfaces of the app. If you
               still have questions or spot something that&apos;s off, fill out the{" "}
               <HelpFeedbackLink />.
