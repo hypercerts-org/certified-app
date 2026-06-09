@@ -1357,13 +1357,16 @@
   min-width: 0;
 }
 
-/* The project column is the last cell in the byline. Let it grow into
-   the remaining row width (flex-basis 0 → it never overflows, so it
-   never triggers a wrap) so a long project title wraps to two lines
-   within the cell instead of sizing the cell to the full single-line
-   title and jumping to the next row. */
+/* The project column is the last cell in the byline. It grows into the
+   remaining row width and wraps a long title to two lines — but only
+   while it has at least `min-width` to work with. Once there's less
+   than that on the current row it wraps to the next row (where it gets
+   the full width) instead of cramming the title into a sliver. The
+   `min(100%, …)` keeps it from forcing horizontal overflow on very
+   narrow viewports. */
 .cert-detail__headline-col:has(.cert-detail__headline-project-value) {
   flex: 1 1 0;
+  min-width: min(100%, 14rem);
 }
 
 .cert-detail__headline-project-link {
