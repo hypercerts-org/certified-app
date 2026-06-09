@@ -227,10 +227,6 @@ export default function ProfileHeader({
             </Link>
           </p>
         </div>
-
-        {profile?.description ? (
-          <p className="profile-hero__bio">{profile.description}</p>
-        ) : null}
       </div>
     </header>
   )

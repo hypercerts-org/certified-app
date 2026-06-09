@@ -271,10 +271,25 @@
   background: var(--bg-sunken);
 }
 
-/* Mobile: chrome filter buttons meet the 44px tap target (the chrome row
-   already wraps, so taller buttons just reflow), and the search field may
-   shrink below its 200px desktop minimum on very narrow phones. */
+/* Mobile-first chrome: search takes a full-width row of its own (the
+   primary action on a phone), and the type dropdown + view/sort/filter
+   controls sit together on a comfortable second row. Every control meets
+   the 44px tap target. */
 @media (max-width: 799px) {
+  .explore__chrome {
+    gap: 10px;
+  }
+  /* Search first, full width. */
+  .explore__search-field {
+    order: -1;
+    flex: 1 0 100%;
+    min-width: 0;
+  }
+  /* Second row: dropdown on the left, action cluster pushed to the right. */
+  .explore__chrome-actions {
+    margin-left: auto;
+    gap: 8px;
+  }
   .explore__chrome-btn {
     min-height: 44px;
     padding-top: 10px;
@@ -284,8 +299,9 @@
     width: 44px;
     height: 44px;
   }
-  .explore__search-field {
-    min-width: 0;
+  /* The type dropdown trigger matches the 44px control height too. */
+  .explore__sub-dropdown-trigger {
+    min-height: 44px;
   }
 }
 

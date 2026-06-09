@@ -4,16 +4,13 @@ import { useEffect } from "react";
 import { profileUrl } from "@/lib/urls"
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Newspaper, Search, PlusCircle, Building2, Award, Bell, MessageSquare, User, Settings, LayoutGrid } from "lucide-react";
+import { Home, Search, MessageSquare, User, Settings, LayoutGrid, HelpCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
 import { useOrg } from "@/lib/groups/org-context";
-import { isRouteVisibleToActor } from "@/lib/groups/personal-only";
 import { useOrgProfile } from "@/hooks/use-org-profile";
-import { usePendingAwardsCount } from "@/hooks/use-pending-awards-count";
 import { useFeedback } from "@/lib/feedback-context";
-import { useNotifications } from "@/lib/notifications-context";
 import Avatar from "@/components/ui/avatar";
 import ThemeToggle from "@/components/ui/theme-toggle";
 import Drawer from "@/components/ui/drawer";
@@ -32,17 +29,6 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   const { activeOrg } = useOrg();
   const { orgAvatarUrl } = useOrgProfile();
   const { openFeedback } = useFeedback();
-  const { count: unreadCount, more: unreadMore, ready: notificationsReady } = useNotifications();
-  const pendingAwardsCount = usePendingAwardsCount();
-  const pendingAwardsBadge =
-    pendingAwardsCount == null || pendingAwardsCount <= 0
-      ? null
-      : pendingAwardsCount >= 99
-        ? "99+"
-        : String(pendingAwardsCount);
-  const unreadBadge = notificationsReady && unreadCount > 0
-    ? unreadMore || unreadCount >= 99 ? "99+" : String(unreadCount)
-    : null;
 
   // Body-scroll lock, focus trap, Esc-to-close, backdrop-click, the
   // portal shell + slide animation, and `inert` on the off-canvas
@@ -83,31 +69,20 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
     ? profileUrl(displayHandle)
     : "/profile";
 
-  // Personal-only visibility (Create, Groups, Endorsements) is decided
-  // by lib/groups/personal-only.ts — same source of truth used by the
-  // desktop left rail and bottom nav.
-  const isActingAsOrg = !!activeOrg;
-  const showCreate = isRouteVisibleToActor("create", isActingAsOrg);
-  const showGroups = isRouteVisibleToActor("groups", isActingAsOrg);
-  const showEndorsements = isRouteVisibleToActor("endorsements", isActingAsOrg);
   const navLinks = [
-    { href: profileHref, label: "Profile", icon: User },
-    { href: "/home", label: "Home", icon: Newspaper },
+    { href: "/home", label: "Home", icon: Home },
     { href: "/explore", label: "Explore", icon: Search },
-    ...(showCreate ? [{ href: "/create", label: "Create", icon: PlusCircle }] : []),
-    ...(showGroups ? [{ href: "/groups", label: "Groups", icon: Building2 }] : []),
-    ...(showEndorsements ? [{ href: "/endorsements", label: "Endorsements", icon: Award }] : []),
-    { href: "/notifications", label: "Notifications", icon: Bell },
     { href: "/apps", label: "Apps", icon: LayoutGrid },
-    { key: "feedback", label: "Feedback", icon: MessageSquare, onClick: handleFeedbackClick },
+    { href: profileHref, label: "Profile", icon: User },
     { href: "/settings", label: "Settings", icon: Settings },
+    { key: "feedback", label: "Feedback", icon: MessageSquare, onClick: handleFeedbackClick },
+    { href: "/help", label: "Help", icon: HelpCircle },
   ];
 
   const legalLinks = [
     { href: "/about", label: "About" },
     { href: "/terms", label: "Terms" },
     { href: "/privacy", label: "Privacy" },
-    { href: "/dsa", label: "DSA" },
     { href: "/imprint", label: "Imprint" },
   ];
 
@@ -159,31 +134,15 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
             const isActive = link.href === "/"
               ? pathname === "/"
               : pathname.startsWith(link.href!);
-            const isNotifications = link.href === "/notifications";
-            const isEndorsements = link.href === "/endorsements";
-            const showBadge = isNotifications
-              ? unreadBadge
-              : isEndorsements
-                ? pendingAwardsBadge
-                : null;
-            const ariaLabel = showBadge
-              ? isNotifications
-                ? `${link.label}, ${showBadge} unread`
-                : `${link.label}, ${showBadge} pending`
-              : undefined;
             return (
               <Link
                 key={link.href}
                 href={link.href!}
                 className={`mobile-sidebar__link ${isActive ? "mobile-sidebar__link--active" : ""}`}
                 onClick={onClose}
-                aria-label={ariaLabel}
               >
                 <link.icon size={20} strokeWidth={isActive ? 2 : 1.5} />
                 {link.label}
-                {showBadge ? (
-                  <span className="mobile-sidebar__badge" aria-hidden="true">{showBadge}</span>
-                ) : null}
               </Link>
             );
           })}

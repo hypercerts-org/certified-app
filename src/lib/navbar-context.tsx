@@ -165,12 +165,13 @@ export function usePageTitleBreadcrumb(b: PageTitleBreadcrumb | null) {
  *     ...
  *   }
  */
-export function useProfileNavbar() {
+export function useProfileNavbar(enabled: boolean = true) {
   const { setProfileOverlay } = useContext(NavbarContext);
   useEffect(() => {
+    if (!enabled) return;
     setProfileOverlay(true);
     return () => setProfileOverlay(false);
-  }, [setProfileOverlay]);
+  }, [setProfileOverlay, enabled]);
 }
 
 /**

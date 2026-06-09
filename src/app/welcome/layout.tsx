@@ -1,6 +1,7 @@
 "use client";
 
 import { useProfileNavbar } from "@/lib/navbar-context";
+import { useAuth } from "@/lib/auth/auth-context";
 import SiteFooter from "@/components/layout/site-footer";
 
 /**
@@ -22,7 +23,12 @@ export default function WelcomeLayout({
 }: {
   children: React.ReactNode;
 }) {
-  useProfileNavbar();
+  // Logged-out viewers get the transparent overlay navbar so the
+  // marketing hero reads edge-to-edge. Signed-in viewers instead get the
+  // normal mobile top bar (hamburger → left sidebar, brandmark, account
+  // switcher) so they can navigate out of the welcome page.
+  const { isAuthenticated } = useAuth();
+  useProfileNavbar(!isAuthenticated);
   return (
     <>
       {children}
