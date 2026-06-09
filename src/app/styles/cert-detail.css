@@ -1357,6 +1357,15 @@
   min-width: 0;
 }
 
+/* The project column is the last cell in the byline. Let it grow into
+   the remaining row width (flex-basis 0 → it never overflows, so it
+   never triggers a wrap) so a long project title wraps to two lines
+   within the cell instead of sizing the cell to the full single-line
+   title and jumping to the next row. */
+.cert-detail__headline-col:has(.cert-detail__headline-project-value) {
+  flex: 1 1 0;
+}
+
 .cert-detail__headline-project-link {
   /* Background-highlight on hover matches the Author cell —
      same `overlay-weak` fill, same rounded chip, same
@@ -1368,6 +1377,10 @@
   color: var(--fg-primary);
   text-decoration: none;
   min-width: 0;
+  /* Cap to the (flex-grown) column so a long title wraps within the
+     cell instead of overflowing it; short titles still hug their
+     content so the hover chip doesn't stretch. */
+  max-width: 100%;
   padding: 2px 4px;
   margin: -2px -4px;
   border-radius: var(--radius);
