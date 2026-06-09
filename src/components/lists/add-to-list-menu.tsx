@@ -55,7 +55,7 @@ export default function AddToListMenu({
   targetCid,
   targetType,
 }: AddToListMenuProps) {
-  const { did: viewerDid } = useAuth()
+  const { did: viewerDid, openSignIn } = useAuth()
   const [open, setOpen] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -80,7 +80,9 @@ export default function AddToListMenu({
     }
   }, [targetUri])
 
-  if (!viewerDid) return null
+  // Shown to logged-out viewers too: "Copy AT URI" works without auth,
+  // and "Add to list" funnels them to sign-in. Only the URI→type guard
+  // can hide the menu (defensive against a malformed strongRef).
   if (!itemUriMatchesType(targetUri, targetType)) return null
 
   return (
@@ -99,7 +101,10 @@ export default function AddToListMenu({
           <PopoverItem
             onClick={() => {
               setOpen(false)
-              setModalOpen(true)
+              // Logged-out viewers can't write to a PDS — send them to
+              // sign-in instead of opening an unusable modal.
+              if (viewerDid) setModalOpen(true)
+              else openSignIn()
             }}
           >
             <ListPlus size={13} strokeWidth={1.75} aria-hidden />
