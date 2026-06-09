@@ -19,9 +19,7 @@ import {
   HYPERLABEL_DISPLAY_LABELS,
   HYPERLABEL_DISPLAY_ORDER,
   HYPERLABEL_TIERS,
-  ORGLABEL_TIERS,
   type HyperlabelTier,
-  type OrglabelTier,
 } from "@/lib/atproto/labels"
 import CertIcon from "@/components/ui/cert-icon"
 import Input from "@/components/ui/input"
@@ -73,10 +71,10 @@ type UnlabeledSlug = typeof UNLABELED_SLUG
 const UNLABELED_LABEL = "Not labeled yet"
 
 /**
- * Orglabeler tier slugs used in the URL `?orgQuality=` param.
- * Map to the unicode-prefixed values the lexicon actually stores
- * (see `ORGLABEL_TIERS` in labels.ts) at filter-evaluation time so
- * the URL stays printable. */
+ * Orglabeler tier slugs used in the URL `?orgQuality=` param. These are
+ * also the exact kebab-case label values the indexer stores (per issue
+ * #145), so a slug is sent straight to the indexer as the org `labels` /
+ * `excludeLabels` value — no slug↔value mapping needed. */
 const ORG_TIER_SLUGS = ["high-quality", "standard", "likely-test"] as const
 type OrgTierSlug = (typeof ORG_TIER_SLUGS)[number]
 
@@ -86,27 +84,11 @@ const ORG_TIER_DISPLAY_LABEL: Record<OrgTierSlug, string> = {
   "likely-test": "Likely test",
 }
 
-/** Slug ↔ raw lexicon value (the glyph-prefixed strings the
- *  orglabeler emits). */
-const ORG_TIER_BY_SLUG: Record<OrgTierSlug, OrglabelTier> = {
-  "high-quality": "✦ High Quality",
-  standard: "● Standard",
-  "likely-test": "⚠ Likely Test",
-}
-
-/** Inverse of ORG_TIER_BY_SLUG. Used when checking which slug a raw
- *  label value belongs to. */
-const ORG_TIER_BY_VALUE = {
-  "✦ High Quality": "high-quality" as const,
-  "● Standard": "standard" as const,
-  "⚠ Likely Test": "likely-test" as const,
-} satisfies Record<OrglabelTier, OrgTierSlug>
-
 /** Default org-quality set when `?orgQuality=` is missing —
  *  everything except the labels listed in DEFAULT_HIDDEN_ORG_LABELS
- *  (today only "⚠ Likely Test"). Matches the home feed's policy. */
+ *  (today only "likely-test"). Matches the home feed's policy. */
 const DEFAULT_ORG_TIER_SLUGS: readonly OrgTierSlug[] = ORG_TIER_SLUGS.filter(
-  (slug) => !DEFAULT_HIDDEN_ORG_LABELS.includes(ORG_TIER_BY_SLUG[slug]),
+  (slug) => !DEFAULT_HIDDEN_ORG_LABELS.includes(slug),
 )
 
 function parseSort(v: string | null): SortOrder {
@@ -355,22 +337,18 @@ function ExploreMain({
     )
   }, [orgQualityParam])
   const orgIncludeUnlabeled = orgQualityIncluded.has(UNLABELED_SLUG)
-  const excludeOrgLabels = useMemo<readonly OrglabelTier[] | undefined>(
+  const excludeOrgLabels = useMemo<readonly OrgTierSlug[] | undefined>(
     () =>
       orgIncludeUnlabeled
-        ? ORG_TIER_SLUGS.filter((slug) => !orgQualityIncluded.has(slug)).map(
-            (slug) => ORG_TIER_BY_SLUG[slug],
-          )
+        ? ORG_TIER_SLUGS.filter((slug) => !orgQualityIncluded.has(slug))
         : undefined,
     [orgQualityIncluded, orgIncludeUnlabeled],
   )
-  const includeOrgLabels = useMemo<readonly OrglabelTier[] | undefined>(
+  const includeOrgLabels = useMemo<readonly OrgTierSlug[] | undefined>(
     () =>
       orgIncludeUnlabeled
         ? undefined
-        : ORG_TIER_SLUGS.filter((slug) => orgQualityIncluded.has(slug)).map(
-            (slug) => ORG_TIER_BY_SLUG[slug],
-          ),
+        : ORG_TIER_SLUGS.filter((slug) => orgQualityIncluded.has(slug)),
     [orgQualityIncluded, orgIncludeUnlabeled],
   )
   const orgQualityIsDefault = useMemo(() => {
