@@ -89,7 +89,8 @@ export default function ContextUpdates({
   canEdit = false,
   viewerDid = null,
 }: ContextUpdatesProps) {
-  const { updates, isLoading, error, refetch } = useContextUpdates(subjectUri)
+  const { updates, isLoading, error, refetch, removeUpdate } =
+    useContextUpdates(subjectUri)
   const visibleUpdates =
     typeof maxItems === "number" ? updates.slice(0, maxItems) : updates
 
@@ -206,6 +207,7 @@ export default function ContextUpdates({
             base={manage ? base : null}
             viewerDid={viewerDid}
             onChanged={refetch}
+            onDeleted={removeUpdate}
           />
         ))}
       </ul>
@@ -226,6 +228,10 @@ interface UpdateCardProps {
   viewerDid?: string | null
   /** Called after a successful delete so the list re-fetches. */
   onChanged?: () => void
+  /** Called with the deleted record's URI so the parent can drop it from
+   *  the list immediately (the indexer lags, so a plain refetch leaves the
+   *  card on screen and reads as a failed delete). */
+  onDeleted?: (uri: string) => void
 }
 
 function UpdateCard({
@@ -234,6 +240,7 @@ function UpdateCard({
   base = null,
   viewerDid = null,
   onChanged,
+  onDeleted,
 }: UpdateCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [isTruncated, setIsTruncated] = useState(false)
@@ -259,6 +266,10 @@ function UpdateCard({
     try {
       await deleteContextUpdate(viewerDid, authorDid, updateRkey)
       setConfirmingDelete(false)
+      // Drop the card immediately so the delete reads as instant, then
+      // reconcile with the backend (the optimistic removal is guarded
+      // against the indexer's lag, so the refetch can't bring it back).
+      onDeleted?.(uri)
       onChanged?.()
     } catch (err) {
       setDeleteError(

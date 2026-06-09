@@ -133,7 +133,7 @@ export default function ProfileHeader({
                 ) : null}
                 {settingsHref ? (
                   <Link href={settingsHref} aria-label="Group settings">
-                    <Button variant="secondary" size="sm">
+                    <Button variant="secondary" size="sm" tooltip="Group settings">
                       <SettingsIcon size={14} />
                     </Button>
                   </Link>

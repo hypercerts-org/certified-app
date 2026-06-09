@@ -18,6 +18,7 @@ import {
   Link as LinkIcon,
   Youtube as YoutubeIcon,
 } from "lucide-react"
+import Tooltip from "@/components/ui/tooltip"
 import LinkDialog, { type LinkDialogResult } from "./link-dialog"
 import EmbedDialog, { type EmbedDialogResult } from "./embed-dialog"
 import {
@@ -527,24 +528,24 @@ function Toolbar({
      *  the dialog's input and visibly flicker the caret. */
     keepFocusOff = false,
   ) => (
-    <button
-      key={key}
-      type="button"
-      className={
-        "leaflet-editor__btn" +
-        (active ? " leaflet-editor__btn--active" : "")
-      }
-      aria-pressed={active}
-      aria-label={label}
-      title={label}
-      onClick={() => {
-        onClick()
-        if (!keepFocusOff) editor.commands.focus()
-      }}
-      disabled={disabled}
-    >
-      <Icon size={15} strokeWidth={1.75} aria-hidden />
-    </button>
+    <Tooltip key={key} label={label}>
+      <button
+        type="button"
+        className={
+          "leaflet-editor__btn" +
+          (active ? " leaflet-editor__btn--active" : "")
+        }
+        aria-pressed={active}
+        aria-label={label}
+        onClick={() => {
+          onClick()
+          if (!keepFocusOff) editor.commands.focus()
+        }}
+        disabled={disabled}
+      >
+        <Icon size={15} strokeWidth={1.75} aria-hidden />
+      </button>
+    </Tooltip>
   )
 
   return (

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { RadioGroup, Radio } from "./radio";
+import Tooltip from "./tooltip";
 
 /**
  * SegmentedControl + ToggleGroup — two related "segmented" primitives that
@@ -69,6 +70,10 @@ export interface SegmentOption {
   disabled?: boolean;
   /** Accessible name for icon-only segments (no visible text). */
   ariaLabel?: string;
+  /** Optional hover/focus tooltip text for this segment. When set, the
+   *  rendered segment is wrapped in <Tooltip> so the label appears on
+   *  hover and keyboard focus (in addition to its `ariaLabel`). */
+  tooltip?: string;
 }
 
 type Size = "sm" | "md";
@@ -201,7 +206,7 @@ const SegmentedControl = React.forwardRef<HTMLDivElement, SegmentedControlProps>
           const stateClass = selected
             ? "bg-[var(--bg-elevated)] text-[var(--fg-primary)]"
             : "bg-transparent text-[var(--fg-muted)] hover:text-[var(--fg-primary)]";
-          return (
+          const radio = (
             <Radio
               key={opt.value}
               value={opt.value}
@@ -224,6 +229,16 @@ const SegmentedControl = React.forwardRef<HTMLDivElement, SegmentedControlProps>
                 <span className="leading-none">{opt.label}</span>
               ) : null}
             </Radio>
+          );
+          // Wrap in a tooltip when the option carries one. The Tooltip
+          // span is itself the keyed child so React's reconciler still
+          // sees one element per option.
+          return opt.tooltip ? (
+            <Tooltip key={opt.value} label={opt.tooltip}>
+              {radio}
+            </Tooltip>
+          ) : (
+            radio
           );
         })}
       </RadioGroup>
@@ -310,7 +325,7 @@ export const ToggleGroup = React.forwardRef<HTMLDivElement, ToggleGroupProps>(
           const stateClass = pressed
             ? TONE_ACTIVE[optTone]
             : "bg-transparent text-[var(--fg-muted)] hover:text-[var(--fg-primary)]";
-          return (
+          const button = (
             <button
               key={opt.value}
               type="button"
@@ -335,6 +350,13 @@ export const ToggleGroup = React.forwardRef<HTMLDivElement, ToggleGroupProps>(
                 <span className="leading-none">{opt.label}</span>
               ) : null}
             </button>
+          );
+          return opt.tooltip ? (
+            <Tooltip key={opt.value} label={opt.tooltip}>
+              {button}
+            </Tooltip>
+          ) : (
+            button
           );
         })}
       </div>

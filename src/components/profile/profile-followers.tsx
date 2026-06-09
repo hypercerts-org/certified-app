@@ -24,6 +24,7 @@ import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Badge from "@/components/ui/badge"
 import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
+import Tooltip from "@/components/ui/tooltip"
 import type { FollowRecord } from "@/lib/atproto/follow"
 
 interface ProfileFollowersProps {
@@ -208,18 +209,19 @@ export default function ProfileFollowers({ did }: ProfileFollowersProps) {
           </label>
 
           <div className="profile-endorsements-v2__sort-wrap">
-            <button
-              ref={sortBtnRef}
-              type="button"
-              className="profile-endorsements-v2__sort-btn"
-              onClick={() => setSortOpen((v) => !v)}
-              aria-haspopup="menu"
-              aria-expanded={sortOpen}
-              aria-label="Sort people"
-              title="Sort"
-            >
-              <ArrowUpDown size={16} strokeWidth={1.75} aria-hidden />
-            </button>
+            <Tooltip label="Sort">
+              <button
+                ref={sortBtnRef}
+                type="button"
+                className="profile-endorsements-v2__sort-btn"
+                onClick={() => setSortOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={sortOpen}
+                aria-label="Sort people"
+              >
+                <ArrowUpDown size={16} strokeWidth={1.75} aria-hidden />
+              </button>
+            </Tooltip>
             {sortOpen ? (
               <div
                 ref={sortMenuRef}
@@ -520,21 +522,22 @@ function UnfollowButton({
 
   return (
     <>
-      <button
-        type="button"
-        className="profile-endorsements-v2__given-revoke"
-        onClick={(e) => {
-          // The card's outer Link otherwise navigates to the
-          // subject's profile.
-          e.preventDefault()
-          e.stopPropagation()
-          setConfirmOpen(true)
-        }}
-        aria-label={`Unfollow ${subjectDisplay}`}
-        title="Unfollow"
-      >
-        <X size={14} strokeWidth={2} aria-hidden />
-      </button>
+      <Tooltip label="Unfollow">
+        <button
+          type="button"
+          className="profile-endorsements-v2__given-revoke"
+          onClick={(e) => {
+            // The card's outer Link otherwise navigates to the
+            // subject's profile.
+            e.preventDefault()
+            e.stopPropagation()
+            setConfirmOpen(true)
+          }}
+          aria-label={`Unfollow ${subjectDisplay}`}
+        >
+          <X size={14} strokeWidth={2} aria-hidden />
+        </button>
+      </Tooltip>
       {confirmOpen ? (
         <ConfirmDialog
           title={`Unfollow ${subjectDisplay}?`}

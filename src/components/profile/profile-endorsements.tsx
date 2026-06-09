@@ -41,6 +41,7 @@ import {
   PopoverItem,
 } from "@/components/ui/popover"
 import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
+import Tooltip from "@/components/ui/tooltip"
 
 interface ProfileEndorsementsProps {
   /** DID of the profile being viewed. */
@@ -245,15 +246,16 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
 
         <div className="profile-endorsements-v2__controls">
           {canManage ? (
-            <button
-              type="button"
-              className="profile-endorsements-v2__endorse-add"
-              onClick={() => setIsEndorseModalOpen(true)}
-              aria-label="Endorse people"
-              title="Endorse people"
-            >
-              <Plus size={16} strokeWidth={1.75} aria-hidden />
-            </button>
+            <Tooltip label="Endorse people">
+              <button
+                type="button"
+                className="profile-endorsements-v2__endorse-add"
+                onClick={() => setIsEndorseModalOpen(true)}
+                aria-label="Endorse people"
+              >
+                <Plus size={16} strokeWidth={1.75} aria-hidden />
+              </button>
+            </Tooltip>
           ) : null}
 
           <label className="profile-endorsements-v2__search">
@@ -760,21 +762,22 @@ function RevokeGivenButton({
 
   return (
     <>
-      <button
-        type="button"
-        className="profile-endorsements-v2__given-revoke"
-        onClick={(e) => {
-          // PersonCard's outer Link otherwise catches the click and
-          // navigates to the subject's profile.
-          e.preventDefault()
-          e.stopPropagation()
-          setConfirmOpen(true)
-        }}
-        aria-label={`Revoke endorsement of ${subjectDisplay}`}
-        title="Revoke endorsement"
-      >
-        <X size={14} strokeWidth={2} aria-hidden />
-      </button>
+      <Tooltip label="Revoke endorsement">
+        <button
+          type="button"
+          className="profile-endorsements-v2__given-revoke"
+          onClick={(e) => {
+            // PersonCard's outer Link otherwise catches the click and
+            // navigates to the subject's profile.
+            e.preventDefault()
+            e.stopPropagation()
+            setConfirmOpen(true)
+          }}
+          aria-label={`Revoke endorsement of ${subjectDisplay}`}
+        >
+          <X size={14} strokeWidth={2} aria-hidden />
+        </button>
+      </Tooltip>
       {confirmOpen ? (
         <ConfirmDialog
           title={`Revoke endorsement of ${subjectDisplay}?`}

@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { useSession } from "@/hooks/use-session"
 import { useOrg } from "@/lib/groups/org-context"
 import Drawer from "@/components/ui/drawer"
+import Tooltip from "@/components/ui/tooltip"
 
 /**
  * GitHub-style site-nav drawer.
@@ -88,14 +89,16 @@ export default function SiteDrawer({
               className="site-drawer__wordmark"
             />
           </Link>
-          <button
-            type="button"
-            className="site-drawer__close"
-            onClick={onClose}
-            aria-label="Close navigation"
-          >
-            <X size={18} strokeWidth={1.75} aria-hidden />
-          </button>
+          <Tooltip label="Close navigation">
+            <button
+              type="button"
+              className="site-drawer__close"
+              onClick={onClose}
+              aria-label="Close navigation"
+            >
+              <X size={18} strokeWidth={1.75} aria-hidden />
+            </button>
+          </Tooltip>
         </header>
 
         <nav className="site-drawer__nav" aria-label="Primary">

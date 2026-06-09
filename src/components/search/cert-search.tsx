@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Search as SearchIcon, X } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
 import Combobox from "@/components/ui/combobox"
+import Tooltip from "@/components/ui/tooltip"
 import {
   fetchIndexerActivities,
   fetchUserIndexerActivities,
@@ -226,14 +227,16 @@ export default function CertSearch({
       }}
       trailingButton={
         query ? (
-          <button
-            type="button"
-            className="cert-search__clear"
-            onClick={handleClear}
-            aria-label="Clear search"
-          >
-            <X size={14} aria-hidden="true" />
-          </button>
+          <Tooltip label="Clear search">
+            <button
+              type="button"
+              className="cert-search__clear"
+              onClick={handleClear}
+              aria-label="Clear search"
+            >
+              <X size={14} aria-hidden="true" />
+            </button>
+          </Tooltip>
         ) : undefined
       }
       renderEmpty={() => {

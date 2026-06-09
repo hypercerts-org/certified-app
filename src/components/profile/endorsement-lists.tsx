@@ -35,6 +35,7 @@ import EmptyState from "@/components/ui/empty-state"
 import EndorsePeopleModal from "@/components/profile/endorse-people-modal"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Skeleton from "@/components/ui/skeleton"
+import Tooltip from "@/components/ui/tooltip"
 import {
   useEndorsementLists,
   type EndorsementList,
@@ -471,14 +472,16 @@ function ListDetail({
             navigation hand-off is obvious; the Edit action (when
             the viewer can edit) lives on the right of the row. */}
         <div className="endorsement-lists__detail-lede">
-          <button
-            type="button"
-            className="endorsement-lists__back"
-            onClick={onBack}
-            aria-label="Back to all lists"
-          >
-            <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
-          </button>
+          <Tooltip label="Back to all lists">
+            <button
+              type="button"
+              className="endorsement-lists__back"
+              onClick={onBack}
+              aria-label="Back to all lists"
+            >
+              <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
+            </button>
+          </Tooltip>
           <h2 className="endorsement-lists__title">
             {list.title}
             <span className="endorsement-lists__title-count">
@@ -488,24 +491,26 @@ function ListDetail({
         </div>
         {canEdit ? (
           <div className="endorsement-lists__actions">
-            <button
-              type="button"
-              className="endorsement-lists__add-btn"
-              onClick={onAdd}
-              aria-label="Add people to list"
-              title="Add people"
-            >
-              <Plus size={16} strokeWidth={1.75} aria-hidden />
-            </button>
-            <button
-              type="button"
-              className="endorsement-lists__add-btn"
-              onClick={onBulkPaste}
-              aria-label="Bulk add people by handle or DID"
-              title="Bulk paste"
-            >
-              <ClipboardPaste size={16} strokeWidth={1.75} aria-hidden />
-            </button>
+            <Tooltip label="Add people">
+              <button
+                type="button"
+                className="endorsement-lists__add-btn"
+                onClick={onAdd}
+                aria-label="Add people to list"
+              >
+                <Plus size={16} strokeWidth={1.75} aria-hidden />
+              </button>
+            </Tooltip>
+            <Tooltip label="Bulk paste">
+              <button
+                type="button"
+                className="endorsement-lists__add-btn"
+                onClick={onBulkPaste}
+                aria-label="Bulk add people by handle or DID"
+              >
+                <ClipboardPaste size={16} strokeWidth={1.75} aria-hidden />
+              </button>
+            </Tooltip>
             <Button variant="secondary" size="sm" onClick={onEdit}>
               <Pencil size={14} strokeWidth={1.75} aria-hidden />
               Edit
@@ -821,21 +826,22 @@ function RevokeListItemButton({
 
   return (
     <>
-      <button
-        type="button"
-        className="endorsement-lists__item-remove"
-        onClick={(e) => {
-          // Outer list row wraps a <Link>; without stopping
-          // propagation the click would navigate to the subject.
-          e.preventDefault()
-          e.stopPropagation()
-          setConfirmOpen(true)
-        }}
-        aria-label={`Remove ${subjectDisplay} from ${listTitle}`}
-        title="Remove from list"
-      >
-        <X size={14} strokeWidth={2} aria-hidden />
-      </button>
+      <Tooltip label="Remove from list">
+        <button
+          type="button"
+          className="endorsement-lists__item-remove"
+          onClick={(e) => {
+            // Outer list row wraps a <Link>; without stopping
+            // propagation the click would navigate to the subject.
+            e.preventDefault()
+            e.stopPropagation()
+            setConfirmOpen(true)
+          }}
+          aria-label={`Remove ${subjectDisplay} from ${listTitle}`}
+        >
+          <X size={14} strokeWidth={2} aria-hidden />
+        </button>
+      </Tooltip>
       {confirmOpen && !supportsRevoke ? (
         <ConfirmDialog
           title={`Remove ${subjectDisplay} from "${listTitle}"?`}

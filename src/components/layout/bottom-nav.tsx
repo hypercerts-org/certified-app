@@ -7,6 +7,7 @@ import { useNotifications } from "@/lib/notifications-context";
 import { useOrg } from "@/lib/groups/org-context";
 import { isRouteVisibleToActor } from "@/lib/groups/personal-only";
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints";
+import Tooltip from "@/components/ui/tooltip";
 
 function formatBadge(count: number, more: boolean): string | null {
   if (count <= 0) return null
@@ -63,20 +64,21 @@ export default function BottomNav() {
             ? `${label}, ${itemBadge} unread`
             : label
           return (
-            <button
-              key={key}
-              className={`bottom-nav__item ${active ? "bottom-nav__item--active" : ""}`}
-              onClick={onClick}
-              aria-label={ariaLabel}
-              aria-current={active ? "page" : undefined}
-            >
-              <span className="bottom-nav__icon-wrap">
-                <Icon size={24} strokeWidth={active ? 2.5 : 1.5} />
-                {itemBadge && (
-                  <span className="bottom-nav__badge" aria-hidden="true">{itemBadge}</span>
-                )}
-              </span>
-            </button>
+            <Tooltip key={key} label={label} className="flex-1 h-full">
+              <button
+                className={`bottom-nav__item ${active ? "bottom-nav__item--active" : ""}`}
+                onClick={onClick}
+                aria-label={ariaLabel}
+                aria-current={active ? "page" : undefined}
+              >
+                <span className="bottom-nav__icon-wrap">
+                  <Icon size={24} strokeWidth={active ? 2.5 : 1.5} />
+                  {itemBadge && (
+                    <span className="bottom-nav__badge" aria-hidden="true">{itemBadge}</span>
+                  )}
+                </span>
+              </button>
+            </Tooltip>
           )
         })}
       </div>

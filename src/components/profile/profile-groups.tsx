@@ -9,6 +9,7 @@ import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import Tooltip from "@/components/ui/tooltip"
 import { useCgsMemberships, type UserGroup } from "@/hooks/use-cgs-memberships"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
@@ -117,18 +118,19 @@ export default function ProfileGroups({ did }: ProfileGroupsProps) {
           </label>
 
           <div className="profile-groups__sort-wrap">
-            <button
-              ref={sortBtnRef}
-              type="button"
-              className="profile-groups__sort-btn"
-              onClick={() => setSortOpen((v) => !v)}
-              aria-haspopup="menu"
-              aria-expanded={sortOpen}
-              aria-label="Sort groups"
-              title="Sort"
-            >
-              <ArrowUpDown size={16} strokeWidth={1.75} aria-hidden />
-            </button>
+            <Tooltip label="Sort">
+              <button
+                ref={sortBtnRef}
+                type="button"
+                className="profile-groups__sort-btn"
+                onClick={() => setSortOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={sortOpen}
+                aria-label="Sort groups"
+              >
+                <ArrowUpDown size={16} strokeWidth={1.75} aria-hidden />
+              </button>
+            </Tooltip>
             {sortOpen ? (
               <div
                 ref={sortMenuRef}

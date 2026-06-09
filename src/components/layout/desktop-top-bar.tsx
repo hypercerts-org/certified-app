@@ -37,6 +37,7 @@ import Brandmark from "@/components/ui/brandmark";
 import GlobalSearch from "@/components/search/global-search";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Tabs, TabList, Tab } from "@/components/ui/tabs";
+import Tooltip from "@/components/ui/tooltip";
 
 const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
 
@@ -366,15 +367,17 @@ export default function DesktopTopBar() {
       <div className="desktop-top-bar__row desktop-top-bar__row--chrome">
         <div className="desktop-top-bar__left">
           {SHOW_SITE_NAV_HAMBURGER ? (
-            <button
-              type="button"
-              className="desktop-top-bar__menu"
-              aria-label="Open site navigation"
-              aria-expanded={drawerOpen}
-              onClick={() => setDrawerOpen(true)}
-            >
-              <Menu size={18} strokeWidth={1.75} aria-hidden />
-            </button>
+            <Tooltip label="Open site navigation">
+              <button
+                type="button"
+                className="desktop-top-bar__menu"
+                aria-label="Open site navigation"
+                aria-expanded={drawerOpen}
+                onClick={() => setDrawerOpen(true)}
+              >
+                <Menu size={18} strokeWidth={1.75} aria-hidden />
+              </button>
+            </Tooltip>
           ) : null}
           <Link
             href={brandHref}
@@ -428,7 +431,6 @@ export default function DesktopTopBar() {
                 aria-haspopup="menu"
                 aria-expanded={createOpen}
                 aria-label="Create new"
-                title="Create new"
               >
                 <Plus size={20} strokeWidth={1.75} aria-hidden />
               </Button>
@@ -556,19 +558,21 @@ export default function DesktopTopBar() {
               </Popover>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={openSignIn}
-              className="desktop-top-bar__signin-btn"
-              aria-label="Sign in"
-            >
-              <img
-                src="/brand/signin/certified_signin_black.svg"
-                alt=""
-                aria-hidden
-                className="desktop-top-bar__signin-img"
-              />
-            </button>
+            <Tooltip label="Sign in">
+              <button
+                type="button"
+                onClick={openSignIn}
+                className="desktop-top-bar__signin-btn"
+                aria-label="Sign in"
+              >
+                <img
+                  src="/brand/signin/certified_signin_black.svg"
+                  alt=""
+                  aria-hidden
+                  className="desktop-top-bar__signin-img"
+                />
+              </button>
+            </Tooltip>
           )}
         </div>
       </div>

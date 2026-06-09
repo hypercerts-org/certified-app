@@ -6,6 +6,7 @@ import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
+import Tooltip from "@/components/ui/tooltip"
 import Map from "@/components/map/map-dynamic"
 import { authFetch } from "@/lib/auth/fetch"
 import {
@@ -419,18 +420,19 @@ export default function LocationPickerDialog({
                 autoComplete="off"
               />
               {fieldMode === "edit" ? (
-                <button
-                  type="button"
-                  className="create-cert__loc-search-again"
-                  aria-label="Search for a different place"
-                  title="Search again"
-                  onMouseDown={(e) => {
-                    e.preventDefault()
-                    triggerSearchAgain()
-                  }}
-                >
-                  <Search size={14} strokeWidth={1.75} aria-hidden />
-                </button>
+                <Tooltip label="Search again">
+                  <button
+                    type="button"
+                    className="create-cert__loc-search-again"
+                    aria-label="Search for a different place"
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      triggerSearchAgain()
+                    }}
+                  >
+                    <Search size={14} strokeWidth={1.75} aria-hidden />
+                  </button>
+                </Tooltip>
               ) : null}
               {fieldMode === "search" &&
               dropdownOpen &&

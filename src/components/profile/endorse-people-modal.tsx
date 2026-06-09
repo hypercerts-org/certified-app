@@ -12,6 +12,7 @@ import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
+import Tooltip from "@/components/ui/tooltip"
 import { getInitials } from "@/lib/utils/initials"
 
 interface Actor {
@@ -483,15 +484,17 @@ function SelectedList({ selected, writing, onRemove, disabled }: SelectedListPro
               ) : state === "failed" ? (
                 <span className="endorse-people-modal__chip-failed">Failed</span>
               ) : (
-                <button
-                  type="button"
-                  className="endorse-people-modal__chip-remove"
-                  onClick={() => onRemove(actor.did)}
-                  disabled={disabled}
-                  aria-label={`Remove ${actor.handle}`}
-                >
-                  <X size={12} aria-hidden />
-                </button>
+                <Tooltip label="Remove">
+                  <button
+                    type="button"
+                    className="endorse-people-modal__chip-remove"
+                    onClick={() => onRemove(actor.did)}
+                    disabled={disabled}
+                    aria-label={`Remove ${actor.handle}`}
+                  >
+                    <X size={12} aria-hidden />
+                  </button>
+                </Tooltip>
               )}
             </li>
           )

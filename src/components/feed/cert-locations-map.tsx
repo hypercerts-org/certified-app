@@ -7,6 +7,7 @@ import Map, {
   type MapPolygon as MapPolygonT,
 } from "@/components/map/map-dynamic"
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
+import Tooltip from "@/components/ui/tooltip"
 import { authFetch } from "@/lib/auth/fetch"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import {
@@ -249,15 +250,16 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
               fine-grained polygon detail is readable. Positioned as
               an overlay (top-right of the map container) so it
               doesn't shift the map's own controls. */}
-          <button
-            type="button"
-            className="cert-detail__map-expand-btn"
-            onClick={() => setExpanded(true)}
-            aria-label="Open larger map"
-            title="Larger map"
-          >
-            <Maximize2 size={14} strokeWidth={1.75} aria-hidden />
-          </button>
+          <Tooltip label="Larger map">
+            <button
+              type="button"
+              className="cert-detail__map-expand-btn"
+              onClick={() => setExpanded(true)}
+              aria-label="Open larger map"
+            >
+              <Maximize2 size={14} strokeWidth={1.75} aria-hidden />
+            </button>
+          </Tooltip>
         </div>
       ) : (
         <div className="cert-detail__map cert-detail__map--empty">
@@ -330,14 +332,15 @@ function PlusCodeTag({ code }: { code: string }) {
     }
   }
   return (
-    <button
-      type="button"
-      className="cert-detail__map-locations-plus"
-      onClick={handleCopy}
-      aria-label={`Copy Plus Code ${code}`}
-      title={copied ? "Copied" : "Copy Plus Code"}
-    >
-      {copied ? "Copied" : code}
-    </button>
+    <Tooltip label={copied ? "Copied" : "Copy Plus Code"}>
+      <button
+        type="button"
+        className="cert-detail__map-locations-plus"
+        onClick={handleCopy}
+        aria-label={`Copy Plus Code ${code}`}
+      >
+        {copied ? "Copied" : code}
+      </button>
+    </Tooltip>
   )
 }

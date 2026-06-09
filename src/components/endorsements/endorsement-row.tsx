@@ -6,6 +6,7 @@ import { X } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Skeleton from "@/components/ui/skeleton"
+import Tooltip from "@/components/ui/tooltip"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { getInitials } from "@/lib/utils/initials"
 import { formatShortDate } from "@/lib/utils/format-date"
@@ -75,15 +76,17 @@ export default function EndorsementRow({
         {formatShortDate(createdAt)}
       </time>
       {onRevoke ? (
-        <button
-          type="button"
-          className="endorsement-row__revoke"
-          onClick={onRevoke}
-          disabled={isRevoking}
-          aria-label={`Revoke endorsement of ${displayName}`}
-        >
-          {isRevoking ? <LoadingSpinner size="sm" /> : <X size={16} />}
-        </button>
+        <Tooltip label="Revoke endorsement">
+          <button
+            type="button"
+            className="endorsement-row__revoke"
+            onClick={onRevoke}
+            disabled={isRevoking}
+            aria-label={`Revoke endorsement of ${displayName}`}
+          >
+            {isRevoking ? <LoadingSpinner size="sm" /> : <X size={16} />}
+          </button>
+        </Tooltip>
       ) : null}
     </li>
   )

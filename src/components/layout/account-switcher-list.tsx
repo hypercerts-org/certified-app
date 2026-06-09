@@ -4,6 +4,7 @@ import React from "react";
 import Avatar from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils/initials";
 import { ArrowLeftRight, LogOut } from "lucide-react";
+import Tooltip from "@/components/ui/tooltip";
 import type { Group } from "@/lib/groups/types";
 
 interface AccountSwitcherListProps {
@@ -62,18 +63,19 @@ export default function AccountSwitcherList({
             <p className="account-switcher__item-handle">@{handle}</p>
           </div>
         </button>
-        <button
-          role="menuitem"
-          className="account-switcher__signout"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSwitchAccount();
-          }}
-          aria-label="Switch to a different account"
-          title="Switch account"
-        >
-          <ArrowLeftRight size={16} />
-        </button>
+        <Tooltip label="Switch account">
+          <button
+            role="menuitem"
+            className="account-switcher__signout"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSwitchAccount();
+            }}
+            aria-label="Switch to a different account"
+          >
+            <ArrowLeftRight size={16} />
+          </button>
+        </Tooltip>
       </div>
 
       {sortedOrgs.length > 0 && (

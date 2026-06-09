@@ -31,6 +31,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import Tooltip from "@/components/ui/tooltip"
 import SegmentedControl, { ToggleGroup } from "@/components/ui/segmented-control"
 import EmptyState from "@/components/ui/empty-state"
 import SharedLoadMoreSentinel from "@/components/ui/load-more-sentinel"
@@ -394,18 +395,19 @@ function QualityFilterPopover({
     (showCertSection && !q.qualityIsDefault) || !q.orgQualityIsDefault
   return (
     <UiPopover open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger>
-        <button
-          type="button"
-          className={`explore__chrome-btn explore__chrome-btn--icon${
-            filtered ? " explore__chrome-btn--active" : ""
-          }`}
-          aria-label={`Filter by quality${filtered ? " (filtered)" : ""}`}
-          title="Filter by quality"
-        >
-          <FilterIcon size={13} strokeWidth={1.75} aria-hidden />
-        </button>
-      </PopoverTrigger>
+      <Tooltip label="Filter by quality">
+        <PopoverTrigger>
+          <button
+            type="button"
+            className={`explore__chrome-btn explore__chrome-btn--icon${
+              filtered ? " explore__chrome-btn--active" : ""
+            }`}
+            aria-label={`Filter by quality${filtered ? " (filtered)" : ""}`}
+          >
+            <FilterIcon size={13} strokeWidth={1.75} aria-hidden />
+          </button>
+        </PopoverTrigger>
+      </Tooltip>
       <PopoverContent align="end">
         {showCertSection ? (
           <>
@@ -714,6 +716,7 @@ function ExploreMain({
                     value: "list",
                     icon: <ListIcon size={14} strokeWidth={1.75} aria-hidden />,
                     ariaLabel: "List view",
+                    tooltip: "List view",
                   },
                   {
                     value: "gallery",
@@ -721,6 +724,7 @@ function ExploreMain({
                       <LayoutGrid size={14} strokeWidth={1.75} aria-hidden />
                     ),
                     ariaLabel: "Gallery view",
+                    tooltip: "Gallery view",
                   },
                 ]}
                 size="md"
@@ -729,22 +733,27 @@ function ExploreMain({
                 iconOnly
               />
               <UiPopover open={sortOpen} onOpenChange={setSortOpen}>
-                <PopoverTrigger>
-                  <button type="button" className="explore__chrome-btn">
-                    <ArrowUpDown
-                      size={13}
-                      strokeWidth={1.75}
-                      aria-hidden
-                    />
-                    Sort: {SORT_LABEL[sort]}
-                  </button>
-                </PopoverTrigger>
+                <Tooltip label="Sort">
+                  <PopoverTrigger>
+                    <button
+                      type="button"
+                      className="explore__chrome-btn explore__chrome-btn--icon"
+                      aria-label="Sort"
+                    >
+                      <ArrowUpDown
+                        size={13}
+                        strokeWidth={1.75}
+                        aria-hidden
+                      />
+                    </button>
+                  </PopoverTrigger>
+                </Tooltip>
                 <PopoverContent align="end">
                   {(["newest", "oldest", "alphabetical"] as SortOrder[]).map(
                     (s) => (
                       <PopoverItem
                         key={s}
-                        className={sort === s ? "font-medium" : ""}
+                        selected={sort === s}
                         data-sort-key={s}
                         onClick={onSortOptionClick}
                       >
@@ -1239,10 +1248,12 @@ function ExploreAllSingle({ show }: { show: ExploreKind }) {
 function ShowAllRow({ onClick }: { onClick: () => void }) {
   return (
     <li>
-      <button type="button" className="explore__show-all" onClick={onClick}>
-        Show all
-        <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
-      </button>
+      <Tooltip label="Show all" className="w-full">
+        <button type="button" className="explore__show-all" onClick={onClick}>
+          Show all
+          <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
+        </button>
+      </Tooltip>
     </li>
   )
 }
@@ -1265,17 +1276,19 @@ function AllCategoryDropdown({
   const active = SHOW_OPTIONS.find((o) => o.key === show) ?? SHOW_OPTIONS[0]
   return (
     <UiPopover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger>
-        <button type="button" className="explore__sub-dropdown-trigger">
-          <span className="explore__sub-dropdown-label">{active.label}</span>
-          <ChevronDown size={13} strokeWidth={1.75} aria-hidden />
-        </button>
-      </PopoverTrigger>
+      <Tooltip label="Filter by type">
+        <PopoverTrigger>
+          <button type="button" className="explore__sub-dropdown-trigger">
+            <span className="explore__sub-dropdown-label">{active.label}</span>
+            <ChevronDown size={13} strokeWidth={1.75} aria-hidden />
+          </button>
+        </PopoverTrigger>
+      </Tooltip>
       <PopoverContent align="start">
         {SHOW_OPTIONS.map((opt) => (
           <PopoverItem
             key={opt.key}
-            className={show === opt.key ? "font-medium" : ""}
+            selected={show === opt.key}
             data-show-key={opt.key}
             onClick={onSelect}
           >
@@ -1394,20 +1407,23 @@ function EndorsementDegreeBar({
           options={ALL_DEGREES.map((d) => ({
             value: String(d),
             label: DEGREE_LABEL[d],
+            tooltip: `Show ${DEGREE_LABEL[d]}-degree endorsements`,
           }))}
           tone="neutral"
           shape="pill"
           joined={false}
         />
         {!isDefault ? (
-          <button
-            type="button"
-            className="explore__degree-reset"
-            onClick={onReset}
-            aria-label="Reset endorsement rings to default"
-          >
-            Reset
-          </button>
+          <Tooltip label="Reset to default">
+            <button
+              type="button"
+              className="explore__degree-reset"
+              onClick={onReset}
+              aria-label="Reset endorsement rings to default"
+            >
+              Reset
+            </button>
+          </Tooltip>
         ) : null}
       </div>
       {meta?.truncated ? (
@@ -1478,12 +1494,14 @@ function SubPrefixDropdown({
   const active = options.find((o) => o.key === sub) ?? options[0]
   return (
     <UiPopover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger>
-        <button type="button" className="explore__sub-dropdown-trigger">
-          <span className="explore__sub-dropdown-label">{active.label}</span>
-          <ChevronDown size={13} strokeWidth={1.75} aria-hidden />
-        </button>
-      </PopoverTrigger>
+      <Tooltip label={kind === "accounts" ? "Filter accounts" : "Filter by type"}>
+        <PopoverTrigger>
+          <button type="button" className="explore__sub-dropdown-trigger">
+            <span className="explore__sub-dropdown-label">{active.label}</span>
+            <ChevronDown size={13} strokeWidth={1.75} aria-hidden />
+          </button>
+        </PopoverTrigger>
+      </Tooltip>
       <PopoverContent align="start">
         {options.map((opt) => {
           const disabled = opt.requiresAuth && !viewerDid

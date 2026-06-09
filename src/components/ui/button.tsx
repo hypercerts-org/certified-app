@@ -1,5 +1,6 @@
 import React from "react";
 import { Loader2 } from "lucide-react";
+import Tooltip from "@/components/ui/tooltip";
 
 type ButtonSize = "sm" | "md" | "lg" | "icon";
 
@@ -12,6 +13,10 @@ type ButtonBaseProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "chil
   // back an aria-pressed control. A truthy value also flips secondary/ghost
   // variants to an "active" visual (other variants keep their base look).
   pressed?: boolean;
+  // Hover/focus tooltip text. Icon buttons fall back to their aria-label when
+  // this is omitted, so every icon button explains itself on hover for free;
+  // pass an explicit string to override or to add a tooltip to a text button.
+  tooltip?: string;
 };
 
 type IconButtonProps = ButtonBaseProps & {
@@ -35,6 +40,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       loading = false,
       disabled,
       pressed,
+      tooltip,
       type = "button",
       className = "",
       children,
@@ -81,7 +87,13 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     };
     const activeStyles = pressed ? pressedStyles[variant] ?? "" : "";
 
-    return (
+    // Icon buttons explain themselves on hover via their required aria-label;
+    // an explicit `tooltip` overrides that, and is the only source for the
+    // (rare) text button that opts into a tooltip.
+    const ariaLabel = (props as { "aria-label"?: string })["aria-label"];
+    const tooltipText = tooltip ?? (size === "icon" ? ariaLabel : undefined);
+
+    const button = (
       <button
         ref={ref}
         type={type}
@@ -97,6 +109,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {!(loading && size === "icon") && children}
       </button>
     );
+
+    if (tooltipText) {
+      return <Tooltip label={tooltipText}>{button}</Tooltip>;
+    }
+    return button;
   }
 );
 

@@ -7,6 +7,7 @@ import { Search as SearchIcon, X } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
 import Avatar from "@/components/ui/avatar"
 import Combobox from "@/components/ui/combobox"
+import Tooltip from "@/components/ui/tooltip"
 import { getInitials } from "@/lib/utils/initials"
 import { fetchIndexerActivities } from "@/lib/atproto/indexer"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
@@ -271,14 +272,16 @@ export default function GlobalSearch({
       }}
       trailingButton={
         query ? (
-          <button
-            type="button"
-            className="people-search__clear"
-            onClick={handleClear}
-            aria-label="Clear search"
-          >
-            <X size={14} aria-hidden="true" />
-          </button>
+          <Tooltip label="Clear search">
+            <button
+              type="button"
+              className="people-search__clear"
+              onClick={handleClear}
+              aria-label="Clear search"
+            >
+              <X size={14} aria-hidden="true" />
+            </button>
+          </Tooltip>
         ) : undefined
       }
       renderEmpty={() => {

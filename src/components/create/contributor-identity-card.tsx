@@ -3,6 +3,7 @@
 import { X } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import Tooltip from "@/components/ui/tooltip"
 import { useContributorInfo } from "@/hooks/use-contributor-info"
 import { getInitials } from "@/lib/utils/initials"
 
@@ -61,15 +62,16 @@ export function ContributorIdentityCard({
           <LoadingSpinner size="sm" />
         ) : null}
       </span>
-      <button
-        type="button"
-        className="create-cert__contrib-card-clear"
-        onClick={onClear}
-        aria-label={`Change ${displayName}`}
-        title="Change"
-      >
-        <X size={14} strokeWidth={1.75} aria-hidden />
-      </button>
+      <Tooltip label="Change">
+        <button
+          type="button"
+          className="create-cert__contrib-card-clear"
+          onClick={onClear}
+          aria-label={`Change ${displayName}`}
+        >
+          <X size={14} strokeWidth={1.75} aria-hidden />
+        </button>
+      </Tooltip>
     </div>
   )
 }

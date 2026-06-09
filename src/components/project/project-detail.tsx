@@ -29,6 +29,7 @@ import FeedLayout from "@/components/feed/feed-layout"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
 import EditBanner from "@/components/ui/edit-banner"
 import EmptyState from "@/components/ui/empty-state"
+import Tooltip from "@/components/ui/tooltip"
 import LeafletDocument, {
   isRenderableDescription,
 } from "@/components/leaflet/leaflet-document"
@@ -979,18 +980,19 @@ export default function ProjectDetail({
                   </button>
                 )}
                 {isOwner ? (
-                  <button
-                    type="button"
-                    className="project-detail__delete-btn"
-                    aria-label="Delete project"
-                    title="Delete project"
-                    onClick={() => {
-                      setDeleteError(null)
-                      setDeleteOpen(true)
-                    }}
-                  >
-                    <Trash2 size={14} strokeWidth={1.75} aria-hidden />
-                  </button>
+                  <Tooltip label="Delete project">
+                    <button
+                      type="button"
+                      className="project-detail__delete-btn"
+                      aria-label="Delete project"
+                      onClick={() => {
+                        setDeleteError(null)
+                        setDeleteOpen(true)
+                      }}
+                    >
+                      <Trash2 size={14} strokeWidth={1.75} aria-hidden />
+                    </button>
+                  </Tooltip>
                 ) : null}
               </>
             ) : null}

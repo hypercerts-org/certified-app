@@ -37,6 +37,7 @@ import Avatar from "@/components/ui/avatar"
 import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EditBanner from "@/components/ui/edit-banner"
+import Tooltip from "@/components/ui/tooltip"
 import { useCertProjects } from "@/hooks/use-cert-projects"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import LeafletDocument, {
@@ -766,18 +767,19 @@ export default function ActivityDetail({
               </button>
             )}
             {isCreator ? (
-              <button
-                type="button"
-                className="cert-detail__delete-btn"
-                aria-label="Delete activity"
-                title="Delete activity"
-                onClick={() => {
-                  setDeleteError(null)
-                  setDeleteOpen(true)
-                }}
-              >
-                <Trash2 size={14} strokeWidth={1.75} aria-hidden />
-              </button>
+              <Tooltip label="Delete activity">
+                <button
+                  type="button"
+                  className="cert-detail__delete-btn"
+                  aria-label="Delete activity"
+                  onClick={() => {
+                    setDeleteError(null)
+                    setDeleteOpen(true)
+                  }}
+                >
+                  <Trash2 size={14} strokeWidth={1.75} aria-hidden />
+                </button>
+              </Tooltip>
             ) : null}
           </>
         ) : null}

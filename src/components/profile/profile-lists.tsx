@@ -23,6 +23,7 @@ import Button from "@/components/ui/button"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import Tooltip from "@/components/ui/tooltip"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useActivity } from "@/hooks/use-activity"
 import { useProject } from "@/hooks/use-project"
@@ -190,15 +191,16 @@ function ListSection({
       <header className="profile-lists__section-head">
         <h2 className="profile-lists__section-title">{title}</h2>
         {canCreate ? (
-          <button
-            type="button"
-            className="profile-lists__create-btn"
-            onClick={onCreate}
-            aria-label={`Create new ${title.toLowerCase()}`}
-            title="Create a new list"
-          >
-            <Plus size={16} strokeWidth={1.75} aria-hidden />
-          </button>
+          <Tooltip label="Create a new list">
+            <button
+              type="button"
+              className="profile-lists__create-btn"
+              onClick={onCreate}
+              aria-label={`Create new ${title.toLowerCase()}`}
+            >
+              <Plus size={16} strokeWidth={1.75} aria-hidden />
+            </button>
+          </Tooltip>
         ) : null}
       </header>
       {lists.length === 0 ? (
@@ -336,47 +338,52 @@ function ListDetail({
   return (
     <section className="profile-lists">
       <header className="profile-lists__detail-head">
-        <button
-          type="button"
-          className="profile-lists__back"
-          onClick={onBack}
-          aria-label="Back to all lists"
-        >
-          <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
-        </button>
+        <Tooltip label="Back to all lists">
+          <button
+            type="button"
+            className="profile-lists__back"
+            onClick={onBack}
+            aria-label="Back to all lists"
+          >
+            <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
+          </button>
+        </Tooltip>
         <h2 className="profile-lists__detail-title">
           {list.title}
           <span className="profile-lists__detail-count">{list.items.length}</span>
         </h2>
         {viewerIsOwner ? (
           <div className="profile-lists__detail-actions">
-            <button
-              type="button"
-              className="profile-lists__create-btn"
-              onClick={() => setAddOpen(true)}
-              aria-label="Add items"
-              title="Add items"
-            >
-              <Plus size={16} strokeWidth={1.75} aria-hidden />
-            </button>
-            <button
-              type="button"
-              className="profile-lists__create-btn"
-              onClick={() => setPasteOpen(true)}
-              aria-label="Bulk add by at-URI"
-              title="Bulk add by at-URI"
-            >
-              <ClipboardPaste size={16} strokeWidth={1.75} aria-hidden />
-            </button>
-            <button
-              type="button"
-              className="profile-lists__create-btn"
-              onClick={() => setEditOpen(true)}
-              aria-label="Edit list title and description"
-              title="Edit list"
-            >
-              <Pencil size={16} strokeWidth={1.75} aria-hidden />
-            </button>
+            <Tooltip label="Add items">
+              <button
+                type="button"
+                className="profile-lists__create-btn"
+                onClick={() => setAddOpen(true)}
+                aria-label="Add items"
+              >
+                <Plus size={16} strokeWidth={1.75} aria-hidden />
+              </button>
+            </Tooltip>
+            <Tooltip label="Bulk add by at-URI">
+              <button
+                type="button"
+                className="profile-lists__create-btn"
+                onClick={() => setPasteOpen(true)}
+                aria-label="Bulk add by at-URI"
+              >
+                <ClipboardPaste size={16} strokeWidth={1.75} aria-hidden />
+              </button>
+            </Tooltip>
+            <Tooltip label="Edit list">
+              <button
+                type="button"
+                className="profile-lists__create-btn"
+                onClick={() => setEditOpen(true)}
+                aria-label="Edit list title and description"
+              >
+                <Pencil size={16} strokeWidth={1.75} aria-hidden />
+              </button>
+            </Tooltip>
             <Button
               variant="destructive"
               size="sm"
@@ -632,15 +639,17 @@ export function ProjectItemRow({
       <div className="profile-lists__project profile-lists__project--loading">
         <span className="profile-lists__project-skel" aria-hidden />
         {canRemove ? (
-          <button
-            type="button"
-            className="profile-lists__item-remove"
-            onClick={handleRemove}
-            disabled={removing}
-            aria-label="Remove project"
-          >
-            <X size={14} strokeWidth={2} aria-hidden />
-          </button>
+          <Tooltip label="Remove project">
+            <button
+              type="button"
+              className="profile-lists__item-remove"
+              onClick={handleRemove}
+              disabled={removing}
+              aria-label="Remove project"
+            >
+              <X size={14} strokeWidth={2} aria-hidden />
+            </button>
+          </Tooltip>
         ) : null}
       </div>
     )
@@ -673,15 +682,17 @@ export function ProjectItemRow({
         <ProjectListRow project={project} />
       </div>
       {canRemove ? (
-        <button
-          type="button"
-          className="profile-lists__item-remove"
-          onClick={handleRemove}
-          disabled={removing}
-          aria-label={`Remove ${project.value.title ?? "project"}`}
-        >
-          <X size={14} strokeWidth={2} aria-hidden />
-        </button>
+        <Tooltip label="Remove from list">
+          <button
+            type="button"
+            className="profile-lists__item-remove"
+            onClick={handleRemove}
+            disabled={removing}
+            aria-label={`Remove ${project.value.title ?? "project"}`}
+          >
+            <X size={14} strokeWidth={2} aria-hidden />
+          </button>
+        </Tooltip>
       ) : null}
     </div>
   )
@@ -724,15 +735,17 @@ function ItemRowShell({
         <div className="profile-lists__item-link">{body}</div>
       )}
       {canRemove ? (
-        <button
-          type="button"
-          className="profile-lists__item-remove"
-          onClick={handleRemove}
-          disabled={removing}
-          aria-label={`Remove ${title}`}
-        >
-          <X size={14} strokeWidth={2} aria-hidden />
-        </button>
+        <Tooltip label="Remove from list">
+          <button
+            type="button"
+            className="profile-lists__item-remove"
+            onClick={handleRemove}
+            disabled={removing}
+            aria-label={`Remove ${title}`}
+          >
+            <X size={14} strokeWidth={2} aria-hidden />
+          </button>
+        </Tooltip>
       ) : null}
     </div>
   )

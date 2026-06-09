@@ -20,9 +20,29 @@ import Brandmark from "@/components/ui/brandmark";
 import ThemeToggle from "@/components/ui/theme-toggle";
 import BottomSheet from "@/components/ui/bottom-sheet";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import Tooltip from "@/components/ui/tooltip";
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints";
 
 const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
+
+// Top-level destinations. These set a centered page title but are NOT
+// sub-pages, so the mobile top bar shows the hamburger (which opens the
+// left sidebar) + account switcher / sign-in instead of a back arrow.
+// Anything not listed here that sets a title (detail routes, settings
+// sub-pages, someone else's profile, breadcrumbs) keeps the back arrow.
+// Exact-match only, so e.g. /settings shows the menu but /settings/edit
+// shows a back arrow.
+const ROOT_PATHS = new Set<string>([
+  "/home",
+  "/explore",
+  "/apps",
+  "/profile",
+  "/settings",
+  "/notifications",
+  "/groups",
+  "/endorsements",
+  "/help",
+]);
 
 
 const Navbar: React.FC = () => {
@@ -171,6 +191,141 @@ const Navbar: React.FC = () => {
     }
   };
 
+  // Top-level destinations show the hamburger + account switcher / sign-in
+  // even though they also set a centered page title; sub-pages keep the
+  // back arrow. Breadcrumbs are always sub-pages. Without this, every
+  // titled page replaced the hamburger with a back arrow, leaving the
+  // mobile left sidebar unreachable and hiding the sign-in button.
+  const isRootLevel = !breadcrumb && ROOT_PATHS.has(pathname);
+
+  // Left control for the default + root-level layouts: hamburger (opens
+  // the mobile sidebar) when signed in, theme toggle when signed out —
+  // mirroring the certs.social mobile top bar.
+  const leftControl = isAuthenticated ? (
+    <Tooltip label={dropdownOpen ? "Close menu" : "Open menu"}>
+      <button
+        className="navbar__hamburger"
+        onClick={() => { setDropdownOpen(!dropdownOpen); setSwitcherOpen(false); }}
+        aria-label={dropdownOpen ? "Close menu" : "Open menu"}
+        aria-haspopup="menu"
+        aria-expanded={dropdownOpen}
+      >
+        {dropdownOpen ? <X size={22} /> : <Menu size={22} />}
+      </button>
+    </Tooltip>
+  ) : (
+    <ThemeToggle variant="cycle" />
+  );
+
+  // Right cluster for the default + root-level layouts: account switcher
+  // (signed in) or the sign-in button (signed out), plus the portaled
+  // bottom sheet + sidebar those controls drive.
+  const rightCluster = isAuthenticated ? (
+    <>
+      <div className="account-switcher" ref={switcherRef}>
+        {isDesktop ? (
+          <Popover open={switcherOpen} onOpenChange={setSwitcherOpen}>
+            <PopoverTrigger>
+              <button
+                className="account-switcher__trigger"
+                onClick={() => { setDropdownOpen(false); }}
+                aria-label="Switch account"
+              >
+                <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
+                <ChevronDown size={14} className="navbar__chevron-desktop" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              portal
+              side="bottom"
+              align="end"
+              minWidth={260}
+              className="max-h-[70vh] overflow-y-auto [scrollbar-gutter:stable]"
+            >
+              <AccountSwitcherList
+                session={{ handle }}
+                profile={profile}
+                avatarUrl={avatarUrl || undefined}
+                sortedOrgs={sortedOrgs}
+                activeOrg={activeOrg}
+                switchOrg={switchOrg}
+                onAfterSwitch={(next) => {
+                  setSwitcherOpen(false);
+                  router.push(routeForActorSwitch(pathname, next));
+                }}
+                onSignOut={signOut}
+                onSwitchAccount={() => {
+                  setSwitcherOpen(false);
+                  openSignIn();
+                }}
+              />
+            </PopoverContent>
+          </Popover>
+        ) : (
+          <Tooltip label="Switch account">
+            <button
+              className="account-switcher__trigger"
+              onClick={() => { setSwitcherOpen(!switcherOpen); setDropdownOpen(false); }}
+              aria-label="Switch account"
+              aria-haspopup="menu"
+              aria-expanded={switcherOpen}
+            >
+              <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
+              <ChevronDown size={14} className="navbar__chevron-desktop" />
+            </button>
+          </Tooltip>
+        )}
+      </div>
+
+      {/* Mobile bottom sheet for account switcher — the canonical
+          BottomSheet primitive owns the portal shell, backdrop,
+          drag-to-dismiss, Esc, focus trap and scroll lock. */}
+      <BottomSheet
+        open={switcherOpen}
+        onClose={() => setSwitcherOpen(false)}
+        ariaLabel="Switch account"
+      >
+        <AccountSwitcherList
+          session={{ handle }}
+          profile={profile}
+          avatarUrl={avatarUrl || undefined}
+          sortedOrgs={sortedOrgs}
+          activeOrg={activeOrg}
+          switchOrg={switchOrg}
+          onAfterSwitch={(next) => {
+            setSwitcherOpen(false);
+            router.push(routeForActorSwitch(pathname, next));
+          }}
+          onSignOut={signOut}
+          onSwitchAccount={() => {
+            setSwitcherOpen(false);
+            openSignIn();
+          }}
+        />
+      </BottomSheet>
+
+      {/* Mobile sidebar (hamburger menu). The early-return at the top
+          of this component already guarantees we're on mobile here. */}
+      <MobileSidebar isOpen={dropdownOpen} onClose={() => setDropdownOpen(false)} />
+    </>
+  ) : (
+    <Tooltip label="Sign in">
+      <button
+        type="button"
+        onClick={openSignIn}
+        className="navbar__signin-btn"
+        aria-label="Sign in"
+      >
+        <img
+          src="/brand/signin/certified_signin_black.svg"
+          alt=""
+          aria-hidden
+          className="navbar__signin-img"
+        />
+      </button>
+    </Tooltip>
+  );
+
   // Profile overlay layout: transparent background, back arrow only (no
   // brandmark, no account switcher). Floats over a full-bleed page like
   // the profile banner. Set via useProfileNavbar().
@@ -179,14 +334,16 @@ const Navbar: React.FC = () => {
       <nav className={navClasses} aria-label="Profile navigation">
         <div className="navbar__inner">
           <div className="navbar__left">
-            <button
-              type="button"
-              className="navbar__back-overlay"
-              onClick={handleBack}
-              aria-label="Go back"
-            >
-              <ArrowLeft size={20} />
-            </button>
+            <Tooltip label="Go back">
+              <button
+                type="button"
+                className="navbar__back-overlay"
+                onClick={handleBack}
+                aria-label="Go back"
+              >
+                <ArrowLeft size={20} />
+              </button>
+            </Tooltip>
           </div>
           <div />
           <div />
@@ -207,14 +364,20 @@ const Navbar: React.FC = () => {
       <nav className={navClasses} aria-label={ariaLabel}>
         <div className="navbar__inner">
           <div className="navbar__left">
-            <button
-              type="button"
-              className="navbar__hamburger"
-              onClick={handleBack}
-              aria-label="Go back"
-            >
-              <ArrowLeft size={22} />
-            </button>
+            {isRootLevel ? (
+              leftControl
+            ) : (
+              <Tooltip label="Go back">
+                <button
+                  type="button"
+                  className="navbar__hamburger"
+                  onClick={handleBack}
+                  aria-label="Go back"
+                >
+                  <ArrowLeft size={22} />
+                </button>
+              </Tooltip>
+            )}
           </div>
           <div className="navbar__title" role="heading" aria-level={1}>
             {breadcrumb ? (
@@ -235,7 +398,7 @@ const Navbar: React.FC = () => {
               pageTitle
             )}
           </div>
-          <div className="navbar__right" />
+          <div className="navbar__right">{isRootLevel ? rightCluster : null}</div>
         </div>
       </nav>
     );
@@ -247,21 +410,7 @@ const Navbar: React.FC = () => {
         {/* Left: hamburger menu (mobile only — the early-return above already
             short-circuited the desktop case, so isDesktop is implicitly false
             for everything below). */}
-        <div className="navbar__left">
-          {isAuthenticated ? (
-            <button
-              className="navbar__hamburger"
-              onClick={() => { setDropdownOpen(!dropdownOpen); setSwitcherOpen(false); }}
-              aria-label={dropdownOpen ? "Close menu" : "Open menu"}
-              aria-haspopup="menu"
-              aria-expanded={dropdownOpen}
-            >
-              {dropdownOpen ? <X size={22} /> : <Menu size={22} />}
-            </button>
-          ) : (
-            <ThemeToggle variant="cycle" />
-          )}
-        </div>
+        <div className="navbar__left">{leftControl}</div>
 
         {/* Center: brandmark — links to /home for signed-in viewers and
             straight to /welcome once we know the viewer is signed out.
@@ -274,128 +423,7 @@ const Navbar: React.FC = () => {
         </Link>
 
         {/* Right: profile switcher or sign in */}
-        <div className="navbar__right">
-        {isAuthenticated ? (
-          <>
-            {/* Account switcher — the desktop inline menu now portals via
-                the canonical <Popover> (side=bottom, align=end). It is gated
-                to desktop widths to match the old CSS, which hid
-                `.account-switcher__menu` below 800px; the mobile range uses
-                the <BottomSheet> below. Since this navbar early-returns null
-                at ≥800px, the desktop Popover never actually mounts here —
-                the left rail / top bar host the desktop switcher — but the
-                gate keeps the contract explicit and the two paths disjoint. */}
-            <div className="account-switcher" ref={switcherRef}>
-              {isDesktop ? (
-                // Desktop inline menu, migrated to the canonical portal
-                // <Popover> (side=bottom, align=end). The old
-                // `.account-switcher__menu` was CSS-hidden below 800px, so
-                // gating the whole Popover to `isDesktop` reproduces that
-                // exactly. NOTE: this navbar early-returns null at ≥800px,
-                // so in practice this branch never mounts here — the left
-                // rail / top bar host the desktop switcher — but it keeps
-                // the migration faithful and the BEM removable.
-                <Popover open={switcherOpen} onOpenChange={setSwitcherOpen}>
-                  <PopoverTrigger>
-                    <button
-                      className="account-switcher__trigger"
-                      onClick={() => { setDropdownOpen(false); }}
-                      aria-label="Switch account"
-                    >
-                      <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
-                      <ChevronDown size={14} className="navbar__chevron-desktop" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    portal
-                    side="bottom"
-                    align="end"
-                    minWidth={260}
-                    className="max-h-[70vh] overflow-y-auto [scrollbar-gutter:stable]"
-                  >
-                    <AccountSwitcherList
-                      session={{ handle }}
-                      profile={profile}
-                      avatarUrl={avatarUrl || undefined}
-                      sortedOrgs={sortedOrgs}
-                      activeOrg={activeOrg}
-                      switchOrg={switchOrg}
-                      onAfterSwitch={(next) => {
-                        setSwitcherOpen(false);
-                        router.push(routeForActorSwitch(pathname, next));
-                      }}
-                      onSignOut={signOut}
-                      onSwitchAccount={() => {
-                        setSwitcherOpen(false);
-                        openSignIn();
-                      }}
-                    />
-                  </PopoverContent>
-                </Popover>
-              ) : (
-                // Mobile trigger — opens the <BottomSheet> switcher below.
-                // Kept as a plain button so its aria-expanded reflects the
-                // sheet state exactly as before (the sanctioned sheet path).
-                <button
-                  className="account-switcher__trigger"
-                  onClick={() => { setSwitcherOpen(!switcherOpen); setDropdownOpen(false); }}
-                  aria-label="Switch account"
-                  aria-haspopup="menu"
-                  aria-expanded={switcherOpen}
-                >
-                  <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
-                  <ChevronDown size={14} className="navbar__chevron-desktop" />
-                </button>
-              )}
-              </div>
-
-            {/* Mobile bottom sheet for account switcher — the canonical
-                BottomSheet primitive owns the portal shell, backdrop,
-                drag-to-dismiss, Esc, focus trap and scroll lock. */}
-            <BottomSheet
-              open={switcherOpen}
-              onClose={() => setSwitcherOpen(false)}
-              ariaLabel="Switch account"
-            >
-              <AccountSwitcherList
-                session={{ handle }}
-                profile={profile}
-                avatarUrl={avatarUrl || undefined}
-                sortedOrgs={sortedOrgs}
-                activeOrg={activeOrg}
-                switchOrg={switchOrg}
-                onAfterSwitch={(next) => {
-                  setSwitcherOpen(false);
-                  router.push(routeForActorSwitch(pathname, next));
-                }}
-                onSignOut={signOut}
-                onSwitchAccount={() => {
-                  setSwitcherOpen(false);
-                  openSignIn();
-                }}
-              />
-            </BottomSheet>
-
-            {/* Mobile sidebar (hamburger menu). The early-return at the top
-                of this component already guarantees we're on mobile here. */}
-            <MobileSidebar isOpen={dropdownOpen} onClose={() => setDropdownOpen(false)} />
-          </>
-        ) : (
-            <button
-              type="button"
-              onClick={openSignIn}
-              className="navbar__signin-btn"
-              aria-label="Sign in"
-            >
-              <img
-                src="/brand/signin/certified_signin_black.svg"
-                alt=""
-                aria-hidden
-                className="navbar__signin-img"
-              />
-            </button>
-        )}
-        </div>
+        <div className="navbar__right">{rightCluster}</div>
       </div>
     </nav>
   );

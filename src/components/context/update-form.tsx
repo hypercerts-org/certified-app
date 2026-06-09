@@ -8,6 +8,7 @@ import Input from "@/components/ui/input"
 import Textarea from "@/components/ui/textarea"
 import Button from "@/components/ui/button"
 import ErrorMessage from "@/components/ui/error-message"
+import Tooltip from "@/components/ui/tooltip"
 import { uploadBlob, buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 import {
   writeContextUpdate,
@@ -250,14 +251,16 @@ export default function UpdateForm({
                       ) : null}
                     </span>
                   )}
-                  <button
-                    type="button"
-                    aria-label="Remove attachment"
-                    onClick={() => removeAttachment(i)}
-                    className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-[var(--radius)] text-[var(--fg-muted)] hover:bg-[var(--overlay-weak)] hover:text-[var(--fg-primary)]"
-                  >
-                    <X size={13} strokeWidth={2} aria-hidden />
-                  </button>
+                  <Tooltip label="Remove attachment" className="absolute right-1 top-1">
+                    <button
+                      type="button"
+                      aria-label="Remove attachment"
+                      onClick={() => removeAttachment(i)}
+                      className="inline-flex h-5 w-5 items-center justify-center rounded-[var(--radius)] text-[var(--fg-muted)] hover:bg-[var(--overlay-weak)] hover:text-[var(--fg-primary)]"
+                    >
+                      <X size={13} strokeWidth={2} aria-hidden />
+                    </button>
+                  </Tooltip>
                 </li>
               )
             })}

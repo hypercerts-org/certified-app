@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { RadioGroup, Radio } from "./radio";
+import Tooltip from "./tooltip";
 
 type ThemeValue = "light" | "dark" | "system";
 
@@ -77,17 +78,18 @@ export default function ThemeToggle({
       : "Theme";
 
     return (
-      <button
-        type="button"
-        className={`theme-toggle-cycle ${className}`}
-        onClick={() => setTheme(next)}
-        aria-label={label}
-        title={label}
-      >
-        <span className="theme-toggle-cycle__icon" aria-hidden="true">
-          {activeIcon}
-        </span>
-      </button>
+      <Tooltip label={label}>
+        <button
+          type="button"
+          className={`theme-toggle-cycle ${className}`}
+          onClick={() => setTheme(next)}
+          aria-label={label}
+        >
+          <span className="theme-toggle-cycle__icon" aria-hidden="true">
+            {activeIcon}
+          </span>
+        </button>
+      </Tooltip>
     );
   }
 

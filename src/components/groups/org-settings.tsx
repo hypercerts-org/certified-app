@@ -27,6 +27,7 @@ import ConfirmDialog from "@/components/ui/confirm-dialog"
 import HandleSearch from "@/components/groups/handle-search"
 import ErrorMessage from "@/components/ui/error-message"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import Tooltip from "@/components/ui/tooltip"
 
 type CategoryKey = "handle" | "members" | "activity" | "social-graph"
 type CategoryDef = {
@@ -524,14 +525,16 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                           {pendingMembers.map((m) => (
                             <span key={m.did} className="org-members__selected-tag">
                               @{m.handle}
-                              <button
-                                type="button"
-                                className="org-members__selected-remove"
-                                onClick={() => removePendingMember(m.did)}
-                                aria-label={`Remove ${m.handle}`}
-                              >
-                                &times;
-                              </button>
+                              <Tooltip label={`Remove ${m.handle}`}>
+                                <button
+                                  type="button"
+                                  className="org-members__selected-remove"
+                                  onClick={() => removePendingMember(m.did)}
+                                  aria-label={`Remove ${m.handle}`}
+                                >
+                                  &times;
+                                </button>
+                              </Tooltip>
                             </span>
                           ))}
                         </div>

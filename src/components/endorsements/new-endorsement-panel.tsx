@@ -5,6 +5,7 @@ import { X, Check, AlertCircle } from "lucide-react"
 import HandleSearch from "@/components/groups/handle-search"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
+import Tooltip from "@/components/ui/tooltip"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { getInitials } from "@/lib/utils/initials"
 import { createEndorsementAward } from "@/lib/atproto/badges"
@@ -175,15 +176,17 @@ export default function NewEndorsementPanel({
             Search by handle or paste a DID. Endorsements can be revoked anytime.
           </span>
         </div>
-        <button
-          type="button"
-          className="endorsement-panel__close"
-          onClick={onClose}
-          aria-label="Cancel"
-          disabled={isSubmitting}
-        >
-          <X size={16} aria-hidden="true" />
-        </button>
+        <Tooltip label="Cancel">
+          <button
+            type="button"
+            className="endorsement-panel__close"
+            onClick={onClose}
+            aria-label="Cancel"
+            disabled={isSubmitting}
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
+        </Tooltip>
       </div>
 
       {!hasResults ? (
@@ -280,14 +283,16 @@ function RecipientRow({ did, handle, status, canRemove, onRemove }: RecipientRow
       </div>
       <RecipientStatus status={status} />
       {canRemove ? (
-        <button
-          type="button"
-          className="endorsement-multi-row__remove"
-          onClick={onRemove}
-          aria-label={`Remove ${displayName}`}
-        >
-          <X size={14} />
-        </button>
+        <Tooltip label="Remove">
+          <button
+            type="button"
+            className="endorsement-multi-row__remove"
+            onClick={onRemove}
+            aria-label={`Remove ${displayName}`}
+          >
+            <X size={14} />
+          </button>
+        </Tooltip>
       ) : null}
     </li>
   )

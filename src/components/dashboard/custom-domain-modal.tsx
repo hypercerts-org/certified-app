@@ -6,6 +6,7 @@ import { authFetch } from "@/lib/auth/fetch";
 import { clearSessionCache } from "@/hooks/use-session";
 import Button from "@/components/ui/button";
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog";
+import Tooltip from "@/components/ui/tooltip";
 
 interface CustomDomainModalProps {
   isOpen: boolean;
@@ -216,28 +217,32 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
                   <div className="domain-modal__dns-label">Host</div>
                   <div className="domain-modal__dns-val domain-modal__dns-val--mono">
                     <span>{dnsHost}</span>
-                    <button
-                      className="domain-modal__copy-btn"
-                      onClick={() => handleCopy(dnsHost, "host")}
-                      aria-label="Copy host"
-                      type="button"
-                    >
-                      {copied === "host" ? <Check size={14} /> : <Copy size={14} />}
-                    </button>
+                    <Tooltip label="Copy host">
+                      <button
+                        className="domain-modal__copy-btn"
+                        onClick={() => handleCopy(dnsHost, "host")}
+                        aria-label="Copy host"
+                        type="button"
+                      >
+                        {copied === "host" ? <Check size={14} /> : <Copy size={14} />}
+                      </button>
+                    </Tooltip>
                   </div>
                 </div>
                 <div className="domain-modal__dns-row domain-modal__dns-row--last">
                   <div className="domain-modal__dns-label">Value</div>
                   <div className="domain-modal__dns-val domain-modal__dns-val--mono">
                     <span className="domain-modal__dns-val-break">{dnsValue}</span>
-                    <button
-                      className="domain-modal__copy-btn"
-                      onClick={() => handleCopy(dnsValue, "value")}
-                      aria-label="Copy value"
-                      type="button"
-                    >
-                      {copied === "value" ? <Check size={14} /> : <Copy size={14} />}
-                    </button>
+                    <Tooltip label="Copy value">
+                      <button
+                        className="domain-modal__copy-btn"
+                        onClick={() => handleCopy(dnsValue, "value")}
+                        aria-label="Copy value"
+                        type="button"
+                      >
+                        {copied === "value" ? <Check size={14} /> : <Copy size={14} />}
+                      </button>
+                    </Tooltip>
                   </div>
                 </div>
               </div>

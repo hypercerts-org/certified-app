@@ -48,9 +48,16 @@
 }
 
 @media (max-width: 799px) {
+  /* Phone: the explore page is the main pane only. The left filter
+     sidebar is hidden (its filters duplicate the on-page category
+     dropdown + sub-toggles), so the layout is a single full-width
+     column. The vertical sidebar divider is suppressed below. */
   .explore__layout {
     grid-template-columns: 1fr;
-    padding: 0 16px;
+    padding: 0;
+  }
+  .explore-page::before {
+    display: none;
   }
 }
 
@@ -67,6 +74,17 @@
      so first-line-of-text sits at the same vertical position on
      every page-frame route. */
   padding: 32px 12px 32px 12px;
+}
+
+/* Phone: hide the left filter sidebar entirely so the explore page is
+   the main pane only (its filters duplicate the on-page category
+   dropdown + sub-toggles). This override sits AFTER the base rule above
+   so it wins on equal specificity — a @media block adds no specificity,
+   so an earlier-placed override would lose to the base `display: flex`. */
+@media (max-width: 799px) {
+  .explore__sidebar {
+    display: none;
+  }
 }
 
 /* Filter list rows need their own right padding now that the
@@ -186,8 +204,12 @@
 
 
 @media (max-width: 799px) {
+  /* Full-width single pane on phones — horizontal gutters come from
+     .explore-page's 16px padding, so the main pane drops its own
+     side padding and keeps a little top air above the chrome row. */
   .explore__main {
-    padding: 0;
+    max-width: none;
+    padding: 8px 0 24px;
   }
 }
 
@@ -685,6 +707,17 @@
 
 .explore__grid--certs {
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+/* Phone: single-column galleries so the 240–260px card minimums never
+   overflow a narrow viewport. The list rows already collapse to a
+   single column via their own mobile rules above. */
+@media (max-width: 799px) {
+  .explore__grid--users,
+  .explore__grid--projects,
+  .explore__grid--certs {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ---------- Account gallery card ---------- */

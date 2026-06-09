@@ -8,6 +8,7 @@ import { Plus, X, ChevronLeft } from "lucide-react";
 import ErrorMessage from "@/components/ui/error-message";
 import Input from "@/components/ui/input";
 import Textarea from "@/components/ui/textarea";
+import Tooltip from "@/components/ui/tooltip";
 import AvatarUpload from "@/components/profile/avatar-upload";
 import BannerUpload from "@/components/profile/banner-upload";
 import type {
@@ -532,14 +533,16 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                             updateUrlRow(row.id, { label: e.target.value })
                           }
                         />
-                        <button
-                          type="button"
-                          className="pe__url-remove"
-                          aria-label="Remove URL"
-                          onClick={() => removeUrlRow(row.id)}
-                        >
-                          <X size={16} strokeWidth={1.75} aria-hidden />
-                        </button>
+                        <Tooltip label="Remove URL">
+                          <button
+                            type="button"
+                            className="pe__url-remove"
+                            aria-label="Remove URL"
+                            onClick={() => removeUrlRow(row.id)}
+                          >
+                            <X size={16} strokeWidth={1.75} aria-hidden />
+                          </button>
+                        </Tooltip>
                       </div>
                       {row.error ? (
                         <p

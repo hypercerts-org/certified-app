@@ -23,6 +23,7 @@ import ConfirmDialog from "@/components/ui/confirm-dialog"
 import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import SmartLink from "@/components/ui/smart-link"
+import Tooltip from "@/components/ui/tooltip"
 import { getInitials } from "@/lib/utils/initials"
 import { formatMonthYear } from "@/lib/utils/format-date"
 import { useProfilePds } from "@/hooks/use-profile-pds"
@@ -586,35 +587,38 @@ function OrgUrlListEditor({ rows, onChange }: OrgUrlListEditorProps) {
               onChange={(e) => update(row.id, { url: e.target.value })}
             />
             <div className="profile-sidebar__org-url-actions">
-              <button
-                type="button"
-                className="profile-sidebar__org-url-move"
-                onClick={() => move(i, -1)}
-                disabled={isFirst}
-                aria-label="Move URL up"
-                title="Move up"
-              >
-                <ChevronUp size={14} strokeWidth={1.75} aria-hidden />
-              </button>
-              <button
-                type="button"
-                className="profile-sidebar__org-url-move"
-                onClick={() => move(i, 1)}
-                disabled={isLast}
-                aria-label="Move URL down"
-                title="Move down"
-              >
-                <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
-              </button>
-              <button
-                type="button"
-                className="profile-sidebar__org-url-remove"
-                onClick={() => remove(row.id)}
-                aria-label="Remove URL"
-                title="Remove URL"
-              >
-                <X size={14} strokeWidth={1.75} aria-hidden />
-              </button>
+              <Tooltip label="Move up">
+                <button
+                  type="button"
+                  className="profile-sidebar__org-url-move"
+                  onClick={() => move(i, -1)}
+                  disabled={isFirst}
+                  aria-label="Move URL up"
+                >
+                  <ChevronUp size={14} strokeWidth={1.75} aria-hidden />
+                </button>
+              </Tooltip>
+              <Tooltip label="Move down">
+                <button
+                  type="button"
+                  className="profile-sidebar__org-url-move"
+                  onClick={() => move(i, 1)}
+                  disabled={isLast}
+                  aria-label="Move URL down"
+                >
+                  <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
+                </button>
+              </Tooltip>
+              <Tooltip label="Remove URL">
+                <button
+                  type="button"
+                  className="profile-sidebar__org-url-remove"
+                  onClick={() => remove(row.id)}
+                  aria-label="Remove URL"
+                >
+                  <X size={14} strokeWidth={1.75} aria-hidden />
+                </button>
+              </Tooltip>
             </div>
           </li>
         )
@@ -650,19 +654,20 @@ function CopyButton({ value, label }: CopyButtonProps) {
     }
   }
   return (
-    <button
-      type="button"
-      className="profile-sidebar__copy-btn"
-      onClick={onClick}
-      aria-label={copied ? "Copied" : label}
-      title={copied ? "Copied" : label}
-    >
-      {copied ? (
-        <Check size={13} strokeWidth={2} aria-hidden />
-      ) : (
-        <Copy size={13} strokeWidth={1.75} aria-hidden />
-      )}
-    </button>
+    <Tooltip label={copied ? "Copied" : label}>
+      <button
+        type="button"
+        className="profile-sidebar__copy-btn"
+        onClick={onClick}
+        aria-label={copied ? "Copied" : label}
+      >
+        {copied ? (
+          <Check size={13} strokeWidth={2} aria-hidden />
+        ) : (
+          <Copy size={13} strokeWidth={1.75} aria-hidden />
+        )}
+      </button>
+    </Tooltip>
   )
 }
 

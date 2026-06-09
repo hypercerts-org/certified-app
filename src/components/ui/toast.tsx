@@ -12,6 +12,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { X, CheckCircle, AlertCircle } from "lucide-react";
+import Tooltip from "@/components/ui/tooltip";
 
 /*
  * Shared toast system.
@@ -299,14 +300,16 @@ function ToastItem({
           {action.label}
         </button>
       )}
-      <button
-        type="button"
-        onClick={() => onDismiss(id)}
-        aria-label="Dismiss notification"
-        className="-mr-1 shrink-0 self-start rounded p-1 text-[var(--fg-muted)] transition-colors duration-150 hover:text-[var(--fg-primary)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 motion-reduce:transition-none"
-      >
-        <X className="h-4 w-4" aria-hidden="true" />
-      </button>
+      <Tooltip label="Dismiss notification">
+        <button
+          type="button"
+          onClick={() => onDismiss(id)}
+          aria-label="Dismiss notification"
+          className="-mr-1 shrink-0 self-start rounded p-1 text-[var(--fg-muted)] transition-colors duration-150 hover:text-[var(--fg-primary)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 motion-reduce:transition-none"
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </Tooltip>
     </div>
   );
 }

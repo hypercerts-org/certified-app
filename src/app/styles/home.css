@@ -49,12 +49,16 @@
 }
 
 @media (max-width: 799px) {
+  .home-page {
+    /* Mobile is the feed only — kill the page's outer side padding so
+       the feed governs its own gutters via .home__main below. */
+    padding: 0;
+  }
   .home-page::before {
     display: none;
   }
   .home__layout {
     grid-template-columns: 1fr;
-    padding: 0 16px;
   }
 }
 
@@ -74,7 +78,13 @@
 }
 
 @media (max-width: 799px) {
+  /* Mobile shows ONLY the feed. The sidebar is rendered unconditionally
+     in home.tsx; hide it here so the page collapses to a single
+     full-width feed column. The right news rail is already hidden below
+     1100px. This override sits AFTER the base `.home__sidebar` rule so
+     it wins on equal specificity (a @media block adds none). */
   .home__sidebar {
+    display: none;
     padding: 16px 12px 24px;
   }
 }
@@ -279,7 +289,9 @@
 
 @media (max-width: 799px) {
   .home__main {
-    padding: 16px;
+    /* Slightly tighter side gutters on a phone so the feed gets room,
+       with a touch more top breathing space below the navbar. */
+    padding: 12px 14px 32px;
   }
 }
 
@@ -574,29 +586,113 @@ a.home-feed__preview:hover {
 }
 
 @media (max-width: 799px) {
+  /* ---- Mobile feed: a clean, native-feeling social timeline ----
+     The page is just the feed at this width, so it gets to breathe.
+     Two columns — a 32px avatar gutter + flexible content — with the
+     relative time reflowed under the content as a muted timestamp
+     footer, the preview cards sized for thumb-reach, and a generous,
+     evenly-rhythmed row separated by clear dividers. */
+
+  .home-feed {
+    /* Drop the hairline top rule on mobile — the first row's own
+       padding gives enough separation from the header. */
+    border-top: 0;
+  }
+
+  .home-feed__item {
+    /* Slightly stronger divider than the desktop subtle line so rows
+       read as distinct cards in a thumb-scrolled timeline. */
+    border-bottom: 1px solid var(--border-default);
+  }
+
+  .home-feed__item:last-child {
+    border-bottom: 0;
+  }
+
   .home-feed__row {
     grid-template-columns: 32px minmax(0, 1fr);
+    gap: 12px;
+    /* Roomier vertical rhythm; the row's own border-radius lets the
+       hover/press background round cleanly inside the divided list. */
+    padding: 16px 4px;
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    border-radius: var(--radius);
+  }
+
+  .home-feed__avatar {
+    /* Pin the avatar to the first text line of the sentence. */
+    margin-top: 1px;
+  }
+
+  .home-feed__content {
     gap: 10px;
+    padding-top: 2px;
   }
-  .home-feed__time {
-    grid-column: 2 / 3;
-    padding-top: 0;
-    align-self: start;
-    /* Reflowed under the sentence on mobile — left-align it there
-       (the desktop right-align only makes sense in the fixed column). */
-    text-align: left;
-  }
+
   .home-feed__sentence {
+    /* Roomier sentence — let it run to three lines before clamping. */
     -webkit-line-clamp: 3;
     line-clamp: 3;
   }
-  .home-feed__preview {
-    grid-template-columns: 44px minmax(0, 1fr);
-    gap: 10px;
+
+  .home-feed__time {
+    grid-column: 2 / 3;
+    grid-row: 2;
+    padding-top: 0;
+    align-self: start;
+    /* Reflowed under the content on mobile — left-align it there
+       (the desktop right-align only makes sense in the fixed column)
+       and tint it muted so it reads as a quiet timestamp footer. */
+    text-align: left;
+    font-size: 0.78rem;
+    color: var(--fg-muted);
   }
+
+  /* Crisper preview cards at phone widths: a roomier thumb, a hair more
+     padding, and a soft shadow so the card lifts off the row. */
+  .home-feed__preview {
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+    box-shadow: var(--shadow-sm);
+  }
+
   .home-feed__preview-thumb {
-    width: 44px;
-    height: 44px;
+    width: 52px;
+    height: 52px;
+  }
+
+  .home-feed__preview-title {
+    font-size: 0.9375rem;
+  }
+
+  .home-feed__preview-desc {
+    font-size: 0.85rem;
+  }
+
+  .home-feed__preview-meta {
+    font-size: 0.75rem;
+  }
+
+  /* Header heading + the load-more button get a touch more room. */
+  .home-feed__header {
+    margin-bottom: 8px;
+  }
+
+  .home-feed__load-more {
+    padding: 20px 0 8px;
+  }
+
+  .home-feed__load-more-btn {
+    padding: 12px 18px;
+    font-size: 0.875rem;
+  }
+
+  /* Expandable endorsement-group list rows get comfortable touch height. */
+  .home-feed__group-list-item {
+    padding: 4px 0;
   }
 }
 

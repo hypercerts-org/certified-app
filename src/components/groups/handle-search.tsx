@@ -5,6 +5,7 @@ import { Loader2, Search, X } from "lucide-react"
 import { authFetch } from "@/lib/auth/fetch"
 import Avatar from "@/components/ui/avatar"
 import Combobox from "@/components/ui/combobox"
+import Tooltip from "@/components/ui/tooltip"
 
 interface Actor {
   did: string
@@ -182,20 +183,22 @@ export default function HandleSearch({
       }}
       trailingButton={
         !isSearching && query ? (
-          <button
-            type="button"
-            className="handle-search__clear"
-            aria-label="Clear search"
-            onClick={() => {
-              setQuery("")
-              setResults([])
-              setResolvedDid(null)
-              setIsOpen(false)
-              inputRef.current?.focus()
-            }}
-          >
-            <X size={14} strokeWidth={2} aria-hidden />
-          </button>
+          <Tooltip label="Clear search">
+            <button
+              type="button"
+              className="handle-search__clear"
+              aria-label="Clear search"
+              onClick={() => {
+                setQuery("")
+                setResults([])
+                setResolvedDid(null)
+                setIsOpen(false)
+                inputRef.current?.focus()
+              }}
+            >
+              <X size={14} strokeWidth={2} aria-hidden />
+            </button>
+          </Tooltip>
         ) : undefined
       }
       renderListHeader={
