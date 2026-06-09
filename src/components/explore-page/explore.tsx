@@ -183,6 +183,283 @@ function isEndorsementFilter(kind: ExploreKind, filter: string): boolean {
  * via the on-page dropdown, which drives `?show=`. {@link ExploreAll}
  * branches that into the three-block layout or a single-category pane.
  */
+/**
+ * URL-backed quality-filter state shared by the single-kind view
+ * (`ExploreMain`) and the combined All view (`ExploreAllBlocks`). Owns
+ * the `?quality=` (cert / Activity Labeler tiers) and `?orgQuality=`
+ * (Orglabeler tiers) params, derives the include/exclude label arrays
+ * the loaders pass to the indexer, and exposes the toggle/reset
+ * handlers + "is default" flags the popover renders against.
+ */
+function useQualityFilters() {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
+  const setUrl = useCallback(
+    (patch: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams?.toString() ?? "")
+      for (const [k, v] of Object.entries(patch)) {
+        if (v === null || v === "") params.delete(k)
+        else params.set(k, v)
+      }
+      const qs = params.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    },
+    [pathname, searchParams, router],
+  )
+
+  // Cert quality (Activity Labeler tiers) — INCLUDED set, with the
+  // synthetic `unlabeled` sentinel. Missing param = home-feed default
+  // (every non-hidden tier + unlabeled).
+  const qualityParam = searchParams?.get("quality")
+  const qualityIncluded = useMemo<Set<HyperlabelTier | UnlabeledSlug>>(() => {
+    if (qualityParam == null) {
+      return new Set<HyperlabelTier | UnlabeledSlug>([
+        ...HYPERLABEL_TIERS.filter((t) => !DEFAULT_HIDDEN_CERT_LABELS.includes(t)),
+        UNLABELED_SLUG,
+      ])
+    }
+    if (qualityParam === EMPTY_SELECTION_SENTINEL) {
+      return new Set<HyperlabelTier | UnlabeledSlug>()
+    }
+    const valid = new Set<string>([...HYPERLABEL_TIERS, UNLABELED_SLUG])
+    return new Set(
+      qualityParam
+        .split(",")
+        .filter((v): v is HyperlabelTier | UnlabeledSlug => valid.has(v)),
+    )
+  }, [qualityParam])
+  const certIncludeUnlabeled = qualityIncluded.has(UNLABELED_SLUG)
+  const excludeCertLabels = useMemo<readonly string[] | undefined>(
+    () =>
+      certIncludeUnlabeled
+        ? HYPERLABEL_TIERS.filter((t) => !qualityIncluded.has(t))
+        : undefined,
+    [qualityIncluded, certIncludeUnlabeled],
+  )
+  const includeCertLabels = useMemo<readonly string[] | undefined>(
+    () =>
+      certIncludeUnlabeled
+        ? undefined
+        : HYPERLABEL_TIERS.filter((t) => qualityIncluded.has(t)),
+    [qualityIncluded, certIncludeUnlabeled],
+  )
+  const qualityIsDefault = useMemo(() => {
+    const expectedSize =
+      HYPERLABEL_TIERS.length - DEFAULT_HIDDEN_CERT_LABELS.length + 1
+    if (qualityIncluded.size !== expectedSize) return false
+    if (!qualityIncluded.has(UNLABELED_SLUG)) return false
+    for (const t of HYPERLABEL_TIERS) {
+      const shouldBeIncluded = !DEFAULT_HIDDEN_CERT_LABELS.includes(t)
+      if (qualityIncluded.has(t) !== shouldBeIncluded) return false
+    }
+    return true
+  }, [qualityIncluded])
+
+  // Org quality (Orglabeler tiers) — same pattern.
+  const orgQualityParam = searchParams?.get("orgQuality")
+  const orgQualityIncluded = useMemo<Set<OrgTierSlug | UnlabeledSlug>>(() => {
+    if (orgQualityParam == null) {
+      return new Set<OrgTierSlug | UnlabeledSlug>([
+        ...DEFAULT_ORG_TIER_SLUGS,
+        UNLABELED_SLUG,
+      ])
+    }
+    if (orgQualityParam === EMPTY_SELECTION_SENTINEL) {
+      return new Set<OrgTierSlug | UnlabeledSlug>()
+    }
+    const valid = new Set<string>([...ORG_TIER_SLUGS, UNLABELED_SLUG])
+    return new Set(
+      orgQualityParam
+        .split(",")
+        .filter((v): v is OrgTierSlug | UnlabeledSlug => valid.has(v)),
+    )
+  }, [orgQualityParam])
+  const orgIncludeUnlabeled = orgQualityIncluded.has(UNLABELED_SLUG)
+  const excludeOrgLabels = useMemo<readonly OrgTierSlug[] | undefined>(
+    () =>
+      orgIncludeUnlabeled
+        ? ORG_TIER_SLUGS.filter((slug) => !orgQualityIncluded.has(slug))
+        : undefined,
+    [orgQualityIncluded, orgIncludeUnlabeled],
+  )
+  const includeOrgLabels = useMemo<readonly OrgTierSlug[] | undefined>(
+    () =>
+      orgIncludeUnlabeled
+        ? undefined
+        : ORG_TIER_SLUGS.filter((slug) => orgQualityIncluded.has(slug)),
+    [orgQualityIncluded, orgIncludeUnlabeled],
+  )
+  const orgQualityIsDefault = useMemo(() => {
+    if (orgQualityIncluded.size !== DEFAULT_ORG_TIER_SLUGS.length + 1) return false
+    if (!orgQualityIncluded.has(UNLABELED_SLUG)) return false
+    for (const slug of ORG_TIER_SLUGS) {
+      const shouldBeIncluded = DEFAULT_ORG_TIER_SLUGS.includes(slug)
+      if (orgQualityIncluded.has(slug) !== shouldBeIncluded) return false
+    }
+    return true
+  }, [orgQualityIncluded])
+
+  const onResetQuality = useCallback(() => {
+    setUrl({ quality: null, orgQuality: null })
+  }, [setUrl])
+  const onQualityToggle = useCallback(
+    (slug: HyperlabelTier | UnlabeledSlug) => {
+      const next = new Set(qualityIncluded)
+      if (next.has(slug)) next.delete(slug)
+      else next.add(slug)
+      const defaultSlugs = new Set<HyperlabelTier | UnlabeledSlug>([
+        ...HYPERLABEL_TIERS.filter((t) => !DEFAULT_HIDDEN_CERT_LABELS.includes(t)),
+        UNLABELED_SLUG,
+      ])
+      const isDefault =
+        next.size === defaultSlugs.size &&
+        Array.from(defaultSlugs).every((s) => next.has(s))
+      const ordered: (HyperlabelTier | UnlabeledSlug)[] = [
+        ...HYPERLABEL_TIERS.filter((t) => next.has(t)),
+        ...(next.has(UNLABELED_SLUG) ? [UNLABELED_SLUG] : []),
+      ]
+      const value = isDefault
+        ? null
+        : ordered.length === 0
+          ? EMPTY_SELECTION_SENTINEL
+          : ordered.join(",")
+      setUrl({ quality: value })
+    },
+    [qualityIncluded, setUrl],
+  )
+  const onOrgQualityToggle = useCallback(
+    (slug: OrgTierSlug | UnlabeledSlug) => {
+      const next = new Set(orgQualityIncluded)
+      if (next.has(slug)) next.delete(slug)
+      else next.add(slug)
+      const defaultSlugs = new Set<OrgTierSlug | UnlabeledSlug>([
+        ...DEFAULT_ORG_TIER_SLUGS,
+        UNLABELED_SLUG,
+      ])
+      const isDefault =
+        next.size === defaultSlugs.size &&
+        Array.from(defaultSlugs).every((s) => next.has(s))
+      const ordered: (OrgTierSlug | UnlabeledSlug)[] = [
+        ...ORG_TIER_SLUGS.filter((s) => next.has(s)),
+        ...(next.has(UNLABELED_SLUG) ? [UNLABELED_SLUG] : []),
+      ]
+      const value = isDefault
+        ? null
+        : ordered.length === 0
+          ? EMPTY_SELECTION_SENTINEL
+          : ordered.join(",")
+      setUrl({ orgQuality: value })
+    },
+    [orgQualityIncluded, setUrl],
+  )
+
+  return {
+    qualityIncluded,
+    orgQualityIncluded,
+    excludeCertLabels,
+    includeCertLabels,
+    excludeOrgLabels,
+    includeOrgLabels,
+    qualityIsDefault,
+    orgQualityIsDefault,
+    onQualityToggle,
+    onOrgQualityToggle,
+    onResetQuality,
+  }
+}
+
+type QualityFilters = ReturnType<typeof useQualityFilters>
+
+/**
+ * The quality-filter popover (trigger + content). `showCertSection`
+ * adds the Activity-quality (cert) section above Account quality — true
+ * on the certs single-kind view and on the All view (which includes
+ * activities); false on accounts/projects single-kind views, where only
+ * the author-org tier applies.
+ */
+function QualityFilterPopover({
+  q,
+  showCertSection,
+  open,
+  onOpenChange,
+}: {
+  q: QualityFilters
+  showCertSection: boolean
+  open: boolean
+  onOpenChange: (v: boolean) => void
+}) {
+  const filtered =
+    (showCertSection && !q.qualityIsDefault) || !q.orgQualityIsDefault
+  return (
+    <UiPopover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger>
+        <button
+          type="button"
+          className={`explore__chrome-btn explore__chrome-btn--icon${
+            filtered ? " explore__chrome-btn--active" : ""
+          }`}
+          aria-label={`Filter by quality${filtered ? " (filtered)" : ""}`}
+          title="Filter by quality"
+        >
+          <FilterIcon size={13} strokeWidth={1.75} aria-hidden />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end">
+        {showCertSection ? (
+          <>
+            <p className="popover__section-heading">Activity quality</p>
+            {HYPERLABEL_DISPLAY_ORDER.map((tier) => (
+              <div key={tier} className="popover__item popover__item--check">
+                <Checkbox
+                  label={HYPERLABEL_DISPLAY_LABELS[tier]}
+                  checked={q.qualityIncluded.has(tier)}
+                  onChange={() => q.onQualityToggle(tier)}
+                />
+              </div>
+            ))}
+            <div className="popover__item popover__item--check">
+              <Checkbox
+                label={UNLABELED_LABEL}
+                checked={q.qualityIncluded.has(UNLABELED_SLUG)}
+                onChange={() => q.onQualityToggle(UNLABELED_SLUG)}
+              />
+            </div>
+            <hr className="popover__divider" aria-hidden="true" />
+          </>
+        ) : null}
+        <p className="popover__section-heading">Account quality</p>
+        {ORG_TIER_SLUGS.map((slug) => (
+          <div key={slug} className="popover__item popover__item--check">
+            <Checkbox
+              label={ORG_TIER_DISPLAY_LABEL[slug]}
+              checked={q.orgQualityIncluded.has(slug)}
+              onChange={() => q.onOrgQualityToggle(slug)}
+            />
+          </div>
+        ))}
+        <div className="popover__item popover__item--check">
+          <Checkbox
+            label={UNLABELED_LABEL}
+            checked={q.orgQualityIncluded.has(UNLABELED_SLUG)}
+            onChange={() => q.onOrgQualityToggle(UNLABELED_SLUG)}
+          />
+        </div>
+        <hr className="popover__divider" aria-hidden="true" />
+        <button
+          type="button"
+          className="popover__reset-btn"
+          onClick={q.onResetQuality}
+          disabled={(!showCertSection || q.qualityIsDefault) && q.orgQualityIsDefault}
+        >
+          Reset to default
+        </button>
+      </PopoverContent>
+    </UiPopover>
+  )
+}
+
 export default function Explore() {
   // Register the page title in the top bar's title slot — mirrors the
   // convention every other top-level page uses (Apps, Settings…).
@@ -250,116 +527,11 @@ function ExploreMain({
   const showsDegreeControl = isEndorsementFilter(kind, filter)
   const { did: viewerDid } = useAuth()
 
-  // Cert-quality filter — URL-backed `Set<HyperlabelTier>` of
-  // INCLUDED tiers. Missing param falls back to the same default as
-  // the home feed (`high-quality` + `standard`), so first-load on
-  // /explore?kind=certs hides `draft` + `likely-test` rows out of
-  // the box. An explicit empty string is treated as "show nothing"
-  // (every tier excluded) so toggling all four off is a legible
-  // state rather than a coincidental no-op.
-  const qualityParam = searchParams?.get("quality")
-  // Slug set holds both named Hyperlabel tiers AND the synthetic
-  // `unlabeled` sentinel. Default includes every tier that isn't
-  // in DEFAULT_HIDDEN_CERT_LABELS, plus `unlabeled` (records with
-  // no Hyperlabel verdict yet stay visible by default — matches
-  // the home feed policy).
-  const qualityIncluded = useMemo<Set<HyperlabelTier | UnlabeledSlug>>(() => {
-    if (qualityParam == null) {
-      return new Set<HyperlabelTier | UnlabeledSlug>([
-        ...HYPERLABEL_TIERS.filter(
-          (t) => !DEFAULT_HIDDEN_CERT_LABELS.includes(t),
-        ),
-        UNLABELED_SLUG,
-      ])
-    }
-    if (qualityParam === EMPTY_SELECTION_SENTINEL) {
-      return new Set<HyperlabelTier | UnlabeledSlug>()
-    }
-    const valid = new Set<string>([...HYPERLABEL_TIERS, UNLABELED_SLUG])
-    return new Set(
-      qualityParam
-        .split(",")
-        .filter((v): v is HyperlabelTier | UnlabeledSlug => valid.has(v)),
-    )
-  }, [qualityParam])
-  // Two filter modes:
-  //   - Unlabeled INCLUDED → use `excludeLabels` (filter out specific
-  //     tiers; unlabeled passes because it has nothing to match).
-  //   - Unlabeled EXCLUDED → use `labels` (must have one of the
-  //     checked tiers; unlabeled records don't qualify).
-  // Only one of the two is non-undefined at a time.
-  const certIncludeUnlabeled = qualityIncluded.has(UNLABELED_SLUG)
-  const excludeCertLabels = useMemo<readonly string[] | undefined>(
-    () =>
-      certIncludeUnlabeled
-        ? HYPERLABEL_TIERS.filter((t) => !qualityIncluded.has(t))
-        : undefined,
-    [qualityIncluded, certIncludeUnlabeled],
-  )
-  const includeCertLabels = useMemo<readonly string[] | undefined>(
-    () =>
-      certIncludeUnlabeled
-        ? undefined
-        : HYPERLABEL_TIERS.filter((t) => qualityIncluded.has(t)),
-    [qualityIncluded, certIncludeUnlabeled],
-  )
-  const qualityIsDefault = useMemo(() => {
-    // Default = every non-hidden tier + unlabeled.
-    const expectedSize =
-      HYPERLABEL_TIERS.length - DEFAULT_HIDDEN_CERT_LABELS.length + 1
-    if (qualityIncluded.size !== expectedSize) return false
-    if (!qualityIncluded.has(UNLABELED_SLUG)) return false
-    for (const t of HYPERLABEL_TIERS) {
-      const shouldBeIncluded = !DEFAULT_HIDDEN_CERT_LABELS.includes(t)
-      if (qualityIncluded.has(t) !== shouldBeIncluded) return false
-    }
-    return true
-  }, [qualityIncluded])
-
-  // Orglabeler quality state — same pattern as the Hyperlabel one,
-  // including the `unlabeled` sentinel for org records without a tier.
-  const orgQualityParam = searchParams?.get("orgQuality")
-  const orgQualityIncluded = useMemo<Set<OrgTierSlug | UnlabeledSlug>>(() => {
-    if (orgQualityParam == null) {
-      return new Set<OrgTierSlug | UnlabeledSlug>([
-        ...DEFAULT_ORG_TIER_SLUGS,
-        UNLABELED_SLUG,
-      ])
-    }
-    if (orgQualityParam === EMPTY_SELECTION_SENTINEL) {
-      return new Set<OrgTierSlug | UnlabeledSlug>()
-    }
-    const valid = new Set<string>([...ORG_TIER_SLUGS, UNLABELED_SLUG])
-    return new Set(
-      orgQualityParam
-        .split(",")
-        .filter((v): v is OrgTierSlug | UnlabeledSlug => valid.has(v)),
-    )
-  }, [orgQualityParam])
-  const orgIncludeUnlabeled = orgQualityIncluded.has(UNLABELED_SLUG)
-  const excludeOrgLabels = useMemo<readonly OrgTierSlug[] | undefined>(
-    () =>
-      orgIncludeUnlabeled
-        ? ORG_TIER_SLUGS.filter((slug) => !orgQualityIncluded.has(slug))
-        : undefined,
-    [orgQualityIncluded, orgIncludeUnlabeled],
-  )
-  const includeOrgLabels = useMemo<readonly OrgTierSlug[] | undefined>(
-    () =>
-      orgIncludeUnlabeled
-        ? undefined
-        : ORG_TIER_SLUGS.filter((slug) => orgQualityIncluded.has(slug)),
-    [orgQualityIncluded, orgIncludeUnlabeled],
-  )
-  const orgQualityIsDefault = useMemo(() => {
-    if (orgQualityIncluded.size !== DEFAULT_ORG_TIER_SLUGS.length + 1) return false
-    if (!orgQualityIncluded.has(UNLABELED_SLUG)) return false
-    for (const slug of ORG_TIER_SLUGS) {
-      const shouldBeIncluded = DEFAULT_ORG_TIER_SLUGS.includes(slug)
-      if (orgQualityIncluded.has(slug) !== shouldBeIncluded) return false
-    }
-    return true
-  }, [orgQualityIncluded])
+  // Cert + org quality filters — URL-backed, shared with the All view
+  // via useQualityFilters(). Returns the included sets, the
+  // include/exclude label arrays the loader passes to the indexer, the
+  // "is default" flags, and the toggle/reset handlers.
+  const quality = useQualityFilters()
 
   const setUrl = useCallback(
     (patch: Record<string, string | null>) => {
@@ -407,10 +579,6 @@ function ExploreMain({
   // "Reset to default" buttons clear the URL params they own. The
   // readers fall back to the canonical default sets when those params
   // are missing, so a single `setUrl({ key: null })` is enough.
-  const onResetQuality = useCallback(() => {
-    setUrl({ quality: null, orgQuality: null })
-  }, [setUrl])
-
   const onResetDegrees = useCallback(() => {
     setUrl({ degrees: null, degree: null })
   }, [setUrl])
@@ -419,64 +587,6 @@ function ExploreMain({
     setUrl({ sort: null })
     setSortOpen(false)
   }, [setUrl])
-
-  const onQualityToggle = useCallback(
-    (slug: HyperlabelTier | UnlabeledSlug) => {
-      const next = new Set(qualityIncluded)
-      if (next.has(slug)) next.delete(slug)
-      else next.add(slug)
-      // Default = every non-hidden tier + unlabeled.
-      const defaultSlugs = new Set<HyperlabelTier | UnlabeledSlug>([
-        ...HYPERLABEL_TIERS.filter(
-          (t) => !DEFAULT_HIDDEN_CERT_LABELS.includes(t),
-        ),
-        UNLABELED_SLUG,
-      ])
-      const isDefault =
-        next.size === defaultSlugs.size &&
-        Array.from(defaultSlugs).every((s) => next.has(s))
-      // URL preserves slug order matching the popover render order
-      // (named tiers first, then unlabeled). Empty set writes the
-      // sentinel so deselect-all isn't normalised back to default.
-      const ordered: (HyperlabelTier | UnlabeledSlug)[] = [
-        ...HYPERLABEL_TIERS.filter((t) => next.has(t)),
-        ...(next.has(UNLABELED_SLUG) ? [UNLABELED_SLUG] : []),
-      ]
-      const value = isDefault
-        ? null
-        : ordered.length === 0
-          ? EMPTY_SELECTION_SENTINEL
-          : ordered.join(",")
-      setUrl({ quality: value })
-    },
-    [qualityIncluded, setUrl],
-  )
-
-  const onOrgQualityToggle = useCallback(
-    (slug: OrgTierSlug | UnlabeledSlug) => {
-      const next = new Set(orgQualityIncluded)
-      if (next.has(slug)) next.delete(slug)
-      else next.add(slug)
-      const defaultSlugs = new Set<OrgTierSlug | UnlabeledSlug>([
-        ...DEFAULT_ORG_TIER_SLUGS,
-        UNLABELED_SLUG,
-      ])
-      const isDefault =
-        next.size === defaultSlugs.size &&
-        Array.from(defaultSlugs).every((s) => next.has(s))
-      const ordered: (OrgTierSlug | UnlabeledSlug)[] = [
-        ...ORG_TIER_SLUGS.filter((s) => next.has(s)),
-        ...(next.has(UNLABELED_SLUG) ? [UNLABELED_SLUG] : []),
-      ]
-      const value = isDefault
-        ? null
-        : ordered.length === 0
-          ? EMPTY_SELECTION_SENTINEL
-          : ordered.join(",")
-      setUrl({ orgQuality: value })
-    },
-    [orgQualityIncluded, setUrl],
-  )
 
   const data = useExploreData({
     kind,
@@ -494,17 +604,17 @@ function ExploreMain({
     noEndorsementRings: showsDegreeControl && degrees.size === 0,
     // Cert-quality filter — only meaningful for the certs kind, but
     // passing it for other kinds is a no-op at the load-page level.
-    excludeCertLabels: kind === "activities" ? excludeCertLabels : undefined,
-    includeCertLabels: kind === "activities" ? includeCertLabels : undefined,
+    excludeCertLabels: kind === "activities" ? quality.excludeCertLabels : undefined,
+    includeCertLabels: kind === "activities" ? quality.includeCertLabels : undefined,
     // Org-quality filter — used on accounts (filters the actor list)
     // and certs (filters certs whose author org carries the tier).
     excludeOrgLabels:
       kind === "accounts" || kind === "activities" || kind === "projects"
-        ? excludeOrgLabels
+        ? quality.excludeOrgLabels
         : undefined,
     includeOrgLabels:
       kind === "accounts" || kind === "activities" || kind === "projects"
-        ? includeOrgLabels
+        ? quality.includeOrgLabels
         : undefined,
   })
 
@@ -654,104 +764,16 @@ function ExploreMain({
                 </PopoverContent>
               </UiPopover>
 
-              {/* Labeler-tier quality popover. On certs, shows both
-                  Cert quality (Hyperlabel tiers) and Account quality
-                  (Orglabeler tiers). On accounts + projects, shows
-                  Account quality only — projects' record-tier
-                  filtering is keyed off the author's org label, not
-                  the project itself. */}
-              {kind === "activities" || kind === "accounts" || kind === "projects" ? (
-                <UiPopover open={qualityOpen} onOpenChange={setQualityOpen}>
-                  <PopoverTrigger>
-                    <button
-                      type="button"
-                      className={`explore__chrome-btn explore__chrome-btn--icon${
-                        (kind === "activities" && !qualityIsDefault) ||
-                        !orgQualityIsDefault
-                          ? " explore__chrome-btn--active"
-                          : ""
-                      }`}
-                      aria-label={`Filter by quality${
-                        (kind === "activities" && !qualityIsDefault) ||
-                        !orgQualityIsDefault
-                          ? " (filtered)"
-                          : ""
-                      }`}
-                      title="Filter by quality"
-                    >
-                      <FilterIcon size={13} strokeWidth={1.75} aria-hidden />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent align="end">
-                  {kind === "activities" ? (
-                    <>
-                      <p className="popover__section-heading">Activity quality</p>
-                      {HYPERLABEL_DISPLAY_ORDER.map((tier) => (
-                        <div
-                          key={tier}
-                          className="popover__item popover__item--check"
-                        >
-                          <Checkbox
-                            label={HYPERLABEL_DISPLAY_LABELS[tier]}
-                            checked={qualityIncluded.has(tier)}
-                            onChange={() => onQualityToggle(tier)}
-                          />
-                        </div>
-                      ))}
-                      <div className="popover__item popover__item--check">
-                        <Checkbox
-                          label={UNLABELED_LABEL}
-                          checked={qualityIncluded.has(UNLABELED_SLUG)}
-                          onChange={() => onQualityToggle(UNLABELED_SLUG)}
-                        />
-                      </div>
-                      <hr className="popover__divider" aria-hidden="true" />
-                    </>
-                  ) : null}
-                  {/* Account-quality heading shows on every kind that
-                      surfaces the orglabeler tiers. On certs it sits
-                      below the divider; on accounts + projects it's
-                      the top of the popover. */}
-                  <p className="popover__section-heading">Account quality</p>
-                  {ORG_TIER_SLUGS.map((slug) => (
-                    <div
-                      key={slug}
-                      className="popover__item popover__item--check"
-                    >
-                      <Checkbox
-                        label={ORG_TIER_DISPLAY_LABEL[slug]}
-                        checked={orgQualityIncluded.has(slug)}
-                        onChange={() => onOrgQualityToggle(slug)}
-                      />
-                    </div>
-                  ))}
-                  <div className="popover__item popover__item--check">
-                    <Checkbox
-                      label={UNLABELED_LABEL}
-                      checked={orgQualityIncluded.has(UNLABELED_SLUG)}
-                      onChange={() => onOrgQualityToggle(UNLABELED_SLUG)}
-                    />
-                  </div>
-                  {/* Reset returns every section in this popover to
-                      its default selection by clearing the URL params
-                      it owns. Disabled when nothing has been customised
-                      so it doesn't read as an active control on the
-                      default state. */}
-                  <hr className="popover__divider" aria-hidden="true" />
-                  <button
-                    type="button"
-                    className="popover__reset-btn"
-                    onClick={onResetQuality}
-                    disabled={
-                      (kind !== "activities" || qualityIsDefault) &&
-                      orgQualityIsDefault
-                    }
-                  >
-                    Reset to default
-                  </button>
-                  </PopoverContent>
-                </UiPopover>
-              ) : null}
+              {/* Activity + account quality filter — shared with the
+                  All view. The cert (Activity Labeler) section shows
+                  only on the certs kind; the account (Orglabeler)
+                  section shows on every kind. */}
+              <QualityFilterPopover
+                q={quality}
+                showCertSection={kind === "activities"}
+                open={qualityOpen}
+                onOpenChange={setQualityOpen}
+              />
             </div>
           </div>
 
@@ -1003,6 +1025,11 @@ function ExploreAllBlocks() {
   } = useAllView()
   const searchParams = useSearchParams()
   const search = searchParams?.get("q") ?? ""
+  // Quality filter shared with the single-kind view. The All view
+  // always includes the activities block, so it shows both the cert
+  // (Activity Labeler) and account (Orglabeler) sections.
+  const quality = useQualityFilters()
+  const [qualityOpen, setQualityOpen] = useState(false)
 
   // Search debounce — same pattern as the single-kind view. Keeps
   // typing snappy, hits the indexer once typing stops, and reconciles
@@ -1032,18 +1059,29 @@ function ExploreAllBlocks() {
     filter: viewFilterToKindFilter(filter, "activities"),
     sub: "all",
     search,
+    // Activities carry both their own cert tier and their author org's
+    // tier, so both quality axes apply.
+    excludeCertLabels: quality.excludeCertLabels,
+    includeCertLabels: quality.includeCertLabels,
+    excludeOrgLabels: quality.excludeOrgLabels,
+    includeOrgLabels: quality.includeOrgLabels,
   })
   const projects = useExploreData({
     kind: "projects",
     filter: viewFilterToKindFilter(filter, "projects"),
     sub: "all",
     search,
+    // Projects + accounts filter by the author org's tier only.
+    excludeOrgLabels: quality.excludeOrgLabels,
+    includeOrgLabels: quality.includeOrgLabels,
   })
   const accounts = useExploreData({
     kind: "accounts",
     filter: viewFilterToKindFilter(filter, "accounts"),
     sub: "all",
     search,
+    excludeOrgLabels: quality.excludeOrgLabels,
+    includeOrgLabels: quality.includeOrgLabels,
   })
 
   const activityItems = useMemo(
@@ -1086,6 +1124,15 @@ function ExploreAllBlocks() {
                 value={localQuery}
                 onChange={(e) => setLocalQuery(e.target.value)}
                 aria-label="Search Certified"
+              />
+            </div>
+
+            <div className="explore__chrome-actions">
+              <QualityFilterPopover
+                q={quality}
+                showCertSection
+                open={qualityOpen}
+                onOpenChange={setQualityOpen}
               />
             </div>
           </div>
