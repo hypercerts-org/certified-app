@@ -9,10 +9,9 @@ interface EmailSectionProps {
 const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
   return (
     <div className="dash-card mt-4">
-      <div className="email-section__header">
-        <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Email address</h2>
+      <div className="settings-field">
+        <span className="settings-field__value">{email || "—"}</span>
       </div>
-      <p className="personal-info__field">{email || "—"}</p>
       <p className="email-section__hint">
         This is the email address used to sign in to your account.
       </p>

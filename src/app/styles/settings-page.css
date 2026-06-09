@@ -201,20 +201,25 @@
    ------------------------------------------------------------------------ */
 .sx__panel {
   /* `.page-layout__main` already supplies min-width:0 +
-     flex-direction:column. Layered class. We only bump the section
-     gap (default page-layout__main gap is 24px; settings sections
-     need more air to read as distinct units). */
-  gap: 48px;
+     flex-direction:column. Layered class. Each section is its own card
+     now (see `.sx-section`), so a tighter gap reads as a clean stack of
+     distinct cards rather than line-separated blocks. */
+  gap: 16px;
 }
 
 .sx-section {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+  /* Each section is its own card so the boundaries read clearly without
+     relying on divider lines between them. */
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 20px 24px;
   /* Sticky top-bar offset + buffer. Includes row 2 so the freshly-
      jumped section's header sits below the full top bar. */
   scroll-margin-top: calc(var(--top-bar-row1) + var(--top-bar-row2) + 24px);
-  border-radius: var(--radius);
   transition: background var(--transition-fast), box-shadow var(--transition-fast);
 }
 
@@ -241,8 +246,6 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border-subtle);
 }
 
 .sx-panel__title {
@@ -284,19 +287,38 @@
   box-shadow: none;
 }
 
-.sx-panel__body .dash-card__title,
-.sx-panel__body .email-section__header h2 {
+/* Defensive: hide any duplicate inner card title — the section header
+   above already names each section. */
+.sx-panel__body .dash-card__title {
   display: none;
 }
 
-/* Those headers are `flex; justify-content: space-between` so the title
-   sits left and the Edit button right. With the duplicate title hidden
-   above, `space-between` leaves the lone Edit button stranded on the
-   LEFT — right-align it so it reads as a top-right section action
-   instead. */
-.sx-panel__body .username-card__header,
-.sx-panel__body .password-section__header {
-  justify-content: flex-end;
+/* ------------------------------------------------------------------------
+   Settings field row.
+   The read-only value (username / email / password) sits in a
+   highlighted box, with its Edit action (and, for the username, the
+   domain switch buttons) inline on the same row. Wraps to the next line
+   on narrow widths.
+   ------------------------------------------------------------------------ */
+.settings-field {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-field__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ------------------------------------------------------------------------

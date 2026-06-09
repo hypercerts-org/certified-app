@@ -179,16 +179,6 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
     <>
       <div className="dash-card mt-4">
         <div className="username-card">
-          <div className="username-card__header">
-            <h2 className="dash-card__title" style={{ marginBottom: 0 }}>{groupDid ? "Handle" : "Username"}</h2>
-            {isCertifiedHandle && !showingForm && (
-              <Button variant="ghost" size="sm" onClick={handleEdit}>
-                <Pencil size={14} />
-                Edit
-              </Button>
-            )}
-          </div>
-
           {/* Inline edit for certs handle */}
           {isEditing && (
             <div className="username-card__form">
@@ -251,52 +241,55 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
             </div>
           )}
 
-          {/* Handle display */}
+          {/* Read-only display: value + inline actions (Edit, then the
+              domain-switch buttons). The custom-domain buttons are gated
+              OFF in group context (groupDid set): that flow writes the
+              handle via the personal XRPC updateHandle endpoint, which is
+              wrong for a group repo. The "Use a Certified username"
+              button is kept — it routes through the group-aware path. */}
           {!showingForm && (
-            <p className="username-card__value">@{handle || "..."}</p>
-          )}
-
-          {/* Action buttons — shown when not in any editing mode.
-              The custom-domain buttons are gated OFF in group context
-              (groupDid set): the custom-domain flow writes the handle via
-              the personal XRPC updateHandle endpoint, which is wrong for a
-              group repo. The "Use a Certified username" button is kept —
-              it routes through the group-aware handle path. */}
-          {!showingForm && did && !(isCertifiedHandle && groupDid) && (
-            <div className="username-card__switch-btns">
-              {isCertifiedHandle ? (
-                !groupDid && (
-                  <button
-                    className="username-card__domain-btn"
-                    onClick={() => setIsDomainModalOpen(true)}
-                    type="button"
-                  >
-                    <Globe size={14} aria-hidden="true" />
-                    Use my own domain
-                  </button>
-                )
-              ) : (
-                <>
-                  {!groupDid && (
+            <div className="settings-field">
+              <span className="settings-field__value">@{handle || "..."}</span>
+              {isCertifiedHandle && (
+                <Button variant="ghost" size="sm" onClick={handleEdit}>
+                  <Pencil size={14} />
+                  Edit
+                </Button>
+              )}
+              {did && !(isCertifiedHandle && groupDid) &&
+                (isCertifiedHandle ? (
+                  !groupDid && (
                     <button
                       className="username-card__domain-btn"
                       onClick={() => setIsDomainModalOpen(true)}
                       type="button"
                     >
                       <Globe size={14} aria-hidden="true" />
-                      Use a different domain
+                      Use my own domain
                     </button>
-                  )}
-                  <button
-                    className="username-card__domain-btn"
-                    onClick={handleStartCertified}
-                    type="button"
-                  >
-                    <AtSign size={14} aria-hidden="true" />
-                    Use a Certified username
-                  </button>
-                </>
-              )}
+                  )
+                ) : (
+                  <>
+                    {!groupDid && (
+                      <button
+                        className="username-card__domain-btn"
+                        onClick={() => setIsDomainModalOpen(true)}
+                        type="button"
+                      >
+                        <Globe size={14} aria-hidden="true" />
+                        Use a different domain
+                      </button>
+                    )}
+                    <button
+                      className="username-card__domain-btn"
+                      onClick={handleStartCertified}
+                      type="button"
+                    >
+                      <AtSign size={14} aria-hidden="true" />
+                      Use a Certified username
+                    </button>
+                  </>
+                ))}
             </div>
           )}
         </div>

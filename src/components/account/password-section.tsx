@@ -191,8 +191,8 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
 
   return (
     <div className="dash-card mt-4">
-      <div className="password-section__header">
-        <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Password</h2>
+      <div className="settings-field">
+        <span className="settings-field__value">••••••••••••</span>
         <Button
           variant="ghost"
           size="sm"
@@ -209,10 +209,8 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
           )}
         </Button>
       </div>
-      {state === "success" ? (
+      {state === "success" && (
         <p className="password-section__status password-section__status--success">Password updated successfully.</p>
-      ) : (
-        <p className="password-section__masked">••••••••••••</p>
       )}
       {state === "idle" && (
         <p className="password-section__hint">
