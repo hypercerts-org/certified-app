@@ -245,6 +245,28 @@
   }
 }
 
+/* Mobile: the Edit + Delete actions cluster starves the title's flex
+   basis in the single row, collapsing the nowrap+ellipsis title to a
+   single truncated letter. Stack the bar so the title gets the full
+   width above the actions, and let it wrap instead of ellipsizing. */
+@media (max-width: 799px) {
+  .project-detail__head-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .project-detail__head-actions {
+    margin-left: 0;
+  }
+
+  .project-detail__title {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+  }
+}
+
 .project-detail__lead {
   font-size: 1.0625rem;
   line-height: 1.55;
