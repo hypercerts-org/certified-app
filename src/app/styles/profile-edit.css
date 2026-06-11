@@ -16,9 +16,12 @@
 .pe {
   display: flex;
   flex-direction: column;
-  /* Reserve room at the bottom for the sticky footer so the last
-     section never hides under it. */
-  padding: 0 0 96px;
+  /* Reserve room at the bottom for the sticky footer so the last section
+     never hides under it. The footer pins above the fixed mobile bottom
+     nav, so the reserve folds in `--bottom-nav-height` (+ safe-area) too —
+     both are 0px at ≥800px, leaving the original 96px on desktop. */
+  padding: 0 0
+    calc(96px + var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
 }
 
 .pe__loading {
@@ -291,13 +294,18 @@
    ------------------------------------------------------------------------ */
 .pe__footer {
   position: sticky;
-  bottom: 0;
+  /* Pin the bar ABOVE the fixed mobile bottom nav rather than flush to the
+     viewport bottom — otherwise it sticks under the bar (z-index 50 > 5) and
+     the Save/Cancel row is half-hidden. `--bottom-nav-height` is 0px at
+     ≥800px, so on desktop this resolves to the original `bottom: 0`
+     (+ safe-area, which is also 0px there). */
+  bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
   /* Negative side margins so the footer reaches the column's full width
      even though the form content sits inside the 32px column padding.
      The inner row re-applies the side padding so the buttons line up
      with the fields above. */
   margin: 24px -32px 0;
-  padding: 12px 32px calc(env(safe-area-inset-bottom, 0px) + 12px);
+  padding: 12px 32px;
   background: var(--bg-default);
   border-top: 1px solid var(--border-subtle);
   /* A subtle blur so content scrolling under the footer doesn't read as

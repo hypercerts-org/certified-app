@@ -3099,6 +3099,22 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   color: var(--fg-muted);
 }
 
+/* The footer is the document's bottommost element on every page and
+   sits OUTSIDE `.app-shell__content` (it's a grid sibling), so the
+   shell's own bottom-nav padding doesn't reach it. On mobile the fixed
+   `.bottom-nav` (z-index --z-bottom-nav) would otherwise overlap the
+   wordmark + copyright when the page is scrolled to its bottom. Fold the
+   bar height (+ the iOS safe-area inset) into the footer's bottom padding
+   so the last footer line always clears the nav. `--bottom-nav-height`
+   is 0px at ≥800px, so this collapses back to the base 24px on desktop. */
+@media (max-width: 799px) {
+  .site-footer {
+    padding-bottom: calc(
+      var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 24px
+    );
+  }
+}
+
 .site-footer__row {
   display: flex;
   align-items: center;
