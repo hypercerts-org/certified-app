@@ -200,10 +200,16 @@ export async function getOrgProfile(
     { signal }
   )
   if (!res.ok) {
+    // 404 retained for backward compatibility (older route revisions and
+    // the dev mock). The route now returns 200 + null for an absent
+    // profile (issue #156) so the browser doesn't log a red 404 for every
+    // gone-group row; both shapes coerce to null here.
     if (res.status === 404) return null
     throw new Error("Failed to fetch org profile")
   }
-  return res.json()
+  // 200 body is the bare profile record, or `null` when the record is
+  // absent / the group's PDS no longer resolves.
+  return (await res.json()) as OrgProfile | null
 }
 
 /**

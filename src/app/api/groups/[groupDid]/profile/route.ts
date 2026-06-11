@@ -26,10 +26,19 @@ export async function GET(
       return NextResponse.json({ error: "Invalid group DID" }, { status: 400 })
     }
 
-    // Resolve the group's PDS URL from the DID document
+    // Resolve the group's PDS URL from the DID document. A DID that no
+    // longer resolves (deleted / tombstoned / never-published) is an
+    // EXPECTED absent-profile case — many feed/list rows reference group
+    // DIDs whose profile record is simply gone (issue #156). Return 200
+    // with a null body rather than 404 so the browser doesn't log a red
+    // "Failed to load resource: 404" for every such row. Callers already
+    // coerce a missing profile to null, so this is behaviourally identical
+    // for them while removing the console noise. A genuine PDS failure
+    // (5xx / network error) below still throws → 500, so "absent" and
+    // "broken" stay distinguishable.
     const pdsUrl = await resolvePdsUrl(groupDid)
     if (!pdsUrl) {
-      return NextResponse.json({ error: "Could not resolve group PDS" }, { status: 404 })
+      return NextResponse.json(null, { status: 200 })
     }
 
     // Fetch directly from the group's PDS (unauthenticated — reads are public)
@@ -39,8 +48,11 @@ export async function GET(
     )
 
     if (!res.ok) {
+      // 400/404 from the PDS = the `app.certified.actor.profile` record
+      // doesn't exist (RecordNotFound) — the expected absent case, same
+      // as an unresolvable PDS above. 200 + null, not 404.
       if (res.status === 400 || res.status === 404) {
-        return NextResponse.json({ error: "Not found" }, { status: 404 })
+        return NextResponse.json(null, { status: 200 })
       }
       throw new Error(`PDS returned ${res.status}`)
     }

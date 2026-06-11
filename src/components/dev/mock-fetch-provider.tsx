@@ -434,13 +434,15 @@ function installMockFetch(
       if (managed && /^\/api\/groups\/[^/]+\/profile$/.test(path)) {
         // Per-group org profile (`getOrgProfile`) — drives `displayName`
         // on the resolved groups. The DID segment is URL-encoded; decode
-        // it back to `did:plc:…`. A 404-shaped miss for an unknown DID
-        // lets `resolveGroups` fall back to the handle.
+        // it back to `did:plc:…`. An absent profile resolves to 200 + null
+        // (mirrors the real route after issue #156 — no red 404 in the
+        // console for gone groups); `resolveGroups` falls back to the
+        // handle on the null body.
         const segment = path.split("/")[3] ?? ""
         const groupDid = decodeURIComponent(segment)
         const profile = managedOrgProfile(groupDid)
         if (profile) return json(profile)
-        return json({ error: "NotFound" }, 404)
+        return json(null)
       }
       if (path === "/api/notifications") {
         // The notifications client (`lib/atproto/notifications.ts`) POSTs
