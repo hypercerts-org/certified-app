@@ -1225,6 +1225,15 @@
   max-width: 1200px;
 }
 
+/* Tablet band (800–1099): three columns squeeze the check + heading + copy too
+   tightly, so step down to two so each item keeps a readable measure. */
+@media (min-width: 800px) and (max-width: 1099px) {
+  .landing-trust {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px;
+  }
+}
+
 @media (max-width: 799px) {
   .landing-trust {
     grid-template-columns: 1fr;
@@ -1278,11 +1287,13 @@
   gap: 12px;
 }
 
-/* Canonical breakpoints (was 600px / 900px): single column on mobile, two at
-   the 800px desktop step, the full five-up at 1100px. */
+/* Canonical breakpoints (was 600px / 900px): single column on mobile, three at
+   the 800px tablet step, the full five-up at 1100px. Three columns avoids the
+   orphaned lone cell a two-column grid leaves with five tiles (2x3 with an empty
+   trailing slot) across the 800–1099 tablet band. */
 @media (min-width: 800px) {
   .network-stats__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
