@@ -540,31 +540,40 @@ function ReceivedCard({
   allResponses: ReturnType<typeof useOwnResponseStates>["responses"]
   onAfterWrite: () => void | Promise<void>
 }) {
-  // Prefer the indexer's denormalised issuer block (magic-indexer #96).
-  // Skip the per-row useAuthorInfo fetch when issuer.handle is
-  // populated — null passed to useAuthorInfo short-circuits its
-  // /api/resolve-did fetch (rule-of-hooks-compliant). Falls back to
-  // useAuthorInfo when the indexer hasn't ingested the actor profile
-  // yet (graceful-degradation state per #69 H1).
+  // Prefer the indexer's denormalised issuer block (magic-indexer #96),
+  // but only TRUST it wholesale when it's actually complete. The award's
+  // `issuer` denormalisation can carry a handle WITHOUT a displayName or
+  // avatar — certified-only org accounts have no bsky-profile join, so
+  // their `displayName`/`avatarCid` come back null even though the data
+  // exists in the actor-profile table (and via /api/resolve-did). Gating
+  // the fetch on handle-presence alone left those rows with no avatar and
+  // a DID-slice initials placeholder. So we skip the per-row
+  // useAuthorInfo fetch only when the indexer block is complete; otherwise
+  // we resolve and fill the gaps. (null → useAuthorInfo short-circuits.)
   const idxIssuer = endorsement.issuer
-  const skipFetch = !!idxIssuer?.handle
-  const { info: fetched, isLoading } = useAuthorInfo(
-    skipFetch ? null : endorsement.issuerDid,
-  )
-
-  // Compose a final AuthorInfo from indexer fields (preferred) +
-  // fetched fallback. PersonCard reads `info.displayName`,
-  // `info.handle`, `info.avatarUrl` to render.
   const indexerAvatar = buildAvatarUrlFromCid(
     idxIssuer?.did ?? endorsement.issuerDid,
     idxIssuer?.avatarCid,
   )
+  const indexerComplete = !!(
+    idxIssuer?.handle &&
+    idxIssuer.displayName &&
+    indexerAvatar
+  )
+  const { info: fetched, isLoading } = useAuthorInfo(
+    indexerComplete ? null : endorsement.issuerDid,
+  )
+
+  // Compose a final AuthorInfo, preferring indexer fields per-field and
+  // filling any gaps from the resolved profile. PersonCard reads
+  // `info.displayName`, `info.handle`, `info.avatarUrl` to render.
   const info: AuthorInfo | null =
-    idxIssuer && idxIssuer.handle
+    idxIssuer?.handle || idxIssuer?.displayName || indexerAvatar || fetched
       ? {
-          did: idxIssuer.did,
-          handle: idxIssuer.handle,
-          displayName: idxIssuer.displayName,
+          did: idxIssuer?.did ?? endorsement.issuerDid,
+          handle:
+            idxIssuer?.handle ?? fetched?.handle ?? endorsement.issuerDid,
+          displayName: idxIssuer?.displayName ?? fetched?.displayName ?? null,
           avatarUrl: indexerAvatar ?? fetched?.avatarUrl ?? null,
         }
       : fetched

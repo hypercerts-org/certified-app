@@ -528,15 +528,25 @@ interface EndorsementPreviewRowProps {
 
 function EndorsementPreviewRow({ endorsement }: EndorsementPreviewRowProps) {
   // Prefer the indexer's denormalised issuer block (magic-indexer
-  // #96 — single-query received-endorsements). Falls back to the
-  // per-row useAuthorInfo lookup when the indexer fields are null
-  // (graceful-degradation state until profile-ingestion is enabled
-  // on magic-indexer dev). Passing null to useAuthorInfo skips its
-  // /api/resolve-did fetch entirely — the rule-of-hooks-compliant
-  // way to conditionally short-circuit identity hydration.
+  // #96 — single-query received-endorsements), but only TRUST it
+  // wholesale when it's complete. The award `issuer` denormalisation
+  // can carry a handle WITHOUT a displayName or avatar (certified-only
+  // org accounts have no bsky-profile join), so gating the fetch on
+  // handle-presence alone left those rows with no avatar and a
+  // DID-slice initials placeholder. Skip the per-row useAuthorInfo
+  // fetch only when the indexer block is complete; otherwise resolve
+  // and fill the gaps. (null → useAuthorInfo short-circuits its fetch.)
   const idxIssuer = endorsement.issuer
-  const skipFetch = !!idxIssuer?.handle
-  const { info } = useAuthorInfo(skipFetch ? null : endorsement.issuerDid)
+  const indexerAvatar = buildAvatarUrlFromCid(
+    idxIssuer?.did ?? endorsement.issuerDid,
+    idxIssuer?.avatarCid,
+  )
+  const indexerComplete = !!(
+    idxIssuer?.handle &&
+    idxIssuer.displayName &&
+    indexerAvatar
+  )
+  const { info } = useAuthorInfo(indexerComplete ? null : endorsement.issuerDid)
 
   const displayName =
     idxIssuer?.displayName ||
@@ -548,10 +558,6 @@ function EndorsementPreviewRow({ endorsement }: EndorsementPreviewRowProps) {
   const initials = getInitials(
     idxIssuer?.displayName ?? info?.displayName,
     endorsement.issuerDid,
-  )
-  const indexerAvatar = buildAvatarUrlFromCid(
-    idxIssuer?.did ?? endorsement.issuerDid,
-    idxIssuer?.avatarCid,
   )
   const avatarSrc = indexerAvatar || info?.avatarUrl || undefined
   const href = profileUrl(handle || endorsement.issuerDid)
