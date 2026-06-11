@@ -43,6 +43,12 @@
   margin-bottom: 24px;
 }
 
+/* Lift the eyebrow off the muted floor in dark mode so it clears AA on the
+   dark canvas (was reading as faint mid-gray). */
+:root[data-theme="dark"] .hero__label {
+  color: var(--fg-secondary);
+}
+
 .hero__title {
   font-family: var(--font-headline), 'Noto Serif', serif;
   color: var(--color-navy);
@@ -709,6 +715,13 @@
   opacity: 1;
 }
 
+/* Partner logos read as muted ghosts on the dark canvas at 0.7/grayscale(100%);
+   lift them so they stay legible in dark mode (full color still on hover). */
+:root[data-theme="dark"] .landing-network__logo {
+  filter: grayscale(45%);
+  opacity: 0.95;
+}
+
 .landing-network__name {
   font-family: var(--font-headline), 'Noto Serif', serif;
   font-size: 1.125rem;
@@ -963,11 +976,11 @@
 }
 
 .landing-faq-item {
-  border-bottom: 1px solid var(--color-light-gray);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .landing-faq-item:first-child {
-  border-top: 1px solid var(--color-light-gray);
+  border-top: 1px solid var(--border-default);
 }
 
 .landing-faq-btn {
@@ -1245,7 +1258,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.4);
+  /* Theme-aware so it flips with the --color-navy/--color-off-white band
+     (was pinned rgba(255,255,255,.4) → invisible on the flipped light panel
+     in dark mode). */
+  color: var(--color-off-white);
+  opacity: 0.5;
 }
 
 .landing-trust__item h4 {
@@ -1258,7 +1275,10 @@
 .landing-trust__item p {
   font-size: 0.9375rem;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.5);
+  /* Theme-aware (see __check above): flips with the band instead of staying
+     white-on-near-white in dark mode. */
+  color: var(--color-off-white);
+  opacity: 0.72;
   margin: 0;
 }
 
