@@ -1,4 +1,5 @@
 import { authFetch } from "@/lib/auth/fetch"
+import { parseAtUri } from "@/lib/urls"
 import { purgeAwardFromLists } from "@/lib/atproto/collection"
 import { invalidateEndorsementClosure } from "@/lib/atproto/endorsement-closure-cache"
 import { invalidateEndorsementLists } from "@/lib/atproto/endorsement-lists-cache"
@@ -526,6 +527,87 @@ export async function listAwards(
 }
 
 /**
+ * Resolve the `badgeType` of a badge definition addressed by its
+ * at-uri, fetching the record from WHICHEVER repo owns it (the proxy
+ * resolves the foreign PDS server-side). Definitions are effectively
+ * immutable, so successful lookups are memoised per-process. Returns
+ * null on any miss (malformed uri, wrong collection, unreachable).
+ */
+const defBadgeTypeCache = new Map<string, string | null>()
+export async function getDefinitionBadgeType(
+  uri: string,
+  signal?: AbortSignal,
+  opts?: { noCache?: boolean },
+): Promise<string | null> {
+  if (!opts?.noCache && defBadgeTypeCache.has(uri)) {
+    return defBadgeTypeCache.get(uri) ?? null
+  }
+  const parsed = parseAtUri(uri)
+  if (!parsed || parsed.collection !== BADGE_DEFINITION_COLLECTION) return null
+  const params = new URLSearchParams({
+    repo: parsed.did,
+    collection: parsed.collection,
+    rkey: parsed.rkey,
+  })
+  const init: RequestInit = {}
+  if (signal) init.signal = signal
+  if (opts?.noCache) init.cache = "no-store"
+  const res = await authFetch(
+    `/api/xrpc/com/atproto/repo/getRecord?${params.toString()}`,
+    init,
+  )
+  if (!res.ok) return null
+  const data = (await res.json()) as { value?: BadgeDefinitionValue }
+  const badgeType = data.value?.badgeType ?? null
+  if (!signal?.aborted) defBadgeTypeCache.set(uri, badgeType)
+  return badgeType
+}
+
+/**
+ * Build the set of endorsement-typed definition URIs referenced by a
+ * batch of awards.
+ *
+ * Endorsement awards reference a badge `definition` that need NOT live
+ * in the issuer's own repo: a "Trusted Evaluator" endorses on behalf of
+ * their organisation using a centrally-defined badge owned by another
+ * account (e.g. Ma Earth's "Organization Endorsement"). The earlier
+ * filter only matched the issuer's OWN definitions, so awards made with
+ * a cross-repo definition silently vanished from the Given view.
+ *
+ * We classify cheaply where we can — definitions the issuer owns are
+ * already in hand via `listDefinitions` — and only `getRecord` the
+ * referenced definitions that aren't (typically a single shared one,
+ * then memoised).
+ */
+export async function endorsementDefUriSet(
+  awards: BadgeAwardRecord[],
+  ownDefs: BadgeDefinitionRecord[],
+  signal?: AbortSignal,
+  opts?: { noCache?: boolean },
+): Promise<Set<string>> {
+  const endorsementDefUris = new Set<string>()
+  for (const d of ownDefs) {
+    if (d.value.badgeType === ENDORSEMENT_BADGE_TYPE) endorsementDefUris.add(d.uri)
+  }
+  // Referenced definition URIs not already classified from the own-repo
+  // defs — resolve them cross-repo and keep the endorsement-typed ones.
+  const referenced = new Set<string>()
+  for (const a of awards) {
+    const uri = a.value.badge?.uri
+    if (uri && !endorsementDefUris.has(uri)) referenced.add(uri)
+  }
+  await Promise.all(
+    Array.from(referenced).map(async (uri) => {
+      const badgeType = await getDefinitionBadgeType(uri, signal, opts).catch(
+        () => null,
+      )
+      if (badgeType === ENDORSEMENT_BADGE_TYPE) endorsementDefUris.add(uri)
+    }),
+  )
+  return endorsementDefUris
+}
+
+/**
  * Read the set of DIDs `did` has endorsed (degree-1 outbound edges on
  * the certified endorsement graph). Authoritative from the viewer's
  * own PDS — no indexer call. Used as a fallback for the /explore
@@ -541,16 +623,9 @@ export async function fetchGivenEndorsementDids(
     listDefinitions(did, signal),
     listAwards(did, signal),
   ])
-  // Endorsement-typed definition URIs owned by this DID. Lists no
-  // longer live in this collection (post lists-as-collections), so
-  // this is typically exactly one entry — but we walk the set anyway
-  // in case any legacy custom endorsement defs survived the migration.
-  const endorsementDefUris = new Set<string>()
-  for (const d of defs) {
-    if (d.value.badgeType === ENDORSEMENT_BADGE_TYPE) {
-      endorsementDefUris.add(d.uri)
-    }
-  }
+  // Endorsement-typed definition URIs — own-repo defs plus any
+  // cross-repo (centrally-defined) definitions the awards reference.
+  const endorsementDefUris = await endorsementDefUriSet(awards, defs, signal)
   const out = new Set<string>()
   for (const award of awards) {
     if (!endorsementDefUris.has(award.value.badge?.uri ?? "")) continue

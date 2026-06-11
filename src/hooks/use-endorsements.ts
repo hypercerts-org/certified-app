@@ -4,9 +4,8 @@ import { useCallback, useEffect, useState } from "react"
 import {
   listAwards,
   listDefinitions,
-  ENDORSEMENT_BADGE_TYPE,
+  endorsementDefUriSet,
   type BadgeAwardRecord,
-  type BadgeDefinitionValue,
 } from "@/lib/atproto/badges"
 
 /**
@@ -80,18 +79,20 @@ export function useGivenEndorsements(did: string | null): {
         ])
         if (signal?.aborted) return
 
-        // Build the set of endorsement-typed definition URIs owned by
-        // this user — used to filter awards to "actually endorsements"
-        // (vs. some other badgeType if one ever lands here). Lists
-        // no longer live in this collection (see
-        // `docs/lists-as-collections/`); the set therefore typically
-        // contains exactly one entry (the default def) but we still
-        // walk it so legacy custom-typed endorsement defs from before
-        // the migration still show up in Given.
-        const endorsementDefUris = new Set<string>()
-        for (const d of defs) {
-          if (isEndorsementDefinition(d.value)) endorsementDefUris.add(d.uri)
-        }
+        // Build the set of endorsement-typed definition URIs the awards
+        // reference — used to filter awards to "actually endorsements"
+        // (vs. some other badgeType). This spans BOTH the user's own
+        // definitions AND any centrally-defined badge owned by another
+        // account (e.g. a Trusted Evaluator endorsing on behalf of an
+        // organisation with Ma Earth's "Organization Endorsement" badge),
+        // which earlier own-repo-only filtering dropped.
+        const endorsementDefUris = await endorsementDefUriSet(
+          awards,
+          defs,
+          signal,
+          opts,
+        )
+        if (signal?.aborted) return
 
         const mapped = awards
           .filter((a) => endorsementDefUris.has(a.value.badge?.uri ?? ""))
@@ -126,10 +127,6 @@ export function useGivenEndorsements(did: string | null): {
   const refetch = useCallback(() => load(undefined, true), [load])
 
   return { endorsements, isLoading, error, refetch }
-}
-
-function isEndorsementDefinition(v: BadgeDefinitionValue): boolean {
-  return v?.badgeType === ENDORSEMENT_BADGE_TYPE
 }
 
 function toGiven(award: BadgeAwardRecord): GivenEndorsement | null {
