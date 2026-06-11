@@ -415,7 +415,10 @@ export default function ProfileOverview({
         {activitiesLoading && previewActivities.length === 0 ? (
           <div className="profile-overview__loading"><LoadingSpinner size="sm" /></div>
         ) : previewActivities.length === 0 ? (
-          <p className="profile-overview__empty">No activities yet.</p>
+          <p className="profile-overview__empty">
+            No activities yet. Published and contributed work will show up
+            here.
+          </p>
         ) : (
           <ul className="profile-overview__activity-list">
             {previewActivities.map((a) => {
@@ -470,7 +473,9 @@ export default function ProfileOverview({
         {endorsementsLoading && previewEndorsements.length === 0 ? (
           <div className="profile-overview__loading"><LoadingSpinner size="sm" /></div>
         ) : previewEndorsements.length === 0 ? (
-          <p className="profile-overview__empty">No endorsements yet.</p>
+          <p className="profile-overview__empty">
+            No endorsements yet. Endorsements from others will appear here.
+          </p>
         ) : (
           <ul className="profile-overview__endorse-list">
             {previewEndorsements.map((e) => (

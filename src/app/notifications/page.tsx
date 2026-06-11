@@ -10,12 +10,13 @@ import { markNotificationsSeen } from "@/lib/atproto/notifications"
 import NotificationRow from "@/components/notifications/notification-row"
 import NotificationRowSkeleton from "@/components/notifications/notification-row-skeleton"
 import EmptyState from "@/components/ui/empty-state"
+import Button from "@/components/ui/button"
 
 export default function NotificationsPage() {
   usePageTitle("Notifications")
   const { isAuthenticated } = useAuth()
   const { refresh, markOptimisticallyZero } = useNotifications()
-  const { notifications, isLoading, isLoadingMore, error, hasMore, loadMore } =
+  const { notifications, isLoading, isLoadingMore, error, hasMore, loadMore, retry } =
     useNotificationsFeed(isAuthenticated)
 
   // Snapshot unread state on first load so rows don't visually flip
@@ -106,8 +107,12 @@ export default function NotificationsPage() {
             <EmptyState
               icon={AlertCircle}
               title="Couldn't load notifications"
-              description={error}
-            />
+              description={`${error} Please check your connection and try again.`}
+            >
+              <Button variant="secondary" onClick={retry}>
+                Retry
+              </Button>
+            </EmptyState>
           ) : notifications.length === 0 ? (
             <EmptyState
               icon={Bell}

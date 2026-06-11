@@ -11,6 +11,8 @@ export function useNotificationsFeed(enabled: boolean) {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(false)
+  // Bumped by `retry()` to re-run the initial-load effect after a failure.
+  const [reloadTick, setReloadTick] = useState(0)
   const endCursorRef = useRef<string | null>(null)
   const isLoadingMoreRef = useRef(false)
 
@@ -43,7 +45,11 @@ export function useNotificationsFeed(enabled: boolean) {
           setHasMore(false)
           return
         }
-        setError(err instanceof Error ? err.message : "Failed to load notifications")
+        // Surface a friendly, user-facing message — never the raw HTTP
+        // status (e.g. "Notifications request failed: 503"). The detail is
+        // still logged for debugging; the UI shows guidance + a Retry.
+        if (err) console.warn("[Notifications] feed load failed:", err)
+        setError("We couldn't load your notifications right now.")
       } finally {
         if (!cancelled) setIsLoading(false)
       }
@@ -54,7 +60,13 @@ export function useNotificationsFeed(enabled: boolean) {
       cancelled = true
       controller.abort()
     }
-  }, [enabled])
+  }, [enabled, reloadTick])
+
+  // User-triggered retry after an error. Bumps the reload tick so the
+  // initial-load effect re-runs from scratch.
+  const retry = useCallback(() => {
+    setReloadTick(t => t + 1)
+  }, [])
 
   const loadMore = useCallback(async () => {
     if (!endCursorRef.current || isLoadingMoreRef.current) return
@@ -86,5 +98,5 @@ export function useNotificationsFeed(enabled: boolean) {
     }
   }, [])
 
-  return { notifications, isLoading, isLoadingMore, error, hasMore, loadMore }
+  return { notifications, isLoading, isLoadingMore, error, hasMore, loadMore, retry }
 }

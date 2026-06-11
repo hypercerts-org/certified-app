@@ -69,7 +69,10 @@ function GivenEndorsementsList({
     return (
       <>
         {revokeError ? <ErrorMessage message={revokeError} /> : null}
-        <p className="endorsements-empty">No endorsements yet.</p>
+        <p className="endorsements-empty">
+          You haven&apos;t endorsed anyone yet. Use the New button above to
+          vouch for someone&apos;s work.
+        </p>
       </>
     )
   }
@@ -172,7 +175,8 @@ function ReceivedEndorsementsList() {
   if (endorsements.length === 0) {
     return (
       <p className="endorsements-empty">
-        You haven&apos;t received any endorsements yet.
+        You haven&apos;t received any endorsements yet. When someone vouches
+        for your work, it&apos;ll appear here for you to accept or decline.
       </p>
     )
   }
