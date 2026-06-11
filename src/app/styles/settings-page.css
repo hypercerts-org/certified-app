@@ -61,6 +61,17 @@
   padding: 0;
 }
 
+/* Mobile: the navbar is `position: fixed` (64px) and overlays the content
+   slot, so zeroing the slot's padding above slid the section-nav under the
+   navbar and clipped its top. The desktop top bar sits in normal flow, so this
+   clearance is only needed below the 800px breakpoint. `.page-layout`'s own
+   24px top padding then adds the breathing gap below the navbar. */
+@media (max-width: 799px) {
+  .app-shell:has(.sx) .app-shell__content {
+    padding-top: var(--navbar-height);
+  }
+}
+
 @media (min-width: 800px) {
   .app-shell:has(.sx) .app-shell__content {
     max-width: 1280px;

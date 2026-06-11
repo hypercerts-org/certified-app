@@ -2003,6 +2003,24 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   min-width: 0;
 }
 
+/* /create mobile field order. The create form reuses the cert-detail two-pane
+   shell: in source order the metadata <aside> comes first and the Title/
+   description main pane second (so desktop can explicit-place the aside in
+   column 2). On mobile `.page-layout` collapses to a single grid column and
+   honours source order, which stacked the metadata sidebar ABOVE the Title.
+   Re-order so the primary Title/description main pane leads and the metadata
+   sidebar follows. Scoped to `.create-cert` so the cert-detail read view is
+   untouched; only applies below the 800px desktop breakpoint where no explicit
+   grid placement is set. */
+@media (max-width: 799px) {
+  .create-cert.page-layout > .page-layout__main {
+    order: 0;
+  }
+  .create-cert.page-layout > .cert-detail__aside {
+    order: 1;
+  }
+}
+
 /* ---------- Identity sidebar ---------- */
 
 .profile-sidebar {
@@ -2461,6 +2479,15 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   gap: 8px;
 }
 
+/* On mobile three equal columns squeeze each card so the uppercase
+   letter-spaced labels ("ENDORSEMENTS") and sub-rows clip; drop to a single
+   column so each stat keeps its full label + value rows. */
+@media (max-width: 799px) {
+  .profile-overview__stats {
+    grid-template-columns: 1fr;
+  }
+}
+
 .profile-overview__stat {
   display: flex;
   flex-direction: column;
@@ -2485,6 +2512,13 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--fg-muted);
+  /* Keep the uppercase letter-spaced label on one line so the tablet column
+     width doesn't break it mid-word ("ENDORSE MENTS"); ellipsize if it still
+     overflows rather than wrapping. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .profile-overview__stat-split {
@@ -2511,6 +2545,9 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   font-size: 0.75rem;
   color: var(--fg-muted);
   letter-spacing: 0.01em;
+  /* Keep the descriptor ("created"/"received"/…) whole — at tablet widths the
+     split row was breaking it mid-word ("crea ted"/"recei ved"). */
+  white-space: nowrap;
 }
 
 /* ---------- About section ---------- */
