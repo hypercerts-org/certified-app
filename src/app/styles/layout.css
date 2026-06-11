@@ -1679,6 +1679,12 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   display: block;
 }
 
+/* Source SVG is pure black; flip via CSS filter in dark mode so the wordmark
+   stays visible on legal/marketing pages (mirrors .site-footer__wordmark). */
+:root[data-theme="dark"] .desktop-top-bar__wordmark {
+  filter: invert(1);
+}
+
 .desktop-top-bar__brand:hover {
   opacity: 0.85;
 }
