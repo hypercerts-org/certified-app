@@ -8,8 +8,6 @@
  * looking at, not at `/`.
  */
 
-import { profileUrl } from "@/lib/urls"
-
 const PATH_KEY = "post-signin-path"
 const HANDLE_KEY = "pre-signin-handle"
 
@@ -96,7 +94,8 @@ export function rewritePathForNewIdentity(
  * Marketing / legal pages. A user who signs in from one of these
  * is treated as a new entry into the app, not as someone reading X
  * who happened to sign in mid-flow — so the saved-path restore is
- * bypassed and they land on their own profile instead.
+ * bypassed and they land on the home feed (`/home`) rather than the
+ * marketing page they came from or their own profile.
  */
 const MARKETING_ROUTES = [
   "/welcome",
@@ -114,18 +113,18 @@ function isMarketingPath(path: string): boolean {
 }
 
 /**
- * Convenience: combine the lookup + rewrite. Returns `/` when no
- * saved path is present — preserving the previous fallback.
+ * Convenience: combine the lookup + rewrite. Returns `/home` when no
+ * saved path is present, so a fresh sign-in lands on the activity feed.
  *
- * Sign-ins originating from a {@link MARKETING_ROUTES} page route
- * the user to their own profile. Sign-ins from any other page
+ * Sign-ins originating from a {@link MARKETING_ROUTES} page route the
+ * user to `/home` (the activity feed). Sign-ins from any other page
  * preserve the user's prior location.
  */
 export function resolvePostSigninPath(newIdentifier: string | null): string {
   const { path, handle } = consumePreSigninLocation()
-  if (!path) return "/"
-  if (newIdentifier && isMarketingPath(path)) {
-    return profileUrl(newIdentifier)
+  if (!path) return "/home"
+  if (isMarketingPath(path)) {
+    return "/home"
   }
   return rewritePathForNewIdentity(path, handle, newIdentifier)
 }
