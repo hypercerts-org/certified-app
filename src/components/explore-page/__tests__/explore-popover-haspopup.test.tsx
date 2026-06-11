@@ -51,8 +51,8 @@ describe("Explore popover triggers expose aria-haspopup", () => {
   it("Sort trigger advertises a popup", async () => {
     const { default: Explore } = await import("../explore")
     render(<Explore />)
-    // The Sort trigger is labelled by its visible text ("Sort: …").
-    const sortTrigger = screen.getByRole("button", { name: /^Sort:/ })
+    // The Sort trigger is an icon-only button labelled `aria-label="Sort"`.
+    const sortTrigger = screen.getByRole("button", { name: "Sort" })
     expect(sortTrigger.getAttribute("aria-haspopup")).not.toBeNull()
   })
 
