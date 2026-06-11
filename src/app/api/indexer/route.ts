@@ -265,7 +265,7 @@ ${ACTIVITY_NODE_SELECTION}
       ) {
         edges {
           node {
-            uri cid did createdAt note badge
+            uri cid did createdAt note badge { uri cid }
             issuer { did handle displayName description avatarCid pds }
             response { state weight createdAt }
           }
