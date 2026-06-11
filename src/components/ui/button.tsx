@@ -75,7 +75,22 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       icon: "h-11 w-11 md:h-10 md:w-10 p-0 text-sm",
     };
 
-    const disabledStyles = disabled || loading ? "opacity-50 cursor-not-allowed" : "";
+    // Disabled treatment. Filled variants (primary / destructive) read as
+    // ambiguous at half opacity — the brand fill still looks "active" — so a
+    // disabled filled button drops to a flat sunken fill + muted text + a
+    // subtle border that is unmistakably inert. Outline / text variants
+    // (secondary / ghost) already read clearly when dimmed, so they keep the
+    // lighter opacity treatment. While `loading`, every variant keeps the
+    // opacity dim so the spinner stays legible over the original fill.
+    const filledDisabledStyles =
+      "disabled:!bg-[var(--bg-sunken)] disabled:!text-[var(--fg-muted)] disabled:!border disabled:!border-[var(--border-default)] disabled:hover:!opacity-100 disabled:hover:!bg-[var(--bg-sunken)]";
+    const disabledStyles = !(disabled || loading)
+      ? ""
+      : loading
+        ? "opacity-50 cursor-not-allowed"
+        : variant === "primary" || variant === "destructive"
+          ? `cursor-not-allowed ${filledDisabledStyles}`
+          : "opacity-50 cursor-not-allowed";
 
     // Active visual for toggle buttons. Only secondary/ghost have an "off" look
     // distinct enough that a pressed state reads as on; primary/destructive keep

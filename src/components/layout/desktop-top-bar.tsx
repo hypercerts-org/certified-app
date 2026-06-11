@@ -229,6 +229,12 @@ export default function DesktopTopBar() {
   // stays the primary "discard" action.
   const isOnCreatePage = pathname === "/create" || pathname === "/project/new";
   const showBackRow = isOnCertDetail || isOnProjectDetail || isOnCreatePage;
+  // /explore renders its own contextual "Search Certified" field inside the
+  // page chrome (it doubles as the cross-kind filter), so the top-bar's
+  // global search field is a redundant second "Search Certified" input at
+  // every width ≥800px. Suppress the top-bar copy there — Explore owns the
+  // search affordance on its own surface.
+  const isOnExplore = pathname === "/explore";
   // Settings is its own standalone surface now (reachable from the
   // site drawer); no tab strip there. The edit-profile page is the one
   // exception — it borrows the profile strip (locked to Overview, see
@@ -344,6 +350,15 @@ export default function DesktopTopBar() {
 
   if (isLoading) return null;
 
+  // Marketing landing (/welcome), signed out: the page is self-contained —
+  // it owns its own hero "Sign in with Certified" CTA and the footer. The
+  // full app chrome here (global search + Explore/Apps/Help icon nav + a
+  // second top-right "Sign in") is redundant against that hero CTA, so the
+  // top bar drops out entirely. Signed-in viewers keep the bar so they can
+  // navigate back out of the marketing page. (The mobile <Navbar> already
+  // renders /welcome as a transparent overlay for signed-out viewers.)
+  if (pathname === "/welcome" && !isAuthenticated) return null;
+
   const tabHref = (tab: ProfileTab) => {
     if (tab.href) return tab.href;
     if (!pathname) return "#";
@@ -414,9 +429,11 @@ export default function DesktopTopBar() {
         </div>
 
         <div className="desktop-top-bar__right">
-          <div className="desktop-top-bar__search">
-            <GlobalSearch placeholder="Search Certified" />
-          </div>
+          {isOnExplore ? null : (
+            <div className="desktop-top-bar__search">
+              <GlobalSearch placeholder="Search Certified" />
+            </div>
+          )}
 
           {isAuthenticated ? (
             <div
