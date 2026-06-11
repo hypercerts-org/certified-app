@@ -3,7 +3,7 @@
 import React, { useCallback, useState, useMemo } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { Plus } from "lucide-react"
+import { Plus, Users } from "lucide-react"
 import { useOrg } from "@/lib/groups/org-context"
 import { useAuth } from "@/lib/auth/auth-context"
 import { usePageTitle } from "@/lib/navbar-context"
@@ -19,6 +19,7 @@ import Badge from "@/components/ui/badge"
 import Button from "@/components/ui/button"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
+import SignedOutPrompt from "@/components/layout/signed-out-prompt"
 import { getInitials } from "@/lib/utils/initials"
 
 type TabKey = "public" | "private"
@@ -35,7 +36,7 @@ const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 }
 export default function GroupsPage() {
   usePageTitle("Groups")
   const { groups, isLoading, refetchOrgs } = useOrg()
-  const { did } = useAuth()
+  const { did, isLoading: authLoading, isAuthenticated } = useAuth()
 
   // Tab state lives in `?tab=<key>` so refresh keeps the user on the
   // same view. Public is the default and stays bare in the URL.
@@ -213,6 +214,40 @@ export default function GroupsPage() {
       )
     }
     return <div className="org-list__items">{visibleOrgs.map(renderOrgItem)}</div>
+  }
+
+  // Anonymous visitors used to be redirected to /welcome by AuthGuard.
+  // /groups lists the viewer's OWN memberships (keyed on their DID) —
+  // there's no public listing to render — so we show a public sign-in
+  // prompt in place instead of bouncing. Wait for auth to resolve first
+  // so signed-in users never flash the prompt.
+  if (authLoading) {
+    return (
+      <div className="dashboard">
+        <div className="dashboard__body dashboard__body--single">
+          <div className="dashboard__main">
+            <div className="org-list__loading">
+              <LoadingSpinner size="md" />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  if (!isAuthenticated) {
+    return (
+      <div className="dashboard">
+        <div className="dashboard__body dashboard__body--single">
+          <div className="dashboard__main">
+            <SignedOutPrompt
+              icon={Users}
+              title="Sign in to see your groups"
+              description="Organizations you're a member of on Certified appear here once you sign in."
+            />
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

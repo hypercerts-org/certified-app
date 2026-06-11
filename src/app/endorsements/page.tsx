@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { profileUrl } from "@/lib/urls"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { Plus } from "lucide-react"
+import { Plus, Award } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { usePageTitle } from "@/lib/navbar-context"
@@ -22,6 +22,7 @@ import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import ErrorMessage from "@/components/ui/error-message"
 import Skeleton from "@/components/ui/skeleton"
+import SignedOutPrompt from "@/components/layout/signed-out-prompt"
 import { formatShortDate } from "@/lib/utils/format-date"
 import { getInitials } from "@/lib/utils/initials"
 
@@ -211,7 +212,7 @@ const DEFAULT_TAB: TabKey = "given"
 
 export default function EndorsementsPage() {
   usePageTitle("Endorsements")
-  const { did } = useAuth()
+  const { did, isLoading: authLoading, isAuthenticated } = useAuth()
   const { activeOrg } = useOrg()
 
   // Tab state lives in `?tab=<key>` on the URL so refresh / shared
@@ -306,6 +307,40 @@ export default function EndorsementsPage() {
       setRevokingRkey(null)
     }
   }, [did, confirmRkey, refetch])
+
+  // Anonymous visitors used to be redirected to /welcome by AuthGuard.
+  // /endorsements is a personal inbox keyed on the viewer's own DID —
+  // there's no public listing to render — so we show a public sign-in
+  // prompt in place instead of bouncing. Wait for auth to resolve first
+  // so signed-in users never flash the prompt.
+  if (authLoading) {
+    return (
+      <div className="dashboard">
+        <div className="dashboard__body dashboard__body--single">
+          <div className="dashboard__main">
+            <div className="endorsements-loading">
+              <LoadingSpinner size="md" />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  if (!isAuthenticated) {
+    return (
+      <div className="dashboard">
+        <div className="dashboard__body dashboard__body--single">
+          <div className="dashboard__main">
+            <SignedOutPrompt
+              icon={Award}
+              title="Sign in to see your endorsements"
+              description="Endorsements you've received and given live here once you sign in to Certified."
+            />
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="dashboard">
