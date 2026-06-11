@@ -125,7 +125,16 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
             className="profile-banner-upload__img"
             onError={() => setImgFailed(true)}
           />
-        ) : null}
+        ) : (
+          // Neutral guidance hint for the otherwise-featureless empty
+          // box. Sets reader expectations (what the banner is, the crop)
+          // instead of leaving a blank gradient rectangle. aria-hidden:
+          // the "Change banner" button already carries the accessible
+          // affordance, so the hint is decorative for screen readers.
+          <span className="profile-banner-upload__hint" aria-hidden="true">
+            Add a banner image — shown across the top of your profile (3:1)
+          </span>
+        )}
 
         <div className="profile-banner-upload__btn-row">
           <button
