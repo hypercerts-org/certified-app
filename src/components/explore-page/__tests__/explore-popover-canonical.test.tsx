@@ -57,7 +57,7 @@ describe("Explore Sort dropdown uses the canonical Popover", () => {
   it("opens a role=menu wired to the trigger via aria-controls", async () => {
     const { default: Explore } = await import("../explore")
     render(<Explore />)
-    const trigger = screen.getByRole("button", { name: /^Sort:/ })
+    const trigger = screen.getByRole("button", { name: "Sort" })
     // Closed initially.
     expect(screen.queryByRole("menu")).toBeNull()
     expect(trigger.getAttribute("aria-expanded")).toBe("false")
@@ -71,13 +71,15 @@ describe("Explore Sort dropdown uses the canonical Popover", () => {
     expect(menu.id).toBeTruthy()
   })
 
-  it("renders the sort options as role=menuitem", async () => {
+  it("renders the sort options as role=menuitemradio", async () => {
     const { default: Explore } = await import("../explore")
     render(<Explore />)
-    const trigger = screen.getByRole("button", { name: /^Sort:/ })
+    const trigger = screen.getByRole("button", { name: "Sort" })
     fireEvent.click(trigger)
     const menu = screen.getByRole("menu")
-    const items = within(menu).getAllByRole("menuitem")
+    // Each option carries `selected`, so the canonical PopoverItem renders
+    // as a selectable `menuitemradio` rather than a plain `menuitem`.
+    const items = within(menu).getAllByRole("menuitemradio")
     const labels = items.map((el) => el.textContent)
     expect(labels).toContain("Newest first")
     expect(labels).toContain("Oldest first")
@@ -87,7 +89,7 @@ describe("Explore Sort dropdown uses the canonical Popover", () => {
   it("closes on Escape", async () => {
     const { default: Explore } = await import("../explore")
     render(<Explore />)
-    const trigger = screen.getByRole("button", { name: /^Sort:/ })
+    const trigger = screen.getByRole("button", { name: "Sort" })
     fireEvent.click(trigger)
     expect(screen.getByRole("menu")).toBeTruthy()
     fireEvent.keyDown(document, { key: "Escape" })
