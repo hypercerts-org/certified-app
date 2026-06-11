@@ -26,6 +26,7 @@ import { useFollowing } from "@/hooks/use-following"
 import { formatRelativeTime, resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { formatShortDate } from "@/lib/utils/format-date"
+import { hideBrokenThumb } from "@/lib/utils/image-fallback"
 import { getInitials } from "@/lib/utils/initials"
 import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 import {
@@ -1127,7 +1128,12 @@ function PreviewCard({
       {imageUrl ? (
         <span className="home-feed__preview-thumb">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={imageUrl} alt="" loading="lazy" />
+          <img
+            src={imageUrl}
+            alt={title ? `Thumbnail for ${title}` : ""}
+            loading="lazy"
+            onError={hideBrokenThumb}
+          />
         </span>
       ) : null}
       <span className="home-feed__preview-body">

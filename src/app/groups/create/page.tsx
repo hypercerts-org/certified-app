@@ -19,7 +19,7 @@ import {
   uploadOrgBlob,
 } from "@/lib/groups/api"
 import Button from "@/components/ui/button"
-import ErrorMessage from "@/components/ui/error-message"
+import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
 import type { UploadedBlob } from "@/lib/atproto/profile"
@@ -57,7 +57,7 @@ import type { OrgProfile, GroupMetadata } from "@/lib/groups/types"
 export default function CreateGroupPage() {
   usePageTitle("New group")
   const router = useRouter()
-  const { did } = useAuth()
+  const { did, isLoading: authLoading, openSignIn } = useAuth()
   const { refetchOrgs } = useOrg()
   const { isChecking, limitReached } = useOrgCreationLimit()
 
@@ -286,7 +286,8 @@ export default function CreateGroupPage() {
     }
   }
 
-  if (isChecking) {
+  // Still resolving auth or the self-created-org count.
+  if (authLoading || isChecking) {
     return (
       <div className="dashboard">
         <div className="dashboard__body">
@@ -298,14 +299,47 @@ export default function CreateGroupPage() {
     )
   }
 
+  // Auth has settled but there's no signed-in account. Previously the
+  // limit hook stayed in its "checking" state forever when `did` was
+  // null, leaving this page stuck on an infinite spinner with no way
+  // out. Render a recoverable state with a clear primary action instead.
+  if (!did) {
+    return (
+      <div className="dashboard">
+        <div className="dashboard__body">
+          <div className="dashboard__main">
+            <EmptyState
+              icon={Users}
+              title="Sign in to create a group"
+              description="You need to be signed in to start a new group."
+            >
+              <Button variant="primary" onClick={() => openSignIn()}>
+                Sign in
+              </Button>
+            </EmptyState>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (limitReached) {
     return (
       <div className="dashboard">
         <div className="dashboard__body">
           <div className="dashboard__main">
-            <ErrorMessage
-              message={`You've reached the limit of ${MAX_SELF_CREATED_ORGS} self-created groups.`}
-            />
+            <EmptyState
+              icon={Users}
+              title="Group limit reached"
+              description={`You've reached the limit of ${MAX_SELF_CREATED_ORGS} self-created groups. Leave or delete one to make room for a new group.`}
+            >
+              <Button
+                variant="secondary"
+                onClick={() => router.push("/groups")}
+              >
+                Back to groups
+              </Button>
+            </EmptyState>
           </div>
         </div>
       </div>

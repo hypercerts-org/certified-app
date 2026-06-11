@@ -58,6 +58,11 @@ export default function WorkspacePane({
   }
 
   if (lexicon === null) {
+    const lexKeys = Object.keys(WORKSPACE_LEXICON_LABEL) as WorkspaceLexicon[]
+    // Counts have all loaded (no nulls) and every one is zero — this actor
+    // simply has nothing on the network yet. Surface that explicitly rather
+    // than leaving a wall of zeros with no explanation.
+    const allLoadedZero = lexKeys.every((lex) => counts[lex] === 0)
     return (
       <div className="wks-pane">
         <header className="wks-pane__head">
@@ -69,21 +74,21 @@ export default function WorkspacePane({
           <p className="wks-pane__lede">{actor.description}</p>
         ) : null}
         <ul className="wks-pane__grid">
-          {(Object.keys(WORKSPACE_LEXICON_LABEL) as WorkspaceLexicon[]).map(
-            (lex) => (
-              <li key={lex} className="wks-pane__grid-item">
-                <span className="wks-pane__grid-label">
-                  {WORKSPACE_LEXICON_LABEL[lex]}
-                </span>
-                <span className="wks-pane__grid-count">
-                  {counts[lex] ?? "—"}
-                </span>
-              </li>
-            ),
-          )}
+          {lexKeys.map((lex) => (
+            <li key={lex} className="wks-pane__grid-item">
+              <span className="wks-pane__grid-label">
+                {WORKSPACE_LEXICON_LABEL[lex]}
+              </span>
+              <span className="wks-pane__grid-count">
+                {counts[lex] ?? "—"}
+              </span>
+            </li>
+          ))}
         </ul>
         <p className="wks-pane__hint">
-          Pick a lexicon on the left to see the list.
+          {allLoadedZero
+            ? "This actor hasn't published anything on the network yet."
+            : "Pick a lexicon on the left to see the list."}
         </p>
         <Link
           href={profileUrl(actor.did)}

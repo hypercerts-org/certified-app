@@ -21,6 +21,7 @@ import NewsSection from "@/components/right-rail/news-section"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { getInitials } from "@/lib/utils/initials"
+import { hideBrokenThumb } from "@/lib/utils/image-fallback"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { OwnerTag } from "@/lib/atproto/owner-tag"
@@ -299,7 +300,12 @@ function ProjectRow({
         <span className="home-row__thumb">
           {imageUrl ? (
             /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={imageUrl} alt="" loading="lazy" />
+            <img
+              src={imageUrl}
+              alt={title ? `Thumbnail for ${title}` : ""}
+              loading="lazy"
+              onError={hideBrokenThumb}
+            />
           ) : (
             <FolderGit2
               size={14}
@@ -345,7 +351,12 @@ function CertRow({
         <span className="home-row__thumb">
           {imageUrl ? (
             /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={imageUrl} alt="" loading="lazy" />
+            <img
+              src={imageUrl}
+              alt={record.value.title ? `Thumbnail for ${record.value.title}` : ""}
+              loading="lazy"
+              onError={hideBrokenThumb}
+            />
           ) : (
             <CertIcon
               size={14}

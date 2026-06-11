@@ -13,7 +13,15 @@ export function useOrgCreationLimit() {
   const [isChecking, setIsChecking] = useState(true)
 
   useEffect(() => {
-    if (orgsLoading || !did) return
+    // Wait while the org list is still resolving — `did` may arrive late.
+    if (orgsLoading) return
+    // Auth has settled but there's no signed-in DID. Don't sit in the
+    // "checking" state forever (which leaves consumers stuck on a spinner
+    // with no way out); resolve so they can render a recoverable state.
+    if (!did) {
+      setIsChecking(false)
+      return
+    }
     const controller = new AbortController()
     setIsChecking(true)
     getSelfCreatedOrgCount(did, groups, controller.signal)
