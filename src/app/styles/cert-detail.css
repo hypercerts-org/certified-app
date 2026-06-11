@@ -1439,10 +1439,20 @@
   overflow-wrap: anywhere;
 }
 
+/* Mobile: the byline is a flex (not grid) container, so the old
+   `grid-template-columns` rule was silently ignored. The 32px
+   horizontal gap + flex-wrap let the Author column wrap mid-cell,
+   splitting the avatar from the name/handle (reads as an icon bar
+   with a missing value). Stack the labelled columns vertically and
+   keep the author avatar + meta on one line. */
 @media (max-width: 799px) {
   .cert-detail__headline-cols {
-    grid-template-columns: 1fr;
+    flex-direction: column;
     gap: 12px;
+  }
+
+  .cert-detail__headline-author {
+    flex-wrap: nowrap;
   }
 }
 
