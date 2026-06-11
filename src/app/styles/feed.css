@@ -1158,8 +1158,15 @@
 .endorsement-row__revoke {
   background: transparent;
   border: 1px solid transparent;
-  color: var(--fg-muted);
+  /* --fg-secondary (not --fg-muted) so the icon-only control clears the
+     contrast bar without a visible label; hover lifts it to --fg-primary. */
+  color: var(--fg-secondary);
   border-radius: var(--radius);
+  /* ≥44×44 hit area on every viewport (the icon stays 16px). The
+     <=799px media block already enforced this on touch; promote it to
+     the base rule so desktop pointers get the same target. */
+  min-width: 44px;
+  min-height: 44px;
   padding: 6px;
   cursor: pointer;
   display: inline-flex;
@@ -1669,8 +1676,12 @@
   background: transparent;
   border: none;
   cursor: pointer;
+  /* ≥44×44 hit area on every viewport (the X icon stays 14px); higher
+     resting contrast via --fg-secondary, hover lifts to --fg-primary. */
+  min-width: 44px;
+  min-height: 44px;
   padding: 4px;
-  color: var(--fg-muted);
+  color: var(--fg-secondary);
   border-radius: var(--radius);
   display: inline-flex;
   align-items: center;

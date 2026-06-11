@@ -379,7 +379,7 @@ const Navbar: React.FC = () => {
               </Tooltip>
             )}
           </div>
-          <div className="navbar__title" role="heading" aria-level={1}>
+          <div className="navbar__title">
             {breadcrumb ? (
               <>
                 <Link href={breadcrumb.left.href} className="navbar__title-part">

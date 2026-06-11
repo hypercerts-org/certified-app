@@ -395,7 +395,7 @@ export default function DesktopTopBar() {
             )}
           </Link>
           {breadcrumb ? (
-            <h1 className="desktop-top-bar__title" aria-live="polite">
+            <div className="desktop-top-bar__title" aria-live="polite">
               <Link href={breadcrumb.left.href} className="desktop-top-bar__title-part">
                 {breadcrumb.left.text}
               </Link>
@@ -407,9 +407,9 @@ export default function DesktopTopBar() {
                   </Link>
                 </>
               ) : null}
-            </h1>
+            </div>
           ) : pageTitle ? (
-            <h1 className="desktop-top-bar__title" aria-live="polite">{pageTitle}</h1>
+            <div className="desktop-top-bar__title" aria-live="polite">{pageTitle}</div>
           ) : null}
         </div>
 
