@@ -34,7 +34,7 @@ export default function OrganizationsStrip() {
       <div className="lp-section__inner lp-band__inner">
         <span className="lp-eyebrow lp-band__eyebrow">For organizations</span>
         <h2 id="lp-band-title" className="lp-h2 lp-band__title">
-          Join the network
+          Join the network. Connect your system.
         </h2>
         <div className="lp-band__cols">
           {AUDIENCES.map((a) => (
