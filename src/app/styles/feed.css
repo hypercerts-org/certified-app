@@ -235,6 +235,46 @@
   padding: 10px 16px 8px;
 }
 
+/* Section heading inside the panel ("Activity quality", …) — same
+   register as the create-form field labels. */
+.feed-evaluator-panel__heading {
+  margin: 8px 0 6px;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-muted);
+}
+
+.feed-evaluator-panel__heading:first-child {
+  margin-top: 2px;
+}
+
+/* Quiet text button at the panel's bottom. */
+.feed-evaluator-panel__reset {
+  display: block;
+  margin: 2px 0 4px;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.feed-evaluator-panel__reset:hover:not(:disabled) {
+  color: var(--fg-primary);
+}
+
+.feed-evaluator-panel__reset:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .feed-evaluators {
   background: var(--bg-canvas);
   padding: 10px 16px 8px;

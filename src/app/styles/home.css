@@ -288,10 +288,17 @@
 }
 
 @media (max-width: 799px) {
+  /* Zero the shell's 16px reading gutter for the home page — the feed
+     carries its own (small) gutter below, so cards run nearly
+     edge-to-edge like a native social timeline. Specificity (three
+     classes via :has) beats the components.css mobile gutter rule. */
+  .app-shell:has(.home-page) .app-shell__content {
+    padding-left: 0;
+    padding-right: 0;
+  }
   .home__main {
-    /* Slightly tighter side gutters on a phone so the feed gets room,
-       with a touch more top breathing space below the navbar. */
-    padding: 12px 14px 32px;
+    /* Just a small side gutter on a phone so the feed gets the room. */
+    padding: 12px 8px 32px;
   }
 }
 
@@ -323,29 +330,6 @@
   min-width: 0;
 }
 
-.home-feed__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 0 0 12px;
-}
-
-.home-feed__header-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.home-feed__heading {
-  margin: 0;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--fg-secondary);
-}
-
 .home__news {
   min-width: 0;
   /* Match the .right-rail surface used elsewhere — light card on
@@ -369,13 +353,14 @@
    description and a dot-separated muted meta row. Mirrors the
    feed-card layout shipped on certs.social. */
 
+/* No border-top — the tab strip above (.feed-tabs) carries the
+   dividing rule, exactly like the certs.social feed surface. */
 .home-feed {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--border-subtle);
 }
 
 .home-feed__item {
@@ -612,12 +597,6 @@ a.home-feed__card-body:hover .home-feed__card-title {
 }
 
 @media (max-width: 799px) {
-  .home-feed {
-    /* Drop the hairline top rule on mobile — the first card's own
-       padding gives enough separation from the header. */
-    border-top: 0;
-  }
-
   .home-feed__item {
     /* Slightly stronger divider than the desktop subtle line so cards
        read as distinct entries in a thumb-scrolled timeline. */
@@ -630,11 +609,6 @@ a.home-feed__card-body:hover .home-feed__card-title {
 
   .home-feed__card {
     padding: 16px 0;
-  }
-
-  /* Header heading + the load-more button get a touch more room. */
-  .home-feed__header {
-    margin-bottom: 8px;
   }
 
   .home-feed__load-more {
@@ -667,209 +641,15 @@ a.home-feed__card-body:hover .home-feed__card-title {
   padding: 0 16px;
 }
 
-/* ---------- Quality filter popover (right side of feed header) ---------- */
+/* The feed's tab strip + inline filter panel reuse the certs.social
+   classes in feed.css (.feed-tabs, .feed-evaluator-panel,
+   .feed-evaluators__*) — no home-specific chrome styles needed. */
 
-.home-feed__filter {
-  position: relative;
-}
-
-.home-feed__filter-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--fg-secondary);
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
-}
-
-.home-feed__filter-btn:hover {
-  background: var(--bg-sunken);
-  color: var(--fg-primary);
-}
-
-.home-feed__filter-btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--focus-ring);
-}
-
-/* When any tier is excluded, give the trigger a subtle filled state
-   so the filter doesn't look idle. */
-.home-feed__filter-btn--active {
-  color: var(--fg-primary);
-  border-color: var(--border-medium);
-  background: var(--bg-sunken);
-}
-
-/* Mobile: 44px tap targets for the feed filter trigger and sidebar/list
-   rows, roomier checkbox rows, and a viewport-constrained popover so the
-   right-anchored menu can't overflow off a narrow screen. */
+/* Mobile: comfortable tap height for the home sidebar/list rows. */
 @media (max-width: 799px) {
-  .home-feed__filter-btn {
-    width: 44px;
-    height: 44px;
-  }
-  .home-feed__filter-pop {
-    max-width: calc(100vw - 32px);
-  }
-  .home-feed__filter-item {
-    padding: 10px 8px;
-  }
   .home-row {
     min-height: 44px;
   }
-}
-
-.home-feed__filter-pop {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: var(--z-popover);
-  min-width: 184px;
-  padding: 10px 8px 8px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-}
-
-.home-feed__filter-title {
-  margin: 0 4px 6px;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--fg-secondary);
-}
-
-.home-feed__filter-help {
-  margin: 0 4px 8px;
-  font-size: 0.75rem;
-  line-height: 1.4;
-  color: var(--fg-secondary);
-}
-
-.home-feed__filter-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.home-feed__filter-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: var(--radius);
-  font-size: 0.8125rem;
-  color: var(--fg-primary);
-  cursor: pointer;
-  user-select: none;
-  transition: background var(--transition-fast);
-}
-
-.home-feed__filter-item:hover {
-  background: var(--bg-sunken);
-}
-
-.home-feed__filter-item input {
-  width: 14px;
-  height: 14px;
-  accent-color: var(--fg-primary);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-/* "Reset to default" link at the bottom of each filter popover.
-   Quiet text-button styling so it doesn't compete with the active
-   selection above; disabled state when already at default keeps it
-   visible but inert. Mirrors `.popover__reset-btn` in explore.css. */
-.home-feed__filter-reset {
-  display: block;
-  width: calc(100% - 8px);
-  margin: 8px 4px 0;
-  padding: 6px 8px;
-  border: 0;
-  border-top: 1px solid var(--border-subtle);
-  border-radius: 0;
-  background: none;
-  text-align: left;
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: var(--fg-secondary);
-  cursor: pointer;
-  transition: background var(--transition-fast),
-    color var(--transition-fast);
-}
-
-.home-feed__filter-reset:hover:not(:disabled) {
-  background: var(--bg-sunken);
-  color: var(--fg-primary);
-}
-
-.home-feed__filter-reset:disabled {
-  color: var(--fg-muted);
-  cursor: default;
-}
-
-/* ---------- Trusted-evaluator popover overrides ---------- */
-
-.home-feed__filter-pop--evaluators {
-  min-width: 248px;
-}
-
-.home-feed__evaluator-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 6px 4px 8px;
-  border-radius: var(--radius);
-}
-
-.home-feed__evaluator-check {
-  width: 14px;
-  height: 14px;
-  accent-color: var(--fg-primary);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.home-feed__evaluator-link {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-  min-width: 0;
-  padding: 4px 6px;
-  border-radius: var(--radius);
-  color: var(--fg-primary);
-  text-decoration: none;
-  transition: background var(--transition-fast);
-}
-
-.home-feed__evaluator-link:hover {
-  background: var(--bg-sunken);
-}
-
-.home-feed__evaluator-link:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--focus-ring);
-}
-
-.home-feed__evaluator-name {
-  font-size: 0.8125rem;
-  line-height: 1.3;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
 }
 
 /* ---------- Activity timeline load-more sentinel ---------- */
