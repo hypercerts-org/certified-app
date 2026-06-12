@@ -1,41 +1,55 @@
 import FaqAccordion from "./faq-accordion";
 
+// Also feeds the FAQPage JSON-LD in src/app/welcome/page.tsx — keep
+// this export (and its path) stable.
 export const FAQ_ITEMS = [
   {
     question: "Is this like 'Sign in with Google'?",
     answer:
-      "Similar idea: one account across apps. The difference is that Certified is designed so you're not locked into one company or one app.",
-  },
-  {
-    question: "Do I need crypto or a wallet?",
-    answer:
-      "No. Certified works with just your email. No crypto, no wallet, no technical setup required.",
+      "The convenience is the same: one account that works across apps. The difference is who holds it. A Google account lives at Google; your Certified account belongs to you, with your record and supporters attached, and no company can lock you out of it.",
   },
   {
     question: "What if I already have an account on a partner app?",
     answer:
-      "On supported platforms, you can connect Certified to an existing account.",
+      "On supported apps you can connect Certified to the account you already have. From then on, the work you do there is saved to your record. It doesn't matter where you first signed up: it's the same account, and it works everywhere.",
   },
   {
-    question: "Can I stop using Certified later?",
+    question: "What is AT Protocol?",
     answer:
-      "Yes. Your data is portable — you can export it or simply stop using the service at any time.",
+      "An open, decentralized network for building social applications. Identities are user-owned: your account and data belong to you, work across apps, and can move between providers. Bluesky runs on it, and so does Certified.",
   },
   {
-    question: "What apps support Certified?",
+    question: "Can I use my Bluesky account?",
     answer:
-      "Currently Ma Earth, GainForest, Simocracy, and Hyperboards. More apps are joining over time.",
+      "Yes. Certified is built on AT Protocol, the same open network behind Bluesky, so you can sign in with any AT Protocol account, including your Bluesky handle. A Certified account is just one home among many in that ecosystem.",
+  },
+  {
+    question: "What does it cost?",
+    answer:
+      "Nothing. Accounts are free for people and organizations. Funders and platforms can integrate with the open network directly, without asking us and without paying.\n\nWe're happy to support any integration. Only hands-on help is a paid service: get in touch.",
+  },
+  {
+    question: "Is Certified only for environmental work?",
+    answer:
+      "No. Our founding community works in ecological regeneration — that's why many early profiles are land and climate projects — but accounts, records, and endorsements work the same way for any impact domain: open-source software, journalism, science, community events, and more.",
+  },
+  {
+    question: "What happens if Certified disappears?",
+    answer:
+      "Your account lives on open standards and open-source software, operated by the Hypercerts Foundation. You can move it to another provider at any time, and everything you've published stays verifiable. The network doesn't depend on one organization's survival.",
   },
 ];
 
 export default function FaqSection() {
   return (
-    <section id="faq" className="landing-section landing-section--subtle">
-      <div className="landing-section__inner">
-        <div className="landing-section__header landing-section__header--center">
-          <span className="landing-label">Common Questions</span>
-          <h2>Frequently asked questions</h2>
-        </div>
+    <section id="faq" className="lp-section" aria-labelledby="lp-faq-title">
+      <div className="lp-section__inner">
+        <header className="lp-section__header lp-section__header--centerblock">
+          <span className="lp-eyebrow">Common questions</span>
+          <h2 id="lp-faq-title" className="lp-h2">
+            Frequently asked questions
+          </h2>
+        </header>
         <FaqAccordion items={FAQ_ITEMS} />
       </div>
     </section>

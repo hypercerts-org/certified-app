@@ -13,7 +13,7 @@ export default function HelpFeedbackLink() {
   return (
     <button
       type="button"
-      onClick={openFeedback}
+      onClick={() => openFeedback()}
       className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
     >
       feedback form

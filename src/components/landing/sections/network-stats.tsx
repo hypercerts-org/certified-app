@@ -4,31 +4,47 @@ import { useEffect, useRef, useState } from "react"
 import { useNetworkCounts } from "@/hooks/use-network-counts"
 
 /**
- * Five live network-wide counters slotted between WhatYouGet and
- * HowItWorks on the /welcome landing page. Users / Organizations
- * / Achievements / Projects / Endorsements (the last with a NEW
- * pill — endorsements only just shipped on this branch).
+ * Five live network-wide counters on the /welcome landing page —
+ * Users / Organizations / Projects / Activities / Endorsements.
  *
- * Tiles render `—` while the indexer fetch is in flight and on
+ * Cells render `—` while the indexer fetch is in flight and on
  * per-op failure; otherwise the formatted count with
- * `Intl.NumberFormat` thousands separators. Once a value lands it
- * counts up from 0 with ease-out; every tile shares the same
- * duration so a 12-counter and a 4,800-counter land together,
- * and a staggered start cascades them in left-to-right.
+ * `Intl.NumberFormat` thousands separators. The count-up is gated on
+ * the section entering the viewport (the section sits far down the
+ * page — fired on load, the animation would always play unseen):
+ * values are withheld from the cells until the row is ~a third
+ * visible, then every cell counts up from 0 with ease-out, equal
+ * duration, staggered left-to-right.
  *
- * Sectioning mirrors the existing landing-section conventions
- * (`.landing-section`, `.landing-section__inner`,
- * `.landing-section__header`, `.landing-label`) so the visual
- * rhythm matches the surrounding sections.
+ * Layout is the editorial register row: big mono numerals over
+ * small uppercase labels, divided by hairlines (see .lp-stats in
+ * landing.css).
  */
 export default function NetworkStats() {
   const { counts, isLoading } = useNetworkCounts()
+  const sectionRef = useRef<HTMLElement>(null)
+  const [inView, setInView] = useState(false)
+
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setInView(true)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.35 },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   const items: {
     key: string
     label: string
     value: number | null
-    isNew?: boolean
   }[] = [
     { key: "users", label: "Users", value: counts.users },
     {
@@ -38,53 +54,43 @@ export default function NetworkStats() {
     },
     { key: "projects", label: "Projects", value: counts.projects },
     { key: "achievements", label: "Activities", value: counts.achievements },
-    {
-      key: "endorsements",
-      label: "Endorsements",
-      value: counts.endorsements,
-      isNew: true,
-    },
+    { key: "endorsements", label: "Endorsements", value: counts.endorsements },
   ]
 
   return (
     <section
+      ref={sectionRef}
       id="network-stats"
-      className="landing-section landing-section--subtle network-stats"
-      aria-labelledby="network-stats-heading"
+      className="lp-section lp-stats"
+      aria-labelledby="lp-stats-title"
     >
-      <div className="landing-section__inner">
-        <div className="landing-section__header landing-section__header--center">
-          <span className="landing-label">By the numbers</span>
-          <h2 id="network-stats-heading">A network you can build on</h2>
-          <p className="landing-protocol__intro">
-            Live counts from the Certified network.
-          </p>
-        </div>
+      <div className="lp-section__inner">
+        <header className="lp-section__header">
+          <span className="lp-eyebrow">By the numbers</span>
+          <h2 id="lp-stats-title" className="lp-h2">
+            A network you can build on
+          </h2>
+        </header>
 
-        <ul
-          className="network-stats__grid"
-          aria-busy={isLoading}
-          aria-live="polite"
-        >
+        {/* No aria-live here: the count-up mutates the text on every
+            animation frame, which would flood screen readers with
+            intermediate values. The numbers aren't urgent enough to
+            announce; AT users read the settled values on arrival. */}
+        <ul className="lp-stats__row" aria-busy={isLoading}>
           {items.map((item, index) => (
-            <li key={item.key} className="network-stats__tile">
-              <div className="network-stats__value-row">
-                <span
-                  className="network-stats__value"
-                  data-loading={item.value === null}
-                >
-                  <AnimatedCount
-                    value={item.value}
-                    delayMs={index * STAGGER_MS}
-                  />
-                </span>
-                {item.isNew ? (
-                  <span className="network-stats__new" aria-label="New">
-                    NEW
-                  </span>
-                ) : null}
-              </div>
-              <span className="network-stats__label">{item.label}</span>
+            <li key={item.key} className="lp-stats__cell">
+              <span
+                className="lp-stats__value"
+                data-loading={!inView || item.value === null}
+              >
+                {/* Withholding the value until in view defers the
+                    count-up without touching the hook. */}
+                <AnimatedCount
+                  value={inView ? item.value : null}
+                  delayMs={index * STAGGER_MS}
+                />
+              </span>
+              <span className="lp-stats__label">{item.label}</span>
             </li>
           ))}
         </ul>
@@ -109,7 +115,7 @@ function AnimatedCount({
   return <>{FORMATTER.format(display)}</>
 }
 
-// Equal duration regardless of magnitude so tiles with very
+// Equal duration regardless of magnitude so cells with very
 // different targets land at the same moment. Subsequent updates
 // (5-min cache refresh) animate from the last displayed value, not
 // from 0, so a small delta doesn't whip back through the full range.

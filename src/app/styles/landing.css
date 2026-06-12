@@ -1,123 +1,350 @@
+/* ============================================================================
+ * Landing page (/welcome) — `lp-` namespace.
+ *
+ * Editorial system: off-white canvas, hairline rules, light serif
+ * headlines, mono registry numerals, hairline "certification seal"
+ * artwork (see src/components/landing/seal-art.tsx). Sections sit
+ * directly on the page canvas, separated by full-width 1px rules;
+ * the organizations band is the page's single polarity-inversion
+ * moment.
+ *
+ * All colors are theme-aware tokens (raw hex is permitted in this
+ * file, but tokens make dark mode free). Artwork strokes use
+ * currentColor inside wrappers that set `color: var(--color-navy)`.
+ *
+ * Everything below the "SHARED, NON-LANDING" banner at the end of
+ * this file backs app-wide surfaces (AppDialog keyframes, feedback
+ * modal, legal pages) — do NOT remove it with landing iterations.
+ * ========================================================================== */
 
-/* ========== Hero ========== */
-.hero {
-  position: relative;
-  min-height: 920px;
-  display: flex;
-  align-items: center;
-  background: var(--color-surface);
-  overflow: hidden;
-  padding: calc(var(--navbar-height) + 48px) 32px 48px;
+/* ---------- Foundations ---------- */
+
+.lp {
+  background: var(--color-off-white);
 }
 
-.hero__pattern {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  opacity: 0.25;
-  pointer-events: none;
+.lp-section {
+  border-top: 1px solid var(--color-light-gray);
+  padding: clamp(80px, 6vw + 40px, 136px) 32px;
+}
+
+.lp-section__inner {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.lp-section__header {
+  max-width: 720px;
+  margin-bottom: 56px;
+}
+
+.lp-eyebrow {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-mid-gray);
+}
+
+/* Lift eyebrows off the muted floor in dark mode so they clear AA. */
+:root[data-theme="dark"] .lp-eyebrow {
+  color: var(--fg-secondary);
+}
+
+.lp-h2 {
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-weight: 300;
+  font-size: clamp(1.75rem, 1.25rem + 2vw, 2.75rem);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
   color: var(--color-navy);
+  margin: 16px 0 0;
 }
 
-.hero__pattern svg {
+/* Numbered-item pattern (holdings, story steps, trust columns):
+   short overline, mono registry numeral, serif title, sans body. */
+.lp-item__num {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--color-mid-gray);
+  margin-bottom: 12px;
+}
+
+.lp-item__num::before {
+  content: "";
+  display: block;
+  width: 24px;
+  height: 1px;
+  background: var(--color-navy);
+  opacity: 0.55;
+  margin-bottom: 12px;
+}
+
+.lp-item__title {
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-weight: 400;
+  font-size: clamp(1.25rem, 1.125rem + 0.5vw, 1.5rem);
+  line-height: 1.25;
+  color: var(--color-navy);
+  margin: 0 0 8px;
+}
+
+.lp-item__body {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--color-mid-gray);
+  max-width: 52ch;
+  margin: 0;
+}
+
+/* UA-chrome reset under lp-link / lp-btn when the CTA is a <button>
+   (contact modal triggers). Defined before both so their rules win. */
+.lp-contact-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+/* Inline text link with the ↗ glyph. */
+.lp-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-navy);
+  text-decoration: none;
+}
+
+.lp-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lp-arrow {
+  display: inline-block;
+  flex-shrink: 0;
+  transition: transform var(--transition-fast);
+}
+
+.lp-link:hover .lp-arrow {
+  transform: translate(2px, -2px);
+}
+
+/* Anchor styled as the primary button — for href CTAs (mailto). Reads
+   the same custom props as the Button primitive, so the band's local
+   inversion override applies to both. */
+.lp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 32px;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-fg);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+  text-decoration: none;
+  transition: opacity var(--transition-fast);
+}
+
+.lp-btn:hover {
+  opacity: 0.9;
+}
+
+/* Chunkier hero CTAs. Scoped under __actions to outrank the Tailwind
+   padding utilities emitted after this file. */
+.lp-hero__actions .lp-cta-btn {
+  padding: 14px 28px;
+  font-size: 0.9375rem;
+}
+
+/* Asymmetric split: header in the left 5 columns, content right. */
+@media (min-width: 1100px) {
+  .lp-split {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 64px;
+    align-items: start;
+  }
+  .lp-split__head {
+    position: sticky;
+    top: calc(var(--navbar-height) + 64px);
+  }
+}
+
+@media (max-width: 1099px) {
+  .lp-split__head {
+    margin-bottom: 48px;
+  }
+}
+
+.lp-split__lead {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--color-mid-gray);
+  margin: 16px 0 24px;
+  max-width: 44ch;
+}
+
+/* ---------- Guilloche artwork ---------- */
+
+@keyframes lpRingSpin {
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+
+@keyframes lpSealRotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.lp-guilloche,
+.lp-guilloche svg,
+.lp-guilloche__plate {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Counter-rotating layers give the engine-turned moire its slow
+   shimmer (duration + direction set inline per layer); the global
+   reduced-motion kill-switch freezes them. */
+.lp-guilloche__layer {
+  transform-origin: 400px 400px;
+  animation: lpSealRotate linear infinite;
+}
+
+/* Short bright segments lapping along the stamped outlines
+   (stroke-dashoffset over the pathLength-normalized paths; duration,
+   delay, and direction are set inline per wanderer). */
+.lp-guilloche__wander {
+  animation-name: lpRingSpin;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+/* The dot riding each wanderer's leading edge: same lap, pattern
+   phase-shifted by the segment length. One keyframe set per dash size
+   (animation-name is chosen inline; var() in keyframes doesn't
+   interpolate). Reversed wanderers lead with the pattern start, so
+   their dots reuse the unshifted lpRingSpin lap. */
+@keyframes lpWanderDot6 {
+  from { stroke-dashoffset: -6; }
+  to { stroke-dashoffset: -106; }
+}
+
+@keyframes lpWanderDot8 {
+  from { stroke-dashoffset: -8; }
+  to { stroke-dashoffset: -108; }
+}
+
+.lp-guilloche__wander-dot {
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+/* 3D rig: the plate sits in perspective; tilt and coin-spin are
+   scrubbed by scroll (the GuillocheArt listener feeds the vars).
+   At rest: 38deg tilt, no spin. */
+.lp-guilloche--3d {
+  perspective: 1100px;
+}
+
+.lp-g3d-tilt,
+.lp-g3d-spin {
   width: 100%;
   height: 100%;
 }
 
-.hero__inner {
+.lp-g3d-tilt {
+  transform: rotateX(var(--lpg-scroll-tilt, 38deg)) scale(1.1);
+}
+
+.lp-g3d-spin {
+  transform: rotate(var(--lpg-scroll-spin, 0deg));
+}
+
+/* ---------- Hero ---------- */
+
+.lp-hero {
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background: var(--color-off-white);
+  /* Light on top, heavier below: the copy centers slightly above the
+     geometric middle (optical center), instead of hanging low. */
+  padding: calc(var(--navbar-height) + 16px) 32px 96px;
+}
+
+.lp-hero__inner {
+  width: 100%;
   position: relative;
   z-index: 1;
-  max-width: 1536px;
-  margin: 0 auto;
-  width: 100%;
-  text-align: center;
 }
 
-.hero__label {
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 500;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--color-accent);
-  margin-bottom: 24px;
+.lp-hero__copy {
+  max-width: 600px;
 }
 
-/* Lift the eyebrow off the muted floor in dark mode so it clears AA on the
-   dark canvas (was reading as faint mid-gray). */
-:root[data-theme="dark"] .hero__label {
-  color: var(--fg-secondary);
-}
-
-.hero__title {
-  font-family: var(--font-headline), 'Noto Serif', serif;
+.lp-hero__art {
+  position: absolute;
+  top: 50%;
+  right: -12%;
+  transform: translateY(-50%);
+  width: min(52vw, 760px);
+  aspect-ratio: 1;
   color: var(--color-navy);
-  font-size: clamp(5rem, 7vw + 1rem, 7rem);
-  font-weight: 700;
-  line-height: 0.9;
-  letter-spacing: -0.02em;
-  margin-bottom: 32px;
+  z-index: 0;
+  pointer-events: none;
+  animation: lpFadeIn 900ms cubic-bezier(0.16, 1, 0.3, 1) 150ms backwards;
 }
 
-.hero__title-accent {
-  font-family: var(--font-serif-alt), 'Instrument Serif', serif;
-  font-style: italic;
-  font-weight: 400;
+.lp-hero__title {
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-weight: 300;
+  font-size: clamp(2.625rem, 1.5rem + 4.5vw, 4.75rem);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+  color: var(--color-navy);
+  margin: 20px 0 24px;
 }
 
-.hero__subtitle {
-  color: var(--color-dark-gray);
-  font-size: clamp(1.125rem, 1.5vw + 0.5rem, 1.5rem);
+.lp-hero__subline {
+  font-size: clamp(1.0625rem, 1rem + 0.4vw, 1.25rem);
   line-height: 1.6;
-  font-weight: 400;
-  max-width: 640px;
-  margin-left: auto;
-  margin-right: auto;
-  margin-bottom: 48px;
+  color: var(--color-dark-gray);
+  max-width: 44ch;
+  margin: 0 0 40px;
 }
 
-.hero__actions {
+.lp-hero__actions {
   display: flex;
-  gap: 24px;
+  gap: 12px;
   flex-wrap: wrap;
-  justify-content: center;
 }
 
-/* .hero__btn-primary, .hero__btn-secondary, .hero__btn-arrow rules
-   were removed — they were orphaned (no TSX referenced them). If
-   future landing iterations need text CTAs, use the canonical
-   <Button size="lg"> instead. */
-
-.hero__btn-signin {
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
+.lp-hero__recognition {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-mid-gray);
+  margin: 20px 0 0;
+  max-width: 48ch;
 }
 
-.hero__btn-signin:hover {
-  opacity: 0.9;
-}
-
-.hero__btn-signin:active {
-  transform: scale(0.97);
-}
-
-.hero__btn-signin-img {
-  height: 48px;
-  display: block;
-}
-
-.hero__btn-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius);
-  flex-shrink: 0;
-}
-
-/* Hero reveal animation */
-@keyframes fadeUp {
+@keyframes lpFadeUp {
   from {
     opacity: 0;
     transform: translateY(16px);
@@ -128,130 +355,895 @@
   }
 }
 
-.hero-reveal {
-  opacity: 0;
-  animation: fadeUp 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.hero__inner > .hero-reveal:nth-child(1) { animation-delay: 0ms; }
-.hero__inner > .hero-reveal:nth-child(2) { animation-delay: 100ms; }
-.hero__inner > .hero-reveal:nth-child(3) { animation-delay: 200ms; }
-.hero__inner > .hero__label { animation: fadeUp 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-.hero__inner > .hero__title { animation: fadeUp 500ms 50ms cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
-.hero__inner > .hero__subtitle { animation: fadeUp 500ms 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-reveal,
-  .hero__inner > .hero__label,
-  .hero__inner > .hero__title,
-  .hero__inner > .hero__subtitle {
-    animation: none;
+@keyframes lpFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
     opacity: 1;
-    transform: none;
   }
 }
 
-/* Hero landing modifier — full-viewport */
-.hero--landing {
-  min-height: 100vh;
+.lp-hero__reveal {
+  opacity: 0;
+  animation: lpFadeUp 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.lp-hero__copy > .lp-hero__reveal:nth-child(1) { animation-delay: 0ms; }
+.lp-hero__copy > .lp-hero__reveal:nth-child(2) { animation-delay: 100ms; }
+.lp-hero__copy > .lp-hero__reveal:nth-child(3) { animation-delay: 200ms; }
+.lp-hero__copy > .lp-hero__reveal:nth-child(4) { animation-delay: 300ms; }
+
+/* The global reduced-motion kill-switch (tokens.css) collapses these
+   animations to 0.01ms; with `forwards` fill the elements land visible,
+   so no explicit override is needed here. */
+
+/* Tablet band: the seal would crowd the copy — push it further off-edge
+   and let the copy sit over its hairlines. */
+@media (min-width: 800px) and (max-width: 1099px) {
+  .lp-hero__art {
+    width: 62vw;
+    right: -24%;
+  }
 }
 
 @media (max-width: 799px) {
-  .hero {
-    padding: calc(var(--navbar-height) + 24px) 20px 32px;
+  .lp-hero {
+    display: block;
     min-height: auto;
+    padding: calc(var(--navbar-height) + 8px) 20px 48px;
   }
-  .hero--landing {
-    min-height: 100vh;
+  /* Cropped seal band above the stacked copy. */
+  .lp-hero__art {
+    position: relative;
+    top: auto;
+    right: auto;
+    transform: none;
+    width: 130%;
+    margin: 0 0 12px -15%;
+    aspect-ratio: auto;
+    height: 34vh;
+    overflow: hidden;
   }
-  /* The fluid title floors at 5rem (80px) — far too tall on a phone, where it
-     ate ~half the viewport. Re-scale it down for small screens. */
-  .hero__title {
-    font-size: clamp(2rem, 9vw, 3rem);
-    margin-bottom: 20px;
+  .lp-hero__art .lp-guilloche,
+  .lp-hero__art .lp-guilloche svg,
+  .lp-hero__art .lp-g3d-tilt,
+  .lp-hero__art .lp-g3d-spin,
+  .lp-hero__art .lp-guilloche__plate {
+    height: auto;
+  }
+  .lp-hero__art .lp-guilloche {
+    margin-top: -8%;
+  }
+  /* The perspective tilt fights the cropped band — flat plate here.
+     (Scroll scrubbing goes dormant with it; the morph + wanderers
+     still carry the motion.) */
+  .lp-hero__art .lp-g3d-tilt,
+  .lp-hero__art .lp-g3d-spin {
+    transform: none;
+  }
+  .lp-hero__actions {
+    flex-direction: column;
+  }
+  .lp-hero__actions .lp-cta-btn {
+    width: 100%;
   }
 }
 
-/* ========== Landing Footer ========== */
-.landing-footer {
-  background: var(--color-surface-container-low);
-  padding: 24px 32px;
-}
+/* ---------- What lives here ---------- */
 
-.landing-footer__bar {
-  max-width: 1536px;
-  margin: 0 auto;
+.lp-holdings__row {
   display: flex;
-  align-items: flex-end;
   justify-content: space-between;
+  align-items: flex-start;
+  gap: 32px;
+  padding: 40px 0;
 }
 
-.landing-footer__left {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.lp-holdings__row:first-child {
+  padding-top: 0;
 }
 
-.landing-footer__logo-img {
-  height: 18px;
-  width: auto;
-  display: block;
-  object-fit: contain;
-  object-position: left;
+.lp-holdings__row + .lp-holdings__row {
+  border-top: 1px solid var(--color-light-gray);
 }
 
-.landing-footer__copy {
-  font-size: 0.6875rem;
-  color: var(--color-mid-gray);
-}
-
-.landing-footer__links {
-  display: flex;
-  gap: 0;
-}
-
-.landing-footer__links a + a {
-  margin-left: 16px;
-  padding-left: 16px;
-  border-left: 1px solid var(--color-light-gray);
-}
-
-.landing-footer__links a {
-  font-size: 0.6875rem;
-  color: var(--color-mid-gray);
-  text-decoration: none;
-  transition: color var(--transition-fast);
-}
-
-.landing-footer__links a:hover {
+.lp-holdings__glyph {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
   color: var(--color-navy);
 }
 
-@media (max-width: 799px) {
-  .landing-footer {
-    padding: 24px 20px;
+.lp-holdings__glyph svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Scroll choreography (What lives here + story steps), all scrubbed
+   by each element's own viewport position via animation-timeline:
+   view(). Progressive enhancement: markup opacities are the finished
+   states, so browsers without scroll timelines and reduced-motion
+   users render those directly.
+     - rows/steps fade up as they enter
+     - the profile glyph's dark arc completes its circle
+     - the record glyph's highlight climbs the stack
+     - the supporters glyph's connections and circles light up in turn */
+@keyframes lpRowFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
   }
-  .landing-footer__bar {
-    flex-direction: column;
-    align-items: center;
-    gap: 0;
-  }
-  .landing-footer__left {
-    align-items: center;
-    text-align: center;
-    margin-bottom: 12px;
-  }
-  .landing-footer__links {
-    margin-top: 4px;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-/* ========== Sign-In Modal ==========
-   The legacy `.signin-modal*` chrome/form rules were Tailwind-ified into
-   the AppDialog primitive + sign-in-modal.tsx and removed (zero remaining
-   references in src). The two @keyframes below are kept — they back
-   AppDialog's `animate-[modalSlideUp]` and the landing/feedback modal
-   animations. */
+@keyframes lpGlyphArc {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes lpRecA {
+  0%, 22% { opacity: 0.9; }
+  32%, 100% { opacity: 0.22; }
+}
+
+@keyframes lpRecB {
+  0%, 22% { opacity: 0.22; }
+  32%, 47% { opacity: 0.9; }
+  57%, 100% { opacity: 0.22; }
+}
+
+@keyframes lpRecC {
+  0%, 47% { opacity: 0.22; }
+  57%, 72% { opacity: 0.9; }
+  82%, 100% { opacity: 0.22; }
+}
+
+@keyframes lpRecD {
+  0%, 72% { opacity: 0.22; }
+  82%, 100% { opacity: 0.9; }
+}
+
+/* Supporters: the highlight travels through the parts — connector,
+   left endorser, right endorser, then the countersigned seal, which
+   stays lit (the markup's finished state). */
+@keyframes lpSupA {
+  0%, 22% { opacity: 0.9; }
+  32%, 100% { opacity: 0.28; }
+}
+
+@keyframes lpSupB {
+  0%, 22% { opacity: 0.28; }
+  32%, 47% { opacity: 0.9; }
+  57%, 100% { opacity: 0.28; }
+}
+
+@keyframes lpSupC {
+  0%, 47% { opacity: 0.28; }
+  57%, 72% { opacity: 0.9; }
+  82%, 100% { opacity: 0.28; }
+}
+
+@keyframes lpSupD {
+  0%, 72% { opacity: 0.28; }
+  82%, 100% { opacity: 0.9; }
+}
+
+@supports (animation-timeline: view()) {
+  .lp-holdings__row,
+  .lp-story__step {
+    /* 1ms placeholder — the scrubbed timeline supplies the real pace */
+    animation: lpRowFadeUp 1ms linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 100%;
+  }
+
+  .lp-glyph-arc,
+  .lp-glyph-rec,
+  .lp-glyph-step {
+    animation-duration: 1ms;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+    animation-timeline: view();
+    /* arc gets its name + range below; rec/step names and step
+       ranges are set inline per element */
+  }
+
+  .lp-glyph-arc {
+    animation-name: lpGlyphArc;
+    animation-range: cover 0% cover 75%;
+  }
+
+  .lp-glyph-rec,
+  .lp-glyph-step {
+    animation-range: cover 0% cover 95%;
+  }
+
+  /* The scrubbed timelines ignore the duration-based kill-switch, so
+     reduced motion needs an explicit off. */
+  @media (prefers-reduced-motion: reduce) {
+    .lp-holdings__row,
+    .lp-story__step,
+    .lp-glyph-arc,
+    .lp-glyph-rec,
+    .lp-glyph-step {
+      animation: none;
+    }
+  }
+}
+
+@media (max-width: 799px) {
+  .lp-holdings__glyph {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+/* ---------- Maya story (Travelling Record) ---------- */
+
+@media (min-width: 1100px) {
+  .lp-story__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 64px;
+    align-items: start;
+  }
+  .lp-story__sticky {
+    position: sticky;
+    top: calc(var(--navbar-height) + 64px);
+  }
+  .lp-story__art--row {
+    display: none;
+  }
+}
+
+@media (max-width: 1099px) {
+  .lp-story__sticky {
+    display: none;
+  }
+  .lp-story__art--row {
+    display: block;
+    margin: 40px 0 8px;
+  }
+}
+
+.lp-story__art {
+  color: var(--color-navy);
+}
+
+.lp-story__art svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.lp-story__steps > header {
+  margin-bottom: 24px;
+}
+
+.lp-story__step {
+  padding: 48px 0;
+}
+
+.lp-story__step + .lp-story__step {
+  border-top: 1px solid var(--color-light-gray);
+}
+
+/* Resting state is muted; the active step inks in. */
+.lp-story__step .lp-item__num,
+.lp-story__step .lp-item__title {
+  transition: color 300ms ease-out, opacity 300ms ease-out;
+}
+
+.lp-story__step[data-active="false"] .lp-item__title {
+  color: var(--color-mid-gray);
+}
+
+.lp-story__step[data-active="false"] .lp-item__num::before {
+  opacity: 0.2;
+}
+
+/* Token waypoints — frame centers in each artwork variant. */
+.lp-story__token {
+  transition: transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lp-story[data-step="1"] .lp-story__art--diagonal .lp-story__token { transform: translate(115px, 135px); }
+.lp-story[data-step="2"] .lp-story__art--diagonal .lp-story__token { transform: translate(320px, 320px); }
+.lp-story[data-step="3"] .lp-story__art--diagonal .lp-story__token { transform: translate(525px, 505px); }
+
+.lp-story[data-step="1"] .lp-story__art--row .lp-story__token { transform: translate(115px, 120px); }
+.lp-story[data-step="2"] .lp-story__art--row .lp-story__token { transform: translate(320px, 120px); }
+.lp-story[data-step="3"] .lp-story__art--row .lp-story__token { transform: translate(525px, 120px); }
+
+/* The active platform frame inks in with the step. */
+.lp-story__frame {
+  transition: opacity 300ms ease-out;
+}
+
+.lp-story[data-step="1"] .lp-story__frame[data-frame="1"],
+.lp-story[data-step="2"] .lp-story__frame[data-frame="2"],
+.lp-story[data-step="3"] .lp-story__frame[data-frame="3"] {
+  opacity: 0.9;
+}
+
+/* The fifth record layer appears when the record arrives (step 3). */
+.lp-story__token-new {
+  opacity: 0;
+  transition: opacity 400ms ease-out 300ms;
+}
+
+.lp-story[data-step="3"] .lp-story__token-new {
+  opacity: 0.9;
+}
+
+/* ---------- Works with (app wall) ---------- */
+
+.lp-apps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--color-light-gray);
+  border: 1px solid var(--color-light-gray);
+}
+
+.lp-apps__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 168px;
+  padding: 40px 24px;
+  background: var(--color-off-white);
+  text-decoration: none;
+  text-align: center;
+  transition: background var(--transition-fast);
+}
+
+.lp-apps__cell:hover {
+  background: var(--color-surface-container-low);
+}
+
+.lp-apps__logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  filter: grayscale(100%);
+  opacity: 0.65;
+  transition: filter var(--transition-fast), opacity var(--transition-fast);
+}
+
+.lp-apps__cell:hover .lp-apps__logo {
+  filter: grayscale(0%);
+  opacity: 1;
+}
+
+/* Partner logos read as muted ghosts on the dark canvas at full
+   grayscale; lift them so they stay legible (full color on hover). */
+:root[data-theme="dark"] .lp-apps__logo {
+  filter: grayscale(45%);
+  opacity: 0.95;
+}
+
+.lp-apps__name {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-navy);
+}
+
+.lp-apps__desc {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--color-mid-gray);
+  max-width: 200px;
+}
+
+.lp-apps__recruit {
+  margin: 24px 0 0;
+  font-size: 0.875rem;
+  color: var(--color-mid-gray);
+}
+
+@media (min-width: 800px) and (max-width: 1099px) {
+  .lp-apps {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 799px) {
+  .lp-apps {
+    grid-template-columns: 1fr;
+  }
+  .lp-apps__cell {
+    min-height: 0;
+    padding: 28px 20px;
+  }
+}
+
+/* ---------- Explore (featured profiles) ---------- */
+
+.lp-explore__row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 28px 0;
+  text-decoration: none;
+}
+
+.lp-explore__row:first-child {
+  padding-top: 0;
+}
+
+.lp-explore__row + .lp-explore__row {
+  border-top: 1px solid var(--color-light-gray);
+}
+
+.lp-explore__avatar {
+  flex-shrink: 0;
+  filter: grayscale(100%);
+  transition: filter 250ms ease-out;
+}
+
+.lp-explore__row:hover .lp-explore__avatar {
+  filter: grayscale(0%);
+}
+
+.lp-explore__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.lp-explore__name {
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-weight: 400;
+  font-size: 1.25rem;
+  line-height: 1.3;
+  color: var(--color-navy);
+}
+
+.lp-explore__bio {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-mid-gray);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.lp-explore__arrow {
+  color: var(--color-navy);
+  opacity: 0.5;
+  transition: transform var(--transition-fast), opacity var(--transition-fast);
+}
+
+.lp-explore__row:hover .lp-explore__arrow {
+  transform: translate(2px, -2px);
+  opacity: 1;
+}
+
+@media (max-width: 799px) {
+  .lp-explore__bio {
+    -webkit-line-clamp: 2;
+  }
+}
+
+/* ---------- Network stats (register row) ---------- */
+
+.lp-stats__row {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.lp-stats__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0 8px 32px;
+  border-left: 1px solid var(--color-light-gray);
+  min-width: 0;
+}
+
+.lp-stats__cell:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.lp-stats__value {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: clamp(2rem, 1.25rem + 2vw, 3.25rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-stats__value[data-loading="true"] {
+  color: var(--fg-muted);
+}
+
+.lp-stats__label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-mid-gray);
+}
+
+@media (min-width: 800px) and (max-width: 1099px) {
+  .lp-stats__row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    row-gap: 32px;
+  }
+  .lp-stats__cell {
+    padding: 8px 0 8px 24px;
+  }
+  .lp-stats__cell:nth-child(3n + 1) {
+    border-left: 0;
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 799px) {
+  .lp-stats__row {
+    grid-template-columns: 1fr;
+  }
+  .lp-stats__cell {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: baseline;
+    border-left: 0;
+    padding: 16px 0;
+  }
+  .lp-stats__cell + .lp-stats__cell {
+    border-top: 1px solid var(--color-light-gray);
+  }
+  .lp-stats__value {
+    font-size: 1.75rem;
+    order: 2;
+  }
+  .lp-stats__label {
+    order: 1;
+  }
+}
+
+/* ---------- Trust ---------- */
+
+.lp-trust {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 32px;
+}
+
+.lp-trust__col {
+  border-left: 1px solid var(--color-light-gray);
+  padding-left: 32px;
+}
+
+.lp-trust__col:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+@media (max-width: 799px) {
+  .lp-trust {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .lp-trust__col {
+    border-left: 0;
+    padding: 28px 0;
+  }
+  .lp-trust__col + .lp-trust__col {
+    border-top: 1px solid var(--color-light-gray);
+  }
+  .lp-trust__col:first-child {
+    padding-top: 0;
+  }
+}
+
+/* ---------- Organizations band (polarity inversion) ---------- */
+
+.lp-band {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-navy);
+  color: var(--color-off-white);
+  padding: clamp(80px, 8vw, 128px) 32px;
+  /* Rules, buttons, and the focus ring flip with the band, not the
+     page — the global --focus-ring (#5e5e5e / #8e8e93) lands below
+     3:1 against the inverted surface. */
+  --band-rule: rgba(255, 255, 255, 0.22);
+  --btn-primary-bg: var(--color-off-white);
+  --btn-primary-fg: var(--color-navy);
+  --focus-ring: var(--color-off-white);
+}
+
+/* In dark mode the band flips the other way (light panel on the dark
+   canvas), so its rules flip to black-on-light. */
+:root[data-theme="dark"] .lp-band {
+  --band-rule: rgba(0, 0, 0, 0.16);
+}
+
+.lp-band__seal {
+  position: absolute;
+  top: 50%;
+  right: -14%;
+  transform: translateY(-50%);
+  width: min(56vw, 900px);
+  aspect-ratio: 1;
+  color: var(--color-off-white);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.lp-band__inner {
+  position: relative;
+  z-index: 1;
+}
+
+.lp-band__eyebrow {
+  color: inherit;
+  opacity: 0.55;
+}
+
+/* The eyebrow inherits the band's flipped ink — undo the global
+   dark-mode eyebrow lift, which would read against the light panel. */
+:root[data-theme="dark"] .lp-band .lp-eyebrow {
+  color: inherit;
+}
+
+.lp-band__title {
+  color: inherit;
+  max-width: 640px;
+}
+
+.lp-band__cols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 32px;
+  margin-top: 56px;
+}
+
+.lp-band__col {
+  border-left: 1px solid var(--band-rule);
+  padding-left: 24px;
+}
+
+.lp-band__col-title {
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-weight: 400;
+  font-size: 1.25rem;
+  color: inherit;
+  margin: 0 0 8px;
+}
+
+.lp-band__col-body {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: inherit;
+  opacity: 0.7;
+  margin: 0;
+}
+
+.lp-band__cta {
+  margin-top: 48px;
+}
+
+@media (max-width: 799px) {
+  .lp-band {
+    padding: 72px 20px;
+  }
+  .lp-band__seal {
+    display: none;
+  }
+  .lp-band__cols {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    margin-top: 40px;
+  }
+  .lp-band__cta {
+    width: 100%;
+    margin-top: 40px;
+  }
+}
+
+/* ---------- FAQ ---------- */
+
+/* The FAQ column is centered as a block (text stays left-aligned),
+   bridging into the centered closing section below. */
+.lp-section__header--centerblock {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.lp-faq {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+  border-bottom: 1px solid var(--color-light-gray);
+}
+
+.lp-faq__item {
+  border-top: 1px solid var(--color-light-gray);
+}
+
+.lp-faq__item:first-child {
+  border-top: 0;
+}
+
+.lp-faq__btn {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 24px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-weight: 400;
+  font-size: 1.125rem;
+  line-height: 1.4;
+  color: var(--color-navy);
+  transition: color var(--transition-fast);
+}
+
+.lp-faq__btn:hover {
+  color: var(--color-mid-gray);
+}
+
+.lp-faq__btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+.lp-faq__icon {
+  flex-shrink: 0;
+  color: var(--color-mid-gray);
+}
+
+.lp-faq__icon-v {
+  transition: transform 200ms ease-out;
+  transform-origin: center;
+}
+
+.lp-faq__icon--open .lp-faq__icon-v {
+  transform: scaleY(0);
+}
+
+/* visibility rides along with the 0fr collapse (delayed until the
+   close animation ends) so closed answers leave the accessibility
+   tree and find-in-page, matching aria-expanded. */
+.lp-faq__answer {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows var(--transition-base), visibility 0s var(--transition-base);
+}
+
+.lp-faq__answer--open {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows var(--transition-base), visibility 0s;
+}
+
+.lp-faq__answer-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.lp-faq__answer p {
+  padding: 0 0 24px;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--color-mid-gray);
+  max-width: 60ch;
+  margin: 0;
+}
+
+/* "get in touch" inside an answer opens the contact modal */
+.lp-faq__cta {
+  color: var(--color-navy);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color var(--transition-fast);
+}
+
+.lp-faq__cta:hover {
+  color: var(--color-mid-gray);
+}
+
+/* ---------- Closing CTA ---------- */
+
+.lp-closing {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Guilloche plate centered exactly on the bottom-left corner point:
+   the visible quadrant fans around the corner, clipped flush at the
+   footer line, frameless (no containment rings) so the pattern fades
+   out instead of ending on a circle. */
+.lp-closing__art {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  transform: translate(-50%, 50%);
+  /* Drawn radius is ~0.42 of width without the frame rings — ~680px
+     sends the fan well past half the section's height */
+  width: min(78vw, 680px);
+  aspect-ratio: 1;
+  color: var(--color-navy);
+  pointer-events: none;
+}
+
+.lp-closing__inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.lp-closing__title {
+  margin: 0 0 16px;
+}
+
+.lp-closing__sub {
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: var(--color-mid-gray);
+  margin: 0 0 36px;
+}
+
+.lp-closing .lp-hero__actions {
+  justify-content: center;
+}
+
+/* ---------- Section padding, mobile ---------- */
+
+@media (max-width: 799px) {
+  .lp-section {
+    padding: 64px 20px;
+  }
+  .lp-section__header {
+    margin-bottom: 40px;
+  }
+}
+
+/* ============================================================================
+ * SHARED, NON-LANDING — used by app-wide surfaces. Do not remove with
+ * landing iterations.
+ *
+ *  - modalFadeIn / modalSlideUp back AppDialog's animate-[modalSlideUp]
+ *    and the feedback modal animations.
+ *  - .feedback-* is the app-wide feedback modal (feedback-modal.tsx).
+ *  - .app-page / .app-card back /about, /terms, /privacy, /dsa,
+ *    /imprint, /help.
+ *  - .welcome-footer wraps SiteFooter on /welcome (welcome/layout.tsx).
+ * ========================================================================== */
 
 @keyframes modalFadeIn {
   from { opacity: 0; }
@@ -393,11 +1385,7 @@
 
 /* `.feedback-modal__textarea` / `.feedback-modal__input` are styled
    in components.css with semantic tokens (--border-medium,
-   --fg-primary, --bg-elevated) so they adapt to dark mode. The
-   previous duplicate rules here referenced an undefined
-   `--color-light-gray`, which made the `border` shorthand resolve
-   to its invalid-fallback initial value (border-style: none) and
-   removed the visible border entirely. */
+   --fg-primary, --bg-elevated) so they adapt to dark mode. */
 
 .feedback-modal__error {
   font-size: 0.75rem;
@@ -578,817 +1566,6 @@
   margin-bottom: 8px;
 }
 
-/* ========== Footer ========== */
-.footer {
-  padding: 24px 0;
-  border-top: 1px solid var(--border-subtle);
-  background: var(--color-off-white);
-}
-
-.footer__inner {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 0 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.footer__copy {
-  font-size: 0.6875rem;
-  color: var(--color-mid-gray);
-}
-
-.footer__links {
-  display: flex;
-  gap: 20px;
-}
-
-.footer__links a {
-  font-size: 0.6875rem;
-  color: var(--color-mid-gray);
-  text-decoration: none;
-  transition: color var(--transition-fast);
-}
-
-.footer__links a:hover {
-  color: var(--color-navy);
-}
-
-/* ========== Landing CTA Section ========== */
-.landing-cta {
-  text-align: center;
-  padding: 96px 32px;
-}
-
-.landing-cta .landing-label {
-  justify-content: center;
-}
-
-.landing-cta h2 {
-  margin-bottom: 16px;
-}
-
-.landing-cta > p {
-  font-size: 1.125rem;
-  color: var(--color-mid-gray);
-  margin-bottom: 40px;
-  max-width: 480px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.landing-cta__actions {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.landing-cta__btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  padding: 18px 40px;
-  font-size: 1.125rem;
-  font-weight: 500;
-  color: var(--color-off-white);
-  background: var(--color-navy);
-  border: none;
-  cursor: pointer;
-  transition: all 200ms;
-}
-
-.landing-cta__btn:hover {
-  opacity: 0.9;
-}
-
-.landing-cta__btn:active {
-  transform: scale(0.97);
-}
-
-.landing-cta__arrow {
-  font-size: 1.25rem;
-}
-
-/* ── Landing section: Partner Apps (Network Grid) ───────────────────── */
-
-.landing-network {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1px;
-  background: var(--color-surface-container-high);
-  margin-top: 32px;
-  margin-bottom: 24px;
-}
-
-.landing-network__cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 40px 24px;
-  background: var(--color-off-white);
-  text-decoration: none;
-  transition: background var(--transition-fast);
-}
-
-.landing-network__cell:hover {
-  background: var(--color-surface-container-low);
-}
-
-.landing-network__logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-  filter: grayscale(100%);
-  opacity: 0.7;
-  transition: all var(--transition-fast);
-}
-
-.landing-network__cell:hover .landing-network__logo {
-  filter: grayscale(0%);
-  opacity: 1;
-}
-
-/* Partner logos read as muted ghosts on the dark canvas at 0.7/grayscale(100%);
-   lift them so they stay legible in dark mode (full color still on hover). */
-:root[data-theme="dark"] .landing-network__logo {
-  filter: grayscale(45%);
-  opacity: 0.95;
-}
-
-.landing-network__name {
-  font-family: var(--font-headline), 'Noto Serif', serif;
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: var(--color-outline-variant);
-  transition: color var(--transition-fast);
-}
-
-.landing-network__cell:hover .landing-network__name {
-  color: var(--color-navy);
-}
-
-.landing-network__desc {
-  font-size: 0.75rem;
-  color: var(--color-mid-gray);
-  text-align: center;
-  line-height: 1.4;
-  max-width: 180px;
-  opacity: 0;
-  transition: opacity var(--transition-fast);
-}
-
-.landing-network__cell:hover .landing-network__desc {
-  opacity: 1;
-}
-
-@media (max-width: 799px) {
-  /* Single column on mobile: the 2-up grid squeezed each cell to ~119px of
-     usable width, wrapping the description badly. */
-  .landing-network {
-    grid-template-columns: 1fr;
-  }
-  .landing-network__cell {
-    padding: 24px 20px;
-  }
-  /* The description is revealed on hover on desktop; touch devices can't hover,
-     so show it by default and let it use the full cell width. */
-  .landing-network__desc {
-    opacity: 1;
-    max-width: none;
-  }
-}
-
-.landing-footnote {
-  font-size: 0.75rem;
-  color: var(--color-mid-gray);
-  margin-top: 8px;
-}
-
-.landing-footnote--center {
-  text-align: center;
-}
-
-.landing-prose {
-  font-size: 1rem;
-  line-height: 1.7;
-  color: var(--color-mid-gray);
-  max-width: 640px;
-}
-
-/* ========== Landing Sections ========== */
-.landing-section {
-  padding: 96px 32px;
-}
-
-.landing-section--light {
-  background: var(--color-off-white);
-  color: var(--color-dark-gray);
-}
-
-.landing-section--light h2 {
-  color: var(--color-navy);
-}
-
-.landing-section--dark {
-  background: var(--color-navy);
-  color: var(--color-off-white);
-}
-
-.landing-section--dark h2 {
-  color: var(--color-off-white);
-}
-
-.landing-section--subtle {
-  background: var(--color-surface-container-low);
-  color: var(--color-dark-gray);
-}
-
-.landing-section--subtle h2 {
-  color: var(--color-navy);
-}
-
-.landing-section--gray {
-  background: var(--color-gray-100);
-  color: var(--color-dark-gray);
-}
-
-.landing-section--gray h2 {
-  color: var(--color-navy);
-}
-
-.landing-section__inner {
-  max-width: 1536px;
-  margin: 0 auto;
-}
-
-.landing-section h2 {
-  font-family: var(--font-headline), 'Noto Serif', serif;
-  font-size: clamp(2rem, 3vw + 0.5rem, 3rem);
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  margin-bottom: 32px;
-}
-
-.landing-section__header {
-  margin-bottom: 40px;
-}
-
-.landing-section__header--center {
-  text-align: center;
-}
-
-.landing-section__header--center .landing-label {
-  justify-content: center;
-}
-
-.landing-section--pattern {
-  position: relative;
-  overflow: hidden;
-}
-
-.landing-section__pattern {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
-
-.landing-section__pattern--light {
-  color: rgba(255, 255, 255, 0.15);
-}
-
-.landing-section__pattern--dark {
-  color: rgba(0, 0, 0, 0.12);
-}
-
-.landing-section--pattern .landing-section__inner {
-  position: relative;
-  z-index: 1;
-}
-
-.landing-label {
-  display: flex;
-  align-items: center;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--color-accent);
-  margin-bottom: 12px;
-}
-
-.landing-label--light {
-  color: rgba(255, 255, 255, 0.5);
-}
-
-@media (max-width: 799px) {
-  .landing-section {
-    padding: 64px 20px;
-  }
-}
-
-/* ── Bento Grid (What You Get) ───────────────────────────────────────── */
-.landing-bento {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
-}
-
-@media (max-width: 799px) {
-  .landing-bento {
-    grid-template-columns: 1fr;
-  }
-  /* Slightly tighter cards on a single-column phone layout. */
-  .landing-bento__card {
-    padding: 24px;
-    min-height: 0;
-  }
-}
-
-.landing-bento__card {
-  background: var(--color-off-white);
-  padding: 32px;
-  min-height: 200px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  transition: box-shadow 500ms;
-}
-
-.landing-bento__card:hover {
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.06);
-}
-
-.landing-bento__card--highlight {
-  background: var(--color-navy);
-  color: var(--color-off-white);
-}
-
-.landing-bento__card--highlight h3 {
-  color: var(--color-off-white);
-}
-
-.landing-bento__card--highlight p {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.landing-bento__card--highlight .landing-bento__icon {
-  color: var(--color-off-white);
-}
-
-.landing-bento__icon {
-  margin-bottom: 24px;
-  color: var(--color-navy);
-}
-
-.landing-bento__card h3 {
-  font-family: var(--font-headline), 'Noto Serif', serif;
-  font-size: 1.375rem;
-  font-weight: 700;
-  color: var(--color-navy);
-  margin-bottom: 12px;
-}
-
-.landing-bento__card p {
-  font-size: 1rem;
-  line-height: 1.6;
-  color: var(--color-mid-gray);
-  margin: 0;
-}
-
-/* ============================================================
-   FAQ section
-   ============================================================ */
-
-.landing-faq {
-  display: flex;
-  flex-direction: column;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.landing-faq-item {
-  border-bottom: 1px solid var(--border-default);
-}
-
-.landing-faq-item:first-child {
-  border-top: 1px solid var(--border-default);
-}
-
-.landing-faq-btn {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24px 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  font-family: inherit;
-  font-size: 1.0625rem;
-  font-weight: 500;
-  color: var(--color-navy);
-  transition: color var(--transition-fast);
-}
-
-.landing-faq-btn:hover {
-  color: var(--color-mid-gray);
-}
-
-.landing-faq-btn:focus-visible {
-  outline: 2px solid var(--color-navy);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-
-.landing-faq-icon {
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  color: var(--color-mid-gray);
-  transition: transform var(--transition-fast);
-}
-
-.landing-faq-icon--open {
-  transform: rotate(45deg);
-}
-
-.landing-faq-answer {
-  overflow: hidden;
-  max-height: 0;
-  transition: max-height var(--transition-base);
-}
-
-.landing-faq-answer--open {
-  max-height: 300px;
-}
-
-.landing-faq-answer p {
-  padding: 0 0 24px;
-  font-size: 1rem;
-  line-height: 1.7;
-  color: var(--color-mid-gray);
-  margin: 0;
-}
-
-/* ========== Landing: How It Works (Protocol) ========== */
-.landing-section__header--center .landing-protocol__intro {
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.landing-protocol__intro {
-  font-size: 1.125rem;
-  line-height: 1.6;
-  color: var(--color-mid-gray);
-  margin-bottom: 40px;
-}
-
-.landing-protocol__steps {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-  max-width: 560px;
-  margin: 0 auto;
-}
-
-.landing-protocol__step {
-  display: flex;
-  gap: 24px;
-  align-items: flex-start;
-}
-
-.landing-protocol__num {
-  font-family: var(--font-serif-alt), 'Instrument Serif', serif;
-  font-style: italic;
-  font-size: 2.25rem;
-  color: var(--color-outline-variant);
-  line-height: 1;
-  flex-shrink: 0;
-  transition: color var(--transition-fast);
-}
-
-.landing-protocol__step:hover .landing-protocol__num {
-  color: var(--color-navy);
-}
-
-.landing-protocol__step h4 {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: var(--color-navy);
-  margin-bottom: 4px;
-}
-
-.landing-protocol__step p {
-  font-size: 0.9375rem;
-  line-height: 1.6;
-  color: var(--color-mid-gray);
-  margin: 0;
-}
-
-/* Protocol visual card */
-.landing-protocol__visual {
-  position: relative;
-}
-
-.landing-protocol__card {
-  background: var(--color-off-white);
-  padding: 8px;
-  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.08);
-  transform: rotate(2deg);
-  position: relative;
-  z-index: 1;
-  aspect-ratio: 4/5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--color-surface-container-high);
-}
-
-.landing-protocol__card-inner {
-  width: 100%;
-  height: 100%;
-  border: 12px solid var(--color-surface-container-low);
-  padding: 40px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.landing-protocol__card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  border-bottom: 2px solid var(--color-navy);
-  padding-bottom: 24px;
-}
-
-.landing-protocol__card-logo {
-  font-family: var(--font-serif-alt), 'Instrument Serif', serif;
-  font-style: italic;
-  font-size: 1.75rem;
-  color: var(--color-navy);
-}
-
-.landing-protocol__card-ref {
-  font-family: monospace;
-  font-size: 0.5625rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  text-align: right;
-  color: var(--color-mid-gray);
-  line-height: 1.4;
-}
-
-.landing-protocol__card-body {
-  padding: 32px 0;
-}
-
-.landing-protocol__card-line {
-  height: 3px;
-  background: var(--color-surface-container-high);
-  margin-bottom: 12px;
-}
-
-.landing-protocol__card-seal {
-  display: flex;
-  justify-content: center;
-  padding: 24px 0;
-}
-
-.landing-protocol__card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-}
-
-.landing-protocol__card-sig-label {
-  font-size: 0.5rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-mid-gray);
-  margin-bottom: 4px;
-}
-
-.landing-protocol__card-sig {
-  font-family: var(--font-serif-alt), 'Instrument Serif', serif;
-  font-style: italic;
-  font-size: 1.25rem;
-  color: var(--color-navy);
-}
-
-.landing-protocol__card-qr {
-  width: 56px;
-  height: 56px;
-  background: var(--color-navy);
-  color: var(--color-off-white);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.landing-protocol__dots {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 120%;
-  height: 120%;
-  z-index: 0;
-  background-image: radial-gradient(circle at 2px 2px, var(--color-outline-variant) 1px, transparent 0);
-  background-size: 40px 40px;
-  opacity: 0.3;
-}
-
-@media (max-width: 799px) {
-  .landing-protocol__card-inner {
-    padding: 24px;
-    border-width: 8px;
-  }
-  /* 400px ate most of a 375px-tall viewport; 280px keeps the decorative card
-     present without crowding out the surrounding copy. */
-  .landing-protocol__card {
-    aspect-ratio: auto;
-    min-height: 280px;
-  }
-}
-
-.landing-reassurance {
-  text-align: center;
-  font-size: 0.875rem;
-  color: var(--color-mid-gray);
-  margin-top: 16px;
-}
-
-/* ========== Built for Trust Section ========== */
-.landing-trust {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 32px;
-  max-width: 1200px;
-}
-
-/* Tablet band (800–1099): three columns squeeze the check + heading + copy too
-   tightly, so step down to two so each item keeps a readable measure. */
-@media (min-width: 800px) and (max-width: 1099px) {
-  .landing-trust {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 28px;
-  }
-}
-
-@media (max-width: 799px) {
-  .landing-trust {
-    grid-template-columns: 1fr;
-    gap: 24px;
-  }
-}
-
-.landing-trust__item {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-}
-
-.landing-trust__check {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* Theme-aware so it flips with the --color-navy/--color-off-white band
-     (was pinned rgba(255,255,255,.4) → invisible on the flipped light panel
-     in dark mode). */
-  color: var(--color-off-white);
-  opacity: 0.5;
-}
-
-.landing-trust__item h4 {
-  font-size: 1.0625rem;
-  font-weight: 600;
-  color: var(--color-off-white);
-  margin-bottom: 6px;
-}
-
-.landing-trust__item p {
-  font-size: 0.9375rem;
-  line-height: 1.6;
-  /* Theme-aware (see __check above): flips with the band instead of staying
-     white-on-near-white in dark mode. */
-  color: var(--color-off-white);
-  opacity: 0.72;
-  margin: 0;
-}
-
-/* ============================================================================
- * Network stats — five-tile responsive grid on the /welcome landing page.
- * Tiles render large numbers + small labels; the Endorsements tile carries
- * a small NEW pill. Loading / per-op-failure values render as "—" with a
- * dimmed colour.
- * ============================================================================ */
-
-.network-stats__grid {
-  list-style: none;
-  margin: 32px 0 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-}
-
-/* Canonical breakpoints (was 600px / 900px): single column on mobile, three at
-   the 800px tablet step, the full five-up at 1100px. Three columns avoids the
-   orphaned lone cell a two-column grid leaves with five tiles (2x3 with an empty
-   trailing slot) across the 800–1099 tablet band. */
-@media (min-width: 800px) {
-  .network-stats__grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1100px) {
-  .network-stats__grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-}
-
-.network-stats__tile {
-  position: relative;
-  padding: 24px 20px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  min-width: 0;
-}
-
-.network-stats__value-row {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 8px;
-  min-width: 0;
-}
-
-.network-stats__value {
-  font-family: var(--font-headline), "Noto Serif", serif;
-  font-size: 2rem;
-  font-weight: 700;
-  line-height: 1.05;
-  color: var(--fg-primary);
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-
-@media (min-width: 1100px) {
-  .network-stats__value {
-    font-size: 2.25rem;
-  }
-}
-
-/* Subtle dimmed state for the "—" placeholder while loading or
-   on per-op failure. */
-.network-stats__value[data-loading="true"] {
-  color: var(--fg-muted);
-}
-
-.network-stats__label {
-  font-size: 0.875rem;
-  color: var(--fg-secondary);
-  letter-spacing: 0.01em;
-}
-
-/* NEW pill — small uppercase chip on the endorsements tile,
-   nudged up to sit next to the number's x-height rather than
-   sinking to the baseline. */
-.network-stats__new {
-  display: inline-flex;
-  align-items: center;
-  height: 18px;
-  padding: 0 8px;
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--bg-canvas, #fff);
-  background: var(--color-success, #2c8a3e);
-  border-radius: 999px;
-  transform: translateY(-2px);
-}
-
 /* /welcome footer wrapper — the app shell skips SiteFooter on this
    route, so the landing layout renders it directly. Full-bleed (no
    horizontal padding or max-width cap) so the off-white band and the
@@ -1397,4 +1574,10 @@
 .welcome-footer {
   padding: 0;
   background: var(--color-off-white);
+}
+
+/* Footer carries margin-top: 48px elsewhere; collapse it so the
+   closing section's guilloche clips flush at the footer border. */
+.welcome-footer .site-footer {
+  margin-top: 0;
 }

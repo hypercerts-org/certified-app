@@ -37,7 +37,7 @@ export default function BottomNav() {
       ? [{ key: "create", label: "Create", icon: PlusCircle, onClick: () => router.push("/create"), active: pathname === "/create" }]
       : []),
     { key: "apps", label: "Apps", icon: LayoutGrid, onClick: () => router.push("/apps"), active: pathname === "/apps" },
-    { key: "feedback", label: "Feedback", icon: MessageSquare, onClick: openFeedback, active: false },
+    { key: "feedback", label: "Feedback", icon: MessageSquare, onClick: () => openFeedback(), active: false },
   ];
 
   return (

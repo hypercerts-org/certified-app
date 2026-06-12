@@ -1,53 +1,50 @@
-import WhatYouGet from "@/components/landing/sections/what-you-get";
-import NetworkStats from "@/components/landing/sections/network-stats";
-import HowItWorks from "@/components/landing/sections/how-it-works";
+import Hero from "@/components/landing/sections/hero";
+import WhatLivesHere from "@/components/landing/sections/what-lives-here";
+import MayaWalkthrough from "@/components/landing/sections/maya-walkthrough";
 import PartnerApps from "@/components/landing/sections/partner-apps";
-import BuiltForTrust from "@/components/landing/sections/built-for-trust";
+import ExploreProfiles, {
+  type FeaturedProfile,
+} from "@/components/landing/sections/explore-profiles";
+import NetworkStats from "@/components/landing/sections/network-stats";
+import Trust from "@/components/landing/sections/trust";
+import OrganizationsStrip from "@/components/landing/sections/organizations-strip";
 import FaqSection from "@/components/landing/sections/faq-content";
-import ReadyCtaSection from "@/components/landing/sections/ready-cta-content";
-import HeroSignInButton from "@/components/landing/hero-signin-button";
+import ClosingCta from "@/components/landing/sections/closing-cta";
+import { CURATED_PROFILES } from "@/lib/constants/curated-profiles";
+import { buildProfilePayload } from "@/app/api/resolve-did/resolve-core";
 
-export default function LandingPage() {
+/**
+ * The /welcome landing page. Server component: resolves the three
+ * featured profiles for the Explore section at render time (the page
+ * is ISR'd — see `revalidate` in src/app/welcome/page.tsx), so the
+ * section ships real network content with zero client fetches.
+ * buildProfilePayload swallows its own failures; the extra catch
+ * guards the page against anything unexpected so a dead indexer or
+ * PDS can never take the landing page down.
+ */
+export default async function LandingPage() {
+  const profiles: FeaturedProfile[] = await Promise.all(
+    CURATED_PROFILES.map(async (curated) => {
+      try {
+        return { curated, resolved: await buildProfilePayload(curated.did) };
+      } catch {
+        return { curated, resolved: null };
+      }
+    }),
+  );
+
   return (
-    <>
-      <section className="hero hero--landing">
-        {/* Line-art pattern background */}
-        <div className="hero__pattern" aria-hidden="true">
-          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
-                <path d="M 100 0 L 0 0 0 100" fill="none" stroke="currentColor" strokeWidth="0.5" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grid)" />
-            <circle cx="50%" cy="50%" r="300" fill="none" stroke="currentColor" strokeWidth="0.3" />
-            <circle cx="50%" cy="50%" r="400" fill="none" stroke="currentColor" strokeWidth="0.15" />
-            <line x1="0%" y1="0%" x2="100%" y2="100%" stroke="currentColor" strokeWidth="0.15" />
-            <line x1="100%" y1="0%" x2="0%" y2="100%" stroke="currentColor" strokeWidth="0.15" />
-          </svg>
-        </div>
-
-        <div className="hero__inner">
-          <span className="hero__label">Built on AT Protocol</span>
-          <h1 className="hero__title hero-reveal">
-            One account.<br />
-            <span className="hero__title-accent">Any app.</span>
-          </h1>
-          <p className="hero__subtitle hero-reveal">
-            Your identity and data — everywhere you go.
-          </p>
-          <div className="hero-reveal">
-            <HeroSignInButton />
-          </div>
-        </div>
-      </section>
-      <WhatYouGet />
-      <NetworkStats />
-      <HowItWorks />
+    <div className="lp">
+      <Hero />
+      <WhatLivesHere />
+      <MayaWalkthrough />
       <PartnerApps />
-      <BuiltForTrust />
+      <ExploreProfiles profiles={profiles} />
+      <NetworkStats />
+      <Trust />
+      <OrganizationsStrip />
       <FaqSection />
-      <ReadyCtaSection />
-    </>
+      <ClosingCta />
+    </div>
   );
 }

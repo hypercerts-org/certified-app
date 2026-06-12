@@ -229,12 +229,22 @@ export default function AppDialog({
     // browsers that throw for a non-spec reason also fall through
     // silently rather than tearing down the consumer.
     if (!dialog.open) {
+      // `showModal()` moves focus into the dialog, and because the
+      // dialog's position is authored as `relative` (overriding the
+      // UA's fixed top-layer placement) the browser's
+      // scroll-into-view on that focus yanks the page to the top —
+      // visible whenever a modal is opened from far down a page
+      // (e.g. the landing band's contact CTA). Pin the scroll
+      // position across the call.
+      const scrollX = window.scrollX
+      const scrollY = window.scrollY
       try {
         dialog.showModal()
       } catch {
         // swallow — modal stays closed but the rest of the app
         // keeps running.
       }
+      window.scrollTo(scrollX, scrollY)
     }
     const handleClose = () => onCloseRef.current()
     dialog.addEventListener("close", handleClose)
@@ -343,8 +353,15 @@ export default function AppDialog({
   // cert-detail meta-label <dt> (uppercase/semibold/letter-spaced/muted)
   // would otherwise pick up all of that. No-op for modals mounted in
   // normal text.
+  // `fixed` (not the legacy cascade's `relative`): a relative-positioned
+  // modal dialog lays out at DOCUMENT-top coordinates, so opening one
+  // from far down a page either yanked the scroll to the top (focus
+  // scroll-into-view) or, with the scroll pinned, left the dialog
+  // standing thousands of pixels above the viewport. Fixed restores the
+  // UA's top-layer placement: centered in the VIEWPORT, wherever the
+  // page is scrolled.
   const baseChrome =
-    "relative inset-0 m-auto flex w-[90vw] max-w-[420px] max-h-[calc(100vh-40px)] flex-col items-stretch overflow-x-hidden overflow-y-auto rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--color-off-white)] p-0 text-[var(--fg-primary)] font-normal normal-case tracking-normal shadow-[0_24px_64px_var(--navy-overlay-30)] backdrop:bg-[var(--modal-backdrop)] motion-safe:animate-[modalSlideUp_300ms_cubic-bezier(0.16,1,0.3,1)] max-[799px]:w-full max-[799px]:max-w-none"
+    "fixed inset-0 m-auto flex w-[90vw] max-w-[420px] max-h-[calc(100vh-40px)] flex-col items-stretch overflow-x-hidden overflow-y-auto rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--color-off-white)] p-0 text-[var(--fg-primary)] font-normal normal-case tracking-normal shadow-[0_24px_64px_var(--navy-overlay-30)] backdrop:bg-[var(--modal-backdrop)] motion-safe:animate-[modalSlideUp_300ms_cubic-bezier(0.16,1,0.3,1)] max-[799px]:w-full max-[799px]:max-w-none"
 
   const composedClassName = className
     ? `${baseChrome} ${className}`

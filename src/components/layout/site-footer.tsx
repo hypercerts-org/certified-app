@@ -32,6 +32,9 @@ export default function SiteFooter() {
           </span>
         </div>
         <nav className="site-footer__nav" aria-label="Footer links">
+          <Link href="/welcome" className="site-footer__link">
+            Welcome
+          </Link>
           <Link href="/about" className="site-footer__link">
             About
           </Link>

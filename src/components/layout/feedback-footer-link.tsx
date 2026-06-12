@@ -12,7 +12,7 @@ export default function FeedbackFooterLink() {
   return (
     <button
       type="button"
-      onClick={openFeedback}
+      onClick={() => openFeedback()}
       className="site-footer__link site-footer__link--button"
     >
       Feedback

@@ -18,6 +18,10 @@ export interface AuthState {
    *  the PDS the user is signed in without seeing any UI. Falls back
    *  to opening the modal on error. */
   openSignIn: () => Promise<void>;
+  /** Open the sign-in modal directly (email-first UX — no silent
+   *  bounce). Records the pre-signin location like openSignIn so the
+   *  post-signin handler can return the user to where they were. */
+  openSignInModal: () => void;
   /** Close the modal */
   closeModal: () => void;
   /** Submit Certified email — calls /api/auth/login with mode "email" */

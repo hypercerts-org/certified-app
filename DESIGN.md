@@ -112,8 +112,8 @@ The primary button **inverts** in dark mode so it always pops off the canvas:
 | Var | Family | Role |
 |---|---|---|
 | `--font-inter` | Inter (300–700) | All UI text: body, labels, buttons, navigation |
-| `--font-headline` | Noto Serif (400, 700, normal+italic) | Headlines, card titles, feed titles, empty-state headings |
-| `--font-mono` | `ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace` | Monospace contexts: DID strings, AT URIs, code blocks. System stack (no web font load); additive token — some CSS already referenced this stack inline. |
+| `--font-headline` | Noto Serif (300, 400, 700, normal+italic) | Headlines, card titles, feed titles, empty-state headings. **300 is the landing display weight** (hero + landing section headlines, §10); app surfaces keep 400/700. |
+| `--font-mono` | `ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace` | Monospace contexts: DID strings, AT URIs, code blocks; on the landing page also the editorial register — `01/02/03` item numerals and the live stats figures (§10). System stack (no web font load). |
 
 Inter and Noto Serif are loaded via `next/font/google` with `display: swap`. `--font-mono` is a system stack — no font load.
 
@@ -141,6 +141,10 @@ Apply via `font-feature-settings: 'tnum' 1, 'case' 1;` on the relevant elements.
 | Body small | Inter | 0.8125rem | 400–500 | 1.6 | — | Sidebar links, descriptions |
 | Caption / label | Inter | 0.6875rem | 500–600 | — | 0.08–0.2em | Uppercase labels, section markers |
 | Tiny | Inter | 0.625rem | 500 | 1 | — | Bottom nav labels |
+| Landing hero H1 | `--font-headline` | `clamp(2.625rem, 1.5rem + 4.5vw, 4.75rem)` | 300 | 1.04 | -0.03em | Landing only (§10); fluid — the one exception to the fixed scale |
+| Landing section H2 | `--font-headline` | `clamp(1.75rem, 1.25rem + 2vw, 2.75rem)` | 300 | 1.12 | -0.02em | Landing only (`.lp-h2`) |
+| Landing item title | `--font-headline` | `clamp(1.25rem, 1.125rem + 0.5vw, 1.5rem)` | 400 | 1.25 | — | Numbered-item rows (`.lp-item__title`) |
+| Registry numeral | `--font-mono` | 0.75rem | 500 | — | 0.08em | `01/02/03` markers; stats figures use the same family at `clamp(2rem, …, 3.25rem)` with `tabular-nums` |
 
 ### Principles
 
@@ -148,6 +152,7 @@ Apply via `font-feature-settings: 'tnum' 1, 'case' 1;` on the relevant elements.
 - **Uppercase + wide tracking for labels.** Section labels, card labels, and dashboard headers use `text-transform: uppercase` with `letter-spacing: 0.08em–0.2em` to create visual hierarchy without size increase.
 - **Negative tracking at display sizes.** Headlines at 1rem+ use -0.01em to -0.02em for a tighter, more editorial feel.
 - **Weight ceiling on Inter.** Body text caps at 600 (semibold). Weight 700 is reserved exclusively for Noto Serif headlines.
+- **Two serif voices.** App surfaces speak bold serif (700 titles); the landing page speaks *light* serif (300 display, 400 item titles) — editorial, engraving-adjacent. Don't mix the voices within a surface.
 
 ## 4. Component Styles
 
@@ -531,7 +536,8 @@ The single 769px breakpoint that this section previously described was replaced 
 ### Typography Scaling
 
 - Feed card title: 1.125rem (mobile) → 1.25rem (desktop)
-- No other text scales with viewport — the type scale is fixed
+- Landing display type (`.lp-hero__title`, `.lp-h2`, stats figures) is fluid via `clamp()` — the landing page is the standing exception (§10)
+- No other text scales with viewport — the app type scale is fixed
 
 ### Mobile-Specific Patterns
 
@@ -604,6 +610,38 @@ Things an AI agent is likely to get wrong:
 7. **No new shadows on cards.** Cards communicate elevation via background color (`--bg-elevated` vs `--bg-canvas`), not box-shadow. Shadows are reserved for floating elements (modals, tooltips, dropdowns).
 8. **Test skeleton states.** Every new data-fetching component needs a skeleton. Match the geometry of the loaded state — rectangles where text will be, circles where avatars will be, same spacing.
 9. **Icon sizing follows context.** 14px for inline actions alongside text, 20–22px for navigation chrome, 24px for bottom nav. Don't mix these.
+
+---
+
+## 10. Landing page system (`lp-`, June 2026 redesign)
+
+The `/welcome` landing page (PR #165) has its own visual register, namespaced `lp-` in `src/app/styles/landing.css`. It shares the app's tokens but deliberately speaks differently: editorial, engraved, monochrome. Components live in `src/components/landing/`.
+
+### Layout grammar
+
+- **One canvas, ruled sections.** Every section sits on `var(--color-off-white)`; sections are separated by full-width 1px rules (`var(--color-light-gray)`), not background tints. Content column max-width 1280px, section padding `clamp(80px, 6vw + 40px, 136px)`.
+- **One inversion moment.** The organizations band (`.lp-band`) is the page's single polarity flip: `--color-navy` surface, `--color-off-white` ink. In dark mode it flips the other way (light panel on dark canvas) — the *contrast event* is the constant. It locally remaps `--band-rule`, `--btn-primary-bg/fg`, and `--focus-ring`. Don't add a second inversion; scarcity is the signal (it marks the audience switch to organizations).
+- **Numbered-item pattern** (`.lp-item`): 24px overline, mono registry numeral (`01`), serif title, sans body. Used by the holdings rows, story steps, and trust columns.
+- **Asymmetric splits** (`.lp-split`): sticky header in the left 5 columns, content rows right. Hairline-divided grids (app wall) instead of cards.
+
+### Guilloche artwork
+
+The page's signature is engine-turned guilloche (the banknote/certificate ornament), generated as inline SVG in `src/components/landing/guilloche-art.tsx`:
+
+- **Construction:** one path per zone (sampled parametric curves — twisted loops, scallops, offset rings) stamped as rotated/scaled copies via `defs` + `use`. Ink density does the shading: `currentColor` hairlines (0.7–0.75 width, `vector-effect="non-scaling-stroke"`) at opacity tiers ~0.1–0.9 inside a wrapper that sets `color: var(--color-navy)` — dark mode flips for free. No gradients, no images.
+- **The hero plate** continuously SMIL-morphs ring field → loop rosette → star (all shapes sampled with matching point counts so `d` interpolates), sits in a scroll-scrubbed 3D rig (spin 0.3°/px, tilt 38°→62°), and renders a second time — flat, own `idPrefix` — in the closing section's corner (SVG ids are document-global).
+- **Wanderers:** short bright dash segments with comet-dot heads lapping the stamped outlines (`stroke-dashoffset` over `pathLength`-normalized paths; the dot is a point-length dash phase-shifted by the segment length).
+
+### Motion vocabulary & reduced-motion contract
+
+- Layer groups counter-rotate (CSS, durations inline); wanderers lap; the plate morphs (SMIL); rows/steps fade up and the holdings glyphs animate their meaning via **CSS scroll-driven animations** (`animation-timeline: view()`, progressive enhancement behind `@supports`).
+- Reduced motion needs THREE brakes: the global kill-switch (tokens.css) freezes CSS animations; **scrubbed view() timelines ignore the duration trick and need explicit `animation: none`**; SMIL needs `svg.pauseAnimations()` (done in `GuillocheArt`'s effect). Markup attribute opacities are always the finished state, so static rendering is correct everywhere.
+
+### Other landing-specific notes
+
+- CTAs that are real `<button>`s use the canonical `<Button>`; href/modal CTAs styled as buttons use `.lp-btn` (+ `.lp-contact-btn` reset), which read the same `--btn-primary-*` tokens so the band inversion applies to both.
+- The feedback modal has a `contact` variant (`useFeedback().openFeedback("contact")`) — same form and `/api/feedback` wiring, contact copy, message prefixed `[Contact request]`. Landing "Get in touch" CTAs and FAQ answers use it.
+- `AppDialog` is `position: fixed` (top-layer, viewport-centered) — do not reintroduce `relative`; it lays modals out at document-top coordinates (§14-era legacy bug fixed in PR #165).
 
 ---
 

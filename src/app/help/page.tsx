@@ -14,7 +14,7 @@ export const metadata: Metadata = {
       "Learn how Certified works: activities, projects, groups, endorsements, lists, your feed, the Explore page, and your portable AT Protocol account.",
     url: "https://certified.app/help",
     type: "website",
-    images: [{ url: "/assets/certs-hero-1200x630.png", width: 1200, height: 630, alt: "Certified — One account, any app" }],
+    images: [{ url: "/assets/certs-hero-1200x630.png", width: 1200, height: 630, alt: "Certified — One account. Your work. Recognized everywhere." }],
   },
 };
 
