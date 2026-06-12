@@ -29,7 +29,7 @@ const STEPS = [
   {
     num: "03",
     title: "She moves — it moves with her",
-    body: "Next year she joins a different funding platform. No new profile, no starting over — her whole record comes with her.",
+    body: "Next quarter she raises funds from another grants platform or takes part in a prize competition. No new profile, no starting over — her whole record comes with her.",
   },
 ];
 
