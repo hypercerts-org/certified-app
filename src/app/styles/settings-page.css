@@ -109,19 +109,14 @@
   overflow-y: auto;
 }
 
-/* On mobile the page-layout grid collapses to a single column —
-   sticky behaviour stops making sense (the rail sits above the
-   panel, not beside it), so unpin it. */
+/* On mobile the page-layout grid collapses to a single column and the
+   section nav would just stack above the panel — drop it entirely; the
+   sections themselves are a short scroll and carry their own headings.
+   Deep links (#section) still work since the anchors live on the
+   sections, not the menu. */
 @media (max-width: 799px) {
   .sx__menu {
-    position: static;
-    max-height: none;
-    overflow: visible;
-  }
-  /* Settings menu items meet the 44px tap target on mobile (the compact
-     ~32px desktop padding is too small to tap reliably). */
-  .sx-menu__item {
-    min-height: 44px;
+    display: none;
   }
 }
 

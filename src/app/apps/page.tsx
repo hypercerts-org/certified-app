@@ -12,11 +12,11 @@ export default function AppsPage() {
 
   return (
     <div className="apps-store">
+      {/* The navbar already carries the "Apps" page title — no eyebrow /
+          h1 repeat here, just the one-line intro. */}
       <header className="apps-store__header">
-        <span className="apps-store__eyebrow">Ecosystem</span>
-        <h1 className="apps-store__title">Apps</h1>
         <p className="apps-store__intro">
-          Apps built on the AT Protocol. One Certified identity, every app.
+          Apps built with Certified on AT Protocol.
         </p>
       </header>
 

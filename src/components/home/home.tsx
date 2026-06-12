@@ -52,7 +52,9 @@ const SIDEBAR_PREVIEW_LIMIT = 5
  * the hard-coded news DID.
  */
 export default function Home() {
-  usePageTitle("Home")
+  // The navbar carries the page title; the feed itself no longer
+  // renders its own "Feed" heading (the tab strip took its place).
+  usePageTitle("Feed")
   const router = useRouter()
   const { isLoading: authLoading, isAuthenticated, did: personalDid } = useAuth()
   const { activeOrg } = useOrg()

@@ -827,28 +827,10 @@
   padding-top: 8px;
 }
 
+/* The navbar carries the "Apps" page title; the header is just the
+   one-line intro now. */
 .apps-store__header {
   margin-bottom: 24px;
-}
-
-.apps-store__eyebrow {
-  display: inline-block;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--fg-muted);
-  margin-bottom: 8px;
-}
-
-.apps-store__title {
-  font-family: var(--font-headline), "Noto Serif", serif;
-  font-size: clamp(2rem, 3vw + 0.5rem, 2.75rem);
-  font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: -0.02em;
-  color: var(--fg-primary);
-  margin: 0 0 10px;
 }
 
 .apps-store__intro {

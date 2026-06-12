@@ -299,39 +299,6 @@ html[data-theme="dark"] .signin-mark__img--light {
   gap: 16px;
 }
 
-.navbar__signin-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px 8px;
-  background: none;
-  border: none;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
-}
-
-.navbar__signin-btn:hover {
-  opacity: 0.85;
-}
-
-.navbar__signin-btn:active {
-  transform: scale(0.97);
-}
-
-.navbar__signin-btn:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.navbar__signin-img {
-  height: 26px;
-  width: auto;
-  display: block;
-}
-
-
-
 /* ========== App Top Nav (authenticated) ========== */
 .navbar__app-links {
   display: flex;
@@ -532,11 +499,39 @@ html[data-theme="dark"] .signin-mark__img--light {
    inner-content classes below (sections, profile, links, badges) are
    still rendered by MobileSidebar and styled here. */
 
-.mobile-sidebar__section--profile {
+/* Brand row pinned to the drawer's top: wordmark top-left, theme
+   toggle top-right. Sits above the (signed-in-only) profile block. */
+.mobile-sidebar__section--brand {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.mobile-sidebar__wordmark {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius);
+}
+
+.mobile-sidebar__wordmark-img {
+  height: 18px;
+  width: auto;
+  display: block;
+}
+
+/* Source SVG is pure black; flip via CSS filter in dark mode (mirrors
+   .desktop-top-bar__wordmark / .site-footer__wordmark). */
+:root[data-theme="dark"] .mobile-sidebar__wordmark-img {
+  filter: invert(1);
+}
+
+/* Brand row on top, profile block (signed-in only) stacked below. */
+.mobile-sidebar__section--profile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
 }
 
 .mobile-sidebar__profile {
