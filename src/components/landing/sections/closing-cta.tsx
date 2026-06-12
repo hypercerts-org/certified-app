@@ -12,7 +12,7 @@ export default function ClosingCta() {
   return (
     <section className="lp-section lp-closing" aria-labelledby="lp-closing-title">
       <div className="lp-closing__art">
-        <GuillocheArt idPrefix="lpgc" flat />
+        <GuillocheArt idPrefix="lpgc" flat frame={false} />
       </div>
       <div className="lp-section__inner lp-closing__inner">
         <h2 id="lp-closing-title" className="lp-h2 lp-closing__title">

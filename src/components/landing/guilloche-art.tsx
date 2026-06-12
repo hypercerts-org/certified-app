@@ -289,6 +289,7 @@ const NEST_FADE = "0;0;1;0";
 export default function GuillocheArt({
   idPrefix = "lpg",
   flat = false,
+  frame = true,
 }: {
   /** Unique SVG-id namespace — required when the plate renders more
    *  than once per page (defs/use references are document-global). */
@@ -296,6 +297,9 @@ export default function GuillocheArt({
   /** Render the morphing plate without the 3D rig and without the
    *  scroll scrubbing (e.g. the closing section's corner). */
   flat?: boolean;
+  /** Containment rings around the plate. Off in the closing corner,
+   *  where the quadrant should fan out unbounded. */
+  frame?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -337,8 +341,12 @@ export default function GuillocheArt({
         </defs>
 
         {/* Containment rings — the plate's frame */}
-        <circle cx={CX} cy={CY} r={372} stroke="currentColor" strokeWidth={0.75} opacity={0.16} vectorEffect="non-scaling-stroke" />
-        <circle cx={CX} cy={CY} r={380} stroke="currentColor" strokeWidth={0.75} opacity={0.1} vectorEffect="non-scaling-stroke" />
+        {frame && (
+          <>
+            <circle cx={CX} cy={CY} r={372} stroke="currentColor" strokeWidth={0.75} opacity={0.16} vectorEffect="non-scaling-stroke" />
+            <circle cx={CX} cy={CY} r={380} stroke="currentColor" strokeWidth={0.75} opacity={0.1} vectorEffect="non-scaling-stroke" />
+          </>
+        )}
 
         {/* Morphing fan — outer and inner counter-rotating zones */}
         <Layer dur={190}>

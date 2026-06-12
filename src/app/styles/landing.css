@@ -1181,17 +1181,18 @@
   overflow: hidden;
 }
 
-/* Mesh guilloche centered exactly on the bottom-left corner point:
+/* Guilloche plate centered exactly on the bottom-left corner point:
    the visible quadrant fans around the corner, clipped flush at the
-   footer line, reaching about half the section's height. */
+   footer line, frameless (no containment rings) so the pattern fades
+   out instead of ending on a circle. */
 .lp-closing__art {
   position: absolute;
   left: 0;
   bottom: 0;
   transform: translate(-50%, 50%);
-  /* Drawn radius is ~0.475 of width — ~450px puts the outer ring at
-     about half the section's height */
-  width: min(60vw, 450px);
+  /* Drawn radius is ~0.42 of width without the frame rings — ~680px
+     sends the fan well past half the section's height */
+  width: min(78vw, 680px);
   aspect-ratio: 1;
   color: var(--color-navy);
   pointer-events: none;
@@ -1573,4 +1574,10 @@
 .welcome-footer {
   padding: 0;
   background: var(--color-off-white);
+}
+
+/* Footer carries margin-top: 48px elsewhere; collapse it so the
+   closing section's guilloche clips flush at the footer border. */
+.welcome-footer .site-footer {
+  margin-top: 0;
 }
