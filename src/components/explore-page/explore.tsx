@@ -53,6 +53,7 @@ import {
 } from "./explore-types"
 import { useExploreData } from "@/hooks/use-explore"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
 import { usePageTitle } from "@/lib/navbar-context"
 
 
@@ -486,6 +487,11 @@ interface ExploreMainProps {
   /** Optional control rendered at the start of the chrome row, before
    *  the sub-dropdown. The All view hosts its category dropdown here. */
   leadingControl?: React.ReactNode
+  /** When set, ExploreMain renders the mobile category pill strip inside
+   *  the chrome row (with access to sub/setUrl). The All view passes its
+   *  current `show` value and `setShow` handler. */
+  mobilePillsShow?: AllShow
+  mobilePillsSetShow?: (next: AllShow) => void
   /** Render the endorsement-degree control in its compact, low-padding
    *  variant instead of the standalone bar. Used by the All view's
    *  single-category mode (no section header there, so the pills sit
@@ -506,6 +512,8 @@ function ExploreMain({
   kind,
   filter,
   leadingControl,
+  mobilePillsShow,
+  mobilePillsSetShow,
   compactDegrees,
 }: ExploreMainProps) {
   const pathname = usePathname()
@@ -516,6 +524,9 @@ function ExploreMain({
   const search = searchParams?.get("q") ?? ""
   const sort = parseSort(searchParams?.get("sort") ?? null)
   const view = parseView(searchParams?.get("view") ?? null)
+  const { isDesktop } = useLayoutBreakpoints()
+  // On mobile always use gallery — denser grid fits more on a small screen.
+  const effectiveView: ListGalleryView = isDesktop ? view : "gallery"
   // Endorsement-graph ring tags — multi-select of {1, 2, 3}. The URL
   // stores the active subset under `?degrees=` (sorted); legacy
   // `?degree=N` is read as the cumulative set {1..N} so old bookmarks
@@ -701,37 +712,51 @@ function ExploreMain({
               />
             </div>
 
-            <div className="explore__chrome-actions">
-              <SegmentedControl
-                aria-label={`${kind === "activities" ? "Activity" : kind === "projects" ? "Project" : "Account"} view`}
-                value={view}
-                // List is the default view, so selecting it clears the
-                // `?view=` param (keeps the URL clean); Gallery writes
-                // `?view=gallery`. Same mapping the two buttons had.
-                onValueChange={(next) =>
-                  setUrl({ view: next === "gallery" ? "gallery" : null })
+            {mobilePillsShow !== undefined && mobilePillsSetShow ? (
+              <AllCategoryPills
+                show={mobilePillsShow}
+                setShow={mobilePillsSetShow}
+                kind={kind}
+                sub={sub}
+                onSubChange={(nextSub) =>
+                  setUrl({ sub: nextSub === "all" ? null : nextSub })
                 }
-                options={[
-                  {
-                    value: "list",
-                    icon: <ListIcon size={14} strokeWidth={1.75} aria-hidden />,
-                    ariaLabel: "List view",
-                    tooltip: "List view",
-                  },
-                  {
-                    value: "gallery",
-                    icon: (
-                      <LayoutGrid size={14} strokeWidth={1.75} aria-hidden />
-                    ),
-                    ariaLabel: "Gallery view",
-                    tooltip: "Gallery view",
-                  },
-                ]}
-                size="md"
-                joined
-                shape="square"
-                iconOnly
               />
+            ) : null}
+
+            <div className="explore__chrome-actions">
+              {isDesktop && (
+                <SegmentedControl
+                  aria-label={`${kind === "activities" ? "Activity" : kind === "projects" ? "Project" : "Account"} view`}
+                  value={view}
+                  // List is the default view, so selecting it clears the
+                  // `?view=` param (keeps the URL clean); Gallery writes
+                  // `?view=gallery`. Same mapping the two buttons had.
+                  onValueChange={(next) =>
+                    setUrl({ view: next === "gallery" ? "gallery" : null })
+                  }
+                  options={[
+                    {
+                      value: "list",
+                      icon: <ListIcon size={14} strokeWidth={1.75} aria-hidden />,
+                      ariaLabel: "List view",
+                      tooltip: "List view",
+                    },
+                    {
+                      value: "gallery",
+                      icon: (
+                        <LayoutGrid size={14} strokeWidth={1.75} aria-hidden />
+                      ),
+                      ariaLabel: "Gallery view",
+                      tooltip: "Gallery view",
+                    },
+                  ]}
+                  size="md"
+                  joined
+                  shape="square"
+                  iconOnly
+                />
+              )}
               <UiPopover open={sortOpen} onOpenChange={setSortOpen}>
                 <Tooltip label="Sort">
                   <PopoverTrigger>
@@ -837,7 +862,7 @@ function ExploreMain({
             kind={kind}
             data={data}
             sort={sort}
-            view={view}
+            view={effectiveView}
             degrees={showsDegreeControl ? degrees : null}
           />
           {data.hasMore || data.isLoadingMore ? (
@@ -1117,12 +1142,14 @@ function ExploreAllBlocks() {
 
         <main className="explore__main">
           <div className="explore__chrome">
-            <AllCategoryDropdown
-              show="all"
-              onSelect={onShowOptionClick}
-              open={showOpen}
-              setOpen={setShowOpen}
-            />
+            <span className="explore__category-dropdown">
+              <AllCategoryDropdown
+                show="all"
+                onSelect={onShowOptionClick}
+                open={showOpen}
+                setOpen={setShowOpen}
+              />
+            </span>
 
             <div className="explore__search-field">
               <Input
@@ -1135,6 +1162,8 @@ function ExploreAllBlocks() {
                 aria-label="Search Certified"
               />
             </div>
+
+            <AllCategoryPills show="all" setShow={setShow} />
 
             <div className="explore__chrome-actions">
               <QualityFilterPopover
@@ -1210,6 +1239,7 @@ function ExploreAllBlocks() {
 function ExploreAllSingle({ show }: { show: ExploreKind }) {
   const {
     filter,
+    setShow,
     onFilterButtonClick,
     showOpen,
     setShowOpen,
@@ -1228,13 +1258,17 @@ function ExploreAllSingle({ show }: { show: ExploreKind }) {
           filter={viewFilterToKindFilter(filter, show)}
           compactDegrees
           leadingControl={
-            <AllCategoryDropdown
-              show={show}
-              onSelect={onShowOptionClick}
-              open={showOpen}
-              setOpen={setShowOpen}
-            />
+            <span className="explore__category-dropdown">
+              <AllCategoryDropdown
+                show={show}
+                onSelect={onShowOptionClick}
+                open={showOpen}
+                setOpen={setShowOpen}
+              />
+            </span>
           }
+          mobilePillsShow={show}
+          mobilePillsSetShow={setShow}
         />
       </div>
     </div>
@@ -1255,6 +1289,153 @@ function ShowAllRow({ onClick }: { onClick: () => void }) {
         </button>
       </Tooltip>
     </li>
+  )
+}
+
+/** Mobile-only pill strip in the filter row — Activities / Projects / Accounts.
+ *  When showing all: three plain pills.
+ *  When one is selected: that pill becomes a dropdown to switch to the other
+ *  two; "Restore default" deselects back to all three. For accounts, also
+ *  renders a vertical separator + sub-filter (All / People / Organizations).
+ *  Hidden on desktop. */
+function AllCategoryPills({
+  show,
+  setShow,
+  kind,
+  sub,
+  onSubChange,
+}: {
+  show: AllShow
+  setShow: (next: AllShow) => void
+  kind?: ExploreKind
+  sub?: string
+  onSubChange?: (next: string) => void
+}) {
+  const [categoryOpen, setCategoryOpen] = useState(false)
+  const [subOpen, setSubOpen] = useState(false)
+
+  if (show !== "all") {
+    const active = SHOW_OPTIONS.find((o) => o.key === show)!
+    // Other categories (no "All" — replaced by "Restore default" below)
+    const otherCategories = SHOW_OPTIONS.filter(
+      (o) => o.key !== show && o.key !== "all",
+    )
+    const showSubFilter =
+      kind === "accounts" && sub !== undefined && onSubChange
+    const subOptions = SUB_OPTIONS.accounts
+    const activeSub = subOptions.find((o) => o.key === sub) ?? subOptions[0]
+    // Exclude "all" from the switch list (replaced by "Show all" button below)
+    const otherSubs = subOptions.filter(
+      (o) => o.key !== activeSub.key && o.key !== "all",
+    )
+
+    return (
+      <div className="explore__category-pills">
+        <UiPopover open={categoryOpen} onOpenChange={setCategoryOpen}>
+          <PopoverTrigger>
+            <button
+              type="button"
+              className="explore__category-pill explore__category-pill--active"
+              aria-haspopup="listbox"
+              aria-expanded={categoryOpen}
+            >
+              {active.label}
+              <ChevronDown size={12} strokeWidth={1.75} aria-hidden />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start">
+            {otherCategories.map((opt) => (
+              <PopoverItem
+                key={opt.key}
+                selected={false}
+                onClick={() => {
+                  setShow(opt.key)
+                  setCategoryOpen(false)
+                }}
+              >
+                {opt.label}
+              </PopoverItem>
+            ))}
+            {otherCategories.length > 0 && (
+              <hr className="popover__divider" aria-hidden="true" />
+            )}
+            <button
+              type="button"
+              className="popover__reset-btn"
+              onClick={() => {
+                setShow("all")
+                setCategoryOpen(false)
+              }}
+            >
+              Show all
+            </button>
+          </PopoverContent>
+        </UiPopover>
+
+        {showSubFilter && (
+          <>
+            <span className="explore__category-pills-sep" aria-hidden />
+            <UiPopover open={subOpen} onOpenChange={setSubOpen}>
+              <PopoverTrigger>
+                <button
+                  type="button"
+                  className={`explore__category-pill${activeSub.key !== "all" ? " explore__category-pill--active" : ""}`}
+                  aria-haspopup="listbox"
+                  aria-expanded={subOpen}
+                >
+                  {activeSub.label}
+                  <ChevronDown size={12} strokeWidth={1.75} aria-hidden />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start">
+                {otherSubs.map((opt) => (
+                  <PopoverItem
+                    key={opt.key}
+                    selected={false}
+                    onClick={() => {
+                      onSubChange!(opt.key)
+                      setSubOpen(false)
+                    }}
+                  >
+                    {opt.label}
+                  </PopoverItem>
+                ))}
+                {activeSub.key !== "all" && (
+                  <>
+                    <hr className="popover__divider" aria-hidden="true" />
+                    <button
+                      type="button"
+                      className="popover__reset-btn"
+                      onClick={() => {
+                        onSubChange!("all")
+                        setSubOpen(false)
+                      }}
+                    >
+                      Show all
+                    </button>
+                  </>
+                )}
+              </PopoverContent>
+            </UiPopover>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="explore__category-pills">
+      {SHOW_OPTIONS.filter((o) => o.key !== "all").map((opt) => (
+        <button
+          key={opt.key}
+          type="button"
+          className="explore__category-pill"
+          onClick={() => setShow(opt.key)}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
   )
 }
 
