@@ -28,7 +28,7 @@ export default function Trust() {
     <section className="lp-section" aria-labelledby="lp-trust-title">
       <div className="lp-section__inner">
         <header className="lp-section__header">
-          <span className="lp-eyebrow">Why it&apos;s safe</span>
+          <span className="lp-eyebrow">Why it&apos;s trustworthy</span>
           <h2 id="lp-trust-title" className="lp-h2">
             Built so you don&apos;t have to trust us
           </h2>
