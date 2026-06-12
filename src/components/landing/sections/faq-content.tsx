@@ -26,7 +26,7 @@ export const FAQ_ITEMS = [
   {
     question: "Is Certified only for environmental work?",
     answer:
-      "No. Our founding community works in ecological regeneration — that's why many early profiles are land and climate projects — but accounts, records, and endorsements work the same way for any impact domain.",
+      "No. Our founding community works in ecological regeneration — that's why many early profiles are land and climate projects — but accounts, records, and endorsements work the same way for any impact domain: open-source software, journalism, science, community events, and more.",
   },
   {
     question: "What apps support Certified?",
