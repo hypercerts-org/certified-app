@@ -23,7 +23,7 @@ export default function ExploreProfiles({ profiles }: { profiles: FeaturedProfil
         <header className="lp-split__head">
           <span className="lp-eyebrow">Explore</span>
           <h2 id="lp-explore-title" className="lp-h2">
-            See what people are building
+            See the work people are doing
           </h2>
           <p className="lp-split__lead">
             Browse projects, people, and organizations across the network.
