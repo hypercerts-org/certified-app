@@ -353,8 +353,15 @@ export default function AppDialog({
   // cert-detail meta-label <dt> (uppercase/semibold/letter-spaced/muted)
   // would otherwise pick up all of that. No-op for modals mounted in
   // normal text.
+  // `fixed` (not the legacy cascade's `relative`): a relative-positioned
+  // modal dialog lays out at DOCUMENT-top coordinates, so opening one
+  // from far down a page either yanked the scroll to the top (focus
+  // scroll-into-view) or, with the scroll pinned, left the dialog
+  // standing thousands of pixels above the viewport. Fixed restores the
+  // UA's top-layer placement: centered in the VIEWPORT, wherever the
+  // page is scrolled.
   const baseChrome =
-    "relative inset-0 m-auto flex w-[90vw] max-w-[420px] max-h-[calc(100vh-40px)] flex-col items-stretch overflow-x-hidden overflow-y-auto rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--color-off-white)] p-0 text-[var(--fg-primary)] font-normal normal-case tracking-normal shadow-[0_24px_64px_var(--navy-overlay-30)] backdrop:bg-[var(--modal-backdrop)] motion-safe:animate-[modalSlideUp_300ms_cubic-bezier(0.16,1,0.3,1)] max-[799px]:w-full max-[799px]:max-w-none"
+    "fixed inset-0 m-auto flex w-[90vw] max-w-[420px] max-h-[calc(100vh-40px)] flex-col items-stretch overflow-x-hidden overflow-y-auto rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--color-off-white)] p-0 text-[var(--fg-primary)] font-normal normal-case tracking-normal shadow-[0_24px_64px_var(--navy-overlay-30)] backdrop:bg-[var(--modal-backdrop)] motion-safe:animate-[modalSlideUp_300ms_cubic-bezier(0.16,1,0.3,1)] max-[799px]:w-full max-[799px]:max-w-none"
 
   const composedClassName = className
     ? `${baseChrome} ${className}`
