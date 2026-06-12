@@ -57,7 +57,8 @@ const ITEMS = [
     title: "Your supporters",
     body: "Endorsements from partners, funders, and organizations that know your work. Signed, checkable, and attached to the work itself — not to a platform that controls it.",
     glyph: (
-      // Endorsers connect one by one; the countersigned seal lights last.
+      // The highlight travels: connections, each endorser, then the
+      // countersigned seal, which stays lit.
       <svg viewBox="0 0 64 64" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
         <path
           d="M 32 24 L 17 42 M 32 24 L 47 42 M 17 42 L 47 42"
@@ -65,12 +66,12 @@ const ITEMS = [
           strokeWidth="0.75"
           opacity="0.28"
           className="lp-glyph-step"
-          style={{ animationName: "lpGlyphTo28", animationRange: "cover 0% cover 30%" }}
+          style={{ animationName: "lpSupA" }}
         />
-        <circle cx="14" cy="46" r="10" stroke="currentColor" strokeWidth="0.75" opacity="0.28" className="lp-glyph-step" style={{ animationName: "lpGlyphTo28", animationRange: "cover 20% cover 48%" }} />
-        <circle cx="50" cy="46" r="10" stroke="currentColor" strokeWidth="0.75" opacity="0.28" className="lp-glyph-step" style={{ animationName: "lpGlyphTo28", animationRange: "cover 38% cover 66%" }} />
-        <circle cx="32" cy="16" r="10" stroke="currentColor" strokeWidth="1.25" opacity="0.9" className="lp-glyph-step" style={{ animationName: "lpGlyphTo90", animationRange: "cover 56% cover 82%" }} />
-        <circle cx="32" cy="16" r="2.5" fill="currentColor" opacity="0.9" className="lp-glyph-step" style={{ animationName: "lpGlyphTo90", animationRange: "cover 70% cover 92%" }} />
+        <circle cx="14" cy="46" r="10" stroke="currentColor" strokeWidth="0.75" opacity="0.28" className="lp-glyph-step" style={{ animationName: "lpSupB" }} />
+        <circle cx="50" cy="46" r="10" stroke="currentColor" strokeWidth="0.75" opacity="0.28" className="lp-glyph-step" style={{ animationName: "lpSupC" }} />
+        <circle cx="32" cy="16" r="10" stroke="currentColor" strokeWidth="1.25" opacity="0.9" className="lp-glyph-step" style={{ animationName: "lpSupD" }} />
+        <circle cx="32" cy="16" r="2.5" fill="currentColor" opacity="0.9" className="lp-glyph-step" style={{ animationName: "lpSupD" }} />
       </svg>
     ),
   },

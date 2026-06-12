@@ -511,14 +511,29 @@
   82%, 100% { opacity: 0.9; }
 }
 
-@keyframes lpGlyphTo28 {
-  from { opacity: 0.07; }
-  to { opacity: 0.28; }
+/* Supporters: the highlight travels through the parts — connector,
+   left endorser, right endorser, then the countersigned seal, which
+   stays lit (the markup's finished state). */
+@keyframes lpSupA {
+  0%, 22% { opacity: 0.9; }
+  32%, 100% { opacity: 0.28; }
 }
 
-@keyframes lpGlyphTo90 {
-  from { opacity: 0.12; }
-  to { opacity: 0.9; }
+@keyframes lpSupB {
+  0%, 22% { opacity: 0.28; }
+  32%, 47% { opacity: 0.9; }
+  57%, 100% { opacity: 0.28; }
+}
+
+@keyframes lpSupC {
+  0%, 47% { opacity: 0.28; }
+  57%, 72% { opacity: 0.9; }
+  82%, 100% { opacity: 0.28; }
+}
+
+@keyframes lpSupD {
+  0%, 72% { opacity: 0.28; }
+  82%, 100% { opacity: 0.9; }
 }
 
 @supports (animation-timeline: view()) {
@@ -546,7 +561,8 @@
     animation-range: cover 0% cover 75%;
   }
 
-  .lp-glyph-rec {
+  .lp-glyph-rec,
+  .lp-glyph-step {
     animation-range: cover 0% cover 95%;
   }
 
