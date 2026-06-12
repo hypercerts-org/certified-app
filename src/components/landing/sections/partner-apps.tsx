@@ -43,9 +43,9 @@ export default function PartnerApps() {
           ))}
         </div>
         <p className="lp-apps__recruit">
-          Building an app? Your users could arrive with their accounts already
-          set up.{" "}
-          <a href="mailto:support@hypercerts.org?subject=Building%20on%20Certified" className="lp-link">
+          Running a funding platform or grants program? Your system could plug
+          into this network.{" "}
+          <a href="mailto:support@hypercerts.org?subject=Connecting%20to%20Certified" className="lp-link">
             Get in touch <LpArrow />
           </a>
         </p>
