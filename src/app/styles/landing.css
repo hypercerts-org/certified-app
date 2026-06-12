@@ -458,9 +458,10 @@
   height: 100%;
 }
 
-/* Glyph inscription — elements hold their natural state until the
-   rows scroll into view, then draw/fade in with per-element delays
-   (inline). `both` keeps them hidden through their delay. */
+/* Glyph inscription — each row triggers its own glyph when half
+   visible; elements draw/fade in with row-relative delays (inline).
+   Before the trigger the glyph is hidden (opacity 0 / undrawn);
+   `both` keeps elements hidden through their delay. */
 @keyframes lpGlyphDraw {
   from {
     stroke-dashoffset: 100;
@@ -477,18 +478,47 @@
   stroke-dasharray: 100;
 }
 
-.lp-holdings--inview .lp-glyph-draw {
+.lp-holdings__row:not(.lp-holdings__row--inview) .lp-glyph-draw,
+.lp-holdings__row:not(.lp-holdings__row--inview) .lp-glyph-fade {
+  opacity: 0;
+}
+
+.lp-holdings__row--inview .lp-glyph-draw {
   animation-name: lpGlyphDraw;
   animation-duration: 900ms;
   animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   animation-fill-mode: both;
+  animation-delay: calc(var(--lpg-row-delay, 0ms) + var(--lpg-el-delay, 0ms));
 }
 
-.lp-holdings--inview .lp-glyph-fade {
+.lp-holdings__row--inview .lp-glyph-fade {
   animation-name: lpGlyphFadeIn;
   animation-duration: 500ms;
   animation-timing-function: ease-out;
   animation-fill-mode: both;
+  animation-delay: calc(var(--lpg-row-delay, 0ms) + var(--lpg-el-delay, 0ms));
+}
+
+/* Numbered rows fade up as they enter (holdings rows + story steps).
+   Scroll-driven so each row is its own starting point; progressive
+   enhancement — browsers without scroll timelines render static. */
+@supports (animation-timeline: view()) {
+  .lp-holdings__row,
+  .lp-story__step {
+    /* 1ms placeholder — the scrubbed timeline supplies the real pace */
+    animation: lpFadeUp 1ms linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 70%;
+  }
+
+  /* The scrubbed timeline ignores the duration-based kill-switch, so
+     reduced motion needs an explicit off. */
+  @media (prefers-reduced-motion: reduce) {
+    .lp-holdings__row,
+    .lp-story__step {
+      animation: none;
+    }
+  }
 }
 
 @media (max-width: 799px) {

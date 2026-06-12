@@ -7,11 +7,12 @@ import { useEffect, useRef, useState } from "react";
  * Header in the left columns, three numbered rows divided by hairlines
  * on the right, each with a small seal-grammar glyph.
  *
- * The glyphs inscribe themselves when the rows scroll into view: arcs
- * and connector lines draw in (dash-draw over pathLength-normalized
- * paths), layers and marks fade in staggered (absolute delays baked
- * per element, cascading row by row). The global reduced-motion
- * kill-switch collapses it all to the finished state.
+ * Each ROW is its own animation trigger: when a row is half visible,
+ * its glyph inscribes itself (arcs and connector lines dash-draw,
+ * layers and marks fade in with row-relative delays) — so all three
+ * inscriptions are actually seen as you scroll through the section.
+ * The global reduced-motion kill-switch collapses them to the
+ * finished state.
  */
 
 const ITEMS = [
@@ -31,9 +32,9 @@ const ITEMS = [
           opacity="0.9"
           strokeLinecap="round"
           className="lp-glyph-draw"
-          style={{ animationDelay: "250ms" }}
+          style={{ "--lpg-el-delay": "200ms" } as React.CSSProperties}
         />
-        <circle cx="32" cy="32" r="3" fill="currentColor" opacity="0.9" className="lp-glyph-fade" style={{ animationDelay: "650ms" }} />
+        <circle cx="32" cy="32" r="3" fill="currentColor" opacity="0.9" className="lp-glyph-fade" style={{ "--lpg-el-delay": "600ms" } as React.CSSProperties} />
       </svg>
     ),
   },
@@ -44,10 +45,10 @@ const ITEMS = [
     glyph: (
       // A record accumulating: stacked layers, newest on top.
       <svg viewBox="0 0 64 64" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-        <rect x="12" y="38" width="40" height="12" rx="1" stroke="currentColor" strokeWidth="0.75" opacity="0.14" className="lp-glyph-fade" style={{ animationDelay: "150ms" }} />
-        <rect x="12" y="31" width="40" height="12" rx="1" stroke="currentColor" strokeWidth="0.75" opacity="0.28" className="lp-glyph-fade" style={{ animationDelay: "280ms" }} />
-        <rect x="12" y="24" width="40" height="12" rx="1" stroke="currentColor" strokeWidth="0.75" opacity="0.5" className="lp-glyph-fade" style={{ animationDelay: "410ms" }} />
-        <rect x="12" y="17" width="40" height="12" rx="1" stroke="currentColor" strokeWidth="1.25" opacity="0.9" className="lp-glyph-fade" style={{ animationDelay: "540ms" }} />
+        <rect x="12" y="38" width="40" height="12" rx="1" stroke="currentColor" strokeWidth="0.75" opacity="0.14" className="lp-glyph-fade" />
+        <rect x="12" y="31" width="40" height="12" rx="1" stroke="currentColor" strokeWidth="0.75" opacity="0.28" className="lp-glyph-fade" style={{ "--lpg-el-delay": "150ms" } as React.CSSProperties} />
+        <rect x="12" y="24" width="40" height="12" rx="1" stroke="currentColor" strokeWidth="0.75" opacity="0.5" className="lp-glyph-fade" style={{ "--lpg-el-delay": "300ms" } as React.CSSProperties} />
+        <rect x="12" y="17" width="40" height="12" rx="1" stroke="currentColor" strokeWidth="1.25" opacity="0.9" className="lp-glyph-fade" style={{ "--lpg-el-delay": "450ms" } as React.CSSProperties} />
       </svg>
     ),
   },
@@ -65,34 +66,46 @@ const ITEMS = [
           strokeWidth="0.75"
           opacity="0.28"
           className="lp-glyph-draw"
-          style={{ animationDelay: "300ms" }}
         />
-        <circle cx="14" cy="46" r="10" stroke="currentColor" strokeWidth="0.75" opacity="0.28" className="lp-glyph-fade" style={{ animationDelay: "550ms" }} />
-        <circle cx="50" cy="46" r="10" stroke="currentColor" strokeWidth="0.75" opacity="0.28" className="lp-glyph-fade" style={{ animationDelay: "670ms" }} />
-        <circle cx="32" cy="16" r="10" stroke="currentColor" strokeWidth="1.25" opacity="0.9" className="lp-glyph-fade" style={{ animationDelay: "800ms" }} />
-        <circle cx="32" cy="16" r="2.5" fill="currentColor" opacity="0.9" className="lp-glyph-fade" style={{ animationDelay: "920ms" }} />
+        <circle cx="14" cy="46" r="10" stroke="currentColor" strokeWidth="0.75" opacity="0.28" className="lp-glyph-fade" style={{ "--lpg-el-delay": "250ms" } as React.CSSProperties} />
+        <circle cx="50" cy="46" r="10" stroke="currentColor" strokeWidth="0.75" opacity="0.28" className="lp-glyph-fade" style={{ "--lpg-el-delay": "370ms" } as React.CSSProperties} />
+        <circle cx="32" cy="16" r="10" stroke="currentColor" strokeWidth="1.25" opacity="0.9" className="lp-glyph-fade" style={{ "--lpg-el-delay": "500ms" } as React.CSSProperties} />
+        <circle cx="32" cy="16" r="2.5" fill="currentColor" opacity="0.9" className="lp-glyph-fade" style={{ "--lpg-el-delay": "620ms" } as React.CSSProperties} />
       </svg>
     ),
   },
 ];
 
 export default function WhatLivesHere() {
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const [inView, setInView] = useState(false);
+  const rowRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [inViewRows, setInViewRows] = useState<Set<number>>(new Set());
 
   useEffect(() => {
-    const el = bodyRef.current;
-    if (!el) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setInView(true);
-          observer.disconnect();
+        // Rows that arrive in the same batch (all three fit in a
+        // desktop viewport) cascade 350ms apart; a row entering alone
+        // (mobile, slow scroll) starts immediately.
+        let order = 0;
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const idx = rowRefs.current.indexOf(entry.target as HTMLDivElement);
+          if (idx === -1) continue;
+          observer.unobserve(entry.target);
+          (entry.target as HTMLElement).style.setProperty("--lpg-row-delay", `${order * 350}ms`);
+          order += 1;
+          setInViewRows((prev) => {
+            const next = new Set(prev);
+            next.add(idx);
+            return next;
+          });
         }
       },
-      { threshold: 0.25 },
+      { threshold: 0.5 },
     );
-    observer.observe(el);
+    for (const el of rowRefs.current) {
+      if (el) observer.observe(el);
+    }
     return () => observer.disconnect();
   }, []);
 
@@ -105,9 +118,15 @@ export default function WhatLivesHere() {
             Your Certified account holds three things
           </h2>
         </header>
-        <div ref={bodyRef} className={`lp-split__body${inView ? " lp-holdings--inview" : ""}`}>
-          {ITEMS.map((item) => (
-            <div key={item.num} className="lp-holdings__row">
+        <div className="lp-split__body">
+          {ITEMS.map((item, i) => (
+            <div
+              key={item.num}
+              ref={(el) => {
+                rowRefs.current[i] = el;
+              }}
+              className={`lp-holdings__row${inViewRows.has(i) ? " lp-holdings__row--inview" : ""}`}
+            >
               <div className="lp-item">
                 <span className="lp-item__num">{item.num}</span>
                 <h3 className="lp-item__title">{item.title}</h3>
