@@ -212,12 +212,7 @@ export default function HelpPage() {
             <p className="mt-4">
               That portability is the point. You can use the same account across compatible apps, and
               if you ever want to move, you can take your identity and data with you. Your account is
-              yours — verifiable, portable, and independent of any single service. You can read more
-              on the{" "}
-              <Link href="/about" className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]">
-                About
-              </Link>{" "}
-              page.
+              yours — verifiable, portable, and independent of any single service.
             </p>
           </section>
 

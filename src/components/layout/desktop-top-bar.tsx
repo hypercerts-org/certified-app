@@ -350,6 +350,15 @@ export default function DesktopTopBar() {
 
   if (isLoading) return null;
 
+  // Editorial pages use LandingTopBar; suppress the app chrome.
+  if (
+    pathname === "/welcome" ||
+    pathname === "/terms" ||
+    pathname === "/privacy" ||
+    pathname === "/imprint" ||
+    pathname === "/dsa"
+  ) return null;
+
   const tabHref = (tab: ProfileTab) => {
     if (tab.href) return tab.href;
     if (!pathname) return "#";

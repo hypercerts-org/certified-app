@@ -35,9 +35,6 @@ export default function SiteFooter() {
           <Link href="/welcome" className="site-footer__link">
             Welcome
           </Link>
-          <Link href="/about" className="site-footer__link">
-            About
-          </Link>
           <Link href="/terms" className="site-footer__link">
             Terms
           </Link>

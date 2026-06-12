@@ -37,7 +37,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // other page. Mirrors the same short-circuit main's AppShell
   // does. Note: SiteFooter is not rendered on /welcome either —
   // the ReadyCta section is the page's own footer.
-  if (pathname === "/welcome") {
+  if (
+    pathname === "/welcome" ||
+    pathname === "/terms" ||
+    pathname === "/privacy" ||
+    pathname === "/imprint" ||
+    pathname === "/dsa"
+  ) {
     return <>{children}</>;
   }
 

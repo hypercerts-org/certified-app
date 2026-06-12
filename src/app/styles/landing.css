@@ -275,6 +275,69 @@
   transform: rotate(var(--lpg-scroll-spin, 0deg));
 }
 
+/* ---------- Landing top bar ---------- */
+
+/* Hidden below 800px — mobile range has no wordmark / fixed button. */
+.lp-topbar {
+  display: none;
+}
+
+@media (min-width: 800px) {
+  /* Wordmark: in normal page flow, top-left, scrolls away with the page. */
+  .lp-topbar {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    height: 64px;
+    padding-left: 32px;
+  }
+}
+
+.lp-topbar__wordmark {
+  display: block;
+  height: 22px;
+  width: auto;
+}
+
+/* Flip the black wordmark to white in dark mode. */
+:root[data-theme="dark"] .lp-topbar__wordmark {
+  filter: invert(1);
+}
+
+/* Sign-in / open-app button: hidden on mobile, fixed top-right on desktop.
+   Persists on scroll while the wordmark above scrolls away.
+   Styled after the guilloche-lab controls: small mono text, hairline border. */
+.lp-topbar__btn {
+  display: none;
+}
+
+@media (min-width: 800px) {
+  .lp-topbar__btn {
+    display: inline-flex;
+    position: fixed;
+    top: 16px;
+    right: 32px;
+    z-index: var(--z-navbar);
+    align-items: center;
+    padding: 8px 14px;
+    background: var(--color-off-white);
+    border: 1px solid var(--color-light-gray);
+    border-radius: var(--radius);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    color: var(--color-mid-gray);
+    text-decoration: none;
+    cursor: pointer;
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+  }
+
+  .lp-topbar__btn:hover {
+    color: var(--color-navy);
+    border-color: var(--color-mid-gray);
+  }
+}
+
 /* ---------- Hero ---------- */
 
 .lp-hero {
@@ -302,7 +365,11 @@
 .lp-hero__art {
   position: absolute;
   top: 50%;
-  right: -12%;
+  /* At 1280px viewport: calc(0 - 160px) = -160px ≈ the original -12%.
+     At wider viewports the first term grows, shifting the art leftward
+     so it stays anchored to the 1280px content column rather than
+     drifting off-screen with the expanding viewport. */
+  right: calc(max((100% - 1280px) / 2, 0px) - 160px);
   transform: translateY(-50%);
   width: min(52vw, 760px);
   aspect-ratio: 1;
@@ -377,6 +444,7 @@
 /* The global reduced-motion kill-switch (tokens.css) collapses these
    animations to 0.01ms; with `forwards` fill the elements land visible,
    so no explicit override is needed here. */
+
 
 /* Tablet band: the seal would crowd the copy — push it further off-edge
    and let the copy sit over its hairlines. */
@@ -1580,4 +1648,45 @@
    closing section's guilloche clips flush at the footer border. */
 .welcome-footer .site-footer {
   margin-top: 0;
+}
+
+/* ========== Legal/editorial pages (/about, /terms, /privacy, /imprint, /dsa) ========== */
+/* Aligns text pages to the welcome page's editorial tone:
+   navy headings, mid-gray body, hairline section dividers, 600px reading column. */
+.legal-page .app-page__inner {
+  max-width: 600px;
+}
+
+/* Legal pages bypass AppShell, so there is no shell gutter on mobile.
+   Restore the 16px lateral inset that the home feed uses. */
+@media (max-width: 799px) {
+  .legal-page .app-page__inner {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+.legal-page .prose section + section {
+  border-top: 1px solid var(--color-light-gray);
+  padding-top: 2rem;
+}
+
+.legal-page h1 {
+  color: var(--color-navy);
+}
+
+.legal-page h2,
+.legal-page h3 {
+  color: var(--color-navy);
+  font-weight: 300;
+  letter-spacing: -0.025em;
+}
+
+.legal-page .prose p,
+.legal-page .prose li {
+  color: var(--color-mid-gray);
+}
+
+.legal-page .prose strong {
+  color: var(--color-navy);
 }

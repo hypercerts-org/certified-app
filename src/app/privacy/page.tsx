@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import LandingTopBar from "@/components/landing/landing-topbar";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -18,9 +19,10 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <div className="app-page legal-page">
+      <LandingTopBar />
       <div className="app-page__inner">
         <h1 className="font-headline text-h1 text-[var(--fg-primary)] tracking-tight mb-8">
-          Privacy Policy — Certified
+          Privacy Policy
         </h1>
 
         <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: May 11, 2026</p>
