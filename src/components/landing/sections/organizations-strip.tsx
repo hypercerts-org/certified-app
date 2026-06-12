@@ -28,7 +28,7 @@ export default function OrganizationsStrip() {
   return (
     <section className="lp-band" aria-labelledby="lp-band-title">
       <div className="lp-band__seal">
-        <SealArt rings={6} accents={false} animate={false} />
+        <SealArt rings={6} accents={false} />
       </div>
       <div className="lp-section__inner lp-band__inner">
         <span className="lp-eyebrow lp-band__eyebrow">For organizations</span>

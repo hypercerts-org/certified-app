@@ -1,25 +1,24 @@
 /**
- * Trust section — three verified statements in numbered columns.
- * All three are true of the actual product: data lives in the user's
- * own account, export/migration is supported, infrastructure is
- * EU-hosted.
+ * Trust section — three verified statements in numbered columns: data
+ * ownership + exit rights, the open protocol, and open-source
+ * auditability.
  */
 
 const STATEMENTS = [
   {
     num: "01",
     title: "You own it",
-    body: "Your data sits in your own account, not inside any app — including ours.",
+    body: "Your data lives in your account, not in any app — including ours. Export or move it any time.",
   },
   {
     num: "02",
-    title: "You can leave",
-    body: "Export everything or move your account to another provider, any time. We built it so that you don't have to trust us.",
+    title: "Open protocol",
+    body: "Built on and for AT Protocol. Anyone can verify how it works; anyone can build on it.",
   },
   {
     num: "03",
-    title: "It stays in Europe",
-    body: "Your account is hosted on servers in the EU, under European privacy law.",
+    title: "Auditable by anyone",
+    body: "Every component is open source. Security through transparency, not obscurity.",
   },
 ];
 

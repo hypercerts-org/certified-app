@@ -468,6 +468,39 @@
   height: 100%;
 }
 
+/* Glyph inscription — elements hold their natural state until the
+   rows scroll into view, then draw/fade in with per-element delays
+   (inline). `both` keeps them hidden through their delay. */
+@keyframes lpGlyphDraw {
+  from {
+    stroke-dashoffset: 100;
+  }
+}
+
+@keyframes lpGlyphFadeIn {
+  from {
+    opacity: 0;
+  }
+}
+
+.lp-glyph-draw {
+  stroke-dasharray: 100;
+}
+
+.lp-holdings--inview .lp-glyph-draw {
+  animation-name: lpGlyphDraw;
+  animation-duration: 900ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  animation-fill-mode: both;
+}
+
+.lp-holdings--inview .lp-glyph-fade {
+  animation-name: lpGlyphFadeIn;
+  animation-duration: 500ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
 @media (max-width: 799px) {
   .lp-holdings__glyph {
     width: 48px;
