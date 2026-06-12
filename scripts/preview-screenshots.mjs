@@ -25,7 +25,16 @@ const BASE = process.env.BASE || "http://127.0.0.1:3000";
 const FIXTURE = process.env.FIXTURE || ""; // "" | "empty"
 const OUT_DIR = process.env.OUT_DIR || "/tmp";
 
-const SURFACES = ["profile", "profile-org", "feed", "settings", "workspace"];
+const SURFACES = [
+  "profile",
+  "profile-org",
+  "feed",
+  "settings",
+  "workspace",
+  "create",
+  "profile-edit",
+  "activity-edit",
+];
 const THEMES = ["light", "dark"];
 
 const VIEWPORT = { width: 1440, height: 900 };

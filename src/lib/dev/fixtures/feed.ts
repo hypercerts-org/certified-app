@@ -247,3 +247,39 @@ export function activitiesConnection(): {
     pageInfo: { hasNextPage: false, endCursor: null },
   }
 }
+
+/** rkey of the fixture activity used by the `/dev/preview/activity-edit`
+ *  surface. The preview route supplies this via PathParamsContext and the
+ *  mock `getRecord` returns {@link activityEditRecord} for it. */
+export const MOCK_ACTIVITY_RKEY = "previewactivity001"
+
+/**
+ * A single `org.hypercerts.claim.activity` record in the `getRecord`
+ * envelope (`{ uri, cid, value }`) the `useActivity` hook expects. Lets
+ * the activity-edit form hydrate against a fixture instead of 404ing.
+ * Authored by the mock session DID so the edit route treats the viewer
+ * as the owner.
+ */
+export function activityEditRecord(): {
+  uri: string
+  cid: string
+  value: Record<string, unknown>
+} {
+  return {
+    uri: `at://${MOCK_DID}/org.hypercerts.claim.activity/${MOCK_ACTIVITY_RKEY}`,
+    cid: "bafyactivityedit0000000000000000000000000000000000000000000",
+    value: {
+      $type: "org.hypercerts.claim.activity",
+      title: "Mangrove restoration — Tagus estuary, Q1",
+      shortDescription:
+        "Replanting and monitoring 12 ha of degraded mangrove along the Tagus estuary.",
+      createdAt: "2024-02-10T09:30:00.000Z",
+      startDate: "2024-01-01",
+      endDate: "2024-03-31",
+      workScope: { scope: "ecological-restoration" },
+      contributors: [
+        { contributorIdentity: { identity: MOCK_DID }, contributionWeight: "1" },
+      ],
+    },
+  }
+}
