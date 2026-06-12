@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Newspaper, Search, PlusCircle, MessageSquare } from "lucide-react";
+import { LayoutGrid, Newspaper, Search, PlusCircle, MessageSquare } from "lucide-react";
 import { useFeedback } from "@/lib/feedback-context";
 import { useOrg } from "@/lib/groups/org-context";
 import { isRouteVisibleToActor } from "@/lib/groups/personal-only";
@@ -36,6 +36,7 @@ export default function BottomNav() {
     ...(showCreate
       ? [{ key: "create", label: "Create", icon: PlusCircle, onClick: () => router.push("/create"), active: pathname === "/create" }]
       : []),
+    { key: "apps", label: "Apps", icon: LayoutGrid, onClick: () => router.push("/apps"), active: pathname === "/apps" },
     { key: "feedback", label: "Feedback", icon: MessageSquare, onClick: openFeedback, active: false },
   ];
 

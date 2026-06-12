@@ -36,6 +36,11 @@ import { useMounted } from "@/hooks/use-mounted";
  *
  * When `label` is empty the children render unwrapped — no tooltip, no
  * extra DOM — so callers can pass a possibly-empty string without guarding.
+ *
+ * Touch devices render the children unwrapped too: a tap fires focus +
+ * a synthetic mouseenter, which made the bubble pop up as a stray tag
+ * after every tap. Tooltips are a hover affordance — on a coarse
+ * pointer there is no hover, so there is no tooltip.
  */
 export interface TooltipProps {
   /** The text shown in the bubble. Empty string disables the tooltip. */
@@ -57,6 +62,24 @@ interface Coords {
 
 const GAP = 8;
 const PADDING = 8;
+
+/**
+ * True once we know the primary pointer can actually hover (mouse /
+ * trackpad). Starts false — matching the SSR markup — and flips in an
+ * effect, so touch devices never mount the hover listeners at all.
+ */
+function useHoverCapable(): boolean {
+  const [capable, setCapable] = useState(false);
+  useEffect(() => {
+    const mq = globalThis.matchMedia?.("(hover: hover) and (pointer: fine)");
+    if (!mq) return;
+    setCapable(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setCapable(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return capable;
+}
 
 function computeCoords(
   rect: DOMRect,
@@ -98,6 +121,7 @@ export default function Tooltip({
   className = "",
 }: TooltipProps) {
   const mounted = useMounted();
+  const hoverCapable = useHoverCapable();
   const wrapRef = useRef<HTMLSpanElement | null>(null);
   const bubbleRef = useRef<HTMLDivElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -154,7 +178,7 @@ export default function Tooltip({
     };
   }, [open, side, hide]);
 
-  if (!label) return children;
+  if (!label || !hoverCapable) return children;
 
   const trigger = cloneElement(children, {
     "aria-describedby": open
