@@ -8,7 +8,7 @@ const STATEMENTS = [
   {
     num: "01",
     title: "You own it",
-    body: "Your data lives in your account, not in any app — including ours. Export or move it any time.",
+    body: "Your data lives in your account, not in any app, including ours. Export or move it any time.",
   },
   {
     num: "02",
