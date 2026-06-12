@@ -24,7 +24,7 @@ const STEPS = [
   {
     num: "02",
     title: "Her record speaks for her",
-    body: "A monitoring partner attaches independent evidence to her record — bioacoustic analytics of the recovering watershed. A foundation she's never met finds her on Certified, sees her completed work and who vouched for it, and reaches out.",
+    body: "A monitoring partner attaches independent evidence to her record — bioacoustic analytics of the recovering watershed. A foundation she's never met finds her on Certified, sees her work and who vouched for it, and reaches out.",
   },
   {
     num: "03",
