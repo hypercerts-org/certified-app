@@ -240,9 +240,9 @@ export default function ProfileSidebar({
         {isEditing && hasInline ? (
           // Bare Input inside the H1 context so it inherits the serif H1
           // scale (font/size/weight/leading cascade from
-          // `.profile-sidebar__name`). `borderWeight="hover"` reproduces the
+          // `.profile-sidebar__name`). `borderWeight="hover"` gives the
           // 1.5px --border-hover resting / --fg-primary + --overlay-weak focus
-          // chrome the legacy `.profile-sidebar__name-input` used.
+          // chrome expected for an inline-edit field.
           <h1 className="profile-sidebar__name">
             <Input
               size="bare"
@@ -405,9 +405,8 @@ export default function ProfileSidebar({
             <li className="profile-sidebar__website-edit">
               <LinkIcon size={16} strokeWidth={1.75} aria-hidden />
               {/* flex:1 bare Input beside the icon. `borderWeight="hover"`
-                  matches the legacy `.profile-sidebar__website-input`
-                  1.5px --border-hover resting / --fg-primary focus chrome;
-                  font-size cascades from `.profile-sidebar__details li`
+                  gives the 1.5px --border-hover resting / --fg-primary focus
+                  chrome; font-size cascades from `.profile-sidebar__details li`
                   (0.875rem). */}
               <Input
                 size="bare"
@@ -458,9 +457,9 @@ export default function ProfileSidebar({
           <li className="profile-sidebar__org-field-edit">
             <Calendar size={16} strokeWidth={1.75} aria-hidden />
             <span className="profile-sidebar__org-field-label">Founded</span>
-            {/* flex:1 bare Input. `borderWeight="default"` matches the legacy
-                `.profile-sidebar__org-input` 1px --border-default resting
-                border; font-size cascades from the details-list row. */}
+            {/* flex:1 bare Input. `borderWeight="default"` gives the 1px
+                --border-default resting border; font-size cascades from the
+                details-list row. */}
             <Input
               size="bare"
               flush
@@ -572,8 +571,7 @@ function OrgUrlListEditor({ rows, onChange }: OrgUrlListEditorProps) {
           <li key={row.id} className="profile-sidebar__org-url-edit">
             <LinkIcon size={16} strokeWidth={1.75} aria-hidden />
             {/* flex:1 bare Input beside the icon. `borderWeight="default"`
-                matches the legacy `.profile-sidebar__org-input` 1px
-                --border-default resting border. */}
+                gives the 1px --border-default resting border. */}
             <Input
               size="bare"
               flush

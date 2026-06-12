@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { type LinkProps } from "next/link";
 import React, {
   createContext,
   useCallback,
@@ -190,6 +190,12 @@ export interface TabProps
    *  activation so controlled `value` stays in sync; navigation is left to the
    *  router. Ignored when `disabled`. */
   href?: string;
+  /** Next navigation props forwarded to the underlying `<Link>` — only when
+   *  the tab renders as a link (`href` set and not `disabled`). Lets a
+   *  URL-router tab strip request `replace` + `scroll={false}` (and optionally
+   *  `prefetch`) semantics instead of falling back to a button tab that drives
+   *  the router from `onChange`. No effect on button tabs. */
+  linkProps?: Pick<LinkProps, "scroll" | "replace" | "prefetch">;
 }
 
 export function Tab({
@@ -198,6 +204,7 @@ export function Tab({
   disabled = false,
   count,
   href,
+  linkProps,
   className = "",
   ...props
 }: TabProps) {
@@ -328,6 +335,7 @@ export function Tab({
         href={href}
         // Keep the controlled `value` in sync; the router handles navigation.
         onClick={() => ctx.onChange(value)}
+        {...linkProps}
         {...sharedProps}
         {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
       >

@@ -218,6 +218,11 @@ export function ContributorIdentityField({
       onSelect={handleSelect}
       onSubmitNoMatch={handleSubmitNoMatch}
       enableHomeEnd={false}
+      // Don't auto-select the first result: bare Enter commits the typed
+      // handle via onSubmitNoMatch even when prefix-match results are
+      // visible (matches pre-#130 behaviour). Arrowing into a row still
+      // selects it.
+      autoHighlight={false}
       escapeStage="close-only"
       liveStatus={null}
       listboxClassName="create-cert__contrib-id-dropdown"
