@@ -1,6 +1,13 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type SyntheticEvent,
+} from "react"
 import { profileUrl, recordUrl } from "@/lib/urls"
 import Link from "next/link"
 import { Filter as FilterIcon, Inbox, MapPin, UserCheck, Users } from "lucide-react"
@@ -24,6 +31,7 @@ import {
 } from "@/lib/utils/group-feed"
 import { useFollowing } from "@/hooks/use-following"
 import { formatRelativeTime, resolveActivityImageUrl } from "@/lib/atproto/activity"
+import type { FeedActor } from "@/lib/atproto/follower-events"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { formatShortDate } from "@/lib/utils/format-date"
 import { hideBrokenThumb } from "@/lib/utils/image-fallback"
@@ -69,13 +77,15 @@ const MIN_VISIBLE_ITEMS = 10
 const MAX_AUTO_LOADS = 25
 
 /**
- * GitHub-style activity timeline for the home page. Each entry is
- * an actor byline + verb sentence on top; cert and project creates
- * also render a compact preview card underneath with the record's
- * thumbnail, description, and key meta (period + location count for
- * certs, item count for projects). Endorsement events keep to the
- * single-line treatment since the sentence already names both ends
- * of the action.
+ * Social-card activity feed for the home page, modeled on the
+ * certs.social feed design. Each entry is an author byline (avatar +
+ * display name + @handle + relative time) with the event verb as a
+ * muted second line; cert / project / update creates also render a
+ * full-card body underneath — full-width image, serif headline title,
+ * short description and a dot-separated meta row (period + location
+ * count for certs, item count for projects). Endorsement events keep
+ * to the byline-only treatment since the sentence already names both
+ * ends of the action.
  *
  * A `<header>` above the list carries the "Feed" heading on the
  * left and a per-tier filter popover (Hyperlabel quality tiers) on
@@ -517,33 +527,50 @@ function EvaluatorOption({
   )
 }
 
-function HomeFeedRow({ event }: { event: HomeFeedEvent }) {
-  // The indexer's denormalised `actorProfile` is empty in practice
-  // today (magic-indexer#130 — profile ingestion not enabled on
-  // prod). `useAuthorInfo` does the per-actor PDS resolve and caches
-  // at module scope. Prefer its data; treat the indexer's
-  // actorProfile as a first-paint hint when present.
-  const { info: lookup } = useAuthorInfo(event.actor)
-  const indexer = event.actorProfile
+/**
+ * Card head shared by single-event and grouped rows — the certs.social
+ * author byline: avatar + display name + @handle linking to the actor's
+ * profile, relative time pinned to the right edge, and the event verb
+ * sentence as a muted second line. The sentence renders OUTSIDE the
+ * byline link because it carries its own links (target cert / project /
+ * account names) — nested anchors are invalid HTML.
+ *
+ * The indexer's denormalised `actorProfile` is empty in practice today
+ * (magic-indexer#130 — profile ingestion not enabled on prod).
+ * `useAuthorInfo` does the per-actor PDS resolve and caches at module
+ * scope. Prefer its data; treat the indexer's actorProfile as a
+ * first-paint hint when present.
+ */
+function FeedCardHead({
+  actor,
+  actorProfile,
+  action,
+  createdAt,
+}: {
+  actor: string
+  actorProfile: FeedActor
+  action: ReactNode
+  createdAt: string
+}) {
+  const { info: lookup } = useAuthorInfo(actor)
   const actorName =
     lookup?.displayName ||
-    indexer.displayName ||
+    actorProfile.displayName ||
     lookup?.handle ||
-    indexer.handle ||
-    event.actor.slice(0, 16)
+    actorProfile.handle ||
+    actor.slice(0, 16)
+  const actorHandle = lookup?.handle || actorProfile.handle || null
   const actorAvatar =
     lookup?.avatarUrl ||
-    buildAvatarUrlFromCid(indexer.did, indexer.avatarCid)
+    buildAvatarUrlFromCid(actorProfile.did, actorProfile.avatarCid)
   const actorInitials = getInitials(
-    lookup?.displayName ?? indexer.displayName,
-    event.actor,
+    lookup?.displayName ?? actorProfile.displayName,
+    actor,
   )
-  const profileHref = profileUrl(
-    lookup?.handle || indexer.handle || event.actor,
-  )
+  const profileHref = profileUrl(actorHandle || actor)
 
   return (
-    <article className="home-feed__row">
+    <header className="home-feed__card-head">
       <Link
         href={profileHref}
         className="home-feed__avatar"
@@ -556,36 +583,52 @@ function HomeFeedRow({ event }: { event: HomeFeedEvent }) {
           fallbackInitials={actorInitials}
         />
       </Link>
-      <div className="home-feed__content">
-        <p className="home-feed__sentence">
+      <div className="home-feed__card-head-meta">
+        <p className="home-feed__byline">
           <Link href={profileHref} className="home-feed__actor">
             {actorName}
-          </Link>{" "}
-          <EventSentence event={event} />
+          </Link>
+          {actorHandle ? (
+            <span className="home-feed__handle">@{actorHandle}</span>
+          ) : null}
+          <time
+            className="home-feed__time"
+            dateTime={createdAt}
+            title={createdAt}
+          >
+            {formatRelativeTime(createdAt)}
+          </time>
         </p>
-        {event.kind === "cert.create" ? (
-          <CertPreview record={event.record} uri={event.uri} labels={event.labels} />
-        ) : null}
-        {event.kind === "collection.create" ||
-        event.kind === "project.created_with_cert" ? (
-          <CollectionPreview record={event.record} uri={event.uri} />
-        ) : null}
-        {event.kind === "update.create" ? (
-          <UpdatePreview
-            title={event.title}
-            shortDescription={event.shortDescription}
-            targetUri={event.targetUri}
-            imageUrl={event.imageUrl}
-          />
-        ) : null}
+        <p className="home-feed__sentence">{action}</p>
       </div>
-      <time
-        className="home-feed__time"
-        dateTime={event.createdAt}
-        title={event.createdAt}
-      >
-        {formatRelativeTime(event.createdAt)}
-      </time>
+    </header>
+  )
+}
+
+function HomeFeedRow({ event }: { event: HomeFeedEvent }) {
+  return (
+    <article className="home-feed__card">
+      <FeedCardHead
+        actor={event.actor}
+        actorProfile={event.actorProfile}
+        action={<EventSentence event={event} />}
+        createdAt={event.createdAt}
+      />
+      {event.kind === "cert.create" ? (
+        <CertPreview record={event.record} uri={event.uri} labels={event.labels} />
+      ) : null}
+      {event.kind === "collection.create" ||
+      event.kind === "project.created_with_cert" ? (
+        <CollectionPreview record={event.record} uri={event.uri} />
+      ) : null}
+      {event.kind === "update.create" ? (
+        <UpdatePreview
+          title={event.title}
+          shortDescription={event.shortDescription}
+          targetUri={event.targetUri}
+          imageUrl={event.imageUrl}
+        />
+      ) : null}
     </article>
   )
 }
@@ -594,87 +637,51 @@ function HomeFeedRow({ event }: { event: HomeFeedEvent }) {
  * Grouped row: "<actor> endorsed <first> and N others" with a "Show
  * all" toggle that expands an inline list of every endorsed account.
  *
- * Time + avatar follow the same layout as the single-event HomeFeedRow
- * so the visual rhythm of the feed stays consistent across mixed
- * single + grouped rows. The first-subject sentence is the row's
+ * The head follows the same byline layout as the single-event
+ * HomeFeedRow so the visual rhythm of the feed stays consistent across
+ * mixed single + grouped rows. The first-subject sentence is the row's
  * primary identity, since subjectDids[0] is the most recent
  * endorsement in the burst.
  */
 function EndorsementGroupRow({ group }: { group: EndorsementGroupItem }) {
-  const { info: lookup } = useAuthorInfo(group.actor)
-  const indexer = group.actorProfile
-  const actorName =
-    lookup?.displayName ||
-    indexer.displayName ||
-    lookup?.handle ||
-    indexer.handle ||
-    group.actor.slice(0, 16)
-  const actorAvatar =
-    lookup?.avatarUrl ||
-    buildAvatarUrlFromCid(indexer.did, indexer.avatarCid)
-  const actorInitials = getInitials(
-    lookup?.displayName ?? indexer.displayName,
-    group.actor,
-  )
-  const profileHref = profileUrl(
-    lookup?.handle || indexer.handle || group.actor,
-  )
-
   const othersCount = group.subjectDids.length - 1
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <article className="home-feed__row">
-      <Link
-        href={profileHref}
-        className="home-feed__avatar"
-        aria-label={`${actorName}'s profile`}
+    <article className="home-feed__card">
+      <FeedCardHead
+        actor={group.actor}
+        actorProfile={group.actorProfile}
+        createdAt={group.createdAt}
+        action={
+          <>
+            endorsed{" "}
+            <EndorsementGroupSummary
+              firstDid={group.subjectDids[0]}
+              othersCount={othersCount}
+            />
+          </>
+        }
+      />
+      <Button
+        variant="ghost"
+        size="sm"
+        pressed={expanded}
+        aria-expanded={expanded}
+        className="home-feed__group-toggle"
+        onClick={() => setExpanded((v) => !v)}
       >
-        <Avatar
-          size="sm"
-          src={actorAvatar ?? undefined}
-          alt=""
-          fallbackInitials={actorInitials}
-        />
-      </Link>
-      <div className="home-feed__content">
-        <p className="home-feed__sentence">
-          <Link href={profileHref} className="home-feed__actor">
-            {actorName}
-          </Link>{" "}
-          endorsed{" "}
-          <EndorsementGroupSummary
-            firstDid={group.subjectDids[0]}
-            othersCount={othersCount}
-          />
-        </p>
-        <Button
-          variant="ghost"
-          size="sm"
-          pressed={expanded}
-          aria-expanded={expanded}
-          className="home-feed__group-toggle"
-          onClick={() => setExpanded((v) => !v)}
-        >
-          {expanded ? "Show fewer" : "Show all"}
-        </Button>
-        {expanded ? (
-          <ul className="home-feed__group-list">
-            {group.subjectDids.map((did) => (
-              <li key={did} className="home-feed__group-list-item">
-                <EndorsedAccountLink did={did} />
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
-      <time
-        className="home-feed__time"
-        dateTime={group.createdAt}
-        title={group.createdAt}
-      >
-        {formatRelativeTime(group.createdAt)}
-      </time>
+        {expanded ? "Show fewer" : "Show all"}
+      </Button>
+      {expanded ? (
+        <ul className="home-feed__group-list">
+          {group.subjectDids.map((did) => (
+            <li key={did} className="home-feed__group-list-item">
+              <EndorsedAccountLink did={did} />
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </article>
   )
 }
@@ -1106,8 +1113,31 @@ function UpdatePreview({
   )
 }
 
-// ---------------------------------- Card shell ------------------------------
+// ---------------------------------- Card body ------------------------------
 
+/**
+ * Hide the full-width image block entirely when the blob 404s — the
+ * generic `hideBrokenThumb` only hides the `<img>`, which would leave
+ * the empty aspect-square container dominating the card.
+ */
+function hideBrokenCardImage(
+  event: SyntheticEvent<HTMLImageElement>,
+): void {
+  const wrap = event.currentTarget.closest<HTMLElement>(
+    ".home-feed__card-image",
+  )
+  if (wrap) wrap.style.display = "none"
+  else hideBrokenThumb(event)
+}
+
+/**
+ * Record body below the byline — the certs.social feed-card layout:
+ * full-width square image (when the record has one), serif headline
+ * title (plus quality tags), 3-line-clamped short description, and a
+ * dot-separated muted meta row. The whole body links to the record's
+ * detail page; only the title underlines on hover so the card still
+ * reads as a card.
+ */
 function PreviewCard({
   href,
   title,
@@ -1126,56 +1156,47 @@ function PreviewCard({
   const body = (
     <>
       {imageUrl ? (
-        <span className="home-feed__preview-thumb">
+        <span className="home-feed__card-image">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={imageUrl}
-            alt={title ? `Thumbnail for ${title}` : ""}
+            alt={title ? `Image for ${title}` : ""}
             loading="lazy"
-            onError={hideBrokenThumb}
+            onError={hideBrokenCardImage}
           />
         </span>
       ) : null}
-      <span className="home-feed__preview-body">
-        <span className="home-feed__preview-title-row">
-          <span className="home-feed__preview-title">{title}</span>
-          {tags?.map((t) => (
-            <Badge key={t.key} variant="tag" shape="square" tone={t.tone}>
-              {t.label}
-            </Badge>
+      <span className="home-feed__card-title-row">
+        <span className="home-feed__card-title">{title}</span>
+        {tags?.map((t) => (
+          <Badge key={t.key} variant="tag" shape="square" tone={t.tone}>
+            {t.label}
+          </Badge>
+        ))}
+      </span>
+      {description ? (
+        <span className="home-feed__card-desc">{description}</span>
+      ) : null}
+      {meta.length > 0 ? (
+        <span className="home-feed__card-meta">
+          {meta.map((m, i) => (
+            <span key={i} className="home-feed__card-meta-item">
+              {m}
+            </span>
           ))}
         </span>
-        {description ? (
-          <span className="home-feed__preview-desc">{description}</span>
-        ) : null}
-        {meta.length > 0 ? (
-          <span className="home-feed__preview-meta">
-            {meta.map((m, i) => (
-              <span key={i} className="home-feed__preview-meta-item">
-                {m}
-              </span>
-            ))}
-          </span>
-        ) : null}
-      </span>
+      ) : null}
     </>
   )
 
-  // When there's no image, drop the 56px thumb column entirely so
-  // the body flows to the card's left edge instead of sitting in a
-  // ghosted gutter next to an empty placeholder.
-  const cardClass = imageUrl
-    ? "home-feed__preview"
-    : "home-feed__preview home-feed__preview--no-image"
-
   if (href) {
     return (
-      <Link href={href} className={cardClass}>
+      <Link href={href} className="home-feed__card-body">
         {body}
       </Link>
     )
   }
-  return <div className={cardClass}>{body}</div>
+  return <div className="home-feed__card-body">{body}</div>
 }
 
 function formatPeriod(
