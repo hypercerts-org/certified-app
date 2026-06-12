@@ -246,10 +246,6 @@
   animation-direction: reverse;
 }
 
-.lp-guilloche__layer--core {
-  animation-duration: 80s;
-}
-
 /* Short bright segments lapping along the stamped outlines
    (stroke-dashoffset over the pathLength-normalized paths; duration,
    delay, and direction are set inline per wanderer). */

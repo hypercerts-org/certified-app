@@ -1,16 +1,16 @@
 /**
  * GuillocheArt — the hero artwork: an engine-turned guilloche rosette,
- * the ornament of banknotes and certificates. Three tonal zones, as on
- * a real plate: an airy outer annulus of offset rings, a woven mid
- * flower of counter-twisted loops, and a quiet core braid. Each
- * zone is ONE path stamped as rotated copies (defs + use), so ink
- * density does the shading — no gradients, currentColor only (the
- * .lp-hero__art wrapper sets color: var(--color-navy), which flips
- * with the theme).
+ * the ornament of banknotes and certificates. An airy outer annulus of
+ * offset rings and a woven mid flower of counter-twisted loops, framed
+ * by containment rings, open at the center mark. Each zone is ONE path
+ * stamped as rotated copies (defs + use), so ink density does the
+ * shading — no gradients, currentColor only (the .lp-hero__art wrapper
+ * sets color: var(--color-navy), which flips with the theme).
  *
- * The moving effect: the four groups counter-rotate at different
- * speeds (CSS, .lp-guilloche__layer--* in landing.css). The global
- * reduced-motion kill-switch freezes them into a static plate.
+ * The moving effect: the layer groups counter-rotate at different
+ * speeds, and short "wanderer" segments lap along the stamped
+ * outlines (CSS, .lp-guilloche__* in landing.css). The global
+ * reduced-motion kill-switch freezes everything into a static plate.
  */
 
 const CX = 400;
@@ -35,23 +35,9 @@ function twistedLoopPath(reach: number, waist: number, twist: number, points = 1
   return d + "Z";
 }
 
-/** Closed scalloped ring r(t) = base + amp*sin(lobes*t) — the core braid. */
-function scallopPath(base: number, amp: number, lobes: number, points = 200): string {
-  let d = "";
-  for (let i = 0; i <= points; i++) {
-    const t = (i / points) * Math.PI * 2;
-    const r = base + amp * Math.sin(lobes * t);
-    const x = CX + r * Math.cos(t);
-    const y = CY + r * Math.sin(t);
-    d += (i === 0 ? "M" : "L") + x.toFixed(1) + " " + y.toFixed(1);
-  }
-  return d + "Z";
-}
-
 const RING_COPIES = 28; // outer annulus
 const LOOP_A_COPIES = 16; // mid flower, twisted +
 const LOOP_B_COPIES = 12; // mid flower, twisted - (counter-weave)
-const CORE_COPIES = 12; // core braid, phase-spread inside one lobe
 
 /**
  * A short bright segment that travels along one of the stamped
@@ -105,8 +91,11 @@ export default function GuillocheArt() {
           <circle id="lpg-ring" cx={CX} cy={CY - 215} r={155} pathLength={100} />
           <path id="lpg-loop-a" d={twistedLoopPath(250, 56, 0.58)} pathLength={100} />
           <path id="lpg-loop-b" d={twistedLoopPath(232, 48, -0.66)} pathLength={100} />
-          <path id="lpg-core" d={scallopPath(96, 16, 10)} pathLength={100} />
         </defs>
+
+        {/* Containment rings — the plate's frame */}
+        <circle cx={CX} cy={CY} r={372} stroke="currentColor" strokeWidth={0.75} opacity={0.16} vectorEffect="non-scaling-stroke" />
+        <circle cx={CX} cy={CY} r={380} stroke="currentColor" strokeWidth={0.75} opacity={0.1} vectorEffect="non-scaling-stroke" />
 
         {/* Zone A: airy outer annulus */}
         <g className="lp-guilloche__layer lp-guilloche__layer--rings">
@@ -159,26 +148,6 @@ export default function GuillocheArt() {
           <Wanderer href="#lpg-loop-b" rotate={(10 * 360) / LOOP_B_COPIES} dur={28} delay={-22} dash={6} />
         </g>
 
-        {/* Zone C: quiet core braid */}
-        <g className="lp-guilloche__layer lp-guilloche__layer--core">
-          {Array.from({ length: CORE_COPIES }, (_, i) => (
-            <use
-              key={i}
-              href="#lpg-core"
-              transform={`rotate(${(i * 36) / CORE_COPIES} ${CX} ${CY})`}
-              stroke="currentColor"
-              strokeWidth={0.7}
-              opacity={0.26}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-          <Wanderer href="#lpg-core" rotate={0} dur={22} delay={-8} dash={10} />
-          <Wanderer href="#lpg-core" rotate={18} dur={27} delay={-16} dash={10} reverse />
-        </g>
-
-        {/* The account at the center */}
-        <circle cx={CX} cy={CY} r={22} stroke="currentColor" strokeWidth={1} opacity={0.5} />
-        <circle cx={CX} cy={CY} r={3} fill="currentColor" opacity={0.7} />
       </svg>
     </div>
   );
