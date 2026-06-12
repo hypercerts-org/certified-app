@@ -250,6 +250,15 @@
   animation-duration: 80s;
 }
 
+/* Short bright segments lapping along the stamped outlines
+   (stroke-dashoffset over the pathLength-normalized paths; duration,
+   delay, and direction are set inline per wanderer). */
+.lp-guilloche__wander {
+  animation-name: lpRingSpin;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
 /* ---------- Hero ---------- */
 
 .lp-hero {
