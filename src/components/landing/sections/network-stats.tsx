@@ -9,10 +9,12 @@ import { useNetworkCounts } from "@/hooks/use-network-counts"
  *
  * Cells render `—` while the indexer fetch is in flight and on
  * per-op failure; otherwise the formatted count with
- * `Intl.NumberFormat` thousands separators. Once a value lands it
- * counts up from 0 with ease-out; every cell shares the same
- * duration so a 12-counter and a 4,800-counter land together, and a
- * staggered start cascades them in left-to-right.
+ * `Intl.NumberFormat` thousands separators. The count-up is gated on
+ * the section entering the viewport (the section sits far down the
+ * page — fired on load, the animation would always play unseen):
+ * values are withheld from the cells until the row is ~a third
+ * visible, then every cell counts up from 0 with ease-out, equal
+ * duration, staggered left-to-right.
  *
  * Layout is the editorial register row: big mono numerals over
  * small uppercase labels, divided by hairlines (see .lp-stats in
@@ -20,6 +22,24 @@ import { useNetworkCounts } from "@/hooks/use-network-counts"
  */
 export default function NetworkStats() {
   const { counts, isLoading } = useNetworkCounts()
+  const sectionRef = useRef<HTMLElement>(null)
+  const [inView, setInView] = useState(false)
+
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setInView(true)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.35 },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   const items: {
     key: string
@@ -39,6 +59,7 @@ export default function NetworkStats() {
 
   return (
     <section
+      ref={sectionRef}
       id="network-stats"
       className="lp-section lp-stats"
       aria-labelledby="lp-stats-title"
@@ -60,9 +81,14 @@ export default function NetworkStats() {
             <li key={item.key} className="lp-stats__cell">
               <span
                 className="lp-stats__value"
-                data-loading={item.value === null}
+                data-loading={!inView || item.value === null}
               >
-                <AnimatedCount value={item.value} delayMs={index * STAGGER_MS} />
+                {/* Withholding the value until in view defers the
+                    count-up without touching the hook. */}
+                <AnimatedCount
+                  value={inView ? item.value : null}
+                  delayMs={index * STAGGER_MS}
+                />
               </span>
               <span className="lp-stats__label">{item.label}</span>
             </li>
