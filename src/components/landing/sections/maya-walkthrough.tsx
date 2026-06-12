@@ -29,7 +29,7 @@ const STEPS = [
   {
     num: "03",
     title: "She never starts over",
-    body: "Next quarter she raises funds from another grants platform or takes part in a prize competition. No new profile, no entering her information over and over again. Her whole record and the trust signals from others come with her.",
+    body: "Next quarter she applies to a grants platform or enters a prize competition. No new profile, nothing to fill in again. Her record and the trust signals from others come with her.",
   },
 ];
 
