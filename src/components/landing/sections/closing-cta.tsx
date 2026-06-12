@@ -11,8 +11,9 @@ export default function ClosingCta() {
     <section className="lp-section lp-closing" aria-labelledby="lp-closing-title">
       <div className="lp-section__inner lp-closing__inner">
         <h2 id="lp-closing-title" className="lp-h2 lp-closing__title">
-          Your record starts here
+          Your recognition starts here
         </h2>
+        <p className="lp-closing__sub">Create your account in under a minute.</p>
         <HeroCta />
       </div>
     </section>

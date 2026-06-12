@@ -1104,6 +1104,13 @@
 }
 
 .lp-closing__title {
+  margin: 0 0 16px;
+}
+
+.lp-closing__sub {
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: var(--color-mid-gray);
   margin: 0 0 36px;
 }
 
