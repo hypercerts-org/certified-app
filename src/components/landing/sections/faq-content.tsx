@@ -16,7 +16,7 @@ export const FAQ_ITEMS = [
   {
     question: "What does it cost?",
     answer:
-      "Nothing. Accounts are free for people and organizations. Funders and platforms can integrate with the open network directly, without asking us and without paying. If you'd like hands-on help, we offer paid integration services: get in touch.",
+      "Nothing. Accounts are free for people and organizations. Funders and platforms can integrate with the open network directly, without asking us and without paying.\n\nWe're happy to support any integration. Only hands-on help is a paid service: get in touch.",
   },
   {
     question: "Is Certified only for environmental work?",

@@ -51,7 +51,10 @@ export default function FaqAccordion({ items }: { items: FaqItem[] }) {
               className={`lp-faq__answer${isOpen ? " lp-faq__answer--open" : ""}`}
             >
               <div className="lp-faq__answer-inner">
-                <p>{item.answer}</p>
+                {/* Blank lines in an answer become paragraphs */}
+                {item.answer.split("\n\n").map((paragraph, p) => (
+                  <p key={p}>{paragraph}</p>
+                ))}
               </div>
             </div>
           </div>
