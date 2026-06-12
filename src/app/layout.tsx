@@ -15,6 +15,7 @@ import FeedbackModal from "@/components/ui/feedback-modal";
 import { FeedbackProvider } from "@/lib/feedback-context";
 import BottomNav from "@/components/layout/bottom-nav";
 import ActingAsBar from "@/components/layout/acting-as-bar";
+import PwaInstallGuard from "@/components/layout/pwa-install-guard";
 import { ToastProvider } from "@/components/ui/toast";
 import { Analytics } from "@vercel/analytics/next";
 
@@ -172,6 +173,7 @@ export default function RootLayout({
                   <AppShell>{children}</AppShell>
                 </main>
                 <BottomNav />
+                <PwaInstallGuard />
                 <FeedbackModal />
                 <OnboardingModal />
                 </FeedbackProvider>
