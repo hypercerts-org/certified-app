@@ -78,39 +78,6 @@
   gap: 8px;
 }
 
-/* Shared visual treatment for all inline-edit inputs (display name,
-   about, website). A clearly-visible border + light bg signals that
-   the field is editable — same affordance for every text input. */
-.profile-sidebar__website-input,
-.profile-sidebar__name-input {
-  width: 100%;
-  font: inherit;
-  color: var(--fg-primary);
-  background: var(--bg-elevated);
-  border: 1.5px solid var(--border-hover);
-  border-radius: var(--radius);
-  padding: 6px 10px;
-}
-
-.profile-sidebar__website-input {
-  flex: 1;
-  min-width: 0;
-  font-size: 0.875rem;
-}
-
-.profile-sidebar__name-input {
-  font-size: inherit;
-  font-weight: inherit;
-  line-height: inherit;
-}
-
-.profile-sidebar__website-input:focus,
-.profile-sidebar__name-input:focus {
-  outline: none;
-  border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
-}
-
 /* --- Page-level edit banner -----------------------------------------
 
    Rendered ABOVE the two-column page layout when the user is in
@@ -352,24 +319,6 @@
   margin-top: 0;
 }
 
-.profile-sidebar__org-input {
-  flex: 1;
-  min-width: 0;
-  font: inherit;
-  font-size: 0.875rem;
-  color: var(--fg-primary);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  padding: 6px 10px;
-}
-
-.profile-sidebar__org-input:focus {
-  outline: none;
-  border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
-}
-
 /* --- Sidebar additional-URL list editor ----------------------------- */
 
 /* One row per additional URL. The icon stays on the left to match the
@@ -470,26 +419,6 @@
   /* Preserve in-text newlines so the multi-line content reads as the
      author wrote it. We don't sanitise HTML — the field is plain text. */
   white-space: pre-wrap;
-}
-
-/* --- Overview Website input ---------------------------------------- */
-
-.profile-overview__website-input {
-  width: 100%;
-  font: inherit;
-  font-size: 14px;
-  color: var(--fg-primary);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  padding: 8px 12px;
-  margin-top: 8px;
-}
-
-.profile-overview__website-input:focus {
-  outline: none;
-  border-color: var(--focus-ring);
-  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .profile-overview__website-label {
