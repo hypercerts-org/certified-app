@@ -99,7 +99,6 @@ export function rewritePathForNewIdentity(
  */
 const MARKETING_ROUTES = [
   "/welcome",
-  "/about",
   "/terms",
   "/privacy",
   "/imprint",

@@ -604,6 +604,11 @@ a.home-feed__card-body:hover .home-feed__card-title {
   .home-feed__card-title {
     font-size: 1.25rem;
   }
+
+  .home-feed__card-image {
+    width: min(100%, 400px);
+    margin-inline: auto;
+  }
 }
 
 @media (max-width: 799px) {

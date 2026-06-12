@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import LandingTopBar from "@/components/landing/landing-topbar";
 
 export const metadata: Metadata = {
   title: "Digital Services Act — Compliance Information",
@@ -19,6 +20,7 @@ export const metadata: Metadata = {
 export default function DsaPage() {
   return (
     <div className="app-page legal-page">
+      <LandingTopBar />
       <div className="app-page__inner">
         <h1 className="font-headline text-h1 text-[var(--fg-primary)] tracking-tight mb-8">
           Digital Services Act — Compliance Information

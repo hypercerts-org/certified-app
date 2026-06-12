@@ -7,7 +7,7 @@
    styling only. */
 
 .explore-page {
-  padding: 24px 8px 64px;
+  padding: 2px 8px 16px;
 }
 
 @media (min-width: 800px) {
@@ -17,6 +17,12 @@
 }
 
 @media (max-width: 799px) {
+  /* Clip horizontal overflow so overlong content (degree-pills,
+     monospace DIDs, etc.) can't push the page wider than the viewport. */
+  .explore-page {
+    overflow-x: clip;
+    max-width: 100vw;
+  }
   /* Zero the shell's 16px reading gutter — the page carries its own
      small (8px) gutter above so list rows run nearly edge-to-edge,
      matching the /home feed treatment. Specificity (three classes via
@@ -190,7 +196,11 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
+  /* 32px tall: matches the icon-only chrome buttons so the whole
+     chrome row sits at the same height. Vertical centering is
+     handled by align-items; horizontal padding is unaffected. */
+  height: 32px;
+  padding: 0 12px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
@@ -220,7 +230,7 @@
      side padding and keeps a little top air above the chrome row. */
   .explore__main {
     max-width: none;
-    padding: 8px 0 24px;
+    padding: 8px 0 8px;
   }
 }
 
@@ -239,6 +249,16 @@
 .explore__search-field {
   flex: 1;
   min-width: 200px;
+}
+
+/* On desktop, constrain the search input to 32px — the same height as
+   the icon-only chrome buttons — so the whole chrome row sits level.
+   The Input primitive uses h-9 (36px) for size="sm"; we shave it down
+   here to keep the explore chrome compact without touching the primitive. */
+@media (min-width: 800px) {
+  .explore__search-field input {
+    height: 32px;
+  }
 }
 
 .explore__chrome-actions {
@@ -264,10 +284,8 @@
   background: var(--bg-sunken);
 }
 
-/* Icon-only chrome variant — square 32×32, drops the horizontal
-   padding the label-bearing buttons need. Used by the certs-tab
-   Quality popover trigger, where the icon alone communicates
-   "filter" and a textual label is redundant. */
+/* Icon-only chrome variant — square 32×32 on desktop, drops the
+   horizontal padding the label-bearing buttons need. */
 .explore__chrome-btn--icon {
   width: 32px;
   height: 32px;
@@ -306,14 +324,81 @@
     padding-top: 10px;
     padding-bottom: 10px;
   }
+  /* Mobile icon buttons: stretch to match the pill row height and
+     use aspect-ratio to stay square. Reset padding to avoid the
+     extra top/bottom from .explore__chrome-btn inflating the height. */
   .explore__chrome-btn--icon {
-    width: 44px;
-    height: 44px;
+    align-self: stretch;
+    aspect-ratio: 1 / 1;
+    width: auto;
+    height: auto;
+    padding: 0;
   }
   /* The type dropdown trigger matches the 44px control height too. */
   .explore__sub-dropdown-trigger {
     min-height: 44px;
   }
+}
+
+/* Category dropdown wrapper — transparent on desktop, hidden on mobile
+   (replaced by the pill strip below). */
+.explore__category-dropdown {
+  display: contents;
+}
+
+@media (max-width: 799px) {
+  .explore__category-dropdown {
+    display: none;
+  }
+}
+
+/* Mobile-only category pills — Activities / Projects / Accounts.
+   Sits inside the chrome row between the search field and the filter
+   button. Hidden on desktop (dropdown takes its place). */
+.explore__category-pills {
+  display: none;
+}
+
+@media (max-width: 799px) {
+  .explore__category-pills {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .explore__category-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    border: 1px solid var(--border-default);
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--fg-primary);
+    cursor: pointer;
+    white-space: nowrap;
+    min-height: 30px;
+  }
+
+  .explore__category-pill--active {
+    background: var(--fg-primary);
+    color: var(--bg-canvas);
+    border-color: var(--fg-primary);
+  }
+
+  .explore__category-pills-sep {
+    display: block;
+    width: 1px;
+    height: 18px;
+    background: var(--border-default);
+    flex-shrink: 0;
+    align-self: center;
+  }
+
 }
 
 .explore__loading {
@@ -531,6 +616,15 @@
   flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+/* On mobile the pill strip already handles sub-filtering, so the
+   inline-controls row (SegmentedControl + degree bar) is hidden to
+   avoid duplicate UI and prevent overflow. */
+@media (max-width: 799px) {
+  .explore__inline-controls {
+    display: none;
+  }
 }
 
 /* Light vertical rule between the sub-option pills and the degree pills
@@ -783,13 +877,14 @@
 }
 
 /* Phone: single-column galleries so the 240–260px card minimums never
-   overflow a narrow viewport. The list rows already collapse to a
-   single column via their own mobile rules above. */
+   overflow a narrow viewport. minmax(0, 1fr) lets the track shrink to 0
+   so wide card content is clipped rather than pushing the grid wider.
+   The list rows already collapse to a single column via their own rules. */
 @media (max-width: 799px) {
   .explore__grid--users,
   .explore__grid--projects,
   .explore__grid--certs {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1096,6 +1191,7 @@
 
 .explore__degree-pills {
   display: inline-flex;
+  flex-wrap: wrap;
   gap: 4px;
 }
 

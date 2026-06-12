@@ -89,7 +89,7 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
       ];
 
   const legalLinks = [
-    { href: "/about", label: "About" },
+    { href: "/welcome", label: "Welcome" },
     { href: "/terms", label: "Terms" },
     { href: "/privacy", label: "Privacy" },
     { href: "/imprint", label: "Imprint" },
@@ -97,23 +97,36 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
 
   return (
     <Drawer open={isOpen} onClose={onClose} side="left" ariaLabel="Navigation menu">
-        {/* Section 1: Certified wordmark (top-left) + theme toggle
-            (top-right), with the profile block (signed-in only)
-            underneath. */}
+        {/* Section 1: top row = avatar (signed-in) or wordmark (signed-out)
+            on the left, theme toggle on the right. Name/handle below. */}
         <div className="mobile-sidebar__section mobile-sidebar__section--profile">
           <div className="mobile-sidebar__section--brand">
-            <Link
-              href={isAuthenticated ? "/home" : "/welcome"}
-              className="mobile-sidebar__wordmark"
-              onClick={onClose}
-              aria-label="Certified home"
-            >
-              <img
-                src="/brand/wordmark/certified_wordmark_black.svg"
-                alt="Certified"
-                className="mobile-sidebar__wordmark-img"
-              />
-            </Link>
+            {isAuthenticated ? (
+              <Link
+                href={profileHref}
+                onClick={onClose}
+                aria-label={activeOrg ? `View ${displayName}'s profile` : "View your profile"}
+              >
+                <Avatar
+                  size="lg"
+                  src={displayAvatarUrl}
+                  fallbackInitials={displayInitials}
+                />
+              </Link>
+            ) : (
+              <Link
+                href="/welcome"
+                className="mobile-sidebar__wordmark"
+                onClick={onClose}
+                aria-label="Certified home"
+              >
+                <img
+                  src="/brand/wordmark/certified_wordmark_black.svg"
+                  alt="Certified"
+                  className="mobile-sidebar__wordmark-img"
+                />
+              </Link>
+            )}
             <ThemeToggle variant="cycle" className="mobile-sidebar__theme" />
           </div>
           {isAuthenticated ? (
@@ -121,15 +134,8 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
               href={profileHref}
               className="mobile-sidebar__profile"
               onClick={onClose}
-              aria-label={
-                activeOrg ? `View ${displayName}'s profile` : "View your profile"
-              }
+              aria-label={activeOrg ? `View ${displayName}'s profile` : "View your profile"}
             >
-              <Avatar
-                size="md"
-                src={displayAvatarUrl}
-                fallbackInitials={displayInitials}
-              />
               <p className="mobile-sidebar__name">{displayName || "Anonymous"}</p>
               {displayHandle ? (
                 <p className="mobile-sidebar__handle">@{displayHandle}</p>

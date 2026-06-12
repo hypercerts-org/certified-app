@@ -15,7 +15,7 @@ describe("resolvePostSigninPath", () => {
   })
 
   it("lands on /home from any marketing/legal route", () => {
-    for (const route of ["/welcome", "/about", "/terms", "/privacy", "/imprint"]) {
+    for (const route of ["/welcome", "/terms", "/privacy", "/imprint"]) {
       sessionStorage.setItem(PATH_KEY, route)
       expect(resolvePostSigninPath("did:plc:abc")).toBe("/home")
     }

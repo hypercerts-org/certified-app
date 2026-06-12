@@ -1,3 +1,4 @@
+import LandingTopBar from "@/components/landing/landing-topbar";
 import Hero from "@/components/landing/sections/hero";
 import WhatLivesHere from "@/components/landing/sections/what-lives-here";
 import MayaWalkthrough from "@/components/landing/sections/maya-walkthrough";
@@ -35,6 +36,7 @@ export default async function LandingPage() {
 
   return (
     <div className="lp">
+      <LandingTopBar />
       <Hero />
       <WhatLivesHere />
       <MayaWalkthrough />

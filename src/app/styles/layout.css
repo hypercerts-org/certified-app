@@ -299,6 +299,13 @@ html[data-theme="dark"] .signin-mark__img--light {
   gap: 16px;
 }
 
+/* Sign-in button in the mobile navbar sits inside a 56px bar, so the
+   full 44px tap target makes it look oversized. Trim to 36px while
+   keeping horizontal padding intact. */
+.navbar__right button {
+  min-height: 32px;
+}
+
 /* ========== App Top Nav (authenticated) ========== */
 .navbar__app-links {
   display: flex;
@@ -503,7 +510,7 @@ html[data-theme="dark"] .signin-mark__img--light {
    toggle top-right. Sits above the (signed-in-only) profile block. */
 .mobile-sidebar__section--brand {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
@@ -531,7 +538,7 @@ html[data-theme="dark"] .signin-mark__img--light {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 16px;
+  gap: 8px;
 }
 
 .mobile-sidebar__profile {
@@ -549,8 +556,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 
 .mobile-sidebar__theme {
   flex-shrink: 0;
-  margin-top: -4px;
-  margin-right: -8px;
+  margin-top: -12px;
+  margin-right: -16px;
 }
 
 .mobile-sidebar__section {
@@ -3162,6 +3169,13 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+@media (max-width: 799px) {
+  .site-footer__row {
+    justify-content: center;
+    text-align: center;
+  }
 }
 
 .site-footer__left {
