@@ -68,7 +68,6 @@ export const RESERVED_ROUTES: ReadonlySet<string> = new Set([
   "profile",
   "groups",
   "apps",
-  "notifications",
   "endorsements",
   "workspace",
   "settings",

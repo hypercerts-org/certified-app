@@ -483,6 +483,15 @@ html[data-theme="dark"] .signin-mark__img--light {
   -webkit-tap-highlight-color: transparent;
 }
 
+.bottom-nav__icon-wrap {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .bottom-nav__item:hover {
   color: var(--fg-primary);
 }

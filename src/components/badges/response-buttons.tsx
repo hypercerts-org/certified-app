@@ -21,7 +21,7 @@ interface ResponseButtonsProps {
   /** Current resolved state — drives which button is `aria-pressed`. */
   readonly state: ResponseState
   /** Visible labels:
-   *   - "show-hide"     (default) for the /notifications surface
+   *   - "show-hide"     (default) "Show on my profile" framing
    *   - "accept-reject" for the /endorsements Received list, where
    *     the user is reviewing endorsements as a thing they can
    *     accept or reject rather than "show on my profile".
@@ -37,7 +37,7 @@ interface ResponseButtonsProps {
 
 /**
  * Loud inline Show / Hide buttons rendered next to an incoming
- * endorsement on the /notifications surface.
+ * endorsement.
  *
  * Why two buttons, not a single toggle: per WAI-ARIA toggle-group
  * pattern, users with screen readers benefit from both options being
@@ -48,8 +48,8 @@ interface ResponseButtonsProps {
  * Why no separate "default" affordance: in default state both
  * buttons are unpressed; clicking Show writes an `accepted` record,
  * clicking Hide writes a `rejected` record. "Reset to default" is
- * the kebab-menu surface (response-menu.tsx); on the notification
- * surface we keep it to the two primary actions.
+ * the kebab-menu surface (response-menu.tsx); here we keep it to the
+ * two primary actions.
  */
 export default function ResponseButtons({
   awardUri,

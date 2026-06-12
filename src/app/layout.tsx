@@ -13,7 +13,6 @@ import { OnboardingProvider } from "@/lib/onboarding/onboarding-context";
 import OnboardingModal from "@/components/onboarding/onboarding-modal";
 import FeedbackModal from "@/components/ui/feedback-modal";
 import { FeedbackProvider } from "@/lib/feedback-context";
-import { NotificationsProvider } from "@/lib/notifications-context";
 import BottomNav from "@/components/layout/bottom-nav";
 import ActingAsBar from "@/components/layout/acting-as-bar";
 import { ToastProvider } from "@/components/ui/toast";
@@ -154,7 +153,6 @@ export default function RootLayout({
           <AuthProvider>
             <OrgProvider>
               <OnboardingProvider>
-              <NotificationsProvider>
               <NavbarProvider>
                 <FeedbackProvider>
                 <a href="#main-content" className="skip-nav">Skip to main content</a>
@@ -176,7 +174,6 @@ export default function RootLayout({
                 <OnboardingModal />
                 </FeedbackProvider>
               </NavbarProvider>
-              </NotificationsProvider>
               </OnboardingProvider>
             </OrgProvider>
           </AuthProvider>

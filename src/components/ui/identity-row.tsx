@@ -36,9 +36,8 @@ const skelAvatarPx = { sm: 32, md: 48 } as const;
  * handle (distinct from the DID) is present. Built on {@link Avatar} +
  * {@link Skeleton}; pass `href` to make the whole row a link.
  *
- * Canonical replacement for the four hand-rolled byline rows
- * (activity-author, activity-contributor, endorsement-row,
- * notification-row).
+ * Canonical replacement for the hand-rolled byline rows
+ * (activity-author, activity-contributor, endorsement-row).
  */
 export default function IdentityRow({
   did,
