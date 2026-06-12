@@ -16,7 +16,7 @@ export const FAQ_ITEMS = [
   {
     question: "What is AT Protocol?",
     answer:
-      "An open standard for accounts that belong to you rather than to any app. Your identity and data live in your own account, work across every app that speaks the protocol, and can move between providers. Bluesky runs on it, and so does Certified.",
+      "An open, decentralized network for building social applications. Identities are user-owned: your account and data belong to you, work across apps, and can move between providers. Bluesky runs on it, and so does Certified.",
   },
   {
     question: "Can I use my Bluesky account?",
@@ -32,11 +32,6 @@ export const FAQ_ITEMS = [
     question: "Is Certified only for environmental work?",
     answer:
       "No. Our founding community works in ecological regeneration — that's why many early profiles are land and climate projects — but accounts, records, and endorsements work the same way for any impact domain: open-source software, journalism, science, community events, and more.",
-  },
-  {
-    question: "What apps support Certified?",
-    answer:
-      "Currently Ma Earth, GainForest, Silvi, Simocracy, and Hyperboards. More are already in development.",
   },
   {
     question: "What happens if Certified disappears?",

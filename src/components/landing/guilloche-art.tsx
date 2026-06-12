@@ -231,6 +231,56 @@ export function GuillocheQuiet() {
   );
 }
 
+const STAR_QUIET_SCALES = Array.from({ length: 10 }, (_, i) => 0.22 + i * 0.139);
+const STAR_QUIET_COUNTER = Array.from({ length: 4 }, (_, i) => 0.34 + i * 0.17);
+
+/**
+ * Faint nested star swirl for the closing section's corner — the
+ * exploration's Star construction at whisper opacity: a deep main
+ * nest, a counter-rotating offset stack filling its valleys, a
+ * containment ring, and two wanderers lapping the largest outlines.
+ */
+export function GuillocheStarQuiet() {
+  return (
+    <div className="lp-guilloche" aria-hidden="true">
+      <svg viewBox="0 0 800 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <path id="lpg-star-quiet" d={scallopPath(150, 70, 6, 280)} pathLength={100} />
+        </defs>
+        <circle cx={CX} cy={CY} r={372} stroke="currentColor" strokeWidth={0.75} opacity={0.12} vectorEffect="non-scaling-stroke" />
+        <Layer dur={220}>
+          {STAR_QUIET_SCALES.map((s, i) => (
+            <use
+              key={i}
+              href="#lpg-star-quiet"
+              transform={`rotate(${i * 5} ${CX} ${CY}) translate(${(CX * (1 - s)).toFixed(1)} ${(CY * (1 - s)).toFixed(1)}) scale(${s.toFixed(4)})`}
+              stroke="currentColor"
+              strokeWidth={0.7}
+              opacity={0.28 - i * 0.018}
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+          <Wanderer href="#lpg-star-quiet" rotate={20} dur={32} delay={-11} dash={6} />
+        </Layer>
+        <Layer dur={160} reverse>
+          {STAR_QUIET_COUNTER.map((s, i) => (
+            <use
+              key={i}
+              href="#lpg-star-quiet"
+              transform={`rotate(${30 + i * 6} ${CX} ${CY}) translate(${(CX * (1 - s)).toFixed(1)} ${(CY * (1 - s)).toFixed(1)}) scale(${s.toFixed(4)})`}
+              stroke="currentColor"
+              strokeWidth={0.7}
+              opacity={0.2 - i * 0.02}
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+          <Wanderer href="#lpg-star-quiet" rotate={210} dur={40} delay={-23} dash={6} reverse />
+        </Layer>
+      </svg>
+    </div>
+  );
+}
+
 const OUTER_SHAPES = [
   offsetRingPath(135, -230, 200),
   twistedLoopPath(335, 62, 0.58, 200),

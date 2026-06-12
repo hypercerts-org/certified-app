@@ -284,7 +284,9 @@
   align-items: center;
   overflow: hidden;
   background: var(--color-off-white);
-  padding: calc(var(--navbar-height) + 48px) 32px 64px;
+  /* Light on top, heavier below: the copy centers slightly above the
+     geometric middle (optical center), instead of hanging low. */
+  padding: calc(var(--navbar-height) + 16px) 32px 96px;
 }
 
 .lp-hero__inner {
@@ -458,64 +460,104 @@
   height: 100%;
 }
 
-/* Glyph inscription — each row triggers its own glyph when half
-   visible; elements draw/fade in with row-relative delays (inline).
-   Before the trigger the glyph is hidden (opacity 0 / undrawn);
-   `both` keeps elements hidden through their delay. */
-@keyframes lpGlyphDraw {
+/* Scroll choreography (What lives here + story steps), all scrubbed
+   by each element's own viewport position via animation-timeline:
+   view(). Progressive enhancement: markup opacities are the finished
+   states, so browsers without scroll timelines and reduced-motion
+   users render those directly.
+     - rows/steps fade up as they enter
+     - the profile glyph's dark arc completes its circle
+     - the record glyph's highlight climbs the stack
+     - the supporters glyph's connections and circles light up in turn */
+@keyframes lpRowFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes lpGlyphArc {
   from {
     stroke-dashoffset: 100;
   }
-}
-
-@keyframes lpGlyphFadeIn {
-  from {
-    opacity: 0;
+  to {
+    stroke-dashoffset: 0;
   }
 }
 
-.lp-glyph-draw {
-  stroke-dasharray: 100;
+@keyframes lpRecA {
+  0%, 22% { opacity: 0.9; }
+  32%, 100% { opacity: 0.22; }
 }
 
-.lp-holdings__row:not(.lp-holdings__row--inview) .lp-glyph-draw,
-.lp-holdings__row:not(.lp-holdings__row--inview) .lp-glyph-fade {
-  opacity: 0;
+@keyframes lpRecB {
+  0%, 22% { opacity: 0.22; }
+  32%, 47% { opacity: 0.9; }
+  57%, 100% { opacity: 0.22; }
 }
 
-.lp-holdings__row--inview .lp-glyph-draw {
-  animation-name: lpGlyphDraw;
-  animation-duration: 900ms;
-  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  animation-fill-mode: both;
-  animation-delay: calc(var(--lpg-row-delay, 0ms) + var(--lpg-el-delay, 0ms));
+@keyframes lpRecC {
+  0%, 47% { opacity: 0.22; }
+  57%, 72% { opacity: 0.9; }
+  82%, 100% { opacity: 0.22; }
 }
 
-.lp-holdings__row--inview .lp-glyph-fade {
-  animation-name: lpGlyphFadeIn;
-  animation-duration: 500ms;
-  animation-timing-function: ease-out;
-  animation-fill-mode: both;
-  animation-delay: calc(var(--lpg-row-delay, 0ms) + var(--lpg-el-delay, 0ms));
+@keyframes lpRecD {
+  0%, 72% { opacity: 0.22; }
+  82%, 100% { opacity: 0.9; }
 }
 
-/* Numbered rows fade up as they enter (holdings rows + story steps).
-   Scroll-driven so each row is its own starting point; progressive
-   enhancement — browsers without scroll timelines render static. */
+@keyframes lpGlyphTo28 {
+  from { opacity: 0.07; }
+  to { opacity: 0.28; }
+}
+
+@keyframes lpGlyphTo90 {
+  from { opacity: 0.12; }
+  to { opacity: 0.9; }
+}
+
 @supports (animation-timeline: view()) {
   .lp-holdings__row,
   .lp-story__step {
     /* 1ms placeholder — the scrubbed timeline supplies the real pace */
-    animation: lpFadeUp 1ms linear both;
+    animation: lpRowFadeUp 1ms linear both;
     animation-timeline: view();
-    animation-range: entry 0% entry 70%;
+    animation-range: entry 0% entry 100%;
   }
 
-  /* The scrubbed timeline ignores the duration-based kill-switch, so
+  .lp-glyph-arc,
+  .lp-glyph-rec,
+  .lp-glyph-step {
+    animation-duration: 1ms;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+    animation-timeline: view();
+    /* arc gets its name + range below; rec/step names and step
+       ranges are set inline per element */
+  }
+
+  .lp-glyph-arc {
+    animation-name: lpGlyphArc;
+    animation-range: cover 0% cover 75%;
+  }
+
+  .lp-glyph-rec {
+    animation-range: cover 0% cover 95%;
+  }
+
+  /* The scrubbed timelines ignore the duration-based kill-switch, so
      reduced motion needs an explicit off. */
   @media (prefers-reduced-motion: reduce) {
     .lp-holdings__row,
-    .lp-story__step {
+    .lp-story__step,
+    .lp-glyph-arc,
+    .lp-glyph-rec,
+    .lp-glyph-step {
       animation: none;
     }
   }
@@ -1094,9 +1136,40 @@
   margin: 0;
 }
 
+/* "get in touch" inside an answer opens the contact modal */
+.lp-faq__cta {
+  color: var(--color-navy);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color var(--transition-fast);
+}
+
+.lp-faq__cta:hover {
+  color: var(--color-mid-gray);
+}
+
 /* ---------- Closing CTA ---------- */
 
+.lp-closing {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Faint star guilloche pushed into the bottom-left corner, its lower
+   arc clipped exactly at the footer line */
+.lp-closing__star {
+  position: absolute;
+  left: -16%;
+  bottom: -42%;
+  width: min(48vw, 620px);
+  aspect-ratio: 1;
+  color: var(--color-navy);
+  pointer-events: none;
+}
+
 .lp-closing__inner {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;

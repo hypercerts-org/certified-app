@@ -1,10 +1,28 @@
 "use client";
 
 import { useState } from "react";
+import ContactCta from "@/components/landing/contact-cta";
 
 interface FaqItem {
   question: string;
   answer: string;
+}
+
+/** Occurrences of "get in touch" in an answer become contact-modal
+ *  triggers (the JSON-LD keeps the plain string). */
+function withContactLinks(text: string) {
+  const parts = text.split("get in touch");
+  if (parts.length === 1) return text;
+  return parts.flatMap((part, i) =>
+    i === 0
+      ? [part]
+      : [
+          <ContactCta key={i} className="lp-faq__cta">
+            get in touch
+          </ContactCta>,
+          part,
+        ],
+  );
 }
 
 /**
@@ -53,7 +71,7 @@ export default function FaqAccordion({ items }: { items: FaqItem[] }) {
               <div className="lp-faq__answer-inner">
                 {/* Blank lines in an answer become paragraphs */}
                 {item.answer.split("\n\n").map((paragraph, p) => (
-                  <p key={p}>{paragraph}</p>
+                  <p key={p}>{withContactLinks(paragraph)}</p>
                 ))}
               </div>
             </div>
