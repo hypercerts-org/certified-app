@@ -1,16 +1,17 @@
 import HeroCta from "@/components/landing/hero-cta";
-import SealArt from "@/components/landing/seal-art";
+import GuillocheArt from "@/components/landing/guilloche-art";
 
 /**
  * Landing hero. Asymmetric two-column composition: copy in the left
- * five columns, the full seal artwork bleeding off the right edge.
- * Below 800px the seal becomes a cropped band above the stacked copy.
+ * five columns, the guilloche rosette bleeding off the right edge.
+ * Below 800px the artwork becomes a cropped band above the stacked
+ * copy.
  */
 export default function Hero() {
   return (
     <section className="lp-hero" aria-labelledby="lp-hero-title">
       <div className="lp-hero__art">
-        <SealArt />
+        <GuillocheArt />
       </div>
       <div className="lp-section__inner lp-hero__inner">
         <div className="lp-hero__copy">

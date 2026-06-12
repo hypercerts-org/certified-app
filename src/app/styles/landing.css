@@ -217,6 +217,39 @@
   transform-origin: 400px 400px;
 }
 
+/* ---------- Guilloche artwork (hero) ---------- */
+
+.lp-guilloche,
+.lp-guilloche svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Counter-rotating layers give the engine-turned moire its slow
+   shimmer; the global reduced-motion kill-switch freezes them. */
+.lp-guilloche__layer {
+  transform-origin: 400px 400px;
+  animation: lpSealRotate linear infinite;
+}
+
+.lp-guilloche__layer--rings {
+  animation-duration: 240s;
+}
+
+.lp-guilloche__layer--loops-a {
+  animation-duration: 150s;
+}
+
+.lp-guilloche__layer--loops-b {
+  animation-duration: 110s;
+  animation-direction: reverse;
+}
+
+.lp-guilloche__layer--core {
+  animation-duration: 80s;
+}
+
 /* ---------- Hero ---------- */
 
 .lp-hero {
@@ -346,10 +379,13 @@
     overflow: hidden;
   }
   .lp-hero__art .lp-seal,
-  .lp-hero__art .lp-seal svg {
+  .lp-hero__art .lp-seal svg,
+  .lp-hero__art .lp-guilloche,
+  .lp-hero__art .lp-guilloche svg {
     height: auto;
   }
-  .lp-hero__art .lp-seal {
+  .lp-hero__art .lp-seal,
+  .lp-hero__art .lp-guilloche {
     margin-top: -8%;
   }
   .lp-hero__actions {
