@@ -231,50 +231,39 @@ export function GuillocheQuiet() {
   );
 }
 
-const STAR_QUIET_SCALES = Array.from({ length: 10 }, (_, i) => 0.22 + i * 0.139);
-const STAR_QUIET_COUNTER = Array.from({ length: 4 }, (_, i) => 0.34 + i * 0.17);
-
 /**
- * Faint nested star swirl for the closing section's corner — the
- * exploration's Star construction at whisper opacity: a deep main
- * nest, a counter-rotating offset stack filling its valleys, a
- * containment ring, and two wanderers lapping the largest outlines.
+ * The exploration's Mesh plate (as preserved in the guilloche lab):
+ * three counter-rotating fields of offset rings and ellipses weaving
+ * a moire annulus around a hollow center, with eight wanderers. Used
+ * in the closing section's corner.
  */
-export function GuillocheStarQuiet() {
+export function GuillocheMeshQuiet() {
   return (
     <div className="lp-guilloche" aria-hidden="true">
       <svg viewBox="0 0 800 800" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <path id="lpg-star-quiet" d={scallopPath(150, 70, 6, 280)} pathLength={100} />
+          <circle id="lpg-mesh-a" cx={CX} cy={CY - 230} r={135} pathLength={100} />
+          <circle id="lpg-mesh-b" cx={CX} cy={CY - 245} r={110} pathLength={100} />
+          <ellipse id="lpg-mesh-e" cx={CX} cy={CY - 210} rx={180} ry={115} pathLength={100} />
         </defs>
-        <circle cx={CX} cy={CY} r={372} stroke="currentColor" strokeWidth={0.75} opacity={0.12} vectorEffect="non-scaling-stroke" />
-        <Layer dur={220}>
-          {STAR_QUIET_SCALES.map((s, i) => (
-            <use
-              key={i}
-              href="#lpg-star-quiet"
-              transform={`rotate(${i * 5} ${CX} ${CY}) translate(${(CX * (1 - s)).toFixed(1)} ${(CY * (1 - s)).toFixed(1)}) scale(${s.toFixed(4)})`}
-              stroke="currentColor"
-              strokeWidth={0.7}
-              opacity={0.28 - i * 0.018}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-          <Wanderer href="#lpg-star-quiet" rotate={20} dur={32} delay={-11} dash={6} />
+        <circle cx={CX} cy={CY} r={372} stroke="currentColor" strokeWidth={0.75} opacity={0.16} vectorEffect="non-scaling-stroke" />
+        <circle cx={CX} cy={CY} r={380} stroke="currentColor" strokeWidth={0.75} opacity={0.1} vectorEffect="non-scaling-stroke" />
+        <Layer dur={210}>
+          {stamps("#lpg-mesh-a", 36, 360, (i) => (i % 2 === 0 ? 0.16 : 0.11))}
+          <Wanderer href="#lpg-mesh-a" rotate={10} dur={28} delay={-6} />
+          <Wanderer href="#lpg-mesh-a" rotate={130} dur={34} delay={-18} />
+          <Wanderer href="#lpg-mesh-a" rotate={250} dur={31} delay={-23} reverse />
         </Layer>
-        <Layer dur={160} reverse>
-          {STAR_QUIET_COUNTER.map((s, i) => (
-            <use
-              key={i}
-              href="#lpg-star-quiet"
-              transform={`rotate(${30 + i * 6} ${CX} ${CY}) translate(${(CX * (1 - s)).toFixed(1)} ${(CY * (1 - s)).toFixed(1)}) scale(${s.toFixed(4)})`}
-              stroke="currentColor"
-              strokeWidth={0.7}
-              opacity={0.2 - i * 0.02}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-          <Wanderer href="#lpg-star-quiet" rotate={210} dur={40} delay={-23} dash={6} reverse />
+        <Layer dur={140} reverse>
+          {stamps("#lpg-mesh-b", 28, 360, () => 0.13)}
+          <Wanderer href="#lpg-mesh-b" rotate={51.4} dur={26} delay={-12} reverse />
+          <Wanderer href="#lpg-mesh-b" rotate={141.4} dur={30} delay={-20} />
+          <Wanderer href="#lpg-mesh-b" rotate={231.4} dur={38} delay={-2} reverse />
+        </Layer>
+        <Layer dur={260}>
+          {stamps("#lpg-mesh-e", 18, 360, () => 0.1)}
+          <Wanderer href="#lpg-mesh-e" rotate={40} dur={44} delay={-25} dash={6} />
+          <Wanderer href="#lpg-mesh-e" rotate={220} dur={36} delay={-9} dash={6} reverse />
         </Layer>
       </svg>
     </div>

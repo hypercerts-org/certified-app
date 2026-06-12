@@ -1171,13 +1171,17 @@
   overflow: hidden;
 }
 
-/* Faint star guilloche pushed into the bottom-left corner, its lower
-   arc clipped exactly at the footer line */
-.lp-closing__star {
+/* Mesh guilloche centered exactly on the bottom-left corner point:
+   the visible quadrant fans around the corner, clipped flush at the
+   footer line, reaching about half the section's height. */
+.lp-closing__art {
   position: absolute;
-  left: -16%;
-  bottom: -42%;
-  width: min(48vw, 620px);
+  left: 0;
+  bottom: 0;
+  transform: translate(-50%, 50%);
+  /* Drawn radius is ~0.475 of width — ~450px puts the outer ring at
+     about half the section's height */
+  width: min(60vw, 450px);
   aspect-ratio: 1;
   color: var(--color-navy);
   pointer-events: none;
