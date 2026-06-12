@@ -12,7 +12,7 @@ export const metadata: Metadata = {
       "Digital Services Act compliance information for Certified, operated by the Hypercerts Foundation.",
     url: "https://certified.app/dsa",
     type: "website",
-    images: [{ url: "/assets/certs-hero-1200x630.png", width: 1200, height: 630, alt: "Certified — One account, any app" }],
+    images: [{ url: "/assets/certs-hero-1200x630.png", width: 1200, height: 630, alt: "Certified — One account. Your work. Recognized everywhere." }],
   },
 };
 

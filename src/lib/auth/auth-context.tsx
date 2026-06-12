@@ -209,6 +209,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await submitDefault();
   }, [submitDefault]);
 
+  // Email-first entry point: skip the silent-default bounce and open
+  // the modal straight away. Used by CTAs whose label promises an
+  // email field ("Sign in with your email") — the silent bounce would
+  // contradict the label for users with no existing PDS session.
+  const openSignInModal = useCallback(() => {
+    recordPreSigninLocation(peekSessionHandle());
+    setError(null);
+    setIsModalOpen(true);
+  }, []);
+
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
     setError(null);
@@ -313,11 +323,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isModalOpen,
     isRedirectingToProvider,
     openSignIn,
+    openSignInModal,
     closeModal,
     submitEmail,
     submitHandle,
     signOut,
-  }), [isLoading, isAuthenticated, did, pdsUrl, error, isModalOpen, isRedirectingToProvider, openSignIn, closeModal, submitEmail, submitHandle, signOut]);
+  }), [isLoading, isAuthenticated, did, pdsUrl, error, isModalOpen, isRedirectingToProvider, openSignIn, openSignInModal, closeModal, submitEmail, submitHandle, signOut]);
 
   return (
     <AuthContext.Provider value={value}>

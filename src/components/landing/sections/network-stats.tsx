@@ -4,22 +4,21 @@ import { useEffect, useRef, useState } from "react"
 import { useNetworkCounts } from "@/hooks/use-network-counts"
 
 /**
- * Five live network-wide counters slotted between WhatYouGet and
- * HowItWorks on the /welcome landing page. Users / Organizations
- * / Achievements / Projects / Endorsements (the last with a NEW
- * pill — endorsements only just shipped on this branch).
+ * Five live network-wide counters on the /welcome landing page —
+ * Users / Organizations / Projects / Activities / Endorsements, the
+ * last marked with a footnote asterisk (endorsements only just
+ * shipped).
  *
- * Tiles render `—` while the indexer fetch is in flight and on
+ * Cells render `—` while the indexer fetch is in flight and on
  * per-op failure; otherwise the formatted count with
  * `Intl.NumberFormat` thousands separators. Once a value lands it
- * counts up from 0 with ease-out; every tile shares the same
- * duration so a 12-counter and a 4,800-counter land together,
- * and a staggered start cascades them in left-to-right.
+ * counts up from 0 with ease-out; every cell shares the same
+ * duration so a 12-counter and a 4,800-counter land together, and a
+ * staggered start cascades them in left-to-right.
  *
- * Sectioning mirrors the existing landing-section conventions
- * (`.landing-section`, `.landing-section__inner`,
- * `.landing-section__header`, `.landing-label`) so the visual
- * rhythm matches the surrounding sections.
+ * Layout is the editorial register row: big mono numerals over
+ * small uppercase labels, divided by hairlines (see .lp-stats in
+ * landing.css).
  */
 export default function NetworkStats() {
   const { counts, isLoading } = useNetworkCounts()
@@ -49,45 +48,45 @@ export default function NetworkStats() {
   return (
     <section
       id="network-stats"
-      className="landing-section landing-section--subtle network-stats"
-      aria-labelledby="network-stats-heading"
+      className="lp-section lp-stats"
+      aria-labelledby="lp-stats-title"
     >
-      <div className="landing-section__inner">
-        <div className="landing-section__header landing-section__header--center">
-          <span className="landing-label">By the numbers</span>
-          <h2 id="network-stats-heading">A network you can build on</h2>
-          <p className="landing-protocol__intro">
-            Live counts from the Certified network.
-          </p>
-        </div>
+      <div className="lp-section__inner">
+        <header className="lp-section__header">
+          <span className="lp-eyebrow">By the numbers</span>
+          <h2 id="lp-stats-title" className="lp-h2">
+            A network you can build on
+          </h2>
+        </header>
 
-        <ul
-          className="network-stats__grid"
-          aria-busy={isLoading}
-          aria-live="polite"
-        >
+        {/* No aria-live here: the count-up mutates the text on every
+            animation frame, which would flood screen readers with
+            intermediate values. The numbers aren't urgent enough to
+            announce; AT users read the settled values on arrival. */}
+        <ul className="lp-stats__row" aria-busy={isLoading}>
           {items.map((item, index) => (
-            <li key={item.key} className="network-stats__tile">
-              <div className="network-stats__value-row">
-                <span
-                  className="network-stats__value"
-                  data-loading={item.value === null}
-                >
-                  <AnimatedCount
-                    value={item.value}
-                    delayMs={index * STAGGER_MS}
-                  />
-                </span>
+            <li key={item.key} className="lp-stats__cell">
+              <span
+                className="lp-stats__value"
+                data-loading={item.value === null}
+              >
+                <AnimatedCount value={item.value} delayMs={index * STAGGER_MS} />
                 {item.isNew ? (
-                  <span className="network-stats__new" aria-label="New">
-                    NEW
+                  <span className="lp-stats__star" aria-hidden="true">
+                    *
                   </span>
                 ) : null}
-              </div>
-              <span className="network-stats__label">{item.label}</span>
+              </span>
+              <span className="lp-stats__label">
+                {item.label}
+                {item.isNew ? <span className="sr-only"> (new)</span> : null}
+              </span>
             </li>
           ))}
         </ul>
+        <p className="lp-stats__footnote" aria-hidden="true">
+          * new
+        </p>
       </div>
     </section>
   )
@@ -109,7 +108,7 @@ function AnimatedCount({
   return <>{FORMATTER.format(display)}</>
 }
 
-// Equal duration regardless of magnitude so tiles with very
+// Equal duration regardless of magnitude so cells with very
 // different targets land at the same moment. Subsequent updates
 // (5-min cache refresh) animate from the last displayed value, not
 // from 0, so a small delta doesn't whip back through the full range.

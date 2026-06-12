@@ -27,7 +27,9 @@ const inter = Inter({
 
 const notoSerif = Noto_Serif({
   subsets: ["latin"],
-  weight: ["400", "700"],
+  // 300 is the landing-page display weight (hero + section headlines);
+  // 400/700 are the app-wide heading weights.
+  weight: ["300", "400", "700"],
   style: ["normal", "italic"],
   variable: "--font-headline",
   display: "swap",
@@ -51,7 +53,7 @@ export const metadata: Metadata = {
         url: "/assets/certs-hero-1200x630.png",
         width: 1200,
         height: 630,
-        alt: "Certified — One account, any app",
+        alt: "Certified — One account. Your work. Recognized everywhere.",
       },
     ],
   },
@@ -118,7 +120,7 @@ const websiteJsonLd = {
   name: "Certified",
   url: "https://certified.app",
   description:
-    "Create your Certified identity and use one account across partner apps. No passwords, no lock-in.",
+    "Your profile, your work, and your supporters in one account — recognized on every app in the network. No passwords, no lock-in.",
   publisher: {
     "@type": "Organization",
     name: "Hypercerts Foundation",
