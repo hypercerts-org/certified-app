@@ -44,7 +44,7 @@ export default function FaqSection() {
   return (
     <section id="faq" className="lp-section" aria-labelledby="lp-faq-title">
       <div className="lp-section__inner">
-        <header className="lp-section__header">
+        <header className="lp-section__header lp-section__header--centerblock">
           <span className="lp-eyebrow">Common questions</span>
           <h2 id="lp-faq-title" className="lp-h2">
             Frequently asked questions

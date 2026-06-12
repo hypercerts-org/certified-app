@@ -286,7 +286,17 @@ const COUNTER_SCALES = Array.from({ length: 5 }, (_, i) => 0.28 + i * 0.11);
 const FAN_FADE = "1;1;0.3;1";
 const NEST_FADE = "0;0;1;0";
 
-export default function GuillocheArt() {
+export default function GuillocheArt({
+  idPrefix = "lpg",
+  flat = false,
+}: {
+  /** Unique SVG-id namespace — required when the plate renders more
+   *  than once per page (defs/use references are document-global). */
+  idPrefix?: string;
+  /** Render the morphing plate without the 3D rig and without the
+   *  scroll scrubbing (e.g. the closing section's corner). */
+  flat?: boolean;
+}) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -298,6 +308,7 @@ export default function GuillocheArt() {
       el.querySelectorAll("svg").forEach((svg) => svg.pauseAnimations());
       return;
     }
+    if (flat) return;
     let raf = 0;
     const update = () => {
       raf = 0;
@@ -314,76 +325,86 @@ export default function GuillocheArt() {
       window.removeEventListener("scroll", onScroll);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [flat]);
+
+  const plate = (
+    <div className="lp-guilloche__plate">
+      <svg viewBox="0 0 800 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <MorphPath id={`${idPrefix}-outer`} shapes={OUTER_SHAPES} />
+          <MorphPath id={`${idPrefix}-inner`} shapes={INNER_SHAPES} />
+          <path id={`${idPrefix}-star`} d={STAR_PATH} pathLength={100} />
+        </defs>
+
+        {/* Containment rings — the plate's frame */}
+        <circle cx={CX} cy={CY} r={372} stroke="currentColor" strokeWidth={0.75} opacity={0.16} vectorEffect="non-scaling-stroke" />
+        <circle cx={CX} cy={CY} r={380} stroke="currentColor" strokeWidth={0.75} opacity={0.1} vectorEffect="non-scaling-stroke" />
+
+        {/* Morphing fan — outer and inner counter-rotating zones */}
+        <Layer dur={190}>
+          <CycleFade values={FAN_FADE} />
+          {stamps(`#${idPrefix}-outer`, 24, 360, (i) => (i % 2 === 0 ? 0.17 : 0.12))}
+          <Wanderer href={`#${idPrefix}-outer`} rotate={15} dur={30} delay={-8} />
+          <Wanderer href={`#${idPrefix}-outer`} rotate={105} dur={34} delay={-16} reverse />
+          <Wanderer href={`#${idPrefix}-outer`} rotate={195} dur={38} delay={-21} reverse />
+        </Layer>
+        <Layer dur={130} reverse>
+          <CycleFade values={FAN_FADE} />
+          {stamps(`#${idPrefix}-inner`, 16, 360, () => 0.2)}
+          <Wanderer href={`#${idPrefix}-inner`} rotate={45} dur={26} delay={-13} dash={6} reverse />
+          <Wanderer href={`#${idPrefix}-inner`} rotate={225} dur={34} delay={-3} dash={6} />
+        </Layer>
+
+        {/* The nested star swirl, cross-fading in around the star passage */}
+        <Layer dur={200}>
+          <CycleFade values={NEST_FADE} />
+          {NEST_SCALES.map((s, i) => (
+            <use
+              key={i}
+              href={`#${idPrefix}-star`}
+              transform={`rotate(${i * 4} ${CX} ${CY}) translate(${(CX * (1 - s)).toFixed(1)} ${(CY * (1 - s)).toFixed(1)}) scale(${s.toFixed(4)})`}
+              stroke="currentColor"
+              strokeWidth={0.7}
+              opacity={0.4 - i * 0.025}
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+          <Wanderer href={`#${idPrefix}-star`} rotate={0} dur={28} delay={-7} dash={8} />
+          <Wanderer href={`#${idPrefix}-star`} rotate={120} dur={34} delay={-19} dash={8} reverse />
+          <Wanderer href={`#${idPrefix}-star`} rotate={240} dur={31} delay={-12} dash={8} />
+        </Layer>
+        <Layer dur={160} reverse>
+          <CycleFade values={NEST_FADE} />
+          <Wanderer href={`#${idPrefix}-star`} rotate={30} dur={26} delay={-4} dash={6} reverse />
+          <Wanderer href={`#${idPrefix}-star`} rotate={210} dur={36} delay={-23} dash={6} />
+          {COUNTER_SCALES.map((s, i) => (
+            <use
+              key={i}
+              href={`#${idPrefix}-star`}
+              transform={`rotate(${30 + i * 5} ${CX} ${CY}) translate(${(CX * (1 - s)).toFixed(1)} ${(CY * (1 - s)).toFixed(1)}) scale(${s.toFixed(4)})`}
+              stroke="currentColor"
+              strokeWidth={0.7}
+              opacity={0.3 - i * 0.03}
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+        </Layer>
+      </svg>
+    </div>
+  );
+
+  if (flat) {
+    return (
+      <div ref={ref} className="lp-guilloche" aria-hidden="true">
+        {plate}
+      </div>
+    );
+  }
 
   return (
     <div ref={ref} className="lp-guilloche lp-guilloche--3d" aria-hidden="true">
       <div className="lp-g3d-tilt">
-        <div className="lp-g3d-spin">
-          <div className="lp-guilloche__plate">
-            <svg viewBox="0 0 800 800" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <MorphPath id="lpg-outer" shapes={OUTER_SHAPES} />
-                <MorphPath id="lpg-inner" shapes={INNER_SHAPES} />
-                <path id="lpg-star" d={STAR_PATH} pathLength={100} />
-              </defs>
-
-              {/* Containment rings — the plate's frame */}
-              <circle cx={CX} cy={CY} r={372} stroke="currentColor" strokeWidth={0.75} opacity={0.16} vectorEffect="non-scaling-stroke" />
-              <circle cx={CX} cy={CY} r={380} stroke="currentColor" strokeWidth={0.75} opacity={0.1} vectorEffect="non-scaling-stroke" />
-
-              {/* Morphing fan — outer and inner counter-rotating zones */}
-              <Layer dur={190}>
-                <CycleFade values={FAN_FADE} />
-                {stamps("#lpg-outer", 24, 360, (i) => (i % 2 === 0 ? 0.17 : 0.12))}
-                <Wanderer href="#lpg-outer" rotate={15} dur={30} delay={-8} />
-                <Wanderer href="#lpg-outer" rotate={105} dur={34} delay={-16} reverse />
-                <Wanderer href="#lpg-outer" rotate={195} dur={38} delay={-21} reverse />
-              </Layer>
-              <Layer dur={130} reverse>
-                <CycleFade values={FAN_FADE} />
-                {stamps("#lpg-inner", 16, 360, () => 0.2)}
-                <Wanderer href="#lpg-inner" rotate={45} dur={26} delay={-13} dash={6} reverse />
-                <Wanderer href="#lpg-inner" rotate={225} dur={34} delay={-3} dash={6} />
-              </Layer>
-
-              {/* The nested star swirl, cross-fading in around the star passage */}
-              <Layer dur={200}>
-                <CycleFade values={NEST_FADE} />
-                {NEST_SCALES.map((s, i) => (
-                  <use
-                    key={i}
-                    href="#lpg-star"
-                    transform={`rotate(${i * 4} ${CX} ${CY}) translate(${(CX * (1 - s)).toFixed(1)} ${(CY * (1 - s)).toFixed(1)}) scale(${s.toFixed(4)})`}
-                    stroke="currentColor"
-                    strokeWidth={0.7}
-                    opacity={0.4 - i * 0.025}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                ))}
-                <Wanderer href="#lpg-star" rotate={0} dur={28} delay={-7} dash={8} />
-                <Wanderer href="#lpg-star" rotate={120} dur={34} delay={-19} dash={8} reverse />
-                <Wanderer href="#lpg-star" rotate={240} dur={31} delay={-12} dash={8} />
-              </Layer>
-              <Layer dur={160} reverse>
-                <CycleFade values={NEST_FADE} />
-                <Wanderer href="#lpg-star" rotate={30} dur={26} delay={-4} dash={6} reverse />
-                <Wanderer href="#lpg-star" rotate={210} dur={36} delay={-23} dash={6} />
-                {COUNTER_SCALES.map((s, i) => (
-                  <use
-                    key={i}
-                    href="#lpg-star"
-                    transform={`rotate(${30 + i * 5} ${CX} ${CY}) translate(${(CX * (1 - s)).toFixed(1)} ${(CY * (1 - s)).toFixed(1)}) scale(${s.toFixed(4)})`}
-                    stroke="currentColor"
-                    strokeWidth={0.7}
-                    opacity={0.3 - i * 0.03}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                ))}
-              </Layer>
-            </svg>
-          </div>
-        </div>
+        <div className="lp-g3d-spin">{plate}</div>
       </div>
     </div>
   );
