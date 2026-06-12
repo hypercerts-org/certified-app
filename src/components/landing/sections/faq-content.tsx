@@ -14,6 +14,11 @@ export const FAQ_ITEMS = [
       "On supported apps you can connect Certified to the account you already have. From then on, the work you do there is saved to your record. It doesn't matter where you first signed up: it's the same account, and it works everywhere.",
   },
   {
+    question: "What is AT Protocol?",
+    answer:
+      "An open standard for accounts that belong to you rather than to any app. Your identity and data live in your own account, work across every app that speaks the protocol, and can move between providers. Bluesky runs on it, and so does Certified.",
+  },
+  {
     question: "Can I use my Bluesky account?",
     answer:
       "Yes. Certified is built on AT Protocol, the same open network behind Bluesky, so you can sign in with any AT Protocol account, including your Bluesky handle. A Certified account is just one home among many in that ecosystem.",
