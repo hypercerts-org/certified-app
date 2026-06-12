@@ -13,15 +13,15 @@ import ContactCta from "@/components/landing/contact-cta";
 const AUDIENCES = [
   {
     title: "Funders",
-    body: "Projects arrive pre-diligenced, with verified records you can evaluate in minutes. Your own diligence joins the record and compounds for the next funder.",
+    body: "Fund through the network. Read verified records in your existing diligence, join pooled rounds, or fund directly. No integration needed to start.",
   },
   {
     title: "Platforms",
-    body: "Run calls, applications, and payouts on shared rails. You keep your process; participants arrive with accounts, records, and supporters from day one.",
+    body: "Integrate your funding system. Accept verified records, publish your evaluations, or run your whole process on the rails. Plug in at your own depth.",
   },
   {
     title: "Awards & networks",
-    body: "Your rigorous selection ends as a logo in a bio. Issue it as signed endorsements instead: portable, checkable, attached to the work.",
+    body: "Make your seal portable. Issue recognition as signed endorsements your awardees carry into every application.",
   },
 ];
 
@@ -34,7 +34,7 @@ export default function OrganizationsStrip() {
       <div className="lp-section__inner lp-band__inner">
         <span className="lp-eyebrow lp-band__eyebrow">For organizations</span>
         <h2 id="lp-band-title" className="lp-h2 lp-band__title">
-          Lower the cost of trust
+          Join the network
         </h2>
         <div className="lp-band__cols">
           {AUDIENCES.map((a) => (
