@@ -41,9 +41,15 @@ const LOOP_B_COPIES = 12; // mid flower, twisted - (counter-weave)
 
 /**
  * A short bright segment that travels along one of the stamped
- * outlines (dash-offset lap around the normalized path). Rendered
- * INSIDE the same rotating layer group and at the same rotation as an
- * existing copy, so it stays glued to the line it traces.
+ * outlines (dash-offset lap around the normalized path), with a small
+ * round dot riding its leading edge. Rendered INSIDE the same rotating
+ * layer group and at the same rotation as an existing copy, so it
+ * stays glued to the line it traces.
+ *
+ * The dot is a point-length dash on a second use of the same path,
+ * phase-shifted by the segment length so it sits at the front (the
+ * lpWanderDot<dash> keyframes; when the wanderer runs in reverse the
+ * leading edge is the pattern start, so the dot laps unshifted).
  */
 function Wanderer({
   href,
@@ -60,23 +66,39 @@ function Wanderer({
   dash?: number;
   reverse?: boolean;
 }) {
+  const transform = `rotate(${rotate} ${CX} ${CY})`;
+  const timing: React.CSSProperties = {
+    animationDuration: `${dur}s`,
+    animationDelay: `${delay}s`,
+    animationDirection: reverse ? "reverse" : "normal",
+  };
   return (
-    <use
-      href={href}
-      transform={`rotate(${rotate} ${CX} ${CY})`}
-      className="lp-guilloche__wander"
-      stroke="currentColor"
-      strokeWidth={1.1}
-      strokeLinecap="round"
-      opacity={0.5}
-      strokeDasharray={`${dash} ${100 - dash}`}
-      vectorEffect="non-scaling-stroke"
-      style={{
-        animationDuration: `${dur}s`,
-        animationDelay: `${delay}s`,
-        animationDirection: reverse ? "reverse" : "normal",
-      }}
-    />
+    <>
+      <use
+        href={href}
+        transform={transform}
+        className="lp-guilloche__wander"
+        stroke="currentColor"
+        strokeWidth={1.1}
+        strokeLinecap="round"
+        opacity={0.5}
+        strokeDasharray={`${dash} ${100 - dash}`}
+        vectorEffect="non-scaling-stroke"
+        style={timing}
+      />
+      <use
+        href={href}
+        transform={transform}
+        className="lp-guilloche__wander-dot"
+        stroke="currentColor"
+        strokeWidth={3.2}
+        strokeLinecap="round"
+        opacity={0.65}
+        strokeDasharray="0.001 99.999"
+        vectorEffect="non-scaling-stroke"
+        style={{ ...timing, animationName: reverse ? "lpRingSpin" : `lpWanderDot${dash}` }}
+      />
+    </>
   );
 }
 
@@ -89,7 +111,7 @@ export default function GuillocheArt() {
               pathLength=100 normalizes dash math for the wanderers; it has
               no effect on the plain (non-dashed) stamped copies. */}
           <circle id="lpg-ring" cx={CX} cy={CY - 215} r={155} pathLength={100} />
-          <path id="lpg-loop-a" d={twistedLoopPath(250, 56, 0.58)} pathLength={100} />
+          <path id="lpg-loop-a" d={twistedLoopPath(282, 56, 0.58)} pathLength={100} />
           <path id="lpg-loop-b" d={twistedLoopPath(232, 48, -0.66)} pathLength={100} />
         </defs>
 

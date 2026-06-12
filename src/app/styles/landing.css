@@ -255,6 +255,26 @@
   animation-iteration-count: infinite;
 }
 
+/* The dot riding each wanderer's leading edge: same lap, pattern
+   phase-shifted by the segment length. One keyframe set per dash size
+   (animation-name is chosen inline; var() in keyframes doesn't
+   interpolate). Reversed wanderers lead with the pattern start, so
+   their dots reuse the unshifted lpRingSpin lap. */
+@keyframes lpWanderDot6 {
+  from { stroke-dashoffset: -6; }
+  to { stroke-dashoffset: -106; }
+}
+
+@keyframes lpWanderDot8 {
+  from { stroke-dashoffset: -8; }
+  to { stroke-dashoffset: -108; }
+}
+
+.lp-guilloche__wander-dot {
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
 /* ---------- Hero ---------- */
 
 .lp-hero {
