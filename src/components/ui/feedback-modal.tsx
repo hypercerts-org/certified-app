@@ -11,8 +11,35 @@ import { useSession } from "@/hooks/use-session"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 
+/** Per-variant copy — the form, validation, and submit wiring are
+ *  identical; contact requests additionally prefix the message so the
+ *  support inbox can tell the two doors apart. */
+const COPY = {
+  feedback: {
+    title: "Share Feedback",
+    messageLabel: "Please share your feedback, suggestions, and questions.",
+    emailLabel:
+      "If you would like us to follow up with you regarding your feedback, please provide your email address (optional).",
+    submit: "Send Feedback",
+    success: "Thank you for your feedback!",
+    again: "More Feedback",
+    prefix: "",
+  },
+  contact: {
+    title: "Get in Touch",
+    messageLabel:
+      "Tell us about your organization, platform, or program, and what you have in mind.",
+    emailLabel: "Your email, so we can get back to you (optional).",
+    submit: "Send Message",
+    success: "Thank you! We'll get back to you soon.",
+    again: "New Message",
+    prefix: "[Contact request] ",
+  },
+} as const
+
 export default function FeedbackModal() {
-  const { isOpen, closeFeedback } = useFeedback()
+  const { isOpen, variant, closeFeedback } = useFeedback()
+  const copy = COPY[variant]
   const { handle: sessionHandle } = useSession()
   const { did } = useAuth()
   // Greeting priority: app.certified.actor.profile displayName →
@@ -64,7 +91,7 @@ export default function FeedbackModal() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: message.trim(),
+          message: copy.prefix + message.trim(),
           email: email.trim() || undefined,
           // Passed along so the support email includes the sender's
           // identity. DID is also re-derived server-side from the
@@ -86,13 +113,13 @@ export default function FeedbackModal() {
 
   const body = submitted ? (
     <div className="feedback-modal__success">
-      <p>Thank you for your feedback!</p>
+      <p>{copy.success}</p>
       <div className="feedback-modal__success-actions">
         <Button variant="primary" size="sm" onClick={() => closeFeedback()}>
           Close
         </Button>
         <Button variant="secondary" size="sm" onClick={() => setSubmitted(false)}>
-          More Feedback
+          {copy.again}
         </Button>
       </div>
     </div>
@@ -104,7 +131,7 @@ export default function FeedbackModal() {
       <Textarea
         ref={textareaRef}
         id="feedback-message"
-        label="Please share your feedback, suggestions, and questions."
+        label={copy.messageLabel}
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         required
@@ -116,7 +143,7 @@ export default function FeedbackModal() {
         <Input
           id="feedback-email"
           type="email"
-          label="If you would like us to follow up with you regarding your feedback, please provide your email address (optional)."
+          label={copy.emailLabel}
           value={email}
           onChange={(e) => { setEmail(e.target.value); if (emailError) validateEmail(e.target.value) }}
           onBlur={() => validateEmail(email)}
@@ -137,7 +164,7 @@ export default function FeedbackModal() {
         aria-busy={isSubmitting}
         className="mt-5 w-full"
       >
-        {isSubmitting ? "Sending..." : "Send Feedback"}
+        {isSubmitting ? "Sending..." : copy.submit}
       </Button>
     </form>
   )
@@ -146,9 +173,9 @@ export default function FeedbackModal() {
     <ResponsiveDialog
       open={isOpen}
       onClose={closeFeedback}
-      ariaLabel="Share feedback"
+      ariaLabel={copy.title}
       maxWidth={440}
-      header={<AppDialogHeader title="Share Feedback" onClose={closeFeedback} />}
+      header={<AppDialogHeader title={copy.title} onClose={closeFeedback} />}
     >
       <div className="feedback-modal__body">{body}</div>
     </ResponsiveDialog>

@@ -1,4 +1,5 @@
-import SealArt from "@/components/landing/seal-art";
+import { GuillocheQuiet } from "@/components/landing/guilloche-art";
+import ContactCta from "@/components/landing/contact-cta";
 
 /**
  * The organizations strip — the page's single "color" moment: a
@@ -28,7 +29,7 @@ export default function OrganizationsStrip() {
   return (
     <section className="lp-band" aria-labelledby="lp-band-title">
       <div className="lp-band__seal">
-        <SealArt rings={6} accents={false} />
+        <GuillocheQuiet />
       </div>
       <div className="lp-section__inner lp-band__inner">
         <span className="lp-eyebrow lp-band__eyebrow">For organizations</span>
@@ -43,12 +44,7 @@ export default function OrganizationsStrip() {
             </div>
           ))}
         </div>
-        <a
-          href="mailto:support@hypercerts.org?subject=Certified%20for%20organizations"
-          className="lp-btn lp-band__cta"
-        >
-          Get in touch
-        </a>
+        <ContactCta className="lp-btn lp-band__cta">Get in touch</ContactCta>
       </div>
     </section>
   );

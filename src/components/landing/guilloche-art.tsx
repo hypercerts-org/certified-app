@@ -204,6 +204,33 @@ function Wanderer({
   );
 }
 
+const QUIET_OUTER = twistedLoopPath(320, 64, 0.55);
+const QUIET_INNER = twistedLoopPath(250, 48, -0.62);
+
+/**
+ * Quiet, non-morphing guilloche for the organizations band's
+ * background: two counter-rotating loop fans inside a containment
+ * ring, no wanderers — the hero plate carries the spectacle. Inherits
+ * currentColor from the band wrapper (which also halves its opacity).
+ */
+export function GuillocheQuiet() {
+  return (
+    <div className="lp-guilloche" aria-hidden="true">
+      <svg viewBox="0 0 800 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <path id="lpg-quiet-outer" d={QUIET_OUTER} />
+          <path id="lpg-quiet-inner" d={QUIET_INNER} />
+        </defs>
+        <circle cx={CX} cy={CY} r={372} stroke="currentColor" strokeWidth={0.75} opacity={0.3} vectorEffect="non-scaling-stroke" />
+        <Layer dur={260}>{stamps("#lpg-quiet-outer", 16, 360, () => 0.3)}</Layer>
+        <Layer dur={180} reverse>
+          {stamps("#lpg-quiet-inner", 12, 360, () => 0.24)}
+        </Layer>
+      </svg>
+    </div>
+  );
+}
+
 const OUTER_SHAPES = [
   offsetRingPath(135, -230, 200),
   twistedLoopPath(335, 62, 0.58, 200),

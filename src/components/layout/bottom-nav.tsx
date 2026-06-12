@@ -36,7 +36,7 @@ export default function BottomNav() {
     ...(showCreate
       ? [{ key: "create", label: "Create", icon: PlusCircle, onClick: () => router.push("/create"), active: pathname === "/create" }]
       : []),
-    { key: "feedback", label: "Feedback", icon: MessageSquare, onClick: openFeedback, active: false },
+    { key: "feedback", label: "Feedback", icon: MessageSquare, onClick: () => openFeedback(), active: false },
   ];
 
   return (

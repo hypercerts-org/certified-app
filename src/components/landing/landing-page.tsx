@@ -9,7 +9,6 @@ import NetworkStats from "@/components/landing/sections/network-stats";
 import Trust from "@/components/landing/sections/trust";
 import OrganizationsStrip from "@/components/landing/sections/organizations-strip";
 import FaqSection from "@/components/landing/sections/faq-content";
-import FooterBand from "@/components/landing/sections/footer-band";
 import { CURATED_PROFILES } from "@/lib/constants/curated-profiles";
 import { buildProfilePayload } from "@/app/api/resolve-did/resolve-core";
 
@@ -44,7 +43,6 @@ export default async function LandingPage() {
       <Trust />
       <OrganizationsStrip />
       <FaqSection />
-      <FooterBand />
     </div>
   );
 }

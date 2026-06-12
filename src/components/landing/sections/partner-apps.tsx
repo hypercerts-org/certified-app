@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { CONNECTED_APPS } from "@/lib/constants/apps";
 import LpArrow from "@/components/landing/lp-arrow";
+import ContactCta from "@/components/landing/contact-cta";
 
 /**
  * "Works with" — the apps where a Certified account already signs you
@@ -45,9 +46,9 @@ export default function PartnerApps() {
         <p className="lp-apps__recruit">
           Running a funding platform or grants program? Your system could plug
           into this network.{" "}
-          <a href="mailto:support@hypercerts.org?subject=Connecting%20to%20Certified" className="lp-link">
+          <ContactCta className="lp-link">
             Get in touch <LpArrow />
-          </a>
+          </ContactCta>
         </p>
       </div>
     </section>
