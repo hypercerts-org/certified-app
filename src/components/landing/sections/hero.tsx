@@ -31,8 +31,8 @@ export default function Hero() {
           <div className="lp-hero__reveal">
             <HeroCta />
             <p className="lp-hero__recognition">
-              Already used Certified on another app? Same email, same account —
-              enter it and you&apos;re in. No password needed.
+              Already used Certified on another app? Same email, same account.
+              Enter it and you&apos;re in. No password needed.
             </p>
           </div>
         </div>
