@@ -69,15 +69,24 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
     ? profileUrl(displayHandle)
     : "/profile";
 
-  const navLinks = [
-    { href: "/home", label: "Home", icon: Home },
-    { href: "/explore", label: "Explore", icon: Search },
-    { href: "/apps", label: "Apps", icon: LayoutGrid },
-    { href: profileHref, label: "Profile", icon: User },
-    { href: "/settings", label: "Settings", icon: Settings },
-    { key: "feedback", label: "Feedback", icon: MessageSquare, onClick: handleFeedbackClick },
-    { href: "/help", label: "Help", icon: HelpCircle },
-  ];
+  // Signed-out viewers get the public destinations only — Explore,
+  // Apps and Help. Everything else (Home, Profile, Settings, Feedback)
+  // requires a session, so those entries only render once signed in.
+  const navLinks = isAuthenticated
+    ? [
+        { href: "/home", label: "Home", icon: Home },
+        { href: "/explore", label: "Explore", icon: Search },
+        { href: "/apps", label: "Apps", icon: LayoutGrid },
+        { href: profileHref, label: "Profile", icon: User },
+        { href: "/settings", label: "Settings", icon: Settings },
+        { key: "feedback", label: "Feedback", icon: MessageSquare, onClick: handleFeedbackClick },
+        { href: "/help", label: "Help", icon: HelpCircle },
+      ]
+    : [
+        { href: "/explore", label: "Explore", icon: Search },
+        { href: "/apps", label: "Apps", icon: LayoutGrid },
+        { href: "/help", label: "Help", icon: HelpCircle },
+      ];
 
   const legalLinks = [
     { href: "/about", label: "About" },

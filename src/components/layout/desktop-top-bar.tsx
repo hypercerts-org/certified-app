@@ -350,15 +350,6 @@ export default function DesktopTopBar() {
 
   if (isLoading) return null;
 
-  // Marketing landing (/welcome), signed out: the page is self-contained —
-  // it owns its own hero "Sign in with Certified" CTA and the footer. The
-  // full app chrome here (global search + Explore/Apps/Help icon nav + a
-  // second top-right "Sign in") is redundant against that hero CTA, so the
-  // top bar drops out entirely. Signed-in viewers keep the bar so they can
-  // navigate back out of the marketing page. (The mobile <Navbar> already
-  // renders /welcome as a transparent overlay for signed-out viewers.)
-  if (pathname === "/welcome" && !isAuthenticated) return null;
-
   const tabHref = (tab: ProfileTab) => {
     if (tab.href) return tab.href;
     if (!pathname) return "#";

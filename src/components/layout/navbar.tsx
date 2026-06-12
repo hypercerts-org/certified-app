@@ -17,7 +17,6 @@ import { Menu, X, ChevronDown, ArrowLeft } from "lucide-react";
 import MobileSidebar from "./mobile-sidebar";
 import AccountSwitcherList from "./account-switcher-list";
 import Brandmark from "@/components/ui/brandmark";
-import ThemeToggle from "@/components/ui/theme-toggle";
 import BottomSheet from "@/components/ui/bottom-sheet";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import Tooltip from "@/components/ui/tooltip";
@@ -197,10 +196,12 @@ const Navbar: React.FC = () => {
   // mobile left sidebar unreachable and hiding the sign-in button.
   const isRootLevel = !breadcrumb && ROOT_PATHS.has(pathname);
 
-  // Left control for the default + root-level layouts: hamburger (opens
-  // the mobile sidebar) when signed in, theme toggle when signed out —
-  // mirroring the certs.social mobile top bar.
-  const leftControl = isAuthenticated ? (
+  // Left control for the default + root-level layouts: the hamburger
+  // (opens the mobile sidebar) for signed-in AND signed-out viewers.
+  // Signed-out viewers get a slimmed-down sidebar (Explore / Apps /
+  // Help) so the app is still navigable before signing in; the theme
+  // toggle lives inside the sidebar in both states.
+  const leftControl = (
     <Tooltip label={dropdownOpen ? "Close menu" : "Open menu"}>
       <button
         className="navbar__hamburger"
@@ -212,14 +213,12 @@ const Navbar: React.FC = () => {
         {dropdownOpen ? <X size={22} /> : <Menu size={22} />}
       </button>
     </Tooltip>
-  ) : (
-    <ThemeToggle variant="cycle" />
   );
 
   // Right cluster for the default + root-level layouts: account switcher
   // (signed in) or the sign-in button (signed out), plus the portaled
   // bottom sheet + sidebar those controls drive.
-  const rightCluster = isAuthenticated ? (
+  const accountCluster = isAuthenticated ? (
     <>
       <div className="account-switcher" ref={switcherRef}>
         {isDesktop ? (
@@ -302,10 +301,6 @@ const Navbar: React.FC = () => {
           }}
         />
       </BottomSheet>
-
-      {/* Mobile sidebar (hamburger menu). The early-return at the top
-          of this component already guarantees we're on mobile here. */}
-      <MobileSidebar isOpen={dropdownOpen} onClose={() => setDropdownOpen(false)} />
     </>
   ) : (
     <Tooltip label="Sign in">
@@ -323,6 +318,17 @@ const Navbar: React.FC = () => {
         />
       </button>
     </Tooltip>
+  );
+
+  const rightCluster = (
+    <>
+      {accountCluster}
+      {/* Mobile sidebar (hamburger menu) — mounted for signed-in and
+          signed-out viewers alike, since the hamburger is the left
+          control in both states. The early-return at the top of this
+          component already guarantees we're on mobile here. */}
+      <MobileSidebar isOpen={dropdownOpen} onClose={() => setDropdownOpen(false)} />
+    </>
   );
 
   // Profile overlay layout: transparent background, back arrow only (no
