@@ -9,11 +9,6 @@ export const FAQ_ITEMS = [
       "The convenience is the same: one account that works across apps. The difference is who holds it. A Google account lives at Google; your Certified account belongs to you, with your record and supporters attached, and no company can lock you out of it.",
   },
   {
-    question: "Do I need crypto or a wallet?",
-    answer:
-      "No. You sign in with your email and a one-time code. No crypto, no wallet, no passwords, no technical setup.",
-  },
-  {
     question: "What if I already have an account on a partner app?",
     answer:
       "On supported apps you can connect Certified to the account you already have. From then on, the work you do there is saved to your record.",
@@ -31,12 +26,12 @@ export const FAQ_ITEMS = [
   {
     question: "What apps support Certified?",
     answer:
-      "Currently Ma Earth, GainForest, Silvi, Simocracy, and Hyperboards. More are joining over time.",
+      "Currently Ma Earth, GainForest, Silvi, Simocracy, and Hyperboards. More are already in development.",
   },
   {
     question: "What happens if Certified disappears?",
     answer:
-      "Your account lives on open standards and open-source software, operated by the Hypercerts Foundation. You can move it to another provider at any time, and everything you've published stays verifiable. The network doesn't depend on one company's survival.",
+      "Your account lives on open standards and open-source software, operated by the Hypercerts Foundation. You can move it to another provider at any time, and everything you've published stays verifiable. The network doesn't depend on one organization's survival.",
   },
 ];
 
