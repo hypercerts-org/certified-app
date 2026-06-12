@@ -163,6 +163,9 @@ export default function HandleSearch({
       inputRef={inputRef}
       listboxClassName="handle-search__dropdown"
       enableHomeEnd={false}
+      // Don't auto-select the first result: Enter on a visible but
+      // un-navigated list should do nothing (matches pre-#130 behaviour).
+      autoHighlight={false}
       escapeStage="close-only"
       liveStatus={null}
       inputProps={{

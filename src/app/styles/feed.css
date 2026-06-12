@@ -909,34 +909,6 @@
   margin-bottom: 16px;
 }
 
-.page-tabs {
-  display: flex;
-  gap: 4px;
-  align-self: flex-end;
-}
-
-.page-tabs__tab {
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--fg-muted);
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 500;
-  padding: 10px 16px;
-  margin-bottom: -1px;
-  transition: color 0.15s ease, border-color 0.15s ease;
-}
-
-.page-tabs__tab:hover {
-  color: var(--fg-primary);
-}
-
-.page-tabs__tab--active {
-  color: var(--fg-primary);
-  border-bottom-color: var(--fg-primary);
-}
-
 /* Generic "+ New X" toolbar button used in the tab-bar pattern
    (endorsements, groups). Subtle text-button styling so it doesn't
    compete with primary content actions further down the page. */
@@ -1199,7 +1171,7 @@
 }
 
 /* ---------------- Response controls (Phase 2: accept/reject) ----------------
-   - response-buttons: loud, inline. Used on /notifications rows.
+   - response-buttons: loud, inline. Used on incoming-endorsement rows.
    - response-menu:    quiet kebab + dropdown. Used on profile / endorsements
                        audit-surface rows where the row owner is browsing.
 */
@@ -1547,12 +1519,7 @@
     min-height: 44px;
     padding: 10px;
   }
-  /* Tab-bar tabs + "New" buttons (endorsements, groups) → 44px tall. */
-  .page-tabs__tab {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-  }
+  /* Tab-bar "New" buttons (endorsements, groups) → 44px tall. */
   .page-tabs-bar__new,
   .endorsements-new-btn {
     min-height: 44px;

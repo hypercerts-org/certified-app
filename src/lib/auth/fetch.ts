@@ -14,7 +14,7 @@ export function setOnUnauthorized(listener: AuthFetchListener | null) {
  *     session. 401 here implies the OAuth tokens are no longer valid.
  *   - `/api/auth/*` — our own session cookie endpoints.
  *
- * NOT included: `/api/groups/*`, `/api/indexer`, `/api/notifications`, etc.
+ * NOT included: `/api/groups/*`, `/api/indexer`, etc.
  * Those use service-auth JWTs or server-to-server fetches; a 401 from
  * those is an upstream-service failure, not a user-session failure, and
  * must not log the user out.

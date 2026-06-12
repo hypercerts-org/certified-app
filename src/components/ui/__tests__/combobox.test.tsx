@@ -34,6 +34,7 @@ interface HarnessProps {
   onSubmit?: (raw: string) => void;
   escapeStage?: "two-stage" | "close-only";
   enableHomeEnd?: boolean;
+  autoHighlight?: boolean;
   withLiveStatus?: boolean;
 }
 
@@ -50,6 +51,7 @@ function Harness({
   onSubmit,
   escapeStage = "two-stage",
   enableHomeEnd = true,
+  autoHighlight = true,
   withLiveStatus = false,
 }: HarnessProps) {
   const [value, setValue] = useState("a");
@@ -68,6 +70,7 @@ function Harness({
       onSubmit={onSubmit}
       escapeStage={escapeStage}
       enableHomeEnd={enableHomeEnd}
+      autoHighlight={autoHighlight}
       inputProps={{ "aria-label": "Search", placeholder: "Search" }}
       liveStatus={
         withLiveStatus
@@ -259,6 +262,50 @@ describe("Combobox — keyboard", () => {
     render(<Harness />);
     fireEvent.mouseEnter(screen.getByText("Charlie"));
     expect(highlightedLabel()).toBe("Charlie");
+  });
+});
+
+describe("Combobox — autoHighlight={false} (opt-out, #134)", () => {
+  it("does not highlight the first row on mount when items are present", () => {
+    render(<Harness autoHighlight={false} />);
+    expect(highlightedLabel()).toBeNull();
+    // No row → aria-activedescendant must be absent.
+    expect(getInput().getAttribute("aria-activedescendant")).toBeNull();
+  });
+
+  it("Enter on a visible-but-un-navigated list does nothing when no onSubmitNoMatch (handle-search)", () => {
+    const onSelect = vi.fn();
+    render(<Harness autoHighlight={false} onSelect={onSelect} />);
+    fireEvent.keyDown(getInput(), { key: "Enter" });
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("Enter commits the typed value via onSubmitNoMatch even with results visible (contributor field)", () => {
+    const onSelect = vi.fn();
+    const onSubmitNoMatch = vi.fn();
+    render(
+      <Harness
+        autoHighlight={false}
+        onSelect={onSelect}
+        onSubmitNoMatch={onSubmitNoMatch}
+      />,
+    );
+    const input = getInput();
+    fireEvent.change(input, { target: { value: "alice.social" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onSubmitNoMatch).toHaveBeenCalledWith("alice.social");
+  });
+
+  it("arrowing into a row still highlights and Enter commits it", () => {
+    const onSelect = vi.fn();
+    render(<Harness autoHighlight={false} onSelect={onSelect} />);
+    const input = getInput();
+    fireEvent.keyDown(input, { key: "ArrowDown" }); // -1 → row 0 (Alpha)
+    expect(highlightedLabel()).toBe("Alpha");
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect.mock.calls[0][1]).toBe(0);
   });
 });
 

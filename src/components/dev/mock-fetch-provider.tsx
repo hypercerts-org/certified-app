@@ -450,42 +450,6 @@ function installMockFetch(
         if (profile) return json(profile)
         return json(null)
       }
-      if (path === "/api/notifications") {
-        // The notifications client (`lib/atproto/notifications.ts`) POSTs
-        // a GraphQL-shaped `{ operationName, variables }` and dispatches
-        // the response by op. `unreadNotificationCount` in particular
-        // throws "Unread count unavailable" if the field is missing, so
-        // every op the provider polls needs a valid envelope here.
-        let op: string | undefined
-        try {
-          const text =
-            typeof init?.body === "string"
-              ? init.body
-              : init?.body
-                ? String(init.body)
-                : "{}"
-          op = (JSON.parse(text) as { operationName?: string }).operationName
-        } catch {
-          /* fall through → default empty notifications page */
-        }
-        if (op === "unreadNotificationCount") {
-          return json({
-            data: { unreadNotificationCount: { count: 0, more: false } },
-          })
-        }
-        if (op === "updateNotificationsSeen") {
-          return json({ data: { updateNotificationsSeen: { seenAt: null } } })
-        }
-        // `notifications` (list) and anything else → empty, valid page.
-        return json({
-          data: {
-            notifications: {
-              edges: [],
-              pageInfo: { hasNextPage: false, endCursor: null },
-            },
-          },
-        })
-      }
     }
 
     // Everything else (fonts, _next assets, analytics, etc.) → real fetch.

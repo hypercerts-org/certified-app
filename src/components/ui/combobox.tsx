@@ -173,6 +173,22 @@ export interface ComboboxProps<T> {
   /** Enable Home/End jump-to-edge keys. Default true. */
   enableHomeEnd?: boolean;
   /**
+   * Auto-highlight the first row whenever the item set is non-empty, so
+   * Enter commits a result even before the user arrows into the list.
+   * Default `true` (the standard typeahead behaviour shared by the
+   * search surfaces).
+   *
+   * Set `false` for surfaces whose Enter must not pick a row the user
+   * never navigated to:
+   *  - with `onSubmitNoMatch`, an un-highlighted Enter commits the typed
+   *    value via that handler even when results are visible (e.g. the
+   *    contributor field, where you may be entering a handle that merely
+   *    *prefix-matches* existing rows);
+   *  - without it, an un-highlighted Enter does nothing (e.g. handle
+   *    search). Arrow / Home / End still highlight and commit normally.
+   */
+  autoHighlight?: boolean;
+  /**
    * Escape behaviour:
    *  - 'two-stage' (default, WAI-ARIA): first Escape closes the
    *    listbox; a second Escape (already closed) clears the input,
@@ -217,6 +233,7 @@ function Combobox<T>({
   listboxClassName = "",
   role,
   enableHomeEnd = true,
+  autoHighlight = true,
   escapeStage = "two-stage",
   liveStatus,
 }: ComboboxProps<T>) {
@@ -234,12 +251,12 @@ function Combobox<T>({
   const count = items.length;
 
   // Reset the highlight whenever the item set changes: first row when
-  // the list is non-empty, -1 when it's empty. Keying off `count` (not
-  // the array identity) keeps this stable when a parent passes a fresh
-  // array each render with the same contents.
+  // the list is non-empty (and auto-highlight is on), -1 otherwise.
+  // Keying off `count` (not the array identity) keeps this stable when a
+  // parent passes a fresh array each render with the same contents.
   useEffect(() => {
-    setHighlight(count > 0 ? 0 : -1);
-  }, [count]);
+    setHighlight(count > 0 && autoHighlight ? 0 : -1);
+  }, [count, autoHighlight]);
 
   // Close on outside click.
   useEffect(() => {
@@ -278,22 +295,28 @@ function Combobox<T>({
   );
 
   const commitHighlighted = useCallback(() => {
-    // Enter: select the highlighted row, falling back to the first row
-    // when the list has items but nothing is highlighted yet. If there
-    // are no items, hand control to `onSubmitNoMatch` (typed-but-
-    // unmatched commit). When highlight is -1 *with* items present we
-    // also treat that as "no highlighted match" for onSubmitNoMatch
-    // semantics — but only if the caller opted in AND the list is
-    // empty; with items we default to the first row to preserve the
-    // existing surfaces' "Enter picks first result" behaviour.
-    if (count > 0) {
-      const index = highlight >= 0 ? highlight : 0;
-      const item = items[index];
-      if (item !== undefined) onSelect(item, index);
+    // Enter commits in priority order:
+    //  1. an explicitly highlighted row (arrow / Home / End, or the
+    //     auto-highlighted first row);
+    //  2. with `autoHighlight`, the first row as a fallback when items
+    //     exist but nothing is highlighted yet — preserves the search
+    //     surfaces' "Enter picks first result" behaviour;
+    //  3. otherwise hand control to `onSubmitNoMatch` (typed-value
+    //     commit). With `autoHighlight` off this is how the contributor
+    //     field commits a typed handle even while results are visible;
+    //     handle-search (no `onSubmitNoMatch`) simply does nothing.
+    if (highlight >= 0) {
+      const item = items[highlight];
+      if (item !== undefined) onSelect(item, highlight);
+      return;
+    }
+    if (autoHighlight && count > 0) {
+      const item = items[0];
+      if (item !== undefined) onSelect(item, 0);
       return;
     }
     onSubmitNoMatch?.(value);
-  }, [count, highlight, items, onSelect, onSubmitNoMatch, value]);
+  }, [autoHighlight, count, highlight, items, onSelect, onSubmitNoMatch, value]);
 
   const handleEscape = useCallback(() => {
     if (open) {
@@ -335,9 +358,14 @@ function Combobox<T>({
           // Enter commits. Always preventDefault when there's anything
           // to commit (a row, or a no-match handler with a typed value)
           // so the surrounding form doesn't submit out from under us.
-          const hasNoMatchTarget =
-            count === 0 && onSubmitNoMatch && value.trim().length > 0;
-          if (count === 0 && !hasNoMatchTarget) return;
+          // A row commits when one is highlighted, or — with
+          // autoHighlight — when items exist and we fall back to row 0.
+          const willCommitRow = highlight >= 0 || (autoHighlight && count > 0);
+          const willSubmitNoMatch =
+            !willCommitRow && !!onSubmitNoMatch && value.trim().length > 0;
+          // Nothing to commit (e.g. handle-search with autoHighlight off
+          // and no row navigated to): let Enter through untouched.
+          if (!willCommitRow && !willSubmitNoMatch) return;
           e.preventDefault();
           commitHighlighted();
           return;
@@ -361,8 +389,10 @@ function Combobox<T>({
       }
     },
     [
+      autoHighlight,
       count,
       enableHomeEnd,
+      highlight,
       moveHighlight,
       commitHighlighted,
       handleEscape,

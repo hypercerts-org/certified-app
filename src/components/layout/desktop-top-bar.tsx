@@ -662,23 +662,25 @@ export default function DesktopTopBar() {
                  (searchParams?.get("tab") ?? "overview"))
               : (searchParams?.get("tab") ?? "overview")
             return (
-              // Detail strip — canonical <Tabs> (underline). onChange
-              // REPLACES (not pushes) so switching tabs on the same cert /
-              // project doesn't pollute history; scroll:false keeps the
-              // scroll position. The row wrapper owns the bottom border.
-              <Tabs
-                value={activeDetailTab}
-                onChange={(next) => {
-                  const t = detailTabs.find((tab) => tab.key === next)
-                  if (t) router.replace(hrefFor(t), { scroll: false })
-                }}
-              >
+              // Detail strip — canonical <Tabs> rendered as real link tabs
+              // (each <Tab href> is an anchor, so middle-click / open-in-new-
+              // tab work). `linkProps` REPLACES (not pushes) so switching tabs
+              // on the same cert / project doesn't pollute history; scroll:false
+              // keeps the scroll position. `value` is derived from the URL, so
+              // onChange is a no-op — the link drives navigation. The row
+              // wrapper owns the bottom border.
+              <Tabs value={activeDetailTab} onChange={() => {}}>
                 <TabList
                   aria-label={isOnCertDetail ? "Activity sections" : "Project sections"}
                   className="border-0"
                 >
                   {detailTabs.map((t) => (
-                    <Tab key={t.key} value={t.key}>
+                    <Tab
+                      key={t.key}
+                      value={t.key}
+                      href={hrefFor(t)}
+                      linkProps={{ replace: true, scroll: false }}
+                    >
                       {t.label}
                     </Tab>
                   ))}

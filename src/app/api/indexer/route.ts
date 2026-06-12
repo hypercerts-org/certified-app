@@ -23,11 +23,8 @@ import { logSafe } from "@/lib/utils/log-safe"
  *     forwarded raw, so an attacker can't push pathological inputs
  *     (10k-element arrays, multi-MB strings) downstream.
  *
- * Mirrors the pattern established by `/api/notifications`. The
- * difference is auth: notifications are personalised and require a
- * service-auth JWT minted from the user's PDS; the operations below
- * are public reads (feed, followers, received endorsements) and run
- * unauthenticated.
+ * The operations below are public reads (feed, followers, received
+ * endorsements) and run unauthenticated against the indexer.
  */
 
 const UPSTREAM_INDEXER_URL =
@@ -35,8 +32,8 @@ const UPSTREAM_INDEXER_URL =
   process.env.NEXT_PUBLIC_INDEXER_URL ||
   "https://magic-indexer-prod.up.railway.app/graphql"
 
-// Mirror the module-load warning the notifications route has — flags
-// the case where neither INDEXER_URL nor NEXT_PUBLIC_INDEXER_URL is
+// Module-load warning — flags the case where neither INDEXER_URL nor
+// NEXT_PUBLIC_INDEXER_URL is
 // set so the fallback default is silent in dev too. Production used
 // to fall back to the dev indexer here; the default now points at
 // prod so an unset env doesn't break the feed.

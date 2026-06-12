@@ -55,7 +55,6 @@ import { Providers } from "@/lib/providers"
 import { AuthProvider } from "@/lib/auth/auth-context"
 import { OrgProvider } from "@/lib/groups/org-context"
 import { OnboardingProvider } from "@/lib/onboarding/onboarding-context"
-import { NotificationsProvider } from "@/lib/notifications-context"
 import { NavbarProvider } from "@/lib/navbar-context"
 import { FeedbackProvider } from "@/lib/feedback-context"
 import { ToastProvider } from "@/components/ui/toast"
@@ -252,22 +251,20 @@ export default function PreviewPage() {
           <AuthProvider>
             <OrgProvider>
               <OnboardingProvider>
-                <NotificationsProvider>
-                  <NavbarProvider>
-                    <FeedbackProvider>
-                      <main
-                        id="preview-main"
-                        data-preview-surface={rawSurface}
-                        className="flex-1"
-                      >
-                        <SurfaceBody
-                          surface={rawSurface}
-                          profileScenario={profileScenario}
-                        />
-                      </main>
-                    </FeedbackProvider>
-                  </NavbarProvider>
-                </NotificationsProvider>
+                <NavbarProvider>
+                  <FeedbackProvider>
+                    <main
+                      id="preview-main"
+                      data-preview-surface={rawSurface}
+                      className="flex-1"
+                    >
+                      <SurfaceBody
+                        surface={rawSurface}
+                        profileScenario={profileScenario}
+                      />
+                    </main>
+                  </FeedbackProvider>
+                </NavbarProvider>
               </OnboardingProvider>
             </OrgProvider>
           </AuthProvider>
