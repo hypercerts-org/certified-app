@@ -97,9 +97,25 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
 
   return (
     <Drawer open={isOpen} onClose={onClose} side="left" ariaLabel="Navigation menu">
-        {/* Section 1: Profile (top-left, taps through to user profile) +
-            theme toggle (top-right) */}
+        {/* Section 1: Certified wordmark (top-left) + theme toggle
+            (top-right), with the profile block (signed-in only)
+            underneath. */}
         <div className="mobile-sidebar__section mobile-sidebar__section--profile">
+          <div className="mobile-sidebar__section--brand">
+            <Link
+              href={isAuthenticated ? "/home" : "/welcome"}
+              className="mobile-sidebar__wordmark"
+              onClick={onClose}
+              aria-label="Certified home"
+            >
+              <img
+                src="/brand/wordmark/certified_wordmark_black.svg"
+                alt="Certified"
+                className="mobile-sidebar__wordmark-img"
+              />
+            </Link>
+            <ThemeToggle variant="cycle" className="mobile-sidebar__theme" />
+          </div>
           {isAuthenticated ? (
             <Link
               href={profileHref}
@@ -119,10 +135,7 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                 <p className="mobile-sidebar__handle">@{displayHandle}</p>
               ) : null}
             </Link>
-          ) : (
-            <div className="mobile-sidebar__profile" />
-          )}
-          <ThemeToggle variant="cycle" className="mobile-sidebar__theme" />
+          ) : null}
         </div>
 
         {/* Section 2: Navigation */}

@@ -8,6 +8,7 @@ import { useNavbarContext } from "@/lib/navbar-context";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
 import Avatar from "@/components/ui/avatar";
+import Button from "@/components/ui/button";
 import { getInitials } from "@/lib/utils/initials";
 import { useOrg } from "@/lib/groups/org-context";
 import { routeForActorSwitch } from "@/lib/groups/navigation";
@@ -200,19 +201,19 @@ const Navbar: React.FC = () => {
   // (opens the mobile sidebar) for signed-in AND signed-out viewers.
   // Signed-out viewers get a slimmed-down sidebar (Explore / Apps /
   // Help) so the app is still navigable before signing in; the theme
-  // toggle lives inside the sidebar in both states.
+  // toggle lives inside the sidebar in both states. No Tooltip — this
+  // bar only renders <800px, where a tap surfaces the tooltip bubble
+  // as a stray tag instead of hover help.
   const leftControl = (
-    <Tooltip label={dropdownOpen ? "Close menu" : "Open menu"}>
-      <button
-        className="navbar__hamburger"
-        onClick={() => { setDropdownOpen(!dropdownOpen); setSwitcherOpen(false); }}
-        aria-label={dropdownOpen ? "Close menu" : "Open menu"}
-        aria-haspopup="menu"
-        aria-expanded={dropdownOpen}
-      >
-        {dropdownOpen ? <X size={22} /> : <Menu size={22} />}
-      </button>
-    </Tooltip>
+    <button
+      className="navbar__hamburger"
+      onClick={() => { setDropdownOpen(!dropdownOpen); setSwitcherOpen(false); }}
+      aria-label={dropdownOpen ? "Close menu" : "Open menu"}
+      aria-haspopup="menu"
+      aria-expanded={dropdownOpen}
+    >
+      {dropdownOpen ? <X size={22} /> : <Menu size={22} />}
+    </button>
   );
 
   // Right cluster for the default + root-level layouts: account switcher
@@ -260,18 +261,16 @@ const Navbar: React.FC = () => {
             </PopoverContent>
           </Popover>
         ) : (
-          <Tooltip label="Switch account">
-            <button
-              className="account-switcher__trigger"
-              onClick={() => { setSwitcherOpen(!switcherOpen); setDropdownOpen(false); }}
-              aria-label="Switch account"
-              aria-haspopup="menu"
-              aria-expanded={switcherOpen}
-            >
-              <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
-              <ChevronDown size={14} className="navbar__chevron-desktop" />
-            </button>
-          </Tooltip>
+          <button
+            className="account-switcher__trigger"
+            onClick={() => { setSwitcherOpen(!switcherOpen); setDropdownOpen(false); }}
+            aria-label="Switch account"
+            aria-haspopup="menu"
+            aria-expanded={switcherOpen}
+          >
+            <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
+            <ChevronDown size={14} className="navbar__chevron-desktop" />
+          </button>
         )}
       </div>
 
@@ -303,21 +302,12 @@ const Navbar: React.FC = () => {
       </BottomSheet>
     </>
   ) : (
-    <Tooltip label="Sign in">
-      <button
-        type="button"
-        onClick={openSignIn}
-        className="navbar__signin-btn"
-        aria-label="Sign in"
-      >
-        <img
-          src="/brand/signin/certified_signin_black.svg"
-          alt=""
-          aria-hidden
-          className="navbar__signin-img"
-        />
-      </button>
-    </Tooltip>
+    // Quiet outline button rather than the filled black sign-in lockup —
+    // a second solid-black element reads heavy next to the (black)
+    // brandmark in the bar's center slot.
+    <Button variant="secondary" size="sm" onClick={openSignIn}>
+      Sign in
+    </Button>
   );
 
   const rightCluster = (

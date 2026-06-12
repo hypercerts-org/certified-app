@@ -7,12 +7,23 @@
    styling only. */
 
 .explore-page {
-  padding: 24px 16px 64px;
+  padding: 24px 8px 64px;
 }
 
 @media (min-width: 800px) {
   .explore-page {
     padding: 0;
+  }
+}
+
+@media (max-width: 799px) {
+  /* Zero the shell's 16px reading gutter — the page carries its own
+     small (8px) gutter above so list rows run nearly edge-to-edge,
+     matching the /home feed treatment. Specificity (three classes via
+     :has) beats the components.css mobile gutter rule. */
+  .app-shell:has(.explore-page) .app-shell__content {
+    padding-left: 0;
+    padding-right: 0;
   }
 }
 
@@ -690,16 +701,62 @@
   text-align: right;
 }
 
+/* Phone: list rows pick up the /home feed-card treatment — the boxed
+   list flattens to hairline-divided full-width cards, the author
+   byline moves on top with the relative time pinned right, and titles
+   speak in the serif headline voice. */
 @media (max-width: 799px) {
-  .cert-list-row {
-    grid-template-columns: 1fr;
-    padding: 10px 12px;
-    gap: 8px;
+  .explore__list {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    overflow: visible;
   }
-  .cert-list-row__author-col,
+
+  .explore__list > li + li .cert-list-row,
+  .explore__list > li + li .account-list-row {
+    border-top: 1px solid var(--border-default);
+  }
+
+  .cert-list-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "author time"
+      "link link";
+    gap: 10px 12px;
+    padding: 16px 0;
+  }
+
+  .cert-list-row:hover {
+    background: transparent;
+  }
+
+  .cert-list-row__author-col {
+    grid-area: author;
+  }
+
   .cert-list-row__time {
-    justify-self: start;
-    text-align: left;
+    grid-area: time;
+    color: var(--fg-muted);
+  }
+
+  .cert-list-row__link {
+    grid-area: link;
+    align-items: flex-start;
+  }
+
+  .cert-list-row__body {
+    gap: 4px;
+  }
+
+  .cert-list-row__title {
+    font-family: var(--font-headline), "Noto Serif", Georgia, serif;
+    font-size: 1.0625rem;
+    font-weight: 700;
+  }
+
+  .cert-list-row__meta {
+    color: var(--fg-muted);
   }
 }
 
@@ -912,9 +969,16 @@
 }
 
 @media (max-width: 799px) {
+  /* Account rows share the flattened feed treatment: full-width rows
+     between hairline dividers (set in the cert-list-row mobile block),
+     no boxed hover wash. */
   .account-list-row {
     grid-template-columns: minmax(0, 1fr);
     gap: 6px;
+    padding: 14px 0;
+  }
+  .account-list-row:hover {
+    background: transparent;
   }
   .account-list-row__badge,
   .account-list-row__joined {

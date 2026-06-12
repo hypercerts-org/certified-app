@@ -10,12 +10,11 @@ import {
 } from "react"
 import { profileUrl, recordUrl } from "@/lib/urls"
 import Link from "next/link"
-import { Filter as FilterIcon, Inbox, MapPin, UserCheck, Users } from "lucide-react"
+import { ChevronDown, Inbox, MapPin, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Badge, { type BadgeTone } from "@/components/ui/badge"
 import Banner from "@/components/ui/banner"
 import Button from "@/components/ui/button"
-import Tooltip from "@/components/ui/tooltip"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import LoadMoreSentinel from "@/components/ui/load-more-sentinel"
@@ -39,11 +38,15 @@ import { getInitials } from "@/lib/utils/initials"
 import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 import {
   DEFAULT_HIDDEN_CERT_LABELS,
+  DEFAULT_HIDDEN_ORG_LABELS,
   HYPERLABEL_DISPLAY_LABELS,
   HYPERLABEL_DISPLAY_ORDER,
   HYPERLABEL_TIERS,
+  ORGLABEL_TIERS,
   type HyperlabelTier,
+  type OrglabelTier,
 } from "@/lib/atproto/labels"
+import { fetchOrgDidsByLabel } from "@/lib/atproto/workspace"
 import { TRUSTED_EVALUATOR_DIDS } from "@/lib/atproto/trusted-evaluators"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { CollectionRecord } from "@/lib/atproto/collection"
@@ -60,6 +63,27 @@ const DEFAULT_INCLUDED_TIERS: ReadonlySet<HyperlabelTier> = new Set(
 const UNLABELED_SLUG = "unlabeled" as const
 type UnlabeledSlug = typeof UNLABELED_SLUG
 type QualityFilterValue = HyperlabelTier | UnlabeledSlug
+type OrgQualityValue = OrglabelTier | UnlabeledSlug
+
+/** Default org-quality set — everything except the labels in
+ *  DEFAULT_HIDDEN_ORG_LABELS (today only "likely-test"). Matches the
+ *  explore page's Account-quality default. */
+const DEFAULT_INCLUDED_ORG_TIERS: ReadonlySet<OrglabelTier> = new Set(
+  ORGLABEL_TIERS.filter((t) => !DEFAULT_HIDDEN_ORG_LABELS.includes(t)),
+)
+
+/** Highest tier first — same order the explore Account-quality
+ *  popover lists them in. */
+const ORGLABEL_DISPLAY_ORDER: readonly OrglabelTier[] = [
+  "high-quality",
+  "standard",
+  "likely-test",
+]
+const ORGLABEL_DISPLAY_LABELS: Record<OrglabelTier, string> = {
+  "high-quality": "High quality",
+  standard: "Standard",
+  "likely-test": "Likely test",
+}
 
 /** Visible-row threshold below which the feed auto-paginates. Sized
  *  to "more than fits in one screen on a tall viewport" so a user
@@ -116,6 +140,25 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
   const [selectedEvaluators, setSelectedEvaluators] = useState<Set<string>>(
     () => new Set(TRUSTED_EVALUATOR_DIDS),
   )
+  // Organization-quality filter (Orglabeler tiers) — applied to the
+  // event ACTOR rather than the record, by adjusting the author DID
+  // set handed to useHomeFeed (see effectiveFollows below).
+  const [includedOrgTiers, setIncludedOrgTiers] = useState<Set<OrgQualityValue>>(
+    () => new Set<OrgQualityValue>([...DEFAULT_INCLUDED_ORG_TIERS, UNLABELED_SLUG]),
+  )
+  // Inline filter panel under the "For you" tab (certs.social pattern:
+  // clicking the active tab toggles the disclosure).
+  const [filterOpen, setFilterOpen] = useState(false)
+  const filterWrapRef = useRef<HTMLDivElement>(null)
+  useClickOutsideClose(filterOpen, filterWrapRef, () => setFilterOpen(false))
+  useEffect(() => {
+    if (!filterOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFilterOpen(false)
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [filterOpen])
   // Two filter modes, mirroring the explore page (see the
   // `certIncludeUnlabeled` comment block there for the full rationale):
   //   - Unlabeled INCLUDED → use `excludeCertLabels` (drop specific
@@ -143,24 +186,36 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
   )
   const { endorsedDids, isLoading: endorsementsLoading } =
     useEvaluatorEndorsements(selectedEvaluators)
-  // Direct follows ∪ DIDs endorsed by any selected trusted evaluator.
-  // The viewer's own DID is excluded so the feed doesn't show the
-  // viewer's own activity (matches the prior behaviour — direct
-  // follows never include self).
+  const orgFilter = useOrgQualityFilter(includedOrgTiers)
+  // Direct follows ∪ DIDs endorsed by any selected trusted evaluator,
+  // then narrowed by the organization-quality filter. The viewer's own
+  // DID is excluded so the feed doesn't show the viewer's own activity
+  // (matches the prior behaviour — direct follows never include self).
   const effectiveFollows = useMemo(() => {
     const out = new Set<string>(followedDids)
     for (const did of endorsedDids) {
       if (did !== activeDid) out.add(did)
     }
+    if (orgFilter.dids) {
+      if (orgFilter.mode === "exclude") {
+        // Unlabeled INCLUDED: drop actors carrying an excluded tier.
+        for (const did of orgFilter.dids) out.delete(did)
+      } else if (orgFilter.mode === "include-only") {
+        // Unlabeled EXCLUDED: keep only actors carrying a checked tier.
+        for (const did of [...out]) {
+          if (!orgFilter.dids.has(did)) out.delete(did)
+        }
+      }
+    }
     return out
-  }, [followedDids, endorsedDids, activeDid])
-  // Gate the feed fetch on BOTH author sources being resolved so the
-  // feed renders in a single frame instead of flashing direct-follows
-  // first and then a second pass with the evaluator-endorsed union.
-  // useEvaluatorEndorsements caches its result at module scope, so
-  // after the first /home visit `ready` flips effectively-synchronously
-  // on the next visit — only the cold first paint waits.
-  const ready = !followsLoading && !endorsementsLoading
+  }, [followedDids, endorsedDids, activeDid, orgFilter.mode, orgFilter.dids])
+  // Gate the feed fetch on every author source being resolved (follows,
+  // evaluator endorsements, org-label DID set) so the feed renders in a
+  // single frame instead of flashing direct-follows first and then a
+  // second pass with the narrowed union. All three fetches cache at
+  // module scope, so after the first /home visit `ready` flips
+  // effectively-synchronously — only the cold first paint waits.
+  const ready = !followsLoading && !endorsementsLoading && !orgFilter.isLoading
   const { events, isLoading, isLoadingMore, hasMore, loadMore, error } =
     useHomeFeed(effectiveFollows, {
       excludeCertLabels,
@@ -168,21 +223,61 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
       ready,
     })
 
+  // "For you" flips to "Custom" once any filter diverges from the
+  // defaults — same affordance certs.social uses on its feed tabs.
+  const isDefaultFilters =
+    isQualityDefault(includedTiers) &&
+    isOrgQualityDefault(includedOrgTiers) &&
+    selectedEvaluators.size === TRUSTED_EVALUATOR_DIDS.length
+
+  const resetFilters = () => {
+    setIncludedTiers(
+      new Set<QualityFilterValue>([...DEFAULT_INCLUDED_TIERS, UNLABELED_SLUG]),
+    )
+    setIncludedOrgTiers(
+      new Set<OrgQualityValue>([...DEFAULT_INCLUDED_ORG_TIERS, UNLABELED_SLUG]),
+    )
+    setSelectedEvaluators(new Set(TRUSTED_EVALUATOR_DIDS))
+  }
+
   return (
     <>
-      <header className="home-feed__header">
-        <h2 className="home-feed__heading">Feed</h2>
-        <div className="home-feed__header-actions">
-          <EvaluatorFilter
-            selected={selectedEvaluators}
-            onChange={setSelectedEvaluators}
-          />
-          <QualityFilter
-            included={includedTiers}
-            onChange={setIncludedTiers}
-          />
+      {/* certs.social-style tab strip. One tab for now ("For you");
+          clicking the active tab toggles the inline filter panel. */}
+      <div ref={filterWrapRef}>
+        <div className="feed-tabs" role="tablist" aria-label="Feed">
+          <div className="feed-tabs__tab-wrapper">
+            <button
+              type="button"
+              className="feed-tabs__tab feed-tabs__tab--active"
+              role="tab"
+              aria-selected="true"
+              aria-haspopup="dialog"
+              aria-expanded={filterOpen}
+              onClick={() => setFilterOpen((v) => !v)}
+            >
+              {isDefaultFilters ? "For you" : "Custom"}
+              <ChevronDown
+                size={14}
+                aria-hidden
+                className={`feed-tabs__chevron${filterOpen ? " feed-tabs__chevron--open" : ""}`}
+              />
+            </button>
+          </div>
         </div>
-      </header>
+        {filterOpen ? (
+          <FeedFilterPanel
+            selectedEvaluators={selectedEvaluators}
+            onEvaluatorsChange={setSelectedEvaluators}
+            includedTiers={includedTiers}
+            onTiersChange={setIncludedTiers}
+            includedOrgTiers={includedOrgTiers}
+            onOrgTiersChange={setIncludedOrgTiers}
+            isDefault={isDefaultFilters}
+            onReset={resetFilters}
+          />
+        ) : null}
+      </div>
       <HomeFeedBody
         followsLoading={followsLoading}
         followsError={!!followsError}
@@ -315,96 +410,6 @@ function HomeFeedBody({
   )
 }
 
-/**
- * Right-aligned icon button next to the "Feed" heading. Opens a
- * popover with one checkbox per Hyperlabel tier. The selected set
- * drives `excludeCertLabels` at the hydration round-trip — anything
- * unchecked is filtered out before reaching the timeline.
- */
-function QualityFilter({
-  included,
-  onChange,
-}: {
-  included: Set<QualityFilterValue>
-  onChange: (next: Set<QualityFilterValue>) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
-
-  useClickOutsideClose(open, wrapRef, () => setOpen(false))
-
-  const toggle = (value: QualityFilterValue) => {
-    const next = new Set(included)
-    if (next.has(value)) next.delete(value)
-    else next.add(value)
-    onChange(next)
-  }
-
-  const resetToDefault = () => {
-    onChange(new Set<QualityFilterValue>([...DEFAULT_INCLUDED_TIERS, UNLABELED_SLUG]))
-  }
-
-  // "Filtered" badge highlights the button when the popover state
-  // diverges from the default (every visible tier + unlabeled).
-  // Total filter slots = number of Hyperlabel tiers + 1 for unlabeled.
-  const filtered = included.size !== HYPERLABEL_TIERS.length + 1
-  const isDefault = isQualityDefault(included)
-
-  return (
-    <div className="home-feed__filter" ref={wrapRef}>
-      <Tooltip label="Filter by activity quality">
-        <button
-          type="button"
-          className={`home-feed__filter-btn${filtered ? " home-feed__filter-btn--active" : ""}`}
-          onClick={() => setOpen((v) => !v)}
-          aria-haspopup="true"
-          aria-expanded={open}
-          aria-label="Filter feed by activity quality"
-        >
-          <FilterIcon size={14} strokeWidth={1.75} aria-hidden />
-        </button>
-      </Tooltip>
-      {open ? (
-        <div className="home-feed__filter-pop" role="dialog" aria-label="Activity quality filters">
-          <p className="home-feed__filter-title">Activities quality</p>
-          <ul className="home-feed__filter-list">
-            {HYPERLABEL_DISPLAY_ORDER.map((tier) => (
-              <li key={tier}>
-                <label className="home-feed__filter-item">
-                  <input
-                    type="checkbox"
-                    checked={included.has(tier)}
-                    onChange={() => toggle(tier)}
-                  />
-                  <span>{HYPERLABEL_DISPLAY_LABELS[tier]}</span>
-                </label>
-              </li>
-            ))}
-            <li>
-              <label className="home-feed__filter-item">
-                <input
-                  type="checkbox"
-                  checked={included.has(UNLABELED_SLUG)}
-                  onChange={() => toggle(UNLABELED_SLUG)}
-                />
-                <span>Not labeled yet</span>
-              </label>
-            </li>
-          </ul>
-          <button
-            type="button"
-            className="home-feed__filter-reset"
-            onClick={resetToDefault}
-            disabled={isDefault}
-          >
-            Reset to default
-          </button>
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
 function isQualityDefault(included: Set<QualityFilterValue>): boolean {
   // Default = every tier in DEFAULT_INCLUDED_TIERS, plus unlabeled.
   if (included.size !== DEFAULT_INCLUDED_TIERS.size + 1) return false
@@ -413,85 +418,200 @@ function isQualityDefault(included: Set<QualityFilterValue>): boolean {
   return true
 }
 
+function isOrgQualityDefault(included: Set<OrgQualityValue>): boolean {
+  if (included.size !== DEFAULT_INCLUDED_ORG_TIERS.size + 1) return false
+  if (!included.has(UNLABELED_SLUG)) return false
+  for (const t of DEFAULT_INCLUDED_ORG_TIERS) if (!included.has(t)) return false
+  return true
+}
+
 /**
- * Trusted-evaluator settings popover (left of the quality filter).
- * Each checkbox represents one curated evaluator account; selecting
- * an evaluator pulls every DID they've endorsed into the effective
- * follow set, so the feed shows transitively-vouched activity. The
- * popover lists evaluators by display name / handle resolved via
- * `useAuthorInfo` — the underlying DID is hidden behind the friendly
- * label.
+ * Resolve the organization-quality checkboxes into a DID set + how to
+ * apply it to the feed's author set. Two modes, mirroring the cert
+ * quality filter's polarity logic:
+ *   - Unlabeled INCLUDED → "exclude": fetch the DIDs carrying any
+ *     UNchecked tier and subtract them (unlabeled actors pass).
+ *   - Unlabeled EXCLUDED → "include-only": fetch the DIDs carrying a
+ *     checked tier and intersect (unlabeled actors drop).
+ * `fetchOrgDidsByLabel` caches per label tuple at module scope, so the
+ * default exclusion costs one request per session. On fetch failure the
+ * filter degrades to unfiltered (`dids: null`) rather than blanking the
+ * feed.
  */
-function EvaluatorFilter({
-  selected,
-  onChange,
+function useOrgQualityFilter(included: Set<OrgQualityValue>): {
+  mode: "none" | "exclude" | "include-only"
+  dids: Set<string> | null
+  isLoading: boolean
+} {
+  const includeUnlabeled = included.has(UNLABELED_SLUG)
+  const labels = useMemo(
+    () =>
+      includeUnlabeled
+        ? ORGLABEL_TIERS.filter((t) => !included.has(t))
+        : ORGLABEL_TIERS.filter((t) => included.has(t)),
+    [included, includeUnlabeled],
+  )
+  const mode = includeUnlabeled
+    ? labels.length === 0
+      ? ("none" as const)
+      : ("exclude" as const)
+    : ("include-only" as const)
+  const key = mode === "none" ? "none" : `${mode}:${labels.join(",")}`
+  const [state, setState] = useState<{ key: string; dids: Set<string> | null }>(
+    { key: "none", dids: null },
+  )
+  useEffect(() => {
+    if (mode === "none") return
+    let cancelled = false
+    fetchOrgDidsByLabel({ labels })
+      .then((dids) => {
+        if (!cancelled) setState({ key, dids })
+      })
+      .catch(() => {
+        if (!cancelled) setState({ key, dids: null })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [key, mode, labels])
+  if (mode === "none") return { mode, dids: null, isLoading: false }
+  const fresh = state.key === key
+  return { mode, dids: fresh ? state.dids : null, isLoading: !fresh }
+}
+
+/**
+ * Inline filter panel under the "For you" tab — the certs.social
+ * evaluator-panel pattern (`.feed-evaluator-panel` / `.feed-evaluators`
+ * styles), extended with three sections: trusted evaluators, activity
+ * quality (Hyperlabel tiers) and organization quality (Orglabeler
+ * tiers), plus a reset row.
+ */
+function FeedFilterPanel({
+  selectedEvaluators,
+  onEvaluatorsChange,
+  includedTiers,
+  onTiersChange,
+  includedOrgTiers,
+  onOrgTiersChange,
+  isDefault,
+  onReset,
 }: {
-  selected: Set<string>
-  onChange: (next: Set<string>) => void
+  selectedEvaluators: Set<string>
+  onEvaluatorsChange: (next: Set<string>) => void
+  includedTiers: Set<QualityFilterValue>
+  onTiersChange: (next: Set<QualityFilterValue>) => void
+  includedOrgTiers: Set<OrgQualityValue>
+  onOrgTiersChange: (next: Set<OrgQualityValue>) => void
+  isDefault: boolean
+  onReset: () => void
 }) {
-  const [open, setOpen] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
-
-  useClickOutsideClose(open, wrapRef, () => setOpen(false))
-
-  const toggle = (did: string) => {
-    const next = new Set(selected)
-    if (next.has(did)) next.delete(did)
-    else next.add(did)
-    onChange(next)
+  function toggled<T>(set: Set<T>, value: T): Set<T> {
+    const next = new Set(set)
+    if (next.has(value)) next.delete(value)
+    else next.add(value)
+    return next
   }
-
-  const resetToDefault = () => {
-    onChange(new Set(TRUSTED_EVALUATOR_DIDS))
-  }
-
-  const partial = selected.size !== TRUSTED_EVALUATOR_DIDS.length
 
   return (
-    <div className="home-feed__filter" ref={wrapRef}>
-      <Tooltip label="Trusted-evaluator settings">
-        <button
-          type="button"
-          className={`home-feed__filter-btn${partial ? " home-feed__filter-btn--active" : ""}`}
-          onClick={() => setOpen((v) => !v)}
-          aria-haspopup="true"
-          aria-expanded={open}
-          aria-label="Trusted-evaluator settings"
-        >
-          <UserCheck size={14} strokeWidth={1.75} aria-hidden />
-        </button>
-      </Tooltip>
-      {open ? (
-        <div className="home-feed__filter-pop home-feed__filter-pop--evaluators" role="dialog" aria-label="Trusted evaluators">
-          <p className="home-feed__filter-help">
-            Show activities from accounts that are endorsed by:
-          </p>
-          <ul className="home-feed__filter-list">
-            {TRUSTED_EVALUATOR_DIDS.map((did) => (
-              <li key={did}>
-                <EvaluatorOption
-                  did={did}
-                  checked={selected.has(did)}
-                  onToggle={() => toggle(did)}
-                />
-              </li>
-            ))}
-          </ul>
-          <button
-            type="button"
-            className="home-feed__filter-reset"
-            onClick={resetToDefault}
-            disabled={!partial}
-          >
-            Reset to default
-          </button>
-        </div>
-      ) : null}
+    <div
+      className="feed-evaluator-panel"
+      role="region"
+      aria-label="Feed filters"
+    >
+      <p className="feed-evaluator-panel__heading">
+        Show activities from accounts that are endorsed by:
+      </p>
+      <div className="feed-evaluators__list">
+        {TRUSTED_EVALUATOR_DIDS.map((did) => (
+          <EvaluatorRow
+            key={did}
+            did={did}
+            checked={selectedEvaluators.has(did)}
+            onToggle={() =>
+              onEvaluatorsChange(toggled(selectedEvaluators, did))
+            }
+          />
+        ))}
+      </div>
+      <div className="feed-evaluators__separator" aria-hidden="true" />
+      <p className="feed-evaluator-panel__heading">Activity quality</p>
+      <div className="feed-evaluators__list">
+        {HYPERLABEL_DISPLAY_ORDER.map((tier) => (
+          <FilterCheckRow
+            key={tier}
+            label={HYPERLABEL_DISPLAY_LABELS[tier]}
+            checked={includedTiers.has(tier)}
+            onToggle={() => onTiersChange(toggled(includedTiers, tier))}
+          />
+        ))}
+        <FilterCheckRow
+          label="Not labeled yet"
+          checked={includedTiers.has(UNLABELED_SLUG)}
+          onToggle={() => onTiersChange(toggled(includedTiers, UNLABELED_SLUG))}
+        />
+      </div>
+      <div className="feed-evaluators__separator" aria-hidden="true" />
+      <p className="feed-evaluator-panel__heading">Organization quality</p>
+      <div className="feed-evaluators__list">
+        {ORGLABEL_DISPLAY_ORDER.map((tier) => (
+          <FilterCheckRow
+            key={tier}
+            label={ORGLABEL_DISPLAY_LABELS[tier]}
+            checked={includedOrgTiers.has(tier)}
+            onToggle={() => onOrgTiersChange(toggled(includedOrgTiers, tier))}
+          />
+        ))}
+        <FilterCheckRow
+          label="Not labeled yet"
+          checked={includedOrgTiers.has(UNLABELED_SLUG)}
+          onToggle={() =>
+            onOrgTiersChange(toggled(includedOrgTiers, UNLABELED_SLUG))
+          }
+        />
+      </div>
+      <div className="feed-evaluators__separator" aria-hidden="true" />
+      <button
+        type="button"
+        className="feed-evaluator-panel__reset"
+        onClick={onReset}
+        disabled={isDefault}
+      >
+        Reset to default
+      </button>
     </div>
   )
 }
 
-function EvaluatorOption({
+function FilterCheckRow({
+  label,
+  checked,
+  onToggle,
+}: {
+  label: string
+  checked: boolean
+  onToggle: () => void
+}) {
+  return (
+    <label className="feed-evaluators__row">
+      <input
+        type="checkbox"
+        className="feed-evaluators__checkbox"
+        checked={checked}
+        onChange={onToggle}
+      />
+      <span className="feed-evaluators__name">{label}</span>
+    </label>
+  )
+}
+
+/**
+ * One trusted-evaluator row — checkbox + avatar + display name +
+ * @handle, the whole row a click-to-toggle label (certs.social's
+ * EvaluatorCheckbox layout). Selecting an evaluator pulls every DID
+ * they've endorsed into the effective follow set, so the feed shows
+ * transitively-vouched activity.
+ */
+function EvaluatorRow({
   did,
   checked,
   onToggle,
@@ -501,29 +621,36 @@ function EvaluatorOption({
   onToggle: () => void
 }) {
   const { info } = useAuthorInfo(did)
-  const label = info?.displayName || (info?.handle ? `@${info.handle}` : did.slice(0, 14) + "…")
-  const initials = getInitials(info?.displayName, did)
-  const profileHref = profileUrl(info?.handle || did)
+  const label =
+    info?.displayName ||
+    (info?.handle ? `@${info.handle}` : did.slice(0, 14) + "…")
   return (
-    <div className="home-feed__evaluator-row">
+    <label className="feed-evaluators__row">
       <input
-        id={`eval-${did}`}
         type="checkbox"
-        className="home-feed__evaluator-check"
+        className="feed-evaluators__checkbox"
         checked={checked}
         onChange={onToggle}
         aria-label={`Include endorsements by ${label}`}
       />
-      <Link href={profileHref} className="home-feed__evaluator-link">
-        <Avatar
-          size="sm"
-          src={info?.avatarUrl ?? undefined}
+      {info?.avatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={info.avatarUrl}
           alt=""
-          fallbackInitials={initials}
+          className="feed-evaluators__avatar"
+          width={24}
+          height={24}
+          onError={hideBrokenThumb}
         />
-        <span className="home-feed__evaluator-name">{label}</span>
-      </Link>
-    </div>
+      ) : (
+        <span className="feed-evaluators__avatar feed-evaluators__avatar--placeholder" />
+      )}
+      <span className="feed-evaluators__name">{label}</span>
+      {info?.displayName && info?.handle ? (
+        <span className="feed-evaluators__handle">@{info.handle}</span>
+      ) : null}
+    </label>
   )
 }
 
@@ -584,13 +711,12 @@ function FeedCardHead({
         />
       </Link>
       <div className="home-feed__card-head-meta">
+        {/* Row 1: display name + relative time pinned right. The
+            @handle gets its own second row below the name. */}
         <p className="home-feed__byline">
           <Link href={profileHref} className="home-feed__actor">
             {actorName}
           </Link>
-          {actorHandle ? (
-            <span className="home-feed__handle">@{actorHandle}</span>
-          ) : null}
           <time
             className="home-feed__time"
             dateTime={createdAt}
@@ -599,6 +725,9 @@ function FeedCardHead({
             {formatRelativeTime(createdAt)}
           </time>
         </p>
+        {actorHandle ? (
+          <p className="home-feed__handle">@{actorHandle}</p>
+        ) : null}
         <p className="home-feed__sentence">{action}</p>
       </div>
     </header>
