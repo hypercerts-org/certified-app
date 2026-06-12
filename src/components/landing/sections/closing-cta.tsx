@@ -11,7 +11,7 @@ export default function ClosingCta() {
     <section className="lp-section lp-closing" aria-labelledby="lp-closing-title">
       <div className="lp-section__inner lp-closing__inner">
         <h2 id="lp-closing-title" className="lp-h2 lp-closing__title">
-          Start with your email
+          Your record starts here
         </h2>
         <HeroCta />
       </div>
