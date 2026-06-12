@@ -711,13 +711,12 @@ function FeedCardHead({
         />
       </Link>
       <div className="home-feed__card-head-meta">
+        {/* Row 1: display name + relative time pinned right. The
+            @handle gets its own second row below the name. */}
         <p className="home-feed__byline">
           <Link href={profileHref} className="home-feed__actor">
             {actorName}
           </Link>
-          {actorHandle ? (
-            <span className="home-feed__handle">@{actorHandle}</span>
-          ) : null}
           <time
             className="home-feed__time"
             dateTime={createdAt}
@@ -726,6 +725,9 @@ function FeedCardHead({
             {formatRelativeTime(createdAt)}
           </time>
         </p>
+        {actorHandle ? (
+          <p className="home-feed__handle">@{actorHandle}</p>
+        ) : null}
         <p className="home-feed__sentence">{action}</p>
       </div>
     </header>

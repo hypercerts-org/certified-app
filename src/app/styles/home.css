@@ -290,15 +290,19 @@
 @media (max-width: 799px) {
   /* Zero the shell's 16px reading gutter for the home page — the feed
      carries its own (small) gutter below, so cards run nearly
-     edge-to-edge like a native social timeline. Specificity (three
-     classes via :has) beats the components.css mobile gutter rule. */
+     edge-to-edge like a native social timeline. Top padding drops to
+     the bare navbar offset: the "For you" tab strip sits right under
+     the bar (its buttons carry 14px internal padding of their own).
+     Specificity (three classes via :has) beats the components.css
+     mobile gutter rule. */
   .app-shell:has(.home-page) .app-shell__content {
+    padding-top: var(--navbar-height);
     padding-left: 0;
     padding-right: 0;
   }
   .home__main {
     /* Just a small side gutter on a phone so the feed gets the room. */
-    padding: 12px 8px 32px;
+    padding: 0 8px 32px;
   }
 }
 
@@ -388,10 +392,12 @@
   display: grid;
   /* Avatar column sized to the Avatar component's "sm" intrinsic
      (32px) so the actor icon renders at the same diameter on every
-     card regardless of whether the profile lookup has resolved yet. */
+     card regardless of whether the profile lookup has resolved yet.
+     Top-aligned — the meta column is three lines tall (name+time /
+     @handle / sentence), so the avatar pins to the name line. */
   grid-template-columns: 32px minmax(0, 1fr);
   gap: 10px;
-  align-items: center;
+  align-items: start;
 }
 
 .home-feed__avatar {
@@ -400,6 +406,7 @@
   display: inline-flex;
   text-decoration: none;
   flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .home-feed__card-head-meta {
@@ -409,7 +416,7 @@
   min-width: 0;
 }
 
-/* Name + @handle on one baseline, relative time pinned right. */
+/* Row 1: display name, relative time pinned right. */
 .home-feed__byline {
   margin: 0;
   display: flex;
@@ -432,8 +439,11 @@
   text-decoration: underline;
 }
 
+/* Row 2: the @handle on its own line under the name. */
 .home-feed__handle {
+  margin: 0;
   font-size: 0.8125rem;
+  line-height: 1.3;
   color: var(--fg-muted);
   white-space: nowrap;
   overflow: hidden;
