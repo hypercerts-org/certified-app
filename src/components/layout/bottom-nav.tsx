@@ -13,11 +13,16 @@ export default function BottomNav() {
   const router = useRouter();
   const { openFeedback } = useFeedback();
   const { activeOrg } = useOrg();
-  const { isDesktop } = useLayoutBreakpoints();
+  const { isDesktop, isStandalone } = useLayoutBreakpoints();
 
   // Unmount at ≥800px — the left rail is the primary nav on desktop and
   // bottom-nav's focusable buttons would compete for tab order.
   if (isDesktop) return null;
+
+  // Only show in installed / standalone mode (PWA or A2HS web clip).
+  // In a regular browser tab the address bar and OS gestures provide
+  // navigation; the bar also occludes content on /welcome for guests.
+  if (!isStandalone) return null;
 
   const isHome = pathname === "/home" || pathname.startsWith("/home/");
 
