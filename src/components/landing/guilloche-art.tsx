@@ -2,7 +2,7 @@
  * GuillocheArt — the hero artwork: an engine-turned guilloche rosette,
  * the ornament of banknotes and certificates. Three tonal zones, as on
  * a real plate: an airy outer annulus of offset rings, a woven mid
- * flower of counter-twisted loops, and a dense dark core braid. Each
+ * flower of counter-twisted loops, and a quiet core braid. Each
  * zone is ONE path stamped as rotated copies (defs + use), so ink
  * density does the shading — no gradients, currentColor only (the
  * .lp-hero__art wrapper sets color: var(--color-navy), which flips
@@ -51,8 +51,7 @@ function scallopPath(base: number, amp: number, lobes: number, points = 200): st
 const RING_COPIES = 28; // outer annulus
 const LOOP_A_COPIES = 16; // mid flower, twisted +
 const LOOP_B_COPIES = 12; // mid flower, twisted - (counter-weave)
-const CORE_OUTER_COPIES = 12; // core braid, phase-spread inside one lobe
-const CORE_INNER_COPIES = 10;
+const CORE_COPIES = 12; // core braid, phase-spread inside one lobe
 
 export default function GuillocheArt() {
   return (
@@ -63,8 +62,7 @@ export default function GuillocheArt() {
           <circle id="lpg-ring" cx={CX} cy={CY - 215} r={155} />
           <path id="lpg-loop-a" d={twistedLoopPath(250, 56, 0.58)} />
           <path id="lpg-loop-b" d={twistedLoopPath(232, 48, -0.66)} />
-          <path id="lpg-core-outer" d={scallopPath(96, 16, 10)} />
-          <path id="lpg-core-inner" d={scallopPath(56, 10, 12)} />
+          <path id="lpg-core" d={scallopPath(96, 16, 10)} />
         </defs>
 
         {/* Containment rings — the plate's frame */}
@@ -114,35 +112,24 @@ export default function GuillocheArt() {
           ))}
         </g>
 
-        {/* Zone C: dense dark core braid */}
+        {/* Zone C: quiet core braid */}
         <g className="lp-guilloche__layer lp-guilloche__layer--core">
-          {Array.from({ length: CORE_OUTER_COPIES }, (_, i) => (
+          {Array.from({ length: CORE_COPIES }, (_, i) => (
             <use
               key={i}
-              href="#lpg-core-outer"
-              transform={`rotate(${(i * 36) / CORE_OUTER_COPIES} ${CX} ${CY})`}
+              href="#lpg-core"
+              transform={`rotate(${(i * 36) / CORE_COPIES} ${CX} ${CY})`}
               stroke="currentColor"
-              strokeWidth={0.9}
-              opacity={0.5}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-          {Array.from({ length: CORE_INNER_COPIES }, (_, i) => (
-            <use
-              key={`i${i}`}
-              href="#lpg-core-inner"
-              transform={`rotate(${(i * 30) / CORE_INNER_COPIES} ${CX} ${CY})`}
-              stroke="currentColor"
-              strokeWidth={1}
-              opacity={0.7}
+              strokeWidth={0.7}
+              opacity={0.26}
               vectorEffect="non-scaling-stroke"
             />
           ))}
         </g>
 
         {/* The account at the center */}
-        <circle cx={CX} cy={CY} r={22} stroke="currentColor" strokeWidth={1.25} opacity={0.85} />
-        <circle cx={CX} cy={CY} r={3} fill="currentColor" opacity={0.9} />
+        <circle cx={CX} cy={CY} r={22} stroke="currentColor" strokeWidth={1} opacity={0.5} />
+        <circle cx={CX} cy={CY} r={3} fill="currentColor" opacity={0.7} />
       </svg>
     </div>
   );
