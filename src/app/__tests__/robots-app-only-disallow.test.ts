@@ -7,8 +7,8 @@ import robots from "@/app/robots"
  * AGENTS.md §18 mandates app-only pages stay out of the index. Since auth
  * is fully client-side (no middleware), the unauthenticated shells of
  * /home, /explore and /activity render a 200 that Googlebot can
- * index. Cover them via robots.ts disallow (the client-component routes
- * /activity and /notifications cannot export `metadata`).
+ * index. Cover them via robots.ts disallow (the client-component route
+ * /activity cannot export `metadata`).
  */
 describe("robots.ts disallow covers app-only surfaces", () => {
   const rules = robots().rules

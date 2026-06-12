@@ -1199,7 +1199,7 @@
 }
 
 /* ---------------- Response controls (Phase 2: accept/reject) ----------------
-   - response-buttons: loud, inline. Used on /notifications rows.
+   - response-buttons: loud, inline. Used on incoming-endorsement rows.
    - response-menu:    quiet kebab + dropdown. Used on profile / endorsements
                        audit-surface rows where the row owner is browsing.
 */
