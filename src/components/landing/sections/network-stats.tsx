@@ -5,9 +5,7 @@ import { useNetworkCounts } from "@/hooks/use-network-counts"
 
 /**
  * Five live network-wide counters on the /welcome landing page —
- * Users / Organizations / Projects / Activities / Endorsements, the
- * last marked with a footnote asterisk (endorsements only just
- * shipped).
+ * Users / Organizations / Projects / Activities / Endorsements.
  *
  * Cells render `—` while the indexer fetch is in flight and on
  * per-op failure; otherwise the formatted count with
@@ -27,7 +25,6 @@ export default function NetworkStats() {
     key: string
     label: string
     value: number | null
-    isNew?: boolean
   }[] = [
     { key: "users", label: "Users", value: counts.users },
     {
@@ -37,12 +34,7 @@ export default function NetworkStats() {
     },
     { key: "projects", label: "Projects", value: counts.projects },
     { key: "achievements", label: "Activities", value: counts.achievements },
-    {
-      key: "endorsements",
-      label: "Endorsements",
-      value: counts.endorsements,
-      isNew: true,
-    },
+    { key: "endorsements", label: "Endorsements", value: counts.endorsements },
   ]
 
   return (
@@ -71,22 +63,11 @@ export default function NetworkStats() {
                 data-loading={item.value === null}
               >
                 <AnimatedCount value={item.value} delayMs={index * STAGGER_MS} />
-                {item.isNew ? (
-                  <span className="lp-stats__star" aria-hidden="true">
-                    *
-                  </span>
-                ) : null}
               </span>
-              <span className="lp-stats__label">
-                {item.label}
-                {item.isNew ? <span className="sr-only"> (new)</span> : null}
-              </span>
+              <span className="lp-stats__label">{item.label}</span>
             </li>
           ))}
         </ul>
-        <p className="lp-stats__footnote" aria-hidden="true">
-          * new
-        </p>
       </div>
     </section>
   )

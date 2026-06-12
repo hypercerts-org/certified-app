@@ -767,25 +767,11 @@
   color: var(--fg-muted);
 }
 
-.lp-stats__star {
-  font-size: 0.5em;
-  vertical-align: super;
-  margin-left: 2px;
-  color: var(--color-mid-gray);
-}
-
 .lp-stats__label {
   font-size: 0.6875rem;
   font-weight: 500;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--color-mid-gray);
-}
-
-.lp-stats__footnote {
-  margin: 24px 0 0;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
   color: var(--color-mid-gray);
 }
 

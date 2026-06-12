@@ -24,6 +24,11 @@ export const FAQ_ITEMS = [
       "Yes. Your data is portable — you can export it or simply stop using the service at any time.",
   },
   {
+    question: "Is Certified only for environmental work?",
+    answer:
+      "No. Our founding community works in ecological regeneration — that's why many early profiles are land and climate projects — but accounts, records, and endorsements work the same way for any impact domain.",
+  },
+  {
     question: "What apps support Certified?",
     answer:
       "Currently Ma Earth, GainForest, Silvi, Simocracy, and Hyperboards. More apps are joining over time.",
