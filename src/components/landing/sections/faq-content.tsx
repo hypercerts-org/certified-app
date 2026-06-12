@@ -11,7 +11,7 @@ export const FAQ_ITEMS = [
   {
     question: "What if I already have an account on a partner app?",
     answer:
-      "On supported apps you can connect Certified to the account you already have. From then on, the work you do there is saved to your record.",
+      "On supported apps you can connect Certified to the account you already have. From then on, the work you do there is saved to your record. It doesn't matter where you first signed up: it's the same account, and it works everywhere.",
   },
   {
     question: "What does it cost?",
