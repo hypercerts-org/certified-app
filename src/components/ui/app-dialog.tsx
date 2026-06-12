@@ -229,12 +229,22 @@ export default function AppDialog({
     // browsers that throw for a non-spec reason also fall through
     // silently rather than tearing down the consumer.
     if (!dialog.open) {
+      // `showModal()` moves focus into the dialog, and because the
+      // dialog's position is authored as `relative` (overriding the
+      // UA's fixed top-layer placement) the browser's
+      // scroll-into-view on that focus yanks the page to the top —
+      // visible whenever a modal is opened from far down a page
+      // (e.g. the landing band's contact CTA). Pin the scroll
+      // position across the call.
+      const scrollX = window.scrollX
+      const scrollY = window.scrollY
       try {
         dialog.showModal()
       } catch {
         // swallow — modal stays closed but the rest of the app
         // keeps running.
       }
+      window.scrollTo(scrollX, scrollY)
     }
     const handleClose = () => onCloseRef.current()
     dialog.addEventListener("close", handleClose)

@@ -65,7 +65,10 @@ export default function FeedbackModal() {
     if (isOpen) {
       setEmailError("")
       setError("")
-      setTimeout(() => textareaRef.current?.focus(), 100)
+      // preventScroll: focusing inside the top-layer dialog must not
+      // scroll the page behind it (see the showModal note in
+      // app-dialog.tsx).
+      setTimeout(() => textareaRef.current?.focus({ preventScroll: true }), 100)
     }
   }, [isOpen])
 
