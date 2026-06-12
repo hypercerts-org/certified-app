@@ -11,19 +11,19 @@
  */
 export const CURATED_PROFILES = [
   {
-    did: "did:plc:3y55aw6kplu5caauknqy2etx", // nature-for-mangrov.certified.one
-    fallbackName: "Nature for Mangroves",
-    tagline: "Restoring mangrove forests — and the livelihoods they hold up — in Sierra Leone.",
+    did: "did:plc:pktwukejt6bnubpkhldnaeyc", // bees-and-trees-uga.certified.one
+    fallbackName: "Bees and Trees Uganda",
+    tagline: "Environmental education with smallholder farmers in the Mt. Elgon region of Uganda.",
   },
   {
-    did: "did:plc:6cwyx6ivt4oi7aasxqpylawg", // earth-guardia-99nn.certified.one
-    fallbackName: "Earth Guardians",
-    tagline: "Roots, canopy, and community — restoring the Tagba rainforest.",
+    did: "did:plc:7zu5w6ofrl6ha5ooykapptwe", // brave-earth-p3he.certified.one
+    fallbackName: "Tierra Valiente (Brave Earth)",
+    tagline: "Food sovereignty and community resilience in San Juan, Costa Rica.",
   },
   {
-    did: "did:plc:kpi5b3kbhu3gx5sg22gyxi56", // mangaroa-farm-q7hs.certified.one
-    fallbackName: "Mangaroa Farms",
-    tagline: "Building food systems and native forests in Mangaroa, Aotearoa.",
+    did: "did:plc:uuvfp7xadcud56pjxbka26lc", // rifai-sicilia.certified.one
+    fallbackName: "Rifai Sicilia",
+    tagline: "Regenerating Sicilian ecology through bioregional commons development.",
   },
 ] as const;
 

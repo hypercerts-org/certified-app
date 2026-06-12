@@ -29,7 +29,7 @@ export default function ExploreProfiles({ profiles }: { profiles: FeaturedProfil
             Browse projects, people, and organizations across the network.
             Follow the ones you care about.
           </p>
-          <Link href="/explore" className="lp-link">
+          <Link href="/explore" target="_blank" rel="noopener noreferrer" className="lp-link">
             Explore the network <LpArrow />
           </Link>
         </header>
@@ -45,6 +45,8 @@ export default function ExploreProfiles({ profiles }: { profiles: FeaturedProfil
               <Link
                 key={curated.did}
                 href={profileUrl(actor)}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="lp-explore__row"
               >
                 <Avatar
