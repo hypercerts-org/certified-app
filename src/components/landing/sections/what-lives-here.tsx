@@ -35,7 +35,7 @@ const ITEMS = [
   {
     num: "03",
     title: "Your supporters",
-    body: "Endorsements from partners, funders, and organizations that know your work. Signed, checkable, and attached to the work itself — not to a website that might disappear.",
+    body: "Endorsements from partners, funders, and organizations that know your work. Signed, checkable, and attached to the work itself — not to a platform that controls it.",
     glyph: (
       // Endorsers connected to each other, one countersigned.
       <svg viewBox="0 0 64 64" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">

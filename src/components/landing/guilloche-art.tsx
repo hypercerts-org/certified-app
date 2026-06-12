@@ -1,16 +1,31 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+
 /**
- * GuillocheArt — the hero artwork: an engine-turned guilloche rosette,
- * the ornament of banknotes and certificates. An airy outer annulus of
- * offset rings and a woven mid flower of counter-twisted loops, framed
- * by containment rings, open at the center mark. Each zone is ONE path
- * stamped as rotated copies (defs + use), so ink density does the
- * shading — no gradients, currentColor only (the .lp-hero__art wrapper
- * sets color: var(--color-navy), which flips with the theme).
+ * GuillocheArt — the hero artwork: an engine-turned guilloche plate,
+ * the ornament of banknotes and certificates, tilted into perspective
+ * and coupled to the page scroll (the winner of the June 2026 variant
+ * exploration: "Scroll 3D").
  *
- * The moving effect: the layer groups counter-rotate at different
- * speeds, and short "wanderer" segments lap along the stamped
- * outlines (CSS, .lp-guilloche__* in landing.css). The global
- * reduced-motion kill-switch freezes everything into a static plate.
+ * The plate continuously morphs through three patterns — ring field ->
+ * loop rosette -> star — via SMIL path interpolation (every shape is
+ * sampled with the same point count so the d structures match). Each
+ * pattern zone is ONE path stamped as rotated copies (defs + use), so
+ * ink density does the shading: currentColor hairlines at opacity
+ * tiers, no gradients (the .lp-hero__art wrapper sets color:
+ * var(--color-navy), which flips with the theme). During the star
+ * passage the rotated fan alone would read as a braid, so a nested
+ * star swirl cross-fades in while the fan recedes.
+ *
+ * Motion: the layer groups counter-rotate (CSS), "wanderer" segments
+ * with comet-dot heads lap along the stamped outlines, and the 3D rig
+ * is scrubbed by scroll — spin 0.3deg/px, tilt 38deg -> 62deg cap
+ * (rAF-throttled listener feeding CSS vars; see .lp-guilloche--3d in
+ * landing.css). Reduced motion: the CSS kill-switch freezes the
+ * rotations/wanderers, and this component additionally pauses the
+ * SMIL morph and skips the scroll listener, leaving a static tilted
+ * plate.
  */
 
 const CX = 400;
@@ -35,16 +50,103 @@ function twistedLoopPath(reach: number, waist: number, twist: number, points = 1
   return d + "Z";
 }
 
-const RING_COPIES = 28; // outer annulus
-const LOOP_A_COPIES = 16; // mid flower, twisted +
-const LOOP_B_COPIES = 12; // mid flower, twisted - (counter-weave)
+/** Closed scalloped ring r(t) = base + amp*sin(lobes*t). */
+function scallopPath(base: number, amp: number, lobes: number, points = 200): string {
+  let d = "";
+  for (let i = 0; i <= points; i++) {
+    const t = (i / points) * Math.PI * 2;
+    const r = base + amp * Math.sin(lobes * t);
+    const x = CX + r * Math.cos(t);
+    const y = CY + r * Math.sin(t);
+    d += (i === 0 ? "M" : "L") + x.toFixed(1) + " " + y.toFixed(1);
+  }
+  return d + "Z";
+}
+
+/** Plain circle of radius r centered offsetY above the plate center,
+ *  sampled like the other generators so it can SMIL-morph into them. */
+function offsetRingPath(r: number, offsetY: number, points = 200): string {
+  let d = "";
+  for (let i = 0; i <= points; i++) {
+    const t = (i / points) * Math.PI * 2;
+    const x = CX + r * Math.cos(t);
+    const y = CY + offsetY + r * Math.sin(t);
+    d += (i === 0 ? "M" : "L") + x.toFixed(1) + " " + y.toFixed(1);
+  }
+  return d + "Z";
+}
+
+const FLOW_DUR = "60s";
+const FLOW_KEYTIMES = "0;0.333;0.667;1";
+
+/** One continuous linear lap through the three shapes (same point
+ *  count each — SMIL d interpolation requires matching structures). */
+function MorphPath({ id, shapes }: { id: string; shapes: string[] }) {
+  const values = [shapes[0], shapes[1], shapes[2], shapes[0]].join(";");
+  return (
+    <path id={id} d={shapes[0]} pathLength={100}>
+      <animate
+        attributeName="d"
+        dur={FLOW_DUR}
+        repeatCount="indefinite"
+        values={values}
+        keyTimes={FLOW_KEYTIMES}
+      />
+    </path>
+  );
+}
+
+/** Opacity ride along the cycle: one value per keyTime. */
+function CycleFade({ values }: { values: string }) {
+  return (
+    <animate
+      attributeName="opacity"
+      dur={FLOW_DUR}
+      repeatCount="indefinite"
+      values={values}
+      keyTimes={FLOW_KEYTIMES}
+    />
+  );
+}
+
+function Layer({
+  dur,
+  reverse = false,
+  children,
+}: {
+  dur: number;
+  reverse?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <g
+      className="lp-guilloche__layer"
+      style={{ animationDuration: `${dur}s`, animationDirection: reverse ? "reverse" : "normal" }}
+    >
+      {children}
+    </g>
+  );
+}
+
+function stamps(href: string, copies: number, spreadDeg: number, opacity: (i: number) => number) {
+  return Array.from({ length: copies }, (_, i) => (
+    <use
+      key={i}
+      href={href}
+      transform={`rotate(${(i * spreadDeg) / copies} ${CX} ${CY})`}
+      stroke="currentColor"
+      strokeWidth={0.7}
+      opacity={opacity(i)}
+      vectorEffect="non-scaling-stroke"
+    />
+  ));
+}
 
 /**
  * A short bright segment that travels along one of the stamped
  * outlines (dash-offset lap around the normalized path), with a small
  * round dot riding its leading edge. Rendered INSIDE the same rotating
- * layer group and at the same rotation as an existing copy, so it
- * stays glued to the line it traces.
+ * layer group, so it stays glued to the line it traces.
  *
  * The dot is a point-length dash on a second use of the same path,
  * phase-shifted by the segment length so it sits at the front (the
@@ -102,75 +204,121 @@ function Wanderer({
   );
 }
 
+const OUTER_SHAPES = [
+  offsetRingPath(135, -230, 200),
+  twistedLoopPath(335, 62, 0.58, 200),
+  scallopPath(230, 105, 6, 200),
+];
+const INNER_SHAPES = [
+  offsetRingPath(110, -245, 200),
+  twistedLoopPath(272, 54, -0.66, 200),
+  scallopPath(130, 60, 6, 200),
+];
+const STAR_PATH = scallopPath(150, 70, 6, 280);
+const NEST_SCALES = Array.from({ length: 11 }, (_, i) => 0.22 + i * 0.123);
+const COUNTER_SCALES = Array.from({ length: 5 }, (_, i) => 0.28 + i * 0.11);
+const FAN_FADE = "1;1;0.3;1";
+const NEST_FADE = "0;0;1;0";
+
 export default function GuillocheArt() {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      // The CSS kill-switch freezes the rotations; SMIL needs its own
+      // brake, and the scroll scrubbing stays off — a static plate.
+      el.querySelectorAll("svg").forEach((svg) => svg.pauseAnimations());
+      return;
+    }
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const y = window.scrollY;
+      el.style.setProperty("--lpg-scroll-spin", `${(y * 0.3).toFixed(2)}deg`);
+      el.style.setProperty("--lpg-scroll-tilt", `${Math.min(38 + y / 9, 62).toFixed(2)}deg`);
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+
   return (
-    <div className="lp-guilloche" aria-hidden="true">
-      <svg viewBox="0 0 800 800" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          {/* Offset ring: annulus from ~60 to ~370 without touching the core.
-              pathLength=100 normalizes dash math for the wanderers; it has
-              no effect on the plain (non-dashed) stamped copies. */}
-          <circle id="lpg-ring" cx={CX} cy={CY - 215} r={155} pathLength={100} />
-          <path id="lpg-loop-a" d={twistedLoopPath(282, 56, 0.58)} pathLength={100} />
-          <path id="lpg-loop-b" d={twistedLoopPath(232, 48, -0.66)} pathLength={100} />
-        </defs>
+    <div ref={ref} className="lp-guilloche lp-guilloche--3d" aria-hidden="true">
+      <div className="lp-g3d-tilt">
+        <div className="lp-g3d-spin">
+          <div className="lp-guilloche__plate">
+            <svg viewBox="0 0 800 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <MorphPath id="lpg-outer" shapes={OUTER_SHAPES} />
+                <MorphPath id="lpg-inner" shapes={INNER_SHAPES} />
+                <path id="lpg-star" d={STAR_PATH} pathLength={100} />
+              </defs>
 
-        {/* Containment rings — the plate's frame */}
-        <circle cx={CX} cy={CY} r={372} stroke="currentColor" strokeWidth={0.75} opacity={0.16} vectorEffect="non-scaling-stroke" />
-        <circle cx={CX} cy={CY} r={380} stroke="currentColor" strokeWidth={0.75} opacity={0.1} vectorEffect="non-scaling-stroke" />
+              {/* Containment rings — the plate's frame */}
+              <circle cx={CX} cy={CY} r={372} stroke="currentColor" strokeWidth={0.75} opacity={0.16} vectorEffect="non-scaling-stroke" />
+              <circle cx={CX} cy={CY} r={380} stroke="currentColor" strokeWidth={0.75} opacity={0.1} vectorEffect="non-scaling-stroke" />
 
-        {/* Zone A: airy outer annulus */}
-        <g className="lp-guilloche__layer lp-guilloche__layer--rings">
-          {Array.from({ length: RING_COPIES }, (_, i) => (
-            <use
-              key={i}
-              href="#lpg-ring"
-              transform={`rotate(${(i * 360) / RING_COPIES} ${CX} ${CY})`}
-              stroke="currentColor"
-              strokeWidth={0.7}
-              opacity={i % 2 === 0 ? 0.17 : 0.12}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-          <Wanderer href="#lpg-ring" rotate={(3 * 360) / RING_COPIES} dur={26} delay={-4} />
-          <Wanderer href="#lpg-ring" rotate={(12 * 360) / RING_COPIES} dur={34} delay={-19} reverse />
-          <Wanderer href="#lpg-ring" rotate={(21 * 360) / RING_COPIES} dur={30} delay={-11} />
-        </g>
+              {/* Morphing fan — outer and inner counter-rotating zones */}
+              <Layer dur={190}>
+                <CycleFade values={FAN_FADE} />
+                {stamps("#lpg-outer", 24, 360, (i) => (i % 2 === 0 ? 0.17 : 0.12))}
+                <Wanderer href="#lpg-outer" rotate={15} dur={30} delay={-8} />
+                <Wanderer href="#lpg-outer" rotate={105} dur={34} delay={-16} reverse />
+                <Wanderer href="#lpg-outer" rotate={195} dur={38} delay={-21} reverse />
+              </Layer>
+              <Layer dur={130} reverse>
+                <CycleFade values={FAN_FADE} />
+                {stamps("#lpg-inner", 16, 360, () => 0.2)}
+                <Wanderer href="#lpg-inner" rotate={45} dur={26} delay={-13} dash={6} reverse />
+                <Wanderer href="#lpg-inner" rotate={225} dur={34} delay={-3} dash={6} />
+              </Layer>
 
-        {/* Zone B: woven mid flower — two counter-twisted, counter-rotating layers */}
-        <g className="lp-guilloche__layer lp-guilloche__layer--loops-a">
-          {Array.from({ length: LOOP_A_COPIES }, (_, i) => (
-            <use
-              key={i}
-              href="#lpg-loop-a"
-              transform={`rotate(${(i * 360) / LOOP_A_COPIES} ${CX} ${CY})`}
-              stroke="currentColor"
-              strokeWidth={0.7}
-              opacity={0.22}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-          <Wanderer href="#lpg-loop-a" rotate={(2 * 360) / LOOP_A_COPIES} dur={32} delay={-9} dash={6} />
-          <Wanderer href="#lpg-loop-a" rotate={(9 * 360) / LOOP_A_COPIES} dur={42} delay={-27} dash={6} reverse />
-          <Wanderer href="#lpg-loop-a" rotate={(13 * 360) / LOOP_A_COPIES} dur={37} delay={-2} dash={6} />
-        </g>
-        <g className="lp-guilloche__layer lp-guilloche__layer--loops-b">
-          {Array.from({ length: LOOP_B_COPIES }, (_, i) => (
-            <use
-              key={i}
-              href="#lpg-loop-b"
-              transform={`rotate(${(i * 360) / LOOP_B_COPIES} ${CX} ${CY})`}
-              stroke="currentColor"
-              strokeWidth={0.7}
-              opacity={0.18}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-          <Wanderer href="#lpg-loop-b" rotate={(4 * 360) / LOOP_B_COPIES} dur={36} delay={-14} dash={6} reverse />
-          <Wanderer href="#lpg-loop-b" rotate={(10 * 360) / LOOP_B_COPIES} dur={28} delay={-22} dash={6} />
-        </g>
-
-      </svg>
+              {/* The nested star swirl, cross-fading in around the star passage */}
+              <Layer dur={200}>
+                <CycleFade values={NEST_FADE} />
+                {NEST_SCALES.map((s, i) => (
+                  <use
+                    key={i}
+                    href="#lpg-star"
+                    transform={`rotate(${i * 4} ${CX} ${CY}) translate(${(CX * (1 - s)).toFixed(1)} ${(CY * (1 - s)).toFixed(1)}) scale(${s.toFixed(4)})`}
+                    stroke="currentColor"
+                    strokeWidth={0.7}
+                    opacity={0.4 - i * 0.025}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                ))}
+                <Wanderer href="#lpg-star" rotate={0} dur={28} delay={-7} dash={8} />
+                <Wanderer href="#lpg-star" rotate={120} dur={34} delay={-19} dash={8} reverse />
+                <Wanderer href="#lpg-star" rotate={240} dur={31} delay={-12} dash={8} />
+              </Layer>
+              <Layer dur={160} reverse>
+                <CycleFade values={NEST_FADE} />
+                <Wanderer href="#lpg-star" rotate={30} dur={26} delay={-4} dash={6} reverse />
+                <Wanderer href="#lpg-star" rotate={210} dur={36} delay={-23} dash={6} />
+                {COUNTER_SCALES.map((s, i) => (
+                  <use
+                    key={i}
+                    href="#lpg-star"
+                    transform={`rotate(${30 + i * 5} ${CX} ${CY}) translate(${(CX * (1 - s)).toFixed(1)} ${(CY * (1 - s)).toFixed(1)}) scale(${s.toFixed(4)})`}
+                    stroke="currentColor"
+                    strokeWidth={0.7}
+                    opacity={0.3 - i * 0.03}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                ))}
+              </Layer>
+            </svg>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

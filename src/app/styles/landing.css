@@ -220,30 +220,19 @@
 /* ---------- Guilloche artwork (hero) ---------- */
 
 .lp-guilloche,
-.lp-guilloche svg {
+.lp-guilloche svg,
+.lp-guilloche__plate {
   width: 100%;
   height: 100%;
   display: block;
 }
 
 /* Counter-rotating layers give the engine-turned moire its slow
-   shimmer; the global reduced-motion kill-switch freezes them. */
+   shimmer (duration + direction set inline per layer); the global
+   reduced-motion kill-switch freezes them. */
 .lp-guilloche__layer {
   transform-origin: 400px 400px;
   animation: lpSealRotate linear infinite;
-}
-
-.lp-guilloche__layer--rings {
-  animation-duration: 240s;
-}
-
-.lp-guilloche__layer--loops-a {
-  animation-duration: 150s;
-}
-
-.lp-guilloche__layer--loops-b {
-  animation-duration: 110s;
-  animation-direction: reverse;
 }
 
 /* Short bright segments lapping along the stamped outlines
@@ -273,6 +262,27 @@
 .lp-guilloche__wander-dot {
   animation-timing-function: linear;
   animation-iteration-count: infinite;
+}
+
+/* 3D rig: the plate sits in perspective; tilt and coin-spin are
+   scrubbed by scroll (the GuillocheArt listener feeds the vars).
+   At rest: 38deg tilt, no spin. */
+.lp-guilloche--3d {
+  perspective: 1100px;
+}
+
+.lp-g3d-tilt,
+.lp-g3d-spin {
+  width: 100%;
+  height: 100%;
+}
+
+.lp-g3d-tilt {
+  transform: rotateX(var(--lpg-scroll-tilt, 38deg)) scale(1.1);
+}
+
+.lp-g3d-spin {
+  transform: rotate(var(--lpg-scroll-spin, 0deg));
 }
 
 /* ---------- Hero ---------- */
@@ -403,15 +413,22 @@
     height: 34vh;
     overflow: hidden;
   }
-  .lp-hero__art .lp-seal,
-  .lp-hero__art .lp-seal svg,
   .lp-hero__art .lp-guilloche,
-  .lp-hero__art .lp-guilloche svg {
+  .lp-hero__art .lp-guilloche svg,
+  .lp-hero__art .lp-g3d-tilt,
+  .lp-hero__art .lp-g3d-spin,
+  .lp-hero__art .lp-guilloche__plate {
     height: auto;
   }
-  .lp-hero__art .lp-seal,
   .lp-hero__art .lp-guilloche {
     margin-top: -8%;
+  }
+  /* The perspective tilt fights the cropped band — flat plate here.
+     (Scroll scrubbing goes dormant with it; the morph + wanderers
+     still carry the motion.) */
+  .lp-hero__art .lp-g3d-tilt,
+  .lp-hero__art .lp-g3d-spin {
+    transform: none;
   }
   .lp-hero__actions {
     flex-direction: column;
