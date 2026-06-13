@@ -963,23 +963,22 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
   // `isOrganization` filter, so the result list paginates over
   // a single kind without the old client-side intersect's silent
   // truncation past the first 200 org DIDs.
+  // Search is server-side (indexer typeahead over displayName / handle /
+  // description — magic-indexer#204), so matches across the whole network
+  // surface on the first page rather than only once Load more pulls a
+  // matching page into memory (the old per-page client-side filter bug).
   const page = await fetchNetworkActors({
     first: PAGE_SIZE,
     after: cursor,
     isOrganization: subToIsOrganization(sub),
+    search,
     signal: signal ?? undefined,
   })
-  let actors = page.actors
-  if (search.trim().length > 0) {
-    const q = search.trim().toLowerCase()
-    actors = actors.filter(
-      (a) =>
-        (a.displayName ?? "").toLowerCase().includes(q) ||
-        (a.description ?? "").toLowerCase().includes(q) ||
-        a.did.includes(q),
-    )
-  }
-  actors = await applyOrgExcludeFilter(actors, excludeOrgLabels ?? null, signal)
+  const actors = await applyOrgExcludeFilter(
+    page.actors,
+    excludeOrgLabels ?? null,
+    signal,
+  )
   return {
     ...EMPTY_PAGE,
     users: actors,

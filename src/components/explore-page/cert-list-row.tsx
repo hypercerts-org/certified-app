@@ -1,6 +1,5 @@
 "use client"
 
-import { MapPin } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import {
@@ -9,25 +8,20 @@ import {
 } from "@/lib/atproto/activity"
 import { activityDetailHref, parseActivityUri } from "@/lib/atproto/activity-uri"
 import { formatShortDate } from "@/lib/utils/format-date"
-import type { EndorsementClosureAccount } from "@/lib/atproto/indexer"
 import ExploreListRow from "./explore-list-row"
 
 /**
- * Dense single-row representation of a cert for the /explore list
- * view. Resolves cert-shaped fields (title, period, work scope,
- * location flag, author) and hands them to `<ExploreListRow>`, which
- * owns the actual JSX scaffolding shared with `<ProjectListRow>`.
+ * Dense single-row representation of a cert. Shows only the image (or a
+ * placeholder), the activity title, the time period, and the work scope
+ * — no author/date columns (the compact ExploreListRow variant), so the
+ * row spans the full width. Used by /explore and the project detail page.
  */
 export default function CertListRow({
   record,
   did,
-  endorsementMeta,
 }: {
   record: ActivityRecord
   did: string
-  /** Closure-graph metadata for the cert AUTHOR's DID, when the
-   *  active explore filter is endorsement-based (#84). */
-  endorsementMeta?: EndorsementClosureAccount
 }) {
   const { value } = record
   const imageUrl = value.image
@@ -41,23 +35,11 @@ export default function CertListRow({
 
   const period = formatTimePeriod(value.startDate ?? null, value.endDate ?? null)
   const scope = evaluateWorkScope(value.workScope)
-  const hasLocation = Array.isArray(value.locations) && value.locations.length > 0
 
-  // Meta is `[period?, scope?, locationIcon?]` joined by `·`. The
-  // location segment is just the icon — certs don't surface a
-  // location *name* in this row variant (the detail page does).
-  const metaItems = [
-    period,
-    scope,
-    hasLocation ? (
-      <MapPin
-        size={12}
-        strokeWidth={1.75}
-        aria-label="Has location"
-        className="cert-list-row__meta-icon"
-      />
-    ) : null,
-  ].filter((m): m is NonNullable<typeof m> => m !== null && m !== undefined)
+  // Time period + work scope only, joined by `·`.
+  const metaItems = [period, scope].filter(
+    (m): m is string => typeof m === "string" && m.length > 0,
+  )
 
   return (
     <ExploreListRow
@@ -73,9 +55,9 @@ export default function CertListRow({
       }
       title={value.title}
       metaItems={metaItems}
-      authorDid={did}
-      endorsementMeta={endorsementMeta}
-      timestampIso={value.createdAt}
+      authorDid={null}
+      timestampIso={null}
+      compact
     />
   )
 }

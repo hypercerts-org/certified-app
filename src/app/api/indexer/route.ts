@@ -315,8 +315,8 @@ ${ACTIVITY_NODE_SELECTION}
   // most-recently-indexed profiles so the actor switcher has
   // something to show even before the user has interacted.
   NetworkActors: `
-    query NetworkActors($first: Int!, $after: String) {
-      appCertifiedActorProfile(first: $first, after: $after) {
+    query NetworkActors($first: Int!, $after: String, $search: String) {
+      appCertifiedActorProfile(first: $first, after: $after, search: $search) {
         totalCount
         edges {
           cursor
@@ -359,10 +359,12 @@ ${ACTIVITY_NODE_SELECTION}
       $first: Int!
       $after: String
       $isOrganization: Boolean!
+      $search: String
     ) {
       appCertifiedActorProfile(
         first: $first
         after: $after
+        search: $search
         where: { isOrganization: { eq: $isOrganization } }
       ) {
         totalCount
@@ -1246,7 +1248,13 @@ function buildVariables(
         search: readString(vars.search, MAX_SEARCH_LEN),
       }
     }
-    case "NetworkActors":
+    case "NetworkActors": {
+      return {
+        first: clampFirst(vars.first, MAX_FIRST, 20),
+        after: readString(vars.after, MAX_AFTER_LEN),
+        search: readString(vars.search, MAX_SEARCH_LEN),
+      }
+    }
     case "OrganizationDids": {
       return {
         first: clampFirst(vars.first, MAX_FIRST, 20),
@@ -1262,6 +1270,7 @@ function buildVariables(
         first: clampFirst(vars.first, MAX_FIRST, 20),
         after: readString(vars.after, MAX_AFTER_LEN),
         isOrganization: vars.isOrganization,
+        search: readString(vars.search, MAX_SEARCH_LEN),
       }
     }
     case "OrganizationDidsByLabel": {
