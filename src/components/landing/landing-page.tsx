@@ -8,6 +8,7 @@ import ExploreProfiles, {
 } from "@/components/landing/sections/explore-profiles";
 import NetworkStats from "@/components/landing/sections/network-stats";
 import Trust from "@/components/landing/sections/trust";
+import AiWorld from "@/components/landing/sections/ai-world";
 import OrganizationsStrip from "@/components/landing/sections/organizations-strip";
 import FaqSection from "@/components/landing/sections/faq-content";
 import ClosingCta from "@/components/landing/sections/closing-cta";
@@ -40,6 +41,7 @@ export default async function LandingPage() {
       <Hero />
       <WhatLivesHere />
       <MayaWalkthrough />
+      <AiWorld />
       <PartnerApps />
       <ExploreProfiles profiles={profiles} />
       <NetworkStats />

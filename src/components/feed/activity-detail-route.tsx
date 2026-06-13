@@ -1,13 +1,11 @@
 "use client"
 
 import { useEffect } from "react"
-import { usePageTitleBreadcrumb } from "@/lib/navbar-context"
 import { useActivity } from "@/hooks/use-activity"
 import ActivityDetail from "@/components/feed/activity-detail"
 import ErrorMessage from "@/components/ui/error-message"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
-import { profileUrl, recordUrl } from "@/lib/urls"
 
 /**
  * Activity (cert) detail body, rendered by the handle-forward record route
@@ -36,16 +34,6 @@ export default function ActivityDetailRoute({
     if (activity?.uri) trackRecentlyViewed("cert", activity.uri)
   }, [activity?.uri])
 
-  const certTitle = activity?.value.title ?? null
-  usePageTitleBreadcrumb(
-    handle && certTitle && rkey
-      ? {
-          left: { text: handle, href: profileUrl(handle) },
-          right: { text: certTitle, href: recordUrl(handle, "activity", rkey) },
-        }
-      : null,
-  )
-
   if (resolving || isLoading) {
     return (
       <div className="cert-detail-page">
@@ -73,6 +61,7 @@ export default function ActivityDetailRoute({
         did={activity.did}
         value={activity.value}
         cid={activity.cid}
+        handle={handle}
       />
     </div>
   )

@@ -1,12 +1,10 @@
 "use client"
 
 import { useEffect } from "react"
-import { usePageTitle, usePageTitleBreadcrumb } from "@/lib/navbar-context"
 import { useProject } from "@/hooks/use-project"
 import ProjectDetail from "@/components/project/project-detail"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
-import { profileUrl, recordUrl } from "@/lib/urls"
 
 /**
  * Project detail body, rendered by the handle-forward record route
@@ -27,9 +25,6 @@ export default function ProjectDetailRoute({
   rkey: string | null
   resolving: boolean
 }) {
-  // Plain-string fallback while author/project data is still resolving.
-  usePageTitle("Project")
-
   const { project, isLoading, error } = useProject(did, rkey)
 
   // Recently-viewed: record the at:// URI once the project resolves so
@@ -37,19 +32,6 @@ export default function ProjectDetailRoute({
   useEffect(() => {
     if (project?.uri) trackRecentlyViewed("project", project.uri)
   }, [project?.uri])
-
-  const projectTitle =
-    (typeof project?.value.title === "string" && project.value.title) ||
-    (typeof project?.value.name === "string" && project.value.name) ||
-    null
-  usePageTitleBreadcrumb(
-    handle && projectTitle && rkey
-      ? {
-          left: { text: handle, href: profileUrl(handle) },
-          right: { text: projectTitle, href: recordUrl(handle, "project", rkey) },
-        }
-      : null,
-  )
 
   if (resolving || isLoading) {
     return (
@@ -84,6 +66,7 @@ export default function ProjectDetailRoute({
         rkey={rkey}
         value={project.value}
         cid={project.cid}
+        handle={handle}
       />
     </div>
   )

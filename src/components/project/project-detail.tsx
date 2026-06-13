@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { profileUrl, recordUrl } from "@/lib/urls"
+import { usePageTitle, usePageRecordMenu } from "@/lib/navbar-context"
 import Link from "next/link"
+import { TransitionLink } from "@/lib/view-transitions"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
@@ -14,9 +16,9 @@ import {
 } from "@/components/ui/popover"
 import { authFetch } from "@/lib/auth/fetch"
 import {
-  ChevronRight,
   FolderGit2,
   Inbox,
+  MapPin,
   MoreVertical,
   Pencil,
   Plus,
@@ -25,7 +27,7 @@ import {
 import ActivityAuthor from "@/components/feed/activity-author"
 import ActivityCard from "@/components/feed/activity-card"
 import ActivityContributor from "@/components/feed/activity-contributor"
-import FeedLayout from "@/components/feed/feed-layout"
+import CertLocationsMap from "@/components/feed/cert-locations-map"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
 import EditBanner from "@/components/ui/edit-banner"
 import EmptyState from "@/components/ui/empty-state"
@@ -41,6 +43,9 @@ import ContextUpdates from "@/components/context/context-updates"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useProjectItems } from "@/hooks/use-project-items"
+import { useContextUpdates } from "@/hooks/use-context-updates"
+import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
+import CertListRow from "@/components/explore-page/cert-list-row"
 import {
   resolveActivityImageUrl,
 } from "@/lib/atproto/activity"
@@ -49,8 +54,6 @@ import { InvalidSwapError } from "@/lib/atproto/repo-write"
 import { saveWithSwap } from "@/lib/atproto/save-with-swap"
 import { saveDraft } from "@/lib/utils/swap-drafts"
 import { uploadBlob, type UploadedBlob } from "@/lib/atproto/profile"
-import { parseAtUri } from "@/lib/atproto/activity-uri"
-import { splitLocationName } from "@/lib/atproto/location"
 import { asLinearDocument, isEmptyLongDescription } from "@/lib/leaflet/guards"
 import { formatShortDate } from "@/lib/utils/format-date"
 import type { LinearDocument } from "@/lib/leaflet/types"
@@ -68,7 +71,7 @@ import type { BlobRef } from "@atproto/api"
  *  wraps to two rows (still a compact summary). The "See all" link
  *  in the section header takes the user to the dedicated Certs tab
  *  for the full grid. */
-const OVERVIEW_CERT_PREVIEW = 3
+const OVERVIEW_CERT_PREVIEW = 10
 
 interface ProjectDetailProps {
   did: string
@@ -78,6 +81,8 @@ interface ProjectDetailProps {
    *  `swapRecord` so a concurrent edit in another tab can't silently
    *  clobber this save (issue #71). */
   cid: string
+  /** Resolved handle, for the navbar breadcrumb (overview tab). */
+  handle: string | null
 }
 
 function asString(v: unknown): string | null {
@@ -156,6 +161,7 @@ export default function ProjectDetail({
   rkey,
   value,
   cid,
+  handle,
 }: ProjectDetailProps) {
   // Edit-eligibility mirrors `activity-detail.tsx:165-184`.
   const { did: sessionDid, isAuthenticated } = useAuth()
@@ -279,6 +285,45 @@ export default function ProjectDetail({
       ? normalizedTab
       : "overview"
 
+  // Updates count for the navbar title on the Updates tab. Fetched only
+  // on that tab (null subjectUri = no fetch elsewhere).
+  const { updates: navUpdates } = useContextUpdates(
+    activeTab === "updates"
+      ? `at://${did}/org.hypercerts.collection/${rkey}`
+      : null,
+  )
+
+  // Navbar title: sub-tabs show the tab name next to the back arrow; the
+  // overview shows the project's own name. (We deliberately don't prefix
+  // it with the author handle — the mobile bar is too narrow to show both,
+  // and the name is the useful identifier.)
+  usePageTitle(
+    activeTab === "description"
+      ? "Description"
+      : activeTab === "updates"
+        ? navUpdates.length > 0
+          ? `Updates (${navUpdates.length})`
+          : "Updates"
+        : activeTab === "activities"
+          ? Array.isArray(value.items) && value.items.length > 0
+            ? `Activities (${value.items.length})`
+            : "Activities"
+          : title || "Project",
+  )
+  // Record-level overflow menu in the mobile navbar's right slot (Share /
+  // Add to list / Copy AT URI). Reads as page-level chrome instead of an
+  // action on the author. Desktop keeps the in-body menu (lead row).
+  usePageRecordMenu(
+    rkey
+      ? {
+          targetUri: `at://${did}/org.hypercerts.collection/${rkey}`,
+          targetCid: cid,
+          targetType: LIST_PROJECTS_TYPE,
+          shareTab: activeTab === "overview" ? null : activeTab,
+        }
+      : null,
+  )
+
   /** Build a URL pointing at another subtab on this page —
    *  preserves any other query params the user might be carrying
    *  (rare today; future-proof). Returns null when pathname isn't
@@ -340,11 +385,8 @@ export default function ProjectDetail({
   // `location` persists as a `com.atproto.repo.strongRef` ({ uri, cid })
   // pointing at an `app.certified.location` record (see create / edit
   // pages). `asString` returns null for that object, so the legacy
-  // string path stays inline while the strongRef is resolved to its
-  // place name in the effect below — mirroring the edit page's
-  // hydration (parse at:// → getRecord → splitLocationName). The
-  // object shape is never rendered directly, so `[object Object]` can't
-  // leak into the Location row.
+  // string path stays inline; the strongRef is handed straight to
+  // CertLocationsMap, which resolves and renders the coordinates.
   const rawLocation = (effectiveValue as Record<string, unknown>).location
   const inlineLocation = asString(rawLocation)
   const locationRef =
@@ -353,49 +395,15 @@ export default function ProjectDetail({
       : null
   const locationRefUri =
     typeof locationRef?.uri === "string" ? locationRef.uri : null
-  const [resolvedLocationName, setResolvedLocationName] = useState<
-    string | null
-  >(null)
-
-  useEffect(() => {
-    // Legacy string locations render inline; nothing to resolve.
-    if (inlineLocation || !locationRefUri) {
-      setResolvedLocationName(null)
-      return
-    }
-    const parsed = parseAtUri(locationRefUri)
-    const fallback = locationRefUri.split("/").pop() || locationRefUri
-    if (!parsed) {
-      setResolvedLocationName(fallback)
-      return
-    }
-    let aborted = false
-    const qs = new URLSearchParams({
-      repo: parsed.did,
-      collection: parsed.collection,
-      rkey: parsed.rkey,
-    })
-    authFetch(`/api/xrpc/com/atproto/repo/getRecord?${qs.toString()}`)
-      .then(async (res) => {
-        if (aborted) return
-        if (!res.ok) {
-          setResolvedLocationName(fallback)
-          return
-        }
-        const data = (await res.json()) as { value?: { name?: string } }
-        const raw = data.value?.name?.trim() ?? ""
-        const split = splitLocationName(raw)
-        setResolvedLocationName(split.name || raw || fallback)
-      })
-      .catch(() => {
-        if (!aborted) setResolvedLocationName(fallback)
-      })
-    return () => {
-      aborted = true
-    }
-  }, [inlineLocation, locationRefUri])
-
-  const location = inlineLocation ?? resolvedLocationName
+  const locationCid =
+    typeof locationRef?.cid === "string" ? locationRef.cid : ""
+  // A resolvable location record renders the SAME interactive map the
+  // activity detail page uses — CertLocationsMap takes the strongRef and
+  // resolves the coordinates itself. Legacy inline-string locations have
+  // no record to map, so they fall back to a plain text value.
+  const locationStrongRefs = locationRefUri
+    ? [{ uri: locationRefUri, cid: locationCid }]
+    : []
 
   const contributors = Array.isArray(
     (effectiveValue as Record<string, unknown>).contributors,
@@ -440,11 +448,14 @@ export default function ProjectDetail({
   }
 
   const certCount = resolutions.length
+  // Phones show the activities preview as full-width list rows (the
+  // explore list view); desktop keeps the card grid.
+  const { isDesktop } = useLayoutBreakpoints()
   // Date created lives ABOVE the meta aside now (rendered inline
   // below the head bar, no card chrome) so it isn't part of the
   // aside's empty-state check.
-  const hasAnyMeta =
-    !!timePeriodLabel || !!location || contributors.length > 0
+  const hasAnyMeta = !!timePeriodLabel || contributors.length > 0
+  const hasLocation = !!locationRefUri || !!inlineLocation
 
   const handleEditClick = useCallback(() => {
     const linear =
@@ -924,16 +935,32 @@ export default function ProjectDetail({
         />
       ) : null}
 
-      <article className="project-detail project-detail--wide">
+      <article
+        className={`project-detail project-detail--wide project-detail--tab-${activeTab}${editing ? " project-detail--editing" : ""}`}
+      >
         {/* Persistent head bar — same shape on every tab:
               Title (left) ── Byline + Edit button (right)
             Title editing lives here too (input replaces h1 while
             editing) so the user can rename from any tab. */}
         <header className="project-detail__head-bar">
           <div className="project-detail__head-title-group">
-            <span className="project-detail__eyebrow" aria-hidden="true">
-              Project
-            </span>
+            <div className="project-detail__eyebrow-row">
+              <span className="project-detail__eyebrow" aria-hidden="true">
+                Project
+              </span>
+              {/* Mobile: date created (no label) trails the eyebrow,
+                  right-aligned. Hidden on desktop, where it shows in the
+                  inline-created row below the hero. */}
+              {createdAt ? (
+                <time
+                  className="project-detail__eyebrow-date"
+                  dateTime={createdAt}
+                  title={createdAt}
+                >
+                  {formatShortDate(createdAt)}
+                </time>
+              ) : null}
+            </div>
             {editing ? (
               <input
                 ref={titleInputRef}
@@ -954,7 +981,9 @@ export default function ProjectDetail({
             )}
           </div>
           <div className="project-detail__head-actions">
-            <ActivityAuthor did={did} />
+            <span className="project-detail__head-author">
+              <ActivityAuthor did={did} />
+            </span>
             {!editing && (isOwner || editAsGroup) ? (
               <>
                 {isOwner ? (
@@ -998,6 +1027,15 @@ export default function ProjectDetail({
             ) : null}
           </div>
         </header>
+
+        {/* Mobile-only byline: author shown right under the title. (The
+            date created sits on the eyebrow row above; the record menu
+            now lives in the navbar — usePageRecordMenu.) Desktop keeps
+            the author in the head bar and the menu in the lead row, both
+            hidden on mobile via CSS. Rendered on every tab. */}
+        <div className="project-detail__byline">
+          <ActivityAuthor did={did} />
+        </div>
 
         {/* Overview-only: hero banner + short description + the
             "more" link. Hidden on Description / Certs so those tabs
@@ -1081,30 +1119,37 @@ export default function ProjectDetail({
                 }
                 rows={2}
               />
-            ) : (
-              <div className="project-detail__lead-row">
-                {shortDesc ? (
-                  <p className="project-detail__lead">{shortDesc}</p>
-                ) : (
-                  <span className="project-detail__lead project-detail__lead--empty" />
-                )}
-                <AddToListMenu
-                  targetUri={`at://${did}/org.hypercerts.collection/${rkey}`}
-                  targetCid={cid}
-                  targetType={LIST_PROJECTS_TYPE}
-                />
-              </div>
-            )}
-
-            {showFullDescription && descriptionHref ? (
-              <Link
-                href={descriptionHref}
-                scroll={false}
-                className="cert-detail__read-more"
-              >
-                Read full description
-                <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
-              </Link>
+            ) : shortDesc || showFullDescription ? (
+              <section className="project-detail__summary">
+                {/* Section header in the same style as "Activities in this
+                    project" / "Updates": title left, action link right. */}
+                <div className="project-detail__certs-header">
+                  <h2 className="project-detail__certs-title">Summary</h2>
+                  {showFullDescription && descriptionHref ? (
+                    <TransitionLink
+                      href={descriptionHref}
+                      className="project-detail__see-all"
+                    >
+                      Read full description →
+                    </TransitionLink>
+                  ) : null}
+                </div>
+                <div className="project-detail__lead-row">
+                  {shortDesc ? (
+                    <p className="project-detail__lead">{shortDesc}</p>
+                  ) : (
+                    <span className="project-detail__lead project-detail__lead--empty" />
+                  )}
+                  {/* Desktop only — on mobile the menu moves to the byline. */}
+                  <span className="project-detail__lead-menu">
+                    <AddToListMenu
+                      targetUri={`at://${did}/org.hypercerts.collection/${rkey}`}
+                      targetCid={cid}
+                      targetType={LIST_PROJECTS_TYPE}
+                    />
+                  </span>
+                </div>
+              </section>
             ) : null}
           </>
         ) : null}
@@ -1127,13 +1172,6 @@ export default function ProjectDetail({
                 </div>
               ) : null}
 
-              {location ? (
-                <div className="project-detail__meta-row">
-                  <span className="project-detail__meta-label">Location</span>
-                  <span className="project-detail__meta-value">{location}</span>
-                </div>
-              ) : null}
-
               {contributors.length > 0 ? (
                 <div className="project-detail__meta-row project-detail__meta-row--wide">
                   <span className="project-detail__meta-label">
@@ -1153,6 +1191,28 @@ export default function ProjectDetail({
               ) : null}
             </aside>
           ) : null}
+
+          {/* Location — same interactive map the activity detail page
+              uses. A resolvable location record maps; a legacy inline
+              string shows as plain text. */}
+          {hasLocation ? (
+            <section
+              className="project-detail__location-section"
+              aria-label="Location"
+            >
+              <span className="cert-detail__meta-label">
+                <MapPin size={11} strokeWidth={2} aria-hidden />
+                Location
+              </span>
+              {locationRefUri ? (
+                <CertLocationsMap locations={locationStrongRefs} />
+              ) : (
+                <span className="project-detail__meta-value">
+                  {inlineLocation}
+                </span>
+              )}
+            </section>
+          ) : null}
           {/* Certs preview — up to one row (3 cards at widest
               viewport, fewer on narrower). When the project has
               more than the preview cap, a "See all" link points at
@@ -1169,38 +1229,46 @@ export default function ProjectDetail({
                 <span className="project-detail__certs-count">
                   {certCount}
                 </span>
-                {certCount > OVERVIEW_CERT_PREVIEW ? (
-                  <Link
-                    href={certsHref}
-                    replace
-                    className="project-detail__see-all"
-                  >
-                    See all →
-                  </Link>
-                ) : null}
+                <TransitionLink
+                  href={certsHref}
+                  replace
+                  className="project-detail__see-all"
+                >
+                  See all →
+                </TransitionLink>
               </div>
-              <div className="feed">
-                {resolvedActivities
-                  .slice(0, OVERVIEW_CERT_PREVIEW)
-                  .map((rec) => (
-                    <ActivityCard
-                      key={rec.uri}
-                      record={rec}
-                      did={didByUri.get(rec.uri) ?? did}
-                    />
-                  ))}
-              </div>
+              {isDesktop ? (
+                <div className="feed">
+                  {resolvedActivities
+                    .slice(0, OVERVIEW_CERT_PREVIEW)
+                    .map((rec) => (
+                      <ActivityCard
+                        key={rec.uri}
+                        record={rec}
+                        did={didByUri.get(rec.uri) ?? did}
+                      />
+                    ))}
+                </div>
+              ) : (
+                <ul className="project-detail__certs-list">
+                  {resolvedActivities
+                    .slice(0, OVERVIEW_CERT_PREVIEW)
+                    .map((rec) => (
+                      <li key={rec.uri}>
+                        <CertListRow
+                          record={rec}
+                          did={didByUri.get(rec.uri) ?? did}
+                        />
+                      </li>
+                    ))}
+                </ul>
+              )}
             </section>
           ) : null}
-          {!hasAnyMeta && certCount === 0 ? (
-            <p className="project-detail__tab-empty">
-              No additional details yet for this project.
-            </p>
-          ) : null}
-
           <ContextUpdates
             subjectUri={`at://${did}/org.hypercerts.collection/${rkey}`}
             variant="overview"
+            maxItems={1}
             seeAllHref={updatesHref}
           />
         </>
@@ -1355,23 +1423,26 @@ export default function ProjectDetail({
                 ))
               )}
             </div>
-          ) : (
-            <FeedLayout
-              activities={resolvedActivities}
-              getDid={(uri) => didByUri.get(uri) ?? did}
-              isLoading={itemsLoading && resolvedActivities.length === 0}
-              isLoadingMore={itemsLoading && resolvedActivities.length > 0}
-              error={null}
-              hasMore={false}
-              loadMore={() => {}}
-              emptyState={
-                <EmptyState
-                  icon={Inbox}
-                  title="No activities in this project yet"
-                  description="When activities are added to this project, they'll appear here."
-                />
-              }
+          ) : itemsLoading && resolvedActivities.length === 0 ? (
+            <p className="project-detail__certs-loading">Loading…</p>
+          ) : resolvedActivities.length === 0 ? (
+            <EmptyState
+              icon={Inbox}
+              title="No activities in this project yet"
+              description="When activities are added to this project, they'll appear here."
             />
+          ) : (
+            // Gallery view — activity cards in the explore grid.
+            <ul className="explore__grid explore__grid--certs">
+              {resolvedActivities.map((rec) => (
+                <li key={rec.uri}>
+                  <ActivityCard
+                    record={rec}
+                    did={didByUri.get(rec.uri) ?? did}
+                  />
+                </li>
+              ))}
+            </ul>
           )}
         </section>
         ) : null}

@@ -293,6 +293,11 @@
   }
 }
 
+.lp-topbar__home {
+  display: inline-flex;
+  align-items: center;
+}
+
 .lp-topbar__wordmark {
   display: block;
   height: 22px;
@@ -335,6 +340,17 @@
   .lp-topbar__btn:hover {
     color: var(--color-navy);
     border-color: var(--color-mid-gray);
+  }
+
+  /* Account variant: avatar + label, tighter left padding so the
+     avatar reads as the leading element. */
+  .lp-topbar__btn--account {
+    gap: 8px;
+    padding-left: 8px;
+  }
+
+  .lp-topbar__avatar {
+    flex: none;
   }
 }
 
@@ -1022,6 +1038,74 @@
     border-top: 1px solid var(--color-light-gray);
   }
   .lp-trust__col:first-child {
+    padding-top: 0;
+  }
+}
+
+/* ---------- AI world ---------- */
+
+.lp-ai__lede {
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: var(--color-mid-gray);
+  max-width: 56ch;
+  margin: 20px 0 0;
+}
+
+.lp-ai {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 32px;
+}
+
+.lp-ai__col {
+  border-left: 1px solid var(--color-light-gray);
+  padding-left: 32px;
+  transition:
+    opacity 600ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lp-ai__col:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+/* Reveal: armed hides the columns, shown releases them. The second
+   column trails the first for a left-then-right fade-up. */
+.lp-ai[data-anim="armed"] .lp-ai__col {
+  opacity: 0;
+  transform: translateY(28px);
+}
+
+.lp-ai[data-anim="shown"] .lp-ai__col {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.lp-ai__col:nth-child(2) {
+  transition-delay: 140ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-ai__col {
+    transition: none;
+  }
+}
+
+@media (max-width: 799px) {
+  .lp-ai {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .lp-ai__col {
+    border-left: 0;
+    padding: 28px 0;
+  }
+  .lp-ai__col + .lp-ai__col {
+    border-top: 1px solid var(--color-light-gray);
+  }
+  .lp-ai__col:first-child {
     padding-top: 0;
   }
 }

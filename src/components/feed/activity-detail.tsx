@@ -1,7 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { profileUrl, recordUrl } from "@/lib/urls"
+import { usePageTitle, usePageRecordMenu } from "@/lib/navbar-context"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
@@ -9,7 +10,6 @@ import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { authFetch } from "@/lib/auth/fetch"
 import {
   Calendar,
-  ChevronRight,
   FileText,
   MapPin,
   Pencil,
@@ -40,6 +40,7 @@ import EditBanner from "@/components/ui/edit-banner"
 import Tooltip from "@/components/ui/tooltip"
 import { useCertProjects } from "@/hooks/use-cert-projects"
 import { useAuthorInfo } from "@/hooks/use-author-info"
+import { TransitionLink } from "@/lib/view-transitions"
 import LeafletDocument, {
   isRenderableDescription,
 } from "@/components/leaflet/leaflet-document"
@@ -73,6 +74,8 @@ interface ActivityDetailProps {
    *  `swapRecord` so a concurrent edit in another tab can't silently
    *  clobber this save (issue #71). */
   cid: string
+  /** Resolved handle, for the navbar breadcrumb (overview tab). */
+  handle: string | null
 }
 
 /**
@@ -159,6 +162,7 @@ export default function ActivityDetail({
   did,
   value,
   cid,
+  handle,
 }: ActivityDetailProps) {
   const baseImageUrl = value.image
     ? resolveActivityImageUrl(value.image, did)
@@ -224,6 +228,35 @@ export default function ActivityDetail({
     tabParam === "updates"
       ? tabParam
       : "overview"
+
+  // Navbar title: sub-tabs show the tab name next to the back arrow; the
+  // overview shows the activity's own name. (We deliberately don't prefix
+  // it with the author handle — the mobile bar is too narrow to show both,
+  // and the name is the useful identifier.)
+  usePageTitle(
+    activeTab === "description"
+      ? "Description"
+      : activeTab === "contributors"
+        ? contributorCount > 0
+          ? `Contributors (${contributorCount})`
+          : "Contributors"
+        : activeTab === "updates"
+          ? "Updates"
+          : value.title || "Activity",
+  )
+  // Record-level overflow menu in the mobile navbar's right slot (Share /
+  // Add to list / Copy AT URI). Reads as page-level chrome instead of an
+  // action on the author. Desktop keeps the in-body menu (time-period row).
+  usePageRecordMenu(
+    rkey
+      ? {
+          targetUri: `at://${did}/org.hypercerts.claim.activity/${rkey}`,
+          targetCid: cid,
+          targetType: LIST_CERTS_TYPE,
+          shareTab: activeTab === "overview" ? null : activeTab,
+        }
+      : null,
+  )
 
   // Edit affordance — the viewer can act on the cert when they're
   // signed in as the cert's creator. Two paths:
@@ -717,6 +750,23 @@ export default function ActivityDetail({
   // three tabs start their content at the same vertical position.
   const headline = (
     <header className="cert-detail__headline">
+      {/* Mobile: "Activity" eyebrow + date created (right-aligned) above
+          the title — mirrors the project page's "Project" eyebrow row.
+          Hidden on desktop, where the date shows in the headline columns. */}
+      <div className="cert-detail__eyebrow-row">
+        <span className="cert-detail__eyebrow" aria-hidden="true">
+          Activity
+        </span>
+        {value.createdAt ? (
+          <time
+            className="cert-detail__eyebrow-date"
+            dateTime={value.createdAt}
+            title={value.createdAt}
+          >
+            {createdAbsolute}
+          </time>
+        ) : null}
+      </div>
       <div className="cert-detail__title-row">
         {editing ? (
           // Bare/flush <Input> for the inline title edit. The detail
@@ -784,6 +834,8 @@ export default function ActivityDetail({
           </>
         ) : null}
       </div>
+      {/* No `action` here: on mobile the record menu lives in the navbar
+          (usePageRecordMenu), on desktop in the time-period row below. */}
       <CertHeadlineColumns
         did={did}
         rkey={rkey}
@@ -801,14 +853,33 @@ export default function ActivityDetail({
   // styled the same as the headline columns above (Date created /
   // Author / Project) so the section reads as another peer in the
   // overview's labelled-meta family.
-  const summaryHeading = (
-    <span className="cert-detail__meta-label">Summary</span>
+  // "Read full description" affordance — navigates to the Description
+  // tab as a real history entry, sliding the view right (Back reverses
+  // it). Styled like the project page's: a "See all"-style link on the
+  // Summary heading row, right-aligned.
+  const descriptionDisclosure =
+    showFullDescription && descriptionHref ? (
+      <TransitionLink
+        href={descriptionHref}
+        className="cert-detail__section-see-all"
+      >
+        Read full description →
+      </TransitionLink>
+    ) : null
+
+  // Summary heading row: label on the left, "Read full description" link
+  // on the right (same shape as the project page).
+  const summaryHead = (
+    <div className="cert-detail__summary-head">
+      <span className="cert-detail__meta-label">Summary</span>
+      {descriptionDisclosure}
+    </div>
   )
 
   const shortDescSection =
     activeTab !== "overview" ? null : editing ? (
-      <section className="cert-detail__section">
-        {summaryHeading}
+      <section className="cert-detail__section cert-detail__section--summary">
+        {summaryHead}
         <textarea
           className="cert-detail__short-desc-input"
           value={drafts.shortDescription}
@@ -822,40 +893,15 @@ export default function ActivityDetail({
         />
       </section>
     ) : effectiveValue.shortDescription ? (
-      <section className="cert-detail__section">
-        {summaryHeading}
+      <section className="cert-detail__section cert-detail__section--summary">
+        {summaryHead}
         <p className="cert-detail__short-desc">
           {effectiveValue.shortDescription}
         </p>
-        {/* `push`-mode link (no `replace`) so the description tab
-            becomes a real history entry — pressing the browser
-            Back button returns the viewer to the Overview tab.
-            The navbar's 2nd-row back button uses its own history
-            handler (in `lib/navbar-context`) and walks to whatever
-            page the viewer came from before the cert, not to a
-            tab within it. */}
-        {showFullDescription && descriptionHref ? (
-          <Link
-            href={descriptionHref}
-            scroll={false}
-            className="cert-detail__read-more"
-          >
-            Read full description
-            <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
-          </Link>
-        ) : null}
       </section>
-    ) : showFullDescription && descriptionHref ? (
-      <section className="cert-detail__section">
-        {summaryHeading}
-        <Link
-          href={descriptionHref}
-          scroll={false}
-          className="cert-detail__read-more"
-        >
-          Read full description
-          <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
-        </Link>
+    ) : descriptionDisclosure ? (
+      <section className="cert-detail__section cert-detail__section--summary">
+        {summaryHead}
       </section>
     ) : null
 
@@ -875,54 +921,65 @@ export default function ActivityDetail({
         />
       ) : null}
 
-      <article className="page-layout cert-detail--wide">
+      <article
+        className={`page-layout cert-detail--wide cert-detail--tab-${activeTab}${editing ? " cert-detail--editing" : ""}`}
+      >
       <aside className="cert-detail__aside" aria-label="Activity details">
-        <div
-          className={
-            editing
-              ? "cert-detail__image cert-detail__image--editing"
-              : "cert-detail__image"
-          }
-        >
-          {effectiveImageUrl && !imageFailed ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={effectiveImageUrl}
-              alt=""
-              className="cert-detail__image-img"
-              onError={() => setImageFailed(true)}
-            />
-          ) : (
-            <CertIcon
-              size={56}
-              strokeWidth={1.25}
-              className="cert-detail__image-placeholder-icon"
-              aria-hidden
-            />
-          )}
-          {editing ? (
-            <ImageEditOverlay
-              onFile={handleImageFile}
-              hasPending={!!pendingImageBlob}
-            />
-          ) : null}
-        </div>
+        {/* No placeholder in the read-only view: the image box renders
+            only when there's a real image (or in edit mode, where the
+            placeholder is the upload target). */}
+        {(effectiveImageUrl && !imageFailed) || editing ? (
+          <div
+            className={
+              editing
+                ? "cert-detail__image cert-detail__image--editing"
+                : "cert-detail__image"
+            }
+          >
+            {effectiveImageUrl && !imageFailed ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={effectiveImageUrl}
+                alt=""
+                className="cert-detail__image-img"
+                onError={() => setImageFailed(true)}
+              />
+            ) : (
+              <CertIcon
+                size={56}
+                strokeWidth={1.25}
+                className="cert-detail__image-placeholder-icon"
+                aria-hidden
+              />
+            )}
+            {editing ? (
+              <ImageEditOverlay
+                onFile={handleImageFile}
+                hasPending={!!pendingImageBlob}
+              />
+            ) : null}
+          </div>
+        ) : null}
 
         <dl className="cert-detail__meta">
           {/* "Created" lives in the headline byline now — no need to
               repeat it in the aside meta list. */}
-          <div className="cert-detail__meta-row">
+          <div className="cert-detail__meta-row cert-detail__meta-row--timeperiod">
             <dt className="cert-detail__meta-label cert-detail__meta-label--with-action">
               <span className="cert-detail__meta-label-text">
                 <Calendar size={11} strokeWidth={2} aria-hidden />
                 Time period
               </span>
               {rkey ? (
-                <AddToListMenu
-                  targetUri={`at://${did}/org.hypercerts.claim.activity/${rkey}`}
-                  targetCid={cid}
-                  targetType={LIST_CERTS_TYPE}
-                />
+                // Desktop only — on mobile the menu moves to the author row.
+                <span className="cert-detail__meta-menu">
+                  <AddToListMenu
+                    targetUri={`at://${did}/org.hypercerts.claim.activity/${rkey}`}
+                    targetCid={cid}
+                    targetType={LIST_CERTS_TYPE}
+                    shareTab={activeTab === "overview" ? null : activeTab}
+                  />
+                </span>
               ) : null}
             </dt>
             <dd className="cert-detail__meta-value">
@@ -968,7 +1025,7 @@ export default function ActivityDetail({
           </div>
 
           {editing || workScopeLabel ? (
-            <div className="cert-detail__meta-row">
+            <div className="cert-detail__meta-row cert-detail__meta-row--workscope">
               <dt className="cert-detail__meta-label">
                 <Target size={11} strokeWidth={2} aria-hidden />
                 Work scope
@@ -1009,41 +1066,43 @@ export default function ActivityDetail({
               top of the main column stays reserved for narrative
               content. NOT tab-gated: the aside is identical on every
               cert tab. */}
-          {contributorCount > 0 ? (
-            <div className="cert-detail__meta-row">
-              <dt className="cert-detail__meta-label">
-                <Users size={11} strokeWidth={2} aria-hidden />
-                Contributors
-                <span className="cert-detail__meta-count">
-                  {contributorCount}
-                </span>
-              </dt>
-              <dd className="cert-detail__meta-value">
-                {(() => {
-                  const ASIDE_CONTRIB_PREVIEW = 5
-                  const previewContributors = contributors.slice(
-                    0,
-                    ASIDE_CONTRIB_PREVIEW,
-                  )
-                  const hasMore = contributorCount > ASIDE_CONTRIB_PREVIEW
-                  const contributorsHref = pathname
-                    ? `${pathname}?tab=contributors`
-                    : null
-                  const hasAnyWeight = previewContributors.some(
-                    (c) => c.contributionWeight != null,
-                  )
-                  // Percentages are computed across the FULL
-                  // contributor list (not just the preview slice) so
-                  // the % column adds to 100 even when the aside
-                  // shows only the first 5 of N rows.
-                  const weightPercents = buildWeightPercents(contributors)
-                  return (
-                    <>
-                      {hasAnyWeight ? (
-                        <ContributorWeightHeader />
+          {contributorCount > 0
+            ? (() => {
+                const ASIDE_CONTRIB_PREVIEW = 5
+                const shown = contributors.slice(0, ASIDE_CONTRIB_PREVIEW)
+                const contributorsHref = pathname
+                  ? `${pathname}?tab=contributors`
+                  : null
+                const hasAnyWeight = shown.some(
+                  (c) => c.contributionWeight != null,
+                )
+                // Percentages computed across the FULL list so the %
+                // column adds to 100 even when only the first 5 show.
+                const weightPercents = buildWeightPercents(contributors)
+                return (
+                  <div className="cert-detail__meta-row cert-detail__meta-row--contributors">
+                    <dt className="cert-detail__meta-label cert-detail__meta-label--with-action">
+                      <span className="cert-detail__meta-label-text">
+                        <Users size={11} strokeWidth={2} aria-hidden />
+                        Contributors
+                        <span className="cert-detail__meta-count">
+                          {contributorCount}
+                        </span>
+                      </span>
+                      {contributorsHref ? (
+                        <TransitionLink
+                          href={contributorsHref}
+                          replace
+                          className="cert-detail__section-see-all"
+                        >
+                          See all →
+                        </TransitionLink>
                       ) : null}
+                    </dt>
+                    <dd className="cert-detail__meta-value">
+                      {hasAnyWeight ? <ContributorWeightHeader /> : null}
                       <ul className="cert-detail__contributors cert-detail__contributors--aside">
-                        {previewContributors.map((c, i) => {
+                        {shown.map((c, i) => {
                           const roleText = contributionRoleText(
                             c.contributionDetails,
                           )
@@ -1061,29 +1120,18 @@ export default function ActivityDetail({
                           )
                         })}
                       </ul>
-                      {hasMore && contributorsHref ? (
-                        <Link
-                          href={contributorsHref}
-                          scroll={false}
-                          replace
-                          className="cert-detail__aside-see-all"
-                        >
-                          Show all
-                        </Link>
-                      ) : null}
-                    </>
-                  )
-                })()}
-              </dd>
-            </div>
-          ) : null}
+                    </dd>
+                  </div>
+                )
+              })()
+            : null}
 
           {/* Rights row — sits at the bottom of the meta list. The
               other meta rows are quick scalar facts; Rights
               references an external record and reads as a
               less-frequent reference. */}
           {value.rights ? (
-            <div className="cert-detail__meta-row">
+            <div className="cert-detail__meta-row cert-detail__meta-row--rights">
               <dt className="cert-detail__meta-label">
                 <FileText size={11} strokeWidth={2} aria-hidden />
                 Rights
@@ -1139,7 +1187,7 @@ export default function ActivityDetail({
                 so the older full-width Projects section is gone — it
                 would have duplicated the headline Project column. */}
             {locations.length > 0 ? (
-              <section className="cert-detail__section">
+              <section className="cert-detail__section cert-detail__section--locations">
                 <span className="cert-detail__meta-label">
                   <MapPin size={11} strokeWidth={2} aria-hidden />
                   Locations
@@ -1474,18 +1522,22 @@ function CertHeadlineColumns({
   rkey,
   createdAt,
   formattedDate,
+  action,
 }: {
   did: string
   rkey: string | null
   createdAt: string
   formattedDate: string
+  /** Trailing control (the three-dot menu) shown on the author's row,
+   *  right-aligned, on mobile. */
+  action?: ReactNode
 }) {
   const { info, isLoading: authorLoading } = useAuthorInfo(did)
   const { projects } = useCertProjects(did, rkey)
 
   return (
     <div className="cert-detail__headline-cols">
-      <div className="cert-detail__headline-col">
+      <div className="cert-detail__headline-col cert-detail__headline-col--author">
         <span className="cert-detail__meta-label">Author</span>
         {authorLoading || !info ? (
           <span
@@ -1525,7 +1577,11 @@ function CertHeadlineColumns({
         )}
       </div>
 
-      <div className="cert-detail__headline-col">
+      {action ? (
+        <div className="cert-detail__headline-action">{action}</div>
+      ) : null}
+
+      <div className="cert-detail__headline-col cert-detail__headline-col--date">
         <span className="cert-detail__meta-label">Date created</span>
         <time
           dateTime={createdAt}

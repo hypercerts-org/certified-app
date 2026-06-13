@@ -314,24 +314,29 @@
     flex: 1 0 100%;
     min-width: 0;
   }
-  /* Second row: dropdown on the left, action cluster pushed to the right. */
+  /* Second row: dropdown on the left, action cluster pushed to the right.
+     Stretch the cluster to the row height so its icon buttons can match
+     the category pills (which set the line height). */
   .explore__chrome-actions {
     margin-left: auto;
     gap: 8px;
+    align-self: stretch;
   }
   .explore__chrome-btn {
     min-height: 44px;
     padding-top: 10px;
     padding-bottom: 10px;
   }
-  /* Mobile icon buttons: stretch to match the pill row height and
-     use aspect-ratio to stay square. Reset padding to avoid the
-     extra top/bottom from .explore__chrome-btn inflating the height. */
+  /* Mobile icon buttons (sort + filter): match the category pill's
+     height and stay square. Dropping the inherited 44px min-height lets
+     the cluster size to the pills (~30px); stretching to the cluster +
+     aspect-ratio then makes each icon a pill-height square. */
   .explore__chrome-btn--icon {
     align-self: stretch;
     aspect-ratio: 1 / 1;
     width: auto;
     height: auto;
+    min-height: 0;
     padding: 0;
   }
   /* The type dropdown trigger matches the 44px control height too. */
@@ -696,6 +701,17 @@
   background: var(--bg-sunken);
 }
 
+/* Compact variant (image + title/meta only, no author/date columns).
+   Compound selector so it beats both the base and the mobile
+   `.cert-list-row` grid rules regardless of source order. */
+.cert-list-row.cert-list-row--compact {
+  grid-template-columns: 1fr;
+  grid-template-areas: none;
+}
+.cert-list-row.cert-list-row--compact .cert-list-row__link {
+  grid-area: auto;
+}
+
 .cert-list-row__link {
   display: flex;
   align-items: center;
@@ -745,24 +761,22 @@
 
 .cert-list-row__meta {
   margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
+  /* Single line: time period · work scope, truncated with an ellipsis
+     when the work scope doesn't fit (no wrapping to a second line). */
   font-size: 0.75rem;
   color: var(--fg-secondary);
   line-height: 1.3;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cert-list-row__meta-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  white-space: nowrap;
+  display: inline;
 }
 
 .cert-list-row__meta-sep {
+  margin: 0 5px;
   color: var(--fg-muted);
 }
 
@@ -885,6 +899,17 @@
   .explore__grid--projects,
   .explore__grid--certs {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* On phones, drop the whole image *placeholder* box for
+     projects/activities that have no real image — including the grey
+     aspect-ratio wrapper that reserves the space, not just the icon.
+     Scoped to the explore grids so the shared activity card keeps its
+     placeholder on the home feed. Cards with a real image are untouched. */
+  .explore__grid--projects
+    .explore-project-card__image-wrap:has(.explore-project-card__image--placeholder),
+  .explore__grid--certs .feed-card__image-wrap--placeholder {
+    display: none;
   }
 }
 

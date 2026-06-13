@@ -84,10 +84,20 @@ export async function fetchNetworkActors(
      * subset of a mixed page.
      */
     isOrganization?: boolean
+    /**
+     * Server-side typeahead search over the actor's displayName,
+     * handle, and description (indexer-side unaccent + ILIKE — see
+     * magic-indexer#204). Empty / undefined returns the full list.
+     * Replaces the old per-page client-side filter that only matched
+     * whatever page was already loaded (certified-app /explore bug:
+     * "nothing found until you click Load more").
+     */
+    search?: string
     signal?: AbortSignal
   } = {},
 ): Promise<NetworkActorsPage> {
-  const { first = 30, after = null, isOrganization, signal } = opts
+  const { first = 30, after = null, isOrganization, search, signal } = opts
+  const searchVar = search && search.trim().length > 0 ? search.trim() : null
   // Two upstream operations: the unfiltered `NetworkActors`, and
   // `NetworkActorsByKind` which adds the `isOrganization` where-arg.
   // graphql-go rejects an explicit `null` on the `eq` operator, so
@@ -100,8 +110,8 @@ export async function fetchNetworkActors(
     body: JSON.stringify({
       operationName: useKindFilter ? "NetworkActorsByKind" : "NetworkActors",
       variables: useKindFilter
-        ? { first, after, isOrganization }
-        : { first, after },
+        ? { first, after, isOrganization, search: searchVar }
+        : { first, after, search: searchVar },
     }),
     signal,
   })

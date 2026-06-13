@@ -26,11 +26,33 @@ export interface PageTitleBreadcrumb {
   right?: PageTitleBreadcrumbPart;
 }
 
+/**
+ * Config for the record-level overflow menu (Share / Add to list / Copy
+ * AT URI) shown in the mobile navbar's right slot on detail pages. Stored
+ * as plain primitives (not a ReactNode) so the navbar can construct the
+ * `<AddToListMenu>` itself and the publishing hook's effect deps stay
+ * stable across renders.
+ */
+export interface PageRecordMenu {
+  targetUri: string;
+  targetCid: string;
+  /** A `TypedListType` ("list:certs" | "list:projects" | "list:accounts").
+   *  Typed as string here to keep this context free of an atproto import. */
+  targetType: string;
+  /** Active sub-tab key, so the menu's Share link deep-links to it.
+   *  Null/omitted on the overview. */
+  shareTab?: string | null;
+}
+
 interface NavbarContextValue {
   pageTitle: string | null;
   setPageTitle: (title: string | null) => void;
   breadcrumb: PageTitleBreadcrumb | null;
   setBreadcrumb: (b: PageTitleBreadcrumb | null) => void;
+  /** Record-level overflow menu rendered in the mobile navbar's right
+   *  slot on detail (sub-)pages. Null on pages that don't set it. */
+  recordMenu: PageRecordMenu | null;
+  setRecordMenu: (m: PageRecordMenu | null) => void;
   profileOverlay: boolean;
   setProfileOverlay: (v: boolean) => void;
   /** True when the viewed profile has a non-empty `longDescription`.
@@ -58,6 +80,8 @@ const NavbarContext = createContext<NavbarContextValue>({
   setPageTitle: () => {},
   breadcrumb: null,
   setBreadcrumb: () => {},
+  recordMenu: null,
+  setRecordMenu: () => {},
   profileOverlay: false,
   setProfileOverlay: () => {},
   profileAboutAvailable: false,
@@ -71,6 +95,7 @@ const NavbarContext = createContext<NavbarContextValue>({
 export function NavbarProvider({ children }: { children: ReactNode }) {
   const [pageTitle, setPageTitle] = useState<string | null>(null);
   const [breadcrumb, setBreadcrumb] = useState<PageTitleBreadcrumb | null>(null);
+  const [recordMenu, setRecordMenu] = useState<PageRecordMenu | null>(null);
   const [profileOverlay, setProfileOverlay] = useState<boolean>(false);
   const [profileAboutAvailable, setProfileAboutAvailable] =
     useState<boolean>(false);
@@ -83,6 +108,8 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
       setPageTitle,
       breadcrumb,
       setBreadcrumb,
+      recordMenu,
+      setRecordMenu,
       profileOverlay,
       setProfileOverlay,
       profileAboutAvailable,
@@ -95,6 +122,7 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
     [
       pageTitle,
       breadcrumb,
+      recordMenu,
       profileOverlay,
       profileAboutAvailable,
       profileGroupsAvailable,
@@ -150,6 +178,29 @@ export function usePageTitleBreadcrumb(b: PageTitleBreadcrumb | null) {
     // would fire every render the caller builds a new object literal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setBreadcrumb, key]);
+}
+
+/**
+ * Publish the record-level overflow menu (Share / Add to list / Copy AT
+ * URI) to the mobile navbar's right slot. Detail pages call this so the
+ * menu reads as page-level chrome that acts on the whole record, instead
+ * of sitting in the author row where it can be mistaken for an action on
+ * the author. Pass `null` while data is loading. No-op visually on
+ * desktop (the navbar isn't rendered there — detail pages keep their own
+ * in-body menu at ≥800px).
+ */
+export function usePageRecordMenu(menu: PageRecordMenu | null) {
+  const { setRecordMenu } = useContext(NavbarContext);
+  const key = menu
+    ? `${menu.targetUri}|${menu.targetCid}|${menu.targetType}|${menu.shareTab ?? ""}`
+    : null;
+  useEffect(() => {
+    setRecordMenu(menu);
+    return () => setRecordMenu(null);
+    // `key` captures every field of `menu`; depending on `menu` itself
+    // would re-fire every render the caller builds a new object literal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setRecordMenu, key]);
 }
 
 /**

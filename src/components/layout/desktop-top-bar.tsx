@@ -23,6 +23,7 @@ import {
 import SiteDrawer from "./site-drawer";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useNavbarContext } from "@/lib/navbar-context";
+import { useViewTransition } from "@/lib/view-transitions";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
 import { useOrg } from "@/lib/groups/org-context";
@@ -128,6 +129,7 @@ const PROJECT_DETAIL_TABS: DetailTab[] = [
 export default function DesktopTopBar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { transitionBack } = useViewTransition();
   const searchParams = useSearchParams();
 
   const { isLoading, isAuthenticated, did, openSignIn, signOut } = useAuth();
@@ -629,7 +631,7 @@ export default function DesktopTopBar() {
           <button
             type="button"
             className="desktop-top-bar__back"
-            onClick={() => router.back()}
+            onClick={() => transitionBack()}
             aria-label="Go back"
           >
             <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />

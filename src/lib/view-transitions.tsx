@@ -1,0 +1,179 @@
+"use client"
+
+import {
+  createContext,
+  Suspense,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  type ReactNode,
+} from "react"
+import Link from "next/link"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+
+/**
+ * Directional page-slide transitions for in-app tab navigation (e.g. a
+ * detail page's "Read full description" / "Show all" → sub-tab, and the
+ * Back button returning). Built on the browser View Transitions API:
+ *
+ *   - Forward navigations slide the new view in from the right.
+ *   - Back navigations reverse it (new view in from the left).
+ *
+ * App Router navigations are async (the DOM updates after the route
+ * commits), so we hand startViewTransition a promise and resolve it from
+ * a route-change effect once the new URL has rendered. A timeout backstop
+ * resolves the promise if the route never changes, so the page can never
+ * stay frozen. Browsers without the API — and reduced-motion users — get
+ * a plain, instant navigation.
+ */
+
+type Direction = "forward" | "back"
+
+interface ViewTransitionApi {
+  /** Navigate forward to `href` with a slide-from-right transition. */
+  transitionTo: (href: string, options?: { scroll?: boolean }) => void
+  /** Navigate back with the reverse slide. Pass a custom navigate fn
+   *  (defaults to router.back()). */
+  transitionBack: (navigate?: () => void) => void
+}
+
+const ViewTransitionContext = createContext<ViewTransitionApi | null>(null)
+
+type StartViewTransition = (callback: () => void | Promise<void>) => {
+  finished: Promise<void>
+}
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  )
+}
+
+/** Renders nothing; fires `onChange` whenever the path or query changes.
+ *  Isolated under its own Suspense boundary so useSearchParams can't
+ *  suspend the whole app during static rendering. */
+function RouteWatcher({ onChange }: { onChange: () => void }) {
+  const pathname = usePathname()
+  const search = useSearchParams()
+  useEffect(() => {
+    onChange()
+  }, [pathname, search, onChange])
+  return null
+}
+
+export function ViewTransitionProvider({ children }: { children: ReactNode }) {
+  const router = useRouter()
+  const finishRef = useRef<(() => void) | null>(null)
+
+  const handleRouteChange = useCallback(() => {
+    if (finishRef.current) {
+      finishRef.current()
+      finishRef.current = null
+    }
+  }, [])
+
+  const run = useCallback((direction: Direction, navigate: () => void) => {
+    const start = (
+      document as Document & { startViewTransition?: StartViewTransition }
+    ).startViewTransition?.bind(document)
+    if (!start || prefersReducedMotion()) {
+      navigate()
+      return
+    }
+    document.documentElement.dataset.vtDir = direction
+    const transition = start(
+      () =>
+        new Promise<void>((resolve) => {
+          finishRef.current = resolve
+          navigate()
+          // Backstop: never leave the page frozen if the route doesn't
+          // actually change (e.g. navigating to the current URL).
+          window.setTimeout(() => {
+            if (finishRef.current === resolve) {
+              finishRef.current = null
+              resolve()
+            }
+          }, 500)
+        }),
+    )
+    transition.finished.finally(() => {
+      delete document.documentElement.dataset.vtDir
+    })
+  }, [])
+
+  const transitionTo = useCallback(
+    (href: string, options?: { scroll?: boolean }) =>
+      run("forward", () => router.push(href, options)),
+    [run, router],
+  )
+
+  const transitionBack = useCallback(
+    (navigate?: () => void) =>
+      run("back", navigate ?? (() => router.back())),
+    [run, router],
+  )
+
+  return (
+    <ViewTransitionContext.Provider value={{ transitionTo, transitionBack }}>
+      <Suspense fallback={null}>
+        <RouteWatcher onChange={handleRouteChange} />
+      </Suspense>
+      {children}
+    </ViewTransitionContext.Provider>
+  )
+}
+
+export function useViewTransition(): ViewTransitionApi {
+  const ctx = useContext(ViewTransitionContext)
+  if (!ctx) {
+    throw new Error(
+      "useViewTransition must be used within a <ViewTransitionProvider>",
+    )
+  }
+  return ctx
+}
+
+/** Drop-in <Link> that plays the forward slide transition on click while
+ *  preserving normal link behaviour (modifier-click opens a new tab). */
+export function TransitionLink({
+  href,
+  className,
+  children,
+  scroll = true,
+  ...rest
+}: {
+  href: string
+  className?: string
+  children: ReactNode
+  scroll?: boolean
+} & Omit<
+  React.ComponentProps<typeof Link>,
+  "href" | "className" | "onClick" | "scroll"
+>) {
+  const { transitionTo } = useViewTransition()
+  return (
+    <Link
+      href={href}
+      className={className}
+      scroll={scroll}
+      onClick={(e) => {
+        if (
+          e.metaKey ||
+          e.ctrlKey ||
+          e.shiftKey ||
+          e.altKey ||
+          e.button !== 0
+        ) {
+          return
+        }
+        e.preventDefault()
+        transitionTo(href, { scroll })
+      }}
+      {...rest}
+    >
+      {children}
+    </Link>
+  )
+}

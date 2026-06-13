@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import ActivityAuthor from "@/components/feed/activity-author"
 import { formatRelativeTime } from "@/lib/atproto/activity"
@@ -48,6 +48,9 @@ export interface ExploreListRowProps {
   /** ISO timestamp for the right-hand "x ago" column. Null shows
    *  nothing. */
   timestampIso: string | null
+  /** Compact variant: drops the author and date columns entirely so the
+   *  thumb + title/meta block spans the full row width. */
+  compact?: boolean
 }
 
 export default function ExploreListRow({
@@ -59,9 +62,38 @@ export default function ExploreListRow({
   authorDid,
   endorsementMeta,
   timestampIso,
+  compact = false,
 }: ExploreListRowProps) {
   const [imageFailed, setImageFailed] = useState(false)
   const showImage = thumbUrl !== null && !imageFailed
+
+  // Hide the "·" separator on any meta item that wraps to a new line, so
+  // a dangling dot never sits at the start (or end) of a wrapped line.
+  const metaRef = useRef<HTMLParagraphElement>(null)
+  const [lineStarts, setLineStarts] = useState<number[]>([])
+  useEffect(() => {
+    const el = metaRef.current
+    if (!el) return
+    const measure = () => {
+      const items = Array.from(el.children) as HTMLElement[]
+      const starts: number[] = []
+      let prevTop: number | null = null
+      items.forEach((it, i) => {
+        const top = it.offsetTop
+        if (prevTop === null || top > prevTop + 1) starts.push(i)
+        prevTop = top
+      })
+      setLineStarts((prev) =>
+        prev.length === starts.length && prev.every((v, i) => v === starts[i])
+          ? prev
+          : starts,
+      )
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [metaItems])
 
   const body = (
     <>
@@ -82,10 +114,10 @@ export default function ExploreListRow({
       <div className="cert-list-row__body">
         <h3 className="cert-list-row__title">{title}</h3>
         {metaItems.length > 0 ? (
-          <p className="cert-list-row__meta">
+          <p className="cert-list-row__meta" ref={metaRef}>
             {metaItems.map((item, i) => (
               <span key={i} className="cert-list-row__meta-item">
-                {i > 0 ? (
+                {i > 0 && !lineStarts.includes(i) ? (
                   <span className="cert-list-row__meta-sep" aria-hidden>
                     ·
                   </span>
@@ -100,28 +132,34 @@ export default function ExploreListRow({
   )
 
   return (
-    <article className="cert-list-row">
+    <article
+      className={`cert-list-row${compact ? " cert-list-row--compact" : ""}`}
+    >
       {href ? (
         <Link href={href} className="cert-list-row__link">
           {body}
         </Link>
       ) : null}
 
-      <div className="cert-list-row__author-col">
-        {authorDid ? (
-          <ActivityAuthor
-            did={authorDid}
-            nameSuffix={
-              endorsementMeta ? (
-                <EndorsementRowBadge meta={endorsementMeta} />
-              ) : null
-            }
-          />
-        ) : null}
-      </div>
-      <time className="cert-list-row__time">
-        {timestampIso ? formatRelativeTime(timestampIso) : ""}
-      </time>
+      {compact ? null : (
+        <>
+          <div className="cert-list-row__author-col">
+            {authorDid ? (
+              <ActivityAuthor
+                did={authorDid}
+                nameSuffix={
+                  endorsementMeta ? (
+                    <EndorsementRowBadge meta={endorsementMeta} />
+                  ) : null
+                }
+              />
+            ) : null}
+          </div>
+          <time className="cert-list-row__time">
+            {timestampIso ? formatRelativeTime(timestampIso) : ""}
+          </time>
+        </>
+      )}
     </article>
   )
 }

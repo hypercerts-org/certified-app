@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useNavbarContext } from "@/lib/navbar-context";
+import { useViewTransition } from "@/lib/view-transitions";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
 import Avatar from "@/components/ui/avatar";
@@ -21,6 +22,8 @@ import Brandmark from "@/components/ui/brandmark";
 import BottomSheet from "@/components/ui/bottom-sheet";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import Tooltip from "@/components/ui/tooltip";
+import AddToListMenu from "@/components/lists/add-to-list-menu";
+import type { TypedListType } from "@/lib/atproto/typed-lists";
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints";
 
 const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
@@ -46,11 +49,13 @@ const ROOT_PATHS = new Set<string>([
 
 const Navbar: React.FC = () => {
   const { isLoading, isAuthenticated, did, openSignIn, signOut } = useAuth();
-  const { pageTitle, breadcrumb, profileOverlay } = useNavbarContext();
+  const { pageTitle, breadcrumb, recordMenu, profileOverlay } =
+    useNavbarContext();
   const { profile, avatarUrl } = useProfile();
   const { handle } = useSession();
   const pathname = usePathname();
   const router = useRouter();
+  const { transitionBack } = useViewTransition();
   const { activeOrg, groups, switchOrg } = useOrg();
   const { orgAvatarUrl } = useOrgProfile();
 
@@ -133,32 +138,28 @@ const Navbar: React.FC = () => {
   //
   // NOTE: these hooks MUST sit above `if (isLoading) return null` so the
   // hook count is stable across renders (rules of hooks).
+  // In-app navigation depth. We patch history.pushState (which Next's
+  // router calls for every forward navigation, INCLUDING query-only tab
+  // navigations like `?tab=description`) to increment, and popstate to
+  // decrement. router.replace uses replaceState, so it isn't counted —
+  // the did→handle URL canonicalization can't inflate the count. When
+  // the counter is 0 the back stack would exit the app, so handleBack
+  // pushes `/` instead.
   const inAppDepthRef = useRef(0);
-  const initializedRef = useRef(false);
-  const skipNextPathnameRef = useRef(false);
-
   useEffect(() => {
-    if (!initializedRef.current) {
-      initializedRef.current = true;
-      return;
-    }
-    if (skipNextPathnameRef.current) {
-      skipNextPathnameRef.current = false;
-      return;
-    }
-    inAppDepthRef.current += 1;
-  }, [pathname]);
-
-  useEffect(() => {
+    const origPushState = history.pushState.bind(history);
+    history.pushState = (...args: Parameters<typeof origPushState>) => {
+      inAppDepthRef.current += 1;
+      return origPushState(...args);
+    };
     const onPop = () => {
-      // A browser back/forward fires popstate. The subsequent pathname
-      // effect shouldn't count this as a "new" navigation — mark it to
-      // skip — and drop the depth counter by one.
-      skipNextPathnameRef.current = true;
       inAppDepthRef.current = Math.max(0, inAppDepthRef.current - 1);
     };
     window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
+    return () => {
+      history.pushState = origPushState;
+      window.removeEventListener("popstate", onPop);
+    };
   }, []);
 
   // Don't render navbar while auth is loading — prevents white flash.
@@ -178,16 +179,19 @@ const Navbar: React.FC = () => {
     .join(" ");
 
   const handleBack = () => {
-    if (inAppDepthRef.current > 0) {
-      // We have in-app history — safe to pop. The popstate listener
-      // above will decrement the counter.
-      router.back();
-    } else {
-      // The user entered our app on this page (direct link, external
-      // referrer, or page refresh). `router.back()` would take them
-      // outside the app — push home instead.
-      router.push("/");
-    }
+    // Reverse slide for the back gesture (see ViewTransitionProvider).
+    transitionBack(() => {
+      if (inAppDepthRef.current > 0) {
+        // We have in-app history — safe to pop. The popstate listener
+        // above will decrement the counter.
+        router.back();
+      } else {
+        // The user entered our app on this page (direct link, external
+        // referrer, or page refresh). `router.back()` would take them
+        // outside the app — push home instead.
+        router.push("/");
+      }
+    });
   };
 
   // Top-level destinations show the hamburger + account switcher / sign-in
@@ -393,7 +397,20 @@ const Navbar: React.FC = () => {
               pageTitle
             )}
           </div>
-          <div className="navbar__right">{isRootLevel ? rightCluster : null}</div>
+          <div className="navbar__right">
+            {isRootLevel ? (
+              rightCluster
+            ) : recordMenu ? (
+              <span className="navbar__action">
+                <AddToListMenu
+                  targetUri={recordMenu.targetUri}
+                  targetCid={recordMenu.targetCid}
+                  targetType={recordMenu.targetType as TypedListType}
+                  shareTab={recordMenu.shareTab}
+                />
+              </span>
+            ) : null}
+          </div>
         </div>
       </nav>
     );

@@ -71,17 +71,49 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  /* Spacing between updates comes from the per-item divider below. */
+  gap: 0;
 }
 
+/* No card box around updates — plain stacked rows. */
 .context-updates__item {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 14px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
-  background: var(--bg-elevated);
+}
+
+/* Light divider + generous spacing between consecutive updates. */
+.context-updates__item + .context-updates__item {
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 24px;
+  padding-top: 24px;
+}
+
+/* "Update N" label + date on one row, numbering each card on the
+   Updates tab. Same small uppercase muted style as the section headings. */
+.context-updates__item-number-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.context-updates__item-number {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  line-height: 1;
+}
+
+/* Date trailing the "Update N" label, right-aligned, same size + weight. */
+.context-updates__item-number-date {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .context-updates__item-head {
@@ -130,7 +162,9 @@
   position: relative;
 }
 
-.context-updates__doc-wrap--clamped::after {
+/* Fade-out only when the body is actually truncated (i.e. a "Read more"
+   is offered). Fully-visible content gets no fade. */
+.context-updates__doc-wrap--truncated::after {
   content: "";
   position: absolute;
   inset: auto 0 0 0;
@@ -343,7 +377,7 @@
 
 @media (max-width: 799px) {
   .context-updates__item {
-    padding: 12px;
+    padding: 0;
   }
   .context-updates__attachment--image .context-updates__attachment-link {
     width: 72px;

@@ -52,6 +52,7 @@ import {
   type SortOrder,
 } from "./explore-types"
 import { useExploreData } from "@/hooks/use-explore"
+import { useScrollRestoration } from "@/hooks/use-scroll-restoration"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
 import { usePageTitle } from "@/lib/navbar-context"
@@ -630,6 +631,13 @@ function ExploreMain({
         ? quality.includeOrgLabels
         : undefined,
   })
+
+  // Restore the window scroll offset when the reader returns from a
+  // project/activity detail page (back button). Keyed by the full URL so
+  // each kind/filter/search combination restores independently; gated on
+  // the list having finished its initial load so the page is tall enough.
+  const scrollKey = `${pathname}?${searchParams?.toString() ?? ""}`
+  useScrollRestoration(scrollKey, !data.isLoading)
 
   const onDegreesChange = useCallback(
     (next: Set<Degree>) => {
@@ -1827,16 +1835,9 @@ function ResultsArea({
       <ul className="explore__list explore__list--certs">
         {certs.map((rec) => {
           const did = certDids.get(rec.uri) ?? ""
-          const meta = closure && did
-            ? closure.closureByDid.get(did)
-            : undefined
           return (
             <li key={rec.uri}>
-              <CertListRow
-                record={rec}
-                did={did}
-                endorsementMeta={meta}
-              />
+              <CertListRow record={rec} did={did} />
             </li>
           )
         })}

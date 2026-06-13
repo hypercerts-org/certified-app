@@ -306,6 +306,15 @@ html[data-theme="dark"] .signin-mark__img--light {
   min-height: 32px;
 }
 
+/* Record-level overflow menu (Share / Add to list / Copy AT URI) in the
+   titled navbar's right slot on detail pages. Right-aligned to mirror the
+   back button on the left; the ghost icon trigger keeps its own sizing. */
+.navbar__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 /* ========== App Top Nav (authenticated) ========== */
 .navbar__app-links {
   display: flex;

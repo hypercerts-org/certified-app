@@ -4,6 +4,7 @@ import { Inter, Noto_Serif } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth/auth-context";
 import { NavbarProvider } from "@/lib/navbar-context";
+import { ViewTransitionProvider } from "@/lib/view-transitions";
 import Navbar from "@/components/layout/navbar";
 import DesktopTopBar from "@/components/layout/desktop-top-bar";
 import { Providers } from "@/lib/providers";
@@ -158,6 +159,7 @@ export default function RootLayout({
               <OnboardingProvider>
               <NavbarProvider>
                 <FeedbackProvider>
+                <ViewTransitionProvider>
                 <a href="#main-content" className="skip-nav">Skip to main content</a>
                 <ActingAsBar />
                 <Navbar />
@@ -176,6 +178,7 @@ export default function RootLayout({
                 <PwaInstallGuard />
                 <FeedbackModal />
                 <OnboardingModal />
+                </ViewTransitionProvider>
                 </FeedbackProvider>
               </NavbarProvider>
               </OnboardingProvider>
