@@ -60,7 +60,15 @@ describe("ProjectDetail location strongRef", () => {
       location: { uri: LOCATION_URI, cid: "bafyloc" },
     } as unknown as CollectionValue
 
-    render(<ProjectDetail did={DID} rkey="proj1" value={value} cid="bafycid" />)
+    render(
+      <ProjectDetail
+        did={DID}
+        rkey="proj1"
+        value={value}
+        cid="bafycid"
+        handle={null}
+      />,
+    )
 
     // The resolved place name appears in a Location meta row.
     expect(await screen.findByText("Berlin")).toBeTruthy()
