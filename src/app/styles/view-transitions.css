@@ -1,0 +1,59 @@
+/* Directional page-slide for in-app tab navigation, driven by the
+   View Transitions API. `html[data-vt-dir]` is set by the
+   ViewTransitionProvider for the duration of each transition.
+
+   Forward: the old view slides out to the left while the new view
+   slides in from the right ("moving to the right"). Back reverses it.
+   No data attribute → the browser's default root cross-fade applies
+   (e.g. ordinary navigations); reduced-motion skips it entirely since
+   the provider never starts a transition in that mode. */
+
+@keyframes vt-slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes vt-slide-out-left {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes vt-slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes vt-slide-out-right {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+html[data-vt-dir="forward"]::view-transition-old(root) {
+  animation: vt-slide-out-left 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+html[data-vt-dir="forward"]::view-transition-new(root) {
+  animation: vt-slide-in-right 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+html[data-vt-dir="back"]::view-transition-old(root) {
+  animation: vt-slide-out-right 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+html[data-vt-dir="back"]::view-transition-new(root) {
+  animation: vt-slide-in-left 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}

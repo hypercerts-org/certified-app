@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Copy, ListPlus, MoreVertical } from "lucide-react"
+import { Copy, ListPlus, MoreVertical, Share2 } from "lucide-react"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
 import Input from "@/components/ui/input"
@@ -13,6 +13,7 @@ import {
   PopoverItem,
 } from "@/components/ui/popover"
 import { useAuth } from "@/lib/auth/auth-context"
+import { recordUrlFromAtUri } from "@/lib/urls"
 import { useTypedLists } from "@/hooks/use-typed-lists"
 import {
   itemUriMatchesType,
@@ -35,6 +36,12 @@ interface AddToListMenuProps {
    *  saves one round-trip. */
   targetCid: string
   targetType: TypedListType
+  /** When this menu acts on the record of the page the viewer is
+   *  currently on AND that page is showing a sub-tab, pass the tab key
+   *  (e.g. "updates") so the Share link deep-links straight to that tab.
+   *  Omit / pass null on the overview or on surfaces (feed cards, the
+   *  profile sidebar) where the page tab is unrelated to this record. */
+  shareTab?: string | null
 }
 
 /**
@@ -54,31 +61,48 @@ export default function AddToListMenu({
   targetUri,
   targetCid,
   targetType,
+  shareTab = null,
 }: AddToListMenuProps) {
   const { did: viewerDid, openSignIn } = useAuth()
   const [open, setOpen] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState<"share" | "uri" | null>(null)
+
+  // DID-based web path for sharing — recordUrlFromAtUri maps the
+  // collection to its friendly route segment and defaults to the URI's
+  // DID, so the link survives handle changes and never breaks. Null for
+  // collections without a record page (e.g. account profiles), which
+  // scopes the Share item to activities and projects. The absolute
+  // origin is prepended at click time from window.location, so the copied
+  // link is correct in every environment (the PUBLIC_URL env isn't
+  // inlined into the client bundle).
+  const sharePath = useMemo(() => {
+    const base = recordUrlFromAtUri(targetUri)
+    if (!base) return base
+    // Deep-link the share to the tab the viewer is currently on, so the
+    // recipient lands on the same view (Updates, Activities, …).
+    return shareTab ? `${base}?tab=${encodeURIComponent(shareTab)}` : base
+  }, [targetUri, shareTab])
 
   // Reset the brief "Copied" affordance whenever the popover opens
   // again, so the previous run's feedback doesn't leak across opens.
   useEffect(() => {
-    if (open) setCopied(false)
+    if (open) setCopied(null)
   }, [open])
 
-  const handleCopy = useCallback(async () => {
+  const copyText = useCallback(async (text: string, which: "share" | "uri") => {
     try {
-      await navigator.clipboard.writeText(targetUri)
-      setCopied(true)
+      await navigator.clipboard.writeText(text)
+      setCopied(which)
       // Keep the popover open briefly so the user sees the
       // confirmation, then auto-close.
       window.setTimeout(() => {
         setOpen(false)
       }, 900)
     } catch (err) {
-      console.error("Failed to copy URI:", err)
+      console.error("Failed to copy:", err)
     }
-  }, [targetUri])
+  }, [])
 
   // Shown to logged-out viewers too: "Copy AT URI" works without auth,
   // and "Add to list" funnels them to sign-in. Only the URI→type guard
@@ -98,6 +122,16 @@ export default function AddToListMenu({
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end">
+          {sharePath ? (
+            <PopoverItem
+              onClick={() =>
+                copyText(`${window.location.origin}${sharePath}`, "share")
+              }
+            >
+              <Share2 size={13} strokeWidth={1.75} aria-hidden />
+              {copied === "share" ? "Link copied" : "Share"}
+            </PopoverItem>
+          ) : null}
           <PopoverItem
             onClick={() => {
               setOpen(false)
@@ -110,9 +144,9 @@ export default function AddToListMenu({
             <ListPlus size={13} strokeWidth={1.75} aria-hidden />
             Add to list
           </PopoverItem>
-          <PopoverItem onClick={handleCopy}>
+          <PopoverItem onClick={() => copyText(targetUri, "uri")}>
             <Copy size={13} strokeWidth={1.75} aria-hidden />
-            {copied ? "Copied" : "Copy AT URI"}
+            {copied === "uri" ? "Copied" : "Copy AT URI"}
           </PopoverItem>
         </PopoverContent>
       </Popover>

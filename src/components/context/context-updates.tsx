@@ -1,7 +1,7 @@
 "use client"
 
 import { useLayoutEffect, useRef, useState } from "react"
-import Link from "next/link"
+import { TransitionLink } from "@/lib/view-transitions"
 import { useRouter } from "next/navigation"
 import Button from "@/components/ui/button"
 import {
@@ -184,26 +184,29 @@ export default function ContextUpdates({
         </h2>
         <span className="context-updates__count">{updates.length}</span>
         {variant === "overview" && seeAllHref ? (
-          <Link
+          <TransitionLink
             href={seeAllHref}
             replace
             scroll={false}
             className="context-updates__see-all"
           >
             See all →
-          </Link>
+          </TransitionLink>
         ) : null}
         {newButton}
       </header>
       <ul className="context-updates__list">
-        {visibleUpdates.map((u) => (
+        {visibleUpdates.map((u, i) => (
           // Clamp in both variants — the dedicated Updates subtab gets
           // the same Read more / Show less affordance as the overview
           // preview, so a single long update doesn't dominate the tab.
+          // The full (tab) variant numbers each update with a small
+          // heading; the overview preview doesn't.
           <UpdateCard
             key={u.uri}
             record={u}
             clamp
+            heading={variant === "full" ? `Update ${i + 1}` : undefined}
             base={manage ? base : null}
             viewerDid={viewerDid}
             onChanged={refetch}
@@ -220,6 +223,9 @@ interface UpdateCardProps {
   /** When true, clamp the description to a few lines and surface a
    *  "Read more" affordance if the content overflows. */
   clamp: boolean
+  /** Small label above the card (e.g. "Update 1") — used on the
+   *  dedicated Updates tab to numerate the list. */
+  heading?: string
   /** Base record URL (`/{actor}/{type}/{rkey}`) the edit route hangs
    *  off. Non-null ONLY in manage mode — when set, the card renders
    *  Edit + Delete affordances. */
@@ -237,6 +243,7 @@ interface UpdateCardProps {
 function UpdateCard({
   record,
   clamp,
+  heading,
   base = null,
   viewerDid = null,
   onChanged,
@@ -314,16 +321,32 @@ function UpdateCard({
   }, [clamp, expanded, value.description])
 
   const docClass = clamp && !expanded
-    ? "context-updates__doc-wrap context-updates__doc-wrap--clamped"
+    ? `context-updates__doc-wrap context-updates__doc-wrap--clamped${
+        isTruncated ? " context-updates__doc-wrap--truncated" : ""
+      }`
     : "context-updates__doc-wrap"
 
   return (
     <li className="context-updates__item">
+      {heading ? (
+        <div className="context-updates__item-number-row">
+          <span className="context-updates__item-number">{heading}</span>
+          {createdLabel ? (
+            <time
+              className="context-updates__item-number-date"
+              dateTime={createdAt ?? undefined}
+            >
+              {createdLabel}
+            </time>
+          ) : null}
+        </div>
+      ) : null}
       <header className="context-updates__item-head">
         {title ? (
           <h3 className="context-updates__title">{title}</h3>
         ) : null}
-        {createdLabel ? (
+        {/* Date lives in the numbered row when a heading is shown. */}
+        {!heading && createdLabel ? (
           <time
             className="context-updates__when"
             dateTime={createdAt ?? undefined}

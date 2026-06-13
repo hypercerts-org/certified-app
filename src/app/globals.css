@@ -25,6 +25,7 @@
 @import "./styles/settings-page.css";
 @import "./styles/leaflet.css";
 @import "./styles/landing.css";
+@import "./styles/view-transitions.css";
 
 @tailwind base;
 @tailwind components;

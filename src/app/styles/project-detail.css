@@ -253,6 +253,10 @@
   .project-detail__head-bar {
     flex-direction: column;
     align-items: flex-start;
+    /* Tighter than the desktop 16px gap / 20px margin so the author
+       (in the byline below) sits closer to the title. */
+    gap: 8px;
+    margin-bottom: 8px;
   }
 
   .project-detail__head-actions {
@@ -264,6 +268,285 @@
     overflow: visible;
     text-overflow: clip;
     overflow-wrap: anywhere;
+  }
+}
+
+/* ---------- Mobile byline (author) ---------- */
+
+/* Hidden on desktop — the author lives in the head bar. Shown on mobile
+   (reading view) right under the title. */
+.project-detail__byline {
+  display: none;
+}
+
+/* Date created trailing the "Project" eyebrow on mobile (right-aligned,
+   label-less). Hidden on desktop, where the date shows in the
+   inline-created row below the hero. */
+.project-detail__eyebrow-date {
+  display: none;
+}
+
+/* "Description" heading on the description tab. Hidden on desktop, where
+   the head bar still carries the project title; shown on mobile, where
+   the head bar is hidden on this tab. */
+.project-detail__tab-title {
+  display: none;
+}
+
+/* Location section — same shape as the activity Locations section. */
+.project-detail__location-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Mobile activities preview as full-width list rows (no card grid, no
+   extra side margins — the rows fill the content width). */
+.project-detail__certs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* ---------- Mobile reading reorder (single column) ----------
+   Phones present a prescribed vertical order:
+     1 title (+ eyebrow date)   2 author   3 image
+     4 short description (+ menu)   5 read more   6 location
+     7 time period / contributors   8 updates   9 activities
+   Scoped to the reading view (`:not(.project-detail--editing)`) so the
+   inline edit form keeps its own layout. The page is already a single
+   flex column, so `order` on the direct children is enough. */
+@media (max-width: 799px) {
+  /* Drop the article's own side padding so the only gutter is the
+     app-shell content's 16px — matching the activity detail page (which
+     zeroes the shell padding and gets its 16px from .page-layout). */
+  .project-detail {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  /* "Project" eyebrow + date created on one row, date pushed to the far
+     right. The title group must span the full width for space-between to
+     reach the content edge (it's content-width by default). */
+  .project-detail__head-title-group {
+    width: 100%;
+  }
+  .project-detail__eyebrow-row {
+    display: flex;
+    width: 100%;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .project-detail__eyebrow-date {
+    display: inline;
+    /* Match the "PROJECT" eyebrow: size + weight. */
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--fg-muted);
+    white-space: nowrap;
+  }
+
+  /* Summary reads as normal body text on mobile — not italic, and the
+     same size/weight as the "Read full description" control. (Scoped
+     via the row for specificity over the base rule.) */
+  .project-detail__lead-row .project-detail__lead {
+    font-style: normal;
+    font-weight: 400;
+    font-size: 0.8125rem;
+  }
+
+  /* Section headings (Summary, Activities) match the "Updates" heading:
+     a small uppercase muted label rather than the serif section title.
+     Ancestor-scoped to beat the base `.project-detail__certs-title`
+     (defined later in the file at equal specificity). */
+  .project-detail .project-detail__certs-title {
+    font-family: inherit;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg-muted);
+    line-height: 1;
+  }
+
+  /* "Description" heading stands in for the (hidden) title on the
+     description tab. order:0 keeps it above the prose. */
+  .project-detail__tab-title {
+    display: block;
+    order: 0;
+    font-family: var(--font-headline), "Noto Serif", serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--fg-primary);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin: 0 0 4px;
+  }
+
+  .project-detail:not(.project-detail--editing) .project-detail__byline {
+    display: flex;
+    align-items: center;
+    /* Keep the author + menu on one row; the author truncates rather
+       than pushing the menu to the next line. */
+    flex-wrap: nowrap;
+    margin: 2px 0 8px;
+  }
+
+  /* Author shrinks + truncates instead of wrapping the menu. */
+  .project-detail__byline .feed-card__author {
+    min-width: 0;
+  }
+  .project-detail__byline .feed-card__author-meta {
+    min-width: 0;
+  }
+  .project-detail__byline .feed-card__author-name,
+  .project-detail__byline .feed-card__author-handle {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Three-dot menu sits at the trailing edge of the author row,
+     top-aligned; its desktop copy in the lead row is hidden here. */
+  .project-detail__byline-menu {
+    margin-left: auto;
+    flex: none;
+    display: inline-flex;
+    align-items: flex-start;
+    align-self: flex-start;
+  }
+
+  /* Smaller square trigger than the default 44px icon button. Scoped to
+     the trigger only (not the popover's menu-item buttons). */
+  .project-detail__byline-menu button[aria-label="Open list actions"] {
+    height: 32px;
+    width: 32px;
+  }
+  .project-detail__lead-menu {
+    display: none;
+  }
+
+  /* Author + date now live in the byline / eyebrow row — hide the
+     desktop copies. */
+  .project-detail:not(.project-detail--editing) .project-detail__head-author,
+  .project-detail:not(.project-detail--editing)
+    .project-detail__inline-created {
+    display: none;
+  }
+
+  .project-detail:not(.project-detail--editing) .project-detail__head-bar {
+    order: 1;
+  }
+  .project-detail:not(.project-detail--editing) .project-detail__byline {
+    order: 2;
+  }
+  .project-detail:not(.project-detail--editing) .project-detail__hero {
+    order: 3;
+  }
+  .project-detail:not(.project-detail--editing) .project-detail__summary {
+    order: 4;
+  }
+  .project-detail:not(.project-detail--editing) .project-detail__meta {
+    order: 7;
+  }
+  .project-detail:not(.project-detail--editing) .context-updates {
+    order: 8;
+  }
+  .project-detail:not(.project-detail--editing)
+    .project-detail__certs--preview {
+    order: 9;
+  }
+  /* Location sits at the very bottom of the overview. */
+  .project-detail:not(.project-detail--editing)
+    .project-detail__location-section {
+    order: 11;
+  }
+
+  /* Standardized 24px gap between the overview's content sections
+     (summary → location → details → updates → activities). Applied as a
+     top margin on each section after the summary; the hero already
+     provides the 24px above the summary itself. The updates section
+     drops its own divider + top padding so it matches the rest. */
+  .project-detail:not(.project-detail--editing)
+    .project-detail__location-section,
+  .project-detail:not(.project-detail--editing) .project-detail__meta,
+  .project-detail:not(.project-detail--editing) .context-updates,
+  .project-detail:not(.project-detail--editing)
+    .project-detail__certs--preview {
+    margin-top: 24px;
+  }
+  .project-detail:not(.project-detail--editing) .context-updates {
+    padding-top: 0;
+    border-top: none;
+  }
+
+  /* Sub-tab content (full description / full activities list) and the
+     empty-state line carry no explicit order; without this they'd
+     default to 0 and render above the title + byline. Park them last. */
+  .project-detail:not(.project-detail--editing) .project-detail__prose,
+  .project-detail:not(.project-detail--editing)
+    .project-detail__certs:not(.project-detail__certs--preview),
+  .project-detail:not(.project-detail--editing) .project-detail__tab-empty {
+    order: 10;
+  }
+
+  /* Description / Updates / Activities tabs: show only the tab content —
+     hide the title bar and byline (the tab name lives in the navbar;
+     Back returns). */
+  .project-detail--tab-description .project-detail__head-bar,
+  .project-detail--tab-updates .project-detail__head-bar,
+  .project-detail--tab-activities .project-detail__head-bar,
+  .project-detail--tab-description:not(.project-detail--editing)
+    .project-detail__byline,
+  .project-detail--tab-updates:not(.project-detail--editing)
+    .project-detail__byline,
+  .project-detail--tab-activities:not(.project-detail--editing)
+    .project-detail__byline {
+    display: none;
+  }
+
+  /* Activities tab (view mode): the title + count live in the navbar,
+     so drop the in-main section header — just the gallery. */
+  .project-detail--tab-activities:not(.project-detail--editing)
+    .project-detail__certs-header {
+    display: none;
+  }
+
+  /* Updates tab: the title + count live in the navbar, so drop the
+     whole in-main header (heading + count) and the section's top
+     divider/padding so the first update sits right at the top. The
+     compound selector beats the standardized 24px section margin. */
+  .project-detail--tab-updates .context-updates__head {
+    display: none;
+  }
+  .project-detail.project-detail--tab-updates:not(.project-detail--editing)
+    .context-updates {
+    border-top: none;
+    margin-top: 0;
+    padding-top: 0;
+  }
+  /* Tighten the gap between the navbar and the first update / activity. */
+  .project-detail--tab-updates,
+  .project-detail--tab-activities {
+    margin-top: 4px;
+  }
+
+  /* Activities tab: drop the section's top divider + padding so the
+     gallery sits at the same distance from the navbar as the updates. */
+  .project-detail--tab-activities .project-detail__certs {
+    border-top: none;
+    margin-top: 0;
+    padding-top: 0;
+  }
+
+
+  /* First activity row sits the same distance below its heading as the
+     first update sits below "Updates" — header gap only, no extra top
+     padding (updates now have no card padding either). */
+  .project-detail__certs--preview .cert-list-row:first-child {
+    padding-top: 0;
   }
 }
 
@@ -434,18 +717,20 @@
   background: var(--overlay-weak);
 }
 
-/* "See all →" link in the Overview tab's certs preview header.
-   Pushed to the right edge of the flex header next to the count
-   chip; navigates to the dedicated Certs tab. */
+/* Section-header action link ("Read full description →", "Show all
+   activities →"). Matches the Updates section's "See all →" exactly:
+   same size, weight, colour, and hover. */
 .project-detail__see-all {
   margin-left: auto;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 500;
-  color: var(--fg-primary);
+  color: var(--fg-secondary);
   text-decoration: none;
+  transition: color var(--transition-fast);
 }
 
 .project-detail__see-all:hover {
+  color: var(--fg-primary);
   text-decoration: underline;
   text-underline-offset: 2px;
 }

@@ -30,6 +30,15 @@
   padding: 0;
 }
 
+/* On phones the navbar is a fixed overlay, so the zeroed content slot
+   would let the title slide under it. Re-add the navbar-height top
+   offset (the inner .page-layout's 24px provides the gap below it). */
+@media (max-width: 799px) {
+  .app-shell:has(.cert-detail--wide) .app-shell__content {
+    padding-top: var(--navbar-height);
+  }
+}
+
 @media (min-width: 800px) {
   /* Cap the cert-detail two-pane layout so its total content width
      matches the single-pane project page (.project-detail max-width
@@ -68,6 +77,107 @@
   .cert-detail--wide.page-layout > .cert-detail__main {
     grid-column: 1;
     grid-row: 1;
+  }
+}
+
+/* ---------- Mobile reading reorder (single column) ----------
+   On phones the two-column reading view collapses into one prescribed
+   vertical order. The DOM keeps its desktop structure; `display:
+   contents` dissolves the aside / main / meta wrappers so their leaf
+   blocks become direct items of the single-column `.page-layout` grid,
+   and `order` sequences them:
+
+     1 title + byline   2 image          3 time period (+ menu)
+     4 work scope       5 contributors   6 rights
+     7 summary          8 updates        9 locations
+
+   Scoped to the reading view (`:not(.cert-detail--editing)`) so the
+   inline edit form keeps its own DOM-order layout. */
+@media (max-width: 799px) {
+  /* Single-column grid with a 0-floored track so promoted leaves can
+     never push the page wider than the viewport. (The default implicit
+     `auto` track sizes to content and overflows on wide items.) */
+  .cert-detail--wide:not(.cert-detail--editing) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cert-detail--wide:not(.cert-detail--editing) > .cert-detail__aside,
+  .cert-detail--wide:not(.cert-detail--editing) > .cert-detail__main,
+  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__meta {
+    display: contents;
+  }
+
+  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__headline {
+    order: 1;
+  }
+  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__image {
+    order: 2;
+  }
+  .cert-detail--wide:not(.cert-detail--editing)
+    .cert-detail__meta-row--timeperiod {
+    order: 3;
+  }
+  .cert-detail--wide:not(.cert-detail--editing)
+    .cert-detail__meta-row--workscope {
+    order: 4;
+  }
+  .cert-detail--wide:not(.cert-detail--editing)
+    .cert-detail__meta-row--contributors {
+    order: 5;
+  }
+  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__meta-row--rights {
+    order: 6;
+  }
+  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__section--summary {
+    order: 7;
+  }
+  .cert-detail--wide:not(.cert-detail--editing) .context-updates {
+    order: 8;
+  }
+  .cert-detail--wide:not(.cert-detail--editing)
+    .cert-detail__section--locations {
+    order: 9;
+  }
+
+  /* The single-column grid already provides a uniform 24px row gap
+     between every promoted leaf (headline, image, each meta-row).
+     The promoted `.cert-detail__section` blocks (Summary, Locations)
+     carry their own `margin-top: 4px` + `padding-top: 24px` from the
+     desktop two-column layout, which stacked extra space on top of the
+     grid gap and made those sections sit noticeably farther from the
+     preceding element than the meta-rows do. Zero them so the grid gap
+     is the only spacing — every element is then a consistent 24px apart. */
+  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__section,
+  .cert-detail--wide:not(.cert-detail--editing) .context-updates {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+  }
+
+  /* Description / Contributors tabs: show only the tab content. Hide the
+     headline, image, and meta rows (the tab name + count live in the
+     navbar; the navbar Back button returns). */
+  .cert-detail--tab-description .cert-detail__headline,
+  .cert-detail--tab-contributors .cert-detail__headline,
+  .cert-detail--tab-description .cert-detail__image,
+  .cert-detail--tab-contributors .cert-detail__image,
+  .cert-detail--tab-description .cert-detail__meta-row,
+  .cert-detail--tab-contributors .cert-detail__meta-row {
+    display: none;
+  }
+
+  /* Contributors tab: title + count live in the navbar — drop the
+     in-main section header. */
+  .cert-detail--tab-contributors .cert-detail__section-header {
+    display: none;
+  }
+
+  /* "Read full description" centers on phones (both the activity and
+     project detail pages use this class). Ancestor-scoped to beat the
+     base `align-self: flex-start`. */
+  .cert-detail--wide .cert-detail__read-more,
+  .project-detail .cert-detail__read-more {
+    align-self: center;
   }
 }
 
@@ -365,6 +475,87 @@
   gap: 12px;
 }
 
+/* "Activity" eyebrow + date row above the title — mirrors the project
+   page's "Project" eyebrow. Hidden on desktop (the date lives in the
+   headline columns there). */
+.cert-detail__eyebrow-row {
+  display: none;
+}
+
+.cert-detail__eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-muted);
+  line-height: 1.2;
+}
+
+.cert-detail__eyebrow-date {
+  display: none;
+}
+
+/* Three-dot menu on the author row — mobile only (desktop keeps it in
+   the Time period row). */
+.cert-detail__headline-action {
+  display: none;
+}
+
+@media (max-width: 799px) {
+  .cert-detail__eyebrow-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    /* Cancel the headline's 12px gap so the eyebrow sits tight to the
+       title, matching the project page. */
+    margin-bottom: -12px;
+  }
+  .cert-detail__headline-action {
+    display: inline-flex;
+    margin-left: auto;
+    align-self: flex-start;
+    flex: none;
+  }
+  .cert-detail__headline-action button[aria-label="Open list actions"] {
+    height: 32px;
+    width: 32px;
+  }
+  .cert-detail__meta-menu {
+    display: none;
+  }
+  /* Author fills the first line minus the menu (basis 0 + grow) and
+     truncates, so the menu never wraps to the next row. */
+  .cert-detail__headline-col--author {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .cert-detail__headline-author {
+    min-width: 0;
+  }
+
+  /* Summary reads at the same size as the meta values (e.g. work scope).
+     Scoped via the section to beat the base 1rem rule. */
+  .cert-detail__section--summary .cert-detail__short-desc {
+    font-size: 0.875rem;
+  }
+  .cert-detail__eyebrow-date {
+    display: inline;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--fg-muted);
+    white-space: nowrap;
+  }
+  /* Date now lives in the eyebrow row; the "Author" label is dropped.
+     Ancestor-scoped to beat the base `.cert-detail__headline-col`. */
+  .cert-detail__headline-cols .cert-detail__headline-col--date {
+    display: none;
+  }
+  .cert-detail__headline-col--author .cert-detail__meta-label {
+    display: none;
+  }
+}
+
 .cert-detail__title {
   font-family: var(--font-headline), "Noto Serif", serif;
   font-size: 1.875rem;
@@ -501,8 +692,17 @@
   font-size: 0.8125rem;
   font-weight: 500;
   text-decoration: none;
+  /* Works as both <a> (desktop, tab link) and <button> (mobile,
+     inline disclosure) — reset the UA button font + cursor. */
+  font-family: inherit;
+  cursor: pointer;
   transition: background var(--transition-fast),
     border-color var(--transition-fast);
+}
+
+/* Full description expanded in place on mobile, below the summary. */
+.cert-detail__inline-description {
+  margin-top: 12px;
 }
 
 .cert-detail__read-more:hover {
@@ -660,12 +860,16 @@
   font-weight: 500;
   color: var(--fg-primary);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cert-detail__headline-handle {
   font-size: 0.75rem;
   color: var(--fg-muted);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Skeletons */
@@ -836,12 +1040,24 @@
   margin-right: 0;
 }
 
+/* Summary heading row: label left, "Read full description" link right. */
+.cert-detail__summary-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
 .cert-detail__section-see-all {
   margin-left: auto;
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--fg-secondary);
   text-decoration: none;
+  /* Sits inside the uppercase `.cert-detail__meta-label` <dt> on the
+     contributors row, so it would inherit text-transform: uppercase.
+     Match the Updates "See all" (sentence case) explicitly. */
+  text-transform: none;
+  letter-spacing: normal;
   transition: color var(--transition-fast);
 }
 
@@ -956,6 +1172,13 @@
   color: var(--fg-secondary);
   text-decoration: none;
   border-radius: var(--radius);
+  /* Works as both <a> (desktop) and <button> (mobile inline toggle) —
+     strip the UA button chrome and inherit the surrounding font. */
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
   transition: background var(--transition-fast),
     color var(--transition-fast);
 }
@@ -1446,9 +1669,20 @@
    with a missing value). Stack the labelled columns vertically and
    keep the author avatar + meta on one line. */
 @media (max-width: 799px) {
+  /* Author + Date created share the first row; Project wraps to its
+     own full-width row below them (matches the mobile reading order). */
   .cert-detail__headline-cols {
-    flex-direction: column;
-    gap: 12px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    /* Row gap separates the author row from the Project block below
+       it (the author takes the full row, so Project wraps under). 8px
+       read as cramped against the labelled Project block — 16px gives
+       it clear breathing room, just above the title→author gap. */
+    gap: 16px 24px;
+  }
+
+  .cert-detail__headline-col:nth-child(3) {
+    flex: 1 1 100%;
   }
 
   .cert-detail__headline-author {
