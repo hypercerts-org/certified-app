@@ -19,7 +19,7 @@ const STEPS = [
   {
     num: "01",
     title: "She raises funding",
-    body: "Maya raised funding on a crowdfunding app like Ma Earth. Her project page, updates, and supporters were saved to her Certified account automatically.",
+    body: "Maya raised funding for her organization on a crowdfunding app like Ma Earth. Her project page, updates, and supporters were saved to a Certified record automatically — held by her or her organization, whichever fits.",
   },
   {
     num: "02",
