@@ -494,6 +494,15 @@
   align-self: flex-start;
 }
 
+/* Expanded endorsement-group list: each row is an <IdentityRow>
+   (avatar + display name + @handle), so give them breathing room. */
+.home-feed__group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
 .home-feed__loading {
   display: flex;
   justify-content: center;
@@ -638,6 +647,12 @@ a.home-feed__card-body:hover .home-feed__card-title {
   /* Expandable endorsement-group list rows get comfortable touch height. */
   .home-feed__group-list-item {
     padding: 4px 0;
+  }
+
+  /* Center the "Show all / Show fewer" toggle in the thumb-scrolled
+     feed (desktop keeps it flush-left, the default above). */
+  .home-feed__group-toggle {
+    align-self: center;
   }
 }
 

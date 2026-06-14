@@ -12,6 +12,7 @@ import { profileUrl, recordUrl } from "@/lib/urls"
 import Link from "next/link"
 import { ChevronDown, Inbox, MapPin, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
+import IdentityRow from "@/components/ui/identity-row"
 import Badge, { type BadgeTone } from "@/components/ui/badge"
 import Banner from "@/components/ui/banner"
 import Button from "@/components/ui/button"
@@ -842,12 +843,16 @@ function EndorsementGroupSummary({
 
 function EndorsedAccountLink({ did }: { did: string }) {
   const { info } = useAuthorInfo(did)
-  const name = info?.displayName || (info?.handle ? `@${info.handle}` : null)
   const href = profileUrl(info?.handle || did)
   return (
-    <Link href={href} className="home-feed__target">
-      {name ?? did.slice(0, 16)}
-    </Link>
+    <IdentityRow
+      did={did}
+      handle={info?.handle ?? undefined}
+      displayName={info?.displayName ?? undefined}
+      avatarUrl={info?.avatarUrl ?? undefined}
+      href={href}
+      size="sm"
+    />
   )
 }
 

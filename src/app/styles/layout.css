@@ -2901,6 +2901,32 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   outline-offset: 2px;
 }
 
+@media (max-width: 799px) {
+  /* Certs + Projects toolbar: controls take their own full-width row
+     below the sub-tabs so the search can stretch across it. Search +
+     sort match the plus button's 30px height; the search grows to fill
+     the row beside the buttons. */
+  .profile-certs__controls,
+  .profile-projects__controls {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .profile-certs__search {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 30px;
+  }
+  .profile-certs__search-input {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .profile-certs__sort-btn {
+    width: 30px;
+    height: 30px;
+  }
+}
+
 /* On wider viewports, lay cert cards out as a grid. Drop the default
    per-card bottom divider (the shared .feed style) since grid gap now
    provides separation. Cards are uniform size: square image + 2-line

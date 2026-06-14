@@ -68,6 +68,38 @@
   appearance: none;
 }
 
+@media (max-width: 799px) {
+  /* Controls take their own full-width row; the search stretches to fill
+     it beside the buttons, and every control matches the plus button's
+     30px height. */
+  .profile-endorsements-v2__controls {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .profile-endorsements-v2__search {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 30px;
+  }
+  .profile-endorsements-v2__search-input {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  /* Scoped under their containers so they beat the base `…__sort-btn`
+     / `…__endorse-add` rules declared LATER in this file (equal
+     specificity would otherwise let the taller 36px base win). */
+  .profile-endorsements-v2__controls .profile-endorsements-v2__sort-btn,
+  .profile-endorsements-v2__controls .profile-endorsements-v2__endorse-add {
+    width: 30px;
+    height: 30px;
+  }
+  .endorsement-lists .endorsement-lists__sort-btn {
+    width: 30px;
+    height: 30px;
+  }
+}
+
 .profile-endorsements-v2__sort-wrap {
   position: relative;
   display: inline-flex;

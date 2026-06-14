@@ -43,7 +43,10 @@ export interface ActivityGraphQLNode {
   endDate: string | null
   labels: string[] | null
   image: { __typename: string; uri?: string | null; image?: { ref: string; mimeType: string } } | null
-  workScope: { scope: string } | null
+  // Two union members are projected: the plain `{ scope }` string form
+  // and the CEL `{ expression }` form (`scope.hasAny([...])`). Either may
+  // be null depending on which member the record carries.
+  workScope: { scope?: string | null; expression?: string | null } | null
 }
 
 interface GraphQLResponse {
@@ -55,6 +58,26 @@ interface GraphQLResponse {
     } | null
   } | null
   errors?: { message: string }[]
+}
+
+/**
+ * Map the indexer's projected workScope union into a value
+ * `evaluateWorkScope` can render. The plain-string member surfaces as
+ * `{ scope }`; the CEL member (`scope.hasAny([...])`) surfaces as
+ * `{ expression }`, which `evaluateWorkScope` parses into a tag list.
+ * Returns undefined when neither member carries a value.
+ */
+function mapWorkScope(
+  workScope: ActivityGraphQLNode["workScope"],
+): ActivityRecord["value"]["workScope"] {
+  if (!workScope) return undefined
+  if (typeof workScope.scope === "string" && workScope.scope.length > 0) {
+    return { scope: workScope.scope }
+  }
+  if (typeof workScope.expression === "string" && workScope.expression.length > 0) {
+    return { expression: workScope.expression } as ActivityRecord["value"]["workScope"]
+  }
+  return undefined
 }
 
 export function nodeToActivityRecord(node: ActivityGraphQLNode): ActivityRecord {
@@ -80,7 +103,7 @@ export function nodeToActivityRecord(node: ActivityGraphQLNode): ActivityRecord 
       startDate: node.startDate ?? undefined,
       endDate: node.endDate ?? undefined,
       image: image as ActivityRecord["value"]["image"],
-      workScope: node.workScope ? { scope: node.workScope.scope } : undefined,
+      workScope: mapWorkScope(node.workScope),
     },
   }
 }
@@ -614,6 +637,41 @@ const COUNT_OPERATIONS = [
   { key: "projects", op: "ProjectCount", root: "orgHypercertsCollection" },
   { key: "endorsements", op: "AwardCount", root: "appCertifiedBadgeAward" },
 ] as const
+
+/**
+ * Exact deduped count of the activities a profile CREATED or
+ * CONTRIBUTED to (the union, via the indexer's `_or` filter — see the
+ * `UserActivityCount` op). One cheap `first: 1` query that reads only
+ * `totalCount`. Returns null on any failure so callers fall back
+ * gracefully instead of rendering a wrong number.
+ */
+export async function fetchUserActivityCount(
+  did: string,
+): Promise<number | null> {
+  if (!did) return null
+  try {
+    const res = await fetch(INDEXER_PROXY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        operationName: "UserActivityCount",
+        variables: { did },
+      }),
+    })
+    if (!res.ok) return null
+    const json = (await res.json()) as {
+      data?: {
+        orgHypercertsClaimActivity?: { totalCount?: number | null } | null
+      }
+      errors?: { message?: string }[]
+    }
+    if (json.errors && json.errors.length > 0) return null
+    const total = json.data?.orgHypercertsClaimActivity?.totalCount
+    return typeof total === "number" ? total : null
+  } catch {
+    return null
+  }
+}
 
 async function fetchCount(op: string, root: string): Promise<number | null> {
   try {

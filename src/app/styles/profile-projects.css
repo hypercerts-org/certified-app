@@ -45,6 +45,32 @@
   overflow: hidden;
 }
 
+@media (max-width: 799px) {
+  /* Drop the outer box on mobile — each project reads as a plain block
+     in the list rather than a bordered card. */
+  .profile-projects__box {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    overflow: visible;
+  }
+  /* Scoped under .profile-projects__box so they beat the base
+     `…__box-head` / `…__box-certs` rules declared LATER in this file
+     (equal specificity would otherwise let the later base win). */
+  .profile-projects__box .profile-projects__box-head {
+    padding-left: 0;
+    padding-right: 0;
+    /* With the member-activities section hidden below, the head's
+       divider would dangle at the bottom of each project; drop it. */
+    border-bottom: 0;
+  }
+  /* Don't list each project's member activities on mobile — the Projects
+     tab stays a compact list of projects. */
+  .profile-projects__box .profile-projects__box-certs {
+    display: none;
+  }
+}
+
 .profile-projects__box-head {
   display: flex;
   flex-direction: column;

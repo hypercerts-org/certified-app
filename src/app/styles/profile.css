@@ -454,3 +454,72 @@
   justify-content: center;
   padding: 24px 0;
 }
+
+/* The Edit / Settings / Follow buttons in the profile hero drop the
+   global 44px mobile min tap-height (`min-h-11` on Button size="sm"),
+   which made them look oversized in the compact hero. Padding then
+   drives a tighter height, matching the desktop look. */
+@media (max-width: 799px) {
+  .profile-hero__action button {
+    min-height: 0;
+  }
+}
+
+/* Profile sub-tab strips (Created / Contributed, Received / Given,
+   Followers / Following) read as explore-style pills on mobile instead
+   of the tall underline tabs. Scoped to role="tab" so it only hits the
+   ui/Tabs sub-strips, not the main `.profile-tabs__tab` strip. */
+@media (max-width: 799px) {
+  .profile-page [role="tab"] {
+    padding: 4px 12px;
+    border: 1px solid var(--border-default);
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    color: var(--fg-primary);
+    font-size: 0.75rem;
+    font-weight: 500;
+    min-height: 30px;
+  }
+  .profile-page [role="tab"][aria-selected="true"] {
+    background: var(--fg-primary);
+    color: var(--bg-canvas);
+    border-color: var(--fg-primary);
+    font-weight: 600;
+  }
+  .profile-page [role="tab"][aria-disabled="true"] {
+    opacity: 0.5;
+  }
+}
+
+/* Profile Activities tab: when an activity has no image, show no
+   thumbnail at all rather than the grey CertIcon placeholder box. */
+.profile-certs .feed-card__image-wrap--placeholder {
+  display: none;
+}
+
+/* "New activity / project / group" CTAs collapse to an icon-only plus on
+   mobile, styled IDENTICALLY to the Lists tab's create control: a 30px
+   bordered, transparent square with the plus in fg-primary. The visible
+   label is dropped (the button keeps its `aria-label` for assistive
+   tech). Scoped under `.profile-page` so it overrides the Button
+   primitive's filled "primary" variant (single-class utilities). */
+@media (max-width: 799px) {
+  .profile-new-record-btn__label {
+    display: none;
+  }
+  .profile-page .profile-new-record-btn {
+    width: 30px;
+    height: 30px;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    gap: 0;
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--fg-primary);
+  }
+  .profile-page .profile-new-record-btn:hover {
+    background: var(--bg-sunken);
+  }
+}

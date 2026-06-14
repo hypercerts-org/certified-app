@@ -103,9 +103,14 @@ export default function ProfileProjects({
       <div className="profile-projects__controls">
         {viewerIsOwner ? (
           <Link href="/project/new">
-            <Button variant="primary" size="sm">
+            <Button
+              variant="primary"
+              size="sm"
+              className="profile-new-record-btn"
+              aria-label="New project"
+            >
               <Plus size={14} strokeWidth={1.75} aria-hidden />
-              New project
+              <span className="profile-new-record-btn__label">New project</span>
             </Button>
           </Link>
         ) : null}
@@ -281,9 +286,11 @@ function ProjectBox({ project, owner }: ProjectBoxProps) {
   // below sit OUTSIDE this wrapper so they keep their own anchors.
   const HeadContents = (
     <>
-      <div className="profile-projects__box-image-wrap">
-        {showImage ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
+      {/* No placeholder when the project has no image — just omit the
+          image area entirely rather than showing a grey fallback box. */}
+      {showImage ? (
+        <div className="profile-projects__box-image-wrap">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={imageUrl!}
             alt=""
@@ -291,12 +298,8 @@ function ProjectBox({ project, owner }: ProjectBoxProps) {
             onError={() => setImageFailed(true)}
             loading="lazy"
           />
-        ) : (
-          <div className="profile-projects__box-image profile-projects__box-image--placeholder">
-            <FolderGit2 size={40} strokeWidth={1.25} aria-hidden />
-          </div>
-        )}
-      </div>
+        </div>
+      ) : null}
 
       <div className="profile-projects__box-meta">
         <div className="profile-projects__box-titleline">

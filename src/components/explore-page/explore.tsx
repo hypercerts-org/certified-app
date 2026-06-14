@@ -1189,6 +1189,7 @@ function ExploreAllBlocks() {
               icon={CertIcon}
               isLoading={activities.isLoading}
               isEmpty={activityItems.length === 0}
+              onShowAll={() => setShow("activities")}
             >
               <ul className="explore__list explore__list--certs">
                 {activityItems.map((rec) => {
@@ -1199,7 +1200,6 @@ function ExploreAllBlocks() {
                     </li>
                   )
                 })}
-                <ShowAllRow onClick={() => setShow("activities")} />
               </ul>
             </AllSection>
 
@@ -1208,6 +1208,7 @@ function ExploreAllBlocks() {
               icon={FolderGit2}
               isLoading={projects.isLoading}
               isEmpty={projectItems.length === 0}
+              onShowAll={() => setShow("projects")}
             >
               <ul className="explore__list explore__list--projects">
                 {projectItems.map((p) => (
@@ -1215,7 +1216,6 @@ function ExploreAllBlocks() {
                     <ProjectListRow project={p} />
                   </li>
                 ))}
-                <ShowAllRow onClick={() => setShow("projects")} />
               </ul>
             </AllSection>
 
@@ -1224,6 +1224,7 @@ function ExploreAllBlocks() {
               icon={Users}
               isLoading={accounts.isLoading}
               isEmpty={accountItems.length === 0}
+              onShowAll={() => setShow("accounts")}
             >
               <ul className="explore__list explore__list--accounts">
                 {accountItems.map((a) => (
@@ -1231,7 +1232,6 @@ function ExploreAllBlocks() {
                     <AccountListRow actor={a} />
                   </li>
                 ))}
-                <ShowAllRow onClick={() => setShow("accounts")} />
               </ul>
             </AllSection>
           </div>
@@ -1280,23 +1280,6 @@ function ExploreAllSingle({ show }: { show: ExploreKind }) {
         />
       </div>
     </div>
-  )
-}
-
-/** The thin "Show all" row pinned as the last item inside a capped
- *  block's list — collapses the All view to that single category. Lives
- *  inside the bordered list so it reads as the list's final row (no gap
- *  to the rows above). */
-function ShowAllRow({ onClick }: { onClick: () => void }) {
-  return (
-    <li>
-      <Tooltip label="Show all" className="w-full">
-        <button type="button" className="explore__show-all" onClick={onClick}>
-          Show all
-          <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
-        </button>
-      </Tooltip>
-    </li>
   )
 }
 
@@ -1491,21 +1474,27 @@ function AllCategoryDropdown({
 
 /**
  * One block on the All view's default (three-block) layout: an uppercase
- * section heading, then either a spinner (still loading), a muted empty
- * line (no matches), or the result list passed as children. The list
- * itself carries the trailing {@link ShowAllRow}.
+ * section heading with a "Show all" action pinned to its right (when the
+ * block has content), then either a spinner (still loading), a muted
+ * empty line (no matches), or the result list passed as children.
  */
 function AllSection({
   title,
   icon: Icon,
   isLoading,
   isEmpty,
+  onShowAll,
   children,
 }: {
   title: string
   icon: SectionIcon
   isLoading: boolean
   isEmpty: boolean
+  /** Collapses the All view to this single category. The "Show all"
+   *  control renders in the section header (matching the project
+   *  detail page's "See all →" affordance) only when there's content
+   *  to expand into. */
+  onShowAll: () => void
   children: React.ReactNode
 }) {
   return (
@@ -1515,6 +1504,16 @@ function AllSection({
           <Icon size={14} strokeWidth={1.75} aria-hidden />
           {title}
         </h2>
+        {!isLoading && !isEmpty ? (
+          <button
+            type="button"
+            className="explore__all-section-action"
+            onClick={onShowAll}
+          >
+            Show all
+            <ChevronRight size={13} strokeWidth={1.75} aria-hidden />
+          </button>
+        ) : null}
       </div>
       {isLoading ? (
         <div className="explore__all-loading">

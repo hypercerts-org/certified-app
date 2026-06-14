@@ -45,6 +45,7 @@ import { useOrg } from "@/lib/groups/org-context"
 import { useProjectItems } from "@/hooks/use-project-items"
 import { useContextUpdates } from "@/hooks/use-context-updates"
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
+import { useScrollTopOnTabChange } from "@/hooks/use-scroll-top-on-tab-change"
 import CertListRow from "@/components/explore-page/cert-list-row"
 import {
   resolveActivityImageUrl,
@@ -284,6 +285,10 @@ export default function ProjectDetail({
     normalizedTab === "updates"
       ? normalizedTab
       : "overview"
+
+  // On mobile, reset to the top when switching sub-tabs so the tab's
+  // first rows aren't left hidden behind the fixed navbar.
+  useScrollTopOnTabChange(activeTab)
 
   // Updates count for the navbar title on the Updates tab. Fetched only
   // on that tab (null subjectUri = no fetch elsewhere).

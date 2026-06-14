@@ -114,6 +114,7 @@ const ACTIVITY_NODE_SELECTION = `
       }
       workScope {
         ... on OrgHypercertsClaimActivityWorkScopeString { scope }
+        ... on OrgHypercertsWorkscopeCel { expression }
       }
     }
   }
@@ -219,6 +220,24 @@ ${ACTIVITY_NODE_SELECTION}
         where: { contributor: { eq: $did } }
       ) {
 ${ACTIVITY_NODE_SELECTION}
+      }
+    }
+  `,
+
+  // Deduped union count of activities a profile CREATED or CONTRIBUTED
+  // to. The `_or` returns each matching record once, so `totalCount` is
+  // the exact unique count (created ∪ contributed) — unlike summing the
+  // two per-bucket totals, which double-counts a record where the user
+  // is both author and contributor.
+  UserActivityCount: `
+    query UserActivityCount($did: String!) {
+      orgHypercertsClaimActivity(
+        first: 1
+        where: { _or: [{ did: { eq: $did } }, { contributor: { eq: $did } }] }
+      ) {
+        totalCount
+        edges { node { uri } }
+        pageInfo { hasNextPage }
       }
     }
   `,
@@ -862,6 +881,7 @@ ${ACTIVITY_NODE_SELECTION}
             }
             workScope {
               ... on OrgHypercertsClaimActivityWorkScopeString { scope }
+              ... on OrgHypercertsWorkscopeCel { expression }
             }
           }
         }
@@ -1203,6 +1223,11 @@ function buildVariables(
         first: clampFirst(vars.first, MAX_FIRST, 100),
         after: readString(vars.after, MAX_AFTER_LEN),
       }
+    }
+    case "UserActivityCount": {
+      const did = readDid(vars.did)
+      if (!did) return null
+      return { did }
     }
     case "EndorsementDefs": {
       const dids = readDidList(vars.dids, MAX_DID_LIST)

@@ -14,7 +14,7 @@ import {
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { getProfileWithCid } from "@/lib/atproto/profile"
 import type { CertifiedProfile } from "@/lib/atproto/types"
-import { useUserActivities } from "@/hooks/use-user-activities"
+import { useUserActivityCount } from "@/hooks/use-user-activity-count"
 import { useOrgMarker } from "@/hooks/use-org-marker"
 import { useOrg } from "@/lib/groups/org-context"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -336,10 +336,13 @@ export default function UserProfilePage() {
       ? "Admin of this group"
       : undefined
 
-  const { activities, hasMore } = useUserActivities(did)
-  const activityCountLabel = hasMore
-    ? `${activities.length}+`
-    : `${activities.length}`
+  // Exact deduped count of activities this profile created or
+  // contributed to (union via the indexer's `_or` totalCount), rather
+  // than the capped "N+" a first-page fetch produced. "…" while the
+  // count resolves.
+  const activityCount = useUserActivityCount(did)
+  const activityCountLabel =
+    activityCount === null ? "…" : `${activityCount}`
 
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -436,7 +439,11 @@ export default function UserProfilePage() {
               }`}
               onClick={() => {
                 if (locked) return
-                router.push(
+                // `replace`, not `push`, so switching profile sub-tabs
+                // doesn't stack history entries — the navbar Back button
+                // then leaves the profile entirely instead of stepping
+                // back through each tab the user opened.
+                router.replace(
                   t.key === "overview" ? pathname : `${pathname}?tab=${t.key}`,
                   { scroll: false },
                 )

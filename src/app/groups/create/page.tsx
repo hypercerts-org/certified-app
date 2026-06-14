@@ -3,7 +3,15 @@
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { Building2, Globe, Image as ImageIcon, Users } from "lucide-react"
+import {
+  AtSign,
+  Building2,
+  Calendar,
+  FileText,
+  Globe,
+  Image as ImageIcon,
+  Users,
+} from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useOrgCreationLimit } from "@/lib/groups/use-org-limit"
@@ -355,7 +363,7 @@ export default function CreateGroupPage() {
 
   return (
     <form onSubmit={handleSubmit}>
-      <article className="project-detail-page project-detail--wide create-project">
+      <article className="project-detail-page project-detail--wide create-project create-group">
         <div className="project-detail">
           {/* Avatar (circular) on the left, banner image on the
               right — both pickers sit on a single header row so the
@@ -366,68 +374,80 @@ export default function CreateGroupPage() {
               in the app. The banner keeps the project-form hero
               aspect via `flex: 1`. */}
           <div className="create-group__identity-row">
-            <div
-              className={
-                avatarPreviewUrl
-                  ? "create-group__avatar-tile"
-                  : "create-group__avatar-tile create-group__avatar-tile--placeholder"
-              }
-            >
-              {avatarPreviewUrl ? (
-                <Image
-                  src={avatarPreviewUrl}
-                  alt=""
-                  fill
-                  className="create-group__avatar-img"
-                  unoptimized
+            <div className="create-group__identity-col">
+              <span className="project-detail__meta-label">
+                <Users size={11} strokeWidth={2} aria-hidden />
+                Avatar
+              </span>
+              <div
+                className={
+                  avatarPreviewUrl
+                    ? "create-group__avatar-tile"
+                    : "create-group__avatar-tile create-group__avatar-tile--placeholder"
+                }
+              >
+                {avatarPreviewUrl ? (
+                  <Image
+                    src={avatarPreviewUrl}
+                    alt=""
+                    fill
+                    className="create-group__avatar-img"
+                    unoptimized
+                  />
+                ) : (
+                  <Users
+                    size={36}
+                    strokeWidth={1.25}
+                    aria-hidden
+                    className="create-group__avatar-placeholder-icon"
+                  />
+                )}
+                <ImageEditOverlay
+                  onFile={handleAvatarFile}
+                  hasPending={!!avatarFile}
+                  variant="with-remove"
+                  onRemove={handleAvatarRemove}
+                  hasImage={!!avatarFile}
                 />
-              ) : (
-                <Users
-                  size={36}
-                  strokeWidth={1.25}
-                  aria-hidden
-                  className="create-group__avatar-placeholder-icon"
-                />
-              )}
-              <ImageEditOverlay
-                onFile={handleAvatarFile}
-                hasPending={!!avatarFile}
-                variant="with-remove"
-                onRemove={handleAvatarRemove}
-                hasImage={!!avatarFile}
-              />
+              </div>
             </div>
 
-            <div
-              className={
-                bannerPreviewUrl
-                  ? "project-detail__hero create-project__hero create-group__banner-tile"
-                  : "project-detail__hero project-detail__hero--placeholder create-project__hero create-group__banner-tile"
-              }
-            >
-              {bannerPreviewUrl ? (
-                <Image
-                  src={bannerPreviewUrl}
-                  alt=""
-                  fill
-                  className="project-detail__hero-img"
-                  unoptimized
+            <div className="create-group__identity-col">
+              <span className="project-detail__meta-label">
+                <ImageIcon size={11} strokeWidth={2} aria-hidden />
+                Banner
+              </span>
+              <div
+                className={
+                  bannerPreviewUrl
+                    ? "project-detail__hero create-project__hero create-group__banner-tile"
+                    : "project-detail__hero project-detail__hero--placeholder create-project__hero create-group__banner-tile"
+                }
+              >
+                {bannerPreviewUrl ? (
+                  <Image
+                    src={bannerPreviewUrl}
+                    alt=""
+                    fill
+                    className="project-detail__hero-img"
+                    unoptimized
+                  />
+                ) : (
+                  <ImageIcon
+                    size={48}
+                    strokeWidth={1.25}
+                    aria-hidden
+                    className="project-detail__hero-placeholder-icon"
+                  />
+                )}
+                <ImageEditOverlay
+                  onFile={handleBannerFile}
+                  hasPending={!!bannerFile}
+                  variant="with-remove"
+                  onRemove={handleBannerRemove}
+                  hasImage={!!bannerFile}
                 />
-              ) : (
-                <ImageIcon
-                  size={48}
-                  strokeWidth={1.25}
-                  aria-hidden
-                  className="project-detail__hero-placeholder-icon"
-                />
-              )}
-              <ImageEditOverlay
-                onFile={handleBannerFile}
-                hasPending={!!bannerFile}
-                variant="with-remove"
-                onRemove={handleBannerRemove}
-                hasImage={!!bannerFile}
-              />
+              </div>
             </div>
           </div>
 
@@ -460,7 +480,11 @@ export default function CreateGroupPage() {
             </div>
           </header>
 
-          <section className="cert-detail__section">
+          <section className="cert-detail__section create-group__about">
+            <span className="project-detail__meta-label">
+              <FileText size={11} strokeWidth={2} aria-hidden />
+              About
+            </span>
             <div className="create-cert__input-with-counter">
               <textarea
                 className="cert-detail__short-desc-input"
@@ -480,7 +504,7 @@ export default function CreateGroupPage() {
           <section className="project-detail__meta create-project__meta">
             <div className="project-detail__meta-row">
               <span className="project-detail__meta-label">
-                <Building2 size={11} strokeWidth={2} aria-hidden />
+                <AtSign size={11} strokeWidth={2} aria-hidden />
                 Handle
               </span>
               <input
@@ -530,6 +554,7 @@ export default function CreateGroupPage() {
 
             <div className="project-detail__meta-row">
               <span className="project-detail__meta-label">
+                <Calendar size={11} strokeWidth={2} aria-hidden />
                 Founded
               </span>
               <input
@@ -543,6 +568,7 @@ export default function CreateGroupPage() {
 
             <div className="project-detail__meta-row project-detail__meta-row--wide">
               <span className="project-detail__meta-label">
+                <Building2 size={11} strokeWidth={2} aria-hidden />
                 Organization type
               </span>
               <input
