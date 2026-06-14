@@ -1128,10 +1128,13 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
     flex: 1 1 auto;
     min-width: 0;
   }
-  /* Reserve room for the fixed bar (below the navbar) so it doesn't
-     overlay the top of the page content. */
-  html.has-acting-as-bar .app-shell__content {
-    padding-top: calc(var(--navbar-height) + 44px + 16px);
+  /* Reserve the fixed bar's height so it doesn't overlay the top of the
+     page content. Applied to `.app-shell` (not `.app-shell__content`,
+     whose top padding is overridden per-page by higher-specificity
+     `:has()` rules) so it stacks on top of whatever navbar offset each
+     page already carries. */
+  html.has-acting-as-bar .app-shell {
+    padding-top: 44px;
   }
 }
 
