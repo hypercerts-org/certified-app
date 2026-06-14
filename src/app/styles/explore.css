@@ -316,28 +316,33 @@
   }
   /* Second row: dropdown on the left, action cluster pushed to the right.
      Stretch the cluster to the row height so its icon buttons can match
-     the category pills (which set the line height). */
+     the category pills (which set the line height). `flex-shrink: 0`
+     keeps the filter button from being squeezed off the right edge when
+     the category pills get wide (they scroll instead — see below). */
   .explore__chrome-actions {
     margin-left: auto;
     gap: 8px;
     align-self: stretch;
+    flex-shrink: 0;
   }
   .explore__chrome-btn {
     min-height: 44px;
     padding-top: 10px;
     padding-bottom: 10px;
   }
-  /* Mobile icon buttons (sort + filter): match the category pill's
-     height and stay square. Dropping the inherited 44px min-height lets
-     the cluster size to the pills (~30px); stretching to the cluster +
-     aspect-ratio then makes each icon a pill-height square. */
+  /* Mobile icon buttons (sort + filter): a deterministic square.
+     A fixed width/height (rather than aspect-ratio + align-self:stretch,
+     whose height-derived width under-sized the flex cluster and pushed
+     the filter button off the right edge) keeps the action cluster a
+     predictable size so `margin-left: auto` pins it flush to the right. */
   .explore__chrome-btn--icon {
-    align-self: stretch;
-    aspect-ratio: 1 / 1;
-    width: auto;
-    height: auto;
+    width: 36px;
+    height: 36px;
     min-height: 0;
     padding: 0;
+    align-self: center;
+    aspect-ratio: auto;
+    flex-shrink: 0;
   }
   /* The type dropdown trigger matches the 44px control height too. */
   .explore__sub-dropdown-trigger {
@@ -369,8 +374,15 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    flex: 1;
+    /* Take only the width the pills need (don't grow) so the action
+       cluster keeps its full width and `margin-left: auto` can pin it to
+       the right edge — `flex: 1` here grew the pills and pushed the
+       filter button off-screen. Shrink + wrap handle the rare case where
+       the pills can't fit beside the actions. No `overflow` clip: the
+       category dropdown popover is a child and must escape the box. */
+    flex: 0 1 auto;
     min-width: 0;
+    flex-wrap: wrap;
   }
 
   .explore__category-pill {
@@ -584,31 +596,29 @@
   color: var(--fg-secondary);
 }
 
-/* Thin "Show all" row — the last <li> inside a capped block's list, so
-   it sits flush against the rows above (no gap) and shares the list's
-   border + clipped corners. Clicking collapses the All view to that
-   single category. */
-.explore__show-all {
-  display: flex;
+/* "Show all" action in the section header — sits on the same line as
+   the section title (pushed right by the head's space-between). Matches
+   the project detail page's "See all →" link: small, muted, underline
+   on hover. Collapses the All view to that single category. */
+.explore__all-section-action {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  width: 100%;
-  padding: 5px;
+  gap: 2px;
+  flex-shrink: 0;
+  padding: 0;
   border: 0;
-  border-top: 1px solid var(--border-subtle);
-  background: var(--bg-elevated);
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.8rem;
+  background: none;
+  font-size: 0.75rem;
   font-weight: 500;
   color: var(--fg-secondary);
   cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
+  transition: color var(--transition-fast);
 }
 
-.explore__show-all:hover {
-  background: var(--bg-sunken);
+.explore__all-section-action:hover {
   color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* All view, single-category mode: the row that hosts the inline
@@ -759,6 +769,20 @@
   white-space: nowrap;
 }
 
+/* "by Display Name" line under a project row's title. Hidden on
+   desktop (the avatar author column carries the byline there); shown on
+   mobile, where the column is dropped (see the mobile block below). */
+.cert-list-row__subtitle {
+  display: none;
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--fg-muted);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .cert-list-row__meta {
   margin: 0;
   /* Single line: time period · work scope, truncated with an ellipsis
@@ -827,30 +851,11 @@
   }
 
   .cert-list-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "author time"
-      "link link";
-    gap: 10px 12px;
     padding: 16px 0;
   }
 
   .cert-list-row:hover {
     background: transparent;
-  }
-
-  .cert-list-row__author-col {
-    grid-area: author;
-  }
-
-  .cert-list-row__time {
-    grid-area: time;
-    color: var(--fg-muted);
-  }
-
-  .cert-list-row__link {
-    grid-area: link;
-    align-items: flex-start;
   }
 
   .cert-list-row__body {
@@ -865,6 +870,51 @@
 
   .cert-list-row__meta {
     color: var(--fg-muted);
+  }
+
+  /* Activities (compact): thumb + serif title + meta in one row — the
+     same treatment the mobile project-detail activities list uses. */
+  .cert-list-row.cert-list-row--compact .cert-list-row__link {
+    align-items: flex-start;
+  }
+
+  /* Let the activity meta (time period · work scope) wrap on mobile so
+     the work scope stays visible instead of being clipped by the
+     single-line ellipsis. The dot separator is hidden at wrap points by
+     ExploreListRow's line-start measurement. */
+  .cert-list-row.cert-list-row--compact .cert-list-row__meta {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  /* Projects (non-compact): [thumb + title / "by …"] on the left, the
+     date pinned to the right of the same row. Author avatar column and
+     the count·location meta line are dropped on mobile. */
+  .cert-list-row:not(.cert-list-row--compact) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "link time";
+    align-items: center;
+    gap: 12px;
+  }
+
+  .cert-list-row:not(.cert-list-row--compact) .cert-list-row__link {
+    grid-area: link;
+    align-items: center;
+  }
+
+  .cert-list-row:not(.cert-list-row--compact) .cert-list-row__time {
+    grid-area: time;
+    color: var(--fg-muted);
+  }
+
+  .cert-list-row:not(.cert-list-row--compact) .cert-list-row__author-col,
+  .cert-list-row:not(.cert-list-row--compact) .cert-list-row__meta {
+    display: none;
+  }
+
+  .cert-list-row:not(.cert-list-row--compact) .cert-list-row__subtitle {
+    display: block;
   }
 }
 
@@ -1100,9 +1150,13 @@
   .account-list-row:hover {
     background: transparent;
   }
-  .account-list-row__badge,
-  .account-list-row__joined {
+  .account-list-row__badge {
     justify-self: start;
+  }
+  /* "Joined …" date is dropped on mobile — the row is just the
+     identity (avatar + name + @handle). */
+  .account-list-row__joined {
+    display: none;
   }
 }
 

@@ -163,9 +163,16 @@ export default function ProfileCerts({
         <div className="profile-certs__controls">
           {viewerIsOwner ? (
             <Link href="/create">
-              <Button variant="primary" size="sm">
+              <Button
+                variant="primary"
+                size="sm"
+                className="profile-new-record-btn"
+                aria-label="New activity"
+              >
                 <Plus size={14} strokeWidth={1.75} aria-hidden />
-                New activity
+                <span className="profile-new-record-btn__label">
+                  New activity
+                </span>
               </Button>
             </Link>
           ) : null}

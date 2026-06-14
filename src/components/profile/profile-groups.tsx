@@ -94,9 +94,14 @@ export default function ProfileGroups({ did }: ProfileGroupsProps) {
         <div className="profile-groups__controls">
           {isOwnProfile ? (
             <Link href="/groups/create">
-              <Button variant="primary" size="sm">
+              <Button
+                variant="primary"
+                size="sm"
+                className="profile-new-record-btn"
+                aria-label="New group"
+              >
                 <Plus size={14} strokeWidth={1.75} aria-hidden />
-                New group
+                <span className="profile-new-record-btn__label">New group</span>
               </Button>
             </Link>
           ) : null}
@@ -232,8 +237,9 @@ function GroupRow({ group }: GroupRowProps) {
       <div className="profile-groups__row">
         <Link
           href={profileUrl(group.handle)}
-          className="profile-groups__row-link"
-          title={`${name} (@${group.handle})`}
+          className="profile-groups__avatar-link"
+          aria-label={name}
+          tabIndex={-1}
         >
           <Avatar
             size="md"
@@ -241,40 +247,51 @@ function GroupRow({ group }: GroupRowProps) {
             fallbackInitials={initials}
             alt=""
           />
-          <div className="profile-groups__meta">
-            <div className="profile-groups__identity">
-              <span className="profile-groups__name">{name}</span>
-              <span className="profile-groups__handle">@{group.handle}</span>
-            </div>
-            {group.description ? (
-              <p className="profile-groups__description">{group.description}</p>
+        </Link>
+        <div className="profile-groups__main">
+          <Link
+            href={profileUrl(group.handle)}
+            className="profile-groups__identity"
+            title={`${name} (@${group.handle})`}
+          >
+            <span className="profile-groups__name">{name}</span>
+            <span className="profile-groups__handle">@{group.handle}</span>
+          </Link>
+          {group.description ? (
+            <p className="profile-groups__description">{group.description}</p>
+          ) : null}
+          <div className="profile-groups__rolerow">
+            {group.role ? (
+              <span className="profile-groups__role">{group.role}</span>
             ) : null}
             {joinedLabel ? (
               <span className="profile-groups__joined">{joinedLabel}</span>
             ) : null}
           </div>
-        </Link>
-
-        <div className="profile-groups__row-actions">
-          {group.role ? (
-            <span className="profile-groups__role">{group.role}</span>
-          ) : null}
-          {isOperating ? (
-            <Button variant="secondary" size="sm" disabled>
-              <Check size={14} strokeWidth={2} aria-hidden />
-              Operating
-            </Button>
-          ) : (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleOperateAs}
-              title={`Operate as ${name}`}
-            >
-              <LogIn size={14} strokeWidth={1.75} aria-hidden />
-              Operate as
-            </Button>
-          )}
+          <div className="profile-groups__row-actions">
+            {isOperating ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="profile-groups__operate-btn"
+                disabled
+              >
+                <Check size={14} strokeWidth={2} aria-hidden />
+                Operating
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="profile-groups__operate-btn"
+                onClick={handleOperateAs}
+                title={`Operate as ${name}`}
+              >
+                <LogIn size={14} strokeWidth={1.75} aria-hidden />
+                Operate as
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </li>

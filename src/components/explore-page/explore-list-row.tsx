@@ -36,6 +36,10 @@ export interface ExploreListRowProps {
   /** Icon shown when `thumbUrl` is null or fails to load. */
   fallbackIcon: ReactNode
   title: string
+  /** Optional second line under the title (e.g. "by Display Name").
+   *  Hidden on desktop — there the author shows in its own column;
+   *  surfaced on mobile where the column is dropped. */
+  subtitle?: ReactNode
   /** Meta segments rendered as a `·`-separated line under the title.
    *  Empty array hides the meta line. */
   metaItems: ReactNode[]
@@ -58,6 +62,7 @@ export default function ExploreListRow({
   thumbUrl,
   fallbackIcon,
   title,
+  subtitle,
   metaItems,
   authorDid,
   endorsementMeta,
@@ -113,6 +118,9 @@ export default function ExploreListRow({
       </div>
       <div className="cert-list-row__body">
         <h3 className="cert-list-row__title">{title}</h3>
+        {subtitle ? (
+          <p className="cert-list-row__subtitle">{subtitle}</p>
+        ) : null}
         {metaItems.length > 0 ? (
           <p className="cert-list-row__meta" ref={metaRef}>
             {metaItems.map((item, i) => (

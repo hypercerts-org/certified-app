@@ -307,10 +307,12 @@ export default function EndorsementLists({
             <Button
               variant="primary"
               size="sm"
+              className="profile-new-record-btn"
+              aria-label="New list"
               onClick={() => setModalMode("create")}
             >
               <Plus size={14} strokeWidth={1.75} aria-hidden />
-              New list
+              <span className="profile-new-record-btn__label">New list</span>
             </Button>
           ) : null}
         </div>

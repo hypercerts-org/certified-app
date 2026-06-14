@@ -30,6 +30,7 @@ import {
   isAtprotoIdentity,
 } from "@/hooks/use-contributor-info"
 import { useContributorInformationRecord } from "@/hooks/use-contributor-information-record"
+import { useScrollTopOnTabChange } from "@/hooks/use-scroll-top-on-tab-change"
 import { useRights } from "@/hooks/use-rights"
 import { getInitials } from "@/lib/utils/initials"
 import { formatShortDate } from "@/lib/utils/format-date"
@@ -228,6 +229,10 @@ export default function ActivityDetail({
     tabParam === "updates"
       ? tabParam
       : "overview"
+
+  // On mobile, reset to the top when switching sub-tabs so the tab's
+  // first rows aren't left hidden behind the fixed navbar.
+  useScrollTopOnTabChange(activeTab)
 
   // Navbar title: sub-tabs show the tab name next to the back arrow; the
   // overview shows the activity's own name. (We deliberately don't prefix

@@ -139,6 +139,24 @@
     order: 9;
   }
 
+  /* Create / edit activity form: lead with the title, then the image,
+     then the metadata and the rest of the form. The headline (order 1)
+     and image (order 2) already come from the read-view rules above; the
+     form's generic meta-rows and sections carry no modifier class, so
+     they defaulted to order:0 and jumped ahead of the title. Push them
+     after the image. */
+  .create-cert .cert-detail__meta-row {
+    order: 3;
+  }
+  .create-cert .cert-detail__section {
+    order: 4;
+  }
+  /* Cancel / Publish sit at the very end of the form (they carry no
+     order otherwise and would default to 0, jumping above the title). */
+  .create-cert .create-cert__actions {
+    order: 5;
+  }
+
   /* The single-column grid already provides a uniform 24px row gap
      between every promoted leaf (headline, image, each meta-row).
      The promoted `.cert-detail__section` blocks (Summary, Locations)
@@ -154,15 +172,18 @@
     border-top: none;
   }
 
-  /* Description / Contributors tabs: show only the tab content. Hide the
-     headline, image, and meta rows (the tab name + count live in the
-     navbar; the navbar Back button returns). */
+  /* Description / Contributors / Updates tabs: show only the tab
+     content. Hide the headline, image, and meta rows (the tab name +
+     count live in the navbar; the navbar Back button returns). */
   .cert-detail--tab-description .cert-detail__headline,
   .cert-detail--tab-contributors .cert-detail__headline,
+  .cert-detail--tab-updates .cert-detail__headline,
   .cert-detail--tab-description .cert-detail__image,
   .cert-detail--tab-contributors .cert-detail__image,
+  .cert-detail--tab-updates .cert-detail__image,
   .cert-detail--tab-description .cert-detail__meta-row,
-  .cert-detail--tab-contributors .cert-detail__meta-row {
+  .cert-detail--tab-contributors .cert-detail__meta-row,
+  .cert-detail--tab-updates .cert-detail__meta-row {
     display: none;
   }
 
@@ -170,6 +191,20 @@
      in-main section header. */
   .cert-detail--tab-contributors .cert-detail__section-header {
     display: none;
+  }
+
+  /* Updates tab: the title + count live in the navbar, so drop the
+     in-body updates header (heading + count) and reset the section's
+     top divider/padding so the first update sits at the top — matching
+     the project detail page's Updates tab. */
+  .cert-detail--tab-updates .context-updates__head {
+    display: none;
+  }
+  .cert-detail--wide.cert-detail--tab-updates:not(.cert-detail--editing)
+    .context-updates {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
   }
 
   /* "Read full description" centers on phones (both the activity and

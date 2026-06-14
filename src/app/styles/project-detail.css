@@ -1256,3 +1256,70 @@
   margin: 0;
   min-width: 0;
 }
+
+/* ---- Create-group form ---- */
+
+/* Avatar / Banner each get a small labelled heading above the picker,
+   matching the Handle / Website meta labels below. */
+.create-group__identity-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Remove the boxed chrome around the Handle / Website / Founded /
+   Organization-type fields — they read as plain labelled rows. */
+.create-group .project-detail__meta {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+/* "About" label sits above the short-description field, matching the
+   other field headings. */
+.create-group__about {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+@media (max-width: 799px) {
+  /* Display-name field reads at the same size as the short-description
+     placeholder rather than the large serif title size. */
+  .create-group .cert-detail__title-input {
+    font-size: 1rem;
+  }
+  /* Half-size avatar dropzone, centred horizontally — the full-width
+     circle was oversized. */
+  .create-group .create-group__avatar-tile {
+    max-width: 50%;
+    margin-inline: auto;
+  }
+  /* Cancel / Create group pinned to the very end of the form, after the
+     organization-type field. Higher specificity than the create-project
+     `> *` order rule so it wins regardless of source order. */
+  .create-group .project-detail > .create-cert__actions {
+    order: 9;
+  }
+}
+
+/* Create / edit project form (mobile): lead with the title, then the
+   image, then the rest of the form. The hero image is DOM-first (before
+   the headline), so a base `order:3` on every child pushes the
+   non-title/non-image blocks below the image, and the headline + hero
+   are pulled to the front. Appended last so the hero's order wins over
+   the read-view `.project-detail__hero { order: 3 }` rule above. */
+@media (max-width: 799px) {
+  .create-project .project-detail > * {
+    order: 3;
+  }
+  .create-project .project-detail > .cert-detail__headline {
+    order: 1;
+  }
+  .create-project .project-detail > .create-project__hero {
+    order: 2;
+    /* A little breathing room between the title and the image section. */
+    margin-top: 12px;
+  }
+}
