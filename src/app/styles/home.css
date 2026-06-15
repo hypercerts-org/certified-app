@@ -315,12 +315,12 @@
   margin: 0 auto;
 }
 
-/* News rail shows at the canonical 1100px step (was a non-canonical 1200px).
-   It still appears one step before the sidebar widens at 1300px — the
-   1100–1299px band gets the news rail alongside the trimmed sidebar. Below
-   1100px the layout collapses to a single column and the rail is hidden
-   entirely (never stacked under the feed). */
-@media (max-width: 1099.98px) {
+/* News rail only shows at the canonical 1300px step. With the feed capped
+   at 600px (below) plus the 320px rail, gaps, and the left sidebar, there
+   isn't room for the rail below ~1300px — so below that the layout collapses
+   to a single feed column and the rail is hidden entirely (never squished,
+   never stacked under the feed). */
+@media (max-width: 1299.98px) {
   .home__split {
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
@@ -332,6 +332,17 @@
 
 .home__feed {
   min-width: 0;
+}
+
+/* Desktop: cap the feed at a 600px reading column and center it inside
+   its grid track (the feed column keeps its full 1fr width; the timeline
+   just sits centered within it). Applies in both the single-column band
+   (800–1299px, news rail hidden) and the two-column layout (≥1300px). */
+@media (min-width: 800px) {
+  .home__feed {
+    max-width: 600px;
+    margin-inline: auto;
+  }
 }
 
 .home__news {

@@ -2869,7 +2869,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 36px;
+  height: 30px;
   padding: 0 12px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
@@ -2916,8 +2916,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
