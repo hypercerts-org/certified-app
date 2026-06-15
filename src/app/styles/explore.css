@@ -1169,11 +1169,13 @@
 
 .funding-receipt-row {
   display: grid;
-  /* Fixed amount + date columns with equal 1fr from/to columns. Every
-     row is its own grid at the same (full) width, so the four columns —
-     amount | from | to | date — line up vertically across all rows in a
-     list. */
-  grid-template-columns: 7rem minmax(0, 1fr) minmax(0, 1fr) 7rem;
+  /* Base grid for the activity-detail Funding list (showFor=false):
+     date | from | to | amount | source | confirmed-by. (The /explore
+     list adds a flexible "for" column via subgrid below.) `source`
+     holds the provenance kind chips (content-sized); `confirmed-by`
+     holds the third-party attestor identities (flexes, truncates). */
+  grid-template-columns:
+    7rem minmax(0, 1fr) minmax(0, 1fr) 7rem max-content minmax(0, 1fr);
   align-items: center;
   gap: 16px;
   padding: 12px 14px;
@@ -1318,6 +1320,24 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Provenance "Source" column — one or more kind chips (Badge square). */
+.funding-receipt-row__source {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* Provenance "Confirmed by" column — third-party attestor identities. */
+.funding-receipt-row__confirmed-by {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
 /* Explore funding list → a true table. The <ul> owns the column tracks
    (content-sized amount / from / date, flexible to) and each row adopts
    them via `subgrid`, so the four columns line up tightly across every
@@ -1329,11 +1349,13 @@
   .explore__list--funding {
     display: grid;
     /* date | from | to | for (flexible — holds the activity image +
-       2-line title) | amount. No side padding here so a row's hover
-       background spans the full width; the edge inset lives on the
-       first/last cells below. */
+       2-line title) | amount | source (kind chips) | confirmed-by
+       (third-party attestors, flexes/truncates). No side padding here so
+       a row's hover background spans the full width; the edge inset lives
+       on the first/last cells below. */
     grid-template-columns:
-      max-content max-content max-content minmax(0, 1fr) max-content;
+      max-content max-content max-content minmax(0, 1fr) max-content
+      max-content minmax(0, 1fr);
   }
   .explore__list--funding > li {
     display: contents;
@@ -1375,7 +1397,9 @@
   }
   .funding-receipt-row__from,
   .funding-receipt-row__to-cell,
-  .funding-receipt-row__for {
+  .funding-receipt-row__for,
+  .funding-receipt-row__source,
+  .funding-receipt-row__confirmed-by {
     grid-column: 1 / -1;
   }
 }
