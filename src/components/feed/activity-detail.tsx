@@ -39,6 +39,8 @@ import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EditBanner from "@/components/ui/edit-banner"
 import Tooltip from "@/components/ui/tooltip"
+import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
+import { CERT_DETAIL_TABS } from "@/lib/detail-tabs"
 import { useCertProjects } from "@/hooks/use-cert-projects"
 import { useActivityFunding } from "@/hooks/use-activity-funding"
 import FundingReceiptRow, {
@@ -1178,8 +1180,15 @@ export default function ActivityDetail({
       </aside>
 
       <div className="page-layout__main cert-detail__main">
+        {/* Title stays put across tabs (the active tab shows in the top
+            bar's second row); only the per-tab content below slides. */}
         {headline}
 
+        <TabPanelTransition
+          className="cert-detail__content"
+          activeKey={activeTab}
+          order={CERT_DETAIL_TABS.map((t) => t.key)}
+        >
         {activeTab === "overview" ? (
           <>
             {/* Short description + Read-full-description button sit
@@ -1375,6 +1384,7 @@ export default function ActivityDetail({
             />
           ) : null
         ) : null}
+        </TabPanelTransition>
       </div>
     </article>
     {deleteOpen ? (

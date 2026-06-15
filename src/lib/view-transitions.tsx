@@ -78,7 +78,15 @@ export function ViewTransitionProvider({ children }: { children: ReactNode }) {
     const start = (
       document as Document & { startViewTransition?: StartViewTransition }
     ).startViewTransition?.bind(document)
-    if (!start || prefersReducedMotion()) {
+    // The full-page root slide is a mobile affordance. On desktop (≥800px,
+    // BP_GT_MOBILE) it drags the persistent chrome (top bar, nav rail)
+    // sideways for what are really tab switches — so desktop navigates
+    // plainly and the per-tab content animates locally instead (see
+    // TabPanelTransition). Mobile keeps the directional page slide.
+    const isDesktop =
+      typeof window !== "undefined" &&
+      window.matchMedia("(min-width: 800px)").matches
+    if (!start || prefersReducedMotion() || isDesktop) {
       navigate()
       return
     }

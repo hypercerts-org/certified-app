@@ -33,6 +33,16 @@
   flex-direction: column;
 }
 
+/* The per-tab content sits in its own flex column (the
+   TabPanelTransition wrapper, which carries the desktop tab-switch
+   slide). Matching `.project-detail`'s flow keeps the blocks as flex
+   items — same vertical spacing as when they were direct children, with
+   no margin-collapse. */
+.project-detail__body {
+  display: flex;
+  flex-direction: column;
+}
+
 @media (min-width: 800px) {
   /* Match the fullbleed width used by profile / settings / workspace
      / cert-detail so the app reads with one consistent "wide" width. */

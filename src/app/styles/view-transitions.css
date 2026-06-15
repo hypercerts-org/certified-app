@@ -57,3 +57,57 @@ html[data-vt-dir="back"]::view-transition-old(root) {
 html[data-vt-dir="back"]::view-transition-new(root) {
   animation: vt-slide-in-left 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/* ---------- Desktop tab-content transition ----------
+   The full-page slide above is mobile-only (the provider navigates plainly
+   on desktop). On desktop, switching tabs animates only the content panel —
+   the chrome and the surface's own sidebar/aside stay put. TabPanelTransition
+   re-mounts the panel with a direction class matching the tab's position in
+   its strip: a tab further right slides the new content in from the right.
+   A "contained" slide (fuller offset, same directional feel as the mobile
+   page slide) scoped to the content panel so the chrome + title stay put. */
+@keyframes tab-panel-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(64px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes tab-panel-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-64px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Layout-neutral: the wrapper carries only the animation. `min-width: 0`
+   keeps it from overflowing its flex/grid parent (it may either BE the
+   content container — e.g. .cert-detail__main — or nest inside one). */
+.tab-panel {
+  min-width: 0;
+}
+
+@media (min-width: 800px) {
+  .tab-panel--from-right {
+    animation: tab-panel-in-right 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .tab-panel--from-left {
+    animation: tab-panel-in-left 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-panel--from-right,
+  .tab-panel--from-left {
+    animation: none;
+  }
+}
+
