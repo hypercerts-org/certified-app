@@ -1,18 +1,15 @@
 "use client"
 
-import Link from "next/link"
+import { useState, type KeyboardEvent, type MouseEvent } from "react"
 import Badge from "@/components/ui/badge"
 import IdentityRow from "@/components/ui/identity-row"
+import FundingReceiptDetailModal from "./funding-receipt-detail-modal"
+import { FundingPartySlot, FundingForActivity } from "./funding-receipt-parts"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import { useActivity } from "@/hooks/use-activity"
 import { profileUrl } from "@/lib/urls"
-import { parseAtUri, activityDetailHref } from "@/lib/atproto/activity-uri"
-import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { formatShortDate } from "@/lib/utils/format-date"
 import { kindChips, thirdPartyDids } from "@/lib/atproto/funding-provenance"
-import type { FundingParty, FundingReceipt } from "@/lib/atproto/indexer"
-
-const ACTIVITY_COLLECTION = "org.hypercerts.claim.activity"
+import type { FundingReceipt } from "@/lib/atproto/indexer"
 
 /**
  * Dense single-row representation of an `org.hypercerts.funding.receipt`
@@ -35,6 +32,7 @@ export default function FundingReceiptRow({
   receipt,
   showTextParties = false,
   showFor = true,
+  interactive = true,
 }: {
   receipt: FundingReceipt
   /** Render text (non-account) parties as their literal value rather
@@ -43,9 +41,47 @@ export default function FundingReceiptRow({
   /** Render the trailing "for [activity]" tail. Defaults to true; pass
    *  false on the activity detail page where `for` is redundant. */
   showFor?: boolean
+  /** Make the row open a detail modal on click. Defaults to true; the
+   *  inner account / wallet / activity controls keep their own behaviour
+   *  (the click handler ignores clicks that land on a link or button). */
+  interactive?: boolean
 }) {
+  const [detailOpen, setDetailOpen] = useState(false)
+
+  // Open the modal only for clicks on the row's "chrome" — clicks that
+  // land on an inner link (account, activity) or button (wallet copy)
+  // are left to those controls. Mirrors the keyboard guard below.
+  const onRowClick = (e: MouseEvent<HTMLElement>) => {
+    if ((e.target as HTMLElement).closest("a, button")) return
+    setDetailOpen(true)
+  }
+  // Enter / Space open the modal only when the row itself holds focus;
+  // when a nested link/button is focused we let it handle the key.
+  const onRowKeyDown = (e: KeyboardEvent<HTMLElement>) => {
+    if (e.target !== e.currentTarget) return
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      setDetailOpen(true)
+    }
+  }
+
+  const interactiveProps = interactive
+    ? {
+        role: "button" as const,
+        tabIndex: 0,
+        onClick: onRowClick,
+        onKeyDown: onRowKeyDown,
+        "aria-haspopup": "dialog" as const,
+        "aria-label": "View funding receipt details",
+      }
+    : {}
+
   return (
-    <article className="funding-receipt-row">
+    <>
+    <article
+      className={`funding-receipt-row${interactive ? " funding-receipt-row--interactive" : ""}`}
+      {...interactiveProps}
+    >
       {/* Columns: date | from | to | for | amount | source | confirmed-by.
           Date leads, amount (the "punchline") sits before the provenance
           annotation (kind chips + third-party attestors). */}
@@ -89,6 +125,17 @@ export default function FundingReceiptRow({
           (for self/mutual the attestor is already From/To). */}
       <FundingConfirmedBy receipt={receipt} />
     </article>
+    {/* Rendered as a sibling (not a child of the row) so the modal's
+        backdrop / content clicks don't bubble back into the row's click
+        handler and re-open it. A closed <dialog> is display:none, so it
+        doesn't disturb the list's grid. */}
+    {detailOpen ? (
+      <FundingReceiptDetailModal
+        receipt={receipt}
+        onClose={() => setDetailOpen(false)}
+      />
+    ) : null}
+    </>
   )
 }
 
@@ -140,104 +187,6 @@ function ThirdPartyAttestor({ did }: { did: string }) {
       size="sm"
       className="funding-receipt-row__party"
     />
-  )
-}
-
-/** Renders one side of the transfer. Accounts hydrate per-row and show
- *  avatar + name + @handle. Text slots render their literal value when
- *  `showText` is set (the activity detail page surfaces wallet
- *  addresses); otherwise text / null slots render nothing (the /explore
- *  default). */
-function FundingPartySlot({
-  party,
-  showText = false,
-}: {
-  party: FundingParty
-  showText?: boolean
-}) {
-  const did = party?.kind === "account" ? party.did : null
-  const { info } = useAuthorInfo(did)
-  if (!did) {
-    if (showText && party?.kind === "text" && party.value) {
-      return <FundingTextParty value={party.value} />
-    }
-    return null
-  }
-  const handle = info?.handle ?? undefined
-  return (
-    <IdentityRow
-      did={did}
-      handle={handle}
-      displayName={info?.displayName ?? undefined}
-      avatarUrl={info?.avatarUrl ?? undefined}
-      href={profileUrl(handle || did)}
-      size="sm"
-      className="funding-receipt-row__party"
-    />
-  )
-}
-
-/** Truncate a long wallet-address-style string to `head…tail` so a
- *  full 0x… hex doesn't blow out the row, while keeping the literal
- *  value reachable via the title attribute. Short / non-hex values
- *  pass through unchanged. */
-function shortenAddress(value: string): string {
-  if (value.length <= 16) return value
-  if (!value.startsWith("0x")) return value
-  return `${value.slice(0, 6)}…${value.slice(-4)}`
-}
-
-/** A free-text funding party (wallet address). Rendered as plain text
- *  (no link / hydration) since there's no account behind it. */
-function FundingTextParty({ value }: { value: string }) {
-  const display = shortenAddress(value)
-  return (
-    <span
-      className="funding-receipt-row__text-party"
-      title={display === value ? undefined : value}
-    >
-      {display}
-    </span>
-  )
-}
-
-/** The "for [activity]" column. Resolves the activity (title + square
- *  image) from its URI via {@link useActivity} and links to its detail
- *  page; the title wraps to at most two lines. Always renders the cell
- *  span (empty when the `for` ref is missing or doesn't point at an
- *  activity) so the funding table's columns stay aligned across rows. */
-function FundingForActivity({ uri }: { uri: string | null }) {
-  const parsed = uri ? parseAtUri(uri) : null
-  const isActivity = parsed?.collection === ACTIVITY_COLLECTION
-  const { activity } = useActivity(
-    isActivity ? parsed!.did : null,
-    isActivity ? parsed!.rkey : null,
-  )
-
-  if (!parsed || !isActivity) {
-    return <span className="funding-receipt-row__for" />
-  }
-
-  const title =
-    (typeof activity?.value.title === "string" && activity.value.title) ||
-    "activity"
-  const imageUrl = activity
-    ? resolveActivityImageUrl(activity.value.image, parsed.did)
-    : null
-  const href = activityDetailHref(parsed.did, parsed.rkey)
-
-  return (
-    <span className="funding-receipt-row__for">
-      <Link href={href} className="funding-receipt-row__activity">
-        <span className="funding-receipt-row__activity-img">
-          {imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={imageUrl} alt="" loading="lazy" />
-          ) : null}
-        </span>
-        <span className="funding-receipt-row__activity-title">{title}</span>
-      </Link>
-    </span>
   )
 }
 

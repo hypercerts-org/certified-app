@@ -647,17 +647,29 @@
   margin-top: 0;
 }
 
-/* Divider above the 2-col row when it isn't the first child — keeps
-   the main pane's visual rhythm consistent with `.cert-detail__section`
-   siblings around it. */
-.cert-detail__main > *:not(:first-child).cert-detail__two-col {
+/* The per-tab content lives in `.cert-detail__content` (the
+   TabPanelTransition wrapper, which carries the desktop tab-switch slide;
+   the headline sits OUTSIDE it so the title stays put across tabs). It
+   mirrors `.cert-detail__main`'s flex column + 32px rhythm so spacing and
+   the section dividers below read exactly as before. */
+.cert-detail__content {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  min-width: 0;
+}
+
+/* Divider above the 2-col row. (The headline is no longer a sibling, so
+   the 2-col is never spuriously treated as "first" here — every 2-col
+   gets the divider, as before when the headline preceded it.) */
+.cert-detail__content > .cert-detail__two-col {
   border-top: 1px solid var(--border-subtle);
 }
 
 /* Divider before a `.cert-detail__section` that immediately follows the
    2-col row — the existing `section + section` rule doesn't match
    across the 2-col wrapper, so add the equivalent here. */
-.cert-detail__main > .cert-detail__two-col + .cert-detail__section {
+.cert-detail__content > .cert-detail__two-col + .cert-detail__section {
   border-top: 1px solid var(--border-subtle);
 }
 
@@ -1058,7 +1070,7 @@
   margin-top: 0;
 }
 
-.cert-detail__main > .cert-detail__section + .cert-detail__section {
+.cert-detail__content > .cert-detail__section + .cert-detail__section {
   border-top: 1px solid var(--border-subtle);
 }
 

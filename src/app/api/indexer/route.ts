@@ -829,10 +829,18 @@ ${ACTIVITY_NODE_SELECTION}
   // filter"; a value restricts to payments with a third-party attestor of
   // that DID (the /explore "Confirmed by" picker).
   FundingReceipts: `
-    query FundingReceipts($first: Int!, $after: String, $confirmedBy: String) {
+    query FundingReceipts(
+      $first: Int!
+      $after: String
+      $authorLabels: [String!]
+      $excludeAuthorLabels: [String!]
+      $confirmedBy: String
+    ) {
       orgHypercertsFundingReceipt(
         first: $first
         after: $after
+        authorLabels: $authorLabels
+        excludeAuthorLabels: $excludeAuthorLabels
         confirmedBy: $confirmedBy
       ) {
         totalCount
@@ -857,6 +865,10 @@ ${ACTIVITY_NODE_SELECTION}
               ... on OrgHypercertsFundingReceiptText { value }
             }
             for { uri cid }
+            paymentRail
+            paymentNetwork
+            transactionId
+            notes
             attestations { role did }
           }
         }
@@ -905,6 +917,10 @@ ${ACTIVITY_NODE_SELECTION}
               ... on OrgHypercertsFundingReceiptText { value }
             }
             for { uri cid }
+            paymentRail
+            paymentNetwork
+            transactionId
+            notes
             attestations { role did }
           }
         }
@@ -1511,12 +1527,17 @@ function buildVariables(
     }
     case "FundingReceipts": {
       // Paginated read. Clamp `first` like the other paginated ops;
-      // `after` is the opaque cursor. `confirmedBy` is an optional
-      // third-party-attestor DID filter (magic-indexer #214) — forwarded
-      // only when it's a valid DID, otherwise null ("no filter").
+      // `after` is the opaque cursor. The optional author-label filters
+      // gate receipts by the creator's account (orglabeler) tier so the
+      // Funding tab can hide receipts authored by likely-test accounts
+      // (magic-indexer#207); `confirmedBy` is an optional third-party-
+      // attestor DID filter (magic-indexer #214), forwarded only when it's
+      // a valid DID, otherwise null ("no filter").
       return {
         first: clampFirst(vars.first, MAX_FIRST, 50),
         after: readString(vars.after, MAX_AFTER_LEN),
+        authorLabels: readLabelList(vars.authorLabels),
+        excludeAuthorLabels: readLabelList(vars.excludeAuthorLabels),
         confirmedBy: readDid(vars.confirmedBy),
       }
     }

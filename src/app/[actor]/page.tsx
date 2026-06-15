@@ -35,6 +35,7 @@ import type { LinearDocument } from "@/lib/leaflet/types"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EditBanner from "@/components/ui/edit-banner"
 import EmptyState from "@/components/ui/empty-state"
+import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
 import OnboardingBanner from "@/components/onboarding/onboarding-banner"
 import { AlignLeft, UserX } from "lucide-react"
 import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
@@ -66,6 +67,9 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "about", label: "About" },
   { key: "settings", label: "Settings" },
 ]
+
+// Left-to-right key order for the desktop tab-switch slide direction.
+const TAB_ORDER = TABS.map((t) => t.key)
 
 // Inline-edit state machine + display helpers live in
 // `useProfileInlineEdit` so the page reads as orchestration + tab
@@ -505,6 +509,7 @@ export default function UserProfilePage() {
           />
 
           <div className="page-layout__main">
+            <TabPanelTransition activeKey={activeTab} order={TAB_ORDER}>
             {activeTab === "overview" && (
               <div role="tabpanel" id="tabpanel-overview" aria-labelledby="tab-overview">
                 <ProfileOverview
@@ -626,6 +631,7 @@ export default function UserProfilePage() {
                 <ProfileLists did={did} viewerIsOwner={isViewerThisEntity} />
               </div>
             )}
+            </TabPanelTransition>
           </div>
         </div>
       )}

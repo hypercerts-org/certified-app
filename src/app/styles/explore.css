@@ -1190,6 +1190,18 @@
   background: var(--bg-sunken);
 }
 
+/* Clickable rows open the detail modal. Signal it with a pointer cursor;
+   the existing hover background already reads as "interactive". Inner
+   links / buttons keep their own cursor + behaviour. */
+.funding-receipt-row--interactive {
+  cursor: pointer;
+}
+
+.funding-receipt-row--interactive:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
 /* Column-header row: small uppercase labels (matching the app's other
    section labels), no hover. */
 .funding-receipt-row--header:hover {
@@ -1249,14 +1261,12 @@
   flex-shrink: 0;
 }
 
+/* The text party is now the WalletAddress primitive (ENS / copyable
+   address); it owns truncation + numeric figures. Only the row's font
+   size needs pinning here — it inherits down to the address label. */
 .funding-receipt-row__text-party {
   font-size: 0.85rem;
   font-weight: 400;
-  color: var(--fg-primary);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .funding-receipt-row__for {
@@ -1582,4 +1592,158 @@
   color: var(--fg-muted);
   font-size: 12px;
   line-height: 1;
+}
+
+/* ========== Funding receipt detail modal ========== */
+/* Receipt details are split into three collapsible groups (Transfer /
+   Payment / Record), each its own section + definition list. Only the
+   first is expanded on open. */
+.funding-receipt-detail__section + .funding-receipt-detail__section {
+  margin-top: 2px;
+}
+
+/* Group heading wraps the disclosure button. Reset the heading's own box
+   so the button owns all the spacing. */
+.funding-receipt-detail__section-heading {
+  margin: 0;
+}
+
+/* Disclosure button: a real heading-weight title with a rotating chevron,
+   underlined full-width so each group reads as a labelled, clickable
+   section header (not a per-row label). */
+.funding-receipt-detail__section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--border-default);
+  background: none;
+  text-align: left;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  cursor: pointer;
+  border-radius: var(--radius) var(--radius) 0 0;
+  transition: background var(--transition-fast);
+}
+
+.funding-receipt-detail__section-toggle:hover {
+  background: var(--bg-sunken);
+}
+
+.funding-receipt-detail__section-toggle:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.funding-receipt-detail__chevron {
+  flex-shrink: 0;
+  color: var(--fg-muted);
+  transition: transform var(--transition-fast);
+}
+
+/* Points right when collapsed; rotates down when the section is open. */
+.funding-receipt-detail__chevron[data-open] {
+  transform: rotate(90deg);
+}
+
+/* Label / value definition list shown by FundingReceiptDetailModal. */
+.funding-receipt-detail__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.funding-receipt-detail__row {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.funding-receipt-detail__row + .funding-receipt-detail__row {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.funding-receipt-detail__label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  /* Nudge the label down so its cap-height sits on the value's first line. */
+  padding-top: 3px;
+}
+
+.funding-receipt-detail__value {
+  margin: 0;
+  min-width: 0;
+  font-size: 0.85rem;
+  color: var(--fg-primary);
+}
+
+.funding-receipt-detail__amount {
+  font-variant-numeric: tabular-nums;
+}
+
+.funding-receipt-detail__currency {
+  margin-left: 4px;
+  color: var(--fg-muted);
+}
+
+.funding-receipt-detail__empty {
+  color: var(--fg-muted);
+}
+
+/* Free-text note: wrap naturally, and break overlong tokens (e.g. a
+   wallet address pasted into the note) rather than overflowing the cell. */
+.funding-receipt-detail__note {
+  overflow-wrap: anywhere;
+}
+
+.funding-receipt-detail__copyable {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.funding-receipt-detail__mono {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+}
+
+.funding-receipt-detail__copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.funding-receipt-detail__copy-btn:hover {
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
+.funding-receipt-detail__copy-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }

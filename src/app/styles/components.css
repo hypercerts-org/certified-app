@@ -2467,3 +2467,67 @@
   color: var(--fg-secondary);
   line-height: 1.5;
 }
+
+/* ========== Wallet Address ==========
+   Inline, copyable wallet address / ENS name (WalletAddress primitive).
+   A bare button so it nests inside dense rows; the full address shows in
+   a tooltip on hover, the copy icon fades in, and a click copies. */
+.wallet-address {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--fg-primary);
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: color var(--transition-fast);
+}
+
+/* ENS avatar sits flush against the name like an AT-account row; it owns
+   its own size (Avatar sm = 32px) so we only stop it from shrinking. */
+.wallet-address__avatar {
+  flex-shrink: 0;
+}
+
+.wallet-address__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* Hex digits line up with tabular figures; an ENS name reads better in
+     proportional figures, so the data-ens variant opts back out below. */
+  font-variant-numeric: tabular-nums;
+}
+
+.wallet-address[data-ens] .wallet-address__label {
+  font-variant-numeric: normal;
+}
+
+.wallet-address:hover {
+  color: var(--color-accent);
+}
+
+.wallet-address:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.wallet-address__copy {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--fg-muted);
+  opacity: 0;
+  transition: opacity var(--transition-fast), color var(--transition-fast);
+}
+
+.wallet-address:hover .wallet-address__copy,
+.wallet-address:focus-visible .wallet-address__copy {
+  opacity: 1;
+  color: var(--color-accent);
+}

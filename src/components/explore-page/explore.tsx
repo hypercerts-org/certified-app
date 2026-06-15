@@ -638,14 +638,21 @@ function ExploreMain({
     // passing it for other kinds is a no-op at the load-page level.
     excludeCertLabels: kind === "activities" ? quality.excludeCertLabels : undefined,
     includeCertLabels: kind === "activities" ? quality.includeCertLabels : undefined,
-    // Org-quality filter — used on accounts (filters the actor list)
-    // and certs (filters certs whose author org carries the tier).
+    // Org-quality filter — used on accounts (filters the actor list),
+    // certs (filters certs whose author org carries the tier), and
+    // funding (filters receipts whose creator account carries the tier).
     excludeOrgLabels:
-      kind === "accounts" || kind === "activities" || kind === "projects"
+      kind === "accounts" ||
+      kind === "activities" ||
+      kind === "projects" ||
+      kind === "funding"
         ? quality.excludeOrgLabels
         : undefined,
     includeOrgLabels:
-      kind === "accounts" || kind === "activities" || kind === "projects"
+      kind === "accounts" ||
+      kind === "activities" ||
+      kind === "projects" ||
+      kind === "funding"
         ? quality.includeOrgLabels
         : undefined,
     // Funding-only third-party "Confirmed by" filter.
@@ -754,7 +761,9 @@ function ExploreMain({
             ) : null}
 
             <div className="explore__chrome-actions">
-              {isDesktop && (
+              {/* Funding receipts have a single list layout (no gallery
+                  card), so the list/gallery toggle is suppressed there. */}
+              {isDesktop && kind !== "funding" && (
                 <SegmentedControl
                   aria-label={`${kind === "activities" ? "Activity" : kind === "projects" ? "Project" : "Account"} view`}
                   value={view}
@@ -830,10 +839,18 @@ function ExploreMain({
               {/* Activity + account quality filter — shared with the
                   All view. The cert (Activity Labeler) section shows
                   only on the certs kind; the account (Orglabeler)
-                  section shows on every kind. */}
-              {/* Funding receipts carry no quality labels — hide the
-                  quality popover (a no-op there) and instead offer the
-                  "Confirmed by" third-party-attestor filter. */}
+                  section shows on every kind. On funding it filters
+                  receipts by the creator account's quality tier (the
+                  account section is the only meaningful one there). */}
+              <QualityFilterPopover
+                q={quality}
+                showCertSection={kind === "activities"}
+                open={qualityOpen}
+                onOpenChange={setQualityOpen}
+              />
+              {/* Funding also offers the "Confirmed by" third-party-attestor
+                  filter (magic-indexer #214), alongside the creator-quality
+                  filter above. */}
               {kind === "funding" ? (
                 <FundingConfirmedByPopover
                   receipts={data.fundingReceipts}
@@ -842,14 +859,7 @@ function ExploreMain({
                   open={confirmedByOpen}
                   onOpenChange={setConfirmedByOpen}
                 />
-              ) : (
-                <QualityFilterPopover
-                  q={quality}
-                  showCertSection={kind === "activities"}
-                  open={qualityOpen}
-                  onOpenChange={setQualityOpen}
-                />
-              )}
+              ) : null}
             </div>
           </div>
 

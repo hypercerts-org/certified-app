@@ -2,6 +2,11 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { parseActor, profileUrl } from "@/lib/urls"
+import {
+  CERT_DETAIL_TABS,
+  PROJECT_DETAIL_TABS,
+  type DetailTab,
+} from "@/lib/detail-tabs"
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -82,33 +87,6 @@ const PROFILE_TABS: ProfileTab[] = [
   // standalone page reachable only from the hamburger site drawer
   // (and from the legacy /settings deep link). The profile tab
   // strip stays focused on viewing-your-own-profile concerns.
-];
-
-/** Tabs for the cert-detail back-row strip. Mirrors the routing
- *  contract that `<ActivityDetail>` reads via `?tab=`. Keep keys in
- *  sync with the switch in that component. */
-/** A detail-page subtab. Plain `key` entries map to `?tab=<key>` on
- *  the current pathname. `subRoute` entries link to a child route
- *  (`<pathname>/<subRoute>`) instead — used by `Explore` which has
- *  its own page. */
-type DetailTab = { key: string; label: string; subRoute?: string };
-
-const CERT_DETAIL_TABS: DetailTab[] = [
-  { key: "overview", label: "Overview" },
-  { key: "description", label: "Description" },
-  { key: "contributors", label: "Contributors" },
-  { key: "funding", label: "Funding" },
-  { key: "updates", label: "Updates" },
-];
-
-/** Project detail page subtabs. Same `?tab=` URL contract as the
- *  cert detail above — `<ProjectDetail>` reads it and switches
- *  content. "overview" is the implicit default (no param). */
-const PROJECT_DETAIL_TABS: DetailTab[] = [
-  { key: "overview", label: "Overview" },
-  { key: "description", label: "Description" },
-  { key: "activities", label: "Activities" },
-  { key: "updates", label: "Updates" },
 ];
 
 /**

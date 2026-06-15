@@ -32,6 +32,8 @@ import ImageEditOverlay from "@/components/feed/image-edit-overlay"
 import EditBanner from "@/components/ui/edit-banner"
 import EmptyState from "@/components/ui/empty-state"
 import Tooltip from "@/components/ui/tooltip"
+import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
+import { PROJECT_DETAIL_TABS } from "@/lib/detail-tabs"
 import LeafletDocument, {
   isRenderableDescription,
 } from "@/components/leaflet/leaflet-document"
@@ -1042,6 +1044,11 @@ export default function ProjectDetail({
           <ActivityAuthor did={did} />
         </div>
 
+        <TabPanelTransition
+          className="project-detail__body"
+          activeKey={activeTab}
+          order={PROJECT_DETAIL_TABS.map((t) => t.key)}
+        >
         {/* Overview-only: hero banner + short description + the
             "more" link. Hidden on Description / Certs so those tabs
             get the full page width for their content. */}
@@ -1460,6 +1467,7 @@ export default function ProjectDetail({
             viewerDid={sessionDid}
           />
         ) : null}
+        </TabPanelTransition>
       </article>
       {deleteOpen ? (
         <DeleteRecordDialog
