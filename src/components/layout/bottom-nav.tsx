@@ -36,25 +36,26 @@ export default function BottomNav() {
 
   const showCreate = isRouteVisibleToActor("create", !!activeOrg);
   const items = [
-    { key: "home", label: "Home", icon: Newspaper, onClick: handleHomeClick, active: isHome },
-    { key: "explore", label: "Explore", icon: Search, onClick: () => router.push("/explore"), active: pathname === "/explore" },
+    { key: "home", label: "Home", icon: Newspaper, onClick: handleHomeClick, active: isHome, tour: "nav-home" },
+    { key: "explore", label: "Explore", icon: Search, onClick: () => router.push("/explore"), active: pathname === "/explore", tour: "nav-explore" },
     ...(showCreate
-      ? [{ key: "create", label: "Create", icon: PlusCircle, onClick: () => router.push("/create"), active: pathname === "/create" }]
+      ? [{ key: "create", label: "Create", icon: PlusCircle, onClick: () => router.push("/create"), active: pathname === "/create", tour: "nav-create" }]
       : []),
-    { key: "apps", label: "Apps", icon: LayoutGrid, onClick: () => router.push("/apps"), active: pathname === "/apps" },
-    { key: "feedback", label: "Feedback", icon: MessageSquare, onClick: () => openFeedback(), active: false },
+    { key: "apps", label: "Apps", icon: LayoutGrid, onClick: () => router.push("/apps"), active: pathname === "/apps", tour: "nav-apps" },
+    { key: "feedback", label: "Feedback", icon: MessageSquare, onClick: () => openFeedback(), active: false, tour: undefined },
   ];
 
   return (
     <nav className="bottom-nav" aria-label="Main navigation">
       <div className="bottom-nav__inner">
-        {items.map(({ key, label, icon: Icon, onClick, active }) => (
+        {items.map(({ key, label, icon: Icon, onClick, active, tour }) => (
           <Tooltip key={key} label={label} className="flex-1 h-full">
             <button
               className={`bottom-nav__item ${active ? "bottom-nav__item--active" : ""}`}
               onClick={onClick}
               aria-label={label}
               aria-current={active ? "page" : undefined}
+              data-tour={tour}
             >
               <span className="bottom-nav__icon-wrap">
                 <Icon size={24} strokeWidth={active ? 2.5 : 1.5} />

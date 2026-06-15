@@ -849,6 +849,7 @@ export default function CreatePage() {
                 maxLength={TITLE_MAX}
                 onChange={(e) => setTitle(e.target.value)}
                 autoFocus
+                data-tour="create-title"
               />
               <p
                 className={`create-cert__counter${
@@ -1183,6 +1184,7 @@ export default function CreatePage() {
               variant="primary"
               loading={isSubmitting}
               disabled={!canSubmit}
+              data-tour="create-submit"
             >
               {isSubmitting ? "Publishing…" : "Publish activity"}
             </Button>

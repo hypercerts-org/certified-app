@@ -706,7 +706,7 @@ function ExploreMain({
               />
             ) : null}
 
-            <div className="explore__search-field">
+            <div className="explore__search-field" data-tour="explore-search">
               <Input
                 type="search"
                 size="sm"
@@ -1159,7 +1159,7 @@ function ExploreAllBlocks() {
               />
             </span>
 
-            <div className="explore__search-field">
+            <div className="explore__search-field" data-tour="explore-search">
               <Input
                 type="search"
                 size="sm"

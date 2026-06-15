@@ -34,6 +34,26 @@
   margin-left: auto;
 }
 
+/* Desktop: keep the search/sort controls from "jumping" when switching
+   between the Activities and Projects tabs. The Activities toolbar reserves
+   height for its Created / Contributed sub-tab strip (underline tabs:
+   py-3 24px + text-sm 20px line + 2px border = 46px, plus the toolbar's own
+   1px bottom border = 47px) and offsets its controls with padding-bottom: 8px.
+   Projects has no sub-tabs, so reserve the same height and replicate the
+   divider + control offset so the controls land in the same place. Spacing
+   below the toolbar is already provided by the parent's `gap: 24px`, so no
+   margin-bottom here (it would compound with the gap). */
+@media (min-width: 800px) {
+  .profile-projects__toolbar {
+    align-items: center;
+    min-height: 47px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .profile-projects__controls {
+    padding-bottom: 8px;
+  }
+}
+
 /* ---------- Project box ---------- */
 
 .profile-projects__box {

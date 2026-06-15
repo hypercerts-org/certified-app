@@ -420,6 +420,7 @@ export default function UserProfilePage() {
       <nav
         className="profile-page__mobile-tabs profile-tabs"
         aria-label="Profile sections"
+        data-tour="profile-tabs"
       >
         {mobileTabs.map((t) => {
           // While editing, only the editable section(s) stay switchable —

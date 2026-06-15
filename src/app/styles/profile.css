@@ -497,6 +497,19 @@
   display: none;
 }
 
+/* Desktop: pin the labelled "New X" CTA to the shared 30px toolbar-control
+   height so it lines up exactly with the search field and the sort / add
+   icon buttons (the Button primitive's `sm` size is padding-driven and
+   would otherwise render a couple of px shorter). Scoped under
+   `.profile-page` so it beats the Button primitive's single-class
+   utilities. */
+@media (min-width: 800px) {
+  .profile-page .profile-new-record-btn {
+    height: 30px;
+    min-height: 0;
+  }
+}
+
 /* "New activity / project / group" CTAs collapse to an icon-only plus on
    mobile, styled IDENTICALLY to the Lists tab's create control: a 30px
    bordered, transparent square with the plus in fg-primary. The visible

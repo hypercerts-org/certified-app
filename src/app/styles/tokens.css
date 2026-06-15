@@ -204,6 +204,8 @@
   --z-skip-nav: 9999;               /* skip-nav link */
   --z-feedback: 10000;              /* feedback modal portal (above skip-nav) */
   --z-feedback-above: 10001;        /* feedback expanded variant */
+  --z-tour-backdrop: 10015;         /* walk-through spotlight dim panels + ring */
+  --z-tour-card: 10016;             /* walk-through step card (above its backdrop) */
   --z-tooltip: 10020;               /* hover/focus tooltips — always topmost */
 }
 

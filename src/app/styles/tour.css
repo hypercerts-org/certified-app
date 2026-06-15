@@ -1,0 +1,147 @@
+/* Product walk-through (anchored spotlight tour).
+ *
+ * The renderer (components/tour/product-tour.tsx) portals these elements
+ * to <body>. Dim panels surround the spotlight hole; the ring outlines it;
+ * the card carries the step copy + controls. Colors/tokens only — no raw
+ * hex/rgb, no literal z-index (see CLAUDE.md hard rules). */
+
+.product-tour {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-tour-card);
+  /* The wrapper itself is inert; its children own their own positioning
+     and pointer behaviour. */
+  pointer-events: none;
+}
+
+/* Dim panel — one of the four rectangles around the spotlight hole, or a
+   single full-screen panel in the centered fallback. Captures pointer
+   events so the rest of the page can't be interacted with mid-tour; the
+   spotlight hole (between the panels) stays clickable. */
+.product-tour__panel {
+  position: fixed;
+  z-index: var(--z-tour-backdrop);
+  background: var(--modal-backdrop);
+  pointer-events: auto;
+}
+
+.product-tour__panel--full {
+  inset: 0;
+}
+
+/* Highlight ring drawn over the spotlight hole. Non-interactive so clicks
+   pass through to the highlighted element. */
+.product-tour__ring {
+  position: fixed;
+  z-index: var(--z-tour-backdrop);
+  border-radius: var(--radius);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 0;
+  pointer-events: none;
+}
+
+.product-tour__card {
+  z-index: var(--z-tour-card);
+  width: min(360px, calc(100vw - 32px));
+  max-width: 360px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 20px;
+  pointer-events: auto;
+}
+
+.product-tour__card:focus {
+  outline: none;
+}
+
+.product-tour__card--centered {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Pinned-to-corner cards. `top` clears the sticky chrome; the side inset
+   keeps the card off the viewport edge. */
+.product-tour__card--pin-top-left,
+.product-tour__card--pin-top-right,
+.product-tour__card--pin-bottom-left,
+.product-tour__card--pin-bottom-right {
+  position: fixed;
+}
+
+.product-tour__card--pin-top-left {
+  top: 80px;
+  left: 16px;
+}
+
+.product-tour__card--pin-top-right {
+  top: 80px;
+  right: 16px;
+}
+
+.product-tour__card--pin-bottom-left {
+  bottom: 16px;
+  left: 16px;
+}
+
+.product-tour__card--pin-bottom-right {
+  bottom: 16px;
+  right: 16px;
+}
+
+.product-tour__title {
+  color: var(--fg-primary);
+  margin: 0 0 8px;
+}
+
+.product-tour__body {
+  color: var(--fg-secondary);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  margin: 0 0 20px;
+}
+
+.product-tour__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.product-tour__dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.product-tour__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border-default);
+  transition: background 150ms ease;
+}
+
+.product-tour__dot--active {
+  background: var(--fg-primary);
+}
+
+.product-tour__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Skip + Next group, pushed to the right edge of the row. With
+   margin-left:auto it stays right-aligned whether or not Back is present. */
+.product-tour__actions-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}

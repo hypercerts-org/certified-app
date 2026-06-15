@@ -125,7 +125,7 @@ export default function ProfileHeader({
             {hasAdminActions ? (
               <div className="profile-hero__action-group">
                 {editHref ? (
-                  <Link href={editHref}>
+                  <Link href={editHref} data-tour="profile-edit">
                     <Button variant="secondary" size="sm">
                       <Pencil size={14} />
                       Edit

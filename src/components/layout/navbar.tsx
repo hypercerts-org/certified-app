@@ -215,6 +215,7 @@ const Navbar: React.FC = () => {
       aria-label={dropdownOpen ? "Close menu" : "Open menu"}
       aria-haspopup="menu"
       aria-expanded={dropdownOpen}
+      data-tour="nav-menu"
     >
       {dropdownOpen ? <X size={22} /> : <Menu size={22} />}
     </button>

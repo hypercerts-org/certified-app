@@ -20,7 +20,7 @@ export default function AppsPage() {
         </p>
       </header>
 
-      <ul className="apps-store__grid">
+      <ul className="apps-store__grid" data-tour="apps-grid">
         {CONNECTED_APPS.map((app) => {
           // Silent SSO: if the partner exposes an ePDS handle-login
           // endpoint AND the viewer is signed in, deep-link them via
