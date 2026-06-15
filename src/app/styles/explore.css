@@ -1320,6 +1320,21 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* "Confirmed by" filter popover — attestor row (avatar + name). */
+.funding-confirmer-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.funding-confirmer-item__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Provenance "Source" column — one or more kind chips (Badge square). */
 .funding-receipt-row__source {
   display: inline-flex;

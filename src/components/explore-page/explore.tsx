@@ -43,6 +43,7 @@ import ExploreProjectCard from "./explore-project-card"
 import ProjectListRow from "./project-list-row"
 import AccountListRow from "./account-list-row"
 import FundingReceiptRow, { FundingReceiptHeader } from "./funding-receipt-row"
+import FundingConfirmedByPopover from "./funding-confirmed-by-popover"
 import {
   SUB_OPTIONS,
   defaultFilterForView,
@@ -525,6 +526,14 @@ function ExploreMain({
 
   const sub = parseSubForKind(kind, searchParams?.get("sub") ?? null)
   const search = searchParams?.get("q") ?? ""
+  // Funding-only "Confirmed by" filter — a third-party-attestor DID.
+  // Only honored on the funding kind; validated to a `did:` value so a
+  // stale param on another kind can't perturb its loader.
+  const confirmedByParam = searchParams?.get("confirmedBy") ?? null
+  const confirmedBy =
+    kind === "funding" && confirmedByParam?.startsWith("did:")
+      ? confirmedByParam
+      : null
   const sort = parseSort(searchParams?.get("sort") ?? null)
   const view = parseView(searchParams?.get("view") ?? null)
   const { isDesktop } = useLayoutBreakpoints()
@@ -604,6 +613,13 @@ function ExploreMain({
     setSortOpen(false)
   }, [setUrl])
 
+  const onConfirmedByChange = useCallback(
+    (did: string | null) => {
+      setUrl({ confirmedBy: did })
+    },
+    [setUrl],
+  )
+
   const data = useExploreData({
     kind,
     filter,
@@ -632,6 +648,8 @@ function ExploreMain({
       kind === "accounts" || kind === "activities" || kind === "projects"
         ? quality.includeOrgLabels
         : undefined,
+    // Funding-only third-party "Confirmed by" filter.
+    confirmedBy: kind === "funding" ? confirmedBy : undefined,
   })
 
   // Restore the window scroll offset when the reader returns from a
@@ -684,6 +702,7 @@ function ExploreMain({
 
   const [sortOpen, setSortOpen] = useState(false)
   const [qualityOpen, setQualityOpen] = useState(false)
+  const [confirmedByOpen, setConfirmedByOpen] = useState(false)
   const [subPrefixOpen, setSubPrefixOpen] = useState(false)
 
   return (
@@ -813,8 +832,17 @@ function ExploreMain({
                   only on the certs kind; the account (Orglabeler)
                   section shows on every kind. */}
               {/* Funding receipts carry no quality labels — hide the
-                  popover so the control isn't a no-op there. */}
-              {kind === "funding" ? null : (
+                  quality popover (a no-op there) and instead offer the
+                  "Confirmed by" third-party-attestor filter. */}
+              {kind === "funding" ? (
+                <FundingConfirmedByPopover
+                  receipts={data.fundingReceipts}
+                  value={confirmedBy}
+                  onChange={onConfirmedByChange}
+                  open={confirmedByOpen}
+                  onOpenChange={setConfirmedByOpen}
+                />
+              ) : (
                 <QualityFilterPopover
                   q={quality}
                   showCertSection={kind === "activities"}
