@@ -391,6 +391,24 @@ export type FundingParty =
   | null
 
 /**
+ * One attestation of a funding payment, computed by the indexer. A
+ * payment collapses every receipt that references the others via
+ * `matchingReceipt` (with matching amount/currency/from/to/for) into a
+ * single node; each receipt in that cluster contributes one
+ * attestation. `role` is the receipt author's relationship to the
+ * payment's `from`/`to`; `did` is the author. The display chips
+ * (self-reported / mutually-confirmed / third-party) are derived from
+ * the full set — see `funding-provenance.ts`. The provenance is
+ * deliberately *not* a single ranked enum: a trustworthy third party
+ * can be more credible than a self-report, and a payment can be both
+ * self-reported and third-party-confirmed at once.
+ */
+export interface FundingAttestation {
+  role: "recipient" | "sender" | "third-party"
+  did: string
+}
+
+/**
  * A single `org.hypercerts.funding.receipt` record, with both sides of
  * the transfer normalised into {@link FundingParty}. `forUri` points at
  * an `org.hypercerts.claim.activity` when present.
@@ -409,12 +427,21 @@ export interface FundingReceipt {
   to: FundingParty
   forUri: string | null
   forCid: string | null
+  /** Attestations for the payment this node represents (indexer-computed
+   *  from the `matchingReceipt`-linked cluster). Empty until the indexer
+   *  ships the field (magic-indexer #214); the UI renders no chips then. */
+  attestations: FundingAttestation[]
 }
 
 interface FundingPartyNode {
   __typename?: string
   did?: string | null
   value?: string | null
+}
+
+interface FundingAttestationNode {
+  role?: string | null
+  did?: string | null
 }
 
 interface FundingReceiptNode {
@@ -428,6 +455,7 @@ interface FundingReceiptNode {
   from: FundingPartyNode | null
   to: FundingPartyNode | null
   for: { uri: string | null; cid: string | null } | null
+  attestations?: FundingAttestationNode[] | null
 }
 
 interface FundingReceiptsGraphQLResponse {
@@ -459,6 +487,25 @@ function mapFundingParty(node: FundingPartyNode | null): FundingParty {
   return null
 }
 
+/** Normalise the indexer's attestation list, dropping entries with an
+ *  unknown role or a missing DID so a schema drift can't surface a
+ *  malformed chip. Returns [] when the field is absent (pre-#214). */
+function mapFundingAttestations(
+  nodes: FundingAttestationNode[] | null | undefined,
+): FundingAttestation[] {
+  if (!Array.isArray(nodes)) return []
+  const out: FundingAttestation[] = []
+  for (const node of nodes) {
+    const did = node?.did
+    const role = node?.role
+    if (typeof did !== "string" || !did) continue
+    if (role === "recipient" || role === "sender" || role === "third-party") {
+      out.push({ role, did })
+    }
+  }
+  return out
+}
+
 export interface FundingReceiptsResult {
   records: FundingReceipt[]
   hasMore: boolean
@@ -475,16 +522,24 @@ export interface FundingReceiptsResult {
  * tab into an error state.
  */
 export async function fetchFundingReceipts(
-  options: { first?: number; after?: string; signal?: AbortSignal } = {},
+  options: {
+    first?: number
+    after?: string
+    signal?: AbortSignal
+    /** Restrict to payments confirmed by a specific third-party attestor
+     *  DID (magic-indexer #214). Omit for no filter; ignored upstream
+     *  until the indexer ships it. */
+    confirmedBy?: string
+  } = {},
 ): Promise<FundingReceiptsResult> {
-  const { first = 50, after, signal } = options
+  const { first = 50, after, signal, confirmedBy } = options
 
   const res = await fetch(INDEXER_PROXY_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       operationName: "FundingReceipts",
-      variables: { first, after: after ?? null },
+      variables: { first, after: after ?? null, confirmedBy: confirmedBy ?? null },
     }),
     signal,
   })
@@ -526,6 +581,7 @@ export async function fetchFundingReceipts(
       to: mapFundingParty(node.to),
       forUri: node.for?.uri ?? null,
       forCid: node.for?.cid ?? null,
+      attestations: mapFundingAttestations(node.attestations),
     })
   }
 
@@ -599,6 +655,7 @@ export async function fetchFundingReceiptsForActivity(
       to: mapFundingParty(node.to),
       forUri: node.for?.uri ?? null,
       forCid: node.for?.cid ?? null,
+      attestations: mapFundingAttestations(node.attestations),
     })
   }
 

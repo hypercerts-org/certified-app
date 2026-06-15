@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Badge from "@/components/ui/badge"
 import IdentityRow from "@/components/ui/identity-row"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useActivity } from "@/hooks/use-activity"
@@ -8,6 +9,7 @@ import { profileUrl } from "@/lib/urls"
 import { parseAtUri, activityDetailHref } from "@/lib/atproto/activity-uri"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { formatShortDate } from "@/lib/utils/format-date"
+import { kindChips, thirdPartyDids } from "@/lib/atproto/funding-provenance"
 import type { FundingParty, FundingReceipt } from "@/lib/atproto/indexer"
 
 const ACTIVITY_COLLECTION = "org.hypercerts.claim.activity"
@@ -44,8 +46,9 @@ export default function FundingReceiptRow({
 }) {
   return (
     <article className="funding-receipt-row">
-      {/* Columns: date | from | to | for | amount. Date leads, amount
-          (the "punchline") trails. */}
+      {/* Columns: date | from | to | for | amount | source | confirmed-by.
+          Date leads, amount (the "punchline") sits before the provenance
+          annotation (kind chips + third-party attestors). */}
       {receipt.occurredAt ? (
         <time
           className="funding-receipt-row__date"
@@ -78,7 +81,65 @@ export default function FundingReceiptRow({
           </>
         ) : null}
       </span>
+      {/* Provenance, dimension 1 — kind chips (self-reported /
+          mutually-confirmed / third-party; can be more than one). Empty
+          until the indexer ships `attestations` (magic-indexer #214). */}
+      <FundingSource receipt={receipt} />
+      {/* Provenance, dimension 2 — "by whom", third-party attestors only
+          (for self/mutual the attestor is already From/To). */}
+      <FundingConfirmedBy receipt={receipt} />
     </article>
+  )
+}
+
+/** The "Source" column — renders one chip per derived provenance kind.
+ *  A payment can carry several (e.g. self-reported + third-party), so we
+ *  map the whole {@link kindChips} list. Always renders the cell span so
+ *  columns stay aligned even when there are no attestations. */
+function FundingSource({ receipt }: { receipt: FundingReceipt }) {
+  const chips = kindChips(receipt.attestations)
+  return (
+    <span className="funding-receipt-row__source">
+      {chips.map((chip) => (
+        <span key={chip.key} title={chip.title}>
+          <Badge variant="tag" shape="square" tone={chip.tone}>
+            {chip.label}
+          </Badge>
+        </span>
+      ))}
+    </span>
+  )
+}
+
+/** The "Confirmed by" column — third-party attestor identities only. Each
+ *  DID hydrates to avatar + name via its own child (one `useAuthorInfo`
+ *  per row). Always renders the cell span so columns stay aligned. */
+function FundingConfirmedBy({ receipt }: { receipt: FundingReceipt }) {
+  const dids = thirdPartyDids(receipt.attestations)
+  return (
+    <span className="funding-receipt-row__confirmed-by">
+      {dids.map((did) => (
+        <ThirdPartyAttestor key={did} did={did} />
+      ))}
+    </span>
+  )
+}
+
+/** One third-party attestor, hydrated to avatar + name + @handle (mirrors
+ *  the account branch of {@link FundingPartySlot}). */
+function ThirdPartyAttestor({ did }: { did: string }) {
+  const { info } = useAuthorInfo(did)
+  const handle = info?.handle ?? undefined
+  return (
+    <IdentityRow
+      did={did}
+      handle={handle}
+      displayName={info?.displayName ?? undefined}
+      avatarUrl={info?.avatarUrl ?? undefined}
+      href={profileUrl(handle || did)}
+      size="sm"
+      className="funding-receipt-row__party"
+    />
   )
 }
 
@@ -202,6 +263,8 @@ export function FundingReceiptHeader({ showFor = true }: { showFor?: boolean }) 
       <span className="funding-receipt-row__heading funding-receipt-row__heading--amount">
         Amount
       </span>
+      <span className="funding-receipt-row__heading">Source</span>
+      <span className="funding-receipt-row__heading">Confirmed by</span>
     </div>
   )
 }

@@ -822,9 +822,19 @@ ${ACTIVITY_NODE_SELECTION}
   // org.hypercerts.claim.activity. The indexer can't filter by union
   // variant, so the explore loader applies the "from OR to is an
   // account" gate client-side after fetching.
+  // `attestations` + `confirmedBy` require magic-indexer #214; until that
+  // deploys this operation errors against the upstream and the funding
+  // view fail-softs to empty. Held off `staging` on feat/funding-attestations
+  // until #214 ships. `confirmedBy` is a nullable DID — null means "no
+  // filter"; a value restricts to payments with a third-party attestor of
+  // that DID (the /explore "Confirmed by" picker).
   FundingReceipts: `
-    query FundingReceipts($first: Int!, $after: String) {
-      orgHypercertsFundingReceipt(first: $first, after: $after) {
+    query FundingReceipts($first: Int!, $after: String, $confirmedBy: String) {
+      orgHypercertsFundingReceipt(
+        first: $first
+        after: $after
+        confirmedBy: $confirmedBy
+      ) {
         totalCount
         edges {
           cursor
@@ -847,6 +857,7 @@ ${ACTIVITY_NODE_SELECTION}
               ... on OrgHypercertsFundingReceiptText { value }
             }
             for { uri cid }
+            attestations { role did }
           }
         }
         pageInfo { hasNextPage endCursor }
@@ -894,6 +905,7 @@ ${ACTIVITY_NODE_SELECTION}
               ... on OrgHypercertsFundingReceiptText { value }
             }
             for { uri cid }
+            attestations { role did }
           }
         }
         pageInfo { hasNextPage endCursor }
@@ -1498,11 +1510,14 @@ function buildVariables(
       return { did }
     }
     case "FundingReceipts": {
-      // Simple paginated read — no required vars. Clamp `first` like the
-      // other paginated ops; `after` is the opaque cursor.
+      // Paginated read. Clamp `first` like the other paginated ops;
+      // `after` is the opaque cursor. `confirmedBy` is an optional
+      // third-party-attestor DID filter (magic-indexer #214) — forwarded
+      // only when it's a valid DID, otherwise null ("no filter").
       return {
         first: clampFirst(vars.first, MAX_FIRST, 50),
         after: readString(vars.after, MAX_AFTER_LEN),
+        confirmedBy: readDid(vars.confirmedBy),
       }
     }
     case "FundingReceiptsForActivity": {
