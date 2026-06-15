@@ -1103,6 +1103,41 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   opacity: 0.8;
 }
 
+/* Mobile: the bar is fixed so it's never tucked behind the fixed navbar.
+   It sits just below the navbar while the navbar is shown, and slides to
+   the very top when the navbar auto-hides on scroll. One row only — the
+   org line truncates rather than wrapping under the navbar. */
+@media (max-width: 799px) {
+  .acting-as-bar {
+    position: fixed;
+    top: var(--navbar-height);
+    left: 0;
+    right: 0;
+    z-index: var(--z-navbar);
+    height: 44px;
+    flex-wrap: nowrap;
+    transition: top var(--transition-base);
+  }
+  .acting-as-bar--nav-hidden {
+    top: 0;
+  }
+  .acting-as-bar__text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  /* Reserve the fixed bar's height so it doesn't overlay the top of the
+     page content. Applied to `.app-shell` (not `.app-shell__content`,
+     whose top padding is overridden per-page by higher-specificity
+     `:has()` rules) so it stacks on top of whatever navbar offset each
+     page already carries. */
+  html.has-acting-as-bar .app-shell {
+    padding-top: 44px;
+  }
+}
+
 /* ========== Desktop Right Rail ==========
    Mounted at >=1100px. Search sticky at top; sections use the
    feed-card hairline pattern (no bordered cards). Footer is a

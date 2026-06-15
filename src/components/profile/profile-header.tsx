@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Pencil, UserPlus, Settings as SettingsIcon, Users, ThumbsUp } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
+import { FollowEndorseActions } from "@/components/profile/profile-follow-endorse"
 import { getInitials } from "@/lib/utils/initials"
 import { formatGraphCount } from "@/lib/utils/format-graph-count"
 import { useFollowers } from "@/hooks/use-followers"
@@ -139,8 +140,12 @@ export default function ProfileHeader({
                   </Link>
                 ) : null}
               </div>
+            ) : did ? (
+              <div className="profile-hero__action-group">
+                <FollowEndorseActions did={did} />
+              </div>
             ) : (
-              <Button variant="primary" size="sm">
+              <Button variant="primary" size="sm" disabled>
                 <UserPlus size={14} />
                 Follow
               </Button>
