@@ -823,8 +823,18 @@ ${ACTIVITY_NODE_SELECTION}
   // variant, so the explore loader applies the "from OR to is an
   // account" gate client-side after fetching.
   FundingReceipts: `
-    query FundingReceipts($first: Int!, $after: String) {
-      orgHypercertsFundingReceipt(first: $first, after: $after) {
+    query FundingReceipts(
+      $first: Int!
+      $after: String
+      $authorLabels: [String!]
+      $excludeAuthorLabels: [String!]
+    ) {
+      orgHypercertsFundingReceipt(
+        first: $first
+        after: $after
+        authorLabels: $authorLabels
+        excludeAuthorLabels: $excludeAuthorLabels
+      ) {
         totalCount
         edges {
           cursor
@@ -847,6 +857,10 @@ ${ACTIVITY_NODE_SELECTION}
               ... on OrgHypercertsFundingReceiptText { value }
             }
             for { uri cid }
+            paymentRail
+            paymentNetwork
+            transactionId
+            notes
           }
         }
         pageInfo { hasNextPage endCursor }
@@ -894,6 +908,10 @@ ${ACTIVITY_NODE_SELECTION}
               ... on OrgHypercertsFundingReceiptText { value }
             }
             for { uri cid }
+            paymentRail
+            paymentNetwork
+            transactionId
+            notes
           }
         }
         pageInfo { hasNextPage endCursor }
@@ -1499,10 +1517,15 @@ function buildVariables(
     }
     case "FundingReceipts": {
       // Simple paginated read — no required vars. Clamp `first` like the
-      // other paginated ops; `after` is the opaque cursor.
+      // other paginated ops; `after` is the opaque cursor. The optional
+      // author-label filters gate receipts by the creator's account
+      // (orglabeler) tier, so the explore Funding tab can hide receipts
+      // authored by likely-test accounts (magic-indexer#207).
       return {
         first: clampFirst(vars.first, MAX_FIRST, 50),
         after: readString(vars.after, MAX_AFTER_LEN),
+        authorLabels: readLabelList(vars.authorLabels),
+        excludeAuthorLabels: readLabelList(vars.excludeAuthorLabels),
       }
     }
     case "FundingReceiptsForActivity": {

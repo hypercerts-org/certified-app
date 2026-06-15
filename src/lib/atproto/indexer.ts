@@ -409,6 +409,15 @@ export interface FundingReceipt {
   to: FundingParty
   forUri: string | null
   forCid: string | null
+  /** Optional payment-method metadata, as recorded on the receipt. The
+   *  lexicon names are singular `paymentRail` (e.g. "x402-usdc-base") and
+   *  `transactionId` (the on-chain / processor reference). Any may be
+   *  null. */
+  paymentRail: string | null
+  paymentNetwork: string | null
+  transactionId: string | null
+  /** Free-text note attached to the receipt. */
+  notes: string | null
 }
 
 interface FundingPartyNode {
@@ -428,6 +437,10 @@ interface FundingReceiptNode {
   from: FundingPartyNode | null
   to: FundingPartyNode | null
   for: { uri: string | null; cid: string | null } | null
+  paymentRail: string | null
+  paymentNetwork: string | null
+  transactionId: string | null
+  notes: string | null
 }
 
 interface FundingReceiptsGraphQLResponse {
@@ -459,6 +472,29 @@ function mapFundingParty(node: FundingPartyNode | null): FundingParty {
   return null
 }
 
+/** Normalise a raw funding-receipt node into a {@link FundingReceipt}.
+ *  Shared by both the network-wide and per-activity fetchers so the field
+ *  set stays in sync. */
+function mapFundingReceiptNode(node: FundingReceiptNode): FundingReceipt {
+  return {
+    uri: node.uri,
+    cid: node.cid,
+    did: node.did,
+    createdAt: node.createdAt ?? null,
+    occurredAt: node.occurredAt ?? null,
+    amount: node.amount ?? null,
+    currency: node.currency ?? null,
+    from: mapFundingParty(node.from),
+    to: mapFundingParty(node.to),
+    forUri: node.for?.uri ?? null,
+    forCid: node.for?.cid ?? null,
+    paymentRail: node.paymentRail ?? null,
+    paymentNetwork: node.paymentNetwork ?? null,
+    transactionId: node.transactionId ?? null,
+    notes: node.notes ?? null,
+  }
+}
+
 export interface FundingReceiptsResult {
   records: FundingReceipt[]
   hasMore: boolean
@@ -475,16 +511,32 @@ export interface FundingReceiptsResult {
  * tab into an error state.
  */
 export async function fetchFundingReceipts(
-  options: { first?: number; after?: string; signal?: AbortSignal } = {},
+  options: {
+    first?: number
+    after?: string
+    /** Account-quality (orglabeler) tiers the receipt creator must carry. */
+    authorLabels?: readonly string[]
+    /** Account-quality tiers that exclude a receipt by its creator. */
+    excludeAuthorLabels?: readonly string[]
+    signal?: AbortSignal
+  } = {},
 ): Promise<FundingReceiptsResult> {
-  const { first = 50, after, signal } = options
+  const { first = 50, after, authorLabels, excludeAuthorLabels, signal } = options
 
   const res = await fetch(INDEXER_PROXY_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       operationName: "FundingReceipts",
-      variables: { first, after: after ?? null },
+      variables: {
+        first,
+        after: after ?? null,
+        authorLabels: authorLabels && authorLabels.length > 0 ? [...authorLabels] : null,
+        excludeAuthorLabels:
+          excludeAuthorLabels && excludeAuthorLabels.length > 0
+            ? [...excludeAuthorLabels]
+            : null,
+      },
     }),
     signal,
   })
@@ -514,19 +566,7 @@ export async function fetchFundingReceipts(
   for (const edge of connection.edges) {
     const node = edge.node
     if (!node) continue
-    records.push({
-      uri: node.uri,
-      cid: node.cid,
-      did: node.did,
-      createdAt: node.createdAt ?? null,
-      occurredAt: node.occurredAt ?? null,
-      amount: node.amount ?? null,
-      currency: node.currency ?? null,
-      from: mapFundingParty(node.from),
-      to: mapFundingParty(node.to),
-      forUri: node.for?.uri ?? null,
-      forCid: node.for?.cid ?? null,
-    })
+    records.push(mapFundingReceiptNode(node))
   }
 
   return {
@@ -587,19 +627,7 @@ export async function fetchFundingReceiptsForActivity(
   for (const edge of connection.edges) {
     const node = edge.node
     if (!node) continue
-    records.push({
-      uri: node.uri,
-      cid: node.cid,
-      did: node.did,
-      createdAt: node.createdAt ?? null,
-      occurredAt: node.occurredAt ?? null,
-      amount: node.amount ?? null,
-      currency: node.currency ?? null,
-      from: mapFundingParty(node.from),
-      to: mapFundingParty(node.to),
-      forUri: node.for?.uri ?? null,
-      forCid: node.for?.cid ?? null,
-    })
+    records.push(mapFundingReceiptNode(node))
   }
 
   return {

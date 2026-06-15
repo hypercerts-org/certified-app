@@ -123,6 +123,9 @@ export * from "./switch";
 export { default as Tabs } from "./tabs";
 export * from "./tabs";
 
+export { default as TabPanelTransition } from "./tab-panel-transition";
+export * from "./tab-panel-transition";
+
 export { default as Textarea } from "./textarea";
 export * from "./textarea";
 
@@ -131,3 +134,6 @@ export * from "./theme-toggle";
 
 export { default as ToastProvider } from "./toast";
 export * from "./toast";
+
+export { default as WalletAddress } from "./wallet-address";
+export * from "./wallet-address";

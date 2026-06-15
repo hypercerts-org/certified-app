@@ -1332,10 +1332,28 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
  * than stopping at the first page's handful.
  */
 async function loadFundingPage(args: LoadArgs): Promise<LoadedPage> {
-  const { cursor, signal } = args
+  const { cursor, signal, includeOrgLabels, excludeOrgLabels } = args
+  // Deselecting every account-quality option reads as "nothing matches"
+  // (same affordance as the other kinds), not "no filter → show all".
+  if (isExplicitlyEmpty(includeOrgLabels)) return EMPTY_PAGE
+  // Account-quality (orglabeler) filter applied to the receipt creator
+  // server-side via the connection's `authorLabels` / `excludeAuthorLabels`
+  // (magic-indexer#207). With the default selection this excludes receipts
+  // authored by "likely-test" accounts, so the tab shows only receipts
+  // created by accounts that are likely real.
+  const authorLabels =
+    includeOrgLabels && includeOrgLabels.length > 0
+      ? [...includeOrgLabels]
+      : undefined
+  const excludeAuthorLabels =
+    excludeOrgLabels && excludeOrgLabels.length > 0
+      ? [...excludeOrgLabels]
+      : undefined
   const r = await fetchFundingReceipts({
     first: PAGE_SIZE,
     after: cursor ?? undefined,
+    authorLabels,
+    excludeAuthorLabels,
     signal: signal ?? undefined,
   })
   if (signal?.aborted) return EMPTY_PAGE
