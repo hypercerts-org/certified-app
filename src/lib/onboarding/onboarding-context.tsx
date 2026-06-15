@@ -16,6 +16,7 @@ import {
   markOnboardingDismissed,
   clearOnboardingDismissed,
 } from "./dismissed-sentinel"
+import { markTourPending } from "@/lib/tour/tour-sentinel"
 
 /**
  * Bluesky seed values surfaced by /api/resolve-did. The shape
@@ -168,6 +169,11 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     // when commit.status === "success". The user closes it via the
     // explicit "Take me to my profile" button on that screen.
     if (did) clearOnboardingDismissed(did)
+    // Queue the product walk-through to auto-start on the next load. The
+    // success screen does a full page reload to the profile page, so the
+    // "just onboarded" intent has to survive in localStorage rather than
+    // in memory; TourProvider reads + clears this flag after the reload.
+    if (did) markTourPending(did)
     // Optimistically reflect the finished state so the banner
     // disappears immediately; the next resolve-did fetch will
     // confirm.

@@ -100,7 +100,7 @@ export default function Home() {
         </aside>
         <main className="home__main">
           <div className="home__split">
-            <div className="home__feed">
+            <div className="home__feed" data-tour="home-feed">
               <HomeFeed activeDid={activeDid} />
             </div>
             <aside className="home__news" aria-label="News from Certified">

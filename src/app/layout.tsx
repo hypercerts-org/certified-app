@@ -12,6 +12,8 @@ import AppShell from "@/components/layout/app-shell";
 import { OrgProvider } from "@/lib/groups/org-context";
 import { OnboardingProvider } from "@/lib/onboarding/onboarding-context";
 import OnboardingModal from "@/components/onboarding/onboarding-modal";
+import { TourProvider } from "@/lib/tour/tour-context";
+import ProductTour from "@/components/tour/product-tour";
 import FeedbackModal from "@/components/ui/feedback-modal";
 import { FeedbackProvider } from "@/lib/feedback-context";
 import BottomNav from "@/components/layout/bottom-nav";
@@ -157,6 +159,7 @@ export default function RootLayout({
           <AuthProvider>
             <OrgProvider>
               <OnboardingProvider>
+              <TourProvider>
               <NavbarProvider>
                 <FeedbackProvider>
                 <ViewTransitionProvider>
@@ -178,9 +181,11 @@ export default function RootLayout({
                 <PwaInstallGuard />
                 <FeedbackModal />
                 <OnboardingModal />
+                <ProductTour />
                 </ViewTransitionProvider>
                 </FeedbackProvider>
               </NavbarProvider>
+              </TourProvider>
               </OnboardingProvider>
             </OrgProvider>
           </AuthProvider>

@@ -64,7 +64,7 @@ export default function SyncSocialGraphSection({
   const summary = sync.isLoading ? "Comparing graphs…" : null
 
   return (
-    <div className="social-graph-sync">
+    <div className="social-graph-sync" data-tour="settings-bsky-sync">
       <div className="social-graph-sync__stats">
         <StatTile
           label="Followed on both"

@@ -441,6 +441,7 @@ export default function DesktopTopBar() {
             <div
               ref={createRef}
               className="desktop-top-bar__create-wrap"
+              data-tour="nav-create"
             >
               <Button
                 type="button"
@@ -461,6 +462,7 @@ export default function DesktopTopBar() {
               href="/home"
               className="desktop-top-bar__icon-btn"
               aria-label="Home"
+              data-tour="nav-home"
             >
               <Home size={20} strokeWidth={1.5} aria-hidden />
               <span className="desktop-top-bar__icon-label">Home</span>
@@ -471,6 +473,7 @@ export default function DesktopTopBar() {
             href="/explore"
             className="desktop-top-bar__icon-btn"
             aria-label="Explore"
+            data-tour="nav-explore"
           >
             <Compass size={20} strokeWidth={1.5} aria-hidden />
             <span className="desktop-top-bar__icon-label">Explore</span>
@@ -480,6 +483,7 @@ export default function DesktopTopBar() {
             href="/apps"
             className="desktop-top-bar__icon-btn"
             aria-label="Apps"
+            data-tour="nav-apps"
           >
             <LayoutGrid size={20} strokeWidth={1.5} aria-hidden />
             <span className="desktop-top-bar__icon-label">Apps</span>
@@ -490,6 +494,7 @@ export default function DesktopTopBar() {
               href={profileHref}
               className="desktop-top-bar__icon-btn"
               aria-label="My profile"
+              data-tour="nav-profile"
             >
               <User size={20} strokeWidth={1.5} aria-hidden />
               <span className="desktop-top-bar__icon-label">Profile</span>
@@ -501,6 +506,7 @@ export default function DesktopTopBar() {
               href="/settings"
               className="desktop-top-bar__icon-btn"
               aria-label="Settings"
+              data-tour="nav-settings"
             >
               <Settings size={20} strokeWidth={1.5} aria-hidden />
               <span className="desktop-top-bar__icon-label">Settings</span>
@@ -511,6 +517,7 @@ export default function DesktopTopBar() {
             href="/help"
             className="desktop-top-bar__icon-btn"
             aria-label="Help"
+            data-tour="nav-help"
           >
             <HelpCircle size={20} strokeWidth={1.5} aria-hidden />
             <span className="desktop-top-bar__icon-label">Help</span>
@@ -597,7 +604,10 @@ export default function DesktopTopBar() {
       </div>
 
       {showTabsRow ? (
-        <div className="desktop-top-bar__row desktop-top-bar__row--tabs">
+        <div
+          className="desktop-top-bar__row desktop-top-bar__row--tabs"
+          data-tour="profile-tabs"
+        >
           {/* Profile ?tab= strip — canonical <Tabs> (underline). onChange
               pushes the ?tab= URL (scroll:false) so the page mirrors it,
               matching the prior <Link scroll={false}> default-push. */}

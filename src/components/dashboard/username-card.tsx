@@ -249,7 +249,7 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
               button is kept — it routes through the group-aware path. */}
           {!showingForm && (
             <div className="settings-field">
-              <span className="settings-field__value">@{handle || "..."}</span>
+              <span className="settings-field__value" data-tour="settings-handle">@{handle || "..."}</span>
               {isCertifiedHandle && (
                 <Button variant="ghost" size="sm" onClick={handleEdit}>
                   <Pencil size={14} />

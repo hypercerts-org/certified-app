@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import PageTitle from "@/components/layout/page-title";
 import HelpFeedbackLink from "@/components/help/help-feedback-link";
+import HelpTourButton from "@/components/help/help-tour-button";
 
 export const metadata: Metadata = {
   title: "Help",
@@ -59,6 +60,18 @@ export default function HelpPage() {
               still have questions or spot something that&apos;s off, fill out the{" "}
               <HelpFeedbackLink />.
             </p>
+          </section>
+
+          <section>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+              Take the walk-through
+            </h2>
+            <p className="mb-4">
+              New here, or want a refresher? The walk-through highlights the main parts of the app —
+              your feed, Explore, Create, and your profile — in a few quick steps. You can start it
+              any time.
+            </p>
+            <HelpTourButton />
           </section>
 
           <section>

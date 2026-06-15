@@ -268,12 +268,17 @@ export default function ProfileSidebar({
             type="button"
             className="profile-sidebar__action-primary"
             onClick={onEditClick}
+            data-tour="profile-edit"
           >
             <Pencil size={14} strokeWidth={1.75} aria-hidden />
             Edit profile
           </button>
         ) : hasEditLink ? (
-          <Link href={editHref!} className="profile-sidebar__action-primary">
+          <Link
+            href={editHref!}
+            className="profile-sidebar__action-primary"
+            data-tour="profile-edit"
+          >
             <Pencil size={14} strokeWidth={1.75} aria-hidden />
             Edit profile
           </Link>
