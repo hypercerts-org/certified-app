@@ -3,6 +3,10 @@ import { checkCsrf } from "@/lib/auth/csrf"
 import { enforceRateLimit, makeLimiter } from "@/lib/auth/rate-limit"
 import { clientIp } from "@/lib/utils/ip"
 import { logSafe } from "@/lib/utils/log-safe"
+import {
+  DEFAULT_HIDDEN_CERT_LABELS,
+  DEFAULT_HIDDEN_ORG_LABELS,
+} from "@/lib/atproto/labels"
 
 /**
  * Same-origin proxy in front of the Magic Indexer's public GraphQL
@@ -140,6 +144,8 @@ const OPERATIONS: Record<string, string> = {
       $labels: [String!]
       $excludeLabels: [String!]
       $authors: [String!]
+      $authorLabels: [String!]
+      $excludeAuthorLabels: [String!]
       $search: String
     ) {
       orgHypercertsClaimActivity(
@@ -148,6 +154,8 @@ const OPERATIONS: Record<string, string> = {
         labels: $labels
         excludeLabels: $excludeLabels
         authors: $authors
+        authorLabels: $authorLabels
+        excludeAuthorLabels: $excludeAuthorLabels
         search: $search
       ) {
 ${ACTIVITY_NODE_SELECTION}
@@ -166,12 +174,16 @@ ${ACTIVITY_NODE_SELECTION}
       $uris: [String!]!
       $labels: [String!]
       $excludeLabels: [String!]
+      $authorLabels: [String!]
+      $excludeAuthorLabels: [String!]
     ) {
       orgHypercertsClaimActivity(
         first: 100
         where: { uri: { in: $uris } }
         labels: $labels
         excludeLabels: $excludeLabels
+        authorLabels: $authorLabels
+        excludeAuthorLabels: $excludeAuthorLabels
       ) {
 ${ACTIVITY_NODE_SELECTION}
       }
@@ -334,8 +346,20 @@ ${ACTIVITY_NODE_SELECTION}
   // most-recently-indexed profiles so the actor switcher has
   // something to show even before the user has interacted.
   NetworkActors: `
-    query NetworkActors($first: Int!, $after: String, $search: String) {
-      appCertifiedActorProfile(first: $first, after: $after, search: $search) {
+    query NetworkActors(
+      $first: Int!
+      $after: String
+      $search: String
+      $authorLabels: [String!]
+      $excludeAuthorLabels: [String!]
+    ) {
+      appCertifiedActorProfile(
+        first: $first
+        after: $after
+        search: $search
+        authorLabels: $authorLabels
+        excludeAuthorLabels: $excludeAuthorLabels
+      ) {
         totalCount
         edges {
           cursor
@@ -379,11 +403,15 @@ ${ACTIVITY_NODE_SELECTION}
       $after: String
       $isOrganization: Boolean!
       $search: String
+      $authorLabels: [String!]
+      $excludeAuthorLabels: [String!]
     ) {
       appCertifiedActorProfile(
         first: $first
         after: $after
         search: $search
+        authorLabels: $authorLabels
+        excludeAuthorLabels: $excludeAuthorLabels
         where: { isOrganization: { eq: $isOrganization } }
       ) {
         totalCount
@@ -569,38 +597,15 @@ ${ACTIVITY_NODE_SELECTION}
   // shape every other op uses (`totalCount + edges + pageInfo`)
   // because some GraphQL schemas reject a bare-aggregate selection
   // on a connection root.
+  // "Users" = personal + org actors. Excludes accounts labelled "likely-test"
+  // via `excludeAuthorLabels` (account-quality labels live on the bare account
+  // DID, so the profile connection's own-record-URI `excludeLabels` would NOT
+  // match — see magic-indexer#206/#207). Unlabeled accounts still count.
   ProfileCount: `
     query ProfileCount {
-      appCertifiedActorProfile(first: 1) {
-        totalCount
-        edges { node { uri } }
-        pageInfo { hasNextPage }
-      }
-    }
-  `,
-  OrganizationCount: `
-    query OrganizationCount {
-      appCertifiedActorOrganization(first: 1) {
-        totalCount
-        edges { node { uri } }
-        pageInfo { hasNextPage }
-      }
-    }
-  `,
-  ActivityCount: `
-    query ActivityCount {
-      orgHypercertsClaimActivity(first: 1) {
-        totalCount
-        edges { node { uri } }
-        pageInfo { hasNextPage }
-      }
-    }
-  `,
-  ProjectCount: `
-    query ProjectCount {
-      orgHypercertsCollection(
+      appCertifiedActorProfile(
         first: 1
-        where: { type: { eqi: "project" } }
+        excludeAuthorLabels: ${JSON.stringify([...DEFAULT_HIDDEN_ORG_LABELS])}
       ) {
         totalCount
         edges { node { uri } }
@@ -608,9 +613,62 @@ ${ACTIVITY_NODE_SELECTION}
       }
     }
   `,
+  // Excludes orgs labelled "likely-test" so the public counter matches the
+  // explore/feed default policy (DEFAULT_HIDDEN_ORG_LABELS). Unlabeled orgs
+  // still count — labelers only weigh in once they've caught up.
+  OrganizationCount: `
+    query OrganizationCount {
+      appCertifiedActorOrganization(
+        first: 1
+        excludeLabels: ${JSON.stringify([...DEFAULT_HIDDEN_ORG_LABELS])}
+      ) {
+        totalCount
+        edges { node { uri } }
+        pageInfo { hasNextPage }
+      }
+    }
+  `,
+  // Excludes activities by both the record's own label (draft / likely-test,
+  // Activity-Labeler tier — DEFAULT_HIDDEN_CERT_LABELS) AND the author's
+  // account label (records authored by likely-test accounts, via
+  // excludeAuthorLabels — magic-indexer#207). Unlabeled records / authors
+  // still count.
+  ActivityCount: `
+    query ActivityCount {
+      orgHypercertsClaimActivity(
+        first: 1
+        excludeLabels: ${JSON.stringify([...DEFAULT_HIDDEN_CERT_LABELS])}
+        excludeAuthorLabels: ${JSON.stringify([...DEFAULT_HIDDEN_ORG_LABELS])}
+      ) {
+        totalCount
+        edges { node { uri } }
+        pageInfo { hasNextPage }
+      }
+    }
+  `,
+  // Excludes projects authored by likely-test accounts (projects carry no
+  // own quality label, so only the author-account filter applies).
+  ProjectCount: `
+    query ProjectCount {
+      orgHypercertsCollection(
+        first: 1
+        where: { type: { eqi: "project" } }
+        excludeAuthorLabels: ${JSON.stringify([...DEFAULT_HIDDEN_ORG_LABELS])}
+      ) {
+        totalCount
+        edges { node { uri } }
+        pageInfo { hasNextPage }
+      }
+    }
+  `,
+  // Excludes endorsements created by likely-test accounts (the award's author
+  // is its issuer).
   AwardCount: `
     query AwardCount {
-      appCertifiedBadgeAward(first: 1) {
+      appCertifiedBadgeAward(
+        first: 1
+        excludeAuthorLabels: ${JSON.stringify([...DEFAULT_HIDDEN_ORG_LABELS])}
+      ) {
         totalCount
         edges { node { uri } }
         pageInfo { hasNextPage }
@@ -627,6 +685,8 @@ ${ACTIVITY_NODE_SELECTION}
       $first: Int!
       $after: String
       $authors: [String!]
+      $authorLabels: [String!]
+      $excludeAuthorLabels: [String!]
       $search: String
     ) {
       orgHypercertsCollection(
@@ -634,6 +694,8 @@ ${ACTIVITY_NODE_SELECTION}
         after: $after
         where: { type: { eqi: "project" } }
         authors: $authors
+        authorLabels: $authorLabels
+        excludeAuthorLabels: $excludeAuthorLabels
         search: $search
       ) {
         totalCount
@@ -745,6 +807,93 @@ ${ACTIVITY_NODE_SELECTION}
               ... on OrgHypercertsDefsUri { uri }
               ... on OrgHypercertsDefsLargeImage { image { ref mimeType } }
             }
+          }
+        }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  `,
+
+  // Funding receipts (org.hypercerts.funding.receipt) for the /explore
+  // Funding tab. Both `from` and `to` are unions that are either an AT
+  // Protocol account (AppCertifiedDefsDid) or a free-text label
+  // (OrgHypercertsFundingReceiptText); `from` is nullable, `to` is not.
+  // `for` is an optional strongRef pointing at an
+  // org.hypercerts.claim.activity. The indexer can't filter by union
+  // variant, so the explore loader applies the "from OR to is an
+  // account" gate client-side after fetching.
+  FundingReceipts: `
+    query FundingReceipts($first: Int!, $after: String) {
+      orgHypercertsFundingReceipt(first: $first, after: $after) {
+        totalCount
+        edges {
+          cursor
+          node {
+            uri
+            cid
+            did
+            createdAt
+            occurredAt
+            amount
+            currency
+            from {
+              __typename
+              ... on AppCertifiedDefsDid { did }
+              ... on OrgHypercertsFundingReceiptText { value }
+            }
+            to {
+              __typename
+              ... on AppCertifiedDefsDid { did }
+              ... on OrgHypercertsFundingReceiptText { value }
+            }
+            for { uri cid }
+          }
+        }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  `,
+
+  // Funding receipts for a single activity — backs the activity detail
+  // page's Funding tab + overview preview. Same node shape as
+  // FundingReceipts above, but filtered to receipts whose `for` strongRef
+  // points at the given activity URI (`where: { for: { eq: $forUri } }`).
+  // Both `from` and `to` are unions (AppCertifiedDefsDid account /
+  // OrgHypercertsFundingReceiptText free-text); on this surface text
+  // parties are surfaced (wallet addresses) rather than blanked.
+  FundingReceiptsForActivity: `
+    query FundingReceiptsForActivity(
+      $forUri: String!
+      $first: Int!
+      $after: String
+    ) {
+      orgHypercertsFundingReceipt(
+        first: $first
+        after: $after
+        where: { for: { eq: $forUri } }
+      ) {
+        totalCount
+        edges {
+          cursor
+          node {
+            uri
+            cid
+            did
+            createdAt
+            occurredAt
+            amount
+            currency
+            from {
+              __typename
+              ... on AppCertifiedDefsDid { did }
+              ... on OrgHypercertsFundingReceiptText { value }
+            }
+            to {
+              __typename
+              ... on AppCertifiedDefsDid { did }
+              ... on OrgHypercertsFundingReceiptText { value }
+            }
+            for { uri cid }
           }
         }
         pageInfo { hasNextPage endCursor }
@@ -1189,6 +1338,8 @@ function buildVariables(
         labels: readLabelList(vars.labels),
         excludeLabels: readLabelList(vars.excludeLabels),
         authors: authors === undefined ? null : authors,
+        authorLabels: readLabelList(vars.authorLabels),
+        excludeAuthorLabels: readLabelList(vars.excludeAuthorLabels),
         search: readString(vars.search, MAX_SEARCH_LEN),
       }
     }
@@ -1199,6 +1350,8 @@ function buildVariables(
         uris,
         labels: readLabelList(vars.labels),
         excludeLabels: readLabelList(vars.excludeLabels),
+        authorLabels: readLabelList(vars.authorLabels),
+        excludeAuthorLabels: readLabelList(vars.excludeAuthorLabels),
       }
     }
     case "AuthoredActivities":
@@ -1270,6 +1423,8 @@ function buildVariables(
         first: clampFirst(vars.first, MAX_FIRST, 24),
         after: readString(vars.after, MAX_AFTER_LEN),
         authors: authors === undefined ? null : authors,
+        authorLabels: readLabelList(vars.authorLabels),
+        excludeAuthorLabels: readLabelList(vars.excludeAuthorLabels),
         search: readString(vars.search, MAX_SEARCH_LEN),
       }
     }
@@ -1278,6 +1433,8 @@ function buildVariables(
         first: clampFirst(vars.first, MAX_FIRST, 20),
         after: readString(vars.after, MAX_AFTER_LEN),
         search: readString(vars.search, MAX_SEARCH_LEN),
+        authorLabels: readLabelList(vars.authorLabels),
+        excludeAuthorLabels: readLabelList(vars.excludeAuthorLabels),
       }
     }
     case "OrganizationDids": {
@@ -1296,6 +1453,8 @@ function buildVariables(
         after: readString(vars.after, MAX_AFTER_LEN),
         isOrganization: vars.isOrganization,
         search: readString(vars.search, MAX_SEARCH_LEN),
+        authorLabels: readLabelList(vars.authorLabels),
+        excludeAuthorLabels: readLabelList(vars.excludeAuthorLabels),
       }
     }
     case "OrganizationDidsByLabel": {
@@ -1337,6 +1496,25 @@ function buildVariables(
       const did = readDid(vars.did)
       if (!did) return null
       return { did }
+    }
+    case "FundingReceipts": {
+      // Simple paginated read — no required vars. Clamp `first` like the
+      // other paginated ops; `after` is the opaque cursor.
+      return {
+        first: clampFirst(vars.first, MAX_FIRST, 50),
+        after: readString(vars.after, MAX_AFTER_LEN),
+      }
+    }
+    case "FundingReceiptsForActivity": {
+      // Required `forUri` — a single at:// activity URI to filter by.
+      // Mirrors the URI validation the ProjectsContainingCert op uses.
+      const forUri = readString(vars.forUri, MAX_URI_LEN)
+      if (!forUri || !forUri.startsWith("at://")) return null
+      return {
+        forUri,
+        first: clampFirst(vars.first, MAX_FIRST, 50),
+        after: readString(vars.after, MAX_AFTER_LEN),
+      }
     }
     case "EndorsementClosure": {
       // Viewer-centric BFS closure (magic-indexer #117). `viewer`

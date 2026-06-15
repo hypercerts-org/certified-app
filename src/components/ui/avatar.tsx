@@ -54,7 +54,7 @@ const Avatar: React.FC<AvatarProps> = ({
 
   return (
     <div
-      className={`${sizeMap[size]} rounded-full overflow-hidden flex items-center justify-center ${borderStyles} ${className}`}
+      className={`${sizeMap[size]} shrink-0 rounded-full overflow-hidden flex items-center justify-center ${borderStyles} ${className}`}
     >
       {showFallback ? (
         <div className="w-full h-full bg-[var(--color-surface-container-high)] text-[var(--fg-primary)] font-semibold flex items-center justify-center">

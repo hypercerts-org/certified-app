@@ -25,7 +25,10 @@ export interface IdentityRowProps {
 
 const avatarSizeMap = { sm: "sm", md: "md" } as const;
 const gapMap = { sm: "gap-2", md: "gap-3" } as const;
-const nameSizeMap = { sm: "text-body-sm", md: "text-body" } as const;
+// sm = the standard dense-list text (0.85rem) with a smaller second-row
+// handle; md keeps the larger body scale used on roomier surfaces.
+const nameSizeMap = { sm: "text-[0.85rem]", md: "text-body" } as const;
+const handleSizeMap = { sm: "text-[0.75rem]", md: "text-body-sm" } as const;
 const skelAvatarPx = { sm: 32, md: 48 } as const;
 
 /**
@@ -81,7 +84,9 @@ export default function IdentityRow({
           {primary}
         </span>
         {hasHandle ? (
-          <span className="text-body-sm text-[var(--fg-muted)] truncate">
+          <span
+            className={`${handleSizeMap[size]} text-[var(--fg-muted)] truncate`}
+          >
             @{handle}
           </span>
         ) : null}

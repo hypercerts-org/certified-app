@@ -1,4 +1,4 @@
-export type ExploreKind = "accounts" | "projects" | "activities"
+export type ExploreKind = "accounts" | "projects" | "activities" | "funding"
 
 /** The kind switcher in the top bar plus the synthetic "all" tab,
  *  which isn't a real loader kind — it's a combined view that runs the
@@ -68,9 +68,17 @@ const ALL_FILTERS: FilterOption[] = [
   { key: "all", label: "All" },
 ]
 
+/** Funding has a single, minimal listing — no social-graph or
+ *  Ma-Earth filters (the gate is applied in the loader, not via the
+ *  sidebar). Just "All funding". */
+const FUNDING_FILTERS: FilterOption[] = [
+  { key: "all", label: "All funding" },
+]
+
 export function filtersForKind(kind: ExploreKind): FilterOption[] {
   if (kind === "accounts") return ACCOUNT_FILTERS
   if (kind === "projects") return PROJECT_FILTERS
+  if (kind === "funding") return FUNDING_FILTERS
   return CERT_FILTERS
 }
 
@@ -79,8 +87,11 @@ export function filtersForView(view: ExploreView): FilterOption[] {
   return filtersForKind(view)
 }
 
-export function defaultFilterForKind(_kind: ExploreKind): string {
-  // Ma Earth is curated as the front door for every kind today.
+export function defaultFilterForKind(kind: ExploreKind): string {
+  // Funding has no curated Ma Earth front door — its only filter is the
+  // plain "all" listing, so default there.
+  if (kind === "funding") return "all"
+  // Ma Earth is curated as the front door for every other kind today.
   // First-load on /explore (no `?filter=` in the URL) lands on this
   // featured set; the All / By me / etc. filters stay one click
   // away in the standard list below the divider.
@@ -139,6 +150,8 @@ export const SUB_OPTIONS: Record<
   // Activities have no sub-toggle — the "Created" / "Contributed"
   // options were removed; an empty list renders no sub-pills.
   activities: [],
+  // Funding is a flat list — no sub-categories.
+  funding: [],
 }
 
 function defaultSubForKind(): string {

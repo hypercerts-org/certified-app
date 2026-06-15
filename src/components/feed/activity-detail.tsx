@@ -40,6 +40,10 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import EditBanner from "@/components/ui/edit-banner"
 import Tooltip from "@/components/ui/tooltip"
 import { useCertProjects } from "@/hooks/use-cert-projects"
+import { useActivityFunding } from "@/hooks/use-activity-funding"
+import FundingReceiptRow, {
+  FundingReceiptHeader,
+} from "@/components/explore-page/funding-receipt-row"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { TransitionLink } from "@/lib/view-transitions"
 import LeafletDocument, {
@@ -213,6 +217,17 @@ export default function ActivityDetail({
     value.rights?.uri ?? null,
   )
 
+  // Funding receipts whose `for` strongRef points at this activity.
+  // Loaded once (first: 100) and shared by the overview preview (up to
+  // 5 + "See all") and the Funding tab (all of them). Read-only — no
+  // bearing on the inline-edit state machine.
+  const {
+    receipts: fundingReceipts,
+    totalCount: fundingTotal,
+    isLoading: fundingLoading,
+  } = useActivityFunding(did, rkey)
+  const fundingCount = fundingTotal ?? fundingReceipts.length
+
   // Tab strip on the top bar (back-row) drives which slice of the
   // record renders in the right pane. Keep the left aside identical
   // across all tabs.
@@ -223,9 +238,11 @@ export default function ActivityDetail({
     | "overview"
     | "description"
     | "contributors"
+    | "funding"
     | "updates" =
     tabParam === "description" ||
     tabParam === "contributors" ||
+    tabParam === "funding" ||
     tabParam === "updates"
       ? tabParam
       : "overview"
@@ -245,9 +262,13 @@ export default function ActivityDetail({
         ? contributorCount > 0
           ? `Contributors (${contributorCount})`
           : "Contributors"
-        : activeTab === "updates"
-          ? "Updates"
-          : value.title || "Activity",
+        : activeTab === "funding"
+          ? fundingCount > 0
+            ? `Funding (${fundingCount})`
+            : "Funding"
+          : activeTab === "updates"
+            ? "Updates"
+            : value.title || "Activity",
   )
   // Record-level overflow menu in the mobile navbar's right slot (Share /
   // Add to list / Copy AT URI). Reads as page-level chrome instead of an
@@ -307,6 +328,7 @@ export default function ActivityDetail({
   const descriptionHref = pathname
     ? `${pathname}?tab=description`
     : null
+  const fundingHref = pathname ? `${pathname}?tab=funding` : null
 
   // -------------------------------------------------------------------
   // Inline edit state — same pattern as the profile page. Drafts are
@@ -1182,6 +1204,46 @@ export default function ActivityDetail({
               />
             ) : null}
 
+            {/* Funding preview — up to 5 receipts for this activity,
+                with a "See all" link into the dedicated Funding tab.
+                Hidden entirely when there are no receipts. Read-only;
+                no bearing on the inline-edit state. The `for` tail is
+                omitted (it's this activity) and text wallet-address
+                funders are surfaced. */}
+            {fundingCount > 0 ? (
+              <section className="cert-detail__section">
+                <div className="cert-detail__section-header">
+                  <h2 className="cert-detail__section-title">Funding</h2>
+                  <span className="cert-detail__section-count">
+                    {fundingCount}
+                  </span>
+                  {fundingHref ? (
+                    <TransitionLink
+                      href={fundingHref}
+                      replace
+                      className="cert-detail__section-see-all"
+                    >
+                      See all →
+                    </TransitionLink>
+                  ) : null}
+                </div>
+                <ul className="cert-detail__funding-list">
+                  <li>
+                    <FundingReceiptHeader showFor={false} />
+                  </li>
+                  {fundingReceipts.slice(0, 5).map((r) => (
+                    <li key={r.uri}>
+                      <FundingReceiptRow
+                        receipt={r}
+                        showTextParties
+                        showFor={false}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
             {/* Locations + map. Overview-only (the main pane is
                 tab-gated); the aside no longer carries a Locations
                 row.
@@ -1268,6 +1330,39 @@ export default function ActivityDetail({
               })()
             ) : (
               <p className="cert-detail__short-desc">No contributors listed.</p>
+            )}
+          </section>
+        ) : activeTab === "funding" ? (
+          <section className="cert-detail__section">
+            <div className="cert-detail__section-header">
+              <h2 className="cert-detail__section-title">Funding</h2>
+              <span className="cert-detail__section-count">
+                {fundingCount}
+              </span>
+            </div>
+            {fundingLoading && fundingReceipts.length === 0 ? (
+              <div className="cert-detail__funding-loading">
+                <LoadingSpinner size="sm" />
+              </div>
+            ) : fundingReceipts.length > 0 ? (
+              <ul className="cert-detail__funding-list">
+                <li>
+                  <FundingReceiptHeader showFor={false} />
+                </li>
+                {fundingReceipts.map((r) => (
+                  <li key={r.uri}>
+                    <FundingReceiptRow
+                      receipt={r}
+                      showTextParties
+                      showFor={false}
+                    />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="cert-detail__short-desc">
+                No funding receipts for this activity yet.
+              </p>
             )}
           </section>
         ) : activeTab === "updates" ? (

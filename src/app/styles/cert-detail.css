@@ -1130,7 +1130,9 @@
 }
 
 .cert-detail__section-title {
-  font-size: 0.8125rem;
+  /* Match the .cert-detail__meta-label headings (Summary / Author / …) so
+     every section label on the activity page reads at the same scale. */
+  font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -1146,6 +1148,28 @@
   border-radius: 999px;
   background: var(--overlay-weak);
   font-feature-settings: 'tnum' 1;
+}
+
+/* ---------- Funding receipts list ----------
+
+   Reuses the `.funding-receipt-row` component styles (defined in
+   explore.css). The explore page draws inter-row separators via its
+   own `.explore__list > li + li` selector, so this list supplies its
+   own equivalent. */
+.cert-detail__funding-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cert-detail__funding-list > li + li .funding-receipt-row {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.cert-detail__funding-loading {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
 }
 
 /* ---------- Contributors list ----------

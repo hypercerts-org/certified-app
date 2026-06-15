@@ -147,6 +147,20 @@ export interface FetchIndexerOptions {
    * filter" and [] for "explicit match nothing."
    */
   authors?: string[]
+  /**
+   * Server-side author-account-label include filter. Keeps only
+   * records whose AUTHOR account carries one of these orglabeler
+   * tier labels (account-quality labels live on the bare account
+   * DID — magic-indexer#207). Composes with `authors` via AND.
+   * Omit / empty array to skip.
+   */
+  authorLabels?: readonly string[]
+  /**
+   * Server-side author-account-label exclude filter. Drops records
+   * whose author account carries one of these labels. Unlabeled
+   * authors pass through. Omit / empty array to skip.
+   */
+  excludeAuthorLabels?: readonly string[]
   /** Full-text search query. Searched across title, shortDescription,
    *  description, and workScope. Terms are implicitly ANDed. */
   search?: string
@@ -197,6 +211,8 @@ export async function fetchIndexerActivitiesByUris(
   opts: {
     labels?: LabelValue[] | string[]
     excludeLabels?: LabelValue[] | string[]
+    authorLabels?: readonly string[]
+    excludeAuthorLabels?: readonly string[]
     signal?: AbortSignal
   } = {},
 ): Promise<IndexerActivitiesResult> {
@@ -220,6 +236,14 @@ export async function fetchIndexerActivitiesByUris(
         excludeLabels:
           opts.excludeLabels && opts.excludeLabels.length > 0
             ? opts.excludeLabels
+            : null,
+        authorLabels:
+          opts.authorLabels && opts.authorLabels.length > 0
+            ? [...opts.authorLabels]
+            : null,
+        excludeAuthorLabels:
+          opts.excludeAuthorLabels && opts.excludeAuthorLabels.length > 0
+            ? [...opts.excludeAuthorLabels]
             : null,
       }
       const res = await fetch(INDEXER_PROXY_URL, {
@@ -273,7 +297,17 @@ export async function fetchIndexerActivitiesByUris(
 export async function fetchIndexerActivities(
   options: FetchIndexerOptions = {},
 ): Promise<IndexerActivitiesResult> {
-  const { first = 20, after, labels, excludeLabels, authors, search, signal } = options
+  const {
+    first = 20,
+    after,
+    labels,
+    excludeLabels,
+    authors,
+    authorLabels,
+    excludeAuthorLabels,
+    search,
+    signal,
+  } = options
 
   const variables: Record<string, unknown> = {
     first,
@@ -284,6 +318,12 @@ export async function fetchIndexerActivities(
     // Preserve the nil-vs-empty distinction: undefined => null (no filter),
     // [] => [] (explicit "match nothing"), non-empty => pass through.
     authors: authors !== undefined ? (authors.length > 0 ? authors : []) : null,
+    authorLabels:
+      authorLabels && authorLabels.length > 0 ? [...authorLabels] : null,
+    excludeAuthorLabels:
+      excludeAuthorLabels && excludeAuthorLabels.length > 0
+        ? [...excludeAuthorLabels]
+        : null,
   }
 
   const res = await fetch(INDEXER_PROXY_URL, {
@@ -328,6 +368,242 @@ export async function fetchIndexerActivities(
     records,
     dids,
     labels: recordLabels,
+    hasMore: connection.pageInfo.hasNextPage,
+    endCursor: connection.pageInfo.endCursor,
+    totalCount: connection.totalCount,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Funding receipts (org.hypercerts.funding.receipt)
+// ---------------------------------------------------------------------------
+
+/**
+ * One side of a funding receipt's `from` / `to`. The indexer projects a
+ * union that is either an AT Protocol account (`AppCertifiedDefsDid`,
+ * carrying a `did`) or a free-text label
+ * (`OrgHypercertsFundingReceiptText`, carrying a `value`). Discriminated
+ * by `__typename`.
+ */
+export type FundingParty =
+  | { kind: "account"; did: string }
+  | { kind: "text"; value: string }
+  | null
+
+/**
+ * A single `org.hypercerts.funding.receipt` record, with both sides of
+ * the transfer normalised into {@link FundingParty}. `forUri` points at
+ * an `org.hypercerts.claim.activity` when present.
+ */
+export interface FundingReceipt {
+  uri: string
+  cid: string
+  did: string
+  createdAt: string | null
+  occurredAt: string | null
+  /** Funding amount + currency as recorded (e.g. "0.1" / "USDC"). Either
+   *  may be null when the receipt didn't record it. */
+  amount: string | null
+  currency: string | null
+  from: FundingParty
+  to: FundingParty
+  forUri: string | null
+  forCid: string | null
+}
+
+interface FundingPartyNode {
+  __typename?: string
+  did?: string | null
+  value?: string | null
+}
+
+interface FundingReceiptNode {
+  uri: string
+  cid: string
+  did: string
+  createdAt: string | null
+  occurredAt: string | null
+  amount: string | null
+  currency: string | null
+  from: FundingPartyNode | null
+  to: FundingPartyNode | null
+  for: { uri: string | null; cid: string | null } | null
+}
+
+interface FundingReceiptsGraphQLResponse {
+  data?: {
+    orgHypercertsFundingReceipt?: {
+      totalCount: number | null
+      edges: { cursor: string; node: FundingReceiptNode | null }[]
+      pageInfo: { hasNextPage: boolean; endCursor: string | null }
+    } | null
+  } | null
+  errors?: { message: string }[]
+}
+
+function mapFundingParty(node: FundingPartyNode | null): FundingParty {
+  if (!node) return null
+  if (node.__typename === "AppCertifiedDefsDid" && typeof node.did === "string") {
+    return { kind: "account", did: node.did }
+  }
+  if (
+    node.__typename === "OrgHypercertsFundingReceiptText" &&
+    typeof node.value === "string"
+  ) {
+    return { kind: "text", value: node.value }
+  }
+  // Fall back on the populated field even when __typename is absent, so a
+  // schema that drops the discriminator still resolves the party.
+  if (typeof node.did === "string") return { kind: "account", did: node.did }
+  if (typeof node.value === "string") return { kind: "text", value: node.value }
+  return null
+}
+
+export interface FundingReceiptsResult {
+  records: FundingReceipt[]
+  hasMore: boolean
+  endCursor: string | null
+  totalCount: number | null
+}
+
+/**
+ * Fetch a page of `org.hypercerts.funding.receipt` records. Both sides
+ * are normalised into {@link FundingParty}; the explore loader applies
+ * the "from OR to is an account" gate client-side (the indexer can't
+ * filter by union variant). Mirrors {@link fetchProjects}: failures or
+ * a missing connection return an empty page rather than throwing the
+ * tab into an error state.
+ */
+export async function fetchFundingReceipts(
+  options: { first?: number; after?: string; signal?: AbortSignal } = {},
+): Promise<FundingReceiptsResult> {
+  const { first = 50, after, signal } = options
+
+  const res = await fetch(INDEXER_PROXY_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      operationName: "FundingReceipts",
+      variables: { first, after: after ?? null },
+    }),
+    signal,
+  })
+
+  const json = (await res.json()) as FundingReceiptsGraphQLResponse
+  const empty: FundingReceiptsResult = {
+    records: [],
+    hasMore: false,
+    endCursor: null,
+    totalCount: null,
+  }
+
+  if (!json.data?.orgHypercertsFundingReceipt) {
+    if (json.errors?.length) {
+      console.warn(
+        "[Indexer] FundingReceipts GraphQL error:",
+        json.errors[0].message,
+      )
+    } else if (!res.ok) {
+      throw new Error(`Indexer request failed: ${res.status}`)
+    }
+    return empty
+  }
+
+  const connection = json.data.orgHypercertsFundingReceipt
+  const records: FundingReceipt[] = []
+  for (const edge of connection.edges) {
+    const node = edge.node
+    if (!node) continue
+    records.push({
+      uri: node.uri,
+      cid: node.cid,
+      did: node.did,
+      createdAt: node.createdAt ?? null,
+      occurredAt: node.occurredAt ?? null,
+      amount: node.amount ?? null,
+      currency: node.currency ?? null,
+      from: mapFundingParty(node.from),
+      to: mapFundingParty(node.to),
+      forUri: node.for?.uri ?? null,
+      forCid: node.for?.cid ?? null,
+    })
+  }
+
+  return {
+    records,
+    hasMore: connection.pageInfo.hasNextPage,
+    endCursor: connection.pageInfo.endCursor,
+    totalCount: connection.totalCount,
+  }
+}
+
+/**
+ * Fetch a page of `org.hypercerts.funding.receipt` records whose `for`
+ * strongRef points at a single activity (`forUri`). Returns the same
+ * {@link FundingReceiptsResult} shape as {@link fetchFundingReceipts};
+ * the only difference is the server-side `where: { for: { eq } }`
+ * filter. Used by the activity detail page's Funding tab + overview
+ * preview. Failures or a missing connection return an empty page
+ * rather than throwing the surface into an error state.
+ */
+export async function fetchFundingReceiptsForActivity(
+  forUri: string,
+  options: { first?: number; after?: string; signal?: AbortSignal } = {},
+): Promise<FundingReceiptsResult> {
+  const { first = 50, after, signal } = options
+
+  const res = await fetch(INDEXER_PROXY_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      operationName: "FundingReceiptsForActivity",
+      variables: { forUri, first, after: after ?? null },
+    }),
+    signal,
+  })
+
+  const json = (await res.json()) as FundingReceiptsGraphQLResponse
+  const empty: FundingReceiptsResult = {
+    records: [],
+    hasMore: false,
+    endCursor: null,
+    totalCount: null,
+  }
+
+  if (!json.data?.orgHypercertsFundingReceipt) {
+    if (json.errors?.length) {
+      console.warn(
+        "[Indexer] FundingReceiptsForActivity GraphQL error:",
+        json.errors[0].message,
+      )
+    } else if (!res.ok) {
+      throw new Error(`Indexer request failed: ${res.status}`)
+    }
+    return empty
+  }
+
+  const connection = json.data.orgHypercertsFundingReceipt
+  const records: FundingReceipt[] = []
+  for (const edge of connection.edges) {
+    const node = edge.node
+    if (!node) continue
+    records.push({
+      uri: node.uri,
+      cid: node.cid,
+      did: node.did,
+      createdAt: node.createdAt ?? null,
+      occurredAt: node.occurredAt ?? null,
+      amount: node.amount ?? null,
+      currency: node.currency ?? null,
+      from: mapFundingParty(node.from),
+      to: mapFundingParty(node.to),
+      forUri: node.for?.uri ?? null,
+      forCid: node.for?.cid ?? null,
+    })
+  }
+
+  return {
+    records,
     hasMore: connection.pageInfo.hasNextPage,
     endCursor: connection.pageInfo.endCursor,
     totalCount: connection.totalCount,
@@ -887,11 +1163,21 @@ export async function fetchProjects(
     first?: number
     after?: string
     authors?: string[]
+    authorLabels?: readonly string[]
+    excludeAuthorLabels?: readonly string[]
     search?: string
     signal?: AbortSignal
   } = {},
 ): Promise<UserProjectsResult> {
-  const { first = 24, after, authors, search, signal } = options
+  const {
+    first = 24,
+    after,
+    authors,
+    authorLabels,
+    excludeAuthorLabels,
+    search,
+    signal,
+  } = options
 
   const res = await fetch(INDEXER_PROXY_URL, {
     method: "POST",
@@ -903,6 +1189,12 @@ export async function fetchProjects(
         after: after ?? null,
         authors:
           authors === undefined ? null : authors.length > 0 ? authors : [],
+        authorLabels:
+          authorLabels && authorLabels.length > 0 ? [...authorLabels] : null,
+        excludeAuthorLabels:
+          excludeAuthorLabels && excludeAuthorLabels.length > 0
+            ? [...excludeAuthorLabels]
+            : null,
         search: search || null,
       },
     }),

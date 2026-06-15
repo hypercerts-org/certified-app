@@ -19,9 +19,14 @@ import ExploreListRow from "./explore-list-row"
 export default function CertListRow({
   record,
   did,
+  showByline = false,
 }: {
   record: ActivityRecord
   did: string
+  /** Show the author byline + createdAt date (the projects-style row,
+   *  with the byline/date columns). Defaults to false — the compact,
+   *  full-width variant used on the project detail page. */
+  showByline?: boolean
 }) {
   const { value } = record
   const imageUrl = value.image
@@ -55,9 +60,13 @@ export default function CertListRow({
       }
       title={value.title}
       metaItems={metaItems}
-      authorDid={null}
-      timestampIso={null}
-      compact
+      authorDid={showByline ? did : null}
+      timestampIso={
+        showByline && typeof value.createdAt === "string"
+          ? value.createdAt
+          : null
+      }
+      compact={!showByline}
     />
   )
 }
