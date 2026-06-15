@@ -199,6 +199,10 @@ export function useExploreData(opts: {
    *  ring (degrees set is empty). The hook short-circuits to an
    *  empty result list instead of defaulting back to degree=1. */
   noEndorsementRings?: boolean
+  /** Funding kind only — restrict to payments confirmed by this
+   *  third-party attestor DID (magic-indexer `confirmedBy`). Null /
+   *  omit for "no filter". Changing it resets + refetches. */
+  confirmedBy?: string | null
 }): ExploreData {
   const {
     kind,
@@ -212,6 +216,7 @@ export function useExploreData(opts: {
   } = opts
   const degree: 1 | 2 | 3 = opts.degree ?? 1
   const noEndorsementRings: boolean = opts.noEndorsementRings ?? false
+  const confirmedBy: string | null = opts.confirmedBy ?? null
   // Stable key so the load effect can refetch when the exclude list
   // changes without retriggering when an identical-content array
   // arrives by reference.
@@ -323,6 +328,7 @@ export function useExploreData(opts: {
           includeCertLabels: includeCertLabels ?? null,
           excludeOrgLabels: excludeOrgLabels ?? null,
           includeOrgLabels: includeOrgLabels ?? null,
+          confirmedBy,
         })
         if (controller.signal.aborted) return
         if (generation !== generationRef.current) return
@@ -368,6 +374,7 @@ export function useExploreData(opts: {
     includeCertLabels,
     excludeOrgLabels,
     includeOrgLabels,
+    confirmedBy,
   ])
 
   const loadMore = useCallback(() => {
@@ -402,6 +409,7 @@ export function useExploreData(opts: {
             includeCertLabels: includeCertLabels ?? null,
             excludeOrgLabels: excludeOrgLabels ?? null,
             includeOrgLabels: includeOrgLabels ?? null,
+            confirmedBy,
           })
           if (generation !== generationRef.current) return
           setState((current) => {
@@ -473,6 +481,7 @@ export function useExploreData(opts: {
     includeCertLabels,
     excludeOrgLabels,
     includeOrgLabels,
+    confirmedBy,
   ])
 
   return {
@@ -555,6 +564,8 @@ interface LoadArgs {
    *  no-op when null. */
   excludeOrgLabels: readonly string[] | null
   includeOrgLabels: readonly string[] | null
+  /** Funding kind only — third-party-attestor DID filter, or null. */
+  confirmedBy: string | null
 }
 
 async function loadPage(args: LoadArgs): Promise<LoadedPage> {
@@ -1325,6 +1336,8 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
  * so we post-process after fetching — mirrors how the other explore
  * loaders client-filter (recently-viewed, follows, …). The funding
  * tab has no filter / sub / search axes, so those args are ignored.
+ * The one exception is `confirmedBy` — a server-side third-party-attestor
+ * DID filter forwarded to the indexer (null = no filter).
  *
  * `hasMore` reflects the indexer's raw page (pre-gate): "Load more"
  * keeps pulling pages even when a given page gated down to few rows, so
@@ -1332,11 +1345,12 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
  * than stopping at the first page's handful.
  */
 async function loadFundingPage(args: LoadArgs): Promise<LoadedPage> {
-  const { cursor, signal } = args
+  const { cursor, signal, confirmedBy } = args
   const r = await fetchFundingReceipts({
     first: PAGE_SIZE,
     after: cursor ?? undefined,
     signal: signal ?? undefined,
+    confirmedBy: confirmedBy ?? undefined,
   })
   if (signal?.aborted) return EMPTY_PAGE
   const gated = r.records.filter(
