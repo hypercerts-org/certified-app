@@ -822,18 +822,26 @@ ${ACTIVITY_NODE_SELECTION}
   // org.hypercerts.claim.activity. The indexer can't filter by union
   // variant, so the explore loader applies the "from OR to is an
   // account" gate client-side after fetching.
+  // `attestations` + `confirmedBy` require magic-indexer #214; until that
+  // deploys this operation errors against the upstream and the funding
+  // view fail-softs to empty. Held off `staging` on feat/funding-attestations
+  // until #214 ships. `confirmedBy` is a nullable DID — null means "no
+  // filter"; a value restricts to payments with a third-party attestor of
+  // that DID (the /explore "Confirmed by" picker).
   FundingReceipts: `
     query FundingReceipts(
       $first: Int!
       $after: String
       $authorLabels: [String!]
       $excludeAuthorLabels: [String!]
+      $confirmedBy: String
     ) {
       orgHypercertsFundingReceipt(
         first: $first
         after: $after
         authorLabels: $authorLabels
         excludeAuthorLabels: $excludeAuthorLabels
+        confirmedBy: $confirmedBy
       ) {
         totalCount
         edges {
@@ -861,6 +869,7 @@ ${ACTIVITY_NODE_SELECTION}
             paymentNetwork
             transactionId
             notes
+            attestations { role did }
           }
         }
         pageInfo { hasNextPage endCursor }
@@ -912,6 +921,7 @@ ${ACTIVITY_NODE_SELECTION}
             paymentNetwork
             transactionId
             notes
+            attestations { role did }
           }
         }
         pageInfo { hasNextPage endCursor }
@@ -1516,16 +1526,19 @@ function buildVariables(
       return { did }
     }
     case "FundingReceipts": {
-      // Simple paginated read — no required vars. Clamp `first` like the
-      // other paginated ops; `after` is the opaque cursor. The optional
-      // author-label filters gate receipts by the creator's account
-      // (orglabeler) tier, so the explore Funding tab can hide receipts
-      // authored by likely-test accounts (magic-indexer#207).
+      // Paginated read. Clamp `first` like the other paginated ops;
+      // `after` is the opaque cursor. The optional author-label filters
+      // gate receipts by the creator's account (orglabeler) tier so the
+      // Funding tab can hide receipts authored by likely-test accounts
+      // (magic-indexer#207); `confirmedBy` is an optional third-party-
+      // attestor DID filter (magic-indexer #214), forwarded only when it's
+      // a valid DID, otherwise null ("no filter").
       return {
         first: clampFirst(vars.first, MAX_FIRST, 50),
         after: readString(vars.after, MAX_AFTER_LEN),
         authorLabels: readLabelList(vars.authorLabels),
         excludeAuthorLabels: readLabelList(vars.excludeAuthorLabels),
+        confirmedBy: readDid(vars.confirmedBy),
       }
     }
     case "FundingReceiptsForActivity": {
