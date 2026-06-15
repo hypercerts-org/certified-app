@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Filter as FilterIcon,
   FolderGit2,
+  HandCoins,
   LayoutGrid,
   List as ListIcon,
   Search,
@@ -41,6 +42,7 @@ import ExploreUserCard from "./explore-user-card"
 import ExploreProjectCard from "./explore-project-card"
 import ProjectListRow from "./project-list-row"
 import AccountListRow from "./account-list-row"
+import FundingReceiptRow, { FundingReceiptHeader } from "./funding-receipt-row"
 import {
   SUB_OPTIONS,
   defaultFilterForView,
@@ -810,12 +812,16 @@ function ExploreMain({
                   All view. The cert (Activity Labeler) section shows
                   only on the certs kind; the account (Orglabeler)
                   section shows on every kind. */}
-              <QualityFilterPopover
-                q={quality}
-                showCertSection={kind === "activities"}
-                open={qualityOpen}
-                onOpenChange={setQualityOpen}
-              />
+              {/* Funding receipts carry no quality labels — hide the
+                  popover so the control isn't a no-op there. */}
+              {kind === "funding" ? null : (
+                <QualityFilterPopover
+                  q={quality}
+                  showCertSection={kind === "activities"}
+                  open={qualityOpen}
+                  onOpenChange={setQualityOpen}
+                />
+              )}
             </div>
           </div>
 
@@ -959,7 +965,13 @@ function isValidViewFilter(filter: string): boolean {
 type AllShow = "all" | ExploreKind
 
 function parseAllShow(v: string | null): AllShow {
-  if (v === "activities" || v === "projects" || v === "accounts") return v
+  if (
+    v === "activities" ||
+    v === "projects" ||
+    v === "accounts" ||
+    v === "funding"
+  )
+    return v
   return "all"
 }
 
@@ -968,6 +980,7 @@ const SHOW_OPTIONS: { key: AllShow; label: string }[] = [
   { key: "activities", label: "Activities" },
   { key: "projects", label: "Projects" },
   { key: "accounts", label: "Accounts" },
+  { key: "funding", label: "Funding" },
 ]
 
 /** Shared URL state for the All view — the unified sidebar filter, the
@@ -1125,6 +1138,15 @@ function ExploreAllBlocks() {
     excludeOrgLabels: quality.excludeOrgLabels,
     includeOrgLabels: quality.includeOrgLabels,
   })
+  // Funding has no social-graph / featured filters and no quality axis;
+  // the loader lists receipts gated to an AT Protocol account on either
+  // side, so it always runs with the plain "all" filter.
+  const funding = useExploreData({
+    kind: "funding",
+    filter: "all",
+    sub: "all",
+    search,
+  })
 
   const activityItems = useMemo(
     () => sortCerts(activities.certs, "newest").slice(0, ALL_VIEW_BLOCK_SIZE),
@@ -1137,6 +1159,10 @@ function ExploreAllBlocks() {
   const accountItems = useMemo(
     () => sortUsers(accounts.users, "newest").slice(0, ALL_VIEW_BLOCK_SIZE),
     [accounts.users],
+  )
+  const fundingItems = useMemo(
+    () => funding.fundingReceipts.slice(0, ALL_VIEW_BLOCK_SIZE),
+    [funding.fundingReceipts],
   )
 
   return (
@@ -1196,7 +1222,7 @@ function ExploreAllBlocks() {
                   const did = activities.certDids.get(rec.uri) ?? ""
                   return (
                     <li key={rec.uri}>
-                      <CertListRow record={rec} did={did} />
+                      <CertListRow record={rec} did={did} showByline />
                     </li>
                   )
                 })}
@@ -1230,6 +1256,25 @@ function ExploreAllBlocks() {
                 {accountItems.map((a) => (
                   <li key={a.did}>
                     <AccountListRow actor={a} />
+                  </li>
+                ))}
+              </ul>
+            </AllSection>
+
+            <AllSection
+              title="Funding"
+              icon={HandCoins}
+              isLoading={funding.isLoading}
+              isEmpty={fundingItems.length === 0}
+              onShowAll={() => setShow("funding")}
+            >
+              <ul className="explore__list explore__list--funding">
+                <li>
+                  <FundingReceiptHeader />
+                </li>
+                {fundingItems.map((r) => (
+                  <li key={r.uri}>
+                    <FundingReceiptRow receipt={r} showTextParties />
                   </li>
                 ))}
               </ul>
@@ -1714,6 +1759,7 @@ function SubPrefixDropdown({
 function searchPlaceholder(kind: ExploreKind): string {
   if (kind === "accounts") return "Search accounts by name…"
   if (kind === "projects") return "Search projects…"
+  if (kind === "funding") return "Funding receipts"
   return "Search activities…"
 }
 
@@ -1746,11 +1792,34 @@ function ResultsArea({
     return degrees.has(meta.degree)
   }
 
-  if (data.isLoading && data.users.length === 0 && data.projects.length === 0 && data.certs.length === 0) {
+  if (
+    data.isLoading &&
+    data.users.length === 0 &&
+    data.projects.length === 0 &&
+    data.certs.length === 0 &&
+    data.fundingReceipts.length === 0
+  ) {
     return (
       <div className="explore__loading">
         <LoadingSpinner size="md" />
       </div>
+    )
+  }
+
+  if (kind === "funding") {
+    const receipts = data.fundingReceipts
+    if (receipts.length === 0) return <EmptyResults kind={kind} />
+    return (
+      <ul className="explore__list explore__list--funding">
+        <li>
+          <FundingReceiptHeader />
+        </li>
+        {receipts.map((r) => (
+          <li key={r.uri}>
+            <FundingReceiptRow receipt={r} showTextParties />
+          </li>
+        ))}
+      </ul>
     )
   }
 
@@ -1836,7 +1905,7 @@ function ResultsArea({
           const did = certDids.get(rec.uri) ?? ""
           return (
             <li key={rec.uri}>
-              <CertListRow record={rec} did={did} />
+              <CertListRow record={rec} did={did} showByline />
             </li>
           )
         })}
@@ -1860,10 +1929,24 @@ function ResultsArea({
 
 function EmptyResults({ kind }: { kind: ExploreKind }) {
   const label =
-    kind === "accounts" ? "accounts" : kind === "projects" ? "projects" : "activities"
+    kind === "accounts"
+      ? "accounts"
+      : kind === "projects"
+        ? "projects"
+        : kind === "funding"
+          ? "funding receipts"
+          : "activities"
+  const icon =
+    kind === "accounts"
+      ? Users
+      : kind === "projects"
+        ? FolderGit2
+        : kind === "funding"
+          ? HandCoins
+          : CertIcon
   return (
     <EmptyState
-      icon={kind === "accounts" ? Users : kind === "projects" ? FolderGit2 : CertIcon}
+      icon={icon}
       title={`No ${label} match`}
       description="Try a different filter, clear the search, or pick a broader scope."
     />

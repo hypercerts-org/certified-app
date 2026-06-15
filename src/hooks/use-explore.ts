@@ -10,12 +10,14 @@ import {
 } from "react"
 import {
   fetchEndorsementClosure,
+  fetchFundingReceipts,
   fetchIndexerActivities,
   fetchIndexerActivitiesByUris,
   fetchProjects,
   fetchUserIndexerActivities,
   EndorsementClosureError,
   type EndorsementClosureAccount,
+  type FundingReceipt,
 } from "@/lib/atproto/indexer"
 import {
   subscribeClosureCacheVersion,
@@ -25,7 +27,6 @@ import {
   fetchNetworkActors,
   fetchNetworkActorsByDids,
   fetchDidsByKindInSet,
-  fetchOrgDidsByLabel,
 } from "@/lib/atproto/workspace"
 import type { NetworkActor } from "@/lib/atproto/workspace"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
@@ -82,6 +83,9 @@ interface ExploreData {
   projects: CollectionRecord[]
   certs: ActivityRecord[]
   certDids: Map<string, string>
+  /** Funding receipts (the "funding" kind), already gated to those with
+   *  at least one account side. Empty for every other kind. */
+  fundingReceipts: FundingReceipt[]
   isLoading: boolean
   isLoadingMore: boolean
   hasMore: boolean
@@ -95,6 +99,7 @@ interface InternalState {
   projects: CollectionRecord[]
   certs: ActivityRecord[]
   certDids: Map<string, string>
+  fundingReceipts: FundingReceipt[]
   isLoading: boolean
   isLoadingMore: boolean
   hasMore: boolean
@@ -107,6 +112,7 @@ const EMPTY: InternalState = {
   projects: [],
   certs: [],
   certDids: new Map(),
+  fundingReceipts: [],
   isLoading: false,
   isLoadingMore: false,
   hasMore: false,
@@ -422,12 +428,21 @@ export function useExploreData(opts: {
               ...page.users.filter((u) => !seenUsers.has(u.did)),
             ]
 
+            const seenFunding = new Set(
+              current.fundingReceipts.map((f) => f.uri),
+            )
+            const fundingReceipts = [
+              ...current.fundingReceipts,
+              ...page.fundingReceipts.filter((f) => !seenFunding.has(f.uri)),
+            ]
+
             return {
               ...current,
               users,
               projects,
               certs,
               certDids,
+              fundingReceipts,
               cursor: page.cursor,
               hasMore: page.hasMore,
               isLoadingMore: false,
@@ -454,11 +469,6 @@ export function useExploreData(opts: {
     managedAuthorDids,
     degree,
     noEndorsementRings,
-    closureVersion,
-    excludeKey,
-    includeKey,
-    excludeOrgKey,
-    includeOrgKey,
     excludeCertLabels,
     includeCertLabels,
     excludeOrgLabels,
@@ -470,6 +480,7 @@ export function useExploreData(opts: {
     projects: state.projects,
     certs: state.certs,
     certDids: state.certDids,
+    fundingReceipts: state.fundingReceipts,
     isLoading: state.isLoading,
     isLoadingMore: state.isLoadingMore,
     hasMore: state.hasMore,
@@ -487,6 +498,7 @@ interface LoadedPage {
   projects: CollectionRecord[]
   certs: ActivityRecord[]
   certDids: Map<string, string>
+  fundingReceipts: FundingReceipt[]
   cursor: string | null
   hasMore: boolean
   /** Set when the loader actually fetched a closure; null otherwise.
@@ -501,6 +513,7 @@ const EMPTY_PAGE: LoadedPage = {
   projects: [],
   certs: [],
   certDids: new Map(),
+  fundingReceipts: [],
   cursor: null,
   hasMore: false,
   endorsementClosure: null,
@@ -545,6 +558,9 @@ interface LoadArgs {
 }
 
 async function loadPage(args: LoadArgs): Promise<LoadedPage> {
+  // Funding has no label / endorsement / sub filters — dispatch before
+  // the cert/project label short-circuits below (which don't apply).
+  if (args.kind === "funding") return loadFundingPage(args)
   // Explicit-empty "include" filter = the user deselected every
   // option in that filter's popover. The indexer's HTTP proxy
   // normalises empty arrays to `null` (i.e. "no filter"), which would
@@ -688,26 +704,6 @@ async function loadFeaturedItemUrisUncached(
   return out
 }
 
-/**
- * Drop actors whose org carries one of the excluded labels. No-op
- * when the exclude list is empty / null. Returns the input array
- * unmodified in the no-op case (no allocation churn on the common
- * "no filter" path).
- */
-async function applyOrgExcludeFilter(
-  actors: NetworkActor[],
-  excludeOrgLabels: readonly string[] | null,
-  signal: AbortSignal | null,
-): Promise<NetworkActor[]> {
-  if (!excludeOrgLabels || excludeOrgLabels.length === 0) return actors
-  const badDids = await fetchOrgDidsByLabel({
-    labels: excludeOrgLabels,
-    signal: signal ?? undefined,
-  })
-  if (badDids.size === 0) return actors
-  return actors.filter((a) => !badDids.has(a.did))
-}
-
 // ----------------------------- Accounts --------------------------------
 
 async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
@@ -726,39 +722,25 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
     excludeOrgLabels,
   } = args
 
-  // Include-only org-label mode bypasses every other actor source.
-  // The viewer asked for "labeled X accounts only" — the result set
-  // IS the orgs with those labels, so we fetch matching DIDs from
-  // the orgs connection and pull their profiles in one shot. This
-  // sidesteps the 100-actor `NetworkActors` cap that would
-  // otherwise drop orgs outside the most-recently-indexed window.
-  if (includeOrgLabels && includeOrgLabels.length > 0) {
-    if (cursor !== null) return EMPTY_PAGE
-    const matchingDids = await fetchOrgDidsByLabel({
-      labels: includeOrgLabels,
-      signal: signal ?? undefined,
-    })
-    if (signal?.aborted) return EMPTY_PAGE
-    if (matchingDids.size === 0) return EMPTY_PAGE
-    let scoped = await fetchNetworkActorsByDids(
-      Array.from(matchingDids),
-      signal ?? undefined,
-    )
-    if (signal?.aborted) return EMPTY_PAGE
-    // sub: "people" returns empty (orgs only have labels);
-    // "organizations" and "all" return the labeled-org set as-is.
-    if (sub === "people") return EMPTY_PAGE
-    if (search.trim().length > 0) {
-      const q = search.trim().toLowerCase()
-      scoped = scoped.filter(
-        (a) =>
-          (a.displayName ?? "").toLowerCase().includes(q) ||
-          (a.description ?? "").toLowerCase().includes(q) ||
-          a.did.includes(q),
-      )
-    }
-    return { ...EMPTY_PAGE, users: scoped }
-  }
+  // Account-quality (orglabeler) include / exclude now filter
+  // server-side on the `appCertifiedActorProfile` connection via the
+  // `authorLabels` / `excludeAuthorLabels` args (magic-indexer#207).
+  // Account-quality labels live on the bare account DID and match
+  // both people AND organizations, so the previous "include-mode =
+  // orgs only, fetch DIDs from the orgs connection then pull
+  // profiles" early branch is gone — the main paginating
+  // `fetchNetworkActors` path (with the People/Organizations
+  // `isOrganization` sub-toggle) handles include just like any other
+  // server-side filter, with no 100-actor cap. These pass straight
+  // through to the paginating branch below.
+  const authorLabels =
+    includeOrgLabels && includeOrgLabels.length > 0
+      ? [...includeOrgLabels]
+      : undefined
+  const excludeAuthorLabels =
+    excludeOrgLabels && excludeOrgLabels.length > 0
+      ? [...excludeOrgLabels]
+      : undefined
 
   // "My organizations" — resolve the viewer's group DIDs DIRECTLY rather
   // than scanning the most-recently-indexed top-100 actors and
@@ -801,7 +783,11 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
           a.did.includes(q),
       )
     }
-    scoped = await applyOrgExcludeFilter(scoped, excludeOrgLabels ?? null, signal)
+    // No account-quality filter here: "My organizations" is the
+    // viewer's own groups (resolved by DID, fetched via
+    // fetchNetworkActorsByDids which has no author-label arg). The
+    // viewer's own groups are not a quality-curation surface, so the
+    // exclude filter is a no-op on this branch by design.
     return { ...EMPTY_PAGE, users: scoped }
   }
 
@@ -858,7 +844,11 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
       const q = search.trim().toLowerCase()
       users = users.filter((a) => a.did.includes(q))
     }
-    users = await applyOrgExcludeFilter(users, excludeOrgLabels ?? null, signal)
+    // No server-side account-quality filter here: the Featured set is
+    // a fixed curator-picked DID list (Ma Earth), already a trusted
+    // curation surface, and its actor rows are DID-stubs (no
+    // label-filterable connection). The exclude filter is a no-op on
+    // this branch by design.
     return { ...EMPTY_PAGE, users }
   }
 
@@ -926,12 +916,19 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
             a.did.includes(q),
         )
       }
-      scoped = await applyOrgExcludeFilter(scoped, excludeOrgLabels ?? null, signal)
+      // No server-side account-quality filter here: the endorsed set
+      // comes from the trust-graph closure (the viewer's own
+      // endorsement web — already a curation signal), and its rows are
+      // built from the closure's inline issuer block, not a
+      // label-filterable connection. The exclude filter is a no-op on
+      // this branch by design.
       return { ...EMPTY_PAGE, users: scoped, endorsementClosure: closureMeta }
     }
     const page = await fetchNetworkActors({
       first: 100,
       isOrganization: subToIsOrganization(sub),
+      authorLabels,
+      excludeAuthorLabels,
       signal: signal ?? undefined,
     })
     let scoped = page.actors
@@ -954,7 +951,6 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
           a.did.includes(q),
       )
     }
-    scoped = await applyOrgExcludeFilter(scoped, excludeOrgLabels ?? null, signal)
     return { ...EMPTY_PAGE, users: scoped }
   }
 
@@ -972,16 +968,13 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
     after: cursor,
     isOrganization: subToIsOrganization(sub),
     search,
+    authorLabels,
+    excludeAuthorLabels,
     signal: signal ?? undefined,
   })
-  const actors = await applyOrgExcludeFilter(
-    page.actors,
-    excludeOrgLabels ?? null,
-    signal,
-  )
   return {
     ...EMPTY_PAGE,
-    users: actors,
+    users: page.actors,
     cursor: page.endCursor,
     hasMore: page.hasMore,
   }
@@ -990,7 +983,34 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
 // ----------------------------- Projects --------------------------------
 
 async function loadProjectsPage(args: LoadArgs): Promise<LoadedPage> {
-  const { filter, search, viewerDid, followedDids, managedAuthorDids, cursor, signal, degree } = args
+  const {
+    filter,
+    search,
+    viewerDid,
+    followedDids,
+    managedAuthorDids,
+    cursor,
+    signal,
+    degree,
+    includeOrgLabels,
+    excludeOrgLabels,
+  } = args
+
+  // Account-quality (orglabeler) include / exclude filter server-side
+  // on the `orgHypercertsCollection` connection via `authorLabels` /
+  // `excludeAuthorLabels` (magic-indexer#207). Only the indexer-backed
+  // branches (by-endorsed + the default Projects listing) can apply
+  // these; the URI-keyed branches (Ma Earth featured, Recently viewed)
+  // resolve via PDS getRecord, which has no label-filterable
+  // connection, so they ignore the org-quality filter by design.
+  const authorLabels =
+    includeOrgLabels && includeOrgLabels.length > 0
+      ? [...includeOrgLabels]
+      : undefined
+  const excludeAuthorLabels =
+    excludeOrgLabels && excludeOrgLabels.length > 0
+      ? [...excludeOrgLabels]
+      : undefined
 
   if (filter === MA_EARTH_FILTER) {
     if (cursor !== null) return EMPTY_PAGE
@@ -1029,6 +1049,8 @@ async function loadProjectsPage(args: LoadArgs): Promise<LoadedPage> {
       first: PAGE_SIZE,
       after: cursor ?? undefined,
       authors,
+      authorLabels,
+      excludeAuthorLabels,
       search: search || undefined,
       signal: signal ?? undefined,
     })
@@ -1073,6 +1095,8 @@ async function loadProjectsPage(args: LoadArgs): Promise<LoadedPage> {
     first: PAGE_SIZE,
     after: cursor ?? undefined,
     authors,
+    authorLabels,
+    excludeAuthorLabels,
     search: search || undefined,
     signal: signal ?? undefined,
   })
@@ -1101,49 +1125,24 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
     excludeOrgLabels,
   } = args
 
-  // Resolve the org-label DID sets once. Include mode narrows the
-  // result to certs authored by labeled orgs; exclude mode drops
-  // certs whose author carries an excluded org label. Both modes
-  // are no-ops when the corresponding list is empty.
-  let orgIncludeAuthors: Set<string> | null = null
-  let orgExcludeAuthors: Set<string> | null = null
-  if (includeOrgLabels && includeOrgLabels.length > 0) {
-    orgIncludeAuthors = await fetchOrgDidsByLabel({
-      labels: includeOrgLabels,
-      signal: signal ?? undefined,
-    })
-    if (signal?.aborted) return EMPTY_PAGE
-    // Include with an empty target set means "nothing matches".
-    if (orgIncludeAuthors.size === 0) return EMPTY_PAGE
-  }
-  if (excludeOrgLabels && excludeOrgLabels.length > 0) {
-    orgExcludeAuthors = await fetchOrgDidsByLabel({
-      labels: excludeOrgLabels,
-      signal: signal ?? undefined,
-    })
-    if (signal?.aborted) return EMPTY_PAGE
-  }
-
-  // Helper: intersect a branch's `authors` filter with the
-  // org-include set. Undefined existing → use include set as-is.
-  const orgScope = (authors: string[] | undefined): string[] | undefined => {
-    if (!orgIncludeAuthors) return authors
-    if (!authors) return Array.from(orgIncludeAuthors)
-    return authors.filter((a) => orgIncludeAuthors!.has(a))
-  }
-
-  // Helper: drop certs whose author DID is in the excluded set.
-  // No-op when no excludes are configured or the set is empty.
-  const dropExcluded = (
-    certs: ActivityRecord[],
-    dids: Map<string, string>,
-  ): ActivityRecord[] => {
-    if (!orgExcludeAuthors || orgExcludeAuthors.size === 0) return certs
-    return certs.filter((c) => {
-      const author = dids.get(c.uri)
-      return !author || !orgExcludeAuthors!.has(author)
-    })
-  }
+  // Account-quality (orglabeler) include / exclude now filter
+  // server-side on the `orgHypercertsClaimActivity` connection via
+  // the `authorLabels` / `excludeAuthorLabels` args
+  // (magic-indexer#207). The indexer ANDs `authors` + `authorLabels`,
+  // so a branch that previously intersected its own `authors` filter
+  // (follows / by-endorsed) with the include-org DID set now just
+  // passes both args and lets the server compose them. The previous
+  // `fetchOrgDidsByLabel` DID-resolution + `orgScope` / `dropExcluded`
+  // client filtering (which broke pagination — a 100-row page came
+  // back short) is gone.
+  const authorLabels =
+    includeOrgLabels && includeOrgLabels.length > 0
+      ? [...includeOrgLabels]
+      : undefined
+  const excludeAuthorLabels =
+    excludeOrgLabels && excludeOrgLabels.length > 0
+      ? [...excludeOrgLabels]
+      : undefined
 
   if (filter === MA_EARTH_FILTER) {
     if (cursor !== null) return EMPTY_PAGE
@@ -1161,6 +1160,8 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
     const res = await fetchIndexerActivitiesByUris(itemUris, {
       labels: args.includeCertLabels?.length ? [...args.includeCertLabels] : undefined,
       excludeLabels: args.excludeCertLabels?.length ? [...args.excludeCertLabels] : undefined,
+      authorLabels,
+      excludeAuthorLabels,
       signal: signal ?? undefined,
     })
     if (signal?.aborted) return EMPTY_PAGE
@@ -1173,22 +1174,16 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
         return title.toLowerCase().includes(q) || desc.toLowerCase().includes(q)
       })
     }
-    if (orgIncludeAuthors) {
-      certs = certs.filter((c) => {
-        const author = res.dids.get(c.uri)
-        return !!author && orgIncludeAuthors!.has(author)
-      })
-    }
-    certs = dropExcluded(certs, res.dids)
     return { ...EMPTY_PAGE, certs, certDids: res.dids }
   }
 
-  // Sub-category overrides — pinned to viewer.
+  // Sub-category overrides — pinned to viewer. Account-quality
+  // include / exclude is incoherent here (the records are the
+  // viewer's own — either the viewer is labeled or not), and the
+  // AuthoredActivities / ContributedActivities ops don't carry the
+  // author-label args, so this branch ignores the org-quality filter
+  // by design.
   if (sub === "created" && viewerDid) {
-    // "Created by me" + org-include filter is incoherent (either
-    // viewer is in the labeled-org set or not). Skip filtering by
-    // org-include but still apply the exclude post-filter for
-    // consistency with the rest of the loader.
     const r = await fetchUserIndexerActivities(viewerDid, {
       mode: "authored",
       first: PAGE_SIZE,
@@ -1200,7 +1195,7 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
     })
     return {
       ...EMPTY_PAGE,
-      certs: dropExcluded(r.records, r.dids),
+      certs: r.records,
       certDids: r.dids,
       cursor: r.endCursor,
       hasMore: r.hasMore,
@@ -1218,7 +1213,7 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
     })
     return {
       ...EMPTY_PAGE,
-      certs: dropExcluded(r.records, r.dids),
+      certs: r.records,
       certDids: r.dids,
       cursor: r.endCursor,
       hasMore: r.hasMore,
@@ -1239,22 +1234,23 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
       return { ...EMPTY_PAGE, endorsementClosure: closureMeta }
     }
     const closureAuthors = Array.from(closureMeta.closureByDid.keys())
-    const scopedAuthors = orgScope(closureAuthors) ?? closureAuthors
-    if (scopedAuthors.length === 0) {
-      return { ...EMPTY_PAGE, endorsementClosure: closureMeta }
-    }
+    // The indexer ANDs `authors` + `authorLabels`, so pass the
+    // closure DIDs as authors and let the server apply the
+    // account-quality include / exclude on top.
     const r = await fetchIndexerActivities({
       first: PAGE_SIZE,
       after: cursor ?? undefined,
-      authors: scopedAuthors,
+      authors: closureAuthors,
       search: search || undefined,
       excludeLabels: args.excludeCertLabels?.length ? [...args.excludeCertLabels] : undefined,
       labels: args.includeCertLabels?.length ? [...args.includeCertLabels] : undefined,
+      authorLabels,
+      excludeAuthorLabels,
       signal: signal ?? undefined,
     })
     return {
       ...EMPTY_PAGE,
-      certs: dropExcluded(r.records, r.dids),
+      certs: r.records,
       certDids: r.dids,
       cursor: r.endCursor,
       hasMore: r.hasMore,
@@ -1275,16 +1271,13 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
     // Restore the user's visit order — the cache holds it (newest
     // first), the parallel fetches don't guarantee response order.
     const order = new Map(recent.map((u, i) => [u, i] as const))
-    let certs = [...res.records].sort(
+    const certs = [...res.records].sort(
       (a, b) => (order.get(a.uri) ?? 0) - (order.get(b.uri) ?? 0),
     )
-    if (orgIncludeAuthors) {
-      certs = certs.filter((c) => {
-        const author = res.dids.get(c.uri)
-        return !!author && orgIncludeAuthors!.has(author)
-      })
-    }
-    certs = dropExcluded(certs, res.dids)
+    // No account-quality filter here: "Recently viewed" is the
+    // viewer's own personal cache (resolved by URI via PDS getRecord,
+    // not a label-filterable indexer connection), so the org-quality
+    // include / exclude is a no-op on this branch by design.
     return { ...EMPTY_PAGE, certs, certDids: res.dids }
   }
 
@@ -1300,25 +1293,58 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
     authors = Array.from(followedDids)
   }
 
-  const scopedAuthors = orgScope(authors)
-  if (orgIncludeAuthors && scopedAuthors && scopedAuthors.length === 0) {
-    // Include-only set was non-empty but intersected with the
-    // branch's authors filter to nothing — short-circuit empty.
-    return EMPTY_PAGE
-  }
+  // The indexer ANDs `authors` + `authorLabels`, so pass the branch's
+  // author filter (if any) plus the account-quality include / exclude
+  // and let the server compose them — no client-side intersection.
   const r = await fetchIndexerActivities({
     first: PAGE_SIZE,
     after: cursor ?? undefined,
-    authors: scopedAuthors,
+    authors,
     search: search || undefined,
     excludeLabels: args.excludeCertLabels?.length ? [...args.excludeCertLabels] : undefined,
     labels: args.includeCertLabels?.length ? [...args.includeCertLabels] : undefined,
+    authorLabels,
+    excludeAuthorLabels,
     signal: signal ?? undefined,
   })
   return {
     ...EMPTY_PAGE,
-    certs: dropExcluded(r.records, r.dids),
+    certs: r.records,
     certDids: r.dids,
+    cursor: r.endCursor,
+    hasMore: r.hasMore,
+  }
+}
+
+// ----------------------------- Funding ---------------------------------
+
+/**
+ * Fetch a page of funding receipts and apply the explore gate: keep a
+ * receipt only when `from` OR `to` is an AT Protocol account
+ * (`AppCertifiedDefsDid`). The indexer can't filter by union variant,
+ * so we post-process after fetching — mirrors how the other explore
+ * loaders client-filter (recently-viewed, follows, …). The funding
+ * tab has no filter / sub / search axes, so those args are ignored.
+ *
+ * `hasMore` reflects the indexer's raw page (pre-gate): "Load more"
+ * keeps pulling pages even when a given page gated down to few rows, so
+ * the sparse account-bearing receipts surface across the dataset rather
+ * than stopping at the first page's handful.
+ */
+async function loadFundingPage(args: LoadArgs): Promise<LoadedPage> {
+  const { cursor, signal } = args
+  const r = await fetchFundingReceipts({
+    first: PAGE_SIZE,
+    after: cursor ?? undefined,
+    signal: signal ?? undefined,
+  })
+  if (signal?.aborted) return EMPTY_PAGE
+  const gated = r.records.filter(
+    (rec) => rec.from?.kind === "account" || rec.to?.kind === "account",
+  )
+  return {
+    ...EMPTY_PAGE,
+    fundingReceipts: gated,
     cursor: r.endCursor,
     hasMore: r.hasMore,
   }

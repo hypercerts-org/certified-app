@@ -97,6 +97,7 @@ const CERT_DETAIL_TABS: DetailTab[] = [
   { key: "overview", label: "Overview" },
   { key: "description", label: "Description" },
   { key: "contributors", label: "Contributors" },
+  { key: "funding", label: "Funding" },
   { key: "updates", label: "Updates" },
 ];
 
@@ -609,15 +610,19 @@ export default function DesktopTopBar() {
           data-tour="profile-tabs"
         >
           {/* Profile ?tab= strip — canonical <Tabs> (underline). onChange
-              pushes the ?tab= URL (scroll:false) so the page mirrors it,
-              matching the prior <Link scroll={false}> default-push. */}
+              REPLACES the ?tab= URL (scroll:false) so the page mirrors it
+              without stacking a history entry per tab. With `replace`, the
+              browser Back button leaves the profile entirely (returning to
+              wherever the user came from) instead of stepping back through
+              each tab they opened. Mirrors the in-page mobile tab strip in
+              src/app/[actor]/page.tsx, which already uses `router.replace`. */}
           <Tabs
             value={lockTabs && !isTabEditable(activeTab) ? "overview" : activeTab}
             onChange={(next) => {
               // While locked, swallow switches to non-editable sections.
               if (lockTabs && !isTabEditable(next)) return;
               const tab = visibleProfileTabs.find((t) => t.key === next);
-              if (tab) router.push(tabHref(tab), { scroll: false });
+              if (tab) router.replace(tabHref(tab), { scroll: false });
             }}
           >
             <TabList aria-label="Profile sections" className="border-0">

@@ -93,11 +93,39 @@ export async function fetchNetworkActors(
      * "nothing found until you click Load more").
      */
     search?: string
+    /**
+     * Server-side author-account-label include filter — keeps only
+     * actors whose account carries one of these orglabeler tier
+     * labels (account-quality labels live on the bare account DID,
+     * matched via the profile connection's `authorLabels` arg —
+     * magic-indexer#207). Omit / empty to skip.
+     */
+    authorLabels?: readonly string[]
+    /**
+     * Server-side author-account-label exclude filter — drops actors
+     * whose account carries one of these labels. Unlabeled accounts
+     * pass through. Omit / empty to skip.
+     */
+    excludeAuthorLabels?: readonly string[]
     signal?: AbortSignal
   } = {},
 ): Promise<NetworkActorsPage> {
-  const { first = 30, after = null, isOrganization, search, signal } = opts
+  const {
+    first = 30,
+    after = null,
+    isOrganization,
+    search,
+    authorLabels,
+    excludeAuthorLabels,
+    signal,
+  } = opts
   const searchVar = search && search.trim().length > 0 ? search.trim() : null
+  const authorLabelsVar =
+    authorLabels && authorLabels.length > 0 ? [...authorLabels] : null
+  const excludeAuthorLabelsVar =
+    excludeAuthorLabels && excludeAuthorLabels.length > 0
+      ? [...excludeAuthorLabels]
+      : null
   // Two upstream operations: the unfiltered `NetworkActors`, and
   // `NetworkActorsByKind` which adds the `isOrganization` where-arg.
   // graphql-go rejects an explicit `null` on the `eq` operator, so
@@ -110,8 +138,21 @@ export async function fetchNetworkActors(
     body: JSON.stringify({
       operationName: useKindFilter ? "NetworkActorsByKind" : "NetworkActors",
       variables: useKindFilter
-        ? { first, after, isOrganization, search: searchVar }
-        : { first, after, search: searchVar },
+        ? {
+            first,
+            after,
+            isOrganization,
+            search: searchVar,
+            authorLabels: authorLabelsVar,
+            excludeAuthorLabels: excludeAuthorLabelsVar,
+          }
+        : {
+            first,
+            after,
+            search: searchVar,
+            authorLabels: authorLabelsVar,
+            excludeAuthorLabels: excludeAuthorLabelsVar,
+          },
     }),
     signal,
   })

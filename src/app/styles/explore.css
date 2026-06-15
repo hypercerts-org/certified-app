@@ -760,7 +760,8 @@
 
 .cert-list-row__title {
   margin: 0;
-  font-size: 0.9rem;
+  /* Standard text, bold (primary line). */
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--fg-primary);
   line-height: 1.3;
@@ -775,7 +776,8 @@
 .cert-list-row__subtitle {
   display: none;
   margin: 0;
-  font-size: 0.8rem;
+  /* Second-row text — smaller. */
+  font-size: 0.75rem;
   color: var(--fg-muted);
   line-height: 1.3;
   overflow: hidden;
@@ -863,9 +865,10 @@
   }
 
   .cert-list-row__title {
-    font-family: var(--font-headline), "Noto Serif", Georgia, serif;
-    font-size: 1.0625rem;
-    font-weight: 700;
+    /* Standard Inter text everywhere (no serif headline bump) — bold as
+       the primary line. */
+    font-size: 0.85rem;
+    font-weight: 600;
   }
 
   .cert-list-row__meta {
@@ -1096,7 +1099,8 @@
 }
 
 .account-list-row__name {
-  font-size: 0.9rem;
+  /* Standard text, bold (primary line). */
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--fg-primary);
   overflow: hidden;
@@ -1106,7 +1110,8 @@
 }
 
 .account-list-row__handle {
-  font-size: 0.78rem;
+  /* Second-row text — smaller. */
+  font-size: 0.75rem;
   color: var(--fg-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1157,6 +1162,221 @@
      identity (avatar + name + @handle). */
   .account-list-row__joined {
     display: none;
+  }
+}
+
+/* ---------- Funding receipt row ---------- */
+
+.funding-receipt-row {
+  display: grid;
+  /* Fixed amount + date columns with equal 1fr from/to columns. Every
+     row is its own grid at the same (full) width, so the four columns —
+     amount | from | to | date — line up vertically across all rows in a
+     list. */
+  grid-template-columns: 7rem minmax(0, 1fr) minmax(0, 1fr) 7rem;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px;
+  transition: background var(--transition-fast);
+}
+
+.explore__list > li + li .funding-receipt-row {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.funding-receipt-row:hover {
+  background: var(--bg-sunken);
+}
+
+/* Column-header row: small uppercase labels (matching the app's other
+   section labels), no hover. */
+.funding-receipt-row--header:hover {
+  background: transparent;
+}
+
+.funding-receipt-row__heading {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+}
+
+.funding-receipt-row__heading--amount {
+  text-align: right;
+}
+
+/* Trailing column: amount + currency. Standard body text, like the
+   date / to / for fields. */
+.funding-receipt-row__amount {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Trailing column — flush right. */
+  text-align: right;
+}
+
+.funding-receipt-row__currency {
+  margin-left: 4px;
+  font-weight: 400;
+  color: var(--fg-primary);
+}
+
+/* From / to columns. min-width:0 lets a long account name or wallet
+   address truncate rather than blow the column out. */
+.funding-receipt-row__from,
+.funding-receipt-row__to-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.funding-receipt-row__party {
+  min-width: 0;
+}
+
+.funding-receipt-row__word {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--fg-secondary);
+  flex-shrink: 0;
+}
+
+.funding-receipt-row__text-party {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.funding-receipt-row__for {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.funding-receipt-row__activity {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  text-decoration: none;
+  color: var(--fg-primary);
+}
+
+/* Square activity thumbnail. */
+.funding-receipt-row__activity-img {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-sunken);
+  display: block;
+}
+
+.funding-receipt-row__activity-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Activity title — standard body text, wraps to at most two lines. */
+.funding-receipt-row__activity-title {
+  min-width: 0;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--fg-primary);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.funding-receipt-row__activity:hover .funding-receipt-row__activity-title {
+  text-decoration: underline;
+}
+
+.funding-receipt-row__date {
+  /* Dates are secondary metadata — smaller + muted, like the date on the
+     cert / account rows. */
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--fg-secondary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Explore funding list → a true table. The <ul> owns the column tracks
+   (content-sized amount / from / date, flexible to) and each row adopts
+   them via `subgrid`, so the four columns line up tightly across every
+   item — not just aligned but content-fitted, the way the other list
+   surfaces read. The row keeps its own box, so the hairline divider and
+   hover wash still work. Desktop only; phones use the stacked layout
+   below. */
+@media (min-width: 800px) {
+  .explore__list--funding {
+    display: grid;
+    /* date | from | to | for (flexible — holds the activity image +
+       2-line title) | amount. No side padding here so a row's hover
+       background spans the full width; the edge inset lives on the
+       first/last cells below. */
+    grid-template-columns:
+      max-content max-content max-content minmax(0, 1fr) max-content;
+  }
+  .explore__list--funding > li {
+    display: contents;
+  }
+  .explore__list--funding .funding-receipt-row {
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    padding: 12px 0;
+    column-gap: 16px;
+  }
+  /* Edge inset: keep content off the list border while letting the row
+     background (hover) and the divider span the full width. */
+  .explore__list--funding .funding-receipt-row > :first-child {
+    padding-left: 14px;
+  }
+  .explore__list--funding .funding-receipt-row > :last-child {
+    padding-right: 14px;
+  }
+}
+
+@media (max-width: 799px) {
+  /* Stack on phones: amount + date share the top line; from and to each
+     take a full-width line below. */
+  .funding-receipt-row {
+    grid-template-columns: 1fr auto;
+    gap: 4px 12px;
+    padding: 14px 0;
+  }
+  .funding-receipt-row:hover {
+    background: transparent;
+  }
+  .funding-receipt-row__date {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .funding-receipt-row__amount {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .funding-receipt-row__from,
+  .funding-receipt-row__to-cell,
+  .funding-receipt-row__for {
+    grid-column: 1 / -1;
   }
 }
 
