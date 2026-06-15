@@ -61,7 +61,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     navigateTo: "/home",
     anchor: null,
     title: "Welcome to Certified",
-    body: "The Certified network is where you record and recognize real work and impact.\n\nThis app is just one view into the open network — other apps share the same data, so your work is never locked in. Let's take a quick look around.",
+    body: "The Certified network is where you record and recognize real work and impact. This app is one view into this open network — other apps share the same data, so your work is never locked in.\n\nLet's take a quick look around.",
   },
 
   // ---- Mobile navigation (sidebar) -----------------------------------
@@ -120,7 +120,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     navigateTo: "/apps",
     anchor: "nav-apps",
     title: "Apps",
-    body: "Apps is the growing set of apps built on the same open network as Certified.",
+    body: "This is where you can see all the apps that are built with Certified on AT Protocol.",
     placement: "bottom",
     platform: "desktop",
   },
@@ -128,7 +128,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     id: "apps-grid",
     navigateTo: "/apps",
     anchor: "apps-grid",
-    title: "One record, every app",
+    title: "One account, every app",
     body: "Each app reads and writes the same underlying records, so the work you publish here shows up across all of them — your data isn't locked into any single one.",
     placement: "bottom",
   },
