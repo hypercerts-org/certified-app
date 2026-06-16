@@ -62,6 +62,14 @@ export default function FundingConfirmedByPopover({
   // Distinct third-party attestors across the loaded receipts, plus any
   // currently-selected DIDs (so a selection stays listed even if its rows
   // scroll out of the loaded window).
+  //
+  // The candidate list — and the filtering itself (`matchesConfirmedBy`) —
+  // is intentionally scoped to the loaded window: the server-side
+  // `confirmedBy` arg that would push this filter upstream is plumbed
+  // through `fetchFundingReceipts` -> the indexer GraphQL op but stays
+  // dormant until magic-indexer #214 ships it (the real filter is a
+  // multi-axis role-bucket + DID set, which the single nullable-DID arg
+  // can't yet express). That plumbing is deliberately kept, not dead code.
   const candidates = useMemo(() => {
     const seen = new Set<string>()
     const out: string[] = []
