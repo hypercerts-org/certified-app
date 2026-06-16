@@ -92,6 +92,16 @@ export function TourProvider({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated, did, activeOrg, autoCheckedDid])
 
+  // If the layout flips mid-tour (crossing 800px swaps the desktop/mobile
+  // nav steps, which can differ in length), clamp the active step so it
+  // never points past the new end — otherwise `step` resolves to null and
+  // the tour card silently vanishes while still "active". A no-op when the
+  // index is already in range (React bails out of the identical state).
+  useEffect(() => {
+    if (!isActive) return
+    setStepIndex((i) => Math.min(i, Math.max(0, steps.length - 1)))
+  }, [steps.length, isActive])
+
   const start = useCallback(() => {
     setStepIndex(0)
     setIsActive(true)
