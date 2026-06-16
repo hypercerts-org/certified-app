@@ -251,8 +251,16 @@ export default function ProductTour() {
     }
 
     tick()
+    // Coalesce reflow bursts into one measure per frame: capture-phase
+    // scroll fires very frequently and tick() does a getBoundingClientRect +
+    // setLayout, so measuring synchronously on every event is wasteful.
+    let reflowRaf = 0
     const onReflow = () => {
-      if (found) tick()
+      if (!found || reflowRaf) return
+      reflowRaf = requestAnimationFrame(() => {
+        reflowRaf = 0
+        if (found) tick()
+      })
     }
     globalThis.addEventListener("scroll", onReflow, {
       passive: true,
@@ -261,6 +269,7 @@ export default function ProductTour() {
     globalThis.addEventListener("resize", onReflow, { passive: true })
     return () => {
       cancelAnimationFrame(rafId)
+      if (reflowRaf) cancelAnimationFrame(reflowRaf)
       globalThis.removeEventListener("scroll", onReflow, {
         capture: true,
       } as EventListenerOptions)
@@ -393,6 +402,18 @@ export default function ProductTour() {
         <div className="product-tour__panel product-tour__panel--full" />
       )}
 
+      {/*
+        NOTE (a11y, deferred): aria-modal="true" tells AT the rest of the
+        page is inert, but we don't actually inert it. The tour portals into
+        document.body alongside the app's several direct body children (no
+        single app-root wrapper — body itself is the flex column), plus the
+        toast/live-region portals. Inerting "everything but the tour" would
+        risk suppressing those live regions, and there's no clean sibling
+        wrapper to target. Proper inerting needs a stable app-root element +
+        an AT smoke test, so it's tracked for a follow-up rather than guessed
+        at here. The Esc-to-dismiss + Tab focus trap keep it keyboard-usable
+        in the meantime.
+      */}
       <div
         ref={cardRef}
         className={`product-tour__card${cardPlacementClass}`}
