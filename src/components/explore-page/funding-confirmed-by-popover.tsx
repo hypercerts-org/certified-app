@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useId, useMemo } from "react"
 import { UserRoundCheck } from "lucide-react"
 import {
   Popover as UiPopover,
@@ -59,6 +59,11 @@ export default function FundingConfirmedByPopover({
   open: boolean
   onOpenChange: (v: boolean) => void
 }) {
+  // Associate each checkbox section with its visible label for AT (the
+  // popover renders role="group", not a menu).
+  const rolesHeadingId = useId()
+  const tpHeadingId = useId()
+
   // Distinct third-party attestors across the loaded receipts, plus any
   // currently-selected DIDs (so a selection stays listed even if its rows
   // scroll out of the loaded window).
@@ -98,29 +103,37 @@ export default function FundingConfirmedByPopover({
           </button>
         </PopoverTrigger>
       </Tooltip>
-      <PopoverContent align="end">
-        <p className="popover__section-heading">Confirmed by</p>
-        {CONFIRM_ROLES.map((role) => (
-          <div key={role} className="popover__item popover__item--check">
-            <Checkbox
-              label={ROLE_LABEL[role]}
-              checked={roles.has(role)}
-              onChange={() => onToggleRole(role)}
-            />
-          </div>
-        ))}
+      <PopoverContent align="end" role="group" aria-label="Confirmed by filter">
+        <div role="group" aria-labelledby={rolesHeadingId}>
+          <p id={rolesHeadingId} className="popover__section-heading">
+            Confirmed by
+          </p>
+          {CONFIRM_ROLES.map((role) => (
+            <div key={role} className="popover__item popover__item--check">
+              <Checkbox
+                label={ROLE_LABEL[role]}
+                checked={roles.has(role)}
+                onChange={() => onToggleRole(role)}
+              />
+            </div>
+          ))}
+        </div>
         {candidates.length > 0 ? (
           <>
             <hr className="popover__divider" aria-hidden="true" />
-            <p className="popover__section-heading">Confirmed by third parties</p>
-            {candidates.map((did) => (
-              <ThirdPartyCheck
-                key={did}
-                did={did}
-                checked={thirdParties.has(did)}
-                onToggle={onToggleThirdParty}
-              />
-            ))}
+            <div role="group" aria-labelledby={tpHeadingId}>
+              <p id={tpHeadingId} className="popover__section-heading">
+                Confirmed by third parties
+              </p>
+              {candidates.map((did) => (
+                <ThirdPartyCheck
+                  key={did}
+                  did={did}
+                  checked={thirdParties.has(did)}
+                  onToggle={onToggleThirdParty}
+                />
+              ))}
+            </div>
           </>
         ) : null}
         <hr className="popover__divider" aria-hidden="true" />

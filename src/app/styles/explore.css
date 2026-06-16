@@ -334,7 +334,9 @@
      A fixed width/height (rather than aspect-ratio + align-self:stretch,
      whose height-derived width under-sized the flex cluster and pushed
      the filter button off the right edge) keeps the action cluster a
-     predictable size so `margin-left: auto` pins it flush to the right. */
+     predictable size so `margin-left: auto` pins it flush to the right.
+     The 36px visual box is kept; the touch target is extended to 44px via
+     an out-of-flow pseudo-element below (so the cluster width is unchanged). */
   .explore__chrome-btn--icon {
     width: 36px;
     height: 36px;
@@ -343,6 +345,20 @@
     align-self: center;
     aspect-ratio: auto;
     flex-shrink: 0;
+    position: relative;
+  }
+  /* Invisible >=44px touch target (WCAG 2.5.8) centered over the 36px box.
+     Absolutely positioned, so it extends the tappable area without growing
+     the flex cluster; clicks on it still dispatch to the button. The 8px
+     inter-button gap means adjacent targets meet but don't overlap. */
+  .explore__chrome-btn--icon::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
   }
   /* The type dropdown trigger matches the 44px control height too. */
   .explore__sub-dropdown-trigger {
