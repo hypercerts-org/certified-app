@@ -9,6 +9,7 @@ import {
   FundingPartySlot,
   HydratedIdentityRow,
 } from "./funding-receipt-parts"
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
 import { formatShortDate } from "@/lib/utils/format-date"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
 
@@ -217,16 +218,7 @@ function CreatorIdentity({ did }: { did: string }) {
 /** A long, monospaced identifier (at:// URI, CID) with a click-to-copy
  *  button and a brief "Copied" confirmation. */
 function CopyableValue({ value, label }: { value: string; label: string }) {
-  const [copied, setCopied] = useState(false)
-  const onCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(value)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      /* clipboard unavailable — silent */
-    }
-  }
+  const { copied, copy } = useCopyToClipboard()
   return (
     <span className="funding-receipt-detail__copyable">
       <span className="funding-receipt-detail__mono" title={value}>
@@ -236,7 +228,7 @@ function CopyableValue({ value, label }: { value: string; label: string }) {
         <button
           type="button"
           className="funding-receipt-detail__copy-btn"
-          onClick={onCopy}
+          onClick={() => copy(value)}
           aria-label={copied ? "Copied" : label}
         >
           {copied ? (
