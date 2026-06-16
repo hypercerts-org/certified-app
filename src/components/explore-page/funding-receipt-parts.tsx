@@ -90,6 +90,9 @@ export function FundingForActivity({ uri }: { uri: string | null }) {
 
   return (
     <span className="funding-receipt-row__for">
+      <span className="funding-receipt-row__cell-label" aria-hidden="true">
+        For
+      </span>
       <Link href={href} className="funding-receipt-row__activity">
         <span className="funding-receipt-row__activity-img">
           {imageUrl ? (

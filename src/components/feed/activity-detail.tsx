@@ -1,6 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react"
 import { profileUrl, recordUrl } from "@/lib/urls"
 import { usePageTitle, usePageRecordMenu } from "@/lib/navbar-context"
 import Link from "next/link"
@@ -46,6 +53,9 @@ import { useActivityFunding } from "@/hooks/use-activity-funding"
 import FundingReceiptRow, {
   FundingReceiptHeader,
 } from "@/components/explore-page/funding-receipt-row"
+import FundingConfirmedByPopover from "@/components/explore-page/funding-confirmed-by-popover"
+import { matchesConfirmedBy } from "@/lib/atproto/funding-provenance"
+import { useFundingConfirmedBy } from "@/hooks/use-funding-confirmed-by"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { TransitionLink } from "@/lib/view-transitions"
 import LeafletDocument, {
@@ -229,6 +239,24 @@ export default function ActivityDetail({
     isLoading: fundingLoading,
   } = useActivityFunding(did, rkey)
   const fundingCount = fundingTotal ?? fundingReceipts.length
+
+  // Funding "Confirmed by" filter — same URL-backed state + popover as
+  // /explore. Applied client-side to the loaded receipts (shared by the
+  // overview preview and the Funding tab). `confirmedByOpen` drives the
+  // popover; one instance is mounted at a time (the sections are tab-gated).
+  const confirmedBy = useFundingConfirmedBy()
+  const [confirmedByOpen, setConfirmedByOpen] = useState(false)
+  const filteredFunding = useMemo(
+    () =>
+      fundingReceipts.filter((r) =>
+        matchesConfirmedBy(
+          r.attestations,
+          confirmedBy.roles,
+          confirmedBy.thirdParties,
+        ),
+      ),
+    [fundingReceipts, confirmedBy.roles, confirmedBy.thirdParties],
+  )
 
   // Tab strip on the top bar (back-row) drives which slice of the
   // record renders in the right pane. Keep the left aside identical
@@ -1226,30 +1254,49 @@ export default function ActivityDetail({
                   <span className="cert-detail__section-count">
                     {fundingCount}
                   </span>
-                  {fundingHref ? (
-                    <TransitionLink
-                      href={fundingHref}
-                      replace
-                      className="cert-detail__section-see-all"
-                    >
-                      See all →
-                    </TransitionLink>
-                  ) : null}
+                  <div className="cert-detail__section-actions">
+                    <FundingConfirmedByPopover
+                      receipts={fundingReceipts}
+                      roles={confirmedBy.roles}
+                      onToggleRole={confirmedBy.toggleRole}
+                      thirdParties={confirmedBy.thirdParties}
+                      onToggleThirdParty={confirmedBy.toggleThirdParty}
+                      isDefault={confirmedBy.isDefault}
+                      onReset={confirmedBy.reset}
+                      open={confirmedByOpen}
+                      onOpenChange={setConfirmedByOpen}
+                    />
+                    {fundingHref ? (
+                      <TransitionLink
+                        href={fundingHref}
+                        replace
+                        className="cert-detail__section-see-all"
+                      >
+                        See all →
+                      </TransitionLink>
+                    ) : null}
+                  </div>
                 </div>
-                <ul className="cert-detail__funding-list">
-                  <li>
-                    <FundingReceiptHeader showFor={false} />
-                  </li>
-                  {fundingReceipts.slice(0, 5).map((r) => (
-                    <li key={r.uri}>
-                      <FundingReceiptRow
-                        receipt={r}
-                        showTextParties
-                        showFor={false}
-                      />
+                {filteredFunding.length > 0 ? (
+                  <ul className="cert-detail__funding-list">
+                    <li>
+                      <FundingReceiptHeader showFor={false} />
                     </li>
-                  ))}
-                </ul>
+                    {filteredFunding.slice(0, 5).map((r) => (
+                      <li key={r.uri}>
+                        <FundingReceiptRow
+                          receipt={r}
+                          showTextParties
+                          showFor={false}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="cert-detail__short-desc">
+                    No funding receipts match this filter.
+                  </p>
+                )}
               </section>
             ) : null}
 
@@ -1348,17 +1395,36 @@ export default function ActivityDetail({
               <span className="cert-detail__section-count">
                 {fundingCount}
               </span>
+              {fundingReceipts.length > 0 ? (
+                <div className="cert-detail__section-actions">
+                  <FundingConfirmedByPopover
+                    receipts={fundingReceipts}
+                    roles={confirmedBy.roles}
+                    onToggleRole={confirmedBy.toggleRole}
+                    thirdParties={confirmedBy.thirdParties}
+                    onToggleThirdParty={confirmedBy.toggleThirdParty}
+                    isDefault={confirmedBy.isDefault}
+                    onReset={confirmedBy.reset}
+                    open={confirmedByOpen}
+                    onOpenChange={setConfirmedByOpen}
+                  />
+                </div>
+              ) : null}
             </div>
             {fundingLoading && fundingReceipts.length === 0 ? (
               <div className="cert-detail__funding-loading">
                 <LoadingSpinner size="sm" />
               </div>
-            ) : fundingReceipts.length > 0 ? (
+            ) : fundingReceipts.length === 0 ? (
+              <p className="cert-detail__short-desc">
+                No funding receipts for this activity yet.
+              </p>
+            ) : filteredFunding.length > 0 ? (
               <ul className="cert-detail__funding-list">
                 <li>
                   <FundingReceiptHeader showFor={false} />
                 </li>
-                {fundingReceipts.map((r) => (
+                {filteredFunding.map((r) => (
                   <li key={r.uri}>
                     <FundingReceiptRow
                       receipt={r}
@@ -1370,7 +1436,7 @@ export default function ActivityDetail({
               </ul>
             ) : (
               <p className="cert-detail__short-desc">
-                No funding receipts for this activity yet.
+                No funding receipts match this filter.
               </p>
             )}
           </section>

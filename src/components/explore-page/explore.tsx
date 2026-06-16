@@ -45,6 +45,12 @@ import AccountListRow from "./account-list-row"
 import FundingReceiptRow, { FundingReceiptHeader } from "./funding-receipt-row"
 import FundingConfirmedByPopover from "./funding-confirmed-by-popover"
 import {
+  CONFIRM_ROLES,
+  matchesConfirmedBy,
+  type ConfirmRole,
+} from "@/lib/atproto/funding-provenance"
+import { useFundingConfirmedBy } from "@/hooks/use-funding-confirmed-by"
+import {
   SUB_OPTIONS,
   defaultFilterForView,
   filtersForView,
@@ -120,6 +126,16 @@ const ALL_DEGREES: readonly Degree[] = [1, 2, 3] as const
  * with a legitimate value across degrees / quality / orgQuality.
  */
 const EMPTY_SELECTION_SENTINEL = "-"
+
+/** Shared empty set for the funding "Confirmed by" third-party axis when
+ *  none are selected (avoids re-allocating on every receipt filter pass). */
+const EMPTY_DID_SET: ReadonlySet<string> = new Set<string>()
+
+/** Default funding "Confirmed by" selection — all role buckets, no third
+ *  parties. The single-kind funding view starts here (and lets the user
+ *  change it); the combined All view applies it as a fixed filter with no
+ *  control, so its funding block matches the funding tab's default. */
+const DEFAULT_CONFIRM_ROLES: ReadonlySet<ConfirmRole> = new Set(CONFIRM_ROLES)
 
 /**
  * Parse the URL into a `Set<Degree>` of selected endorsement rings.
@@ -526,14 +542,10 @@ function ExploreMain({
 
   const sub = parseSubForKind(kind, searchParams?.get("sub") ?? null)
   const search = searchParams?.get("q") ?? ""
-  // Funding-only "Confirmed by" filter — a third-party-attestor DID.
-  // Only honored on the funding kind; validated to a `did:` value so a
-  // stale param on another kind can't perturb its loader.
-  const confirmedByParam = searchParams?.get("confirmedBy") ?? null
-  const confirmedBy =
-    kind === "funding" && confirmedByParam?.startsWith("did:")
-      ? confirmedByParam
-      : null
+  // Funding "Confirmed by" filter (client-side — the role buckets aren't a
+  // single indexer arg). URL-backed state shared with the activity detail
+  // page via `useFundingConfirmedBy`. Only meaningful on the funding kind.
+  const confirmedBy = useFundingConfirmedBy()
   const sort = parseSort(searchParams?.get("sort") ?? null)
   const view = parseView(searchParams?.get("view") ?? null)
   const { isDesktop } = useLayoutBreakpoints()
@@ -613,13 +625,6 @@ function ExploreMain({
     setSortOpen(false)
   }, [setUrl])
 
-  const onConfirmedByChange = useCallback(
-    (did: string | null) => {
-      setUrl({ confirmedBy: did })
-    },
-    [setUrl],
-  )
-
   const data = useExploreData({
     kind,
     filter,
@@ -655,8 +660,9 @@ function ExploreMain({
       kind === "funding"
         ? quality.includeOrgLabels
         : undefined,
-    // Funding-only third-party "Confirmed by" filter.
-    confirmedBy: kind === "funding" ? confirmedBy : undefined,
+    // The funding "Confirmed by" filter is applied client-side (see
+    // ResultsArea); the loader fetches the full receipt set so the popover
+    // can offer every third-party attestor as a candidate.
   })
 
   // Restore the window scroll offset when the reader returns from a
@@ -848,14 +854,18 @@ function ExploreMain({
                 open={qualityOpen}
                 onOpenChange={setQualityOpen}
               />
-              {/* Funding also offers the "Confirmed by" third-party-attestor
-                  filter (magic-indexer #214), alongside the creator-quality
-                  filter above. */}
+              {/* Funding also offers the "Confirmed by" filter (role
+                  buckets + specific third-party attestors), alongside the
+                  creator-quality filter above. */}
               {kind === "funding" ? (
                 <FundingConfirmedByPopover
                   receipts={data.fundingReceipts}
-                  value={confirmedBy}
-                  onChange={onConfirmedByChange}
+                  roles={confirmedBy.roles}
+                  onToggleRole={confirmedBy.toggleRole}
+                  thirdParties={confirmedBy.thirdParties}
+                  onToggleThirdParty={confirmedBy.toggleThirdParty}
+                  isDefault={confirmedBy.isDefault}
+                  onReset={confirmedBy.reset}
                   open={confirmedByOpen}
                   onOpenChange={setConfirmedByOpen}
                 />
@@ -916,6 +926,10 @@ function ExploreMain({
             sort={sort}
             view={effectiveView}
             degrees={showsDegreeControl ? degrees : null}
+            confirmRoles={kind === "funding" ? confirmedBy.roles : undefined}
+            confirmThirdParties={
+              kind === "funding" ? confirmedBy.thirdParties : undefined
+            }
           />
           {data.hasMore || data.isLoadingMore ? (
             <LoadMoreSentinel
@@ -1198,8 +1212,16 @@ function ExploreAllBlocks() {
     () => sortUsers(accounts.users, "newest").slice(0, ALL_VIEW_BLOCK_SIZE),
     [accounts.users],
   )
+  // Same default "Confirmed by" filter as the funding tab — show receipts
+  // confirmed by both / sender / recipient, but not third-party-only ones.
+  // Fixed here (the All view has no confirmer control).
   const fundingItems = useMemo(
-    () => funding.fundingReceipts.slice(0, ALL_VIEW_BLOCK_SIZE),
+    () =>
+      funding.fundingReceipts
+        .filter((r) =>
+          matchesConfirmedBy(r.attestations, DEFAULT_CONFIRM_ROLES, EMPTY_DID_SET),
+        )
+        .slice(0, ALL_VIEW_BLOCK_SIZE),
     [funding.fundingReceipts],
   )
 
@@ -1809,6 +1831,8 @@ function ResultsArea({
   sort,
   view,
   degrees,
+  confirmRoles,
+  confirmThirdParties,
 }: {
   kind: ExploreKind
   data: ReturnType<typeof useExploreData>
@@ -1820,6 +1844,11 @@ function ResultsArea({
    *  `max(degrees)`, this trims the subset the user actually wants
    *  to see. */
   degrees: Set<Degree> | null
+  /** Funding only — the selected "Confirmed by" role buckets + third-party
+   *  attestor DIDs. Receipts are filtered to the union; with both empty,
+   *  nothing shows. */
+  confirmRoles?: ReadonlySet<ConfirmRole>
+  confirmThirdParties?: ReadonlySet<string>
 }) {
   const closure = data.endorsementClosure
   const degreeMatches = (did: string | null | undefined): boolean => {
@@ -1845,7 +1874,17 @@ function ResultsArea({
   }
 
   if (kind === "funding") {
-    const receipts = data.fundingReceipts
+    // Client-side "Confirmed by" filter — union of the selected role
+    // buckets + third-party attestors (empty third-party set passed as-is).
+    const receipts = confirmRoles
+      ? data.fundingReceipts.filter((r) =>
+          matchesConfirmedBy(
+            r.attestations,
+            confirmRoles,
+            confirmThirdParties ?? EMPTY_DID_SET,
+          ),
+        )
+      : data.fundingReceipts
     if (receipts.length === 0) return <EmptyResults kind={kind} />
     return (
       <ul className="explore__list explore__list--funding">

@@ -1094,6 +1094,24 @@
   gap: 8px;
 }
 
+/* Right-aligned cluster of section-header controls (Funding "Confirmed by"
+   filter button + the "See all" link). Pushed flush-right via auto-margin;
+   centered against the baseline-aligned title so the icon button doesn't
+   ride high. */
+.cert-detail__section-actions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: center;
+}
+
+/* Inside the actions cluster the see-all link no longer owns the push —
+   the cluster does — so neutralise its own auto-margin. */
+.cert-detail__section-actions .cert-detail__section-see-all {
+  margin-left: 0;
+}
+
 .cert-detail__section-see-all {
   margin-left: auto;
   font-size: 0.75rem;

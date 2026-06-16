@@ -1,14 +1,13 @@
 "use client"
 
 import { useState, type KeyboardEvent, type MouseEvent } from "react"
-import Badge from "@/components/ui/badge"
 import IdentityRow from "@/components/ui/identity-row"
 import FundingReceiptDetailModal from "./funding-receipt-detail-modal"
 import { FundingPartySlot, FundingForActivity } from "./funding-receipt-parts"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { profileUrl } from "@/lib/urls"
 import { formatShortDate } from "@/lib/utils/format-date"
-import { kindChips, thirdPartyDids } from "@/lib/atproto/funding-provenance"
+import { thirdPartyDids } from "@/lib/atproto/funding-provenance"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
 
 /**
@@ -97,9 +96,15 @@ export default function FundingReceiptRow({
         <span className="funding-receipt-row__date" aria-hidden />
       )}
       <span className="funding-receipt-row__from">
+        <span className="funding-receipt-row__cell-label" aria-hidden="true">
+          From
+        </span>
         <FundingPartySlot party={receipt.from} showText={showTextParties} />
       </span>
       <span className="funding-receipt-row__to-cell">
+        <span className="funding-receipt-row__cell-label" aria-hidden="true">
+          To
+        </span>
         <FundingPartySlot party={receipt.to} showText={showTextParties} />
       </span>
       {/* "for" activity is its own column (image + title); the column
@@ -117,12 +122,10 @@ export default function FundingReceiptRow({
           </>
         ) : null}
       </span>
-      {/* Provenance, dimension 1 — kind chips (self-reported /
-          mutually-confirmed / third-party; can be more than one). Empty
-          until the indexer ships `attestations` (magic-indexer #214). */}
-      <FundingSource receipt={receipt} />
-      {/* Provenance, dimension 2 — "by whom", third-party attestors only
-          (for self/mutual the attestor is already From/To). */}
+      {/* Provenance — who confirmed this payment, as plain text
+          (Sender / Recipient / Sender & Recipient, and/or a named
+          third party). Empty until the indexer ships `attestations`
+          (magic-indexer #214). */}
       <FundingConfirmedBy receipt={receipt} />
     </article>
     {/* Rendered as a sibling (not a child of the row) so the modal's
@@ -139,42 +142,57 @@ export default function FundingReceiptRow({
   )
 }
 
-/** The "Source" column — renders one chip per derived provenance kind.
- *  A payment can carry several (e.g. self-reported + third-party), so we
- *  map the whole {@link kindChips} list. Always renders the cell span so
- *  columns stay aligned even when there are no attestations. */
-function FundingSource({ receipt }: { receipt: FundingReceipt }) {
-  const chips = kindChips(receipt.attestations)
-  return (
-    <span className="funding-receipt-row__source">
-      {chips.map((chip) => (
-        <span key={chip.key} title={chip.title}>
-          <Badge variant="tag" shape="square" tone={chip.tone}>
-            {chip.label}
-          </Badge>
-        </span>
-      ))}
-    </span>
-  )
-}
-
-/** The "Confirmed by" column — third-party attestor identities only. Each
- *  DID hydrates to avatar + name via its own child (one `useAuthorInfo`
- *  per row). Always renders the cell span so columns stay aligned. */
+/** The "Confirmed by" column — a plain-text summary of who attested the
+ *  payment: the transfer parties (Sender / Recipient / Sender & Recipient)
+ *  and/or a named third party. Renders empty when there are no attestations
+ *  (pre-#214 or an unattested record) so columns stay aligned. */
 function FundingConfirmedBy({ receipt }: { receipt: FundingReceipt }) {
-  const dids = thirdPartyDids(receipt.attestations)
+  const a = receipt.attestations
+  const hasSender = a.some((x) => x.role === "sender")
+  const hasRecipient = a.some((x) => x.role === "recipient")
+  const tpDids = thirdPartyDids(a)
+
+  const partyLabel =
+    hasSender && hasRecipient
+      ? "Sender & Recipient"
+      : hasSender
+        ? "Sender"
+        : hasRecipient
+          ? "Recipient"
+          : null
+
+  // No attestations (pre-#214 or an unattested record): render the empty
+  // cell with no label so the desktop columns stay aligned and the mobile
+  // card doesn't show a stray "Confirmed by" with nothing under it.
+  if (!partyLabel && tpDids.length === 0) {
+    return <span className="funding-receipt-row__confirmed-by" />
+  }
+
+  // The label is shown only on the mobile card (`__cell-label` is
+  // display:none on desktop); the value wrapper is `display:contents` on
+  // desktop so the existing right-aligned provenance stack is unchanged.
   return (
     <span className="funding-receipt-row__confirmed-by">
-      {dids.map((did) => (
-        <ThirdPartyAttestor key={did} did={did} />
-      ))}
+      <span className="funding-receipt-row__cell-label" aria-hidden="true">
+        Confirmed by
+      </span>
+      <span className="funding-receipt-row__confirmed-value">
+        {partyLabel ? (
+          <span className="funding-receipt-row__confirmed-label">
+            {partyLabel}
+          </span>
+        ) : null}
+        {tpDids.map((did) => (
+          <ThirdPartyIdentity key={did} did={did} />
+        ))}
+      </span>
     </span>
   )
 }
 
-/** One third-party attestor, hydrated to avatar + name + @handle (mirrors
- *  the account branch of {@link FundingPartySlot}). */
-function ThirdPartyAttestor({ did }: { did: string }) {
+/** A third-party attestor, rendered like any AT Protocol account — avatar +
+ *  display name + @handle. Hydrated per-row via `useAuthorInfo`. */
+function ThirdPartyIdentity({ did }: { did: string }) {
   const { info } = useAuthorInfo(did)
   const handle = info?.handle ?? undefined
   return (
@@ -212,8 +230,9 @@ export function FundingReceiptHeader({ showFor = true }: { showFor?: boolean }) 
       <span className="funding-receipt-row__heading funding-receipt-row__heading--amount">
         Amount
       </span>
-      <span className="funding-receipt-row__heading">Source</span>
-      <span className="funding-receipt-row__heading">Confirmed by</span>
+      <span className="funding-receipt-row__heading funding-receipt-row__heading--confirmed">
+        Confirmed by
+      </span>
     </div>
   )
 }
