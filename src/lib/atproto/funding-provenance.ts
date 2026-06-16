@@ -106,12 +106,10 @@ export function matchesConfirmedBy(
 /**
  * Whether `did` is one of the trusted evaluators — the exact list the
  * home-feed filter "Show activities from accounts that are endorsed by:"
- * renders ({@link TRUSTED_EVALUATOR_DIDS}). These accounts are the only
- * ones allowed to record or confirm a payment as a *third party* (i.e.
- * when they are neither the sender nor the recipient).
- *
- * (A second, divergent list exists at `src/config/trusted-evaluators.ts`;
- * this intentionally uses the feed-filter list — see issue #185.)
+ * renders ({@link TRUSTED_EVALUATOR_DIDS}, the single source of truth).
+ * These accounts are the only ones allowed to record or confirm a payment
+ * as a *third party* (i.e. when they are neither the sender nor the
+ * recipient).
  */
 export function isTrustedEvaluator(did: string | null | undefined): boolean {
   if (!did) return false
