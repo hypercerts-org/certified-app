@@ -28,7 +28,7 @@ import type { FundingReceipt } from "@/lib/atproto/indexer"
  */
 
 const ROLE_LABEL: Record<FundingRole, string> = {
-  sender: "the sender",
+  sender: "the funder",
   recipient: "the recipient",
   "third-party": "a third party",
 }

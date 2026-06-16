@@ -287,6 +287,42 @@ export async function createFundingReceipt(
 const AT_URI_RE = /^at:\/\/([^/]+)\/([^/]+)\/([^/]+)$/
 
 /**
+ * List a repo's funding receipts (mapped to {@link FundingReceipt}, with empty
+ * attestations — the role is derived from author-vs-from/to). Used to recover a
+ * payment's member receipts the indexer dropped when it collapsed the cluster:
+ * the collapsed canonical node exposes no link to them (its `matchingReceipt`
+ * is cleared), so the detail view lists each attester's repo and matches by
+ * cluster keys. Returns [] on any failure. (Caps at the first 100 records.)
+ */
+export async function listFundingReceiptsInRepo(
+  repo: string,
+): Promise<FundingReceipt[]> {
+  const params = new URLSearchParams({
+    repo,
+    collection: FUNDING_RECEIPT_COLLECTION,
+    limit: "100",
+  })
+  try {
+    const res = await fetch(
+      `/api/xrpc/com/atproto/repo/listRecords?${params.toString()}`,
+      { headers: { Accept: "application/json" } },
+    )
+    if (!res.ok) return []
+    const data = (await res.json().catch(() => null)) as {
+      records?: { uri?: string; cid?: string; value?: FundingReceiptRecord }[]
+    } | null
+    const out: FundingReceipt[] = []
+    for (const rec of data?.records ?? []) {
+      if (!rec?.value || !rec.uri || !rec.cid) continue
+      out.push(recordToReceipt(rec.value, { uri: rec.uri, cid: rec.cid, did: repo }))
+    }
+    return out
+  } catch {
+    return []
+  }
+}
+
+/**
  * Delete a funding receipt the viewer authored — taking back a recorded
  * payment or a confirmation. A personal receipt goes through the xrpc proxy's
  * deleteRecord (which requires `repo` to be the session DID); a group receipt

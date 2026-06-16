@@ -61,6 +61,8 @@ function fetchRights(uri: string): Promise<RightsRecordValue | null> {
  */
 export function useRights(uri: string | null | undefined): {
   name: string | null
+  /** The full record, for the rights detail modal. */
+  record: RightsRecordValue | null
   isLoading: boolean
 } {
   const [record, setRecord] = useState<RightsRecordValue | null>(null)
@@ -95,5 +97,5 @@ export function useRights(uri: string | null | undefined): {
       ? record.rightsType
       : null)
 
-  return { name, isLoading }
+  return { name, record, isLoading }
 }
