@@ -257,15 +257,14 @@ export default function ActivityDetail({
       ),
     [fundingReceipts, confirmedBy.roles, confirmedBy.thirdParties],
   )
-  // Count shown next to the filter control: the total when the filter is in
-  // its default (show-everything) state, else the number of loaded receipts
-  // the active filter matches — so the number agrees with the list below it.
-  // (Default state still shows the server total, which can exceed the loaded
-  // window for an activity with >100 receipts — the known page-1 cap pending
-  // magic-indexer #214. The Funding tab label keeps the unfiltered total.)
-  const shownFundingCount = confirmedBy.isDefault
-    ? fundingCount
-    : filteredFunding.length
+  // Count shown next to the filter control: the number of loaded receipts the
+  // filter currently shows, so it always agrees with the list below it. The
+  // Confirmed-by filter is always applied (its default already hides
+  // third-party-only receipts), so this is the filtered count in every state.
+  // (Counts the loaded window; an activity with >100 receipts is the known
+  // page-1 cap pending magic-indexer #214. The Funding tab strip label keeps
+  // the unfiltered total receipt count.)
+  const shownFundingCount = filteredFunding.length
 
   // The Confirmed-by filter control is rendered identically in the overview
   // section and the Funding tab (only one is mounted at a time, tab-gated),

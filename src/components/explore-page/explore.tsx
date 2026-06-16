@@ -45,6 +45,7 @@ import AccountListRow from "./account-list-row"
 import FundingReceiptRow, { FundingReceiptHeader } from "./funding-receipt-row"
 import FundingConfirmedByPopover from "./funding-confirmed-by-popover"
 import {
+  CONFIRM_ROLES,
   matchesConfirmedBy,
   type ConfirmRole,
 } from "@/lib/atproto/funding-provenance"
@@ -129,6 +130,13 @@ const EMPTY_SELECTION_SENTINEL = "-"
 /** Shared empty set for the funding "Confirmed by" third-party axis when
  *  none are selected (avoids re-allocating on every receipt filter pass). */
 const EMPTY_DID_SET: ReadonlySet<string> = new Set<string>()
+
+/** Default funding "Confirmed by" selection — all role buckets, no third
+ *  parties — i.e. show only receipts confirmed by the sender, recipient, or
+ *  both. The single-kind funding view starts here (the user can change it);
+ *  the combined All view applies it as a fixed filter (no control), so its
+ *  funding block matches the funding tab's default. */
+const DEFAULT_CONFIRM_ROLES: ReadonlySet<ConfirmRole> = new Set(CONFIRM_ROLES)
 
 /**
  * Parse the URL into a `Set<Degree>` of selected endorsement rings.
@@ -1205,12 +1213,16 @@ function ExploreAllBlocks() {
     () => sortUsers(accounts.users, "newest").slice(0, ALL_VIEW_BLOCK_SIZE),
     [accounts.users],
   )
-  // The All view has no "Confirmed by" control, so it always shows the
-  // default selection — which (post the count==display fix) passes every
-  // receipt, including third-party-only ones. No filter step needed; just
-  // take the preview slice.
+  // Same default "Confirmed by" filter as the funding tab — show only
+  // receipts confirmed by sender / recipient / both (third-party-only ones
+  // are hidden). Fixed here (the All view has no confirmer control).
   const fundingItems = useMemo(
-    () => funding.fundingReceipts.slice(0, ALL_VIEW_BLOCK_SIZE),
+    () =>
+      funding.fundingReceipts
+        .filter((r) =>
+          matchesConfirmedBy(r.attestations, DEFAULT_CONFIRM_ROLES, EMPTY_DID_SET),
+        )
+        .slice(0, ALL_VIEW_BLOCK_SIZE),
     [funding.fundingReceipts],
   )
 

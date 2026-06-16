@@ -59,28 +59,23 @@ export function confirmRoleBucket(
 }
 
 /**
- * Whether a payment passes the Funding "Confirmed by" filter.
+ * Whether a payment passes the Funding "Confirmed by" filter: the UNION of
+ * the selected role buckets (Both / Sender / Recipient) and the selected
+ * third-party attestors.
  *
- * - **Default (unmodified) selection** — every role bucket selected and no
- *   specific third party — passes *every* receipt, so the list matches the
- *   count the UI reports. A third-party-only (or as-yet-unattested, pre-#214)
- *   receipt has no sender/recipient bucket, so under the union logic below it
- *   would otherwise be filtered out while still being counted. This is the
- *   only case in which a bucket-less receipt is shown.
- * - **Narrowed selection** — the UNION of the selected role buckets
- *   (Both / Sender / Recipient) and the selected third-party attestors. A
- *   receipt matches if its sender/recipient bucket is selected or one of its
- *   third-party attestors is selected.
- * - **Nothing selected** — nothing matches (the caller shows an empty list).
+ * The default selection (all three role buckets, no specific third party)
+ * therefore shows only receipts confirmed by the sender, the recipient, or
+ * both — a third-party-only (or as-yet-unattested, pre-#214) receipt has no
+ * sender/recipient bucket and is hidden until the user selects its
+ * third-party attestor. With nothing selected, nothing matches (the caller
+ * shows an empty list). Callers must derive any displayed count from the
+ * filtered set, not the unfiltered total, so the count agrees with the list.
  */
 export function matchesConfirmedBy(
   attestations: readonly FundingAttestation[],
   roles: ReadonlySet<ConfirmRole>,
   thirdParties: ReadonlySet<string>,
 ): boolean {
-  if (roles.size === CONFIRM_ROLES.length && thirdParties.size === 0) {
-    return true
-  }
   const bucket = confirmRoleBucket(attestations)
   if (bucket && roles.has(bucket)) return true
   if (thirdParties.size > 0) {

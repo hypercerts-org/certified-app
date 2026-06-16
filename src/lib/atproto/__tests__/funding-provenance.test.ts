@@ -54,10 +54,12 @@ describe("confirmRoleBucket", () => {
 
 describe("matchesConfirmedBy", () => {
   // The default state (every role bucket selected, no specific third party)
-  // must pass EVERY receipt, so the rendered list matches the count the UI
-  // reports. This is the regression correctness-1 fixes: third-party-only
-  // and as-yet-unattested receipts were silently dropped while still counted.
-  describe("default selection shows all receipts the count includes", () => {
+  // shows only receipts confirmed by the sender, the recipient, or both.
+  // Third-party-only and as-yet-unattested receipts have no role bucket, so
+  // they are hidden by default (reachable only by selecting their third-party
+  // attestor). Callers derive the displayed count from this filtered set so
+  // the count agrees with the list.
+  describe("default selection shows only sender/recipient/both-confirmed receipts", () => {
     it("passes a both-confirmed receipt", () => {
       expect(matchesConfirmedBy([recipient, sender], ALL_ROLES, NO_TP)).toBe(true)
     })
@@ -67,11 +69,11 @@ describe("matchesConfirmedBy", () => {
     it("passes a recipient-only receipt", () => {
       expect(matchesConfirmedBy([recipient], ALL_ROLES, NO_TP)).toBe(true)
     })
-    it("passes a THIRD-PARTY-ONLY receipt (the bug fix)", () => {
-      expect(matchesConfirmedBy([third("did:plc:a")], ALL_ROLES, NO_TP)).toBe(true)
+    it("hides a third-party-only receipt by default", () => {
+      expect(matchesConfirmedBy([third("did:plc:a")], ALL_ROLES, NO_TP)).toBe(false)
     })
-    it("passes a ZERO-ATTESTATION receipt (the bug fix)", () => {
-      expect(matchesConfirmedBy([], ALL_ROLES, NO_TP)).toBe(true)
+    it("hides a zero-attestation receipt by default", () => {
+      expect(matchesConfirmedBy([], ALL_ROLES, NO_TP)).toBe(false)
     })
   })
 
