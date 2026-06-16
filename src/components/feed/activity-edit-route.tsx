@@ -496,6 +496,27 @@ export default function ActivityEditRoute({
     )
   }
 
+  // A `partial` record came from the indexer fallback because the live PDS
+  // was unreachable (#184), so it is missing contributors, locations, the
+  // long description and rights. Editing from it would seed the form with
+  // those fields blank and silently strip them from the authoritative
+  // record on save — refuse to edit until the full record loads.
+  if (activity.partial) {
+    return (
+      <div className="dashboard">
+        <div className="dashboard__body">
+          <div className="dashboard__main">
+            <EmptyState
+              icon={PenLine}
+              title="Can't edit right now"
+              description="We couldn't reach this record's home server, so we only have a partial copy. Try again once it's reachable to avoid losing details."
+            />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (!isCreator) {
     return (
       <div className="dashboard">
