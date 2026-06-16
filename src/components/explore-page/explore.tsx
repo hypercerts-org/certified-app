@@ -1860,6 +1860,24 @@ function ResultsArea({
     return degrees.has(meta.degree)
   }
 
+  // Funding "Confirmed by" filter — memoized so an unrelated re-render (a
+  // keystroke in search, a view toggle) doesn't re-run the O(n) attestation
+  // filter over the whole receipt list. Recomputes only when the loaded
+  // receipts or either selection changes.
+  const filteredFundingReceipts = useMemo(
+    () =>
+      confirmRoles
+        ? data.fundingReceipts.filter((r) =>
+            matchesConfirmedBy(
+              r.attestations,
+              confirmRoles,
+              confirmThirdParties ?? EMPTY_DID_SET,
+            ),
+          )
+        : data.fundingReceipts,
+    [data.fundingReceipts, confirmRoles, confirmThirdParties],
+  )
+
   if (
     data.isLoading &&
     data.users.length === 0 &&
@@ -1875,17 +1893,7 @@ function ResultsArea({
   }
 
   if (kind === "funding") {
-    // Client-side "Confirmed by" filter — union of the selected role
-    // buckets + third-party attestors (empty third-party set passed as-is).
-    const receipts = confirmRoles
-      ? data.fundingReceipts.filter((r) =>
-          matchesConfirmedBy(
-            r.attestations,
-            confirmRoles,
-            confirmThirdParties ?? EMPTY_DID_SET,
-          ),
-        )
-      : data.fundingReceipts
+    const receipts = filteredFundingReceipts
     if (receipts.length === 0) return <EmptyResults kind={kind} />
     return (
       <ul className="explore__list explore__list--funding">
