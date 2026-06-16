@@ -45,7 +45,7 @@ import AccountListRow from "./account-list-row"
 import FundingReceiptRow, { FundingReceiptHeader } from "./funding-receipt-row"
 import FundingConfirmedByPopover from "./funding-confirmed-by-popover"
 import {
-  CONFIRM_ROLES,
+  DEFAULT_CONFIRM_ROLES,
   matchesConfirmedBy,
   type ConfirmRole,
 } from "@/lib/atproto/funding-provenance"
@@ -61,6 +61,7 @@ import {
   type SortOrder,
 } from "./explore-types"
 import { useExploreData } from "@/hooks/use-explore"
+import { useMergedFunding } from "@/hooks/use-merged-funding"
 import { useScrollRestoration } from "@/hooks/use-scroll-restoration"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
@@ -136,7 +137,9 @@ const EMPTY_DID_SET: ReadonlySet<string> = new Set<string>()
  *  both. The single-kind funding view starts here (the user can change it);
  *  the combined All view applies it as a fixed filter (no control), so its
  *  funding block matches the funding tab's default. */
-const DEFAULT_CONFIRM_ROLES: ReadonlySet<ConfirmRole> = new Set(CONFIRM_ROLES)
+const DEFAULT_CONFIRM_ROLE_SET: ReadonlySet<ConfirmRole> = new Set(
+  DEFAULT_CONFIRM_ROLES,
+)
 
 /**
  * Parse the URL into a `Set<Degree>` of selected endorsement rings.
@@ -1214,16 +1217,19 @@ function ExploreAllBlocks() {
     [accounts.users],
   )
   // Same default "Confirmed by" filter as the funding tab — show only
-  // receipts confirmed by sender / recipient / both (third-party-only ones
-  // are hidden). Fixed here (the All view has no confirmer control).
+  // receipts the recipient confirmed (recipient or both); sender-only and
+  // third-party-only are hidden. Fixed here (the All view has no confirmer
+  // control). Merge optimistic confirmations first so a just-confirmed pair
+  // shows as one row.
+  const mergedFunding = useMergedFunding(funding.fundingReceipts)
   const fundingItems = useMemo(
     () =>
-      funding.fundingReceipts
+      mergedFunding
         .filter((r) =>
-          matchesConfirmedBy(r.attestations, DEFAULT_CONFIRM_ROLES, EMPTY_DID_SET),
+          matchesConfirmedBy(r.attestations, DEFAULT_CONFIRM_ROLE_SET, EMPTY_DID_SET),
         )
         .slice(0, ALL_VIEW_BLOCK_SIZE),
-    [funding.fundingReceipts],
+    [mergedFunding],
   )
 
   return (
@@ -1864,18 +1870,21 @@ function ResultsArea({
   // keystroke in search, a view toggle) doesn't re-run the O(n) attestation
   // filter over the whole receipt list. Recomputes only when the loaded
   // receipts or either selection changes.
+  // Merge optimistic confirmations + collapse matchingReceipt pairs (issue
+  // #186) before applying the "Confirmed by" filter.
+  const mergedFundingReceipts = useMergedFunding(data.fundingReceipts)
   const filteredFundingReceipts = useMemo(
     () =>
       confirmRoles
-        ? data.fundingReceipts.filter((r) =>
+        ? mergedFundingReceipts.filter((r) =>
             matchesConfirmedBy(
               r.attestations,
               confirmRoles,
               confirmThirdParties ?? EMPTY_DID_SET,
             ),
           )
-        : data.fundingReceipts,
-    [data.fundingReceipts, confirmRoles, confirmThirdParties],
+        : mergedFundingReceipts,
+    [mergedFundingReceipts, confirmRoles, confirmThirdParties],
   )
 
   if (

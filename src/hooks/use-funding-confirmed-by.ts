@@ -2,7 +2,12 @@
 
 import { useCallback, useMemo } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { CONFIRM_ROLES, type ConfirmRole } from "@/lib/atproto/funding-provenance"
+import {
+  CONFIRM_ROLES,
+  DEFAULT_CONFIRM_ROLES,
+  isDefaultConfirmRoleSet,
+  type ConfirmRole,
+} from "@/lib/atproto/funding-provenance"
 
 /** Sentinel for an "explicitly empty" selection in a URL param whose absence
  *  means "default" — mirrors the /explore degree + quality filters, so an
@@ -10,11 +15,13 @@ import { CONFIRM_ROLES, type ConfirmRole } from "@/lib/atproto/funding-provenanc
 const EMPTY_SELECTION_SENTINEL = "-"
 
 export interface FundingConfirmedByState {
-  /** Selected role buckets (default: all of `CONFIRM_ROLES`). */
+  /** Selected role buckets (default: {@link DEFAULT_CONFIRM_ROLES} —
+   *  recipient + both). */
   roles: Set<ConfirmRole>
   /** Selected third-party attestor DIDs (default: none). */
   thirdParties: Set<string>
-  /** True when the selection equals the default (all roles, no third parties). */
+  /** True when the selection equals the default (recipient + both, no third
+   *  parties). */
   isDefault: boolean
   toggleRole: (role: ConfirmRole) => void
   toggleThirdParty: (did: string) => void
@@ -38,7 +45,7 @@ export function useFundingConfirmedBy(): FundingConfirmedByState {
 
   const rolesParam = searchParams?.get("confirmedRoles") ?? null
   const roles = useMemo<Set<ConfirmRole>>(() => {
-    if (rolesParam == null) return new Set(CONFIRM_ROLES)
+    if (rolesParam == null) return new Set(DEFAULT_CONFIRM_ROLES)
     if (rolesParam === EMPTY_SELECTION_SENTINEL) return new Set()
     const valid = new Set<string>(CONFIRM_ROLES)
     return new Set(
@@ -52,8 +59,7 @@ export function useFundingConfirmedBy(): FundingConfirmedByState {
     return new Set(tpParam.split(",").filter((v) => v.startsWith("did:")))
   }, [tpParam])
 
-  const isDefault =
-    thirdParties.size === 0 && roles.size === CONFIRM_ROLES.length
+  const isDefault = thirdParties.size === 0 && isDefaultConfirmRoleSet(roles)
 
   const setParam = useCallback(
     (patch: Record<string, string | null>) => {
@@ -73,12 +79,11 @@ export function useFundingConfirmedBy(): FundingConfirmedByState {
       const next = new Set(roles)
       if (next.has(role)) next.delete(role)
       else next.add(role)
-      const value =
-        next.size === CONFIRM_ROLES.length
-          ? null // all three = default ⇒ clear the param
-          : next.size === 0
-            ? EMPTY_SELECTION_SENTINEL
-            : CONFIRM_ROLES.filter((r) => next.has(r)).join(",")
+      const value = isDefaultConfirmRoleSet(next)
+        ? null // matches the default ⇒ clear the param
+        : next.size === 0
+          ? EMPTY_SELECTION_SENTINEL
+          : CONFIRM_ROLES.filter((r) => next.has(r)).join(",")
       setParam({ confirmedRoles: value })
     },
     [roles, setParam],
@@ -97,7 +102,7 @@ export function useFundingConfirmedBy(): FundingConfirmedByState {
   )
 
   const reset = useCallback(() => {
-    // Back to the default: all role buckets, no third parties.
+    // Back to the default: recipient + both buckets, no third parties.
     setParam({ confirmedRoles: null, confirmedTp: null })
   }, [setParam])
 

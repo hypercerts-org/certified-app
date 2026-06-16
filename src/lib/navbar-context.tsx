@@ -47,6 +47,13 @@ export interface PageRecordMenu {
 interface NavbarContextValue {
   pageTitle: string | null;
   setPageTitle: (title: string | null) => void;
+  /** Desktop-only title override. The mobile navbar shows `pageTitle` (which
+   *  detail pages make tab-aware, e.g. "Funding"); the wide desktop top bar,
+   *  where the tab strip is already visible, shows this instead so it always
+   *  reads the record's name regardless of the active tab. Falls back to
+   *  `pageTitle` when unset. */
+  desktopTitle: string | null;
+  setDesktopTitle: (title: string | null) => void;
   breadcrumb: PageTitleBreadcrumb | null;
   setBreadcrumb: (b: PageTitleBreadcrumb | null) => void;
   /** Record-level overflow menu rendered in the mobile navbar's right
@@ -78,6 +85,8 @@ interface NavbarContextValue {
 const NavbarContext = createContext<NavbarContextValue>({
   pageTitle: null,
   setPageTitle: () => {},
+  desktopTitle: null,
+  setDesktopTitle: () => {},
   breadcrumb: null,
   setBreadcrumb: () => {},
   recordMenu: null,
@@ -94,6 +103,7 @@ const NavbarContext = createContext<NavbarContextValue>({
 
 export function NavbarProvider({ children }: { children: ReactNode }) {
   const [pageTitle, setPageTitle] = useState<string | null>(null);
+  const [desktopTitle, setDesktopTitle] = useState<string | null>(null);
   const [breadcrumb, setBreadcrumb] = useState<PageTitleBreadcrumb | null>(null);
   const [recordMenu, setRecordMenu] = useState<PageRecordMenu | null>(null);
   const [profileOverlay, setProfileOverlay] = useState<boolean>(false);
@@ -106,6 +116,8 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
     () => ({
       pageTitle,
       setPageTitle,
+      desktopTitle,
+      setDesktopTitle,
       breadcrumb,
       setBreadcrumb,
       recordMenu,
@@ -121,6 +133,7 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
     }),
     [
       pageTitle,
+      desktopTitle,
       breadcrumb,
       recordMenu,
       profileOverlay,
@@ -158,6 +171,20 @@ export function usePageTitle(title: string) {
     setPageTitle(title);
     return () => setPageTitle(null);
   }, [setPageTitle, title]);
+}
+
+/**
+ * Set a desktop-only title override (the wide top bar). Use alongside
+ * `usePageTitle` when the mobile title is tab-aware but the desktop bar —
+ * which shows the tab strip already — should keep the record's name on every
+ * tab. Pass `null` to leave the desktop bar on the `usePageTitle` value.
+ */
+export function usePageDesktopTitle(title: string | null) {
+  const { setDesktopTitle } = useContext(NavbarContext);
+  useEffect(() => {
+    setDesktopTitle(title);
+    return () => setDesktopTitle(null);
+  }, [setDesktopTitle, title]);
 }
 
 /**

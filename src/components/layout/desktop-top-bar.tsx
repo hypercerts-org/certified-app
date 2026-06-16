@@ -114,11 +114,15 @@ export default function DesktopTopBar() {
   const { isLoading, isAuthenticated, did, openSignIn, signOut } = useAuth();
   const {
     pageTitle,
+    desktopTitle,
     breadcrumb,
     profileAboutAvailable,
     profileGroupsAvailable,
     profileEditing,
   } = useNavbarContext();
+  // The desktop bar prefers the record-name override (detail pages keep the
+  // name on every tab); the mobile navbar still uses the tab-aware pageTitle.
+  const desktopShownTitle = desktopTitle ?? pageTitle;
   const { profile, avatarUrl } = useProfile();
   const { handle } = useSession();
   const { activeOrg, groups, switchOrg } = useOrg();
@@ -377,10 +381,10 @@ export default function DesktopTopBar() {
           ) : null}
           <Link
             href={brandHref}
-            className={`desktop-top-bar__brand${breadcrumb || pageTitle ? "" : " desktop-top-bar__brand--wordmark"}`}
+            className={`desktop-top-bar__brand${breadcrumb || desktopShownTitle ? "" : " desktop-top-bar__brand--wordmark"}`}
             aria-label={brandAriaLabel}
           >
-            {breadcrumb || pageTitle ? (
+            {breadcrumb || desktopShownTitle ? (
               <Brandmark size={28} className="desktop-top-bar__brand-mark" />
             ) : (
               <img
@@ -404,8 +408,8 @@ export default function DesktopTopBar() {
                 </>
               ) : null}
             </div>
-          ) : pageTitle ? (
-            <div className="desktop-top-bar__title" aria-live="polite">{pageTitle}</div>
+          ) : desktopShownTitle ? (
+            <div className="desktop-top-bar__title" aria-live="polite">{desktopShownTitle}</div>
           ) : null}
         </div>
 

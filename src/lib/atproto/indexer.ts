@@ -439,10 +439,21 @@ export interface FundingReceipt {
   transactionId: string | null
   /** Free-text note attached to the receipt. */
   notes: string | null
+  /** Strong reference to another receipt for the SAME payment that this one
+   *  confirms (set on confirmation receipts; `null` on originals). Served by
+   *  the indexer and also carried on the viewer's own optimistic confirmation.
+   *  Used to collapse a confirmation onto its counterpart into one payment
+   *  row before the indexer's cluster view catches up (issue #186). */
+  matchingReceipt: { uri: string; cid: string } | null
   /** Attestations for the payment this node represents (indexer-computed
    *  from the `matchingReceipt`-linked cluster). Empty until the indexer
    *  ships the field (magic-indexer #214); the UI renders no chips then. */
   attestations: FundingAttestation[]
+  /** The individual receipts collapsed into this payment node, set by the
+   *  client-side {@link mergeMatchingReceipts}. Absent for a node straight
+   *  from the indexer (only the canonical receipt is known then). Lets the
+   *  detail view show one "Record" section per author. */
+  members?: FundingReceipt[]
 }
 
 interface FundingPartyNode {
@@ -471,6 +482,7 @@ interface FundingReceiptNode {
   paymentNetwork: string | null
   transactionId: string | null
   notes: string | null
+  matchingReceipt?: { uri: string | null; cid: string | null } | null
   attestations?: FundingAttestationNode[] | null
 }
 
@@ -542,6 +554,10 @@ function mapFundingReceiptNode(node: FundingReceiptNode): FundingReceipt {
     paymentNetwork: node.paymentNetwork ?? null,
     transactionId: node.transactionId ?? null,
     notes: node.notes ?? null,
+    matchingReceipt:
+      node.matchingReceipt?.uri && node.matchingReceipt?.cid
+        ? { uri: node.matchingReceipt.uri, cid: node.matchingReceipt.cid }
+        : null,
     attestations: mapFundingAttestations(node.attestations),
   }
 }

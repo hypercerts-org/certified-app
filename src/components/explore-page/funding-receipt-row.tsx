@@ -172,6 +172,8 @@ function FundingConfirmedBy({ receipt }: { receipt: FundingReceipt }) {
   // The label is shown only on the mobile card (`__cell-label` is
   // display:none on desktop); the value wrapper is `display:contents` on
   // desktop so the existing right-aligned provenance stack is unchanged.
+  // The role label may wrap to two lines (capped) so "Sender & Recipient"
+  // isn't truncated in the narrow column — see explore.css.
   return (
     <span className="funding-receipt-row__confirmed-by">
       <span className="funding-receipt-row__cell-label" aria-hidden="true">

@@ -1,0 +1,474 @@
+/* ===========================================================================
+   Funding record / confirm forms
+   ---------------------------------------------------------------------------
+   Styles for the "Record funding" modal (funding-receipt-form-modal),
+   the "Confirm payment" dialog (confirm-funding-dialog), and the shared
+   from/to party picker (funding-party-field). Both modals use <AppDialog>
+   with the `funding-form` hook class; controls are token-based so they flip
+   with dark mode for free.
+   =========================================================================== */
+
+.funding-form__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.funding-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.funding-form__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--fg-secondary);
+}
+
+.funding-form__optional {
+  font-weight: 400;
+  color: var(--fg-muted);
+}
+
+.funding-form__static {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+}
+
+.funding-form__static--for {
+  color: var(--fg-secondary);
+}
+
+/* The viewer's fixed (named) side of the transfer — an identity row, not
+   the word "you". */
+.funding-form__static--identity {
+  padding: 2px 0;
+}
+
+/* Post-record confirmation note + its inline refresh affordance. */
+.funding-form__recorded-note {
+  color: var(--fg-secondary);
+}
+
+.funding-form__recorded-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  width: 24px;
+  height: 24px;
+  margin-left: 6px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.funding-form__recorded-refresh:hover,
+.funding-form__recorded-refresh:focus-visible {
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
+}
+
+/* ---------- Inputs ---------- */
+
+.funding-form__input {
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  min-width: 0;
+  width: 100%;
+}
+
+.funding-form__input::placeholder {
+  color: var(--fg-muted);
+}
+
+.funding-form__input:focus {
+  outline: none;
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+.funding-form__textarea {
+  resize: vertical;
+  min-height: 48px;
+}
+
+.funding-form__amount-row {
+  display: flex;
+  gap: 8px;
+}
+
+.funding-form__input--amount {
+  flex: 1;
+}
+
+.funding-form__input--currency {
+  width: 96px;
+  flex: none;
+}
+
+/* ---------- Direction (role) radios ---------- */
+
+.funding-form__directions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.funding-form__direction {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  cursor: pointer;
+}
+
+.funding-form__direction input {
+  margin: 0;
+}
+
+.funding-form__direction[data-active] {
+  border-color: var(--fg-primary);
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+/* ---------- Advanced disclosure ---------- */
+
+.funding-form__disclosure {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.funding-form__disclosure:hover {
+  color: var(--fg-primary);
+}
+
+.funding-form__advanced {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ---------- Error + actions ---------- */
+
+.funding-form__error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-error);
+}
+
+.funding-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* ---------- Confirm dialog ---------- */
+
+.funding-form__confirm-lede {
+  /* Breathing room below the dialog header (the body has no top padding). */
+  margin: 8px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--fg-secondary);
+}
+
+.funding-form__summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg-sunken);
+  border-radius: var(--radius);
+}
+
+.funding-form__summary-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.funding-form__summary-label {
+  width: 56px;
+  flex: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+}
+
+.funding-form__summary-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+}
+
+.funding-form__muted {
+  color: var(--fg-muted);
+}
+
+/* ---------- Record-as identity choice ---------- */
+
+.funding-identity-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.funding-identity-choice__option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.funding-identity-choice__option:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-sunken);
+}
+
+.funding-identity-choice__option:focus-visible {
+  outline: none;
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+/* ===========================================================================
+   Party field (from / to)
+   =========================================================================== */
+
+.funding-party {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.funding-party__modes {
+  display: inline-flex;
+  align-self: flex-start;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.funding-party__mode {
+  padding: 4px 10px;
+  border: none;
+  background: var(--bg-elevated);
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  cursor: pointer;
+}
+
+.funding-party__mode + .funding-party__mode {
+  border-left: 1px solid var(--border-default);
+}
+
+.funding-party__mode[aria-pressed="true"] {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+  font-weight: 600;
+}
+
+.funding-party__search {
+  position: relative;
+  min-width: 0;
+}
+
+.funding-party__chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+}
+
+.funding-party__chip-identity {
+  flex: 1;
+  min-width: 0;
+}
+
+.funding-party__chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.funding-party__chip-remove:hover,
+.funding-party__chip-remove:focus-visible {
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
+}
+
+.funding-party__dropdown {
+  list-style: none;
+  margin: 4px 0 0 0;
+  padding: 4px;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: var(--z-popover);
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+}
+
+.funding-party__option {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.funding-party__option--active {
+  background: var(--overlay-weak);
+}
+
+.funding-party__option-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.funding-party__option-handle {
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+}
+
+/* ===========================================================================
+   Detail-modal "Confirm payment" footer
+   =========================================================================== */
+
+/* No own border — the section heading above already draws a hairline (a
+   collapsed Record section would otherwise show two adjacent lines); separate
+   the actions with spacing instead. */
+.funding-receipt-detail__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* Multi-identity layout: one labelled row per perspective (you + each group),
+   each with its own confirm / take-back action. */
+.funding-receipt-detail__footer--list {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.funding-receipt-detail__perspective {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.funding-receipt-detail__perspective-id {
+  flex: 1;
+  min-width: 0;
+}
+
+.funding-receipt-detail__perspective-action {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+/* "You've confirmed this payment." + its little delete icon. The two states
+   (this and the take-back prompt below) share a min-height so toggling the
+   delete icon doesn't resize the dialog. */
+.funding-receipt-detail__confirmed {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+}
+
+.funding-receipt-detail__confirmed-note {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+}
+
+/* Inline take-back prompt that replaces the note + icon. */
+.funding-receipt-detail__delete-confirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 40px;
+}
+
+.funding-receipt-detail__delete-prompt {
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+}

@@ -869,6 +869,7 @@ ${ACTIVITY_NODE_SELECTION}
             paymentNetwork
             transactionId
             notes
+            matchingReceipt { uri cid }
             attestations { role did }
           }
         }
@@ -921,6 +922,7 @@ ${ACTIVITY_NODE_SELECTION}
             paymentNetwork
             transactionId
             notes
+            matchingReceipt { uri cid }
             attestations { role did }
           }
         }

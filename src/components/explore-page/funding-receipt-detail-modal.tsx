@@ -1,17 +1,76 @@
 "use client"
 
-import { useId, useState, type ReactNode } from "react"
-import { Check, ChevronRight, Copy } from "lucide-react"
-import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
+import { useId, useMemo, useState, type ReactNode } from "react"
+import { Check, ChevronRight, Copy, Trash2 } from "lucide-react"
+import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
+import Button from "@/components/ui/button"
 import Tooltip from "@/components/ui/tooltip"
 import {
   FundingForActivity,
   FundingPartySlot,
   HydratedIdentityRow,
 } from "./funding-receipt-parts"
+import ConfirmFundingContent from "@/components/funding/confirm-funding-dialog"
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
+import { useAuthorInfo } from "@/hooks/use-author-info"
+import { useAuth } from "@/lib/auth/auth-context"
+import { useOrg } from "@/lib/groups/org-context"
+import {
+  fundingConfirmEligibility,
+  type FundingRole,
+} from "@/lib/atproto/funding-provenance"
+import { receiptAuthorRole } from "@/lib/atproto/funding-merge"
+import type { FundingAttestation } from "@/lib/atproto/indexer"
+import {
+  useFundingConfirmedLocally,
+  markFundingDeleted,
+} from "@/lib/atproto/funding-confirmed-store"
+import { deleteFundingReceipt } from "@/lib/atproto/funding-receipt-record"
 import { formatShortDate } from "@/lib/utils/format-date"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
+
+/** One identity's stance on a payment: whether it can confirm (and as what
+ *  role), whether it already attested, and the URI of the receipt it authored
+ *  (present ⇒ it can be taken back). */
+interface Perspective {
+  did: string
+  isGroup: boolean
+  canConfirm: boolean
+  role: FundingRole | null
+  attested: boolean
+  deleteUri: string | undefined
+}
+
+/** Whether a payment involves `did` — a from/to account party, or the author
+ *  of one of the cluster's receipts. */
+function receiptInvolves(
+  receipt: FundingReceipt,
+  did: string,
+  memberByDid: Map<string, FundingReceipt>,
+): boolean {
+  if (receipt.from?.kind === "account" && receipt.from.did === did) return true
+  if (receipt.to?.kind === "account" && receipt.to.did === did) return true
+  return memberByDid.has(did)
+}
+
+function buildPerspective(
+  receipt: FundingReceipt,
+  did: string,
+  isGroup: boolean,
+  memberByDid: Map<string, FundingReceipt>,
+  /** A personal optimistic confirmation this session (bridges indexer lag). */
+  bridged: boolean,
+): Perspective {
+  const elig = fundingConfirmEligibility(receipt, did)
+  return {
+    did,
+    isGroup,
+    canConfirm: elig.canConfirm && !bridged,
+    role: elig.role,
+    attested: elig.alreadyAttested || bridged,
+    deleteUri: memberByDid.get(did)?.uri,
+  }
+}
 
 /**
  * Read-only detail view for a single `org.hypercerts.funding.receipt`,
@@ -40,6 +99,108 @@ export default function FundingReceiptDetailModal({
 }) {
   const hasAmount = !!receipt.amount
   const hasForActivity = !!receipt.forUri
+
+  // One "Record" section per author of the payment. Prefer the attestations
+  // (they cover the whole cluster); fall back to this receipt alone when
+  // unattested. Match each author to a member receipt we hold (if any) for its
+  // date / URI / CID — non-canonical members the indexer dropped are unknown.
+  const recordAuthors: FundingAttestation[] =
+    receipt.attestations.length > 0
+      ? receipt.attestations
+      : [{ role: receiptAuthorRole(receipt), did: receipt.did }]
+  const multipleRecords = recordAuthors.length > 1
+  const memberByDid = new Map(
+    (receipt.members ?? [receipt]).map((m) => [m.did, m] as const),
+  )
+
+  const { did: viewerDid } = useAuth()
+  const { groups } = useOrg()
+  // A confirmation this session (before the indexer reflects it) keeps the
+  // viewer's own affordance hidden so the payment can't be confirmed twice.
+  const confirmedLocally = useFundingConfirmedLocally(receipt.uri)
+
+  // The identities the viewer can act through on this payment: themselves,
+  // plus any group they're an owner/admin of that the payment involves (a
+  // from/to party, or the author of one of the cluster's receipts). Each gets
+  // its own row of actions (Confirm / take-back / confirmed state).
+  const perspectives = useMemo<Perspective[]>(() => {
+    const out: Perspective[] = []
+    if (viewerDid) {
+      out.push(buildPerspective(receipt, viewerDid, false, memberByDid, confirmedLocally))
+    }
+    for (const g of groups) {
+      if (g.role !== "owner" && g.role !== "admin") continue
+      if (g.groupDid === viewerDid) continue
+      if (!receiptInvolves(receipt, g.groupDid, memberByDid)) continue
+      out.push(buildPerspective(receipt, g.groupDid, true, memberByDid, false))
+    }
+    return out
+    // memberByDid is derived from `receipt` each render; depend on `receipt`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [receipt, viewerDid, groups, confirmedLocally])
+
+  const [confirmingAs, setConfirmingAs] = useState<{
+    did: string
+    isGroup: boolean
+    role: FundingRole
+  } | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{
+    uri: string
+    isGroup: boolean
+  } | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await deleteFundingReceipt(deleteTarget.uri, { isGroup: deleteTarget.isGroup })
+      markFundingDeleted(deleteTarget.uri)
+      onClose()
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : "Could not delete the receipt.",
+      )
+      setDeleting(false)
+    }
+  }
+
+  // Anything to show in the footer at all?
+  const hasFooterActions = perspectives.some(
+    (p) => p.canConfirm || p.attested || p.deleteUri,
+  )
+  // Label each row only when there's more than one identity.
+  const labelled = perspectives.length > 1
+
+  // While confirming, swap the detail content for the confirm UI in the SAME
+  // dialog (no second modal). Escape / backdrop returns to the detail view.
+  if (confirmingAs) {
+    return (
+      <AppDialog
+        ariaLabel="Confirm funding payment"
+        className="funding-receipt-detail funding-form"
+        maxWidth={460}
+        onClose={() => setConfirmingAs(null)}
+      >
+        <AppDialogHeader
+          title="Confirm payment"
+          onClose={() => setConfirmingAs(null)}
+        />
+        <AppDialogBody>
+          <ConfirmFundingContent
+            receipt={receipt}
+            writerDid={confirmingAs.did}
+            isGroup={confirmingAs.isGroup}
+            role={confirmingAs.role}
+            onCancel={() => setConfirmingAs(null)}
+            onConfirmed={() => setConfirmingAs(null)}
+          />
+        </AppDialogBody>
+      </AppDialog>
+    )
+  }
 
   return (
     <AppDialog
@@ -77,17 +238,21 @@ export default function FundingReceiptDetailModal({
             )}
           </DetailRow>
 
-          {hasForActivity ? (
-            <DetailRow label="For">
+          <DetailRow label="For">
+            {hasForActivity ? (
               <FundingForActivity uri={receipt.forUri} />
-            </DetailRow>
-          ) : null}
+            ) : (
+              <EmptyValue />
+            )}
+          </DetailRow>
 
-          {receipt.notes ? (
-            <DetailRow label="Note">
+          <DetailRow label="Note">
+            {receipt.notes ? (
               <span className="funding-receipt-detail__note">{receipt.notes}</span>
-            </DetailRow>
-          ) : null}
+            ) : (
+              <EmptyValue />
+            )}
+          </DetailRow>
         </DetailSection>
 
         <DetailSection title="Payment">
@@ -95,43 +260,186 @@ export default function FundingReceiptDetailModal({
             <DateValue iso={receipt.occurredAt} />
           </DetailRow>
 
-          {receipt.paymentRail ? (
-            <DetailRow label="Payment rail">{receipt.paymentRail}</DetailRow>
-          ) : null}
+          <DetailRow label="Payment rail">
+            {receipt.paymentRail ? receipt.paymentRail : <EmptyValue />}
+          </DetailRow>
 
-          {receipt.paymentNetwork ? (
-            <DetailRow label="Payment network">
-              {receipt.paymentNetwork}
-            </DetailRow>
-          ) : null}
+          <DetailRow label="Payment network">
+            {receipt.paymentNetwork ? receipt.paymentNetwork : <EmptyValue />}
+          </DetailRow>
 
-          {receipt.transactionId ? (
-            <DetailRow label="Transaction">
+          <DetailRow label="Transaction">
+            {receipt.transactionId ? (
               <CopyableValue
                 value={receipt.transactionId}
                 label="Copy transaction ID"
               />
-            </DetailRow>
-          ) : null}
-        </DetailSection>
-
-        <DetailSection title="Record">
-          <DetailRow label="Recorded">
-            <DateValue iso={receipt.createdAt} />
-          </DetailRow>
-
-          <DetailRow label="Published by">
-            <CreatorIdentity did={receipt.did} />
-          </DetailRow>
-
-          <DetailRow label="Record">
-            <CopyableValue value={receipt.uri} label="Copy record URI" />
-          </DetailRow>
-
-          <DetailRow label="CID">
-            <CopyableValue value={receipt.cid} label="Copy CID" />
+            ) : (
+              <EmptyValue />
+            )}
           </DetailRow>
         </DetailSection>
+
+        {/* One "Record" section per author: a payment may be recorded by the
+            sender, the recipient, and/or a third party. The role is shown in
+            parentheses only when there's more than one. */}
+        {recordAuthors.map((att, i) => {
+          const member = memberByDid.get(att.did)
+          return (
+            <DetailSection
+              key={`${att.role}-${att.did}-${i}`}
+              title={
+                multipleRecords ? (
+                  <RecordSectionTitle role={att.role} did={att.did} />
+                ) : (
+                  "Record"
+                )
+              }
+            >
+              <DetailRow label="Recorded">
+                {member ? <DateValue iso={member.createdAt} /> : <EmptyValue />}
+              </DetailRow>
+
+              <DetailRow label="Published by">
+                <CreatorIdentity did={att.did} />
+              </DetailRow>
+
+              <DetailRow label="Record">
+                {member ? (
+                  <CopyableValue value={member.uri} label="Copy record URI" />
+                ) : (
+                  <EmptyValue />
+                )}
+              </DetailRow>
+
+              <DetailRow label="CID">
+                {member ? (
+                  <CopyableValue value={member.cid} label="Copy CID" />
+                ) : (
+                  <EmptyValue />
+                )}
+              </DetailRow>
+            </DetailSection>
+          )
+        })}
+
+        {deleteTarget ? (
+          <div className="funding-receipt-detail__footer">
+            <div className="funding-receipt-detail__delete-confirm">
+              <span className="funding-receipt-detail__delete-prompt">
+                Delete this payment receipt?
+              </span>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                loading={deleting}
+                onClick={() => void handleDelete()}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        ) : hasFooterActions && labelled ? (
+          <div className="funding-receipt-detail__footer funding-receipt-detail__footer--list">
+            {perspectives
+              .filter((p) => p.canConfirm || p.attested || p.deleteUri)
+              .map((p) => (
+                <div className="funding-receipt-detail__perspective" key={p.did}>
+                  <HydratedIdentityRow
+                    did={p.did}
+                    noLink
+                    className="funding-receipt-detail__perspective-id"
+                  />
+                  <span className="funding-receipt-detail__perspective-action">
+                    {p.canConfirm && p.role ? (
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          setConfirmingAs({
+                            did: p.did,
+                            isGroup: p.isGroup,
+                            role: p.role!,
+                          })
+                        }
+                      >
+                        Confirm
+                      </Button>
+                    ) : p.attested ? (
+                      <span className="funding-receipt-detail__confirmed-note">
+                        Confirmed
+                      </span>
+                    ) : null}
+                    {p.deleteUri ? (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label="Take back this receipt"
+                        onClick={() =>
+                          setDeleteTarget({ uri: p.deleteUri!, isGroup: p.isGroup })
+                        }
+                      >
+                        <Trash2 size={16} strokeWidth={1.75} aria-hidden />
+                      </Button>
+                    ) : null}
+                  </span>
+                </div>
+              ))}
+          </div>
+        ) : hasFooterActions ? (
+          // Single (personal) perspective — keep the familiar copy.
+          <div className="funding-receipt-detail__footer">
+            {perspectives[0].canConfirm && perspectives[0].role ? (
+              <Button
+                size="sm"
+                onClick={() =>
+                  setConfirmingAs({
+                    did: perspectives[0].did,
+                    isGroup: perspectives[0].isGroup,
+                    role: perspectives[0].role!,
+                  })
+                }
+              >
+                Confirm payment
+              </Button>
+            ) : (
+              <div className="funding-receipt-detail__confirmed">
+                {perspectives[0].attested ? (
+                  <p className="funding-receipt-detail__confirmed-note">
+                    You&rsquo;ve confirmed this payment.
+                  </p>
+                ) : null}
+                {perspectives[0].deleteUri ? (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label="Delete this payment confirmation"
+                    onClick={() =>
+                      setDeleteTarget({
+                        uri: perspectives[0].deleteUri!,
+                        isGroup: perspectives[0].isGroup,
+                      })
+                    }
+                  >
+                    <Trash2 size={16} strokeWidth={1.75} aria-hidden />
+                  </Button>
+                ) : null}
+              </div>
+            )}
+          </div>
+        ) : null}
+        {deleteError ? (
+          <p className="funding-form__error" role="alert">
+            {deleteError}
+          </p>
+        ) : null}
       </div>
     </AppDialog>
   )
@@ -147,7 +455,7 @@ function DetailSection({
   defaultOpen = false,
   children,
 }: {
-  title: string
+  title: ReactNode
   defaultOpen?: boolean
   children: ReactNode
 }) {
@@ -213,6 +521,24 @@ function DateValue({ iso }: { iso: string | null }) {
  *  account byline. */
 function CreatorIdentity({ did }: { did: string }) {
   return <HydratedIdentityRow did={did} />
+}
+
+/** The "Record (…)" section title: the author's role in parentheses —
+ *  "Sender" / "Recipient", or a third party's display name (e.g. "Ma Earth"),
+ *  hydrated from their DID. */
+function RecordSectionTitle({
+  role,
+  did,
+}: {
+  role: FundingAttestation["role"]
+  did: string
+}) {
+  const { info } = useAuthorInfo(did)
+  if (role === "sender") return <>Record (Sender)</>
+  if (role === "recipient") return <>Record (Recipient)</>
+  const name =
+    info?.displayName || (info?.handle ? `@${info.handle}` : "third party")
+  return <>Record ({name})</>
 }
 
 /** A long, monospaced identifier (at:// URI, CID) with a click-to-copy
