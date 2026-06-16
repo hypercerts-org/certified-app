@@ -84,7 +84,7 @@ export default function FundingReceiptRow({
     >
       {/* Columns: date | from | to | for | amount | source | confirmed-by.
           Date leads, amount (the "punchline") sits before the provenance
-          annotation (kind chips + third-party attestors). */}
+          annotation (the role-bucket label + third-party attestors). */}
       {receipt.occurredAt ? (
         <time
           className="funding-receipt-row__date"

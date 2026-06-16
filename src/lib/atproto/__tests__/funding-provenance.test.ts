@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest"
 import {
-  kindChips,
   thirdPartyDids,
   confirmRoleBucket,
   matchesConfirmedBy,
@@ -17,45 +16,6 @@ const roleSet = (...rs: ConfirmRole[]): ReadonlySet<ConfirmRole> => new Set(rs)
 const tpSet = (...dids: string[]): ReadonlySet<string> => new Set(dids)
 const ALL_ROLES = new Set(CONFIRM_ROLES)
 const NO_TP: ReadonlySet<string> = new Set<string>()
-
-describe("kindChips", () => {
-  it("returns no chips when there are no attestations", () => {
-    expect(kindChips([])).toEqual([])
-  })
-
-  it("recipient-only is 'Reported by recipient'", () => {
-    const chips = kindChips([recipient])
-    expect(chips.map((c) => c.key)).toEqual(["self-recipient"])
-    expect(chips[0].label).toBe("Reported by recipient")
-    expect(chips[0].tone).toBe("neutral")
-  })
-
-  it("sender-only is 'Reported by sender'", () => {
-    const chips = kindChips([sender])
-    expect(chips.map((c) => c.key)).toEqual(["self-sender"])
-  })
-
-  it("recipient + sender supersede to a single 'Confirmed by both' (success)", () => {
-    const chips = kindChips([recipient, sender])
-    expect(chips.map((c) => c.key)).toEqual(["mutually-confirmed"])
-    expect(chips[0].tone).toBe("success")
-  })
-
-  it("third-party-only is 'Confirmed by third party'", () => {
-    const chips = kindChips([third("did:plc:maearth")])
-    expect(chips.map((c) => c.key)).toEqual(["third-party"])
-  })
-
-  it("self-reported AND third-party co-occur (two chips)", () => {
-    const chips = kindChips([recipient, third("did:plc:maearth")])
-    expect(chips.map((c) => c.key)).toEqual(["self-recipient", "third-party"])
-  })
-
-  it("mutually-confirmed AND third-party co-occur", () => {
-    const chips = kindChips([recipient, sender, third("did:plc:maearth")])
-    expect(chips.map((c) => c.key)).toEqual(["mutually-confirmed", "third-party"])
-  })
-})
 
 describe("thirdPartyDids", () => {
   it("returns only third-party DIDs, de-duplicated and order-preserving", () => {

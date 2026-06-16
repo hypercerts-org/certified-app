@@ -1,82 +1,21 @@
 import type { FundingAttestation } from "./indexer"
 
 /**
- * Display derivation for funding-receipt provenance. The indexer emits a
- * flat {@link FundingAttestation}[] per payment (one entry per receipt in
- * the `matchingReceipt`-linked cluster); the *display* is two dimensions:
+ * Display + filter derivation for funding-receipt provenance. The indexer
+ * emits a flat {@link FundingAttestation}[] per payment (one entry per
+ * receipt in the `matchingReceipt`-linked cluster). This module maps that
+ * set into the two things the UI needs:
  *
- *   1. kind chips  — self-reported / mutually-confirmed / third-party
+ *   1. role bucket — which of Both / Sender / Recipient confirmed the
+ *      payment ({@link confirmRoleBucket}), driving the "Confirmed by"
+ *      filter together with {@link matchesConfirmedBy}.
  *   2. "by whom"   — the third-party attestor identities
+ *      ({@link thirdPartyDids}).
  *
- * Provenance is deliberately not a single ranked enum: a payment can be
- * both self-reported and third-party-confirmed at once, so `kindChips`
- * can return more than one chip. All classification lives on the indexer;
- * this module only maps the attestation set to labels/tones for render.
+ * Provenance is deliberately not a single ranked enum: a payment can be both
+ * self-reported and third-party-confirmed at once. All classification lives
+ * on the indexer; this module only derives the buckets / identities.
  */
-
-/** A `Badge` square tone (subset we use here). */
-export type FundingChipTone = "success" | "neutral"
-
-export interface FundingKindChip {
-  /** Stable key for React lists + the storage-side concept. */
-  key: "mutually-confirmed" | "self-recipient" | "self-sender" | "third-party"
-  /** User-friendly label shown on the chip. */
-  label: string
-  /** One-line explanation for a tooltip / aria. */
-  title: string
-  tone: FundingChipTone
-}
-
-/**
- * Map a payment's attestations to its kind chips. A mutually-confirmed
- * payment (both recipient and sender attested) supersedes the single
- * self-reported chip; a third-party chip co-occurs with whichever
- * self/mutual chip applies. Returns [] when there are no attestations
- * (pre-#214, or an unattested record) so the row renders no chips.
- */
-export function kindChips(
-  attestations: readonly FundingAttestation[],
-): FundingKindChip[] {
-  const hasRecipient = attestations.some((a) => a.role === "recipient")
-  const hasSender = attestations.some((a) => a.role === "sender")
-  const hasThirdParty = attestations.some((a) => a.role === "third-party")
-
-  const chips: FundingKindChip[] = []
-
-  if (hasRecipient && hasSender) {
-    chips.push({
-      key: "mutually-confirmed",
-      label: "Confirmed by both",
-      title: "Both the recipient and the sender recorded this payment.",
-      tone: "success",
-    })
-  } else if (hasRecipient) {
-    chips.push({
-      key: "self-recipient",
-      label: "Reported by recipient",
-      title: "The recipient recorded this payment.",
-      tone: "neutral",
-    })
-  } else if (hasSender) {
-    chips.push({
-      key: "self-sender",
-      label: "Reported by sender",
-      title: "The sender recorded this payment.",
-      tone: "neutral",
-    })
-  }
-
-  if (hasThirdParty) {
-    chips.push({
-      key: "third-party",
-      label: "Confirmed by third party",
-      title: "A party other than the sender or recipient recorded this payment.",
-      tone: "neutral",
-    })
-  }
-
-  return chips
-}
 
 /**
  * The third-party attestor DIDs for a payment, de-duplicated and order-
