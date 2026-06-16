@@ -1330,19 +1330,11 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
 // ----------------------------- Funding ---------------------------------
 
 /**
- * Fetch a page of funding receipts and apply the explore gate: keep a
- * receipt only when `from` OR `to` is an AT Protocol account
- * (`AppCertifiedDefsDid`). The indexer can't filter by union variant,
- * so we post-process after fetching — mirrors how the other explore
- * loaders client-filter (recently-viewed, follows, …). The funding
- * tab has no filter / sub / search axes, so those args are ignored.
- * The one exception is `confirmedBy` — a server-side third-party-attestor
- * DID filter forwarded to the indexer (null = no filter).
- *
- * `hasMore` reflects the indexer's raw page (pre-gate): "Load more"
- * keeps pulling pages even when a given page gated down to few rows, so
- * the sparse account-bearing receipts surface across the dataset rather
- * than stopping at the first page's handful.
+ * Fetch a page of funding receipts. The funding tab has no filter / sub /
+ * search axes, so those args are ignored; the account-quality filter on
+ * the receipt creator is applied server-side via `authorLabels` /
+ * `excludeAuthorLabels`. All receipts are returned regardless of whether
+ * `from` / `to` is an AT Protocol account or a free-text wallet address.
  */
 async function loadFundingPage(args: LoadArgs): Promise<LoadedPage> {
   const { cursor, signal, includeOrgLabels, excludeOrgLabels, confirmedBy } = args
@@ -1371,12 +1363,9 @@ async function loadFundingPage(args: LoadArgs): Promise<LoadedPage> {
     confirmedBy: confirmedBy ?? undefined,
   })
   if (signal?.aborted) return EMPTY_PAGE
-  const gated = r.records.filter(
-    (rec) => rec.from?.kind === "account" || rec.to?.kind === "account",
-  )
   return {
     ...EMPTY_PAGE,
-    fundingReceipts: gated,
+    fundingReceipts: r.records,
     cursor: r.endCursor,
     hasMore: r.hasMore,
   }

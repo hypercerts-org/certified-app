@@ -97,3 +97,43 @@ export function thirdPartyDids(
   }
   return out
 }
+
+/** The mutually-exclusive sender/recipient confirmation buckets used by the
+ *  /explore Funding "Confirmed by" filter. */
+export const CONFIRM_ROLES = ["both", "sender", "recipient"] as const
+export type ConfirmRole = (typeof CONFIRM_ROLES)[number]
+
+/**
+ * Which sender/recipient bucket a payment falls into — `"both"` when both
+ * parties attested, else `"sender"` / `"recipient"` for a single self-report,
+ * or `null` when neither did (e.g. a third-party-only receipt).
+ */
+export function confirmRoleBucket(
+  attestations: readonly FundingAttestation[],
+): ConfirmRole | null {
+  const hasSender = attestations.some((a) => a.role === "sender")
+  const hasRecipient = attestations.some((a) => a.role === "recipient")
+  if (hasSender && hasRecipient) return "both"
+  if (hasSender) return "sender"
+  if (hasRecipient) return "recipient"
+  return null
+}
+
+/**
+ * Whether a payment passes the Funding "Confirmed by" filter: the UNION of
+ * the selected role buckets (Both / Sender / Recipient) and the selected
+ * third-party attestors. With nothing selected nothing matches (the caller
+ * shows an empty list).
+ */
+export function matchesConfirmedBy(
+  attestations: readonly FundingAttestation[],
+  roles: ReadonlySet<ConfirmRole>,
+  thirdParties: ReadonlySet<string>,
+): boolean {
+  const bucket = confirmRoleBucket(attestations)
+  if (bucket && roles.has(bucket)) return true
+  if (thirdParties.size > 0) {
+    if (thirdPartyDids(attestations).some((did) => thirdParties.has(did))) return true
+  }
+  return false
+}

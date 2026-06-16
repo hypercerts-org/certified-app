@@ -16,6 +16,10 @@ export interface IdentityRowProps {
   avatarUrl?: string;
   /** When set, the whole row becomes a link to this href. */
   href?: string;
+  /** Secondary line under the name. Defaults to `@handle` (when a real
+   *  handle is present). Pass an explicit string to override it — e.g.
+   *  "Third party" — rendered in the same muted style. */
+  subtitle?: string;
   /** @default "md" */
   size?: "sm" | "md";
   /** Render the skeleton placeholder instead of resolved content. */
@@ -48,6 +52,7 @@ export default function IdentityRow({
   displayName,
   avatarUrl,
   href,
+  subtitle,
   size = "md",
   loading = false,
   className = "",
@@ -68,6 +73,9 @@ export default function IdentityRow({
 
   const hasHandle = !!handle && handle !== did;
   const primary = displayName || handle || truncateDid(did);
+  // Explicit subtitle overrides the default `@handle` line.
+  const secondary =
+    subtitle !== undefined ? subtitle : hasHandle ? `@${handle}` : null;
 
   const inner = (
     <>
@@ -83,11 +91,11 @@ export default function IdentityRow({
         >
           {primary}
         </span>
-        {hasHandle ? (
+        {secondary ? (
           <span
             className={`${handleSizeMap[size]} text-[var(--fg-muted)] truncate`}
           >
-            @{handle}
+            {secondary}
           </span>
         ) : null}
       </span>

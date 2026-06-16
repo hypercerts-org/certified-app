@@ -1,52 +1,68 @@
 "use client"
 
-import { useCallback, useMemo } from "react"
+import { useMemo } from "react"
 import { UserRoundCheck } from "lucide-react"
 import {
   Popover as UiPopover,
   PopoverContent,
-  PopoverItem,
   PopoverTrigger,
 } from "@/components/ui/popover"
 import Tooltip from "@/components/ui/tooltip"
-import Avatar from "@/components/ui/avatar"
+import IdentityRow from "@/components/ui/identity-row"
+import Checkbox from "@/components/ui/checkbox"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import { thirdPartyDids } from "@/lib/atproto/funding-provenance"
+import {
+  CONFIRM_ROLES,
+  thirdPartyDids,
+  type ConfirmRole,
+} from "@/lib/atproto/funding-provenance"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
 
-/** Short `did:plc:abcd…wxyz` fallback when a candidate has no resolved
- *  handle/display name yet. */
-function shortDid(did: string): string {
-  if (did.length <= 20) return did
-  return `${did.slice(0, 12)}…${did.slice(-4)}`
+const ROLE_LABEL: Record<ConfirmRole, string> = {
+  both: "Both",
+  sender: "Sender",
+  recipient: "Recipient",
 }
 
 /**
- * /explore Funding "Confirmed by" filter — narrows the list to payments a
- * specific **third-party** attestor confirmed (the indexer's `confirmedBy`
- * arg; recipient/sender filtering is already the From/To account filter).
+ * /explore Funding "Confirmed by" filter — two checkbox sections:
  *
- * Candidates are the distinct third-party attestors present in the loaded
- * receipts. Because the filter is server-side, once one is active the list
- * collapses to that attestor — so the active selection is always offered
- * (checked) plus a "Clear" item to widen again.
+ *   Confirmed by               (role buckets: Both / Sender / Recipient)
+ *   Confirmed by third parties (one checkbox per distinct third-party
+ *                               attestor in the loaded receipts)
+ *
+ * The shown list is the UNION of everything checked; with nothing checked
+ * nothing shows. Default has the three role buckets checked and no third
+ * parties — applied client-side (see `matchesConfirmedBy`), since the role
+ * buckets aren't a single indexer arg.
  */
 export default function FundingConfirmedByPopover({
   receipts,
-  value,
-  onChange,
+  roles,
+  onToggleRole,
+  thirdParties,
+  onToggleThirdParty,
+  isDefault,
+  onReset,
   open,
   onOpenChange,
 }: {
+  /** Full loaded result set — the source of third-party candidates. */
   receipts: FundingReceipt[]
-  value: string | null
-  onChange: (did: string | null) => void
+  roles: ReadonlySet<ConfirmRole>
+  onToggleRole: (role: ConfirmRole) => void
+  thirdParties: ReadonlySet<string>
+  onToggleThirdParty: (did: string) => void
+  /** Whether the selection equals the default (all roles, no third parties). */
+  isDefault: boolean
+  /** Restore the default selection (all roles, no third parties). */
+  onReset: () => void
   open: boolean
   onOpenChange: (v: boolean) => void
 }) {
-  // Distinct third-party attestors seen in the current result set, plus
-  // the active selection (which may be the only thing in `receipts` once
-  // the server filter is applied).
+  // Distinct third-party attestors across the loaded receipts, plus any
+  // currently-selected DIDs (so a selection stays listed even if its rows
+  // scroll out of the loaded window).
   const candidates = useMemo(() => {
     const seen = new Set<string>()
     const out: string[] = []
@@ -55,27 +71,10 @@ export default function FundingConfirmedByPopover({
       seen.add(did)
       out.push(did)
     }
-    if (value) push(value)
+    for (const did of thirdParties) push(did)
     for (const r of receipts) for (const did of thirdPartyDids(r.attestations)) push(did)
     return out
-  }, [receipts, value])
-
-  // Minifier-safe selection (reads the DID off the clicked element's
-  // dataset rather than capturing the map variable — same pattern the
-  // sidebar filter buttons use). Empty `data-did` clears the filter.
-  const onItemClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      const did = e.currentTarget.dataset.did
-      onChange(did ? did : null)
-      onOpenChange(false)
-    },
-    [onChange, onOpenChange],
-  )
-
-  const active = !!value
-  // Nothing to filter by and no active selection → don't render a dead
-  // control (mirrors hiding the quality popover on funding).
-  if (candidates.length === 0 && !active) return null
+  }, [receipts, thirdParties])
 
   return (
     <UiPopover open={open} onOpenChange={onOpenChange}>
@@ -84,9 +83,9 @@ export default function FundingConfirmedByPopover({
           <button
             type="button"
             className={`explore__chrome-btn explore__chrome-btn--icon${
-              active ? " explore__chrome-btn--active" : ""
+              isDefault ? "" : " explore__chrome-btn--active"
             }`}
-            aria-label={`Filter by confirmer${active ? " (filtered)" : ""}`}
+            aria-label={`Filter by confirmer${isDefault ? "" : " (filtered)"}`}
           >
             <UserRoundCheck size={13} strokeWidth={1.75} aria-hidden />
           </button>
@@ -94,42 +93,71 @@ export default function FundingConfirmedByPopover({
       </Tooltip>
       <PopoverContent align="end">
         <p className="popover__section-heading">Confirmed by</p>
-        {active ? (
-          <PopoverItem data-did="" onClick={onItemClick}>
-            All confirmers
-          </PopoverItem>
-        ) : null}
-        {candidates.map((did) => (
-          <ConfirmerItem
-            key={did}
-            did={did}
-            selected={did === value}
-            onClick={onItemClick}
-          />
+        {CONFIRM_ROLES.map((role) => (
+          <div key={role} className="popover__item popover__item--check">
+            <Checkbox
+              label={ROLE_LABEL[role]}
+              checked={roles.has(role)}
+              onChange={() => onToggleRole(role)}
+            />
+          </div>
         ))}
+        {candidates.length > 0 ? (
+          <>
+            <hr className="popover__divider" aria-hidden="true" />
+            <p className="popover__section-heading">Confirmed by third parties</p>
+            {candidates.map((did) => (
+              <ThirdPartyCheck
+                key={did}
+                did={did}
+                checked={thirdParties.has(did)}
+                onToggle={onToggleThirdParty}
+              />
+            ))}
+          </>
+        ) : null}
+        <hr className="popover__divider" aria-hidden="true" />
+        <button
+          type="button"
+          className="popover__reset-btn"
+          onClick={onReset}
+          disabled={isDefault}
+        >
+          Reset to default
+        </button>
       </PopoverContent>
     </UiPopover>
   )
 }
 
-/** One attestor row — hydrates avatar + name from the DID. */
-function ConfirmerItem({
+/** One third-party attestor checkbox — hydrates the account to the canonical
+ *  identity row (avatar + display name + @handle below). */
+function ThirdPartyCheck({
   did,
-  selected,
-  onClick,
+  checked,
+  onToggle,
 }: {
   did: string
-  selected: boolean
-  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void
+  checked: boolean
+  onToggle: (did: string) => void
 }) {
   const { info } = useAuthorInfo(did)
-  const name = info?.displayName || info?.handle || shortDid(did)
   return (
-    <PopoverItem data-did={did} selected={selected} onClick={onClick}>
-      <span className="funding-confirmer-item">
-        <Avatar src={info?.avatarUrl ?? undefined} size="sm" alt="" />
-        <span className="funding-confirmer-item__name">{name}</span>
-      </span>
-    </PopoverItem>
+    <div className="popover__item popover__item--check">
+      <Checkbox
+        checked={checked}
+        onChange={() => onToggle(did)}
+        label={
+          <IdentityRow
+            did={did}
+            handle={info?.handle ?? undefined}
+            displayName={info?.displayName ?? undefined}
+            avatarUrl={info?.avatarUrl ?? undefined}
+            size="sm"
+            className="funding-confirmer-item"
+          />
+        }
+      />
+    </div>
   )
 }
