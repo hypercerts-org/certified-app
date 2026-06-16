@@ -259,8 +259,10 @@ export default function ActivityDetail({
   )
   // Count shown next to the filter control: the total when the filter is in
   // its default (show-everything) state, else the number of loaded receipts
-  // the active filter matches — so the number always agrees with the list
-  // below it. (The Funding tab label keeps the unfiltered total.)
+  // the active filter matches — so the number agrees with the list below it.
+  // (Default state still shows the server total, which can exceed the loaded
+  // window for an activity with >100 receipts — the known page-1 cap pending
+  // magic-indexer #214. The Funding tab label keeps the unfiltered total.)
   const shownFundingCount = confirmedBy.isDefault
     ? fundingCount
     : filteredFunding.length
