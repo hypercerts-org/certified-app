@@ -318,8 +318,8 @@ export default function ActivityDetail({
           ? `Contributors (${contributorCount})`
           : "Contributors"
         : activeTab === "funding"
-          ? fundingCount > 0
-            ? `Funding (${fundingCount})`
+          ? shownFundingCount > 0
+            ? `Funding (${shownFundingCount})`
             : "Funding"
           : activeTab === "updates"
             ? "Updates"
