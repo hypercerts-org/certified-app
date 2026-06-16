@@ -265,6 +265,23 @@ export default function ActivityDetail({
     ? fundingCount
     : filteredFunding.length
 
+  // The Confirmed-by filter control is rendered identically in the overview
+  // section and the Funding tab (only one is mounted at a time, tab-gated),
+  // so build it once. All props come from the shared confirmedBy state.
+  const confirmedByControl = (
+    <FundingConfirmedByPopover
+      receipts={fundingReceipts}
+      roles={confirmedBy.roles}
+      onToggleRole={confirmedBy.toggleRole}
+      thirdParties={confirmedBy.thirdParties}
+      onToggleThirdParty={confirmedBy.toggleThirdParty}
+      isDefault={confirmedBy.isDefault}
+      onReset={confirmedBy.reset}
+      open={confirmedByOpen}
+      onOpenChange={setConfirmedByOpen}
+    />
+  )
+
   // Tab strip on the top bar (back-row) drives which slice of the
   // record renders in the right pane. Keep the left aside identical
   // across all tabs.
@@ -1262,17 +1279,7 @@ export default function ActivityDetail({
                     {shownFundingCount}
                   </span>
                   <div className="cert-detail__section-actions">
-                    <FundingConfirmedByPopover
-                      receipts={fundingReceipts}
-                      roles={confirmedBy.roles}
-                      onToggleRole={confirmedBy.toggleRole}
-                      thirdParties={confirmedBy.thirdParties}
-                      onToggleThirdParty={confirmedBy.toggleThirdParty}
-                      isDefault={confirmedBy.isDefault}
-                      onReset={confirmedBy.reset}
-                      open={confirmedByOpen}
-                      onOpenChange={setConfirmedByOpen}
-                    />
+                    {confirmedByControl}
                     {fundingHref ? (
                       <TransitionLink
                         href={fundingHref}
@@ -1404,17 +1411,7 @@ export default function ActivityDetail({
               </span>
               {fundingReceipts.length > 0 ? (
                 <div className="cert-detail__section-actions">
-                  <FundingConfirmedByPopover
-                    receipts={fundingReceipts}
-                    roles={confirmedBy.roles}
-                    onToggleRole={confirmedBy.toggleRole}
-                    thirdParties={confirmedBy.thirdParties}
-                    onToggleThirdParty={confirmedBy.toggleThirdParty}
-                    isDefault={confirmedBy.isDefault}
-                    onReset={confirmedBy.reset}
-                    open={confirmedByOpen}
-                    onOpenChange={setConfirmedByOpen}
-                  />
+                  {confirmedByControl}
                 </div>
               ) : null}
             </div>
