@@ -1,11 +1,12 @@
 "use client"
 
 import { useState, type KeyboardEvent, type MouseEvent } from "react"
-import IdentityRow from "@/components/ui/identity-row"
 import FundingReceiptDetailModal from "./funding-receipt-detail-modal"
-import { FundingPartySlot, FundingForActivity } from "./funding-receipt-parts"
-import { useAuthorInfo } from "@/hooks/use-author-info"
-import { profileUrl } from "@/lib/urls"
+import {
+  FundingPartySlot,
+  FundingForActivity,
+  HydratedIdentityRow,
+} from "./funding-receipt-parts"
 import { formatShortDate } from "@/lib/utils/format-date"
 import { thirdPartyDids } from "@/lib/atproto/funding-provenance"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
@@ -191,20 +192,11 @@ function FundingConfirmedBy({ receipt }: { receipt: FundingReceipt }) {
 }
 
 /** A third-party attestor, rendered like any AT Protocol account — avatar +
- *  display name + @handle. Hydrated per-row via `useAuthorInfo`. */
+ *  display name + @handle. Hydrated per-row via the shared
+ *  {@link HydratedIdentityRow}. */
 function ThirdPartyIdentity({ did }: { did: string }) {
-  const { info } = useAuthorInfo(did)
-  const handle = info?.handle ?? undefined
   return (
-    <IdentityRow
-      did={did}
-      handle={handle}
-      displayName={info?.displayName ?? undefined}
-      avatarUrl={info?.avatarUrl ?? undefined}
-      href={profileUrl(handle || did)}
-      size="sm"
-      className="funding-receipt-row__party"
-    />
+    <HydratedIdentityRow did={did} className="funding-receipt-row__party" />
   )
 }
 

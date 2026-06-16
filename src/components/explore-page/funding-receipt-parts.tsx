@@ -19,6 +19,38 @@ import type { FundingParty } from "@/lib/atproto/indexer"
 
 const ACTIVITY_COLLECTION = "org.hypercerts.claim.activity"
 
+/** Resolve a DID to an account byline (avatar + name + @handle) and render
+ *  it as an {@link IdentityRow}. Centralises the per-row `useAuthorInfo`
+ *  hydration that every funding surface shares (transfer parties, the
+ *  receipt creator, third-party attestors, the Confirmed-by filter list).
+ *  `noLink` drops the profile href for contexts where the row isn't itself
+ *  a link (the Confirmed-by checkbox label). */
+export function HydratedIdentityRow({
+  did,
+  size = "sm",
+  className = "",
+  noLink = false,
+}: {
+  did: string
+  size?: "sm" | "md"
+  className?: string
+  noLink?: boolean
+}) {
+  const { info } = useAuthorInfo(did)
+  const handle = info?.handle ?? undefined
+  return (
+    <IdentityRow
+      did={did}
+      handle={handle}
+      displayName={info?.displayName ?? undefined}
+      avatarUrl={info?.avatarUrl ?? undefined}
+      href={noLink ? undefined : profileUrl(handle || did)}
+      size={size}
+      className={className}
+    />
+  )
+}
+
 /** Renders one side of the transfer. Accounts hydrate per-row and show
  *  avatar + name + @handle. Text slots render their literal value when
  *  `showText` is set (the activity detail page surfaces wallet
@@ -32,25 +64,13 @@ export function FundingPartySlot({
   showText?: boolean
 }) {
   const did = party?.kind === "account" ? party.did : null
-  const { info } = useAuthorInfo(did)
   if (!did) {
     if (showText && party?.kind === "text" && party.value) {
       return <FundingTextParty value={party.value} />
     }
     return null
   }
-  const handle = info?.handle ?? undefined
-  return (
-    <IdentityRow
-      did={did}
-      handle={handle}
-      displayName={info?.displayName ?? undefined}
-      avatarUrl={info?.avatarUrl ?? undefined}
-      href={profileUrl(handle || did)}
-      size="sm"
-      className="funding-receipt-row__party"
-    />
-  )
+  return <HydratedIdentityRow did={did} className="funding-receipt-row__party" />
 }
 
 /** A free-text funding party (typically a wallet address). Renders via

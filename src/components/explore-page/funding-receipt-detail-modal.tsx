@@ -3,12 +3,13 @@
 import { useId, useState, type ReactNode } from "react"
 import { Check, ChevronRight, Copy } from "lucide-react"
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
-import IdentityRow from "@/components/ui/identity-row"
 import Tooltip from "@/components/ui/tooltip"
-import { FundingForActivity, FundingPartySlot } from "./funding-receipt-parts"
-import { useAuthorInfo } from "@/hooks/use-author-info"
+import {
+  FundingForActivity,
+  FundingPartySlot,
+  HydratedIdentityRow,
+} from "./funding-receipt-parts"
 import { formatShortDate } from "@/lib/utils/format-date"
-import { profileUrl } from "@/lib/urls"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
 
 /**
@@ -210,18 +211,7 @@ function DateValue({ iso }: { iso: string | null }) {
  *  an avatar + name row linking to the profile — hydrated like every other
  *  account byline. */
 function CreatorIdentity({ did }: { did: string }) {
-  const { info } = useAuthorInfo(did)
-  const handle = info?.handle ?? undefined
-  return (
-    <IdentityRow
-      did={did}
-      handle={handle}
-      displayName={info?.displayName ?? undefined}
-      avatarUrl={info?.avatarUrl ?? undefined}
-      href={profileUrl(handle || did)}
-      size="sm"
-    />
-  )
+  return <HydratedIdentityRow did={did} />
 }
 
 /** A long, monospaced identifier (at:// URI, CID) with a click-to-copy

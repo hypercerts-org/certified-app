@@ -8,9 +8,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import Tooltip from "@/components/ui/tooltip"
-import IdentityRow from "@/components/ui/identity-row"
 import Checkbox from "@/components/ui/checkbox"
-import { useAuthorInfo } from "@/hooks/use-author-info"
+import { HydratedIdentityRow } from "./funding-receipt-parts"
 import {
   CONFIRM_ROLES,
   thirdPartyDids,
@@ -141,20 +140,16 @@ function ThirdPartyCheck({
   checked: boolean
   onToggle: (did: string) => void
 }) {
-  const { info } = useAuthorInfo(did)
   return (
     <div className="popover__item popover__item--check">
       <Checkbox
         checked={checked}
         onChange={() => onToggle(did)}
         label={
-          <IdentityRow
+          <HydratedIdentityRow
             did={did}
-            handle={info?.handle ?? undefined}
-            displayName={info?.displayName ?? undefined}
-            avatarUrl={info?.avatarUrl ?? undefined}
-            size="sm"
             className="funding-confirmer-item"
+            noLink
           />
         }
       />
