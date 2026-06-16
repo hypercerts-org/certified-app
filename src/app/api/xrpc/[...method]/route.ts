@@ -47,6 +47,12 @@ const ALLOWED_WRITE_COLLECTIONS = [
   // writes; group-owned project writes go through the BFF route at
   // `/api/groups/[groupDid]/project`.
   "org.hypercerts.collection",
+  // Funding receipts. Recorded/confirmed from the activity-detail Funding
+  // section + the receipt detail modal. Both "record" and "confirm" write
+  // this same collection; the indexer derives the attestation role from
+  // author-vs-from/to and clusters matching coordinates. Rate-limited
+  // below (naming arbitrary parties is a plausible spam vector).
+  "org.hypercerts.funding.receipt",
 ]
 
 const ALLOWED_BLOB_CONTENT_TYPES = [
@@ -502,7 +508,7 @@ export async function POST(
             )
             return NextResponse.json(
               {
-                error: "Too many endorsement writes — try again later.",
+                error: "Too many writes — try again later.",
                 resetAt: rate.resetAt,
               },
               {

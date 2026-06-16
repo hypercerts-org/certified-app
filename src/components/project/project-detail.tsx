@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { profileUrl, recordUrl } from "@/lib/urls"
-import { usePageTitle, usePageRecordMenu } from "@/lib/navbar-context"
+import { usePageTitle, usePageDesktopTitle, usePageRecordMenu } from "@/lib/navbar-context"
 import Link from "next/link"
 import { TransitionLink } from "@/lib/view-transitions"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
@@ -317,6 +317,9 @@ export default function ProjectDetail({
             : "Activities"
           : title || "Project",
   )
+  // Desktop top bar keeps the project's name on every tab (the tab strip is
+  // already visible there); only the mobile navbar title is tab-aware.
+  usePageDesktopTitle(title || "Project")
   // Record-level overflow menu in the mobile navbar's right slot (Share /
   // Add to list / Copy AT URI). Reads as page-level chrome instead of an
   // action on the author. Desktop keeps the in-body menu (lead row).

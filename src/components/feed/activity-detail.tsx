@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react"
 import { profileUrl, recordUrl } from "@/lib/urls"
-import { usePageTitle, usePageRecordMenu } from "@/lib/navbar-context"
+import { usePageTitle, usePageDesktopTitle, usePageRecordMenu } from "@/lib/navbar-context"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
@@ -20,6 +20,8 @@ import {
   FileText,
   MapPin,
   Pencil,
+  Plus,
+  RefreshCw,
   Target,
   Trash2,
   Users,
@@ -50,11 +52,15 @@ import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
 import { CERT_DETAIL_TABS } from "@/lib/detail-tabs"
 import { useCertProjects } from "@/hooks/use-cert-projects"
 import { useActivityFunding } from "@/hooks/use-activity-funding"
+import { useMergedFunding } from "@/hooks/use-merged-funding"
 import FundingReceiptRow, {
   FundingReceiptHeader,
 } from "@/components/explore-page/funding-receipt-row"
 import FundingConfirmedByPopover from "@/components/explore-page/funding-confirmed-by-popover"
-import { matchesConfirmedBy } from "@/lib/atproto/funding-provenance"
+import { matchesConfirmedBy, isTrustedEvaluator } from "@/lib/atproto/funding-provenance"
+import FundingReceiptFormModal from "@/components/funding/funding-receipt-form-modal"
+import FundingIdentityChoiceDialog from "@/components/funding/funding-identity-choice-dialog"
+import Button from "@/components/ui/button"
 import { useFundingConfirmedBy } from "@/hooks/use-funding-confirmed-by"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { TransitionLink } from "@/lib/view-transitions"
@@ -234,11 +240,28 @@ export default function ActivityDetail({
   // 5 + "See all") and the Funding tab (all of them). Read-only — no
   // bearing on the inline-edit state machine.
   const {
-    receipts: fundingReceipts,
-    totalCount: fundingTotal,
+    receipts: fetchedFunding,
     isLoading: fundingLoading,
+    refetch: refetchFunding,
   } = useActivityFunding(did, rkey)
-  const fundingCount = fundingTotal ?? fundingReceipts.length
+  // Overlay the viewer's optimistic confirmations + collapse matchingReceipt
+  // pairs so a just-confirmed payment shows as one confirmed row immediately
+  // (issue #186). A *recorded* (non-confirmation) receipt is not optimistically
+  // inserted — its provenance must come only from the indexer.
+  const fundingForUri =
+    did && rkey ? `at://${did}/org.hypercerts.claim.activity/${rkey}` : null
+  const fundingReceipts = useMergedFunding(fetchedFunding, fundingForUri)
+
+  // Record-funding modal (opener gating is derived after `useAuth` below).
+  // After a successful write we just flag a "recorded, pending" note (no
+  // optimistic insert for a fresh recording).
+  const [recordFundingOpen, setRecordFundingOpen] = useState(false)
+  const [fundingJustRecorded, setFundingJustRecorded] = useState(false)
+  // When the viewer is an owner/admin of the authoring group, clicking Record
+  // first asks whether to record as themselves or as the group.
+  const [recordIdentityOpen, setRecordIdentityOpen] = useState(false)
+  const [recordFundingAs, setRecordFundingAs] =
+    useState<"individual" | "group">("individual")
 
   // Funding "Confirmed by" filter — same URL-backed state + popover as
   // /explore. Applied client-side to the loaded receipts (shared by the
@@ -325,6 +348,9 @@ export default function ActivityDetail({
             ? "Updates"
             : value.title || "Activity",
   )
+  // Desktop top bar keeps the activity's name on every tab (the tab strip is
+  // already visible there); only the mobile navbar title is tab-aware.
+  usePageDesktopTitle(value.title || "Activity")
   // Record-level overflow menu in the mobile navbar's right slot (Share /
   // Add to list / Copy AT URI). Reads as page-level chrome instead of an
   // action on the author. Desktop keeps the in-body menu (time-period row).
@@ -348,11 +374,65 @@ export default function ActivityDetail({
   //     so we hide the affordance rather than land them on a
   //     write-rejected edit page.
   const { did: sessionDid, isAuthenticated } = useAuth()
+  // Funding: any signed-in viewer can record a payment they were party to;
+  // trusted evaluators additionally get the third-party direction (gated
+  // inside the modal). The "Record funding" affordance shows for any
+  // authenticated viewer.
+  const canRecordFunding = isAuthenticated && !!sessionDid
+  // Shown after a successful record — the receipt only appears once the
+  // indexer has caught up (it's eventually consistent), so offer a refresh.
+  const fundingRecordedNote = fundingJustRecorded ? (
+    <p className="cert-detail__short-desc funding-form__recorded-note">
+      Funding recorded — it may take a moment to appear in the list.
+      <button
+        type="button"
+        className="funding-form__recorded-refresh"
+        aria-label="Refresh the funding list"
+        onClick={() => refetchFunding()}
+      >
+        <RefreshCw size={14} strokeWidth={2} aria-hidden />
+      </button>
+    </p>
+  ) : null
   const { activeOrg, groups, switchOrg } = useOrg()
   const canEditAsActiveOrg =
     !!activeOrg &&
     activeOrg.groupDid === did &&
     (activeOrg.role === "owner" || activeOrg.role === "admin")
+  // The group that authored this activity, when the viewer is an owner/admin
+  // of it (so they can author records as the group) — regardless of which
+  // identity is currently active. Drives the "record as me / as the group"
+  // choice on the funding form.
+  const fundingAuthoringGroup =
+    groups.find(
+      (g) =>
+        g.groupDid === did &&
+        (g.role === "owner" || g.role === "admin"),
+    ) ?? null
+  // Opening the record form: ask the identity question first when the viewer
+  // could record as the group, else go straight in as the individual.
+  const openRecordFunding = () => {
+    setFundingJustRecorded(false)
+    if (fundingAuthoringGroup) {
+      setRecordIdentityOpen(true)
+    } else {
+      setRecordFundingAs("individual")
+      setRecordFundingOpen(true)
+    }
+  }
+  // "Record funding" opener — shown in both the overview preview and the
+  // Funding tab headers (only one is mounted at a time, tab-gated).
+  const recordFundingControl = canRecordFunding ? (
+    <Button
+      variant="secondary"
+      size="sm"
+      className="cert-detail__section-action-btn"
+      onClick={openRecordFunding}
+    >
+      <Plus size={14} strokeWidth={2} aria-hidden />
+      Record funding
+    </Button>
+  ) : null
   // When acting as a group, the user can only edit certs OWNED BY
   // that group — even though the session DID is still their
   // personal identity. Without this, a member who switches into a
@@ -1266,22 +1346,25 @@ export default function ActivityDetail({
               />
             ) : null}
 
-            {/* Funding preview — up to 5 receipts for this activity,
-                with a "See all" link into the dedicated Funding tab.
-                Hidden entirely when there are no receipts. Read-only;
-                no bearing on the inline-edit state. The `for` tail is
-                omitted (it's this activity) and text wallet-address
-                funders are surfaced. */}
-            {fundingCount > 0 ? (
+            {/* Funding preview — up to 5 receipts for this activity, with a
+                "See all" link into the dedicated Funding tab. Also shown
+                (header only) to a signed-in viewer with no receipts yet, so
+                they can record one. Read-only otherwise — no bearing on the
+                inline-edit state. The `for` tail is omitted (it's this
+                activity) and text wallet-address funders are surfaced. */}
+            {fundingReceipts.length > 0 || canRecordFunding ? (
               <section className="cert-detail__section">
                 <div className="cert-detail__section-header">
                   <h2 className="cert-detail__section-title">Funding</h2>
-                  <span className="cert-detail__section-count">
-                    {shownFundingCount}
-                  </span>
+                  {fundingReceipts.length > 0 ? (
+                    <span className="cert-detail__section-count">
+                      {shownFundingCount}
+                    </span>
+                  ) : null}
                   <div className="cert-detail__section-actions">
-                    {confirmedByControl}
-                    {fundingHref ? (
+                    {recordFundingControl}
+                    {fundingReceipts.length > 0 ? confirmedByControl : null}
+                    {fundingHref && fundingReceipts.length > 0 ? (
                       <TransitionLink
                         href={fundingHref}
                         replace
@@ -1292,7 +1375,14 @@ export default function ActivityDetail({
                     ) : null}
                   </div>
                 </div>
-                {filteredFunding.length > 0 ? (
+                {fundingRecordedNote}
+                {fundingReceipts.length === 0 ? (
+                  fundingJustRecorded ? null : (
+                    <p className="cert-detail__short-desc">
+                      No funding receipts for this activity yet.
+                    </p>
+                  )
+                ) : filteredFunding.length > 0 ? (
                   <ul className="cert-detail__funding-list">
                     <li>
                       <FundingReceiptHeader showFor={false} />
@@ -1407,23 +1497,29 @@ export default function ActivityDetail({
           <section className="cert-detail__section">
             <div className="cert-detail__section-header">
               <h2 className="cert-detail__section-title">Funding</h2>
-              <span className="cert-detail__section-count">
-                {shownFundingCount}
-              </span>
               {fundingReceipts.length > 0 ? (
+                <span className="cert-detail__section-count">
+                  {shownFundingCount}
+                </span>
+              ) : null}
+              {recordFundingControl || fundingReceipts.length > 0 ? (
                 <div className="cert-detail__section-actions">
-                  {confirmedByControl}
+                  {recordFundingControl}
+                  {fundingReceipts.length > 0 ? confirmedByControl : null}
                 </div>
               ) : null}
             </div>
+            {fundingRecordedNote}
             {fundingLoading && fundingReceipts.length === 0 ? (
               <div className="cert-detail__funding-loading">
                 <LoadingSpinner size="sm" />
               </div>
             ) : fundingReceipts.length === 0 ? (
-              <p className="cert-detail__short-desc">
-                No funding receipts for this activity yet.
-              </p>
+              fundingJustRecorded ? null : (
+                <p className="cert-detail__short-desc">
+                  No funding receipts for this activity yet.
+                </p>
+              )
             ) : filteredFunding.length > 0 ? (
               <ul className="cert-detail__funding-list">
                 <li>
@@ -1485,6 +1581,43 @@ export default function ActivityDetail({
         }}
       />
     ) : null}
+    {recordIdentityOpen && sessionDid && fundingAuthoringGroup ? (
+      <FundingIdentityChoiceDialog
+        individualDid={sessionDid}
+        groupDid={did}
+        onChoose={(as) => {
+          setRecordFundingAs(as)
+          setRecordIdentityOpen(false)
+          setRecordFundingOpen(true)
+        }}
+        onClose={() => setRecordIdentityOpen(false)}
+      />
+    ) : null}
+    {recordFundingOpen && sessionDid && rkey
+      ? (() => {
+          // The author is the chosen identity: the group (only when the
+          // viewer is its owner/admin) authors the receipt — letting it be
+          // recorded as the recipient — otherwise the viewer personally.
+          const asGroup = recordFundingAs === "group" && !!fundingAuthoringGroup
+          const writerDid = asGroup ? did : sessionDid
+          return (
+            <FundingReceiptFormModal
+              writerDid={writerDid}
+              writerIsGroup={asGroup}
+              canRecordAsRecipient={asGroup || sessionDid === did}
+              isEvaluator={isTrustedEvaluator(writerDid)}
+              activityAuthorDid={did}
+              forActivity={{
+                uri: `at://${did}/org.hypercerts.claim.activity/${rkey}`,
+                cid,
+                title: effectiveValue.title || undefined,
+              }}
+              onClose={() => setRecordFundingOpen(false)}
+              onCreated={() => setFundingJustRecorded(true)}
+            />
+          )
+        })()
+      : null}
     </>
   )
 }

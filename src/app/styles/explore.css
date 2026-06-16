@@ -1419,19 +1419,28 @@
   .funding-receipt-row__confirmed-value > * {
     max-width: 100%;
   }
+  /* Right-align the role label's wrapped lines (safe: it's plain text, not
+     an IdentityRow, so this doesn't disturb avatar/name alignment). */
+  .funding-receipt-row__confirmed-label {
+    text-align: right;
+  }
   .funding-receipt-row__heading--confirmed {
     text-align: right;
   }
 }
 
-/* The Sender / Recipient text label (not a chip). */
+/* The Sender / Recipient text label (not a chip). Allowed to wrap to two
+   lines so "Sender & Recipient" isn't truncated to "Sender & Reci…" in the
+   narrow column; clamps (with an ellipsis) past two lines. */
 .funding-receipt-row__confirmed-label {
   font-size: 0.85rem;
   font-weight: 400;
   color: var(--fg-secondary);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* Explore funding list → a true table. The <ul> owns the column tracks

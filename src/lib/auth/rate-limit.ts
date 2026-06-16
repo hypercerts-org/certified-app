@@ -50,7 +50,7 @@ export interface RateLimitResult {
  */
 export async function checkAndIncrementWriteRate(
   did: string,
-  scope: "endorsement-issue" | "endorsement-response",
+  scope: "endorsement-issue" | "endorsement-response" | "funding-receipt",
 ): Promise<RateLimitResult> {
   const redis = getRedis()
   const nowSec = Math.floor(Date.now() / 1000)
@@ -104,9 +104,13 @@ export async function checkAndIncrementWriteRate(
  */
 export const RATE_LIMITED_WRITE_COLLECTIONS: Record<
   string,
-  "endorsement-issue"
+  "endorsement-issue" | "funding-receipt"
 > = {
   "app.certified.badge.award": "endorsement-issue",
+  // Funding receipts share the same generous per-DID caps as endorsement
+  // issuance — high enough never to trip a legitimate recorder, low enough
+  // to blunt a scripted flood of fake receipts naming a target.
+  "org.hypercerts.funding.receipt": "funding-receipt",
 }
 
 // ============================================================================

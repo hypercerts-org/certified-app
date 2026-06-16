@@ -3,10 +3,13 @@ import {
   thirdPartyDids,
   confirmRoleBucket,
   matchesConfirmedBy,
+  isTrustedEvaluator,
+  fundingConfirmEligibility,
   CONFIRM_ROLES,
   type ConfirmRole,
 } from "../funding-provenance"
-import type { FundingAttestation } from "../indexer"
+import { TRUSTED_EVALUATOR_DIDS } from "../trusted-evaluators"
+import type { FundingAttestation, FundingParty } from "../indexer"
 
 const recipient: FundingAttestation = { role: "recipient", did: "did:plc:rcpt" }
 const sender: FundingAttestation = { role: "sender", did: "did:plc:sndr" }
@@ -115,5 +118,76 @@ describe("matchesConfirmedBy", () => {
     it("empty roles + empty third parties => false even for a both receipt", () => {
       expect(matchesConfirmedBy([recipient, sender], roleSet(), NO_TP)).toBe(false)
     })
+  })
+})
+
+const EVALUATOR = TRUSTED_EVALUATOR_DIDS[0]
+const acct = (did: string): FundingParty => ({ kind: "account", did })
+const txt = (value: string): FundingParty => ({ kind: "text", value })
+
+describe("isTrustedEvaluator", () => {
+  it("is true for a DID on the feed-filter evaluator list", () => {
+    expect(isTrustedEvaluator(EVALUATOR)).toBe(true)
+  })
+  it("is false for a random DID", () => {
+    expect(isTrustedEvaluator("did:plc:nobody")).toBe(false)
+  })
+  it("is false for null/undefined", () => {
+    expect(isTrustedEvaluator(null)).toBe(false)
+    expect(isTrustedEvaluator(undefined)).toBe(false)
+  })
+})
+
+describe("fundingConfirmEligibility", () => {
+  it("lets the sender (named by DID) confirm as 'sender'", () => {
+    const r = { from: acct("did:plc:me"), to: txt("0xRCPT"), attestations: [] }
+    expect(fundingConfirmEligibility(r, "did:plc:me")).toEqual({
+      canConfirm: true,
+      role: "sender",
+      alreadyAttested: false,
+    })
+  })
+
+  it("lets the recipient (named by DID) confirm as 'recipient'", () => {
+    const r = { from: txt("0xSNDR"), to: acct("did:plc:me"), attestations: [] }
+    expect(fundingConfirmEligibility(r, "did:plc:me").role).toBe("recipient")
+  })
+
+  it("lets a trusted evaluator (neither party) confirm as 'third-party'", () => {
+    const r = { from: txt("0xS"), to: txt("0xR"), attestations: [] }
+    expect(fundingConfirmEligibility(r, EVALUATOR).role).toBe("third-party")
+  })
+
+  it("does not let an unrelated, non-evaluator account confirm", () => {
+    const r = { from: txt("0xS"), to: txt("0xR"), attestations: [] }
+    expect(fundingConfirmEligibility(r, "did:plc:nobody")).toEqual({
+      canConfirm: false,
+      role: null,
+      alreadyAttested: false,
+    })
+  })
+
+  it("hides confirm once the viewer has already attested", () => {
+    const r = {
+      from: acct("did:plc:me"),
+      to: txt("0xRCPT"),
+      attestations: [{ role: "sender" as const, did: "did:plc:me" }],
+    }
+    const e = fundingConfirmEligibility(r, "did:plc:me")
+    expect(e.alreadyAttested).toBe(true)
+    expect(e.canConfirm).toBe(false)
+  })
+
+  it("treats a party named only by wallet text as not-the-viewer (evaluator-only)", () => {
+    // The viewer is the recipient in reality, but the receipt names the
+    // recipient by wallet address, not their DID — so they can't claim the
+    // recipient role and are ineligible unless they're an evaluator.
+    const r = { from: txt("0xS"), to: txt("0xRCPT"), attestations: [] }
+    expect(fundingConfirmEligibility(r, "did:plc:me").canConfirm).toBe(false)
+  })
+
+  it("is ineligible for a logged-out viewer", () => {
+    const r = { from: acct("did:plc:me"), to: txt("0xR"), attestations: [] }
+    expect(fundingConfirmEligibility(r, null).canConfirm).toBe(false)
   })
 })

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   fetchFundingReceiptsForActivity,
   type FundingReceipt,
@@ -26,6 +26,11 @@ export function useActivityFunding(
   const [totalCount, setTotalCount] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Bumped by `refetch()` to re-run the fetch effect — e.g. the "refresh"
+  // affordance shown after recording, since the indexer is eventually
+  // consistent and a fresh receipt may not appear on the first load.
+  const [refreshNonce, setRefreshNonce] = useState(0)
+  const refetch = useCallback(() => setRefreshNonce((n) => n + 1), [])
 
   useEffect(() => {
     if (!did || !rkey) {
@@ -65,7 +70,7 @@ export function useActivityFunding(
       })
 
     return () => controller.abort()
-  }, [did, rkey, first])
+  }, [did, rkey, first, refreshNonce])
 
-  return { receipts, totalCount, isLoading, error }
+  return { receipts, totalCount, isLoading, error, refetch }
 }
