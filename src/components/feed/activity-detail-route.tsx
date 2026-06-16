@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { useActivity } from "@/hooks/use-activity"
 import ActivityDetail from "@/components/feed/activity-detail"
+import Banner from "@/components/ui/banner"
 import ErrorMessage from "@/components/ui/error-message"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
@@ -57,6 +58,13 @@ export default function ActivityDetailRoute({
 
   return (
     <div className="cert-detail-page">
+      {activity.partial && (
+        <Banner variant="warning" title="Showing limited details" className="mb-6">
+          We couldn&apos;t reach this record&apos;s home server, so some fields
+          (contributors, locations, the full description and rights) may be
+          missing. Try again later to see everything.
+        </Banner>
+      )}
       <ActivityDetail
         did={activity.did}
         value={activity.value}

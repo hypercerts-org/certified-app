@@ -37,6 +37,7 @@ const resolvePdsUrl = vi.fn(
 vi.mock("@/lib/atproto/did", () => ({
   resolveHandle: (...args: unknown[]) => resolveHandle(...args),
   resolveHandleToDid: vi.fn(async () => null),
+  resolveHandleViaWellKnown: vi.fn(async () => null),
   resolvePdsUrl: (...args: unknown[]) => resolvePdsUrl(...args),
 }))
 

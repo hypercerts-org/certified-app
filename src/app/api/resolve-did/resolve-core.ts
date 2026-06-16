@@ -1,4 +1,9 @@
-import { resolveHandle, resolveHandleToDid, resolvePdsUrl } from "@/lib/atproto/did"
+import {
+  resolveHandle,
+  resolveHandleToDid,
+  resolveHandleViaWellKnown,
+  resolvePdsUrl,
+} from "@/lib/atproto/did"
 import { isValidDid } from "@/lib/utils/did"
 import {
   buildAvatarUrlFromCid,
@@ -49,6 +54,15 @@ const UPSTREAM_INDEXER_URL =
 
 const RESOLVE_ACTOR_PROFILE_QUERY = `query ResolveActorProfile($did:String!){ actorProfile(did:$did){ did handle displayName description avatarCid bannerCid } }`
 
+/**
+ * Search the indexer's actor profiles by free text. The actor node does
+ * NOT expose `handle`, so the result is candidate DIDs only — the caller
+ * confirms the handle separately (see {@link fetchIndexerDidByHandle}).
+ * A full dotted handle is a precise `search` term (the indexer matches it
+ * against the denormalised handle); a bare domain is broad.
+ */
+const RESOLVE_DID_BY_HANDLE_QUERY = `query ResolveDidByHandle($search:String!){ appCertifiedActorProfile(first:10,search:$search){ edges { node { did } } } }`
+
 type IndexerActorProfile = {
   did?: string | null
   handle?: string | null
@@ -93,6 +107,78 @@ async function fetchIndexerActorProfile(
     }
     if (data.errors) return null
     return data.data?.actorProfile ?? null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Recover a DID from a handle the live network can no longer resolve.
+ *
+ * When an account migrates PDS/handle, `resolveHandleToDid` (Bluesky
+ * appView) and the `.well-known` path both fail for the OLD handle — yet
+ * old links and the indexer still carry it. The magic-indexer
+ * denormalises the handle onto the actor and refreshes it lazily, so an
+ * idle migrated account stays indexed under its OLD handle (the one
+ * embedded in the stale URL). We `search` the indexer for that handle,
+ * then CONFIRM each candidate by exact-matching `actorProfile(did).handle`
+ * — the same denormalised value `search` matched on — so a fuzzy search
+ * hit (e.g. a display-name match) can never resolve to the wrong account.
+ *
+ * Returns the DID of the first exact match, or null. Every failure mode
+ * (no indexer, GraphQL error, no exact handle match) collapses to null so
+ * the caller reports "not found" exactly as it does today — this path is
+ * strictly additive and only runs after live resolution has failed.
+ */
+async function fetchIndexerDidByHandle(handle: string): Promise<string | null> {
+  const wanted = handle.trim().toLowerCase()
+  if (!wanted) return null
+  try {
+    const bypassKey = process.env.INDEXER_RATELIMIT_BYPASS_KEY
+    const headers: Record<string, string> = { "Content-Type": "application/json" }
+    if (bypassKey) headers["X-RateLimit-Bypass"] = bypassKey
+
+    const res = await fetch(UPSTREAM_INDEXER_URL, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        operationName: "ResolveDidByHandle",
+        query: RESOLVE_DID_BY_HANDLE_QUERY,
+        variables: { search: handle.trim() },
+      }),
+      signal: AbortSignal.timeout(8_000),
+    })
+    if (!res.ok) return null
+    const data = (await res.json()) as {
+      data?: {
+        appCertifiedActorProfile?: {
+          edges?: { node?: { did?: string | null } | null }[] | null
+        } | null
+      }
+      errors?: unknown
+    }
+    if (data.errors) return null
+
+    const edges = data.data?.appCertifiedActorProfile?.edges ?? []
+    const candidates: string[] = []
+    for (const edge of edges) {
+      const did = edge?.node?.did
+      if (typeof did === "string" && isValidDid(did) && !candidates.includes(did)) {
+        candidates.push(did)
+      }
+      if (candidates.length >= 5) break
+    }
+
+    // Confirm the search hit really is THIS handle: the indexer's
+    // denormalised handle (what `search` matched) must exactly equal the
+    // requested handle. Resolves the migrated-but-idle account; abstains
+    // when the only matches were fuzzy (display name, etc.).
+    for (const did of candidates) {
+      const actor = await fetchIndexerActorProfile(did)
+      const indexed = actor?.handle?.trim().toLowerCase()
+      if (indexed && indexed === wanted) return did
+    }
+    return null
   } catch {
     return null
   }
@@ -363,11 +449,24 @@ export async function resolveInputToDid(
   let did = didParam || ""
   const handle = handleParam || ""
 
-  // If a handle was provided (and no valid DID), resolve it to a DID via
-  // Bluesky's public appView. Lets callers pass an identity that was
-  // typed as a handle, not a DID (e.g. contributor rows).
+  // If a handle was provided (and no valid DID), resolve it to a DID.
+  // Lets callers pass an identity that was typed as a handle, not a DID
+  // (e.g. contributor rows). Falls through a chain so a MIGRATED handle —
+  // one the live network can no longer resolve — is still recovered to
+  // its stable DID, which is all the downstream PDS-by-DID resolution
+  // needs to render the record (#184):
+  //   1. Bluesky's public appView (DNS TXT / HTTP) — the common case.
+  //   2. the AT Protocol `.well-known/atproto-did` path — custom domains
+  //      that never had a DNS TXT record.
+  //   3. the indexer's denormalised (possibly stale) handle — recovers an
+  //      account that migrated PDS/handle and whose old handle no longer
+  //      resolves anywhere live.
   if (!isValidDid(did) && handle) {
-    const resolved = await resolveHandleToDid(handle.trim())
+    const trimmed = handle.trim()
+    const resolved =
+      (await resolveHandleToDid(trimmed)) ||
+      (await resolveHandleViaWellKnown(trimmed)) ||
+      (await fetchIndexerDidByHandle(trimmed))
     if (resolved) did = resolved
   }
 
