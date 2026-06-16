@@ -231,6 +231,16 @@ export interface PopoverContentProps extends React.HTMLAttributes<HTMLDivElement
    * line up with its trigger).
    */
   matchTriggerWidth?: boolean;
+  /**
+   * ARIA role of the content container. Defaults to `"menu"` — the
+   * action/select menu the primitive was built for (arrow-key roving over
+   * `role="menuitem"`/`"menuitemradio"` children, focus the first item on
+   * open). Pass `"group"` for a non-menu popover whose children are form
+   * controls (e.g. a checkbox filter): the container becomes `role="group"`,
+   * roving is skipped, and the first focusable control is focused on open.
+   * Existing callers omit this, so they stay byte-identical.
+   */
+  role?: "menu" | "group";
   children: React.ReactNode;
 }
 
@@ -345,8 +355,10 @@ export function PopoverContent({
   sideOffset,
   collisionPadding = 8,
   matchTriggerWidth = false,
+  role = "menu",
   ...props
 }: PopoverContentProps) {
+  const isMenu = role === "menu";
   // Pull ref + id out of the context locally — the React 19 strict-refs
   // lint rule is overly cautious about accessing context-held refs in JSX.
   const { open, triggerRef, contentRef, contentId } = usePopover("PopoverContent");
@@ -368,10 +380,17 @@ export function PopoverContent({
   // already positioned next to the trigger.
   useEffect(() => {
     if (!open) return;
-    const items = getMenuItems(contentRef.current);
-    if (portal) items[0]?.focus({ preventScroll: true });
-    else items[0]?.focus();
-  }, [open, contentRef, portal]);
+    // Menu popovers focus their first menu item; a non-menu (group) popover
+    // focuses its first focusable control (a checkbox filter has no
+    // menuitems, so it would otherwise leave focus outside the popover).
+    const target = isMenu
+      ? getMenuItems(contentRef.current)[0]
+      : contentRef.current?.querySelector<HTMLElement>(
+          'button:not([disabled]),input:not([disabled]),select,textarea,[href],[tabindex]:not([tabindex="-1"])',
+        );
+    if (portal) target?.focus({ preventScroll: true });
+    else target?.focus();
+  }, [open, contentRef, portal, isMenu]);
 
   // Portal mode only: measure the trigger + menu and compute fixed coords
   // in a layout effect (before paint, so there's no first-frame flash at
@@ -482,7 +501,7 @@ export function PopoverContent({
       <div
         ref={contentRef}
         id={contentId}
-        role="menu"
+        role={role}
         onKeyDown={handleKeyDown}
         className={`z-[var(--z-popover)] bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded shadow-md p-1 ${className}`}
         style={{
@@ -509,7 +528,7 @@ export function PopoverContent({
     <div
       ref={contentRef}
       id={contentId}
-      role="menu"
+      role={role}
       onKeyDown={handleKeyDown}
       className={`absolute top-full z-[var(--z-popover)] mt-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded shadow-md p-1 ${alignClass[align]} ${className}`}
       style={{ minWidth, marginTop: offset, ...style }}

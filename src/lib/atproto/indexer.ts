@@ -75,7 +75,7 @@ function mapWorkScope(
     return { scope: workScope.scope }
   }
   if (typeof workScope.expression === "string" && workScope.expression.length > 0) {
-    return { expression: workScope.expression } as ActivityRecord["value"]["workScope"]
+    return { expression: workScope.expression }
   }
   return undefined
 }
@@ -426,6 +426,9 @@ export interface FundingReceipt {
   from: FundingParty
   to: FundingParty
   forUri: string | null
+  /** CID of the funded record's `for` strongRef. Carried for forthcoming
+   *  receipt-to-activity verification (the same strongRef-integrity work as
+   *  `attestations`, magic-indexer #214); not yet read by the UI. */
   forCid: string | null
   /** Optional payment-method metadata, as recorded on the receipt. The
    *  lexicon names are singular `paymentRail` (e.g. "x402-usdc-base") and
@@ -551,6 +554,51 @@ export interface FundingReceiptsResult {
 }
 
 /**
+ * Parse a FundingReceipts GraphQL envelope into a {@link FundingReceiptsResult}.
+ * Shared by the network-wide and per-activity fetchers so they stay in sync:
+ * a missing connection logs the GraphQL error (or throws on a non-ok HTTP
+ * status) and returns an empty page — the fail-soft contract both callers
+ * rely on. `opName` only labels the warning so the two operations are
+ * distinguishable in logs.
+ */
+function parseFundingReceiptsResponse(
+  json: FundingReceiptsGraphQLResponse,
+  res: Response,
+  opName: string,
+): FundingReceiptsResult {
+  const empty: FundingReceiptsResult = {
+    records: [],
+    hasMore: false,
+    endCursor: null,
+    totalCount: null,
+  }
+
+  if (!json.data?.orgHypercertsFundingReceipt) {
+    if (json.errors?.length) {
+      console.warn(`[Indexer] ${opName} GraphQL error:`, json.errors[0].message)
+    } else if (!res.ok) {
+      throw new Error(`Indexer request failed: ${res.status}`)
+    }
+    return empty
+  }
+
+  const connection = json.data.orgHypercertsFundingReceipt
+  const records: FundingReceipt[] = []
+  for (const edge of connection.edges) {
+    const node = edge.node
+    if (!node) continue
+    records.push(mapFundingReceiptNode(node))
+  }
+
+  return {
+    records,
+    hasMore: connection.pageInfo.hasNextPage,
+    endCursor: connection.pageInfo.endCursor,
+    totalCount: connection.totalCount,
+  }
+}
+
+/**
  * Fetch a page of `org.hypercerts.funding.receipt` records. Both sides
  * are normalised into {@link FundingParty}; the explore loader applies
  * the "from OR to is an account" gate client-side (the indexer can't
@@ -596,39 +644,7 @@ export async function fetchFundingReceipts(
   })
 
   const json = (await res.json()) as FundingReceiptsGraphQLResponse
-  const empty: FundingReceiptsResult = {
-    records: [],
-    hasMore: false,
-    endCursor: null,
-    totalCount: null,
-  }
-
-  if (!json.data?.orgHypercertsFundingReceipt) {
-    if (json.errors?.length) {
-      console.warn(
-        "[Indexer] FundingReceipts GraphQL error:",
-        json.errors[0].message,
-      )
-    } else if (!res.ok) {
-      throw new Error(`Indexer request failed: ${res.status}`)
-    }
-    return empty
-  }
-
-  const connection = json.data.orgHypercertsFundingReceipt
-  const records: FundingReceipt[] = []
-  for (const edge of connection.edges) {
-    const node = edge.node
-    if (!node) continue
-    records.push(mapFundingReceiptNode(node))
-  }
-
-  return {
-    records,
-    hasMore: connection.pageInfo.hasNextPage,
-    endCursor: connection.pageInfo.endCursor,
-    totalCount: connection.totalCount,
-  }
+  return parseFundingReceiptsResponse(json, res, "FundingReceipts")
 }
 
 /**
@@ -657,39 +673,7 @@ export async function fetchFundingReceiptsForActivity(
   })
 
   const json = (await res.json()) as FundingReceiptsGraphQLResponse
-  const empty: FundingReceiptsResult = {
-    records: [],
-    hasMore: false,
-    endCursor: null,
-    totalCount: null,
-  }
-
-  if (!json.data?.orgHypercertsFundingReceipt) {
-    if (json.errors?.length) {
-      console.warn(
-        "[Indexer] FundingReceiptsForActivity GraphQL error:",
-        json.errors[0].message,
-      )
-    } else if (!res.ok) {
-      throw new Error(`Indexer request failed: ${res.status}`)
-    }
-    return empty
-  }
-
-  const connection = json.data.orgHypercertsFundingReceipt
-  const records: FundingReceipt[] = []
-  for (const edge of connection.edges) {
-    const node = edge.node
-    if (!node) continue
-    records.push(mapFundingReceiptNode(node))
-  }
-
-  return {
-    records,
-    hasMore: connection.pageInfo.hasNextPage,
-    endCursor: connection.pageInfo.endCursor,
-    totalCount: connection.totalCount,
-  }
+  return parseFundingReceiptsResponse(json, res, "FundingReceiptsForActivity")
 }
 
 // ---------------------------------------------------------------------------

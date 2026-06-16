@@ -8,6 +8,7 @@ import Map, {
 } from "@/components/map/map-dynamic"
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import Tooltip from "@/components/ui/tooltip"
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
 import { authFetch } from "@/lib/auth/fetch"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import {
@@ -316,27 +317,13 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
  * doesn't expose `navigator.clipboard.writeText`.
  */
 function PlusCodeTag({ code }: { code: string }) {
-  const [copied, setCopied] = useState(false)
-  const handleCopy = async () => {
-    if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
-      return
-    }
-    try {
-      await navigator.clipboard.writeText(code)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // Permissions blocked or document isn't focused — silently
-      // fall through. The tag stays in place and the viewer can
-      // copy manually by selecting the text.
-    }
-  }
+  const { copied, copy } = useCopyToClipboard()
   return (
     <Tooltip label={copied ? "Copied" : "Copy Plus Code"}>
       <button
         type="button"
         className="cert-detail__map-locations-plus"
-        onClick={handleCopy}
+        onClick={() => copy(code)}
         aria-label={`Copy Plus Code ${code}`}
       >
         {copied ? "Copied" : code}

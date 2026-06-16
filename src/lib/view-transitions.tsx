@@ -6,6 +6,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   type ReactNode,
 } from "react"
@@ -97,12 +98,16 @@ export function ViewTransitionProvider({ children }: { children: ReactNode }) {
           finishRef.current = resolve
           navigate()
           // Backstop: never leave the page frozen if the route doesn't
-          // actually change (e.g. navigating to the current URL).
+          // actually change (e.g. navigating to the current URL). Only clear
+          // the shared ref when it's still THIS transition's resolver (a
+          // newer navigation may have replaced it); resolve this
+          // transition's own promise unconditionally — settling a superseded
+          // transition is harmless and avoids leaking a pending promise.
           window.setTimeout(() => {
             if (finishRef.current === resolve) {
               finishRef.current = null
-              resolve()
             }
+            resolve()
           }, 500)
         }),
     )
@@ -123,8 +128,15 @@ export function ViewTransitionProvider({ children }: { children: ReactNode }) {
     [run, router],
   )
 
+  // Stable context value — the callbacks are themselves memoized, so
+  // consumers don't re-render on every provider render.
+  const api = useMemo<ViewTransitionApi>(
+    () => ({ transitionTo, transitionBack }),
+    [transitionTo, transitionBack],
+  )
+
   return (
-    <ViewTransitionContext.Provider value={{ transitionTo, transitionBack }}>
+    <ViewTransitionContext.Provider value={api}>
       <Suspense fallback={null}>
         <RouteWatcher onChange={handleRouteChange} />
       </Suspense>

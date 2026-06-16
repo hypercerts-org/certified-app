@@ -132,9 +132,10 @@ const EMPTY_SELECTION_SENTINEL = "-"
 const EMPTY_DID_SET: ReadonlySet<string> = new Set<string>()
 
 /** Default funding "Confirmed by" selection — all role buckets, no third
- *  parties. The single-kind funding view starts here (and lets the user
- *  change it); the combined All view applies it as a fixed filter with no
- *  control, so its funding block matches the funding tab's default. */
+ *  parties — i.e. show only receipts confirmed by the sender, recipient, or
+ *  both. The single-kind funding view starts here (the user can change it);
+ *  the combined All view applies it as a fixed filter (no control), so its
+ *  funding block matches the funding tab's default. */
 const DEFAULT_CONFIRM_ROLES: ReadonlySet<ConfirmRole> = new Set(CONFIRM_ROLES)
 
 /**
@@ -1212,9 +1213,9 @@ function ExploreAllBlocks() {
     () => sortUsers(accounts.users, "newest").slice(0, ALL_VIEW_BLOCK_SIZE),
     [accounts.users],
   )
-  // Same default "Confirmed by" filter as the funding tab — show receipts
-  // confirmed by both / sender / recipient, but not third-party-only ones.
-  // Fixed here (the All view has no confirmer control).
+  // Same default "Confirmed by" filter as the funding tab — show only
+  // receipts confirmed by sender / recipient / both (third-party-only ones
+  // are hidden). Fixed here (the All view has no confirmer control).
   const fundingItems = useMemo(
     () =>
       funding.fundingReceipts
@@ -1859,6 +1860,24 @@ function ResultsArea({
     return degrees.has(meta.degree)
   }
 
+  // Funding "Confirmed by" filter — memoized so an unrelated re-render (a
+  // keystroke in search, a view toggle) doesn't re-run the O(n) attestation
+  // filter over the whole receipt list. Recomputes only when the loaded
+  // receipts or either selection changes.
+  const filteredFundingReceipts = useMemo(
+    () =>
+      confirmRoles
+        ? data.fundingReceipts.filter((r) =>
+            matchesConfirmedBy(
+              r.attestations,
+              confirmRoles,
+              confirmThirdParties ?? EMPTY_DID_SET,
+            ),
+          )
+        : data.fundingReceipts,
+    [data.fundingReceipts, confirmRoles, confirmThirdParties],
+  )
+
   if (
     data.isLoading &&
     data.users.length === 0 &&
@@ -1874,17 +1893,7 @@ function ResultsArea({
   }
 
   if (kind === "funding") {
-    // Client-side "Confirmed by" filter — union of the selected role
-    // buckets + third-party attestors (empty third-party set passed as-is).
-    const receipts = confirmRoles
-      ? data.fundingReceipts.filter((r) =>
-          matchesConfirmedBy(
-            r.attestations,
-            confirmRoles,
-            confirmThirdParties ?? EMPTY_DID_SET,
-          ),
-        )
-      : data.fundingReceipts
+    const receipts = filteredFundingReceipts
     if (receipts.length === 0) return <EmptyResults kind={kind} />
     return (
       <ul className="explore__list explore__list--funding">

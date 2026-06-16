@@ -257,6 +257,31 @@ export default function ActivityDetail({
       ),
     [fundingReceipts, confirmedBy.roles, confirmedBy.thirdParties],
   )
+  // Count shown next to the filter control: the number of loaded receipts the
+  // filter currently shows, so it always agrees with the list below it. The
+  // Confirmed-by filter is always applied (its default already hides
+  // third-party-only receipts), so this is the filtered count in every state.
+  // (Counts the loaded window; an activity with >100 receipts is the known
+  // page-1 cap pending magic-indexer #214. The Funding tab strip label keeps
+  // the unfiltered total receipt count.)
+  const shownFundingCount = filteredFunding.length
+
+  // The Confirmed-by filter control is rendered identically in the overview
+  // section and the Funding tab (only one is mounted at a time, tab-gated),
+  // so build it once. All props come from the shared confirmedBy state.
+  const confirmedByControl = (
+    <FundingConfirmedByPopover
+      receipts={fundingReceipts}
+      roles={confirmedBy.roles}
+      onToggleRole={confirmedBy.toggleRole}
+      thirdParties={confirmedBy.thirdParties}
+      onToggleThirdParty={confirmedBy.toggleThirdParty}
+      isDefault={confirmedBy.isDefault}
+      onReset={confirmedBy.reset}
+      open={confirmedByOpen}
+      onOpenChange={setConfirmedByOpen}
+    />
+  )
 
   // Tab strip on the top bar (back-row) drives which slice of the
   // record renders in the right pane. Keep the left aside identical
@@ -293,8 +318,8 @@ export default function ActivityDetail({
           ? `Contributors (${contributorCount})`
           : "Contributors"
         : activeTab === "funding"
-          ? fundingCount > 0
-            ? `Funding (${fundingCount})`
+          ? shownFundingCount > 0
+            ? `Funding (${shownFundingCount})`
             : "Funding"
           : activeTab === "updates"
             ? "Updates"
@@ -1252,20 +1277,10 @@ export default function ActivityDetail({
                 <div className="cert-detail__section-header">
                   <h2 className="cert-detail__section-title">Funding</h2>
                   <span className="cert-detail__section-count">
-                    {fundingCount}
+                    {shownFundingCount}
                   </span>
                   <div className="cert-detail__section-actions">
-                    <FundingConfirmedByPopover
-                      receipts={fundingReceipts}
-                      roles={confirmedBy.roles}
-                      onToggleRole={confirmedBy.toggleRole}
-                      thirdParties={confirmedBy.thirdParties}
-                      onToggleThirdParty={confirmedBy.toggleThirdParty}
-                      isDefault={confirmedBy.isDefault}
-                      onReset={confirmedBy.reset}
-                      open={confirmedByOpen}
-                      onOpenChange={setConfirmedByOpen}
-                    />
+                    {confirmedByControl}
                     {fundingHref ? (
                       <TransitionLink
                         href={fundingHref}
@@ -1393,21 +1408,11 @@ export default function ActivityDetail({
             <div className="cert-detail__section-header">
               <h2 className="cert-detail__section-title">Funding</h2>
               <span className="cert-detail__section-count">
-                {fundingCount}
+                {shownFundingCount}
               </span>
               {fundingReceipts.length > 0 ? (
                 <div className="cert-detail__section-actions">
-                  <FundingConfirmedByPopover
-                    receipts={fundingReceipts}
-                    roles={confirmedBy.roles}
-                    onToggleRole={confirmedBy.toggleRole}
-                    thirdParties={confirmedBy.thirdParties}
-                    onToggleThirdParty={confirmedBy.toggleThirdParty}
-                    isDefault={confirmedBy.isDefault}
-                    onReset={confirmedBy.reset}
-                    open={confirmedByOpen}
-                    onOpenChange={setConfirmedByOpen}
-                  />
+                  {confirmedByControl}
                 </div>
               ) : null}
             </div>

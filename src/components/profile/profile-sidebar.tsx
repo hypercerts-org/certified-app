@@ -26,6 +26,7 @@ import Tooltip from "@/components/ui/tooltip"
 import { getInitials } from "@/lib/utils/initials"
 import { formatMonthYear } from "@/lib/utils/format-date"
 import { useProfilePds } from "@/hooks/use-profile-pds"
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useSession } from "@/hooks/use-session"
 import { useOrg } from "@/lib/groups/org-context"
@@ -632,22 +633,13 @@ interface CopyButtonProps {
 }
 
 function CopyButton({ value, label }: CopyButtonProps) {
-  const [copied, setCopied] = useState(false)
-  const onClick = async () => {
-    try {
-      await navigator.clipboard.writeText(value)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      /* clipboard unavailable — silent */
-    }
-  }
+  const { copied, copy } = useCopyToClipboard()
   return (
     <Tooltip label={copied ? "Copied" : label}>
       <button
         type="button"
         className="profile-sidebar__copy-btn"
-        onClick={onClick}
+        onClick={() => copy(value)}
         aria-label={copied ? "Copied" : label}
       >
         {copied ? (

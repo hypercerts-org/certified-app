@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
 import { Check, Copy } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Tooltip from "@/components/ui/tooltip"
 import { useEnsName } from "@/hooks/use-ens-name"
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
 import { isEthereumAddress, shortenAddress } from "@/lib/ens/resolve-ens"
 import { getInitials } from "@/lib/utils/initials"
 
@@ -45,7 +45,7 @@ export default function WalletAddress({
 }: WalletAddressProps) {
   const valid = isEthereumAddress(address)
   const { name, avatar } = useEnsName(valid ? address : null)
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useCopyToClipboard()
 
   if (!valid) {
     // Not an address — render the literal value, no affordances.
@@ -54,22 +54,12 @@ export default function WalletAddress({
 
   const display = name ?? shortenAddress(address)
 
-  const onCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(address)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      /* clipboard unavailable — silent */
-    }
-  }
-
   return (
     <Tooltip label={copied ? "Copied" : address} side={tooltipSide}>
       <button
         type="button"
         className={`wallet-address ${className}`.trim()}
-        onClick={onCopy}
+        onClick={() => copy(address)}
         aria-label={copied ? "Copied address" : `Copy address ${address}`}
         data-ens={name ? "" : undefined}
       >

@@ -54,6 +54,19 @@ import { authFetch } from "@/lib/auth/fetch"
 import type { ExploreKind } from "@/components/explore-page/explore-types"
 
 /**
+ * Coerce a possibly-empty org-label tier list into the indexer's
+ * `authorLabels` / `excludeAuthorLabels` arg shape: a fresh array when
+ * non-empty, else `undefined` (the connection treats an absent arg as "no
+ * filter"). Every indexer-backed load branch derives its label args this
+ * way; the per-DID / getRecord branches ignore labels by design.
+ */
+function toLabelArg(
+  labels: readonly string[] | null | undefined,
+): string[] | undefined {
+  return labels && labels.length > 0 ? [...labels] : undefined
+}
+
+/**
  * Endorsement-graph closure metadata carried alongside an explore
  * result when the user picked the "Endorsed users" / "I endorsed"
  * filter (certified-app #84 + magic-indexer #117).
@@ -744,14 +757,8 @@ async function loadAccountsPage(args: LoadArgs): Promise<LoadedPage> {
   // `isOrganization` sub-toggle) handles include just like any other
   // server-side filter, with no 100-actor cap. These pass straight
   // through to the paginating branch below.
-  const authorLabels =
-    includeOrgLabels && includeOrgLabels.length > 0
-      ? [...includeOrgLabels]
-      : undefined
-  const excludeAuthorLabels =
-    excludeOrgLabels && excludeOrgLabels.length > 0
-      ? [...excludeOrgLabels]
-      : undefined
+  const authorLabels = toLabelArg(includeOrgLabels)
+  const excludeAuthorLabels = toLabelArg(excludeOrgLabels)
 
   // "My organizations" — resolve the viewer's group DIDs DIRECTLY rather
   // than scanning the most-recently-indexed top-100 actors and
@@ -1014,14 +1021,8 @@ async function loadProjectsPage(args: LoadArgs): Promise<LoadedPage> {
   // these; the URI-keyed branches (Ma Earth featured, Recently viewed)
   // resolve via PDS getRecord, which has no label-filterable
   // connection, so they ignore the org-quality filter by design.
-  const authorLabels =
-    includeOrgLabels && includeOrgLabels.length > 0
-      ? [...includeOrgLabels]
-      : undefined
-  const excludeAuthorLabels =
-    excludeOrgLabels && excludeOrgLabels.length > 0
-      ? [...excludeOrgLabels]
-      : undefined
+  const authorLabels = toLabelArg(includeOrgLabels)
+  const excludeAuthorLabels = toLabelArg(excludeOrgLabels)
 
   if (filter === MA_EARTH_FILTER) {
     if (cursor !== null) return EMPTY_PAGE
@@ -1146,14 +1147,8 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
   // `fetchOrgDidsByLabel` DID-resolution + `orgScope` / `dropExcluded`
   // client filtering (which broke pagination — a 100-row page came
   // back short) is gone.
-  const authorLabels =
-    includeOrgLabels && includeOrgLabels.length > 0
-      ? [...includeOrgLabels]
-      : undefined
-  const excludeAuthorLabels =
-    excludeOrgLabels && excludeOrgLabels.length > 0
-      ? [...excludeOrgLabels]
-      : undefined
+  const authorLabels = toLabelArg(includeOrgLabels)
+  const excludeAuthorLabels = toLabelArg(excludeOrgLabels)
 
   if (filter === MA_EARTH_FILTER) {
     if (cursor !== null) return EMPTY_PAGE
@@ -1346,14 +1341,8 @@ async function loadFundingPage(args: LoadArgs): Promise<LoadedPage> {
   // (magic-indexer#207). With the default selection this excludes receipts
   // authored by "likely-test" accounts, so the tab shows only receipts
   // created by accounts that are likely real.
-  const authorLabels =
-    includeOrgLabels && includeOrgLabels.length > 0
-      ? [...includeOrgLabels]
-      : undefined
-  const excludeAuthorLabels =
-    excludeOrgLabels && excludeOrgLabels.length > 0
-      ? [...excludeOrgLabels]
-      : undefined
+  const authorLabels = toLabelArg(includeOrgLabels)
+  const excludeAuthorLabels = toLabelArg(excludeOrgLabels)
   const r = await fetchFundingReceipts({
     first: PAGE_SIZE,
     after: cursor ?? undefined,

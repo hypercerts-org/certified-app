@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useId, useMemo } from "react"
 import { UserRoundCheck } from "lucide-react"
 import {
   Popover as UiPopover,
@@ -8,9 +8,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import Tooltip from "@/components/ui/tooltip"
-import IdentityRow from "@/components/ui/identity-row"
 import Checkbox from "@/components/ui/checkbox"
-import { useAuthorInfo } from "@/hooks/use-author-info"
+import { HydratedIdentityRow } from "./funding-receipt-parts"
 import {
   CONFIRM_ROLES,
   thirdPartyDids,
@@ -60,9 +59,22 @@ export default function FundingConfirmedByPopover({
   open: boolean
   onOpenChange: (v: boolean) => void
 }) {
+  // Associate each checkbox section with its visible label for AT (the
+  // popover renders role="group", not a menu).
+  const rolesHeadingId = useId()
+  const tpHeadingId = useId()
+
   // Distinct third-party attestors across the loaded receipts, plus any
   // currently-selected DIDs (so a selection stays listed even if its rows
   // scroll out of the loaded window).
+  //
+  // The candidate list — and the filtering itself (`matchesConfirmedBy`) —
+  // is intentionally scoped to the loaded window: the server-side
+  // `confirmedBy` arg that would push this filter upstream is plumbed
+  // through `fetchFundingReceipts` -> the indexer GraphQL op but stays
+  // dormant until magic-indexer #214 ships it (the real filter is a
+  // multi-axis role-bucket + DID set, which the single nullable-DID arg
+  // can't yet express). That plumbing is deliberately kept, not dead code.
   const candidates = useMemo(() => {
     const seen = new Set<string>()
     const out: string[] = []
@@ -91,29 +103,37 @@ export default function FundingConfirmedByPopover({
           </button>
         </PopoverTrigger>
       </Tooltip>
-      <PopoverContent align="end">
-        <p className="popover__section-heading">Confirmed by</p>
-        {CONFIRM_ROLES.map((role) => (
-          <div key={role} className="popover__item popover__item--check">
-            <Checkbox
-              label={ROLE_LABEL[role]}
-              checked={roles.has(role)}
-              onChange={() => onToggleRole(role)}
-            />
-          </div>
-        ))}
+      <PopoverContent align="end" role="group" aria-label="Confirmed by filter">
+        <div role="group" aria-labelledby={rolesHeadingId}>
+          <p id={rolesHeadingId} className="popover__section-heading">
+            Confirmed by
+          </p>
+          {CONFIRM_ROLES.map((role) => (
+            <div key={role} className="popover__item popover__item--check">
+              <Checkbox
+                label={ROLE_LABEL[role]}
+                checked={roles.has(role)}
+                onChange={() => onToggleRole(role)}
+              />
+            </div>
+          ))}
+        </div>
         {candidates.length > 0 ? (
           <>
             <hr className="popover__divider" aria-hidden="true" />
-            <p className="popover__section-heading">Confirmed by third parties</p>
-            {candidates.map((did) => (
-              <ThirdPartyCheck
-                key={did}
-                did={did}
-                checked={thirdParties.has(did)}
-                onToggle={onToggleThirdParty}
-              />
-            ))}
+            <div role="group" aria-labelledby={tpHeadingId}>
+              <p id={tpHeadingId} className="popover__section-heading">
+                Confirmed by third parties
+              </p>
+              {candidates.map((did) => (
+                <ThirdPartyCheck
+                  key={did}
+                  did={did}
+                  checked={thirdParties.has(did)}
+                  onToggle={onToggleThirdParty}
+                />
+              ))}
+            </div>
           </>
         ) : null}
         <hr className="popover__divider" aria-hidden="true" />
@@ -141,20 +161,16 @@ function ThirdPartyCheck({
   checked: boolean
   onToggle: (did: string) => void
 }) {
-  const { info } = useAuthorInfo(did)
   return (
     <div className="popover__item popover__item--check">
       <Checkbox
         checked={checked}
         onChange={() => onToggle(did)}
         label={
-          <IdentityRow
+          <HydratedIdentityRow
             did={did}
-            handle={info?.handle ?? undefined}
-            displayName={info?.displayName ?? undefined}
-            avatarUrl={info?.avatarUrl ?? undefined}
-            size="sm"
             className="funding-confirmer-item"
+            noLink
           />
         }
       />

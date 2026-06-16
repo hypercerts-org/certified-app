@@ -13,18 +13,23 @@ import { fetchUserActivityCount } from "@/lib/atproto/indexer"
  * a neutral label (or hide the count) in that case.
  */
 export function useUserActivityCount(did: string | null): number | null {
-  const [count, setCount] = useState<number | null>(null)
+  // Track which did the resolved count belongs to so a did change reports
+  // null immediately rather than lingering on the previous profile's count
+  // until the new fetch resolves. `fetchUserActivityCount` resolves to null
+  // for an empty did, so the reset path still runs through the same async
+  // setState — no synchronous setState in the effect body.
+  const [resolved, setResolved] = useState<{
+    did: string | null
+    count: number | null
+  }>({ did: null, count: null })
   useEffect(() => {
     let cancelled = false
-    // `fetchUserActivityCount` resolves to null for an empty did, so the
-    // reset path runs through the same async setState — avoids a
-    // synchronous setState in the effect body.
     fetchUserActivityCount(did ?? "").then((c) => {
-      if (!cancelled) setCount(c)
+      if (!cancelled) setResolved({ did, count: c })
     })
     return () => {
       cancelled = true
     }
   }, [did])
-  return count
+  return resolved.did === did ? resolved.count : null
 }
