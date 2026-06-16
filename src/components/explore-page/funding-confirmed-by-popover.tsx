@@ -8,6 +8,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import Tooltip from "@/components/ui/tooltip"
+import Button from "@/components/ui/button"
 import Checkbox from "@/components/ui/checkbox"
 import { HydratedIdentityRow } from "./funding-receipt-parts"
 import {
@@ -19,7 +20,7 @@ import type { FundingReceipt } from "@/lib/atproto/indexer"
 
 const ROLE_LABEL: Record<ConfirmRole, string> = {
   both: "Both",
-  sender: "Sender",
+  sender: "Funder",
   recipient: "Recipient",
 }
 
@@ -45,6 +46,7 @@ export default function FundingConfirmedByPopover({
   onReset,
   open,
   onOpenChange,
+  triggerVariant = "chrome",
 }: {
   /** Full loaded result set — the source of third-party candidates. */
   receipts: FundingReceipt[]
@@ -58,6 +60,10 @@ export default function FundingConfirmedByPopover({
   onReset: () => void
   open: boolean
   onOpenChange: (v: boolean) => void
+  /** "chrome" — the /explore toolbar icon button (default). "section" — a
+   *  labelled secondary button matching the "Record funding" action on the
+   *  activity-detail Funding header. */
+  triggerVariant?: "chrome" | "section"
 }) {
   // Associate each checkbox section with its visible label for AT (the
   // popover renders role="group", not a menu).
@@ -92,15 +98,27 @@ export default function FundingConfirmedByPopover({
     <UiPopover open={open} onOpenChange={onOpenChange}>
       <Tooltip label="Filter by confirmer">
         <PopoverTrigger>
-          <button
-            type="button"
-            className={`explore__chrome-btn explore__chrome-btn--icon${
-              isDefault ? "" : " explore__chrome-btn--active"
-            }`}
-            aria-label={`Filter by confirmer${isDefault ? "" : " (filtered)"}`}
-          >
-            <UserRoundCheck size={13} strokeWidth={1.75} aria-hidden />
-          </button>
+          {triggerVariant === "section" ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              pressed={!isDefault}
+              className="cert-detail__section-action-btn"
+              aria-label={`Filter by confirmer${isDefault ? "" : " (filtered)"}`}
+            >
+              <UserRoundCheck size={14} strokeWidth={1.75} aria-hidden />
+            </Button>
+          ) : (
+            <button
+              type="button"
+              className={`explore__chrome-btn explore__chrome-btn--icon${
+                isDefault ? "" : " explore__chrome-btn--active"
+              }`}
+              aria-label={`Filter by confirmer${isDefault ? "" : " (filtered)"}`}
+            >
+              <UserRoundCheck size={13} strokeWidth={1.75} aria-hidden />
+            </button>
+          )}
         </PopoverTrigger>
       </Tooltip>
       <PopoverContent align="end" role="group" aria-label="Confirmed by filter">

@@ -210,7 +210,7 @@ export default function FundingReceiptFormModal({
               fixedIdentity(writerDid)
             ) : (
               <FundingPartyField
-                ariaLabel="Sender"
+                ariaLabel="Funder"
                 value={fromParty}
                 onChange={setFromParty}
                 disabled={submitting}

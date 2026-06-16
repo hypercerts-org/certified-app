@@ -60,6 +60,7 @@ import FundingConfirmedByPopover from "@/components/explore-page/funding-confirm
 import { matchesConfirmedBy, isTrustedEvaluator } from "@/lib/atproto/funding-provenance"
 import FundingReceiptFormModal from "@/components/funding/funding-receipt-form-modal"
 import FundingIdentityChoiceDialog from "@/components/funding/funding-identity-choice-dialog"
+import RightsDetailModal from "@/components/feed/rights-detail-modal"
 import Button from "@/components/ui/button"
 import { useFundingConfirmedBy } from "@/hooks/use-funding-confirmed-by"
 import { useAuthorInfo } from "@/hooks/use-author-info"
@@ -262,6 +263,8 @@ export default function ActivityDetail({
   const [recordIdentityOpen, setRecordIdentityOpen] = useState(false)
   const [recordFundingAs, setRecordFundingAs] =
     useState<"individual" | "group">("individual")
+  // Rights detail modal (opened from the Rights meta row).
+  const [rightsModalOpen, setRightsModalOpen] = useState(false)
 
   // Funding "Confirmed by" filter — same URL-backed state + popover as
   // /explore. Applied client-side to the loaded receipts (shared by the
@@ -303,6 +306,7 @@ export default function ActivityDetail({
       onReset={confirmedBy.reset}
       open={confirmedByOpen}
       onOpenChange={setConfirmedByOpen}
+      triggerVariant="section"
     />
   )
 
@@ -460,10 +464,20 @@ export default function ActivityDetail({
       ) ?? null
   const [groupEditOpen, setGroupEditOpen] = useState(false)
   const editHref = `${recordUrl(did, "activity", rkey ?? "")}/edit`
-  const descriptionHref = pathname
-    ? `${pathname}?tab=description`
-    : null
-  const fundingHref = pathname ? `${pathname}?tab=funding` : null
+  // Build a tab href that PRESERVES the current query params (e.g. the
+  // funding "Confirmed by" filter `?confirmedRoles=`), so jumping from the
+  // overview to a sub-tab via "See all" doesn't reset the filter. Mirrors the
+  // top-bar tab strip's `hrefFor`.
+  const tabHref = (tab: string): string | null => {
+    if (!pathname) return null
+    const params = new URLSearchParams(searchParams?.toString() ?? "")
+    if (tab === "overview") params.delete("tab")
+    else params.set("tab", tab)
+    const qs = params.toString()
+    return qs ? `${pathname}?${qs}` : pathname
+  }
+  const descriptionHref = tabHref("description")
+  const fundingHref = tabHref("funding")
 
   // -------------------------------------------------------------------
   // Inline edit state — same pattern as the profile page. Drafts are
@@ -1232,9 +1246,7 @@ export default function ActivityDetail({
             ? (() => {
                 const ASIDE_CONTRIB_PREVIEW = 5
                 const shown = contributors.slice(0, ASIDE_CONTRIB_PREVIEW)
-                const contributorsHref = pathname
-                  ? `${pathname}?tab=contributors`
-                  : null
+                const contributorsHref = tabHref("contributors")
                 const hasAnyWeight = shown.some(
                   (c) => c.contributionWeight != null,
                 )
@@ -1299,13 +1311,20 @@ export default function ActivityDetail({
                 Rights
               </dt>
               <dd className="cert-detail__meta-value">
-                {rightsName ? (
-                  rightsName
-                ) : rightsLoading ? (
-                  <span className="cert-detail__meta-aux">Loading…</span>
-                ) : (
-                  <span className="cert-detail__uri">{value.rights.uri}</span>
-                )}
+                <button
+                  type="button"
+                  className="cert-detail__rights-link"
+                  onClick={() => setRightsModalOpen(true)}
+                  title="View rights details"
+                >
+                  {rightsName ? (
+                    rightsName
+                  ) : rightsLoading ? (
+                    <span className="cert-detail__meta-aux">Loading…</span>
+                  ) : (
+                    <span className="cert-detail__uri">{value.rights.uri}</span>
+                  )}
+                </button>
               </dd>
             </div>
           ) : null}
@@ -1342,7 +1361,7 @@ export default function ActivityDetail({
                 subjectUri={`at://${did}/org.hypercerts.claim.activity/${rkey}`}
                 variant="overview"
                 maxItems={1}
-                seeAllHref={pathname ? `${pathname}?tab=updates` : null}
+                seeAllHref={tabHref("updates")}
               />
             ) : null}
 
@@ -1618,6 +1637,13 @@ export default function ActivityDetail({
           )
         })()
       : null}
+    {rightsModalOpen && value.rights ? (
+      <RightsDetailModal
+        uri={value.rights.uri}
+        cid={value.rights.cid}
+        onClose={() => setRightsModalOpen(false)}
+      />
+    ) : null}
     </>
   )
 }

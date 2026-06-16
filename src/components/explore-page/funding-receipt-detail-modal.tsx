@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useMemo, useState, type ReactNode } from "react"
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react"
 import { Check, ChevronRight, Copy, Trash2 } from "lucide-react"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
@@ -19,13 +19,13 @@ import {
   fundingConfirmEligibility,
   type FundingRole,
 } from "@/lib/atproto/funding-provenance"
-import { receiptAuthorRole } from "@/lib/atproto/funding-merge"
+import { receiptAuthorRole, sameClusterKeys } from "@/lib/atproto/funding-merge"
+import { deleteFundingReceipt, listFundingReceiptsInRepo } from "@/lib/atproto/funding-receipt-record"
 import type { FundingAttestation } from "@/lib/atproto/indexer"
 import {
   useFundingConfirmedLocally,
   markFundingDeleted,
 } from "@/lib/atproto/funding-confirmed-store"
-import { deleteFundingReceipt } from "@/lib/atproto/funding-receipt-record"
 import { formatShortDate } from "@/lib/utils/format-date"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
 
@@ -100,24 +100,64 @@ export default function FundingReceiptDetailModal({
   const hasAmount = !!receipt.amount
   const hasForActivity = !!receipt.forUri
 
-  // One "Record" section per author of the payment. Prefer the attestations
-  // (they cover the whole cluster); fall back to this receipt alone when
-  // unattested. Match each author to a member receipt we hold (if any) for its
-  // date / URI / CID — non-canonical members the indexer dropped are unknown.
-  const recordAuthors: FundingAttestation[] =
-    receipt.attestations.length > 0
-      ? receipt.attestations
-      : [{ role: receiptAuthorRole(receipt), did: receipt.did }]
-  const multipleRecords = recordAuthors.length > 1
-  const memberByDid = new Map(
-    (receipt.members ?? [receipt]).map((m) => [m.did, m] as const),
-  )
-
   const { did: viewerDid } = useAuth()
   const { groups } = useOrg()
   // A confirmation this session (before the indexer reflects it) keeps the
   // viewer's own affordance hidden so the payment can't be confirmed twice.
   const confirmedLocally = useFundingConfirmedLocally(receipt.uri)
+
+  // One "Record" section per author of the payment. Prefer the attestations
+  // (they cover the whole cluster); fall back to this receipt alone when
+  // unattested.
+  const recordAuthors: FundingAttestation[] =
+    receipt.attestations.length > 0
+      ? receipt.attestations
+      : [{ role: receiptAuthorRole(receipt), did: receipt.did }]
+  const multipleRecords = recordAuthors.length > 1
+
+  // The indexer collapses a confirmed payment into one canonical node, dropping
+  // the other members — and the canonical exposes no link to them (its
+  // `matchingReceipt` is cleared). So an attestation author we don't hold a
+  // receipt for has no date/URI/CID and can't be taken back. Recover each by
+  // listing that author's repo and matching the payment's cluster keys. Keyed
+  // by the receipt URI so members from a previous receipt are ignored without a
+  // synchronous reset.
+  const [resolved, setResolved] = useState<{
+    uri: string
+    members: FundingReceipt[]
+  } | null>(null)
+  useEffect(() => {
+    const base = receipt.members ?? [receipt]
+    const haveDids = new Set(base.map((m) => m.did))
+    const missingDids = [
+      ...new Set(receipt.attestations.map((a) => a.did)),
+    ].filter((did) => !haveDids.has(did))
+    if (missingDids.length === 0) return
+    let cancelled = false
+    Promise.all(
+      missingDids.map(async (did) => {
+        const all = await listFundingReceiptsInRepo(did)
+        return all.find((r) => sameClusterKeys(receipt, r)) ?? null
+      }),
+    ).then((found) => {
+      const members = found.filter((r): r is FundingReceipt => r !== null)
+      if (!cancelled && members.length > 0) {
+        setResolved({ uri: receipt.uri, members })
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [receipt])
+
+  const memberByDid = useMemo(() => {
+    const map = new Map<string, FundingReceipt>()
+    for (const m of receipt.members ?? [receipt]) map.set(m.did, m)
+    if (resolved?.uri === receipt.uri) {
+      for (const m of resolved.members) if (!map.has(m.did)) map.set(m.did, m)
+    }
+    return map
+  }, [receipt, resolved])
 
   // The identities the viewer can act through on this payment: themselves,
   // plus any group they're an owner/admin of that the payment involves (a
@@ -135,9 +175,7 @@ export default function FundingReceiptDetailModal({
       out.push(buildPerspective(receipt, g.groupDid, true, memberByDid, false))
     }
     return out
-    // memberByDid is derived from `receipt` each render; depend on `receipt`.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [receipt, viewerDid, groups, confirmedLocally])
+  }, [receipt, viewerDid, groups, confirmedLocally, memberByDid])
 
   const [confirmingAs, setConfirmingAs] = useState<{
     did: string
@@ -450,7 +488,7 @@ export default function FundingReceiptDetailModal({
  *  standard accordion pattern); `defaultOpen` controls the initial state,
  *  so only the first group is expanded on open. Each section owns its own
  *  `<dl>` so the inter-row hairlines reset at the group boundary. */
-function DetailSection({
+export function DetailSection({
   title,
   defaultOpen = false,
   children,
@@ -491,7 +529,7 @@ function DetailSection({
 }
 
 /** One label/value pair in the detail list. */
-function DetailRow({ label, children }: { label: string; children: ReactNode }) {
+export function DetailRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="funding-receipt-detail__row">
       <dt className="funding-receipt-detail__label">{label}</dt>
@@ -501,13 +539,13 @@ function DetailRow({ label, children }: { label: string; children: ReactNode }) 
 }
 
 /** A null / missing field rendered as a muted em dash. */
-function EmptyValue() {
+export function EmptyValue() {
   return <span className="funding-receipt-detail__empty">—</span>
 }
 
 /** A timestamp shown as the YYYY-MM-DD calendar date with the full ISO
  *  string available on hover (and in the `<time>` dateTime). */
-function DateValue({ iso }: { iso: string | null }) {
+export function DateValue({ iso }: { iso: string | null }) {
   if (!iso) return <EmptyValue />
   return (
     <time dateTime={iso} title={iso}>
@@ -534,7 +572,7 @@ function RecordSectionTitle({
   did: string
 }) {
   const { info } = useAuthorInfo(did)
-  if (role === "sender") return <>Record (Sender)</>
+  if (role === "sender") return <>Record (Funder)</>
   if (role === "recipient") return <>Record (Recipient)</>
   const name =
     info?.displayName || (info?.handle ? `@${info.handle}` : "third party")
@@ -543,7 +581,7 @@ function RecordSectionTitle({
 
 /** A long, monospaced identifier (at:// URI, CID) with a click-to-copy
  *  button and a brief "Copied" confirmation. */
-function CopyableValue({ value, label }: { value: string; label: string }) {
+export function CopyableValue({ value, label }: { value: string; label: string }) {
   const { copied, copy } = useCopyToClipboard()
   return (
     <span className="funding-receipt-detail__copyable">

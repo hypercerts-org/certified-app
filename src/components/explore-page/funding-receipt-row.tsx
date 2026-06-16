@@ -155,9 +155,9 @@ function FundingConfirmedBy({ receipt }: { receipt: FundingReceipt }) {
 
   const partyLabel =
     hasSender && hasRecipient
-      ? "Sender & Recipient"
+      ? "Funder & Recipient"
       : hasSender
-        ? "Sender"
+        ? "Funder"
         : hasRecipient
           ? "Recipient"
           : null

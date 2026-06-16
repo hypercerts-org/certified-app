@@ -1055,6 +1055,30 @@
   word-break: break-all;
 }
 
+/* The Rights meta value reads as plain text but opens the rights detail
+   modal on click — underline on hover signals it's interactive. */
+.cert-detail__rights-link {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cert-detail__rights-link:hover {
+  text-decoration: underline;
+}
+
+.cert-detail__rights-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
 /* ---------- Sections (contributors / locations / description) ---------- */
 
 .cert-detail__section {
