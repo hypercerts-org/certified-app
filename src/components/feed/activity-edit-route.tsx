@@ -26,7 +26,7 @@ import type { LinearDocument } from "@/lib/leaflet/types"
 import type { BlobRef } from "@atproto/api"
 import { uploadBlob, type UploadedBlob } from "@/lib/atproto/profile"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import { useActivity } from "@/hooks/use-activity"
+import { useActivity, invalidateActivity } from "@/hooks/use-activity"
 import {
   ContributorIdentityField,
   isContributorIdentityAcceptable,
@@ -757,6 +757,9 @@ export default function ActivityEditRoute({
         return
       }
 
+      // Drop the cached pre-edit record so the detail view we navigate to
+      // re-fetches the just-saved version rather than rendering stale data.
+      invalidateActivity(did, rkey)
       router.push(
         recordUrl(did, "activity", rkey),
       )
