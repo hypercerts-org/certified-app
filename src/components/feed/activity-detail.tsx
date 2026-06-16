@@ -257,6 +257,13 @@ export default function ActivityDetail({
       ),
     [fundingReceipts, confirmedBy.roles, confirmedBy.thirdParties],
   )
+  // Count shown next to the filter control: the total when the filter is in
+  // its default (show-everything) state, else the number of loaded receipts
+  // the active filter matches — so the number always agrees with the list
+  // below it. (The Funding tab label keeps the unfiltered total.)
+  const shownFundingCount = confirmedBy.isDefault
+    ? fundingCount
+    : filteredFunding.length
 
   // Tab strip on the top bar (back-row) drives which slice of the
   // record renders in the right pane. Keep the left aside identical
@@ -1252,7 +1259,7 @@ export default function ActivityDetail({
                 <div className="cert-detail__section-header">
                   <h2 className="cert-detail__section-title">Funding</h2>
                   <span className="cert-detail__section-count">
-                    {fundingCount}
+                    {shownFundingCount}
                   </span>
                   <div className="cert-detail__section-actions">
                     <FundingConfirmedByPopover
@@ -1393,7 +1400,7 @@ export default function ActivityDetail({
             <div className="cert-detail__section-header">
               <h2 className="cert-detail__section-title">Funding</h2>
               <span className="cert-detail__section-count">
-                {fundingCount}
+                {shownFundingCount}
               </span>
               {fundingReceipts.length > 0 ? (
                 <div className="cert-detail__section-actions">

@@ -1212,8 +1212,9 @@ function ExploreAllBlocks() {
     () => sortUsers(accounts.users, "newest").slice(0, ALL_VIEW_BLOCK_SIZE),
     [accounts.users],
   )
-  // Same default "Confirmed by" filter as the funding tab — show receipts
-  // confirmed by both / sender / recipient, but not third-party-only ones.
+  // Same default "Confirmed by" filter as the funding tab. The default
+  // (all role buckets, no specific third party) passes every receipt —
+  // including third-party-only ones — so the preview matches the count.
   // Fixed here (the All view has no confirmer control).
   const fundingItems = useMemo(
     () =>
