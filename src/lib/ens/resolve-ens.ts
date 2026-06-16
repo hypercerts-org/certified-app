@@ -62,8 +62,14 @@ export function resolveEns(address: string): Promise<EnsProfile> {
           data && typeof data.name === "string" && data.name.length > 0
             ? data.name
             : null,
+        // Mirror the /api/ens http(s)-only gate client-side too, so the
+        // "avatar is a loadable http(s) URL" invariant holds even if a
+        // future caller resolves ENS without going through the proxy.
+        // Blocks javascript:/data: vectors from an attacker-set ENS record.
         avatar:
-          data && typeof data.avatar === "string" && data.avatar.length > 0
+          data &&
+          typeof data.avatar === "string" &&
+          /^https?:\/\//.test(data.avatar)
             ? data.avatar
             : null,
       }
