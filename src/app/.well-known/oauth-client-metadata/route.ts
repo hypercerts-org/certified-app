@@ -39,6 +39,12 @@ export async function GET() {
     // src/app/api/auth/login/route.ts resolves the handle to its PDS
     // and starts a fresh OAuth flow.
     epds_handle_login_url: `${origin}/api/auth/login`,
+    // Browser-tab icon for trusted-client auth/consent pages (ePDS
+    // emits a <link rel="icon"> from this). SVG so it stays crisp at any
+    // tab size. No `favicon_url_dark` yet — the current brandmark has no
+    // white variant; add one (or an adaptive SVG) to ship a dark-theme
+    // tab icon.
+    favicon_url: `${origin}/brand/brandmark/certified_brandmark_black.svg`,
   }
 
   return NextResponse.json(metadata, {
