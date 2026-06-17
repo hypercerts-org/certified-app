@@ -68,6 +68,34 @@ export function ViewTransitionProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const finishRef = useRef<(() => void) | null>(null)
 
+  // In-app navigation depth, so the default Back action never walks out
+  // of the app. We patch history.pushState (Next's router calls it for
+  // every forward navigation, including query-only tab switches) to
+  // increment, and popstate (back/forward) to decrement, clamped at 0.
+  // router.replace uses replaceState, so URL canonicalization (did→handle)
+  // isn't counted. When the depth is 0 the user entered the app on this
+  // page (direct link, external referrer, or refresh), so `router.back()`
+  // would leave the app — we push "/" instead. Lives here (single,
+  // app-wide mount) rather than per-chrome component so every
+  // `transitionBack()` caller — mobile navbar and desktop top bar — gets
+  // the same guard without double-patching history.
+  const inAppDepthRef = useRef(0)
+  useEffect(() => {
+    const origPushState = history.pushState.bind(history)
+    history.pushState = (...args: Parameters<typeof origPushState>) => {
+      inAppDepthRef.current += 1
+      return origPushState(...args)
+    }
+    const onPop = () => {
+      inAppDepthRef.current = Math.max(0, inAppDepthRef.current - 1)
+    }
+    window.addEventListener("popstate", onPop)
+    return () => {
+      history.pushState = origPushState
+      window.removeEventListener("popstate", onPop)
+    }
+  }, [])
+
   const handleRouteChange = useCallback(() => {
     if (finishRef.current) {
       finishRef.current()
@@ -124,7 +152,20 @@ export function ViewTransitionProvider({ children }: { children: ReactNode }) {
 
   const transitionBack = useCallback(
     (navigate?: () => void) =>
-      run("back", navigate ?? (() => router.back())),
+      run(
+        "back",
+        navigate ??
+          (() => {
+            if (inAppDepthRef.current > 0) {
+              // Real in-app history — safe to pop (popstate decrements).
+              router.back()
+            } else {
+              // Entered the app on this page; router.back() would exit to
+              // an external page. Go home instead.
+              router.push("/")
+            }
+          }),
+      ),
     [run, router],
   )
 
