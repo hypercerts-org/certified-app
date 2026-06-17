@@ -31,7 +31,7 @@ export async function GET(
 
     const { data } = await groupAgent.call(
       "app.certified.group.member.list",
-      { limit }
+      { repo: groupDid, limit }
     )
 
     return NextResponse.json(data)
@@ -86,7 +86,7 @@ export async function POST(
     const { data } = await groupAgent.call(
       "app.certified.group.member.add",
       {},
-      { memberDid, role },
+      { repo: groupDid, memberDid, role },
       { encoding: "application/json" }
     )
 
@@ -132,7 +132,7 @@ export async function DELETE(
     await groupAgent.call(
       "app.certified.group.member.remove",
       {},
-      { memberDid },
+      { repo: groupDid, memberDid },
       { encoding: "application/json" }
     )
 

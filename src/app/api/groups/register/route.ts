@@ -127,7 +127,10 @@ export async function POST(request: NextRequest) {
               // entry is found — no later page can change the boolean answer.
               let memberCursor: string | undefined
               do {
-                const params: Record<string, unknown> = { limit: 100 }
+                const params: Record<string, unknown> = {
+                  repo: g.groupDid,
+                  limit: 100,
+                }
                 if (memberCursor) params.cursor = memberCursor
                 const { data } = await groupAgent.call(
                   "app.certified.group.member.list",
