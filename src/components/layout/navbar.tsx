@@ -41,7 +41,6 @@ const ROOT_PATHS = new Set<string>([
   "/apps",
   "/profile",
   "/settings",
-  "/groups",
   "/endorsements",
   "/help",
 ]);
