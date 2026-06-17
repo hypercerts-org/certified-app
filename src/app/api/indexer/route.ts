@@ -330,6 +330,42 @@ ${ACTIVITY_NODE_SELECTION}
     }
   `,
 
+  // Every endorsement-typed badge award across the network — backs the
+  // /visualization endorsement-graph page. Returns the directed edge
+  // (issuer `did` → `subject` DID) plus the issuer's denormalised actor
+  // profile (same `issuer { ... }` join as ReceivedEndorsements, drops a
+  // per-issuer resolve fan-out). Subjects that never issued an award have
+  // no inline profile here, so the client resolves those DIDs via
+  // NetworkActorsByDids. `excludeAuthorLabels` hides awards authored by
+  // likely-test accounts, mirroring AwardCount so the graph matches the
+  // public counters. Paginated; the client unions pages up to a cap.
+  AllEndorsements: `
+    query AllEndorsements($first: Int!, $after: String) {
+      appCertifiedBadgeAward(
+        where: { badgeType: { eq: "endorsement" } }
+        excludeAuthorLabels: ${JSON.stringify([...DEFAULT_HIDDEN_ORG_LABELS])}
+        first: $first
+        after: $after
+      ) {
+        edges {
+          cursor
+          node {
+            uri
+            createdAt
+            note
+            did
+            subject {
+              __typename
+              ... on AppCertifiedDefsDid { did }
+            }
+            issuer { did handle displayName avatarCid pds }
+          }
+        }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  `,
+
   // Endorsement-typed badge definitions for a batch of issuer DIDs.
   EndorsementDefs: `
     query EndorsementDefs($dids: [String!]!, $first: Int!) {
@@ -1566,6 +1602,14 @@ function buildVariables(
       if (typeof rawDegree !== "number" || !Number.isInteger(rawDegree)) return null
       if (rawDegree < 1 || rawDegree > 3) return null
       return { viewer, degree: rawDegree }
+    }
+    case "AllEndorsements": {
+      // Zero required vars — paginated network-wide scan. Same clamp
+      // shape as the other 100-per-page reads (ReceivedEndorsements).
+      return {
+        first: clampFirst(vars.first, MAX_FIRST, 100),
+        after: readString(vars.after, MAX_AFTER_LEN),
+      }
     }
     case "EvaluatorEndorsements": {
       // Same cap as `authors` on FollowerEvents — defensive, in practice
