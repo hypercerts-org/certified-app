@@ -76,12 +76,16 @@ export function tileSizing(
   height: number,
 ): { avatarSize: number; fontSize: number; showAvatar: boolean; showLabel: boolean } {
   const min = Math.min(width, height)
-  const avatarSize = Math.max(20, Math.min(96, Math.round(min * 0.4)))
-  const fontSize = Math.max(9, Math.min(14, Math.round(min * 0.12)))
+  // Avatar scales with the tile (so a heavy contributor gets a big medallion,
+  // like hyperboards) and stays visible down to tiny tiles. Shrink a little
+  // when a name label will sit beneath it so both fit.
+  const factor = width > 64 && height > 46 ? 0.62 : 0.78
+  const avatarSize = Math.max(14, Math.min(440, Math.round(min * factor)))
+  const fontSize = Math.max(9, Math.min(14, Math.round(min * 0.11)))
   return {
     avatarSize,
     fontSize,
-    showAvatar: min >= 36,
-    showLabel: width > 56 && height > 36,
+    showAvatar: min >= 14,
+    showLabel: width > 64 && height > 46,
   }
 }

@@ -60,15 +60,18 @@
   align-items: center;
   justify-content: center;
   gap: 0.25rem;
-  padding: 0.375rem;
+  padding: 0.25rem;
   overflow: hidden;
+  /* Transparent so the board background shows through (like hyperboards) —
+     tiles read as a translucent mosaic over the backdrop, not opaque cards. */
+  background: transparent;
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
-  background: var(--bg-elevated);
   color: var(--fg-primary);
   text-decoration: none;
   transition:
     border-color var(--transition-base),
+    background var(--transition-base),
     box-shadow var(--transition-base);
 }
 
@@ -84,6 +87,9 @@
 
 .contributor-tile:hover {
   border-color: var(--border-hover);
+  /* Faint theme-aware tint on hover (token alpha), matching hyperboards'
+     translucent hover overlay without an opaque fill. */
+  background: var(--border-subtle);
   box-shadow: var(--shadow-md);
 }
 .contributor-tile:focus-visible {

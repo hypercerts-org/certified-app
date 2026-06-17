@@ -57,10 +57,12 @@ interface RawUnion {
  * that holds them (`ownerDid`). Tolerant of records missing `$type`.
  */
 export function boardImageUrl(
-  image: BoardImage | undefined | null,
+  image: BoardImage | string | undefined | null,
   ownerDid: string | null,
 ): string | null {
   if (!image) return null
+  // hyperboards-v2 stores backgroundImage as a bare URL string.
+  if (typeof image === "string") return image
   const u = image as RawUnion
   if (typeof u.uri === "string") return u.uri
   if (u.image && "ref" in u.image) {

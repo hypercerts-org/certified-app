@@ -20,6 +20,13 @@ type BgKind = "none" | "image" | "iframe"
 // not a design-system colour. The chosen value is stored as record data.
 const COLOR_SEED = "#888888"
 
+/** Normalise a stored opacity (0–1 or 0–100, number or string) to a 0–1 fraction. */
+function normalizeOpacity(v: number | string | undefined): number {
+  const n = typeof v === "number" ? v : typeof v === "string" ? parseFloat(v) : NaN
+  if (!Number.isFinite(n)) return 0.15
+  return Math.max(0, Math.min(1, n > 1 ? n / 100 : n))
+}
+
 /**
  * Edit a board's cosmetics: aspect ratio, image shape, grayscale, background
  * (image/iframe/none), opacity, and border/background colours. Returns the
@@ -30,7 +37,12 @@ export function BoardSettingsDialog({
   onClose,
   onSave,
 }: BoardSettingsDialogProps) {
-  const [draft, setDraft] = useState<BoardConfig>({ ...config })
+  // Normalise opacity to a 0–1 fraction on load so the edit round-trips
+  // cleanly regardless of how the loaded record stored it.
+  const [draft, setDraft] = useState<BoardConfig>({
+    ...config,
+    backgroundOpacity: normalizeOpacity(config.backgroundOpacity),
+  })
   const [bgKind, setBgKind] = useState<BgKind>(
     config.backgroundType === "iframe"
       ? "iframe"
@@ -172,10 +184,12 @@ export function BoardSettingsDialog({
             type="number"
             min={0}
             max={100}
-            value={String(draft.backgroundOpacity ?? 15)}
-            onChange={(e) =>
-              set({ backgroundOpacity: Math.max(0, Math.min(100, parseInt(e.target.value || "0", 10))) })
-            }
+            value={String(Math.round(normalizeOpacity(draft.backgroundOpacity) * 100))}
+            onChange={(e) => {
+              const pct = Math.max(0, Math.min(100, parseInt(e.target.value || "0", 10)))
+              // Store as a 0–1 fraction (matches the de-facto hyperboards data).
+              set({ backgroundOpacity: pct / 100 })
+            }}
           />
           <label className="mt-2 flex items-center gap-2 text-body-sm text-[var(--fg-primary)]">
             <input

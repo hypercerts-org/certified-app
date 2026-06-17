@@ -44,12 +44,13 @@ export type BackgroundType = "image" | "iframe"
 /** org.hyperboards.board#boardConfig — board-level visual settings. */
 export interface BoardConfig {
   backgroundType?: BackgroundType
-  backgroundImage?: BoardImage
+  /** a uri/blob union OR a bare URL string (hyperboards-v2 stores a string) */
+  backgroundImage?: BoardImage | string
   backgroundIframeUrl?: string
   /** default true */
   backgroundGrayscale?: boolean
-  /** 0–100 */
-  backgroundOpacity?: number
+  /** opacity as a 0–1 fraction or a 0–100 percent, number or string */
+  backgroundOpacity?: number | string
   /** hex string */
   backgroundColor?: string
   /** hex string */
