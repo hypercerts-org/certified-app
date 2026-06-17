@@ -29,6 +29,7 @@
 @import "./styles/landing.css";
 @import "./styles/view-transitions.css";
 @import "./styles/tour.css";
+@import "./styles/visualization.css";
 
 @tailwind base;
 @tailwind components;

@@ -1,0 +1,487 @@
+"use client"
+
+/**
+ * Canvas force-directed endorsement graph. Loaded client-only (it touches
+ * `window`/`canvas`) — the parent imports it via `next/dynamic({ ssr: false })`.
+ *
+ * Nodes are user avatars sized by degree; edges are directed endorsements
+ * (arrow points issuer -> subject). Mutual edges render in the accent colour
+ * with a slight curvature so the two directions bow apart into a clearly
+ * bidirectional lens; one-way edges are a single muted straight arrow.
+ */
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import ForceGraph2D, {
+  type ForceGraphMethods,
+  type NodeObject,
+  type LinkObject,
+} from "react-force-graph-2d"
+import Link from "next/link"
+import Avatar from "@/components/ui/avatar"
+import Button from "@/components/ui/button"
+import Input from "@/components/ui/input"
+import { getInitials } from "@/lib/utils/initials"
+import { profileUrl } from "@/lib/urls"
+import type { GraphNode, GraphLink } from "@/hooks/use-endorsement-graph"
+
+type FGNode = NodeObject<GraphNode>
+type FGLink = LinkObject<GraphNode, GraphLink>
+
+export interface FocusRequest {
+  did: string | null
+  /** Bumped each time so repeated clicks on the same node re-focus. */
+  nonce: number
+}
+
+interface EndorsementGraphProps {
+  nodes: GraphNode[]
+  links: GraphLink[]
+  focusReq: FocusRequest
+}
+
+interface ThemeColors {
+  fg: string
+  muted: string
+  border: string
+  disc: string
+  discText: string
+  accent: string
+  link: string
+  bg: string
+}
+
+function readThemeColors(): ThemeColors {
+  const s = getComputedStyle(document.documentElement)
+  const get = (name: string) => s.getPropertyValue(name).trim()
+  return {
+    fg: get("--fg-primary"),
+    muted: get("--fg-muted"),
+    border: get("--border-default"),
+    disc: get("--bg-raised"),
+    discText: get("--fg-secondary"),
+    accent: get("--color-success"),
+    link: get("--fg-muted"),
+    bg: get("--bg-sunken"),
+  }
+}
+
+function nodeRadius(n: GraphNode): number {
+  return Math.min(22, 4 + Math.sqrt(n.given + n.received) * 1.4)
+}
+
+function linkEndId(end: string | NodeObject<GraphNode> | undefined): string | null {
+  if (end == null) return null
+  if (typeof end === "string") return end
+  return typeof end.id === "string" ? end.id : null
+}
+
+export default function EndorsementGraph({ nodes, links, focusReq }: EndorsementGraphProps) {
+  const hostRef = useRef<HTMLDivElement | null>(null)
+  const fgRef = useRef<ForceGraphMethods<FGNode, FGLink> | undefined>(undefined)
+  const colorsRef = useRef<ThemeColors | null>(null)
+  const imagesRef = useRef<Map<string, HTMLImageElement>>(new Map())
+
+  const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 })
+  // Background is read during render (a prop), so it lives in state rather
+  // than the colours ref; updated alongside the ref on theme changes.
+  const [bgColor, setBgColor] = useState<string | undefined>(undefined)
+  const [onlyMutual, setOnlyMutual] = useState(false)
+  const [search, setSearch] = useState("")
+  const [hoverId, setHoverId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  // --- theme colours (re-read on dark-mode flip) -------------------------
+  useEffect(() => {
+    const apply = () => {
+      const c = readThemeColors()
+      colorsRef.current = c
+      setBgColor(c.bg)
+    }
+    apply()
+    const obs = new MutationObserver(apply)
+    obs.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme", "class"],
+    })
+    return () => obs.disconnect()
+  }, [])
+
+  // --- responsive sizing -------------------------------------------------
+  useEffect(() => {
+    const el = hostRef.current
+    if (!el) return
+    const ro = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect
+      if (rect) setSize({ w: Math.round(rect.width), h: Math.round(rect.height) })
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  // --- preload avatars ---------------------------------------------------
+  useEffect(() => {
+    const map = imagesRef.current
+    for (const n of nodes) {
+      if (!n.avatarUrl || map.has(n.id)) continue
+      const img = new Image()
+      img.decoding = "async"
+      img.src = n.avatarUrl
+      map.set(n.id, img)
+    }
+  }, [nodes])
+
+  // --- filtered working data (mutual-only toggle) ------------------------
+  const data = useMemo(() => {
+    if (!onlyMutual) return { nodes, links }
+    const mutualLinks = links.filter((l) => l.mutual)
+    const keep = new Set<string>()
+    for (const l of mutualLinks) {
+      keep.add(linkEndId(l.source) ?? "")
+      keep.add(linkEndId(l.target) ?? "")
+    }
+    return {
+      nodes: nodes.filter((n) => keep.has(n.id)),
+      links: mutualLinks,
+    }
+  }, [nodes, links, onlyMutual])
+
+  // --- adjacency for hover/selection highlight ---------------------------
+  const adjacency = useMemo(() => {
+    const map = new Map<string, Set<string>>()
+    const add = (a: string, b: string) => {
+      let s = map.get(a)
+      if (!s) {
+        s = new Set()
+        map.set(a, s)
+      }
+      s.add(b)
+    }
+    for (const l of links) {
+      const s = linkEndId(l.source)
+      const t = linkEndId(l.target)
+      if (s && t) {
+        add(s, t)
+        add(t, s)
+      }
+    }
+    return map
+  }, [links])
+
+  const activeId = hoverId ?? selectedId
+  const highlightNodes = useMemo(() => {
+    if (!activeId) return null
+    const set = new Set<string>([activeId])
+    for (const n of adjacency.get(activeId) ?? []) set.add(n)
+    return set
+  }, [activeId, adjacency])
+
+  const nodeById = useMemo(() => {
+    const m = new Map<string, GraphNode>()
+    for (const n of nodes) m.set(n.id, n)
+    return m
+  }, [nodes])
+
+  // --- focus requests from the sidebar / search --------------------------
+  const focusNode = useCallback((did: string | null) => {
+    if (!did) return
+    const fg = fgRef.current
+    if (!fg) return
+    const target = (data.nodes as FGNode[]).find((n) => n.id === did)
+    if (target && typeof target.x === "number" && typeof target.y === "number") {
+      fg.centerAt(target.x, target.y, 600)
+      fg.zoom(4, 600)
+    }
+    setSelectedId(did)
+  }, [data.nodes])
+
+  useEffect(() => {
+    if (focusReq.did) focusNode(focusReq.did)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusReq.nonce])
+
+  const handleSearch = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault()
+      const q = search.trim().toLowerCase()
+      if (!q) return
+      const match = nodes.find(
+        (n) =>
+          (n.handle && n.handle.toLowerCase().includes(q)) ||
+          (n.displayName && n.displayName.toLowerCase().includes(q)),
+      )
+      if (match) focusNode(match.id)
+    },
+    [search, nodes, focusNode],
+  )
+
+  // --- canvas painters ---------------------------------------------------
+  const paintNode = useCallback(
+    (node: FGNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
+      const c = colorsRef.current
+      if (!c || typeof node.x !== "number" || typeof node.y !== "number") return
+      const r = nodeRadius(node)
+      const isActive = activeId === node.id
+      const dim = highlightNodes ? !highlightNodes.has(node.id) : false
+
+      ctx.save()
+      ctx.globalAlpha = dim ? 0.12 : 1
+
+      // avatar (clipped circle) or initials disc
+      const img = imagesRef.current.get(node.id)
+      ctx.beginPath()
+      ctx.arc(node.x, node.y, r, 0, 2 * Math.PI)
+      if (img && img.complete && img.naturalWidth > 0) {
+        ctx.save()
+        ctx.clip()
+        ctx.drawImage(img, node.x - r, node.y - r, r * 2, r * 2)
+        ctx.restore()
+      } else {
+        ctx.fillStyle = c.disc
+        ctx.fill()
+        const label = getInitials(node.displayName, node.id)
+        ctx.fillStyle = c.discText
+        ctx.font = `600 ${r * 0.9}px Inter, sans-serif`
+        ctx.textAlign = "center"
+        ctx.textBaseline = "middle"
+        ctx.fillText(label, node.x, node.y)
+      }
+
+      // ring — accent when active, otherwise subtle border
+      ctx.beginPath()
+      ctx.arc(node.x, node.y, r, 0, 2 * Math.PI)
+      ctx.lineWidth = isActive ? 2.5 : 1
+      ctx.strokeStyle = isActive ? c.accent : c.border
+      ctx.stroke()
+
+      // name label when zoomed in or active
+      if (globalScale > 1.6 || isActive) {
+        const name = node.displayName || (node.handle ? `@${node.handle}` : node.id.slice(0, 12))
+        ctx.font = `500 ${Math.max(3, 11 / globalScale)}px Inter, sans-serif`
+        ctx.fillStyle = c.fg
+        ctx.textAlign = "center"
+        ctx.textBaseline = "top"
+        ctx.fillText(name, node.x, node.y + r + 1.5)
+      }
+      ctx.restore()
+    },
+    [activeId, highlightNodes],
+  )
+
+  const paintPointerArea = useCallback(
+    (node: FGNode, color: string, ctx: CanvasRenderingContext2D) => {
+      if (typeof node.x !== "number" || typeof node.y !== "number") return
+      ctx.fillStyle = color
+      ctx.beginPath()
+      ctx.arc(node.x, node.y, nodeRadius(node) + 1, 0, 2 * Math.PI)
+      ctx.fill()
+    },
+    [],
+  )
+
+  const linkColor = useCallback(
+    (link: FGLink) => {
+      const c = colorsRef.current
+      if (!c) return "transparent"
+      if (highlightNodes) {
+        const s = linkEndId(link.source)
+        const t = linkEndId(link.target)
+        const on = s != null && t != null && highlightNodes.has(s) && highlightNodes.has(t)
+        if (!on) return c.border
+      }
+      return link.mutual ? c.accent : c.link
+    },
+    [highlightNodes],
+  )
+
+  const selectedNode = selectedId ? nodeById.get(selectedId) ?? null : null
+  const hoverNode = hoverId ? nodeById.get(hoverId) ?? null : null
+  const panelNode = hoverNode ?? selectedNode
+
+  const neighbourList = useMemo(() => {
+    if (!panelNode) return { endorsed: [] as GraphNode[], endorsedBy: [] as GraphNode[] }
+    const endorsed: GraphNode[] = []
+    const endorsedBy: GraphNode[] = []
+    for (const l of links) {
+      const s = linkEndId(l.source)
+      const t = linkEndId(l.target)
+      if (s === panelNode.id && t) {
+        const n = nodeById.get(t)
+        if (n) endorsed.push(n)
+      } else if (t === panelNode.id && s) {
+        const n = nodeById.get(s)
+        if (n) endorsedBy.push(n)
+      }
+    }
+    return { endorsed, endorsedBy }
+  }, [panelNode, links, nodeById])
+
+  return (
+    <div ref={hostRef} className="viz__canvas-host">
+      {size.w > 0 && (
+        <ForceGraph2D
+          ref={fgRef}
+          width={size.w}
+          height={size.h}
+          graphData={data}
+          backgroundColor={bgColor}
+          nodeRelSize={4}
+          nodeLabel={() => ""}
+          cooldownTicks={120}
+          onEngineStop={() => fgRef.current?.zoomToFit(400, 40)}
+          nodeCanvasObject={paintNode}
+          nodePointerAreaPaint={paintPointerArea}
+          linkColor={linkColor}
+          linkWidth={(l: FGLink) => (l.mutual ? 1.6 : 0.8)}
+          linkCurvature={(l: FGLink) => (l.mutual ? 0.2 : 0)}
+          linkDirectionalArrowLength={3.2}
+          linkDirectionalArrowRelPos={1}
+          onNodeHover={(n: FGNode | null) => setHoverId(n ? (n.id as string) : null)}
+          onNodeClick={(n: FGNode) => focusNode(n.id as string)}
+          onBackgroundClick={() => setSelectedId(null)}
+        />
+      )}
+
+      {/* controls */}
+      <div className="viz__controls">
+        <form onSubmit={handleSearch} className="viz__control-row">
+          <Input
+            className="viz__search"
+            placeholder="Find a person…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search the endorsement graph"
+          />
+        </form>
+        <div className="viz__control-row">
+          <Button
+            variant={onlyMutual ? "primary" : "secondary"}
+            size="sm"
+            pressed={onlyMutual}
+            onClick={() => setOnlyMutual((v) => !v)}
+          >
+            Mutual only
+          </Button>
+        </div>
+        <div className="viz__legend" aria-hidden="true">
+          <div className="viz__legend-row">
+            <span className="viz__legend-swatch viz__legend-swatch--uni" />
+            <span>One-way endorsement</span>
+          </div>
+          <div className="viz__legend-row">
+            <span className="viz__legend-swatch viz__legend-swatch--mutual" />
+            <span>Mutual endorsement</span>
+          </div>
+        </div>
+      </div>
+
+      {/* zoom controls */}
+      <div className="viz__zoom">
+        <Button
+          size="icon"
+          variant="secondary"
+          aria-label="Zoom in"
+          onClick={() => {
+            const fg = fgRef.current
+            if (fg) fg.zoom(fg.zoom() * 1.4, 300)
+          }}
+        >
+          +
+        </Button>
+        <Button
+          size="icon"
+          variant="secondary"
+          aria-label="Zoom out"
+          onClick={() => {
+            const fg = fgRef.current
+            if (fg) fg.zoom(fg.zoom() / 1.4, 300)
+          }}
+        >
+          −
+        </Button>
+        <Button
+          size="icon"
+          variant="secondary"
+          aria-label="Fit graph to view"
+          onClick={() => fgRef.current?.zoomToFit(400, 40)}
+        >
+          ⤢
+        </Button>
+      </div>
+
+      {/* hover / selected info panel */}
+      {panelNode && (
+        <div className="viz__panel">
+          <div className="viz__panel-head">
+            <Avatar
+              src={panelNode.avatarUrl || undefined}
+              size="md"
+              fallbackInitials={getInitials(panelNode.displayName, panelNode.id)}
+              bordered
+            />
+            <div className="viz__panel-id">
+              <span className="viz__panel-name">
+                {panelNode.displayName || (panelNode.handle ? `@${panelNode.handle}` : "Unknown")}
+              </span>
+              {panelNode.handle && <span className="viz__panel-handle">@{panelNode.handle}</span>}
+            </div>
+          </div>
+
+          <div className="viz__panel-counts">
+            <div className="viz__panel-count">
+              <span className="viz__panel-count-value">{panelNode.given}</span>
+              <span className="viz__panel-count-label">Endorsed</span>
+            </div>
+            <div className="viz__panel-count">
+              <span className="viz__panel-count-value">{panelNode.received}</span>
+              <span className="viz__panel-count-label">Endorsed by</span>
+            </div>
+            <div className="viz__panel-count">
+              <span className="viz__panel-count-value">{panelNode.mutual}</span>
+              <span className="viz__panel-count-label">Mutual</span>
+            </div>
+          </div>
+
+          {neighbourList.endorsed.length > 0 && (
+            <div>
+              <div className="viz__panel-section-title">Endorsed ({neighbourList.endorsed.length})</div>
+              <div className="viz__neighbours">
+                {neighbourList.endorsed.slice(0, 12).map((n) => (
+                  <span key={n.id} className="viz__neighbour" title={n.displayName || n.id}>
+                    <Avatar
+                      src={n.avatarUrl || undefined}
+                      size="sm"
+                      fallbackInitials={getInitials(n.displayName, n.id)}
+                    />
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {neighbourList.endorsedBy.length > 0 && (
+            <div>
+              <div className="viz__panel-section-title">
+                Endorsed by ({neighbourList.endorsedBy.length})
+              </div>
+              <div className="viz__neighbours">
+                {neighbourList.endorsedBy.slice(0, 12).map((n) => (
+                  <span key={n.id} className="viz__neighbour" title={n.displayName || n.id}>
+                    <Avatar
+                      src={n.avatarUrl || undefined}
+                      size="sm"
+                      fallbackInitials={getInitials(n.displayName, n.id)}
+                    />
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <Link href={profileUrl(panelNode.handle || panelNode.id)} className="more-link">
+            View profile
+          </Link>
+        </div>
+      )}
+    </div>
+  )
+}
