@@ -3,6 +3,16 @@
  * --radius; shadows via --shadow tokens; z-index via --z tokens.
  * Breakpoints 800/1100/1300. */
 
+/* Opt the page out of the shell's 720px reading column so the graph uses
+   the full grid width (capped at 1300px by .app-shell__grid). The shell's
+   horizontal padding is dropped here — `.viz`'s own padding is the gutter —
+   while its navbar-offset top/bottom padding is kept. */
+.app-shell:has(.viz) .app-shell__content {
+  max-width: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
 .viz {
   display: flex;
   flex-direction: row;
