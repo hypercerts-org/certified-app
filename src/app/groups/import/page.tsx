@@ -73,7 +73,7 @@ export default function ImportGroupPage() {
           console.error("[groups/import] putMembership failed", err)
         }
         await refetchOrgs()
-        router.push("/groups")
+        router.push("/home")
       } catch (err) {
         if (err instanceof RegisterGroupError && err.code === "GroupAlreadyRegistered") {
           setError("This account is already registered as a group.")

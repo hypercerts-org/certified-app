@@ -274,7 +274,7 @@ export default function CreateGroupPage() {
       // in the account switcher + group list.
       await putMembership(did, groupDid, "owner")
       await refetchOrgs()
-      router.push("/groups")
+      router.push("/home")
     } catch (err) {
       console.error("[groups/create] failed", err)
       if (
@@ -343,9 +343,9 @@ export default function CreateGroupPage() {
             >
               <Button
                 variant="secondary"
-                onClick={() => router.push("/groups")}
+                onClick={() => router.push("/home")}
               >
-                Back to groups
+                Back to home
               </Button>
             </EmptyState>
           </div>
@@ -592,7 +592,7 @@ export default function CreateGroupPage() {
             <Button
               type="button"
               variant="ghost"
-              onClick={() => router.push("/groups")}
+              onClick={() => router.push("/home")}
               disabled={isCreating}
             >
               Cancel

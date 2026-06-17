@@ -129,7 +129,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
       await destroyGroup(groupDid)
       setConfirmDestroy(false)
       // The group is gone from the service — leave the settings page.
-      router.push("/")
+      router.push("/home")
     } catch (err) {
       setDestroyError(
         err instanceof Error ? err.message : "Failed to remove group",
