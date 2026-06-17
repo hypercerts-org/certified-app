@@ -38,13 +38,22 @@ export default function RecordDetailPage() {
     isLoading: resolving,
   } = useUserProfile(actor.kind === "invalid" ? null : actor.value)
 
-  // Canonicalize a DID-addressed URL to the handle form once resolved.
+  // Canonicalize the address bar to the record's current handle once
+  // resolved: a DID-addressed URL becomes the handle form, AND a stale
+  // handle — one the author has since migrated away from, recovered to
+  // its stable DID via the indexer (#184) — self-heals to the current
+  // handle. `handle === did` means no real handle resolved, so the URL is
+  // left untouched rather than rewritten to a DID.
   useEffect(() => {
-    if (!type) return
-    if (actor.kind === "did" && handle && rkey) {
+    if (!type || !handle || !rkey) return
+    if (handle === did) return
+    const addressedByDid = actor.kind === "did"
+    const staleHandle =
+      actor.kind === "handle" && handle.toLowerCase() !== actorRaw.toLowerCase()
+    if (addressedByDid || staleHandle) {
       router.replace(recordUrl(handle, type, rkey))
     }
-  }, [actor.kind, handle, type, rkey, router])
+  }, [actor.kind, actorRaw, handle, did, type, rkey, router])
 
   if (!type || actor.kind === "invalid") {
     return (

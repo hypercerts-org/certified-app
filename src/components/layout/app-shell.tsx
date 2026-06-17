@@ -42,7 +42,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname === "/terms" ||
     pathname === "/privacy" ||
     pathname === "/imprint" ||
-    pathname === "/dsa"
+    pathname === "/dsa" ||
+    pathname.startsWith("/embed")
   ) {
     return <>{children}</>;
   }

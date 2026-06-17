@@ -24,6 +24,9 @@ export default function BottomNav() {
   // navigation; the bar also occludes content on /welcome for guests.
   if (!isStandalone) return null;
 
+  // Embeds render bare (board-only) inside a third-party iframe.
+  if (pathname.startsWith("/embed")) return null;
+
   const isHome = pathname === "/home" || pathname.startsWith("/home/");
 
   const handleHomeClick = () => {

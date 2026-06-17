@@ -7,6 +7,10 @@ import { resolvePostSigninPath } from "@/lib/auth/post-signin"
 
 export default function OAuthCallbackPage() {
   const [error, setError] = useState<string | null>(null)
+  // True when the failure is a recoverable sign-in interruption (ePDS
+  // clean-exit / user-denied / expired flow, #154) rather than a hard
+  // error — drives a "try again" affordance instead of a dead end.
+  const [canRetry, setCanRetry] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -18,7 +22,10 @@ export default function OAuthCallbackPage() {
         const res = await fetch(callbackUrl)
 
         if (!res.ok) {
-          const data = await res.json().catch(() => ({ error: "Callback failed" }))
+          const data = await res
+            .json()
+            .catch(() => ({ error: "Callback failed" }))
+          if (!cancelled && data.retry) setCanRetry(true)
           throw new Error(data.error || "Authentication failed")
         }
 
@@ -57,6 +64,11 @@ export default function OAuthCallbackPage() {
       <div className="loading-screen">
         <div className="loading-screen__inner">
           <p className="loading-screen__error">{error}</p>
+          {canRetry ? (
+            <Link href="/welcome" className="loading-screen__link">
+              Try signing in again
+            </Link>
+          ) : null}
           <Link href="/" className="loading-screen__link">
             Return to home
           </Link>

@@ -13,6 +13,7 @@ import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseActivityUri } from "@/lib/atproto/activity-uri"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
+import { SEARCH_DEBOUNCE_MS } from "@/lib/search/constants"
 
 /** Result row shape — the indexer record + the author DID (parsed
  *  from `uri`, since the indexer doesn't always surface it on a
@@ -47,7 +48,6 @@ interface CertSearchProps {
   readonly clearOnSelect?: boolean
 }
 
-const SEARCH_DEBOUNCE_MS = 250
 const SEARCH_PAGE_SIZE = 8
 const OWN_SEARCH_PAGE_SIZE = 4
 

@@ -362,14 +362,22 @@ export default function UserProfilePage() {
   // Canonicalize the address bar to the handle form. When the profile was
   // opened by its durable DID (e.g. a shared link), swap to `/{handle}` once
   // the handle resolves — preserving any ?tab= query. The DID can't rot, so
-  // the link stays correct; the handle is just the pretty display form.
+  // the link stays correct; the handle is just the pretty display form. A
+  // STALE handle (the account migrated away from it, recovered to its DID
+  // via the indexer — #184) likewise self-heals to the current handle.
+  // `resolvedHandle === did` means no real handle resolved, so the URL is
+  // left untouched rather than rewritten to a DID.
   useEffect(() => {
-    if (!handleOrDid || !resolvedHandle) return
-    if (handleOrDid.startsWith("did:") && resolvedHandle !== handleOrDid) {
+    if (!handleOrDid || !resolvedHandle || resolvedHandle === did) return
+    const addressedByDid = handleOrDid.startsWith("did:")
+    const staleHandle =
+      !addressedByDid &&
+      resolvedHandle.toLowerCase() !== handleOrDid.toLowerCase()
+    if ((addressedByDid && resolvedHandle !== handleOrDid) || staleHandle) {
       const qs = searchParams?.toString()
       router.replace(profileUrl(resolvedHandle) + (qs ? `?${qs}` : ""))
     }
-  }, [handleOrDid, resolvedHandle, searchParams, router])
+  }, [handleOrDid, resolvedHandle, did, searchParams, router])
 
   if (tabFromUrl !== activeTab && TABS.some((t) => t.key === tabFromUrl)) {
     setActiveTab(tabFromUrl)
