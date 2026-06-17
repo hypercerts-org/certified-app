@@ -1,10 +1,16 @@
 "use client"
 
+import { useState } from "react"
 import Image from "next/image"
 import { Play } from "lucide-react"
 import { getInitials } from "@/lib/utils/initials"
 import { tileSizing, type TreemapTile } from "@/lib/contributor-board/treemap"
 import type { BoardEntry } from "@/lib/atproto/hyperboard-types"
+
+/** Only http(s) links are followed — a board owner could type a javascript: URL. */
+function safeHttpUrl(url: string | null): string | null {
+  return url && /^https?:\/\//i.test(url) ? url : null
+}
 
 interface ContributorTileProps {
   tile: TreemapTile
@@ -34,6 +40,12 @@ export function ContributorTile({
   const { x, y, width, height, entry } = tile
   const { avatarSize, fontSize, showAvatar, showLabel } = tileSizing(width, height)
 
+  // Fall back to initials when a user-supplied image URL fails to load.
+  // Tracking the errored URL (rather than a boolean reset via effect) means a
+  // new imageUrl auto-clears the error without a set-state-in-effect cascade.
+  const [erroredSrc, setErroredSrc] = useState<string | null>(null)
+  const imgError = erroredSrc !== null && erroredSrc === entry.imageUrl
+
   const shapeClass = entry.circular
     ? "contributor-tile__avatar--circle"
     : "contributor-tile__avatar--square"
@@ -42,13 +54,14 @@ export function ContributorTile({
     <>
       {showAvatar ? (
         <span className={`contributor-tile__avatar ${shapeClass}`}>
-          {entry.imageUrl ? (
+          {entry.imageUrl && !imgError ? (
             <Image
               src={entry.imageUrl}
               alt={entry.name}
               width={avatarSize}
               height={avatarSize}
               className={`contributor-tile__img${grayscale ? " contributor-tile__img--grayscale" : ""}`}
+              onError={() => setErroredSrc(entry.imageUrl)}
               unoptimized
             />
           ) : (
@@ -118,12 +131,13 @@ export function ContributorTile({
     )
   }
 
-  if (!editing && entry.url) {
+  const linkUrl = safeHttpUrl(entry.url)
+  if (!editing && linkUrl) {
     return (
       <a
         className="contributor-tile contributor-tile--link"
         style={geometry}
-        href={entry.url}
+        href={linkUrl}
         target="_blank"
         rel="noopener noreferrer"
         aria-label={entry.name}

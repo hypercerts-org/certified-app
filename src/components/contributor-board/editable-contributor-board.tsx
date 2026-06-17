@@ -1,11 +1,12 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Plus, Pencil, Settings, Share2, UserCog } from "lucide-react"
 import Button from "@/components/ui/button"
 import { buildAtUri } from "@/lib/urls"
 import { invalidateActivity } from "@/hooks/use-activity"
 import { putCertRecord } from "@/lib/atproto/cert"
+import { InvalidSwapError } from "@/lib/atproto/repo-write"
 import {
   createBoardRecord,
   createContributorInformation,
@@ -189,6 +190,9 @@ export function EditableContributorBoard({
     }),
   )
   const [config, setConfig] = useState<BoardConfig>(initialConfig)
+  // The activity CID we swap against. Advances after a successful activity
+  // write so a retry (e.g. after a board-write failure) doesn't trip the swap.
+  const [committedCid, setCommittedCid] = useState(activityCid)
 
   const [editingDraft, setEditingDraft] = useState<DraftContributor | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -205,7 +209,11 @@ export function EditableContributorBoard({
 
   // ---- drag-to-resize ------------------------------------------------
   // Move/up listeners are created per drag so they capture this drag's start
-  // values and tear each other down without a shared ref or forward reference.
+  // values. The active teardown is stashed in a ref so an unmount mid-drag
+  // (e.g. save completes and exits edit mode) removes the listeners too.
+  const dragCleanupRef = useRef<(() => void) | null>(null)
+  useEffect(() => () => dragCleanupRef.current?.(), [])
+
   const startResize = useCallback((e: React.PointerEvent, tile: TreemapTile) => {
     e.preventDefault()
     e.stopPropagation()
@@ -213,6 +221,13 @@ export function EditableContributorBoard({
     const startWeight = tile.entry.value
     const startX = e.clientX
     const startY = e.clientY
+    // Pointer capture keeps move/up flowing even if the pointer leaves the
+    // window, so a fast drag can't strand the listeners.
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      /* setPointerCapture unsupported — window listeners still work */
+    }
     const move = (ev: PointerEvent) => {
       const delta = ev.clientX - startX + (ev.clientY - startY)
       const next = Math.max(1, Math.round(startWeight * (1 + delta / 200)))
@@ -221,7 +236,9 @@ export function EditableContributorBoard({
     const up = () => {
       window.removeEventListener("pointermove", move)
       window.removeEventListener("pointerup", up)
+      dragCleanupRef.current = null
     }
+    dragCleanupRef.current = up
     window.addEventListener("pointermove", move)
     window.addEventListener("pointerup", up)
   }, [])
@@ -242,57 +259,87 @@ export function EditableContributorBoard({
     setDrafts((ds) => ds.filter((d) => d.key !== key))
 
   // ---- save ----------------------------------------------------------
+  // Three phases so a failure leaves a recoverable state:
+  //   1. create contributorInformation for new people (then persist the refs
+  //      into drafts so a retry never re-creates them),
+  //   2. write the activity (contributors + weights) with a swap guard,
+  //   3. write the board (config + contributorConfigs) at the new activity CID.
   const handleSave = async () => {
     setError(null)
     setSaving(true)
-    try {
-      const activityContributors: ActivityContributor[] = []
-      const contributorConfigs: ContributorConfig[] = []
 
+    const activityContributors: ActivityContributor[] = []
+    const contributorConfigs: ContributorConfig[] = []
+    const nextDrafts: DraftContributor[] = []
+
+    // Phase 1 — identities.
+    try {
       for (const draft of drafts) {
-        const weight = Number.isFinite(draft.weight) && draft.weight > 0 ? draft.weight : 1
-        let identity: ContributorConfig["contributor"]
+        const weight =
+          Number.isFinite(draft.weight) && draft.weight > 0 ? draft.weight : 1
 
         if (draft.isNew || draft.identity === null) {
-          // Brand-new manual person → create their identity record first.
           const ref: StrongRef = await createContributorInformation(did, {
             identifier: draft.displayName,
             displayName: draft.displayName,
             image: draft.imageBlob ? smallImage(draft.imageBlob) : undefined,
           })
-          identity = ref
           activityContributors.push({
             contributorIdentity: ref,
             contributionWeight: String(weight),
           })
           const cfg = buildConfig(draft, ref, false)
           if (cfg) contributorConfigs.push(cfg)
+          // The identity now exists — demote so a retry reuses it.
+          nextDrafts.push({ ...draft, identity: ref, isNew: false, imageBlob: null })
         } else {
-          identity = draft.identity
           const base = draft.original ?? { contributorIdentity: draft.identity }
           activityContributors.push({
             ...base,
             contributorIdentity: draft.identity,
             contributionWeight: String(weight),
           })
-          const cfg = buildConfig(draft, identity, true)
+          const cfg = buildConfig(draft, draft.identity, true)
           if (cfg) contributorConfigs.push(cfg)
+          nextDrafts.push(draft)
         }
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add contributors")
+      setSaving(false)
+      return
+    }
+    // Persist created identities before any write that might fail.
+    setDrafts(nextDrafts)
 
-      // 1) Activity: preserve all fields, replace contributors.
-      const nextActivity: ClaimActivity = {
-        ...activity,
-        contributors: activityContributors,
-      }
-      const { cid: newCid } = await putCertRecord(did, did, rkey, nextActivity, {
-        swapRecord: activityCid,
-      })
+    // Phase 2 — activity (preserve all fields, replace contributors).
+    let newCid: string
+    try {
+      const res = await putCertRecord(
+        did,
+        did,
+        rkey,
+        { ...activity, contributors: activityContributors },
+        { swapRecord: committedCid },
+      )
+      newCid = res.cid
+      setCommittedCid(newCid)
+    } catch (err) {
+      setError(
+        err instanceof InvalidSwapError
+          ? "This activity changed since you opened the editor — reload the page and try again."
+          : err instanceof Error
+            ? err.message
+            : "Failed to save contributors",
+      )
+      setSaving(false)
+      return
+    }
 
-      // 2) Board: subject points at the just-written activity version.
-      const activityUri = buildAtUri(did, ACTIVITY_NSID, rkey)
+    // Phase 3 — board, pointing at the just-written activity version.
+    try {
       const boardBody = {
-        subject: { uri: activityUri, cid: newCid },
+        subject: { uri: buildAtUri(did, ACTIVITY_NSID, rkey), cid: newCid },
         config,
         contributorConfigs,
         createdAt: boardRef?.board.createdAt ?? new Date().toISOString(),
@@ -302,13 +349,16 @@ export function EditableContributorBoard({
       } else {
         await createBoardRecord(did, boardBody)
       }
-
-      invalidateActivity(did, rkey)
-      onDone()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save board")
+    } catch {
+      setError(
+        "Contributors were saved, but the board styling failed to save. Click Save board to retry.",
+      )
       setSaving(false)
+      return
     }
+
+    invalidateActivity(did, rkey)
+    onDone()
   }
 
   return (
@@ -342,7 +392,7 @@ export function EditableContributorBoard({
       </div>
 
       {error ? (
-        <p className="mb-2 text-body-sm text-[var(--color-error-text)]">{error}</p>
+        <p className="mb-2 text-body-sm text-[var(--color-error)]">{error}</p>
       ) : null}
       <p className="contributor-board__status">
         Drag the bottom-right corner of a tile to resize its weight, or click the
@@ -381,6 +431,7 @@ export function EditableContributorBoard({
             <span
               className="contributor-tile-overlay__resize"
               role="presentation"
+              aria-hidden="true"
               onPointerDown={(e) => startResize(e, tile)}
             />
           </div>

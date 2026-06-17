@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   Fragment,
@@ -164,7 +165,12 @@ export function ContributorBoard({
   const { ref, width, height } = useElementSize()
   const [videoEntry, setVideoEntry] = useState<BoardEntry | null>(null)
 
-  const tiles = layoutTreemap(entries, width, height)
+  // Memoised so a resize drag (which mutates entries per pointermove) doesn't
+  // re-run the full d3 hierarchy + squarify pass on every unrelated render.
+  const tiles = useMemo(
+    () => layoutTreemap(entries, width, height),
+    [entries, width, height],
+  )
   const aspectRatio = ASPECT[config.aspectRatio ?? "16:9"] ?? "16 / 9"
   const borderColor = config.borderColor || undefined
   const backgroundColor = config.backgroundColor || undefined

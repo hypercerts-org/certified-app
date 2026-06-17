@@ -23,6 +23,7 @@ export function useDisplayProfile(
 ): UseDisplayProfileResult {
   const [profile, setProfile] = useState<DisplayProfileRecord | null>(null)
   const [isLoading, setIsLoading] = useState(!!did)
+  const [reloadTick, setReloadTick] = useState(0)
 
   useEffect(() => {
     if (!did) return
@@ -41,15 +42,13 @@ export function useDisplayProfile(
     return () => {
       cancelled = true
     }
-  }, [did])
+    // reloadTick re-runs the single cancellation-guarded loader (no stale
+    // write race from a second, unguarded fetch).
+  }, [did, reloadTick])
 
   const reload = useCallback(() => {
     if (did) invalidateDisplayProfile(did)
-    setProfile(null)
-    setIsLoading(!!did)
-    if (did) {
-      fetchDisplayProfile(did).then((p) => setProfile(p)).finally(() => setIsLoading(false))
-    }
+    setReloadTick((t) => t + 1)
   }, [did])
 
   return { profile, isLoading, reload }

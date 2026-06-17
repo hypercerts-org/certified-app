@@ -262,7 +262,7 @@ export function AddEditContributorDialog({
       </div>
 
       {error ? (
-        <p className="mt-3 text-body-sm text-[var(--color-error-text)]">{error}</p>
+        <p className="mt-3 text-body-sm text-[var(--color-error)]">{error}</p>
       ) : null}
 
       {onRemove ? (

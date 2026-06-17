@@ -71,7 +71,10 @@ export function ActivityContributorBoard({
       <div className="cert-detail__section-header">
         <h2 className="cert-detail__section-title">Contributor Board</h2>
         <span className="cert-detail__section-count">{entries.length}</span>
-        {canEdit && rkey ? (
+        {/* Gate edit on load completion: entering edit before the board record
+            resolves would seed the editor with boardRef=null and create a
+            duplicate board on save. */}
+        {canEdit && rkey && !isLoading ? (
           <div className="cert-detail__section-actions">
             <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
               <Pencil size={14} /> Edit board
