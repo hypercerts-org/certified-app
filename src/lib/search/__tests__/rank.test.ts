@@ -135,9 +135,21 @@ describe("dedupeBy", () => {
 })
 
 describe("mergePeopleByDid", () => {
+  // Both sources are normalized to one Actor shape before merge, so the
+  // two arrays share a type (handle/description optional on each).
+  interface Person {
+    did: string
+    displayName: string
+    handle?: string
+    description?: string
+  }
   it("unions fields across sources (handle from one, bio from the other)", () => {
-    const certified = [{ did: "did:plc:a", displayName: "Alice", description: "eco" }]
-    const bsky = [{ did: "did:plc:a", displayName: "Alice", handle: "alice.eco" }]
+    const certified: Person[] = [
+      { did: "did:plc:a", displayName: "Alice", description: "eco" },
+    ]
+    const bsky: Person[] = [
+      { did: "did:plc:a", displayName: "Alice", handle: "alice.eco" },
+    ]
     const merged = mergePeopleByDid(certified, bsky)
     expect(merged).toHaveLength(1)
     expect(merged[0]).toMatchObject({
@@ -148,8 +160,8 @@ describe("mergePeopleByDid", () => {
     })
   })
   it("appends DIDs only present in the secondary source, preserving order", () => {
-    const certified = [{ did: "did:plc:a", displayName: "Alice" }]
-    const bsky = [
+    const certified: Person[] = [{ did: "did:plc:a", displayName: "Alice" }]
+    const bsky: Person[] = [
       { did: "did:plc:a", displayName: "Alice", handle: "alice.eco" },
       { did: "did:plc:b", displayName: "Bob", handle: "bob.eco" },
     ]
@@ -157,8 +169,10 @@ describe("mergePeopleByDid", () => {
     expect(merged.map((m) => m.did)).toEqual(["did:plc:a", "did:plc:b"])
   })
   it("earlier source wins on a non-empty conflict", () => {
-    const certified = [{ did: "did:plc:a", displayName: "Certified Name" }]
-    const bsky = [{ did: "did:plc:a", displayName: "Bsky Name" }]
+    const certified: Person[] = [
+      { did: "did:plc:a", displayName: "Certified Name" },
+    ]
+    const bsky: Person[] = [{ did: "did:plc:a", displayName: "Bsky Name" }]
     expect(mergePeopleByDid(certified, bsky)[0].displayName).toBe("Certified Name")
   })
 })
