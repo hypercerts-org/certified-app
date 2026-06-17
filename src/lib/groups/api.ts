@@ -189,66 +189,6 @@ export async function registerGroup(
 }
 
 /**
- * Promote the currently authenticated account into a group (the sibling
- * of {@link registerGroup} that reuses an existing account). The caller
- * supplies an app password for that account; `ownerDid` defaults to the
- * importer server-side. Reuses {@link RegisterGroupError} so callers can
- * surface structured codes (e.g. `InvalidAppPassword`,
- * `GroupAlreadyRegistered`).
- */
-export async function importGroup(
-  appPassword: string,
-  ownerDid?: string,
-): Promise<{ groupDid: string; handle: string }> {
-  const res = await authFetch("/api/groups/import", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ appPassword, ownerDid }),
-  })
-  if (!res.ok) {
-    let message = "Failed to import group"
-    let code: string | undefined
-    try {
-      const data = (await res.json()) as { error?: string; code?: string }
-      if (typeof data.error === "string") message = data.error
-      if (typeof data.code === "string") code = data.code
-    } catch {
-      // fall through
-    }
-    throw new RegisterGroupError(message, code)
-  }
-  return await res.json()
-}
-
-/**
- * Remove a group from the group service (owner-only; CGS enforces the
- * role). The underlying PDS account is left intact and can be
- * re-imported later. Reuses {@link RegisterGroupError} for structured
- * codes (e.g. `GroupNotFound`).
- */
-export async function destroyGroup(
-  groupDid: string,
-): Promise<{ groupDid: string }> {
-  const res = await authFetch(
-    `/api/groups/${encodeURIComponent(groupDid)}/destroy`,
-    { method: "POST" },
-  )
-  if (!res.ok) {
-    let message = "Failed to remove group"
-    let code: string | undefined
-    try {
-      const data = (await res.json()) as { error?: string; code?: string }
-      if (typeof data.error === "string") message = data.error
-      if (typeof data.code === "string") code = data.code
-    } catch {
-      // fall through
-    }
-    throw new RegisterGroupError(message, code)
-  }
-  return await res.json()
-}
-
-/**
  * Get a group's profile (reads go to the PDS directly).
  */
 export async function getOrgProfile(

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { profileUrl } from "@/lib/urls"
 import { useRouter } from "next/navigation"
-import { Search as SearchIcon, X, CornerDownLeft } from "lucide-react"
+import { Search as SearchIcon, X } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
 import Avatar from "@/components/ui/avatar"
 import Combobox from "@/components/ui/combobox"
@@ -14,9 +14,6 @@ import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseActivityUri, activityDetailHref } from "@/lib/atproto/activity-uri"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
-import { rankBy } from "@/lib/search/rank"
-import { parseSearchIntent, type SearchIntent } from "@/lib/search/parse-search-intent"
-import { SEARCH_DEBOUNCE_MS, CANDIDATE_FETCH_SIZE } from "@/lib/search/constants"
 
 interface Actor {
   did: string
@@ -36,12 +33,7 @@ interface CertRow {
   did: string
 }
 
-interface IntentRow {
-  kind: "intent"
-  intent: SearchIntent
-}
-
-type Row = IntentRow | PersonRow | CertRow
+type Row = PersonRow | CertRow
 
 interface GlobalSearchProps {
   readonly className?: string
@@ -49,6 +41,7 @@ interface GlobalSearchProps {
   readonly autoFocus?: boolean
 }
 
+const SEARCH_DEBOUNCE_MS = 250
 const PEOPLE_LIMIT = 6
 const CERTS_LIMIT = 6
 
@@ -83,7 +76,6 @@ export default function GlobalSearch({
   const [query, setQuery] = useState("")
   const [people, setPeople] = useState<Actor[]>([])
   const [certs, setCerts] = useState<CertRow[]>([])
-  const [intent, setIntent] = useState<SearchIntent | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
 
@@ -99,11 +91,10 @@ export default function GlobalSearch({
   // each render, breaking downstream memoization.
   const rows: Row[] = useMemo(
     () => [
-      ...(intent ? [{ kind: "intent", intent } as IntentRow] : []),
       ...people.map((actor): PersonRow => ({ kind: "person", actor })),
       ...certs,
     ],
-    [intent, people, certs],
+    [people, certs],
   )
 
   const search = useCallback(async (q: string, seq: number) => {
@@ -111,14 +102,10 @@ export default function GlobalSearch({
     if (trimmed.length < 1) {
       setPeople([])
       setCerts([])
-      setIntent(null)
       setIsOpen(false)
       setIsSearching(false)
       return
     }
-    // Synchronous: if the query is a pasted identifier (at-URI / handle /
-    // DID / app URL), offer a direct jump that bypasses the indexer.
-    setIntent(parseSearchIntent(trimmed))
     setIsSearching(true)
     try {
       const [peopleRes, certPage] = await Promise.all([
@@ -132,12 +119,8 @@ export default function GlobalSearch({
               : { actors: [] },
           )
           .catch(() => ({ actors: [] as Actor[] })),
-        // Fetch wide, show narrow: the indexer returns recency order, so
-        // we pull a larger candidate set and re-rank by relevance before
-        // slicing to the display cap. (People keep Bluesky's own
-        // relevance order.)
         fetchIndexerActivities({
-          first: CANDIDATE_FETCH_SIZE,
+          first: CERTS_LIMIT,
           search: trimmed,
         }).catch(() => null),
       ])
@@ -157,11 +140,7 @@ export default function GlobalSearch({
           certRows.push({ kind: "cert", record, did })
         }
       }
-      const rankedCerts = rankBy(trimmed, certRows, (row) => ({
-        primary: row.record.value.title ?? "",
-        secondary: row.record.value.shortDescription ?? "",
-      })).slice(0, CERTS_LIMIT)
-      setCerts(rankedCerts)
+      setCerts(certRows)
       setIsOpen(true)
     } finally {
       if (seq === requestSeq.current) setIsSearching(false)
@@ -178,7 +157,6 @@ export default function GlobalSearch({
     if (!query.trim()) {
       setPeople([])
       setCerts([])
-      setIntent(null)
       setIsOpen(false)
       setIsSearching(false)
       return
@@ -218,9 +196,7 @@ export default function GlobalSearch({
   const select = useCallback(
     (row: Row) => {
       suppressNextSearchRef.current = true
-      if (row.kind === "intent") {
-        router.push(row.intent.href)
-      } else if (row.kind === "person") {
+      if (row.kind === "person") {
         setQuery(row.actor.displayName || row.actor.handle)
         router.push(profileUrl(row.actor.did))
       } else {
@@ -230,7 +206,6 @@ export default function GlobalSearch({
       }
       setPeople([])
       setCerts([])
-      setIntent(null)
       setIsOpen(false)
       setIsSearching(false)
       inputRef.current?.blur()
@@ -242,7 +217,6 @@ export default function GlobalSearch({
     setQuery("")
     setPeople([])
     setCerts([])
-    setIntent(null)
     setIsOpen(false)
     inputRef.current?.focus()
   }
@@ -260,18 +234,11 @@ export default function GlobalSearch({
       setIsOpen(false)
       setIsSearching(false)
       inputRef.current?.blur()
-      // A pasted identifier jumps straight to its target (bypassing the
-      // indexer); anything else runs a full Explore search.
-      const jump = parseSearchIntent(q)
-      setIntent(null)
-      router.push(jump ? jump.href : `/explore?q=${encodeURIComponent(q)}`)
+      router.push(`/explore?q=${encodeURIComponent(q)}`)
     },
     [router],
   )
 
-  // Section offsets for interleaved group headers. The optional intent
-  // row sits at index 0, so people/certs start after it.
-  const intentCount = intent ? 1 : 0
   const peopleCount = people.length
 
   return (
@@ -282,11 +249,7 @@ export default function GlobalSearch({
       onValueChange={setQuery}
       items={rows}
       getItemKey={(row) =>
-        row.kind === "intent"
-          ? "intent"
-          : row.kind === "person"
-            ? `p-${row.actor.did}`
-            : `c-${row.record.uri}`
+        row.kind === "person" ? `p-${row.actor.did}` : `c-${row.record.uri}`
       }
       isLoading={isSearching}
       open={isOpen}
@@ -335,24 +298,13 @@ export default function GlobalSearch({
         return null
       }}
       renderOption={({ item: row, index, highlighted, optionId, onHover, onSelect }) => {
-        if (row.kind === "intent") {
-          // Pinned "Jump to" row at index 0 — a direct, indexer-bypassing
-          // navigation for a pasted identifier.
-          return (
-            <IntentRowItem
-              intent={row.intent}
-              optionId={optionId}
-              highlighted={highlighted}
-              onHover={onHover}
-              onSelect={onSelect}
-            />
-          )
-        }
         if (row.kind === "person") {
           return (
             <>
-              {/* People header — interleaved above the first person row. */}
-              {index === intentCount ? (
+              {/* People header — interleaved above the first person row.
+                  Only rendered when people came back (index 0 is a person
+                  iff people.length > 0). */}
+              {index === 0 ? (
                 <li
                   className="cert-search__group-header"
                   role="presentation"
@@ -373,8 +325,9 @@ export default function GlobalSearch({
         }
         return (
           <>
-            {/* Activities header — interleaved above the first cert row. */}
-            {index === intentCount + peopleCount ? (
+            {/* Activities header — interleaved above the first cert row
+                (the row at flat index === people.length). */}
+            {index === peopleCount ? (
               <li
                 className="cert-search__group-header"
                 role="presentation"
@@ -402,48 +355,6 @@ function activityDetailHrefFromRecord(uri: string): string | null {
   const parsed = parseActivityUri(uri)
   if (!parsed) return null
   return activityDetailHref(parsed.did, parsed.rkey)
-}
-
-interface IntentRowProps {
-  intent: SearchIntent
-  optionId: string
-  highlighted: boolean
-  onHover: () => void
-  onSelect: (e: React.MouseEvent) => void
-}
-
-function IntentRowItem({
-  intent,
-  optionId,
-  highlighted,
-  onHover,
-  onSelect,
-}: IntentRowProps) {
-  const detail = intent.kind === "profile" ? intent.actor : intent.href
-  return (
-    <li
-      id={optionId}
-      role="option"
-      aria-selected={highlighted}
-      data-combobox-option
-      className={`cert-search__item ${
-        highlighted ? "cert-search__item--highlighted" : ""
-      }`}
-      onMouseEnter={onHover}
-      onMouseDown={onSelect}
-    >
-      <div
-        className="cert-search__thumb cert-search__thumb--placeholder"
-        aria-hidden="true"
-      >
-        <CornerDownLeft size={16} strokeWidth={1.5} />
-      </div>
-      <div className="cert-search__item-info">
-        <span className="cert-search__item-title">{intent.label}</span>
-        <span className="cert-search__item-handle">{detail}</span>
-      </div>
-    </li>
-  )
 }
 
 interface PersonRowProps {

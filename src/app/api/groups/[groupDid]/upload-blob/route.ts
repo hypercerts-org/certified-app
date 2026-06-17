@@ -51,11 +51,9 @@ export async function POST(
 
     const groupAgent = createGroupAgent(auth.agent, groupDid)
 
-    // uploadBlob has a binary body, so the group selector goes on the
-    // querystring (body-less convention — see CGS aud-migration.md).
     const { data } = await groupAgent.call(
       "app.certified.group.repo.uploadBlob",
-      { repo: groupDid },
+      {},
       new Uint8Array(buffer),
       { encoding: contentType }
     )
