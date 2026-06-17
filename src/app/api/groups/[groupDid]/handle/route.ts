@@ -42,7 +42,12 @@ export async function PUT(
       return NextResponse.json({ error: "Handle too long (max 253 characters)" }, { status: 400 })
     }
 
-    const groupAgent = createGroupAgent(auth.agent, groupDid)
+    // updateHandle is a stock atproto method with no `repo` field, so it
+    // can't use the new explicit-repo targeting — CGS identifies the
+    // group from the JWT `aud`. Keep this call on the legacy proxy form
+    // (group DID in `aud`) until CGS exposes a repo-targetable handle
+    // update. See CGS aud-migration.md.
+    const groupAgent = createGroupAgent(auth.agent, groupDid, { legacy: true })
 
     // Use the standard identity.updateHandle through the proxy
     // The group service intercepts this and updates the group's handle

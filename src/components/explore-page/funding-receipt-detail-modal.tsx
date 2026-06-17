@@ -247,7 +247,7 @@ export default function FundingReceiptDetailModal({
       maxWidth={460}
       onClose={onClose}
     >
-      <AppDialogHeader title="Funding receipt" onClose={onClose} />
+      <AppDialogHeader title="Funding receipt" onClose={onClose} center />
 
       <div className="px-5 pb-5 pt-0">
         {/* Grouped as a top-to-bottom narrative: who paid whom (Transfer),

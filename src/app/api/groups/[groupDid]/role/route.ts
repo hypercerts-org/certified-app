@@ -53,7 +53,7 @@ export async function PUT(
     await groupAgent.call(
       "app.certified.group.role.set",
       {},
-      { memberDid, role },
+      { repo: groupDid, memberDid, role },
       { encoding: "application/json" }
     )
 

@@ -28,6 +28,26 @@ export async function GET(request: NextRequest) {
   try {
     const params = request.nextUrl.searchParams
 
+    // ePDS clean-exit (#154): when the OAuth flow can't complete — the
+    // user denied consent, the PAR/ticket expired, or they walked away —
+    // the provider redirects back here with a standard OAuth `error`
+    // param instead of a `code`. Detect it up front and return a
+    // retryable failure so the sign-in UI can offer "try again", rather
+    // than letting `client.callback()` throw an opaque 500.
+    const oauthError = params.get("error")
+    if (oauthError) {
+      logSafe("[auth] oauth error redirect", undefined, { code: oauthError })
+      const description = params.get("error_description") || undefined
+      return NextResponse.json(
+        {
+          error: description || "Sign-in was not completed",
+          code: oauthError,
+          retry: true,
+        },
+        { status: 400 },
+      )
+    }
+
     const client = await getOAuthClient()
     const { session } = await client.callback(params)
 

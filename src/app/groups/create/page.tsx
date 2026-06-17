@@ -606,6 +606,18 @@ export default function CreateGroupPage() {
               {isCreating ? "Creating…" : "Create group"}
             </Button>
           </div>
+
+          <p className="settings__note">
+            Already have an account you want to use as a group?{" "}
+            <button
+              type="button"
+              className="cursor-pointer border-0 bg-transparent p-0 text-[var(--fg-primary)] underline disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => router.push("/groups/import")}
+              disabled={isCreating}
+            >
+              Import an existing account
+            </button>
+          </p>
         </div>
       </article>
     </form>
