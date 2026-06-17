@@ -121,47 +121,6 @@ const Navbar: React.FC = () => {
     : getInitials(profile?.displayName, did);
   const displayAvatarUrl = activeOrg ? (orgAvatarUrl || undefined) : (avatarUrl || undefined);
 
-  // In-app navigation depth counter. The navbar is mounted once in the
-  // root layout and persists across route changes, so refs survive
-  // pathname updates. We count "how many internal navigations happened
-  // since the user first loaded the app" — not `window.history.length`,
-  // which also includes pages the user visited BEFORE landing on ours
-  // and would send them back out of the app.
-  //
-  //   - First render (landing pathname):      counter = 0
-  //   - Each in-app Link click / push:        counter++
-  //   - Each popstate (back / forward):       counter-- (clamped at 0)
-  //
-  // `handleBack` uses `router.back()` only when counter > 0. When it's
-  // 0, we push `/` — because the back stack would otherwise take the
-  // user to an external URL.
-  //
-  // NOTE: these hooks MUST sit above `if (isLoading) return null` so the
-  // hook count is stable across renders (rules of hooks).
-  // In-app navigation depth. We patch history.pushState (which Next's
-  // router calls for every forward navigation, INCLUDING query-only tab
-  // navigations like `?tab=description`) to increment, and popstate to
-  // decrement. router.replace uses replaceState, so it isn't counted —
-  // the did→handle URL canonicalization can't inflate the count. When
-  // the counter is 0 the back stack would exit the app, so handleBack
-  // pushes `/` instead.
-  const inAppDepthRef = useRef(0);
-  useEffect(() => {
-    const origPushState = history.pushState.bind(history);
-    history.pushState = (...args: Parameters<typeof origPushState>) => {
-      inAppDepthRef.current += 1;
-      return origPushState(...args);
-    };
-    const onPop = () => {
-      inAppDepthRef.current = Math.max(0, inAppDepthRef.current - 1);
-    };
-    window.addEventListener("popstate", onPop);
-    return () => {
-      history.pushState = origPushState;
-      window.removeEventListener("popstate", onPop);
-    };
-  }, []);
-
   // Don't render navbar while auth is loading — prevents white flash.
   // Also hide on desktop — the left rail hosts the brandmark there.
   // Both early returns sit AFTER every hook so the rules-of-hooks
@@ -180,21 +139,10 @@ const Navbar: React.FC = () => {
     .filter(Boolean)
     .join(" ");
 
-  const handleBack = () => {
-    // Reverse slide for the back gesture (see ViewTransitionProvider).
-    transitionBack(() => {
-      if (inAppDepthRef.current > 0) {
-        // We have in-app history — safe to pop. The popstate listener
-        // above will decrement the counter.
-        router.back();
-      } else {
-        // The user entered our app on this page (direct link, external
-        // referrer, or page refresh). `router.back()` would take them
-        // outside the app — push home instead.
-        router.push("/");
-      }
-    });
-  };
+  // Reverse-slide back gesture. The default navigate (see
+  // ViewTransitionProvider) already guards against walking out of the
+  // app when there's no in-app history, pushing "/" instead.
+  const handleBack = () => transitionBack();
 
   // Top-level destinations show the hamburger + account switcher / sign-in
   // even though they also set a centered page title; sub-pages keep the

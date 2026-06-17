@@ -126,16 +126,28 @@ export function AppDialogHeader({
   title,
   onClose,
   disabled = false,
+  center = false,
 }: {
   title: ReactNode
   /** When omitted the X button is hidden. Use for alertdialog
    *  modals where the only exits are explicit footer buttons. */
   onClose?: () => void
   disabled?: boolean
+  /** Center the title. Uses symmetric horizontal padding so the title
+   *  is centered in the modal while leaving room for the close X. */
+  center?: boolean
 }) {
   return (
-    <div className="flex shrink-0 items-center gap-2.5 border-b border-[var(--color-light-gray)] pl-6 pr-10 pt-5 pb-3">
-      <span className="flex-1 text-[0.8125rem] font-semibold tracking-[0.02em] text-[var(--fg-primary)]">
+    <div
+      className={`flex shrink-0 items-center gap-2.5 border-b border-[var(--color-light-gray)] pt-5 pb-3 ${
+        center ? "px-10" : "pl-6 pr-10"
+      }`}
+    >
+      <span
+        className={`flex-1 text-[0.8125rem] font-semibold tracking-[0.02em] text-[var(--fg-primary)] ${
+          center ? "text-center" : ""
+        }`}
+      >
         {title}
       </span>
       {onClose ? (
