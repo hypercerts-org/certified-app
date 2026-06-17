@@ -336,12 +336,14 @@ export default function DesktopTopBar() {
   if (isLoading) return null;
 
   // Editorial pages use LandingTopBar; suppress the app chrome.
+  // Embeds render bare (board-only) inside a third-party iframe.
   if (
     pathname === "/welcome" ||
     pathname === "/terms" ||
     pathname === "/privacy" ||
     pathname === "/imprint" ||
-    pathname === "/dsa"
+    pathname === "/dsa" ||
+    (pathname?.startsWith("/embed") ?? false)
   ) return null;
 
   const tabHref = (tab: ProfileTab) => {

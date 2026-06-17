@@ -53,6 +53,15 @@ const ALLOWED_WRITE_COLLECTIONS = [
   // author-vs-from/to and clusters matching coordinates. Rate-limited
   // below (naming arbitrary parties is a plausible spam vector).
   "org.hypercerts.funding.receipt",
+  // Contributor Board (org.hyperboards.*). `board` wraps an activity with
+  // visual presentation (subject → activity, config, contributorConfigs);
+  // `contributorInformation` is the identity record a board's
+  // contributorConfigs reference; `displayProfile` is the viewer's own
+  // board appearance (rkey self). All written own-repo only — board editing
+  // is gated to the activity author.
+  "org.hyperboards.board",
+  "org.hyperboards.displayProfile",
+  "org.hypercerts.claim.contributorInformation",
 ]
 
 const ALLOWED_BLOB_CONTENT_TYPES = [

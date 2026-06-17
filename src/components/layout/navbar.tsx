@@ -168,6 +168,8 @@ const Navbar: React.FC = () => {
   // contract (always-same call order) is preserved.
   if (isLoading) return null;
   if (isDesktop) return null;
+  // Embeds render bare (board-only) inside a third-party iframe.
+  if (pathname?.startsWith("/embed")) return null;
 
   const navClasses = [
     "navbar",
