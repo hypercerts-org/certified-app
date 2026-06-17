@@ -55,12 +55,16 @@ describe("layoutTreemap", () => {
 })
 
 describe("tileSizing", () => {
-  it("scales avatar + font with tile size and hides chrome on tiny tiles", () => {
+  it("scales avatar + font with tile size, keeps small tiles as avatars, hides the label", () => {
     const big = tileSizing(400, 300)
     expect(big.showAvatar).toBe(true)
     expect(big.showLabel).toBe(true)
-    const tiny = tileSizing(20, 20)
+    // Small tiles still show an avatar (mosaic of faces) but drop the name.
+    const small = tileSizing(20, 20)
+    expect(small.showAvatar).toBe(true)
+    expect(small.showLabel).toBe(false)
+    // Only the truly tiny long-tail cells render no avatar.
+    const tiny = tileSizing(10, 10)
     expect(tiny.showAvatar).toBe(false)
-    expect(tiny.showLabel).toBe(false)
   })
 })

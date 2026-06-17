@@ -11,6 +11,7 @@ import {
   parseBoardRecord,
   fetchBoardForActivity,
   invalidateBoardForActivity,
+  boardImageUrl,
   type ResolvedContributorProfile,
   type BuildEntriesInput,
 } from "@/lib/atproto/hyperboard"
@@ -122,6 +123,21 @@ describe("buildBoardEntries precedence", () => {
     expect(e.name).toBe("plainname")
     expect(e.imageUrl).toBeNull()
     expect(e.value).toBe(1)
+  })
+})
+
+describe("boardImageUrl", () => {
+  it("returns a bare string URL as-is (hyperboards-v2 stores backgroundImage as a string)", () => {
+    expect(boardImageUrl("https://example.com/bg.jpg", "did:plc:x")).toBe(
+      "https://example.com/bg.jpg",
+    )
+  })
+  it("returns the uri from a uri union", () => {
+    expect(boardImageUrl(uri("https://a/b.png"), "did:plc:x")).toBe("https://a/b.png")
+  })
+  it("returns null for nullish input", () => {
+    expect(boardImageUrl(undefined, "did:plc:x")).toBeNull()
+    expect(boardImageUrl(null, "did:plc:x")).toBeNull()
   })
 })
 

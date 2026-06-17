@@ -59,10 +59,17 @@ function BackgroundLayer({
   boardDid: string | null
 }) {
   const grayscale = config.backgroundGrayscale !== false
-  const opacity =
+  // Opacity may arrive as a 0–1 fraction or a 0–100 percent, number or string
+  // (hyperboards-v2 stores e.g. "0.55"). Normalise to a 0–1 fraction.
+  const rawOpacity =
     typeof config.backgroundOpacity === "number"
-      ? Math.max(0, Math.min(100, config.backgroundOpacity)) / 100
-      : 0.15
+      ? config.backgroundOpacity
+      : typeof config.backgroundOpacity === "string"
+        ? parseFloat(config.backgroundOpacity)
+        : NaN
+  const opacity = Number.isFinite(rawOpacity)
+    ? Math.max(0, Math.min(1, rawOpacity > 1 ? rawOpacity / 100 : rawOpacity))
+    : 0.15
   const layerStyle = {
     opacity,
     filter: grayscale ? "grayscale(1)" : undefined,

@@ -53,7 +53,10 @@ export function ContributorTile({
   const content = (
     <>
       {showAvatar ? (
-        <span className={`contributor-tile__avatar ${shapeClass}`}>
+        <span
+          className={`contributor-tile__avatar ${shapeClass}`}
+          style={{ width: avatarSize, height: avatarSize }}
+        >
           {entry.imageUrl && !imgError ? (
             <Image
               src={entry.imageUrl}
