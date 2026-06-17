@@ -179,37 +179,11 @@ export async function getAuthenticatedAgent(): Promise<{
 }
 
 /**
- * Create a proxy agent that routes requests through the user's PDS to
- * the group service.
- *
- * Targeting (CGS #27 migration, see `docs/aud-migration.md` in the
- * certified-group-service repo):
- *
- *   - **Default (new form):** proxy to the *service* DID via the
- *     `certified_group_service` service id. The user's PDS resolves the
- *     service's `/.well-known/did.json`, mints `aud` = the service DID,
- *     and forwards. The target group is then named by an explicit
- *     `repo` field on each call — in the body for JSON-body procedures
- *     (`repo.*`, `member.add/remove`, `role.set`), on the querystring
- *     for queries (`member.list`, `audit.query`) and body-less methods
- *     (`repo.uploadBlob`). Callers MUST include `repo` or CGS can't
- *     resolve the group.
- *   - **Legacy form (`opts.legacy`):** proxy to the *group* DID via the
- *     `certified_group` service id, so `aud` = the group DID and the
- *     group is read from `aud`. Deprecated upstream and slated for
- *     removal; kept only for `com.atproto.identity.updateHandle`, a
- *     stock method with no `repo` field that CGS targets via `aud`.
+ * Create a proxy agent that routes requests through the user's PDS
+ * to the group service for a specific group.
  */
-export function createGroupAgent(
-  agent: Agent,
-  groupDid: string,
-  opts?: { legacy?: boolean },
-): Agent {
-  const proxied = (
-    opts?.legacy
-      ? agent.withProxy("certified_group", groupDid)
-      : agent.withProxy("certified_group_service", GROUP_SERVICE_DID)
-  ) as Agent
+export function createGroupAgent(agent: Agent, groupDid: string): Agent {
+  const proxied = agent.withProxy("certified_group", groupDid) as Agent
   for (const doc of GROUP_LEXICONS) {
     proxied.lex.add(doc)
   }

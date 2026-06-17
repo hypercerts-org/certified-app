@@ -51,7 +51,7 @@ export default function RightsDetailModal({
       maxWidth={460}
       onClose={onClose}
     >
-      <AppDialogHeader title="Rights" onClose={onClose} center />
+      <AppDialogHeader title="Rights" onClose={onClose} />
 
       <div className="px-5 pb-5 pt-0">
         {isLoading && !record ? (

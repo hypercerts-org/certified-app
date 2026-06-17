@@ -1,12 +1,10 @@
 "use client"
 
 import React, { useState, useEffect, useCallback, useRef } from "react"
-import { useRouter } from "next/navigation"
 import {
   AtSign,
   ScrollText,
   Share2,
-  ShieldAlert,
   Trash2,
   UserPlus,
   Users,
@@ -19,7 +17,6 @@ import {
   removeOrgMember,
   setOrgMemberRole,
   queryOrgAuditLog,
-  destroyGroup,
 } from "@/lib/groups/api"
 import type { Group, OrgMember, AuditEntry, OrgRole } from "@/lib/groups/types"
 import { authFetch } from "@/lib/auth/fetch"
@@ -32,19 +29,12 @@ import ErrorMessage from "@/components/ui/error-message"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Tooltip from "@/components/ui/tooltip"
 
-type CategoryKey = "handle" | "members" | "activity" | "social-graph" | "danger"
+type CategoryKey = "handle" | "members" | "activity" | "social-graph"
 type CategoryDef = {
   key: CategoryKey
   label: string
   description: string
   Icon: typeof AtSign
-}
-// Owner-only; appended to the nav + rendered only for owners.
-const DANGER_CATEGORY: CategoryDef = {
-  key: "danger",
-  label: "Danger zone",
-  description: "Remove this group from the service.",
-  Icon: ShieldAlert,
 }
 const CATEGORIES: CategoryDef[] = [
   {
@@ -110,35 +100,8 @@ interface OrgSettingsProps {
 
 export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   const { did } = useAuth()
-  const router = useRouter()
   const isOwner = org.role === "owner"
   const isAdmin = org.role === "admin" || isOwner
-
-  // Owners get the Danger zone (remove group) in the nav + panel.
-  const visibleCategories = isOwner ? [...CATEGORIES, DANGER_CATEGORY] : CATEGORIES
-
-  // Remove-group (destroy) state.
-  const [confirmDestroy, setConfirmDestroy] = useState(false)
-  const [destroying, setDestroying] = useState(false)
-  const [destroyError, setDestroyError] = useState<string | null>(null)
-
-  const handleDestroy = async () => {
-    setDestroying(true)
-    setDestroyError(null)
-    try {
-      await destroyGroup(groupDid)
-      setConfirmDestroy(false)
-      // The group is gone from the service — leave the settings page.
-      router.push("/")
-    } catch (err) {
-      setDestroyError(
-        err instanceof Error ? err.message : "Failed to remove group",
-      )
-      setConfirmDestroy(false)
-    } finally {
-      setDestroying(false)
-    }
-  }
 
   // Members state
   const [members, setMembers] = useState<ResolvedMember[]>([])
@@ -371,7 +334,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
         <aside className="sx__menu">
           <nav aria-label="Group settings sections">
             <ul className="sx-menu">
-              {visibleCategories.map((cat) => {
+              {CATEGORIES.map((cat) => {
                 const isActive = cat.key === active
                 const Icon = cat.Icon
                 return (
@@ -725,42 +688,6 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
             </div>
           </section>
 
-          {/* Danger zone — owner-only. Removes the group from the
-              service (account left intact, re-importable). */}
-          {isOwner ? (
-            <section
-              id="danger"
-              ref={setSectionRef("danger")}
-              className="sx-section"
-              aria-labelledby="sx-section-danger-title"
-            >
-              <header className="sx-panel__header">
-                <h2 id="sx-section-danger-title" className="sx-panel__title">
-                  Danger zone
-                </h2>
-                <p className="sx-panel__desc">
-                  Remove this group from Certified. This deletes the group&apos;s
-                  membership and settings from the service only — the underlying
-                  account and its records are left intact, and the group can be
-                  imported again later.
-                </p>
-              </header>
-              <div className="sx-panel__body">
-                {destroyError && <ErrorMessage message={destroyError} />}
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setConfirmDestroy(true)}
-                  loading={destroying}
-                  disabled={destroying}
-                >
-                  <Trash2 size={14} />
-                  Remove group
-                </Button>
-              </div>
-            </section>
-          ) : null}
-
         </div>
       </div>
 
@@ -771,16 +698,6 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
           confirmLabel="Remove"
           onCancel={() => setConfirmRemove(null)}
           onConfirm={() => handleRemoveMember(confirmRemove)}
-        />
-      ) : null}
-
-      {confirmDestroy ? (
-        <ConfirmDialog
-          title="Remove group"
-          message={`Remove @${org.handle} from Certified? This deletes the group from the service only — the underlying account and its records remain. The group can be imported again later.`}
-          confirmLabel="Remove group"
-          onCancel={() => setConfirmDestroy(false)}
-          onConfirm={handleDestroy}
         />
       ) : null}
     </div>
