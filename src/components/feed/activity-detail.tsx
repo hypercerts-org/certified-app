@@ -46,6 +46,7 @@ import { formatShortDate } from "@/lib/utils/format-date"
 import Avatar from "@/components/ui/avatar"
 import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import { ActivityContributorBoard } from "@/components/contributor-board/activity-contributor-board"
 import EditBanner from "@/components/ui/edit-banner"
 import Tooltip from "@/components/ui/tooltip"
 import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
@@ -320,10 +321,12 @@ export default function ActivityDetail({
     | "overview"
     | "description"
     | "contributors"
+    | "contributor-board"
     | "funding"
     | "updates" =
     tabParam === "description" ||
     tabParam === "contributors" ||
+    tabParam === "contributor-board" ||
     tabParam === "funding" ||
     tabParam === "updates"
       ? tabParam
@@ -344,6 +347,8 @@ export default function ActivityDetail({
         ? contributorCount > 0
           ? `Contributors (${contributorCount})`
           : "Contributors"
+        : activeTab === "contributor-board"
+        ? "Contributor Board"
         : activeTab === "funding"
           ? shownFundingCount > 0
             ? `Funding (${shownFundingCount})`
@@ -1512,6 +1517,15 @@ export default function ActivityDetail({
               <p className="cert-detail__short-desc">No contributors listed.</p>
             )}
           </section>
+        ) : activeTab === "contributor-board" ? (
+          <ActivityContributorBoard
+            did={did}
+            rkey={rkey}
+            value={value}
+            cid={cid}
+            contributors={contributors}
+            canEdit={isCreator && sessionDid === did}
+          />
         ) : activeTab === "funding" ? (
           <section className="cert-detail__section">
             <div className="cert-detail__section-header">
