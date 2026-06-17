@@ -25,7 +25,7 @@ export async function GET(
 
     const groupAgent = createGroupAgent(auth.agent, groupDid)
 
-    const queryParams: Record<string, string> = {}
+    const queryParams: Record<string, string> = { repo: groupDid }
     const actorDid = request.nextUrl.searchParams.get("actorDid")
     const action = request.nextUrl.searchParams.get("action")
     const collection = request.nextUrl.searchParams.get("collection")
