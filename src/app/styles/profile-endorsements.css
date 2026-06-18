@@ -32,7 +32,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 30px;
+  height: 28px;
   padding: 0 12px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
@@ -70,8 +70,8 @@
 
 @media (max-width: 799px) {
   /* Controls take their own full-width row; the search stretches to fill
-     it beside the buttons, and every control matches the plus button's
-     30px height. */
+     it beside the buttons, and every control matches the compact 28px
+     toolbar height (same as the gallery/list view toggle beside them). */
   .profile-endorsements-v2__controls {
     flex: 1 1 100%;
     min-width: 0;
@@ -79,7 +79,7 @@
   .profile-endorsements-v2__search {
     flex: 1 1 auto;
     min-width: 0;
-    height: 30px;
+    height: 28px;
   }
   .profile-endorsements-v2__search-input {
     width: auto;
@@ -88,11 +88,11 @@
   }
   /* Scoped under their containers so they beat the base `…__sort-btn`
      / `…__endorse-add` rules declared LATER in this file (equal
-     specificity would otherwise let the taller 36px base win). */
+     specificity would otherwise let the taller base win). */
   .profile-endorsements-v2__controls .profile-endorsements-v2__sort-btn,
   .profile-endorsements-v2__controls .profile-endorsements-v2__endorse-add {
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
   }
   .endorsement-lists .endorsement-lists__sort-btn {
     width: 30px;
@@ -109,8 +109,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
@@ -138,8 +138,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);

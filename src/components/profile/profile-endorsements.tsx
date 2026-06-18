@@ -475,7 +475,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
             aria-label="Endorsements view"
             value={view}
             onValueChange={(v) => setViewParam(v === "list" ? "list" : "gallery")}
-            size="md"
+            size="sm"
             joined
             shape="square"
             iconOnly
