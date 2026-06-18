@@ -18,6 +18,8 @@ import { useTypedLists } from "@/hooks/use-typed-lists"
 import {
   itemUriMatchesType,
   resolveRecordCid,
+  resolveAccountProfileRef,
+  LIST_ACCOUNTS_TYPE,
   type TypedListType,
 } from "@/lib/atproto/typed-lists"
 
@@ -221,15 +223,33 @@ function AddToListModal({
     if (creating) newInputRef.current?.focus()
   }, [creating])
 
+  // Resolve the strongRef to add. For accounts we accept either profile
+  // lexicon: try the Certified profile, then fall back to the Bluesky
+  // profile — callers always hand us the Certified URI, but a member who
+  // only has a bsky profile must still be addable. Other types resolve
+  // their single record directly.
+  const resolveTargetRef = useCallback(async (): Promise<{
+    uri: string
+    cid: string
+  } | null> => {
+    if (targetCid) return { uri: targetUri, cid: targetCid }
+    if (targetType === LIST_ACCOUNTS_TYPE) {
+      const did = targetUri.split("/")[2]
+      return did ? resolveAccountProfileRef(did) : null
+    }
+    const cid = await resolveRecordCid(targetUri)
+    return cid ? { uri: targetUri, cid } : null
+  }, [targetCid, targetUri, targetType])
+
   const handleAdd = useCallback(
     async (rkey: string) => {
       if (busyRkey) return
       setBusyRkey(rkey)
       setError(null)
       try {
-        const cid = targetCid || (await resolveRecordCid(targetUri))
-        if (!cid) throw new Error("Couldn't resolve record CID")
-        await addItem(rkey, targetType, { uri: targetUri, cid })
+        const targetRef = await resolveTargetRef()
+        if (!targetRef) throw new Error("Couldn't resolve record CID")
+        await addItem(rkey, targetType, targetRef)
         // Reflect "Added" immediately — the hook's refetch follows
         // but may lag by a tick.
         setJustAdded((prev) => {
@@ -244,7 +264,7 @@ function AddToListModal({
         setBusyRkey(null)
       }
     },
-    [addItem, busyRkey, targetCid, targetType, targetUri],
+    [addItem, busyRkey, resolveTargetRef, targetType],
   )
 
   const handleCreateAndAdd = useCallback(
@@ -255,12 +275,12 @@ function AddToListModal({
       setBusyRkey("__new__")
       setError(null)
       try {
-        const cid = targetCid || (await resolveRecordCid(targetUri))
-        if (!cid) throw new Error("Couldn't resolve record CID")
+        const targetRef = await resolveTargetRef()
+        if (!targetRef) throw new Error("Couldn't resolve record CID")
         const ref = await createList(targetType, title)
         const rkey = ref.uri.split("/").pop()
         if (!rkey) throw new Error("New list missing rkey")
-        await addItem(rkey, targetType, { uri: targetUri, cid })
+        await addItem(rkey, targetType, targetRef)
         // Optimistic state: preview the new list immediately so it
         // renders in the candidates section, and mark its rkey as
         // already-added so the row shows "Added" right away. Both
@@ -283,7 +303,7 @@ function AddToListModal({
         setBusyRkey(null)
       }
     },
-    [addItem, busyRkey, createList, newTitle, targetCid, targetType, targetUri],
+    [addItem, busyRkey, createList, newTitle, resolveTargetRef, targetType],
   )
 
   return (

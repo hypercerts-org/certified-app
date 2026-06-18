@@ -69,6 +69,28 @@ describe("typed-lists / itemUriMatchesType", () => {
     ).toBe(true)
   })
 
+  it("accepts a Bluesky-profile URI for list:accounts (bsky-only account)", async () => {
+    const { itemUriMatchesType, LIST_ACCOUNTS_TYPE } = await loadModule()
+    // Accounts with no Certified profile strong-ref their app.bsky.actor
+    // .profile record, so list:accounts must accept that NSID too.
+    expect(
+      itemUriMatchesType(
+        "at://did:plc:abc/app.bsky.actor.profile/self",
+        LIST_ACCOUNTS_TYPE,
+      ),
+    ).toBe(true)
+  })
+
+  it("rejects a Bluesky-profile URI for list:projects (wrong NSID)", async () => {
+    const { itemUriMatchesType, LIST_PROJECTS_TYPE } = await loadModule()
+    expect(
+      itemUriMatchesType(
+        "at://did:plc:abc/app.bsky.actor.profile/self",
+        LIST_PROJECTS_TYPE,
+      ),
+    ).toBe(false)
+  })
+
   it("rejects a malformed URI (too few segments)", async () => {
     const { itemUriMatchesType, LIST_CERTS_TYPE } = await loadModule()
     expect(itemUriMatchesType("at://did:plc:abc", LIST_CERTS_TYPE)).toBe(false)
