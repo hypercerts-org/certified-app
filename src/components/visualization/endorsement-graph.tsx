@@ -271,21 +271,25 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
       0,
     )
 
-    fg.d3Force("collide", makeCollideForce(2))
+    // Padding leaves room for the name label drawn beneath each node so
+    // text mostly clears its neighbours — a moderate gap (some overlap is
+    // fine; over-spreading just shrinks the avatars at overview zoom).
+    // Spread mode gets a bit more.
+    fg.d3Force("collide", makeCollideForce(layout === "spread" ? 18 : 10))
 
     if (layout === "spread") {
-      charge?.strength?.(-160)
-      link?.distance?.(80)
+      charge?.strength?.(-200)
+      link?.distance?.(100)
       fg.d3Force("radial", null)
     } else if (layout === "radial") {
-      charge?.strength?.(-28)
-      link?.distance?.(40)
-      const outerR = Math.max(160, Math.sqrt(count) * 34)
-      fg.d3Force("radial", makeRadialForce(maxDegree, 24, outerR, 0.6))
+      charge?.strength?.(-45)
+      link?.distance?.(60)
+      const outerR = Math.max(180, Math.sqrt(count) * 40)
+      fg.d3Force("radial", makeRadialForce(maxDegree, 30, outerR, 0.6))
     } else {
       // network (compact, the default)
-      charge?.strength?.(-42)
-      link?.distance?.(34)
+      charge?.strength?.(-70)
+      link?.distance?.(48)
       fg.d3Force("radial", null)
     }
     fg.d3ReheatSimulation?.()
@@ -423,7 +427,9 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
 
       // name label when zoomed in or active
       if (globalScale > 1.6 || isActive) {
-        const name = node.displayName || (node.handle ? `@${node.handle}` : node.id.slice(0, 12))
+        const raw = node.displayName || (node.handle ? `@${node.handle}` : node.id.slice(0, 12))
+        // Cap label width so a long name doesn't sprawl across neighbours.
+        const name = raw.length > 18 ? `${raw.slice(0, 17)}…` : raw
         ctx.font = `500 ${Math.max(3, 11 / globalScale)}px Inter, sans-serif`
         ctx.fillStyle = c.fg
         ctx.textAlign = "center"
