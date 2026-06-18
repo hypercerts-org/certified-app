@@ -3,12 +3,10 @@ import {
   thirdPartyDids,
   confirmRoleBucket,
   matchesConfirmedBy,
-  isTrustedEvaluator,
   fundingConfirmEligibility,
   CONFIRM_ROLES,
   type ConfirmRole,
 } from "../funding-provenance"
-import { TRUSTED_EVALUATOR_DIDS } from "../trusted-evaluators"
 import type { FundingAttestation, FundingParty } from "../indexer"
 
 const recipient: FundingAttestation = { role: "recipient", did: "did:plc:rcpt" }
@@ -121,27 +119,15 @@ describe("matchesConfirmedBy", () => {
   })
 })
 
-const EVALUATOR = TRUSTED_EVALUATOR_DIDS[0]
+const EVALUATOR = "did:plc:evaluator0000000000000000"
+const EVALUATORS: readonly string[] = [EVALUATOR]
 const acct = (did: string): FundingParty => ({ kind: "account", did })
 const txt = (value: string): FundingParty => ({ kind: "text", value })
-
-describe("isTrustedEvaluator", () => {
-  it("is true for a DID on the feed-filter evaluator list", () => {
-    expect(isTrustedEvaluator(EVALUATOR)).toBe(true)
-  })
-  it("is false for a random DID", () => {
-    expect(isTrustedEvaluator("did:plc:nobody")).toBe(false)
-  })
-  it("is false for null/undefined", () => {
-    expect(isTrustedEvaluator(null)).toBe(false)
-    expect(isTrustedEvaluator(undefined)).toBe(false)
-  })
-})
 
 describe("fundingConfirmEligibility", () => {
   it("lets the sender (named by DID) confirm as 'sender'", () => {
     const r = { from: acct("did:plc:me"), to: txt("0xRCPT"), attestations: [] }
-    expect(fundingConfirmEligibility(r, "did:plc:me")).toEqual({
+    expect(fundingConfirmEligibility(r, "did:plc:me", EVALUATORS)).toEqual({
       canConfirm: true,
       role: "sender",
       alreadyAttested: false,
@@ -150,21 +136,26 @@ describe("fundingConfirmEligibility", () => {
 
   it("lets the recipient (named by DID) confirm as 'recipient'", () => {
     const r = { from: txt("0xSNDR"), to: acct("did:plc:me"), attestations: [] }
-    expect(fundingConfirmEligibility(r, "did:plc:me").role).toBe("recipient")
+    expect(fundingConfirmEligibility(r, "did:plc:me", EVALUATORS).role).toBe("recipient")
   })
 
   it("lets a trusted evaluator (neither party) confirm as 'third-party'", () => {
     const r = { from: txt("0xS"), to: txt("0xR"), attestations: [] }
-    expect(fundingConfirmEligibility(r, EVALUATOR).role).toBe("third-party")
+    expect(fundingConfirmEligibility(r, EVALUATOR, EVALUATORS).role).toBe("third-party")
   })
 
   it("does not let an unrelated, non-evaluator account confirm", () => {
     const r = { from: txt("0xS"), to: txt("0xR"), attestations: [] }
-    expect(fundingConfirmEligibility(r, "did:plc:nobody")).toEqual({
+    expect(fundingConfirmEligibility(r, "did:plc:nobody", EVALUATORS)).toEqual({
       canConfirm: false,
       role: null,
       alreadyAttested: false,
     })
+  })
+
+  it("does not grant third-party when the evaluator set is empty", () => {
+    const r = { from: txt("0xS"), to: txt("0xR"), attestations: [] }
+    expect(fundingConfirmEligibility(r, EVALUATOR, []).canConfirm).toBe(false)
   })
 
   it("hides confirm once the viewer has already attested", () => {
@@ -173,7 +164,7 @@ describe("fundingConfirmEligibility", () => {
       to: txt("0xRCPT"),
       attestations: [{ role: "sender" as const, did: "did:plc:me" }],
     }
-    const e = fundingConfirmEligibility(r, "did:plc:me")
+    const e = fundingConfirmEligibility(r, "did:plc:me", EVALUATORS)
     expect(e.alreadyAttested).toBe(true)
     expect(e.canConfirm).toBe(false)
   })
@@ -183,11 +174,11 @@ describe("fundingConfirmEligibility", () => {
     // recipient by wallet address, not their DID — so they can't claim the
     // recipient role and are ineligible unless they're an evaluator.
     const r = { from: txt("0xS"), to: txt("0xRCPT"), attestations: [] }
-    expect(fundingConfirmEligibility(r, "did:plc:me").canConfirm).toBe(false)
+    expect(fundingConfirmEligibility(r, "did:plc:me", EVALUATORS).canConfirm).toBe(false)
   })
 
   it("is ineligible for a logged-out viewer", () => {
     const r = { from: acct("did:plc:me"), to: txt("0xR"), attestations: [] }
-    expect(fundingConfirmEligibility(r, null).canConfirm).toBe(false)
+    expect(fundingConfirmEligibility(r, null, EVALUATORS).canConfirm).toBe(false)
   })
 })

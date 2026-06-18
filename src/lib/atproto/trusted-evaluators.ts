@@ -9,22 +9,60 @@
  * activity from the people their trusted evaluators have vouched
  * for, without having to follow each one directly.
  *
- * The default-selected list is hard-coded for now (curated by hand);
- * a future iteration can let the viewer add their own evaluators.
+ * The evaluator set is driven entirely by a curated `list:accounts`
+ * record (`TRUSTED_EVALUATORS_LIST_URI`), read live via
+ * `fetchTrustedEvaluatorDids` so editing the list (profile → Lists)
+ * propagates without a code change. There is no hardcoded evaluator
+ * list: an unreadable list yields an empty set (no expansion) rather
+ * than a stale baked-in one.
  */
 import { INDEXER_PROXY_URL } from "./indexer"
+import { authFetch } from "@/lib/auth/fetch"
 
 /**
- * Default-selected trusted evaluators. All four are checked by
- * default in the popover; the viewer can uncheck any to drop that
- * evaluator's expansion from the feed.
+ * Curated `list:accounts` collection whose members ARE the trusted
+ * evaluators. The list is editable in-app (profile → Lists), so adding
+ * or removing an account there changes the evaluator set with no deploy.
  */
-export const TRUSTED_EVALUATOR_DIDS = [
-  "did:plc:s4puetfspot742ai7y4otuel",
-  "did:plc:xqrmqd4h7f3fpe7ue7qdhp7h",
-  "did:plc:qoti4acfmc5wg6zzmtix6hse",
-  "did:plc:ghilmzxkfzrg6zr4bglxvlio",
-] as const
+export const TRUSTED_EVALUATORS_LIST_URI =
+  "at://did:plc:apun3uo5jqm34pxzqq6on754/org.hypercerts.collection/3moknbntllx2s"
+
+/**
+ * Read the trusted-evaluator DIDs from the curated list. Each item's
+ * strongRef URI is `at://<did>/<profile-nsid>/self`, so the member DID is
+ * the second path segment regardless of which profile lexicon backs it.
+ * Returns an empty array on any failure (missing list, network error,
+ * empty membership) — the sole source of truth is the list.
+ */
+export async function fetchTrustedEvaluatorDids(
+  signal?: AbortSignal,
+): Promise<string[]> {
+  try {
+    const [, , repo, collection, rkey] = TRUSTED_EVALUATORS_LIST_URI.split("/")
+    if (!repo || !collection || !rkey) return []
+    const params = new URLSearchParams({ repo, collection, rkey })
+    const res = await authFetch(
+      `/api/xrpc/com/atproto/repo/getRecord?${params.toString()}`,
+      signal ? { signal } : {},
+    )
+    if (!res.ok) return []
+    const data = (await res.json()) as {
+      value?: { items?: { itemIdentifier?: { uri?: string } }[] }
+    }
+    const seen = new Set<string>()
+    const dids: string[] = []
+    for (const item of data.value?.items ?? []) {
+      const did = item.itemIdentifier?.uri?.split("/")[2]
+      if (did && did.startsWith("did:") && !seen.has(did)) {
+        seen.add(did)
+        dids.push(did)
+      }
+    }
+    return dids
+  } catch {
+    return []
+  }
+}
 
 /** Per-page size for the EvaluatorEndorsements indexer query. The
  *  proxy clamps `first` to 100; the upstream silently caps higher
@@ -116,9 +154,9 @@ interface RawResponse {
 
 /**
  * Module-level cache for the resolved DID set, keyed by the sorted
- * evaluator list. Sized small because the popover only exposes
- * `TRUSTED_EVALUATOR_DIDS` (4 evaluators); the practical key set is
- * the power-set of those 4 — at most 15 non-empty subsets.
+ * evaluator list. Sized small because the popover only exposes the
+ * curated evaluator list (a handful of accounts); the practical key set
+ * is the power-set of those — a few dozen non-empty subsets at most.
  *
  * Each entry stores the result Set itself, NOT a Promise — by the
  * time we hand a cached entry back the inflight resolution has
