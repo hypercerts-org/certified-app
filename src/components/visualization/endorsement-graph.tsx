@@ -261,10 +261,12 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
     }
 
     // 2. connected-to-evaluators filter — keep only the nodes reachable
-    //    from a trusted evaluator through any chain of endorsements
-    //    (treating edges as undirected). Skipped until the evaluator set
-    //    has loaded, or if none of them appear in the current graph (so we
-    //    never blank the view out).
+    //    from a trusted evaluator by following endorsements OUTWARD
+    //    (issuer → subject): an evaluator, everyone they endorse, everyone
+    //    those accounts endorse, and so on to any depth. Edges pointing
+    //    *into* the evaluator network don't pull a node in. Skipped until
+    //    the evaluator set has loaded, or if none of them appear in the
+    //    current graph (so we never blank the view out).
     if (evaluatorConnectedOnly && evaluatorDids.length > 0) {
       const nodeIds = new Set(nds.map((n) => n.id))
       const adj = new Map<string, string[]>()
@@ -277,8 +279,8 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
         const s = linkEndId(l.source)
         const t = linkEndId(l.target)
         if (!s || !t) continue
+        // Directed: only follow issuer (source) -> subject (target).
         link2(s, t)
-        link2(t, s)
       }
       const seen = new Set<string>()
       const queue: string[] = []
