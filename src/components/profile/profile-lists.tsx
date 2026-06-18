@@ -29,6 +29,8 @@ import { useActivity } from "@/hooks/use-activity"
 import { useProject } from "@/hooks/use-project"
 import { useTypedLists } from "@/hooks/use-typed-lists"
 import { fetchIndexerActivities, INDEXER_PROXY_URL } from "@/lib/atproto/indexer"
+import { fetchNetworkActors } from "@/lib/atproto/workspace"
+import { loadResolvedProfile } from "@/lib/atproto/resolve-did-batch"
 import ProjectListRow from "@/components/explore-page/project-list-row"
 import {
   ITEM_NSID,
@@ -1347,33 +1349,48 @@ async function runSearch(
 }
 
 async function searchAccounts(query: string, signal: AbortSignal): Promise<SearchResult[]> {
-  const res = await fetch(
-    `/api/search-actors?q=${encodeURIComponent(query)}&limit=10`,
-    { signal },
+  // Search the magic-indexer's Certified actor index (not Bluesky's
+  // AppView). Account-list items strong-ref an `app.certified.actor
+  // .profile` record, so the only addable accounts are the ones that
+  // HAVE such a record — exactly what this connection returns. Bluesky's
+  // searchActors did the opposite: it surfaced bsky-native accounts that
+  // often have no Certified profile (the add then failed with "Couldn't
+  // resolve record CID") while missing Certified-only orgs like
+  // biofi-project that have no bsky profile at all. The indexer `search`
+  // matches handle + displayName + description server-side.
+  const page = await fetchNetworkActors({ first: 10, search: query, signal })
+  if (signal.aborted) return []
+
+  // The profile connection doesn't denormalise handle, so resolve it for
+  // the small result set — batched into a single /api/resolve-dids call —
+  // to keep the @handle subtitle. Failures fall back to no subtitle.
+  const handles = await Promise.all(
+    page.actors.map((a) =>
+      loadResolvedProfile(a.did)
+        .then((r) => r?.handle ?? null)
+        .catch(() => null),
+    ),
   )
-  if (!res.ok) throw new Error(`Account search failed: ${res.status}`)
-  const data = (await res.json()) as {
-    actors?: { did?: string; handle?: string; displayName?: string; avatar?: string }[]
-  }
+  if (signal.aborted) return []
+
   const out: SearchResult[] = []
-  for (const a of data.actors ?? []) {
-    if (!a.did) continue
+  page.actors.forEach((a, i) => {
+    const handle = handles[i]
     // app.certified.actor.profile records use the literal rkey "self" —
-    // the at:// for an account-list item is at://<did>/app.certified.actor.profile/self.
-    // Bluesky's actor search doesn't expose profile-record CIDs; we
-    // emit an empty placeholder and let `handleAdd` resolve the real
-    // CID on click via the shared `resolveRecordCid` helper before
-    // the strongRef is written. Keeps the typeahead fast — no per-
-    // result PDS round-trip — and writes never use an unsigned CID.
+    // the at:// for an account-list item is
+    // at://<did>/app.certified.actor.profile/self. We emit an empty CID
+    // placeholder and let `handleAdd` resolve the real CID on click via
+    // `resolveRecordCid` before the strongRef is written — keeps the
+    // typeahead fast and writes never use an unsigned CID.
     out.push({
       uri: `at://${a.did}/${ITEM_NSID["list:accounts"]}/self`,
       cid: "",
-      title: a.displayName || a.handle || a.did,
-      subtitle: a.handle ? `@${a.handle}` : null,
-      avatarUrl: a.avatar ?? null,
+      title: a.displayName || (handle ? `@${handle}` : a.did),
+      subtitle: handle ? `@${handle}` : null,
+      avatarUrl: a.avatarUrl,
       initials: getInitials(a.displayName, a.did),
     })
-  }
+  })
   return out
 }
 
