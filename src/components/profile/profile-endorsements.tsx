@@ -1,15 +1,20 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useUrlParam } from "@/hooks/use-url-param"
 import {
   ArrowUpDown,
+  Ban,
   Filter,
   Inbox,
+  LayoutGrid,
+  List as ListIcon,
   Plus,
   Search,
   ThumbsUp,
+  Trash2,
   X,
+  type LucideIcon,
 } from "lucide-react"
 import { useGivenEndorsements, type GivenEndorsement } from "@/hooks/use-endorsements"
 import {
@@ -25,8 +30,16 @@ import { useOrg } from "@/lib/groups/org-context"
 import {
   createEndorsementAward,
   deleteEndorsementAward,
+  createResponse,
 } from "@/lib/atproto/badges"
 import ResponseMenu from "@/components/badges/response-menu"
+import Avatar from "@/components/ui/avatar"
+import Button from "@/components/ui/button"
+import Checkbox from "@/components/ui/checkbox"
+import SegmentedControl from "@/components/ui/segmented-control"
+import { profileUrl } from "@/lib/urls"
+import { getInitials } from "@/lib/utils/initials"
+import Link from "next/link"
 import EndorsementLists from "@/components/profile/endorsement-lists"
 import EndorsePeopleModal from "@/components/profile/endorse-people-modal"
 import PersonCard from "@/components/profile/person-card"
@@ -49,6 +62,7 @@ interface ProfileEndorsementsProps {
 }
 
 type SubTab = "received" | "given"
+type ViewMode = "gallery" | "list"
 
 type SortKey =
   | "created-desc"
@@ -154,6 +168,27 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
   >("hide-rejected")
   const [filterOpen, setFilterOpen] = useState(false)
 
+  // Gallery (card grid) vs list (compact rows). URL-driven via `?view=`
+  // like the explore page; default "gallery". The list view is where
+  // multi-select + bulk actions live.
+  const [viewParam, setViewParam] = useUrlParam("view", { defaultValue: "gallery" })
+  const view: ViewMode = viewParam === "list" ? "list" : "gallery"
+
+  // Multi-select (list view, owner only), keyed by representative award
+  // URI. Cleared whenever the sub-tab or view changes so a stale URI from
+  // the other tab can't survive into a bulk action.
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const clearSelection = useCallback(() => setSelected(new Set()), [])
+  useEffect(() => {
+    clearSelection()
+  }, [tab, view, clearSelection])
+
+  // Bulk action plumbing (owner, list view): a confirm gate for the
+  // destructive Given delete, and shared busy/error state.
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false)
+  const [bulkError, setBulkError] = useState<string | null>(null)
+
   // The optimistic overlay now lives in `useReceivedEndorsements` itself
   // (a shared module store), so `received.endorsements` already reflects
   // the viewer's own Endorse/Revoke action issued from the sidebar — no
@@ -202,6 +237,100 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
   const givenCountLabel = formatCount(given.endorsements.length)
 
   const sortOptions = tab === "received" ? RECEIVED_SORT_OPTIONS : GIVEN_SORT_OPTIONS
+
+  // Filtered + sorted lists, computed here so the list view, the
+  // select-all checkbox, and the gallery all agree on what's visible.
+  const visibleGiven = useMemo(
+    () => filterAndSortGiven(given.endorsements, query, sort, names),
+    [given.endorsements, query, sort, names],
+  )
+  const visibleReceived = useMemo(
+    () => filterAndSortReceived(filteredReceived, query, sort, names),
+    [filteredReceived, query, sort, names],
+  )
+  const visibleUris =
+    tab === "given"
+      ? visibleGiven.map((e) => e.uri)
+      : visibleReceived.map((e) => e.uri)
+  const allSelected =
+    visibleUris.length > 0 && visibleUris.every((u) => selected.has(u))
+
+  // Multi-select is owner-only and lives in the list view.
+  const selectable = canManage && view === "list"
+
+  const toggleOne = useCallback((uri: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(uri)) next.delete(uri)
+      else next.add(uri)
+      return next
+    })
+  }, [])
+
+  const toggleAll = useCallback(() => {
+    setSelected((prev) => {
+      const allOn = visibleUris.length > 0 && visibleUris.every((u) => prev.has(u))
+      return allOn ? new Set() : new Set(visibleUris)
+    })
+  }, [visibleUris])
+
+  // Bulk DELETE on Given — revoke every award for each selected recipient
+  // (a recipient may have been endorsed more than once; `rkeys` holds all).
+  const bulkDeleteGiven = useCallback(async () => {
+    if (!viewerDid || bulkBusy) return
+    setBulkBusy(true)
+    setBulkError(null)
+    try {
+      const targets = given.endorsements.filter((e) => selected.has(e.uri))
+      for (const e of targets) {
+        for (const rkey of e.rkeys) {
+          await deleteEndorsementAward(viewerDid, rkey, { targetDid: manageTargetDid })
+        }
+      }
+      clearSelection()
+      setBulkConfirmOpen(false)
+      await given.refetch()
+    } catch (err) {
+      setBulkError(err instanceof Error ? err.message : "Failed to delete endorsements")
+    } finally {
+      setBulkBusy(false)
+    }
+  }, [viewerDid, bulkBusy, given, selected, manageTargetDid, clearSelection])
+
+  // Bulk REJECT on Received — you can't delete someone else's award, so
+  // "remove from my profile" writes a reject response for each selected.
+  const bulkRejectReceived = useCallback(async () => {
+    if (!viewerDid || bulkBusy) return
+    setBulkBusy(true)
+    setBulkError(null)
+    try {
+      const targets = filteredReceived.filter((e) => selected.has(e.uri))
+      for (const e of targets) {
+        await createResponse(
+          viewerDid,
+          { uri: e.uri, cid: e.cid },
+          "rejected",
+          { targetDid: manageTargetDid },
+        )
+      }
+      clearSelection()
+      setBulkConfirmOpen(false)
+      ownStates.invalidate()
+      await ownStates.refetch()
+    } catch (err) {
+      setBulkError(err instanceof Error ? err.message : "Failed to reject endorsements")
+    } finally {
+      setBulkBusy(false)
+    }
+  }, [
+    viewerDid,
+    bulkBusy,
+    filteredReceived,
+    selected,
+    manageTargetDid,
+    clearSelection,
+    ownStates,
+  ])
 
   return (
     <Tabs
@@ -340,6 +469,29 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
               </PopoverContent>
             </Popover>
           </div>
+
+          <SegmentedControl
+            className="profile-endorsements-v2__view-toggle"
+            aria-label="Endorsements view"
+            value={view}
+            onValueChange={(v) => setViewParam(v === "list" ? "list" : "gallery")}
+            size="md"
+            joined
+            shape="square"
+            iconOnly
+            options={[
+              {
+                value: "gallery",
+                icon: <LayoutGrid size={16} strokeWidth={1.75} />,
+                ariaLabel: "Gallery view",
+              },
+              {
+                value: "list",
+                icon: <ListIcon size={16} strokeWidth={1.75} />,
+                ariaLabel: "List view",
+              },
+            ]}
+          />
         </div>
       </div>
 
@@ -350,39 +502,116 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
             default. Rejected endorsements are hidden from your profile.
           </p>
         ) : null}
-        <ReceivedGrid
-          endorsements={filteredReceived}
-          isLoading={received.isLoading}
-          error={received.error}
-          query={query}
-          sort={sort}
-          names={names}
-          viewerIsOwner={canManage}
-          viewerDid={viewerDid}
-          targetDid={manageTargetDid}
-          responseFilter={responseFilter}
-          resolve={ownStates.resolve}
-          allResponses={ownStates.responses}
-          onAfterWrite={async () => {
-            ownStates.invalidate()
-            await ownStates.refetch()
-          }}
-        />
+        {selectable ? (
+          <BulkBar
+            selectedCount={selected.size}
+            allSelected={allSelected}
+            anyVisible={visibleUris.length > 0}
+            onToggleAll={toggleAll}
+            actionLabel="Reject selected"
+            actionIcon={Ban}
+            busy={bulkBusy}
+            error={bulkError}
+            onAction={() => bulkRejectReceived()}
+          />
+        ) : null}
+        {view === "list" ? (
+          <ReceivedList
+            visible={visibleReceived}
+            total={filteredReceived.length}
+            isLoading={received.isLoading}
+            error={received.error}
+            responseFilter={responseFilter}
+            viewerIsOwner={canManage}
+            viewerDid={viewerDid}
+            targetDid={manageTargetDid}
+            resolve={ownStates.resolve}
+            allResponses={ownStates.responses}
+            selectable={selectable}
+            selected={selected}
+            onToggleOne={toggleOne}
+            onAfterWrite={async () => {
+              ownStates.invalidate()
+              await ownStates.refetch()
+            }}
+          />
+        ) : (
+          <ReceivedGrid
+            endorsements={filteredReceived}
+            isLoading={received.isLoading}
+            error={received.error}
+            query={query}
+            sort={sort}
+            names={names}
+            viewerIsOwner={canManage}
+            viewerDid={viewerDid}
+            targetDid={manageTargetDid}
+            responseFilter={responseFilter}
+            resolve={ownStates.resolve}
+            allResponses={ownStates.responses}
+            onAfterWrite={async () => {
+              ownStates.invalidate()
+              await ownStates.refetch()
+            }}
+          />
+        )}
       </TabPanel>
       <TabPanel value="given">
-        <GivenGrid
-          endorsements={given.endorsements}
-          isLoading={given.isLoading}
-          error={given.error}
-          query={query}
-          sort={sort}
-          names={names}
-          viewerIsOwner={canManage}
-          viewerDid={viewerDid}
-          targetDid={manageTargetDid}
-          onAfterRevoke={() => given.refetch()}
-        />
+        {selectable ? (
+          <BulkBar
+            selectedCount={selected.size}
+            allSelected={allSelected}
+            anyVisible={visibleUris.length > 0}
+            onToggleAll={toggleAll}
+            actionLabel="Delete selected"
+            actionIcon={Trash2}
+            busy={bulkBusy}
+            error={bulkError}
+            onAction={() => setBulkConfirmOpen(true)}
+          />
+        ) : null}
+        {view === "list" ? (
+          <GivenList
+            visible={visibleGiven}
+            total={given.endorsements.length}
+            isLoading={given.isLoading}
+            error={given.error}
+            viewerIsOwner={canManage}
+            viewerDid={viewerDid}
+            targetDid={manageTargetDid}
+            selectable={selectable}
+            selected={selected}
+            onToggleOne={toggleOne}
+            onAfterRevoke={() => given.refetch()}
+          />
+        ) : (
+          <GivenGrid
+            endorsements={given.endorsements}
+            isLoading={given.isLoading}
+            error={given.error}
+            query={query}
+            sort={sort}
+            names={names}
+            viewerIsOwner={canManage}
+            viewerDid={viewerDid}
+            targetDid={manageTargetDid}
+            onAfterRevoke={() => given.refetch()}
+          />
+        )}
       </TabPanel>
+
+      {bulkConfirmOpen ? (
+        <ConfirmDialog
+          title={`Delete ${selected.size} endorsement${selected.size === 1 ? "" : "s"}?`}
+          message="The selected endorsements will be permanently removed from this profile. You can endorse those accounts again later."
+          confirmLabel="Delete"
+          cancelLabel="Keep"
+          confirmVariant="destructive"
+          isConfirming={bulkBusy}
+          onConfirm={bulkDeleteGiven}
+          onCancel={() => !bulkBusy && setBulkConfirmOpen(false)}
+        />
+      ) : null}
 
       {isEndorseModalOpen && canManage && viewerDid ? (
         <EndorsePeopleModal
@@ -540,43 +769,7 @@ function ReceivedCard({
   allResponses: ReturnType<typeof useOwnResponseStates>["responses"]
   onAfterWrite: () => void | Promise<void>
 }) {
-  // Prefer the indexer's denormalised issuer block (magic-indexer #96),
-  // but only TRUST it wholesale when it's actually complete. The award's
-  // `issuer` denormalisation can carry a handle WITHOUT a displayName or
-  // avatar — certified-only org accounts have no bsky-profile join, so
-  // their `displayName`/`avatarCid` come back null even though the data
-  // exists in the actor-profile table (and via /api/resolve-did). Gating
-  // the fetch on handle-presence alone left those rows with no avatar and
-  // a DID-slice initials placeholder. So we skip the per-row
-  // useAuthorInfo fetch only when the indexer block is complete; otherwise
-  // we resolve and fill the gaps. (null → useAuthorInfo short-circuits.)
-  const idxIssuer = endorsement.issuer
-  const indexerAvatar = buildAvatarUrlFromCid(
-    idxIssuer?.did ?? endorsement.issuerDid,
-    idxIssuer?.avatarCid,
-  )
-  const indexerComplete = !!(
-    idxIssuer?.handle &&
-    idxIssuer.displayName &&
-    indexerAvatar
-  )
-  const { info: fetched, isLoading } = useAuthorInfo(
-    indexerComplete ? null : endorsement.issuerDid,
-  )
-
-  // Compose a final AuthorInfo, preferring indexer fields per-field and
-  // filling any gaps from the resolved profile. PersonCard reads
-  // `info.displayName`, `info.handle`, `info.avatarUrl` to render.
-  const info: AuthorInfo | null =
-    idxIssuer?.handle || idxIssuer?.displayName || indexerAvatar || fetched
-      ? {
-          did: idxIssuer?.did ?? endorsement.issuerDid,
-          handle:
-            idxIssuer?.handle ?? fetched?.handle ?? endorsement.issuerDid,
-          displayName: idxIssuer?.displayName ?? fetched?.displayName ?? null,
-          avatarUrl: indexerAvatar ?? fetched?.avatarUrl ?? null,
-        }
-      : fetched
+  const { info, isLoading } = useReceivedIssuerInfo(endorsement)
 
   return (
     <PersonCard
@@ -718,7 +911,7 @@ function GivenCard({
         canRevoke && viewerDid ? (
           <RevokeGivenButton
             viewerDid={viewerDid}
-            rkey={endorsement.rkey}
+            rkeys={endorsement.rkeys}
             targetDid={targetDid}
             subjectDisplay={
               info?.displayName || info?.handle || endorsement.subjectDid
@@ -739,13 +932,15 @@ function GivenCard({
  */
 function RevokeGivenButton({
   viewerDid,
-  rkey,
+  rkeys,
   targetDid,
   subjectDisplay,
   onAfterRevoke,
 }: {
   viewerDid: string
-  rkey: string
+  /** All award rkeys for this recipient — revoke removes every one so a
+   *  recipient endorsed more than once disappears in a single click. */
+  rkeys: string[]
   targetDid?: string
   subjectDisplay: string
   onAfterRevoke: () => void | Promise<void>
@@ -759,7 +954,9 @@ function RevokeGivenButton({
     setIsRevoking(true)
     setError(null)
     try {
-      await deleteEndorsementAward(viewerDid, rkey, { targetDid })
+      for (const rkey of rkeys) {
+        await deleteEndorsementAward(viewerDid, rkey, { targetDid })
+      }
       await onAfterRevoke()
       setConfirmOpen(false)
     } catch (err) {
@@ -805,6 +1002,410 @@ function RevokeGivenButton({
         </span>
       ) : null}
     </>
+  )
+}
+
+// ----------------------- List view + bulk select -----------------------
+
+/**
+ * Compose the issuer's AuthorInfo from the indexer's denormalised block,
+ * filling gaps via `useAuthorInfo`. The indexer's `issuer` join can carry
+ * a handle WITHOUT a displayName/avatar (certified-only orgs have no
+ * bsky-profile join), so we only skip the per-row resolve when the
+ * indexer block is complete. Shared by the received card + list row.
+ */
+function useReceivedIssuerInfo(endorsement: ReceivedEndorsement): {
+  info: AuthorInfo | null
+  isLoading: boolean
+} {
+  const idxIssuer = endorsement.issuer
+  const indexerAvatar = buildAvatarUrlFromCid(
+    idxIssuer?.did ?? endorsement.issuerDid,
+    idxIssuer?.avatarCid,
+  )
+  const indexerComplete = !!(
+    idxIssuer?.handle &&
+    idxIssuer.displayName &&
+    indexerAvatar
+  )
+  const { info: fetched, isLoading } = useAuthorInfo(
+    indexerComplete ? null : endorsement.issuerDid,
+  )
+  const info: AuthorInfo | null =
+    idxIssuer?.handle || idxIssuer?.displayName || indexerAvatar || fetched
+      ? {
+          did: idxIssuer?.did ?? endorsement.issuerDid,
+          handle: idxIssuer?.handle ?? fetched?.handle ?? endorsement.issuerDid,
+          displayName: idxIssuer?.displayName ?? fetched?.displayName ?? null,
+          avatarUrl: indexerAvatar ?? fetched?.avatarUrl ?? null,
+        }
+      : fetched
+  return { info, isLoading }
+}
+
+/** Select-all + bulk-action strip shown above the list view for owners. */
+function BulkBar({
+  selectedCount,
+  allSelected,
+  anyVisible,
+  onToggleAll,
+  actionLabel,
+  actionIcon: ActionIcon,
+  busy,
+  error,
+  onAction,
+}: {
+  selectedCount: number
+  allSelected: boolean
+  anyVisible: boolean
+  onToggleAll: () => void
+  actionLabel: string
+  actionIcon: LucideIcon
+  busy: boolean
+  error: string | null
+  onAction: () => void
+}) {
+  return (
+    <div
+      className="profile-endorsements-v2__bulk-bar"
+      role="toolbar"
+      aria-label="Bulk actions"
+    >
+      <Checkbox
+        checked={allSelected}
+        indeterminate={!allSelected && selectedCount > 0}
+        onChange={onToggleAll}
+        disabled={!anyVisible}
+        aria-label={allSelected ? "Deselect all" : "Select all"}
+        label={selectedCount > 0 ? `${selectedCount} selected` : "Select all"}
+      />
+      <div className="profile-endorsements-v2__bulk-actions">
+        {error ? (
+          <span className="profile-endorsements-v2__bulk-error" role="alert">
+            {error}
+          </span>
+        ) : null}
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={onAction}
+          disabled={selectedCount === 0 || busy}
+        >
+          <ActionIcon size={14} strokeWidth={1.75} aria-hidden />
+          {actionLabel}
+          {selectedCount > 0 ? ` (${selectedCount})` : ""}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/** Shared list-row body: avatar + name/handle/note linking to the profile,
+ *  with the date right-aligned. Used by both Given and Received rows. */
+function EndorsementRowBody({
+  did,
+  info,
+  createdAt,
+  note,
+}: {
+  did: string
+  info: AuthorInfo | null
+  createdAt: string
+  note?: string
+}) {
+  const display = info?.displayName || info?.handle || did
+  const handle =
+    info?.handle && info.handle !== info.did ? `@${info.handle}` : null
+  return (
+    <Link
+      href={profileUrl(info?.handle || did)}
+      className="profile-endorsements-v2__row-main"
+    >
+      <Avatar
+        size="sm"
+        src={info?.avatarUrl ?? undefined}
+        alt=""
+        fallbackInitials={getInitials(info?.displayName, did)}
+      />
+      <span className="profile-endorsements-v2__row-text">
+        <span className="profile-endorsements-v2__row-name">{display}</span>
+        {handle ? (
+          <span className="profile-endorsements-v2__row-handle">{handle}</span>
+        ) : null}
+        {note ? (
+          <span className="profile-endorsements-v2__row-note">{note}</span>
+        ) : null}
+      </span>
+      <time className="profile-endorsements-v2__row-date">
+        {createdAt.slice(0, 10)}
+      </time>
+    </Link>
+  )
+}
+
+function GivenList({
+  visible,
+  total,
+  isLoading,
+  error,
+  viewerIsOwner,
+  viewerDid,
+  targetDid,
+  selectable,
+  selected,
+  onToggleOne,
+  onAfterRevoke,
+}: {
+  visible: GivenEndorsement[]
+  total: number
+  isLoading: boolean
+  error: string | null
+  viewerIsOwner: boolean
+  viewerDid: string | null
+  targetDid?: string
+  selectable: boolean
+  selected: Set<string>
+  onToggleOne: (uri: string) => void
+  onAfterRevoke: () => void | Promise<void>
+}) {
+  if (isLoading) {
+    return (
+      <div className="profile-endorsements-v2__loading">
+        <LoadingSpinner size="md" />
+      </div>
+    )
+  }
+  if (error) {
+    return (
+      <EmptyState icon={Inbox} title="Couldn’t load endorsements" description={error} />
+    )
+  }
+  if (visible.length === 0) {
+    return (
+      <EmptyState
+        icon={ThumbsUp}
+        title={total === 0 ? "No endorsements given yet" : "No matches"}
+        description={
+          total === 0
+            ? "Endorsements this user gives to others will appear here."
+            : "No endorsements match your search."
+        }
+      />
+    )
+  }
+  return (
+    <ul className="profile-endorsements-v2__list">
+      {visible.map((e) => (
+        <GivenListRow
+          key={e.uri}
+          endorsement={e}
+          selectable={selectable}
+          selected={selected.has(e.uri)}
+          onToggle={() => onToggleOne(e.uri)}
+          canRevoke={viewerIsOwner && !!viewerDid}
+          viewerDid={viewerDid}
+          targetDid={targetDid}
+          onAfterRevoke={onAfterRevoke}
+        />
+      ))}
+    </ul>
+  )
+}
+
+function GivenListRow({
+  endorsement,
+  selectable,
+  selected,
+  onToggle,
+  canRevoke,
+  viewerDid,
+  targetDid,
+  onAfterRevoke,
+}: {
+  endorsement: GivenEndorsement
+  selectable: boolean
+  selected: boolean
+  onToggle: () => void
+  canRevoke: boolean
+  viewerDid: string | null
+  targetDid?: string
+  onAfterRevoke: () => void | Promise<void>
+}) {
+  const { info } = useAuthorInfo(endorsement.subjectDid)
+  const display = info?.displayName || info?.handle || endorsement.subjectDid
+  return (
+    <li className="profile-endorsements-v2__row" data-selected={selected || undefined}>
+      {selectable ? (
+        <Checkbox
+          className="profile-endorsements-v2__row-check"
+          checked={selected}
+          onChange={onToggle}
+          aria-label={`Select endorsement of ${display}`}
+        />
+      ) : null}
+      <EndorsementRowBody
+        did={endorsement.subjectDid}
+        info={info}
+        createdAt={endorsement.createdAt}
+        note={endorsement.note}
+      />
+      {canRevoke && viewerDid ? (
+        <RevokeGivenButton
+          viewerDid={viewerDid}
+          rkeys={endorsement.rkeys}
+          targetDid={targetDid}
+          subjectDisplay={display}
+          onAfterRevoke={onAfterRevoke}
+        />
+      ) : null}
+    </li>
+  )
+}
+
+function ReceivedList({
+  visible,
+  total,
+  isLoading,
+  error,
+  responseFilter,
+  viewerIsOwner,
+  viewerDid,
+  targetDid,
+  resolve,
+  allResponses,
+  selectable,
+  selected,
+  onToggleOne,
+  onAfterWrite,
+}: {
+  visible: ReceivedEndorsement[]
+  total: number
+  isLoading: boolean
+  error: string | null
+  responseFilter: ResponseFilterKey
+  viewerIsOwner: boolean
+  viewerDid: string | null
+  targetDid?: string
+  resolve: ReturnType<typeof useOwnResponseStates>["resolve"]
+  allResponses: ReturnType<typeof useOwnResponseStates>["responses"]
+  selectable: boolean
+  selected: Set<string>
+  onToggleOne: (uri: string) => void
+  onAfterWrite: () => void | Promise<void>
+}) {
+  if (isLoading) {
+    return (
+      <div className="profile-endorsements-v2__loading">
+        <LoadingSpinner size="md" />
+      </div>
+    )
+  }
+  if (error) {
+    return (
+      <EmptyState icon={Inbox} title="Couldn’t load endorsements" description={error} />
+    )
+  }
+  if (visible.length === 0) {
+    const onlyRejectedActive = responseFilter === "only-rejected"
+    return (
+      <EmptyState
+        icon={ThumbsUp}
+        title={
+          onlyRejectedActive
+            ? "No rejected endorsements yet"
+            : total === 0
+              ? "No endorsements yet"
+              : "No matches"
+        }
+        description={
+          onlyRejectedActive
+            ? "Endorsements you reject will appear here."
+            : total === 0
+              ? "Endorsements from other people will appear here."
+              : "No endorsements match your search."
+        }
+      />
+    )
+  }
+  return (
+    <ul className="profile-endorsements-v2__list">
+      {visible.map((e) => (
+        <ReceivedListRow
+          key={e.uri}
+          endorsement={e}
+          selectable={selectable}
+          selected={selected.has(e.uri)}
+          onToggle={() => onToggleOne(e.uri)}
+          viewerIsOwner={viewerIsOwner}
+          viewerDid={viewerDid}
+          targetDid={targetDid}
+          resolve={resolve}
+          allResponses={allResponses}
+          onAfterWrite={onAfterWrite}
+        />
+      ))}
+    </ul>
+  )
+}
+
+function ReceivedListRow({
+  endorsement,
+  selectable,
+  selected,
+  onToggle,
+  viewerIsOwner,
+  viewerDid,
+  targetDid,
+  resolve,
+  allResponses,
+  onAfterWrite,
+}: {
+  endorsement: ReceivedEndorsement
+  selectable: boolean
+  selected: boolean
+  onToggle: () => void
+  viewerIsOwner: boolean
+  viewerDid: string | null
+  targetDid?: string
+  resolve: ReturnType<typeof useOwnResponseStates>["resolve"]
+  allResponses: ReturnType<typeof useOwnResponseStates>["responses"]
+  onAfterWrite: () => void | Promise<void>
+}) {
+  const { info } = useReceivedIssuerInfo(endorsement)
+  const display = info?.displayName || info?.handle || endorsement.issuerDid
+  return (
+    <li
+      className="profile-endorsements-v2__row"
+      data-selected={selected || undefined}
+      data-state={resolve(endorsement.uri).state}
+    >
+      {selectable ? (
+        <Checkbox
+          className="profile-endorsements-v2__row-check"
+          checked={selected}
+          onChange={onToggle}
+          aria-label={`Select endorsement from ${display}`}
+        />
+      ) : null}
+      <EndorsementRowBody
+        did={endorsement.issuerDid}
+        info={info}
+        createdAt={endorsement.createdAt}
+        note={endorsement.note}
+      />
+      {viewerIsOwner ? (
+        <ResponseMenu
+          awardUri={endorsement.uri}
+          awardCid={endorsement.cid}
+          issuerDisplayName={display}
+          ownerDid={viewerDid}
+          targetDid={targetDid}
+          state={resolve(endorsement.uri).state}
+          allResponses={allResponses}
+          onAfterWrite={onAfterWrite}
+        />
+      ) : null}
+    </li>
   )
 }
 
