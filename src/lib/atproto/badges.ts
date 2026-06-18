@@ -175,6 +175,60 @@ export function extractAwardSubjectDid(
 }
 
 /**
+ * Page through every record in a repo collection via the XRPC proxy,
+ * following `cursor` until the PDS returns none.
+ *
+ * The per-call `limit` is the PDS max (100). A single un-paginated page
+ * silently truncates any repo with >100 records — which is exactly what
+ * capped the profile "Given" count: a prolific endorser's
+ * `badge.award` collection ran past 100 (hypercerts.org had 190), so
+ * only the first page reached the endorsement filter (97 shown vs 187
+ * actual). `reverse` is forwarded for callers that depend on TID order.
+ */
+async function listAllRecords<V>(
+  did: string,
+  collection: string,
+  errorLabel: string,
+  signal?: AbortSignal,
+  opts?: { noCache?: boolean; reverse?: boolean },
+): Promise<{ uri: string; cid: string; value: V }[]> {
+  const out: { uri: string; cid: string; value: V }[] = []
+  let cursor: string | undefined
+  // Defensive page ceiling: 100 pages * 100 = 10k records, far past any
+  // real badge repo, so a PDS that never drops its cursor can't loop us
+  // forever.
+  for (let page = 0; page < 100; page++) {
+    const params = new URLSearchParams({ repo: did, collection, limit: "100" })
+    if (opts?.reverse) params.set("reverse", "true")
+    if (cursor) params.set("cursor", cursor)
+    // Post-write refetches pass `noCache` to bypass the proxy's 5s
+    // same-session listRecords cache — otherwise the browser hands back
+    // the pre-write response and the UI's state is stuck.
+    const init: RequestInit = {}
+    if (signal) init.signal = signal
+    if (opts?.noCache) init.cache = "no-store"
+    const res = await authFetch(
+      `/api/xrpc/com/atproto/repo/listRecords?${params.toString()}`,
+      init,
+    )
+    if (!res.ok) {
+      // 400/404 on the first page = empty/absent collection → []. On a
+      // later page it's an unexpected mid-pagination failure; stop and
+      // keep the partial set rather than discarding records already read.
+      if (res.status === 400 || res.status === 404) break
+      throw new Error(`${errorLabel}: ${res.status}`)
+    }
+    const data = (await res.json()) as ListRecordsResponse<V>
+    for (const r of data.records ?? []) {
+      out.push({ uri: r.uri, cid: r.cid, value: r.value })
+    }
+    if (!data.cursor) break
+    cursor = data.cursor
+  }
+  return out
+}
+
+/**
  * List all `badge.definition` records on a user's repo. Used by
  * `ensureEndorsementDefinition` to find an existing endorsement
  * definition before creating a new one, and by read paths that want
@@ -186,28 +240,14 @@ export async function listDefinitions(
   signal?: AbortSignal,
   opts?: { noCache?: boolean },
 ): Promise<BadgeDefinitionRecord[]> {
-  const params = new URLSearchParams({
-    repo: did,
-    collection: BADGE_DEFINITION_COLLECTION,
-    limit: "100",
-  })
-  // Post-write refetches need to bypass the proxy's 5s same-session
-  // cache (`Cache-Control: private, max-age=5`) — otherwise the
-  // browser hands back the pre-delete response and the UI's button
-  // state is stuck.
-  const init: RequestInit = {}
-  if (signal) init.signal = signal
-  if (opts?.noCache) init.cache = "no-store"
-  const res = await authFetch(
-    `/api/xrpc/com/atproto/repo/listRecords?${params.toString()}`,
-    init,
+  const records = await listAllRecords<BadgeDefinitionValue>(
+    did,
+    BADGE_DEFINITION_COLLECTION,
+    "Failed to list badge definitions",
+    signal,
+    opts,
   )
-  if (!res.ok) {
-    if (res.status === 400 || res.status === 404) return []
-    throw new Error(`Failed to list badge definitions: ${res.status}`)
-  }
-  const data = (await res.json()) as ListRecordsResponse<BadgeDefinitionValue>
-  return (data.records ?? []).map((r) => ({
+  return records.map((r) => ({
     uri: r.uri,
     cid: r.cid,
     rkey: extractRkey(r.uri),
@@ -498,27 +538,18 @@ export async function listAwards(
   signal?: AbortSignal,
   opts?: { noCache?: boolean },
 ): Promise<BadgeAwardRecord[]> {
-  const params = new URLSearchParams({
-    repo: did,
-    collection: BADGE_AWARD_COLLECTION,
-    limit: "100",
-    reverse: "true",
-  })
-  // See listDefinitions: refetches right after a write need to skip
-  // the proxy's 5s same-session listRecords cache.
-  const init: RequestInit = {}
-  if (signal) init.signal = signal
-  if (opts?.noCache) init.cache = "no-store"
-  const res = await authFetch(
-    `/api/xrpc/com/atproto/repo/listRecords?${params.toString()}`,
-    init,
+  // Page through ALL awards — reading only the first 100-record page
+  // truncated the profile "Given" count (97 endorsements shown for a
+  // repo holding 187). `reverse: true` preserves the ascending-TID order
+  // earlier callers saw; the Given hook re-sorts by createdAt regardless.
+  const records = await listAllRecords<BadgeAwardValue>(
+    did,
+    BADGE_AWARD_COLLECTION,
+    "Failed to list badge awards",
+    signal,
+    { noCache: opts?.noCache, reverse: true },
   )
-  if (!res.ok) {
-    if (res.status === 400 || res.status === 404) return []
-    throw new Error(`Failed to list badge awards: ${res.status}`)
-  }
-  const data = (await res.json()) as ListRecordsResponse<BadgeAwardValue>
-  return (data.records ?? []).map((r) => ({
+  return records.map((r) => ({
     uri: r.uri,
     cid: r.cid,
     rkey: extractRkey(r.uri),
