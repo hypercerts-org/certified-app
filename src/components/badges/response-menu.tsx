@@ -144,6 +144,7 @@ export default function ResponseMenu({
         value={pressedValues}
         onValueChange={onValueChange}
         size="sm"
+        orientation="vertical"
         iconOnly
         options={[
           {

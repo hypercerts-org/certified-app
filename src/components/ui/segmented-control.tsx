@@ -52,9 +52,14 @@ import Tooltip from "./tooltip";
  * Shared geometry
  * ---------------
  *   - `joined` (default true): one shared outer border with `overflow-hidden`;
- *     each segment drops its own border (border:0) and a left divider separates
+ *     each segment drops its own border (border:0) and a divider separates
  *     adjacent segments. `joined={false}` gaps the segments and gives each its
  *     own border.
+ *   - `orientation` (default "horizontal"): "vertical" stacks the segments in a
+ *     column. For `joined` the divider flips from a left border to a top border;
+ *     the container's uniform radius + overflow-hidden clips the top/bottom
+ *     corners. Used by the accept/reject response control where a vertical
+ *     stack frees up horizontal room for the issuer's name.
  *   - `shape`: "square" → rounded (= var(--radius), 2px); "pill" →
  *     rounded-[999px].
  *   - `size`: "sm" (h-7 / 28px) | "md" (h-8 / 32px).
@@ -79,10 +84,16 @@ export interface SegmentOption {
 type Size = "sm" | "md";
 type Shape = "square" | "pill";
 type Tone = "neutral" | "success" | "warn";
+type Orientation = "horizontal" | "vertical";
 
 /** Outer container geometry shared by both primitives. */
-function containerClass(joined: boolean, shape: Shape): string {
+function containerClass(
+  joined: boolean,
+  shape: Shape,
+  orientation: Orientation
+): string {
   const radius = shape === "pill" ? "rounded-[999px]" : "rounded";
+  const col = orientation === "vertical" ? " flex-col" : "";
   // `self-center`: the strip has an intrinsic height (its segments) and must
   // NOT vertically stretch when it's a child of a flex toolbar whose other
   // items are taller (e.g. the explore chrome row, where `align-items` defaults
@@ -91,10 +102,10 @@ function containerClass(joined: boolean, shape: Shape): string {
   if (joined) {
     // One border for the whole strip; overflow-hidden clips segment corners to
     // the container radius. Inline-flex so it hugs its content.
-    return `inline-flex items-stretch self-center overflow-hidden border border-[var(--border-default)] bg-[var(--bg-sunken)] ${radius}`;
+    return `inline-flex${col} items-stretch self-center overflow-hidden border border-[var(--border-default)] bg-[var(--bg-sunken)] ${radius}`;
   }
   // Gapped: no shared border/background; each segment is bordered on its own.
-  return "inline-flex items-stretch self-center gap-1";
+  return `inline-flex${col} items-stretch self-center gap-1`;
 }
 
 /** Per-segment geometry shared by both primitives. */
@@ -104,12 +115,14 @@ function segmentClass({
   size,
   iconOnly,
   isFirst,
+  orientation,
 }: {
   joined: boolean;
   shape: Shape;
   size: Size;
   iconOnly: boolean;
   isFirst: boolean;
+  orientation: Orientation;
 }): string {
   const parts: string[] = [
     "relative inline-flex items-center justify-center gap-1.5 font-medium leading-none transition-colors duration-150 motion-reduce:transition-none",
@@ -128,10 +141,17 @@ function segmentClass({
   ];
 
   if (joined) {
-    // No per-segment border; a left divider separates adjacent segments. The
-    // container owns the outer border + radius.
+    // No per-segment border; a divider separates adjacent segments — a left
+    // border when laid out in a row, a top border when stacked in a column.
+    // The container owns the outer border + radius.
     parts.push("border-0");
-    if (!isFirst) parts.push("border-l border-[var(--border-default)]");
+    if (!isFirst) {
+      parts.push(
+        orientation === "vertical"
+          ? "border-t border-[var(--border-default)]"
+          : "border-l border-[var(--border-default)]"
+      );
+    }
   } else {
     // Standalone bordered chip.
     parts.push("border border-[var(--border-default)] bg-[var(--bg-elevated)]");
@@ -155,6 +175,8 @@ export interface SegmentedControlProps {
   /** true (default) → shared border + dividers; false → gapped chips. */
   joined?: boolean;
   shape?: Shape;
+  /** "horizontal" (default) lays segments in a row; "vertical" stacks them. */
+  orientation?: Orientation;
   /** Hide labels and size segments as squares/circles for icon-only strips. */
   iconOnly?: boolean;
   /** Required: names the group for assistive tech. */
@@ -171,6 +193,7 @@ const SegmentedControl = React.forwardRef<HTMLDivElement, SegmentedControlProps>
       size = "md",
       joined = true,
       shape = "square",
+      orientation = "horizontal",
       iconOnly = false,
       "aria-label": ariaLabel,
       className = "",
@@ -199,7 +222,7 @@ const SegmentedControl = React.forwardRef<HTMLDivElement, SegmentedControlProps>
         value={value}
         onValueChange={onValueChange}
         aria-label={ariaLabel}
-        className={`${containerClass(joined, shape)} ${className}`.trim()}
+        className={`${containerClass(joined, shape, orientation)} ${className}`.trim()}
       >
         {options.map((opt, i) => {
           const selected = value === opt.value;
@@ -218,6 +241,7 @@ const SegmentedControl = React.forwardRef<HTMLDivElement, SegmentedControlProps>
                 size,
                 iconOnly,
                 isFirst: i === 0,
+                orientation,
               })} ${stateClass}`}
             >
               {opt.icon ? (
@@ -280,6 +304,8 @@ export interface ToggleGroupProps {
   /** true (default) → shared border + dividers; false → gapped chips. */
   joined?: boolean;
   shape?: Shape;
+  /** "horizontal" (default) lays segments in a row; "vertical" stacks them. */
+  orientation?: Orientation;
   /** Hide labels and size segments as squares/circles for icon-only strips. */
   iconOnly?: boolean;
   /** Required: names the group for assistive tech. */
@@ -297,6 +323,7 @@ export const ToggleGroup = React.forwardRef<HTMLDivElement, ToggleGroupProps>(
       size = "md",
       joined = true,
       shape = "square",
+      orientation = "horizontal",
       iconOnly = false,
       "aria-label": ariaLabel,
       className = "",
@@ -317,7 +344,7 @@ export const ToggleGroup = React.forwardRef<HTMLDivElement, ToggleGroupProps>(
         ref={ref}
         role="group"
         aria-label={ariaLabel}
-        className={`${containerClass(joined, shape)} ${className}`.trim()}
+        className={`${containerClass(joined, shape, orientation)} ${className}`.trim()}
       >
         {options.map((opt, i) => {
           const pressed = value.includes(opt.value);
@@ -339,6 +366,7 @@ export const ToggleGroup = React.forwardRef<HTMLDivElement, ToggleGroupProps>(
                 size,
                 iconOnly,
                 isFirst: i === 0,
+                orientation,
               })} ${stateClass}`}
             >
               {opt.icon ? (
