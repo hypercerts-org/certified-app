@@ -39,14 +39,34 @@ export const TYPED_LIST_TYPES = [
 ] as const
 export type TypedListType = (typeof TYPED_LIST_TYPES)[number]
 
-/** AT-URI collection name expected on `items[i].itemIdentifier.uri`
- *  for each list type. The cert / project / account distinction is
- *  enforced purely at the at:// path-prefix level — we don't need
- *  to resolve the referenced record to know it's of the wrong shape. */
+/** AT-URI collection name written on `items[i].itemIdentifier.uri` for a
+ *  freshly-added item of each list type. The cert / project / account
+ *  distinction is enforced purely at the at:// path-prefix level — we
+ *  don't need to resolve the referenced record to know it's of the wrong
+ *  shape. For accounts this is the PREFERRED (Certified) profile NSID;
+ *  see `ACCEPTED_ITEM_NSIDS` for the full set a stored item may carry. */
 export const ITEM_NSID: Record<TypedListType, string> = {
   [LIST_CERTS_TYPE]: "org.hypercerts.claim.activity",
   [LIST_PROJECTS_TYPE]: "org.hypercerts.collection",
   [LIST_ACCOUNTS_TYPE]: "app.certified.actor.profile",
+}
+
+/** Bluesky profile NSID. Accounts that exist only on Bluesky (never
+ *  onboarded to Certified) have no `app.certified.actor.profile` record,
+ *  so a list:accounts item for them strong-refs their `app.bsky.actor
+ *  .profile/self` instead. The read side renders an account row from the
+ *  item's DID regardless of which profile NSID backs the strongRef (see
+ *  AccountItemRow), so both are interchangeable as the record to point at. */
+export const BSKY_ACTOR_PROFILE_NSID = "app.bsky.actor.profile"
+
+/** The NSID(s) a stored item's strongRef may legitimately target, per
+ *  list type. Accounts accept either profile lexicon — Certified for
+ *  onboarded accounts, Bluesky for bsky-only ones — so a member with no
+ *  Certified profile can still be added. */
+const ACCEPTED_ITEM_NSIDS: Record<TypedListType, readonly string[]> = {
+  [LIST_CERTS_TYPE]: [ITEM_NSID[LIST_CERTS_TYPE]],
+  [LIST_PROJECTS_TYPE]: [ITEM_NSID[LIST_PROJECTS_TYPE]],
+  [LIST_ACCOUNTS_TYPE]: [ITEM_NSID[LIST_ACCOUNTS_TYPE], BSKY_ACTOR_PROFILE_NSID],
 }
 
 export interface TypedListValue extends CollectionValue {
@@ -73,12 +93,13 @@ export function rkeyFromUri(uri: string): string {
   return uri.split("/").pop() ?? ""
 }
 
-/** Check that an at:// URI targets the lexicon expected by the list type. */
+/** Check that an at:// URI targets a lexicon accepted for the list type.
+ *  Accounts accept either profile NSID (Certified or Bluesky); cert /
+ *  project lists accept their single lexicon. */
 export function itemUriMatchesType(uri: string, listType: TypedListType): boolean {
-  const nsid = ITEM_NSID[listType]
   // `at://<did>/<nsid>/<rkey>` — split on "/" gives ["at:", "", did, nsid, rkey].
   const parts = uri.split("/")
-  return parts.length >= 5 && parts[3] === nsid
+  return parts.length >= 5 && ACCEPTED_ITEM_NSIDS[listType].includes(parts[3])
 }
 
 interface RawCollectionsResponse {
@@ -451,4 +472,25 @@ export async function resolveRecordCid(uri: string): Promise<string | null> {
   if (!res.ok) return null
   const data = (await res.json()) as { cid?: string }
   return data.cid ?? null
+}
+
+/**
+ * Resolve a strongRef ({uri, cid}) to an account's profile record for a
+ * list:accounts item. Prefers the Certified profile and falls back to the
+ * Bluesky profile, so an account that never onboarded to Certified (has
+ * only an `app.bsky.actor.profile`) can still be added. Returns null only
+ * when the DID has neither record (genuinely unresolvable). Used by the
+ * per-profile "Add to list" menu, whose callers always hand it the
+ * Certified URI; the search-modal flow already targets the correct NSID
+ * per result, so it resolves directly via `resolveRecordCid`.
+ */
+export async function resolveAccountProfileRef(
+  did: string,
+): Promise<{ uri: string; cid: string } | null> {
+  for (const nsid of [ITEM_NSID[LIST_ACCOUNTS_TYPE], BSKY_ACTOR_PROFILE_NSID]) {
+    const uri = `at://${did}/${nsid}/self`
+    const cid = await resolveRecordCid(uri)
+    if (cid) return { uri, cid }
+  }
+  return null
 }
