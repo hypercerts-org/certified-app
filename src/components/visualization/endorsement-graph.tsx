@@ -23,6 +23,7 @@ import Input from "@/components/ui/input"
 import SegmentedControl from "@/components/ui/segmented-control"
 import { getInitials } from "@/lib/utils/initials"
 import { profileUrl } from "@/lib/urls"
+import { useTrustedEvaluators } from "@/hooks/use-trusted-evaluators"
 import type { GraphNode, GraphLink } from "@/hooks/use-endorsement-graph"
 
 type FGNode = NodeObject<GraphNode>
@@ -182,6 +183,11 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
   const [bgColor, setBgColor] = useState<string | undefined>(undefined)
   const [onlyMutual, setOnlyMutual] = useState(false)
   const [layout, setLayout] = useState<LayoutMode>("network")
+  // Default on: only show the web reachable from the trusted evaluators
+  // (any number of endorsement hops). Also hides stray disconnected
+  // clusters that otherwise float far out in empty space.
+  const [evaluatorConnectedOnly, setEvaluatorConnectedOnly] = useState(true)
+  const { evaluatorDids } = useTrustedEvaluators()
   const [search, setSearch] = useState("")
   const [searchOpen, setSearchOpen] = useState(false)
   const [hoverId, setHoverId] = useState<string | null>(null)
@@ -240,18 +246,68 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
 
   // --- filtered working data (mutual-only toggle) ------------------------
   const data = useMemo(() => {
-    if (!onlyMutual) return { nodes, links }
-    const mutualLinks = links.filter((l) => l.mutual)
-    const keep = new Set<string>()
-    for (const l of mutualLinks) {
-      keep.add(linkEndId(l.source) ?? "")
-      keep.add(linkEndId(l.target) ?? "")
+    let nds = nodes
+    let lks = links
+
+    // 1. mutual-only filter
+    if (onlyMutual) {
+      lks = links.filter((l) => l.mutual)
+      const keep = new Set<string>()
+      for (const l of lks) {
+        keep.add(linkEndId(l.source) ?? "")
+        keep.add(linkEndId(l.target) ?? "")
+      }
+      nds = nodes.filter((n) => keep.has(n.id))
     }
-    return {
-      nodes: nodes.filter((n) => keep.has(n.id)),
-      links: mutualLinks,
+
+    // 2. connected-to-evaluators filter — keep only the nodes reachable
+    //    from a trusted evaluator through any chain of endorsements
+    //    (treating edges as undirected). Skipped until the evaluator set
+    //    has loaded, or if none of them appear in the current graph (so we
+    //    never blank the view out).
+    if (evaluatorConnectedOnly && evaluatorDids.length > 0) {
+      const nodeIds = new Set(nds.map((n) => n.id))
+      const adj = new Map<string, string[]>()
+      const link2 = (k: string, v: string) => {
+        const arr = adj.get(k)
+        if (arr) arr.push(v)
+        else adj.set(k, [v])
+      }
+      for (const l of lks) {
+        const s = linkEndId(l.source)
+        const t = linkEndId(l.target)
+        if (!s || !t) continue
+        link2(s, t)
+        link2(t, s)
+      }
+      const seen = new Set<string>()
+      const queue: string[] = []
+      for (const d of evaluatorDids) {
+        if (nodeIds.has(d) && !seen.has(d)) {
+          seen.add(d)
+          queue.push(d)
+        }
+      }
+      if (seen.size > 0) {
+        for (let i = 0; i < queue.length; i++) {
+          for (const nb of adj.get(queue[i]) ?? []) {
+            if (!seen.has(nb)) {
+              seen.add(nb)
+              queue.push(nb)
+            }
+          }
+        }
+        nds = nds.filter((n) => seen.has(n.id))
+        lks = lks.filter((l) => {
+          const s = linkEndId(l.source)
+          const t = linkEndId(l.target)
+          return s != null && t != null && seen.has(s) && seen.has(t)
+        })
+      }
     }
-  }, [nodes, links, onlyMutual])
+
+    return { nodes: nds, links: lks }
+  }, [nodes, links, onlyMutual, evaluatorConnectedOnly, evaluatorDids])
 
   // --- layout forces -----------------------------------------------------
   // Configure the simulation per layout mode. Re-runs when the mode or the
@@ -632,6 +688,14 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
           />
         </div>
         <div className="viz__control-row">
+          <Button
+            variant={evaluatorConnectedOnly ? "primary" : "secondary"}
+            size="sm"
+            pressed={evaluatorConnectedOnly}
+            onClick={() => setEvaluatorConnectedOnly((v) => !v)}
+          >
+            Evaluator network
+          </Button>
           <Button
             variant={onlyMutual ? "primary" : "secondary"}
             size="sm"
