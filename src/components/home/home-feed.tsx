@@ -1,6 +1,7 @@
 "use client"
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -48,7 +49,7 @@ import {
   type OrglabelTier,
 } from "@/lib/atproto/labels"
 import { fetchOrgDidsByLabel } from "@/lib/atproto/workspace"
-import { TRUSTED_EVALUATOR_DIDS } from "@/lib/atproto/trusted-evaluators"
+import { useTrustedEvaluators } from "@/hooks/use-trusted-evaluators"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 
@@ -138,8 +139,23 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
   const [includedTiers, setIncludedTiers] = useState<Set<QualityFilterValue>>(
     () => new Set<QualityFilterValue>([...DEFAULT_INCLUDED_TIERS, UNLABELED_SLUG]),
   )
-  const [selectedEvaluators, setSelectedEvaluators] = useState<Set<string>>(
-    () => new Set(TRUSTED_EVALUATOR_DIDS),
+  // Trusted evaluators are sourced live from the curated list; the
+  // hardcoded set is the fallback used until it resolves.
+  const { evaluatorDids } = useTrustedEvaluators()
+  // Evaluator selection: `null` = default (every current list member
+  // checked), a Set once the viewer customizes. Derived rather than
+  // stored so it tracks the live list as it resolves and is edited —
+  // no state-sync effect needed.
+  const [customEvaluators, setCustomEvaluators] = useState<Set<string> | null>(
+    null,
+  )
+  const selectedEvaluators = useMemo(
+    () => customEvaluators ?? new Set(evaluatorDids),
+    [customEvaluators, evaluatorDids],
+  )
+  const handleEvaluatorsChange = useCallback(
+    (next: Set<string>) => setCustomEvaluators(next),
+    [],
   )
   // Organization-quality filter (Orglabeler tiers) — applied to the
   // event ACTOR rather than the record, by adjusting the author DID
@@ -229,7 +245,7 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
   const isDefaultFilters =
     isQualityDefault(includedTiers) &&
     isOrgQualityDefault(includedOrgTiers) &&
-    selectedEvaluators.size === TRUSTED_EVALUATOR_DIDS.length
+    selectedEvaluators.size === evaluatorDids.length
 
   const resetFilters = () => {
     setIncludedTiers(
@@ -238,7 +254,7 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
     setIncludedOrgTiers(
       new Set<OrgQualityValue>([...DEFAULT_INCLUDED_ORG_TIERS, UNLABELED_SLUG]),
     )
-    setSelectedEvaluators(new Set(TRUSTED_EVALUATOR_DIDS))
+    setCustomEvaluators(null)
   }
 
   return (
@@ -268,8 +284,9 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
         </div>
         {filterOpen ? (
           <FeedFilterPanel
+            evaluatorDids={evaluatorDids}
             selectedEvaluators={selectedEvaluators}
-            onEvaluatorsChange={setSelectedEvaluators}
+            onEvaluatorsChange={handleEvaluatorsChange}
             includedTiers={includedTiers}
             onTiersChange={setIncludedTiers}
             includedOrgTiers={includedOrgTiers}
@@ -488,6 +505,7 @@ function useOrgQualityFilter(included: Set<OrgQualityValue>): {
  * tiers), plus a reset row.
  */
 function FeedFilterPanel({
+  evaluatorDids,
   selectedEvaluators,
   onEvaluatorsChange,
   includedTiers,
@@ -497,6 +515,7 @@ function FeedFilterPanel({
   isDefault,
   onReset,
 }: {
+  evaluatorDids: string[]
   selectedEvaluators: Set<string>
   onEvaluatorsChange: (next: Set<string>) => void
   includedTiers: Set<QualityFilterValue>
@@ -523,7 +542,7 @@ function FeedFilterPanel({
         Show activities from accounts that are endorsed by:
       </p>
       <div className="feed-evaluators__list">
-        {TRUSTED_EVALUATOR_DIDS.map((did) => (
+        {evaluatorDids.map((did) => (
           <EvaluatorRow
             key={did}
             did={did}

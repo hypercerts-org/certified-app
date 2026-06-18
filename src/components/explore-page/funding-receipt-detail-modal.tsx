@@ -14,6 +14,7 @@ import ConfirmFundingContent from "@/components/funding/confirm-funding-dialog"
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useTrustedEvaluators } from "@/hooks/use-trusted-evaluators"
 import { useOrg } from "@/lib/groups/org-context"
 import {
   fundingConfirmEligibility,
@@ -60,8 +61,9 @@ function buildPerspective(
   memberByDid: Map<string, FundingReceipt>,
   /** A personal optimistic confirmation this session (bridges indexer lag). */
   bridged: boolean,
+  trustedEvaluatorDids: readonly string[],
 ): Perspective {
-  const elig = fundingConfirmEligibility(receipt, did)
+  const elig = fundingConfirmEligibility(receipt, did, trustedEvaluatorDids)
   return {
     did,
     isGroup,
@@ -101,6 +103,7 @@ export default function FundingReceiptDetailModal({
   const hasForActivity = !!receipt.forUri
 
   const { did: viewerDid } = useAuth()
+  const { evaluatorDids } = useTrustedEvaluators()
   const { groups } = useOrg()
   // A confirmation this session (before the indexer reflects it) keeps the
   // viewer's own affordance hidden so the payment can't be confirmed twice.
@@ -166,16 +169,18 @@ export default function FundingReceiptDetailModal({
   const perspectives = useMemo<Perspective[]>(() => {
     const out: Perspective[] = []
     if (viewerDid) {
-      out.push(buildPerspective(receipt, viewerDid, false, memberByDid, confirmedLocally))
+      out.push(
+        buildPerspective(receipt, viewerDid, false, memberByDid, confirmedLocally, evaluatorDids),
+      )
     }
     for (const g of groups) {
       if (g.role !== "owner" && g.role !== "admin") continue
       if (g.groupDid === viewerDid) continue
       if (!receiptInvolves(receipt, g.groupDid, memberByDid)) continue
-      out.push(buildPerspective(receipt, g.groupDid, true, memberByDid, false))
+      out.push(buildPerspective(receipt, g.groupDid, true, memberByDid, false, evaluatorDids))
     }
     return out
-  }, [receipt, viewerDid, groups, confirmedLocally, memberByDid])
+  }, [receipt, viewerDid, groups, confirmedLocally, memberByDid, evaluatorDids])
 
   const [confirmingAs, setConfirmingAs] = useState<{
     did: string

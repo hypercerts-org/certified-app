@@ -58,7 +58,8 @@ import FundingReceiptRow, {
   FundingReceiptHeader,
 } from "@/components/explore-page/funding-receipt-row"
 import FundingConfirmedByPopover from "@/components/explore-page/funding-confirmed-by-popover"
-import { matchesConfirmedBy, isTrustedEvaluator } from "@/lib/atproto/funding-provenance"
+import { matchesConfirmedBy } from "@/lib/atproto/funding-provenance"
+import { useTrustedEvaluators } from "@/hooks/use-trusted-evaluators"
 import FundingReceiptFormModal from "@/components/funding/funding-receipt-form-modal"
 import FundingIdentityChoiceDialog from "@/components/funding/funding-identity-choice-dialog"
 import RightsDetailModal from "@/components/feed/rights-detail-modal"
@@ -194,6 +195,9 @@ export default function ActivityDetail({
     : null
 
   const [imageFailed, setImageFailed] = useState(false)
+  // Live trusted-evaluator set (curated list) — gates the funding-receipt
+  // "evaluator" provenance treatment.
+  const { evaluatorDids: trustedEvaluatorDids } = useTrustedEvaluators()
   useEffect(() => {
     setImageFailed(false)
   }, [baseImageUrl])
@@ -1638,7 +1642,7 @@ export default function ActivityDetail({
               writerDid={writerDid}
               writerIsGroup={asGroup}
               canRecordAsRecipient={asGroup || sessionDid === did}
-              isEvaluator={isTrustedEvaluator(writerDid)}
+              isEvaluator={trustedEvaluatorDids.includes(writerDid)}
               activityAuthorDid={did}
               forActivity={{
                 uri: `at://${did}/org.hypercerts.claim.activity/${rkey}`,

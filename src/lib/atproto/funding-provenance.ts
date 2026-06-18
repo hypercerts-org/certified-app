@@ -1,5 +1,4 @@
 import type { FundingAttestation, FundingReceipt } from "./indexer"
-import { TRUSTED_EVALUATOR_DIDS } from "./trusted-evaluators"
 
 /**
  * Display + filter derivation for funding-receipt provenance. The indexer
@@ -103,19 +102,6 @@ export function matchesConfirmedBy(
 // Write-side permissions: who may record / confirm a funding receipt
 // ---------------------------------------------------------------------------
 
-/**
- * Whether `did` is one of the trusted evaluators — the exact list the
- * home-feed filter "Show activities from accounts that are endorsed by:"
- * renders ({@link TRUSTED_EVALUATOR_DIDS}, the single source of truth).
- * These accounts are the only ones allowed to record or confirm a payment
- * as a *third party* (i.e. when they are neither the sender nor the
- * recipient).
- */
-export function isTrustedEvaluator(did: string | null | undefined): boolean {
-  if (!did) return false
-  return (TRUSTED_EVALUATOR_DIDS as readonly string[]).includes(did)
-}
-
 /** The attestation role a viewer's receipt would carry for a payment. */
 export type FundingRole = "sender" | "recipient" | "third-party"
 
@@ -140,10 +126,16 @@ export interface FundingConfirmEligibility {
  * trusted evaluator — and have not already attested it. Copying the
  * payment's coordinates into a fresh receipt authored by the viewer then
  * yields exactly this role from the indexer.
+ *
+ * `trustedEvaluatorDids` is the live evaluator set (sourced from the
+ * curated list via `useTrustedEvaluators`); only those accounts may
+ * confirm as a *third party* when they are neither the sender nor the
+ * recipient.
  */
 export function fundingConfirmEligibility(
   receipt: Pick<FundingReceipt, "from" | "to" | "attestations">,
   viewerDid: string | null | undefined,
+  trustedEvaluatorDids: readonly string[],
 ): FundingConfirmEligibility {
   if (!viewerDid) return { canConfirm: false, role: null, alreadyAttested: false }
 
@@ -154,7 +146,7 @@ export function fundingConfirmEligibility(
     role = "sender"
   } else if (receipt.to?.kind === "account" && receipt.to.did === viewerDid) {
     role = "recipient"
-  } else if (isTrustedEvaluator(viewerDid)) {
+  } else if (trustedEvaluatorDids.includes(viewerDid)) {
     role = "third-party"
   }
 
