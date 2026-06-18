@@ -81,8 +81,25 @@
   inset: 0;
 }
 
-/* Fullscreen mode — the canvas host fills the screen; give it the graph
-   background so there's no black letterboxing around the canvas. */
+/* Fullscreen mode covers the whole `.viz` row — graph AND the stats
+   sidebar — so the rankings and search stay usable. Fill the screen with
+   the page background (not the browser's default black) and let the
+   sidebar scroll within the fixed height. */
+.viz:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  background: var(--bg-canvas);
+  overflow: hidden;
+}
+
+.viz:fullscreen .viz__main,
+.viz:fullscreen .viz__graph,
+.viz:fullscreen .viz__sidebar {
+  min-height: 0;
+}
+
+/* Fallback: if the `.viz` ancestor can't be found we fullscreen the canvas
+   host alone — give it the graph background so there's no letterboxing. */
 .viz__canvas-host:fullscreen {
   background: var(--bg-sunken);
 }
