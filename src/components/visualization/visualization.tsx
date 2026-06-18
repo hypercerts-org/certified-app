@@ -6,6 +6,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import EndorsementStats from "@/components/visualization/endorsement-stats"
 import { useEndorsementGraph } from "@/hooks/use-endorsement-graph"
+import { usePageTitle } from "@/lib/navbar-context"
 import type { FocusRequest } from "@/components/visualization/endorsement-graph"
 
 // Canvas/`window`-dependent — load client-only.
@@ -25,6 +26,10 @@ export default function Visualization() {
   const { graph, isLoading, error } = useEndorsementGraph()
   const [focusReq, setFocusReq] = useState<FocusRequest>({ did: null, nonce: 0 })
 
+  // Shows "Endorsement network" in the top bar next to the brandmark (which
+  // replaces the wordmark whenever a page title is set).
+  usePageTitle("Endorsement network")
+
   const handleFocus = useCallback((did: string) => {
     setFocusReq((prev) => ({ did, nonce: prev.nonce + 1 }))
   }, [])
@@ -32,14 +37,6 @@ export default function Visualization() {
   return (
     <div className="viz">
       <div className="viz__main">
-        <header className="viz__header">
-          <h1 className="font-headline text-h2">Endorsement network</h1>
-          <p className="text-body-sm text-[var(--fg-secondary)]">
-            Every connection created through endorsements. Hover a person for details,
-            drag to explore, and search or pick from the rankings to jump to someone.
-          </p>
-        </header>
-
         <div className="viz__graph">
           {isLoading && (
             <div className="viz__state">

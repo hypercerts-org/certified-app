@@ -47,6 +47,9 @@ function Rank({
               <span className="viz__rank-name-primary">
                 {n.displayName || (n.handle ? `@${n.handle}` : n.id.slice(0, 16) + "…")}
               </span>
+              {n.handle && n.displayName && (
+                <span className="viz__rank-name-secondary">@{n.handle}</span>
+              )}
             </span>
             <span className="viz__rank-count">{metric(n)}</span>
           </button>

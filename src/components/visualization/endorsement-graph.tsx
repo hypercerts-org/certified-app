@@ -87,8 +87,15 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
   const [bgColor, setBgColor] = useState<string | undefined>(undefined)
   const [onlyMutual, setOnlyMutual] = useState(false)
   const [search, setSearch] = useState("")
+  const [searchOpen, setSearchOpen] = useState(false)
   const [hoverId, setHoverId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  // Draggable + collapsible details panel.
+  const panelRef = useRef<HTMLDivElement | null>(null)
+  const dragRef = useRef<{ sx: number; sy: number; bx: number; by: number } | null>(null)
+  const [panelPos, setPanelPos] = useState<{ x: number; y: number } | null>(null)
+  const [panelCollapsed, setPanelCollapsed] = useState(true)
 
   // --- theme colours (re-read on dark-mode flip) -------------------------
   useEffect(() => {
@@ -119,6 +126,11 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
   }, [])
 
   // --- preload avatars ---------------------------------------------------
+  // The canvas runs with autoPauseRedraw disabled (see the ForceGraph2D
+  // props below), so it keeps repainting every frame and avatars appear as
+  // their images finish loading — no manual repaint needed. We still
+  // preload into a stable map so the paint loop never mints a new Image per
+  // frame.
   useEffect(() => {
     const map = imagesRef.current
     for (const n of nodes) {
@@ -182,36 +194,58 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
   }, [nodes])
 
   // --- focus requests from the sidebar / search --------------------------
-  const focusNode = useCallback((did: string | null) => {
-    if (!did) return
-    const fg = fgRef.current
-    if (!fg) return
-    const target = (data.nodes as FGNode[]).find((n) => n.id === did)
-    if (target && typeof target.x === "number" && typeof target.y === "number") {
-      fg.centerAt(target.x, target.y, 600)
-      fg.zoom(4, 600)
-    }
-    setSelectedId(did)
-  }, [data.nodes])
+  // Fit the clicked node together with everyone it's connected to into
+  // view. The neighbourhood is derived dynamically from the adjacency map,
+  // so the zoom adapts to how many connections the account has.
+  const focusNode = useCallback(
+    (did: string | null) => {
+      if (!did) return
+      const fg = fgRef.current
+      if (!fg) return
+      setSelectedId(did)
+      const inView = new Set<string>([did])
+      for (const n of adjacency.get(did) ?? []) inView.add(n)
+      // zoomToFit's third arg filters which nodes must fit in the viewport.
+      fg.zoomToFit(700, 60, (n: FGNode) => inView.has(n.id as string))
+    },
+    [adjacency],
+  )
 
   useEffect(() => {
     if (focusReq.did) focusNode(focusReq.did)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusReq.nonce])
 
-  const handleSearch = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault()
-      const q = search.trim().toLowerCase()
-      if (!q) return
-      const match = nodes.find(
+  // Accounts matching the search box, ranked by degree. Drives the
+  // results dropdown.
+  const searchResults = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return [] as GraphNode[]
+    return nodes
+      .filter(
         (n) =>
           (n.handle && n.handle.toLowerCase().includes(q)) ||
           (n.displayName && n.displayName.toLowerCase().includes(q)),
       )
-      if (match) focusNode(match.id)
+      .sort((a, b) => b.given + b.received - (a.given + a.received))
+      .slice(0, 8)
+  }, [search, nodes])
+
+  const selectSearchResult = useCallback(
+    (did: string) => {
+      focusNode(did)
+      setSearch("")
+      setSearchOpen(false)
     },
-    [search, nodes, focusNode],
+    [focusNode],
+  )
+
+  const handleSearch = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault()
+      if (searchResults[0]) selectSearchResult(searchResults[0].id)
+    },
+    [searchResults, selectSearchResult],
   )
 
   // --- canvas painters ---------------------------------------------------
@@ -315,6 +349,47 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
     return { endorsed, endorsedBy }
   }, [panelNode, links, nodeById])
 
+  // --- draggable panel ---------------------------------------------------
+  const onPanelPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      // Don't start a drag from the collapse button or any control.
+      if ((e.target as HTMLElement).closest("button, a")) return
+      const el = panelRef.current
+      if (!el) return
+      const base = panelPos ?? { x: el.offsetLeft, y: el.offsetTop }
+      dragRef.current = { sx: e.clientX, sy: e.clientY, bx: base.x, by: base.y }
+      e.currentTarget.setPointerCapture(e.pointerId)
+    },
+    [panelPos],
+  )
+
+  const onPanelPointerMove = useCallback((e: React.PointerEvent) => {
+    const d = dragRef.current
+    if (!d) return
+    setPanelPos({ x: d.bx + (e.clientX - d.sx), y: d.by + (e.clientY - d.sy) })
+  }, [])
+
+  const onPanelPointerUp = useCallback((e: React.PointerEvent) => {
+    if (!dragRef.current) return
+    dragRef.current = null
+    e.currentTarget.releasePointerCapture(e.pointerId)
+  }, [])
+
+  // --- fullscreen --------------------------------------------------------
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(document.fullscreenElement === hostRef.current)
+    document.addEventListener("fullscreenchange", onChange)
+    return () => document.removeEventListener("fullscreenchange", onChange)
+  }, [])
+
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen?.()
+    } else {
+      void hostRef.current?.requestFullscreen?.()
+    }
+  }, [])
+
   return (
     <div ref={hostRef} className="viz__canvas-host">
       {size.w > 0 && (
@@ -324,6 +399,9 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
           height={size.h}
           graphData={data}
           backgroundColor={bgColor}
+          // Keep repainting when idle so avatars appear as their images
+          // finish loading (the ref has no public refresh()).
+          autoPauseRedraw={false}
           nodeRelSize={4}
           nodeLabel={() => ""}
           cooldownTicks={120}
@@ -343,14 +421,52 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
 
       {/* controls */}
       <div className="viz__controls">
-        <form onSubmit={handleSearch} className="viz__control-row">
+        <form onSubmit={handleSearch} className="viz__search-wrap">
           <Input
             className="viz__search"
-            placeholder="Find a person…"
+            placeholder="Find account"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search the endorsement graph"
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setSearchOpen(true)
+            }}
+            onFocus={() => setSearchOpen(true)}
+            onBlur={() => setSearchOpen(false)}
+            aria-label="Find an account in the graph"
           />
+          {searchOpen && searchResults.length > 0 && (
+            <ul className="viz__search-results" role="listbox">
+              {searchResults.map((n) => (
+                <li key={n.id} role="option" aria-selected={false}>
+                  <button
+                    type="button"
+                    className="viz__search-result"
+                    // Fire before the input's blur so the dropdown doesn't
+                    // close out from under the click.
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      selectSearchResult(n.id)
+                    }}
+                  >
+                    <Avatar
+                      src={n.avatarUrl || undefined}
+                      size="sm"
+                      fallbackInitials={getInitials(n.displayName, n.id)}
+                    />
+                    <span className="viz__search-result-name">
+                      <span className="viz__search-result-primary">
+                        {n.displayName ||
+                          (n.handle ? `@${n.handle}` : n.id.slice(0, 16) + "…")}
+                      </span>
+                      {n.handle && n.displayName && (
+                        <span className="viz__search-result-secondary">@{n.handle}</span>
+                      )}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </form>
         <div className="viz__control-row">
           <Button
@@ -406,12 +522,56 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
         >
           ⤢
         </Button>
+        <Button
+          size="icon"
+          variant="secondary"
+          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          onClick={toggleFullscreen}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            {isFullscreen ? (
+              <>
+                <path d="M8 3v3a2 2 0 0 1-2 2H3" />
+                <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+                <path d="M3 16h3a2 2 0 0 1 2 2v3" />
+                <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+              </>
+            ) : (
+              <>
+                <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+                <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+                <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+                <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+              </>
+            )}
+          </svg>
+        </Button>
       </div>
 
-      {/* hover / selected info panel */}
+      {/* hover / selected info panel — draggable + collapsible */}
       {panelNode && (
-        <div className="viz__panel">
-          <div className="viz__panel-head">
+        <div
+          ref={panelRef}
+          className="viz__panel"
+          data-collapsed={panelCollapsed || undefined}
+          style={panelPos ? { left: panelPos.x, top: panelPos.y, right: "auto" } : undefined}
+        >
+          <div
+            className="viz__panel-head"
+            onPointerDown={onPanelPointerDown}
+            onPointerMove={onPanelPointerMove}
+            onPointerUp={onPanelPointerUp}
+          >
             <Avatar
               src={panelNode.avatarUrl || undefined}
               size="md"
@@ -424,8 +584,31 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
               </span>
               {panelNode.handle && <span className="viz__panel-handle">@{panelNode.handle}</span>}
             </div>
+            <button
+              type="button"
+              className="viz__panel-collapse"
+              aria-label={panelCollapsed ? "Expand details" : "Collapse details"}
+              aria-expanded={!panelCollapsed}
+              onClick={() => setPanelCollapsed((v) => !v)}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
           </div>
 
+          {!panelCollapsed && (
+          <>
           <div className="viz__panel-counts">
             <div className="viz__panel-count">
               <span className="viz__panel-count-value">{panelNode.given}</span>
@@ -477,9 +660,31 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
             </div>
           )}
 
-          <Link href={profileUrl(panelNode.handle || panelNode.id)} className="more-link">
-            View profile
+          <Link
+            href={profileUrl(panelNode.handle || panelNode.id)}
+            className="viz__profile-link"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span>View profile</span>
+            <svg
+              className="viz__profile-link-icon"
+              viewBox="0 0 24 24"
+              width="14"
+              height="14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M7 17 17 7" />
+              <path d="M9 7h8v8" />
+            </svg>
           </Link>
+          </>
+          )}
         </div>
       )}
     </div>

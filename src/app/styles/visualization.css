@@ -13,14 +13,42 @@
   padding-right: 0;
 }
 
+/* On wide desktop the layout is a graph + sidebar row; cap it to the
+   viewport so the main view never grows past the screen. Drop the shell's
+   vertical padding, fix the content cell to the space below the top bar,
+   and let the sidebar scroll internally. Below 1100px the layout stacks
+   and the page scrolls normally. */
+@media (min-width: 1100px) {
+  .app-shell:has(.viz) .app-shell__content {
+    height: calc(100dvh - var(--top-bar-total, var(--top-bar-row1, 52px)));
+    min-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+
+  .viz {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .viz__main {
+    min-height: 0;
+  }
+
+  .viz__graph {
+    min-height: 0;
+  }
+}
+
 .viz {
   display: flex;
   flex-direction: row;
   align-items: stretch;
   gap: var(--space-4, 16px);
   width: 100%;
-  min-height: calc(100vh - var(--navbar-height) - var(--bottom-nav-height));
   padding: var(--space-4, 16px);
+  box-sizing: border-box;
 }
 
 .viz__main {
@@ -53,6 +81,12 @@
   inset: 0;
 }
 
+/* Fullscreen mode — the canvas host fills the screen; give it the graph
+   background so there's no black letterboxing around the canvas. */
+.viz__canvas-host:fullscreen {
+  background: var(--bg-sunken);
+}
+
 /* ---- Floating controls (top-left of the graph) ---- */
 .viz__controls {
   position: absolute;
@@ -74,6 +108,70 @@
 
 .viz__search {
   min-width: 200px;
+}
+
+.viz__search-wrap {
+  position: relative;
+  width: 240px;
+  max-width: 100%;
+}
+
+.viz__search-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: var(--z-popover);
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.viz__search-result {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast, 150ms ease-out);
+}
+
+.viz__search-result:hover {
+  background: var(--overlay-weak, var(--bg-raised));
+}
+
+.viz__search-result-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.viz__search-result-primary {
+  color: var(--fg-primary);
+  font-size: var(--text-body-sm, 0.875rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.viz__search-result-secondary {
+  color: var(--fg-muted);
+  font-size: var(--text-caption, 0.75rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .viz__zoom {
@@ -146,6 +244,47 @@
   align-items: center;
   gap: var(--space-2, 8px);
   min-width: 0;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.viz__panel-head:active {
+  cursor: grabbing;
+}
+
+.viz__panel-id {
+  flex: 1 1 auto;
+}
+
+.viz__panel-collapse {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast, 150ms ease-out);
+}
+
+.viz__panel-collapse:hover {
+  background: var(--overlay-weak, var(--bg-raised));
+  color: var(--fg-secondary);
+}
+
+.viz__panel-collapse svg {
+  transition: transform var(--transition-fast, 150ms ease-out);
+}
+
+/* Chevron points up when expanded (click to collapse), down when collapsed. */
+.viz__panel:not([data-collapsed]) .viz__panel-collapse svg {
+  transform: rotate(180deg);
 }
 
 .viz__panel-id {
@@ -208,6 +347,46 @@
 .viz__neighbour {
   display: inline-flex;
   align-items: center;
+}
+
+/* "View profile" button-link in the node panel. */
+.viz__profile-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 9px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  color: var(--fg-primary);
+  font-size: var(--text-body-sm, 0.875rem);
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background var(--transition-fast, 150ms ease-out),
+    border-color var(--transition-fast, 150ms ease-out),
+    transform var(--transition-fast, 150ms ease-out);
+}
+
+.viz__profile-link:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-hover);
+}
+
+.viz__profile-link:active {
+  transform: scale(0.98);
+}
+
+.viz__profile-link-icon {
+  color: var(--fg-muted);
+  transition: transform var(--transition-fast, 150ms ease-out);
+}
+
+.viz__profile-link:hover .viz__profile-link-icon {
+  transform: translate(1px, -1px);
+  color: var(--fg-secondary);
 }
 
 /* ---- Stats sidebar ---- */
@@ -296,6 +475,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: var(--text-body-sm, 0.875rem);
+}
+
+.viz__rank-name-secondary {
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--text-caption, 0.75rem);
 }
 
 .viz__rank-count {
