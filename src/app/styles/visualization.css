@@ -127,6 +127,12 @@
   min-width: 200px;
 }
 
+/* Layout switcher fills the control panel so its three segments read as one
+   clear toggle rather than floating short. */
+.viz__layout-toggle {
+  width: 100%;
+}
+
 .viz__search-wrap {
   position: relative;
   width: 240px;
