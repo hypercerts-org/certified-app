@@ -17,6 +17,15 @@ export interface GivenEndorsement {
   uri: string
   cid: string
   rkey: string
+  /**
+   * Every award rkey issued to this recipient. The "Given" view counts
+   * UNIQUE endorsed accounts (one entry per recipient) to match the
+   * /visualization graph, which dedupes issuer→subject edges — so a
+   * recipient endorsed more than once collapses to a single entry whose
+   * `rkey`/`uri`/`cid` are the NEWEST award and whose `rkeys` lists all of
+   * them. Revoking the entry removes every award in `rkeys`.
+   */
+  rkeys: string[]
   subjectDid: string
   createdAt: string
   note?: string
@@ -105,7 +114,11 @@ export function useGivenEndorsements(did: string | null): {
         // order on most implementations).
         mapped.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
 
-        setEndorsements(mapped)
+        // Collapse repeat endorsements of the same account into one
+        // entry (sorted newest-first, so the first seen is the
+        // representative). The count then reflects UNIQUE recipients,
+        // matching the /visualization graph.
+        setEndorsements(dedupeBySubject(mapped))
       } catch (err) {
         if (signal?.aborted) return
         setError(
@@ -136,11 +149,31 @@ function toGiven(award: BadgeAwardRecord): GivenEndorsement | null {
     uri: award.uri,
     cid: award.cid,
     rkey: award.rkey,
+    rkeys: [award.rkey],
     subjectDid,
     createdAt: award.value.createdAt,
     note: award.value.note,
     // listTitle intentionally unset — see interface JSDoc.
   }
+}
+
+/**
+ * Collapse multiple awards to the same recipient into a single
+ * GivenEndorsement. Input must be sorted newest-first so the first
+ * occurrence becomes the representative; every award's rkey is gathered
+ * into `rkeys` so a revoke can remove them all.
+ */
+function dedupeBySubject(records: GivenEndorsement[]): GivenEndorsement[] {
+  const byDid = new Map<string, GivenEndorsement>()
+  for (const r of records) {
+    const existing = byDid.get(r.subjectDid)
+    if (existing) {
+      existing.rkeys.push(...r.rkeys)
+    } else {
+      byDid.set(r.subjectDid, { ...r, rkeys: [...r.rkeys] })
+    }
+  }
+  return [...byDid.values()]
 }
 
 /**

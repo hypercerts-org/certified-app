@@ -1393,3 +1393,118 @@
   gap: 8px;
   margin-top: 4px;
 }
+
+/* ----------------------- List view + bulk select ----------------------- */
+
+/* View toggle (gallery | list) at the right end of the toolbar controls. */
+.profile-endorsements-v2__view-toggle {
+  flex: 0 0 auto;
+}
+
+/* Select-all + bulk-action strip above the list view (owner only). */
+.profile-endorsements-v2__bulk-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 4px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.profile-endorsements-v2__bulk-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-endorsements-v2__bulk-error {
+  font-size: 0.75rem;
+  color: var(--color-error);
+}
+
+/* Compact list rows (vs the gallery card grid). */
+.profile-endorsements-v2__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-endorsements-v2__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.profile-endorsements-v2__row:hover {
+  background: var(--bg-sunken);
+}
+
+.profile-endorsements-v2__row[data-selected] {
+  background: var(--overlay-weak);
+}
+
+/* Rejected received endorsements read muted in the list. */
+.profile-endorsements-v2__row[data-state="rejected"]
+  .profile-endorsements-v2__row-name {
+  color: var(--fg-muted);
+  text-decoration: line-through;
+}
+
+.profile-endorsements-v2__row-check {
+  flex: 0 0 auto;
+}
+
+.profile-endorsements-v2__row-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.profile-endorsements-v2__row-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.profile-endorsements-v2__row-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-endorsements-v2__row-handle {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-endorsements-v2__row-note {
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-endorsements-v2__row-date {
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
