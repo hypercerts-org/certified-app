@@ -185,6 +185,155 @@ const PUBLIC_READ_METHODS = new Set<string>([
   "com.atproto.sync.getBlob",
 ])
 
+// The three helpers below proxy the *public* (unauthenticated) form of
+// each read XRPC straight to the target repo's home PDS. They back two
+// callers: the foreign-repo branch (repo !== session DID) and the
+// same-session FALLBACK — when a user reads their OWN repo but the bound
+// OAuth agent throws (expired/unrefreshable session, DPoP hiccup, a
+// transient PDS-auth 5xx), we drop to the public read instead of bubbling
+// a 500. These are public XRPCs, so a degraded session must never break
+// reading a user's own public records. Fallback reads carry the foreign
+// short cache rather than the same-session no-store/5s headers; that's an
+// exceptional path and a <=30s private cache is acceptable.
+
+async function proxyPublicGetRecord(
+  methodName: string,
+  repo: string,
+  collection: string,
+  rkey: string,
+  cid: string | undefined,
+): Promise<NextResponse> {
+  const targetPds = await resolvePdsUrl(repo)
+  if (!targetPds) {
+    return NextResponse.json({ error: "PDS not found for repo" }, { status: 404 })
+  }
+  const params = new URLSearchParams({ repo, collection, rkey })
+  if (cid) params.set("cid", cid)
+  try {
+    const upstream = await fetch(
+      `${targetPds}/xrpc/com.atproto.repo.getRecord?${params.toString()}`,
+      { signal: AbortSignal.timeout(10_000) }
+    )
+    if (!upstream.ok) {
+      return NextResponse.json(
+        { error: `Upstream PDS returned ${upstream.status}` },
+        { status: upstream.status }
+      )
+    }
+    const data = await upstream.json()
+    return NextResponse.json(data, { headers: FOREIGN_READ_CACHE_HEADERS })
+  } catch (err) {
+    logSafe("[xrpc] foreign-pds upstream", err, { method: methodName, pds: targetPds })
+    return NextResponse.json({ error: "Upstream request failed" }, { status: 502 })
+  }
+}
+
+async function proxyPublicListRecords(
+  methodName: string,
+  repo: string,
+  collection: string,
+  q: {
+    limit?: string
+    cursor?: string
+    reverse?: string
+    rkeyEnd?: string
+    rkeyStart?: string
+  },
+): Promise<NextResponse> {
+  const targetPds = await resolvePdsUrl(repo)
+  if (!targetPds) {
+    // Cache the empty-result shortcut too — otherwise a feed that hits an
+    // unresolvable DID will repeatedly retry the (cached-as-null) DID
+    // lookup and short-circuit here.
+    return NextResponse.json(
+      { records: [] },
+      { headers: FOREIGN_READ_CACHE_HEADERS },
+    )
+  }
+  const params = new URLSearchParams({ repo, collection })
+  const limit = parseLimit(q.limit)
+  if (limit !== undefined) params.set("limit", String(limit))
+  if (q.cursor) params.set("cursor", q.cursor)
+  if (q.reverse === "true") params.set("reverse", "true")
+  if (q.rkeyEnd) params.set("rkeyEnd", q.rkeyEnd)
+  if (q.rkeyStart) params.set("rkeyStart", q.rkeyStart)
+  try {
+    const upstream = await fetch(
+      `${targetPds}/xrpc/com.atproto.repo.listRecords?${params.toString()}`,
+      {
+        headers: { "Content-Type": "application/json" },
+        // Abort after 10s so a slow PDS doesn't block our handler.
+        signal: AbortSignal.timeout(10_000),
+      }
+    )
+    if (!upstream.ok) {
+      if (upstream.status === 400 || upstream.status === 404) {
+        return NextResponse.json(
+          { records: [] },
+          { headers: FOREIGN_READ_CACHE_HEADERS },
+        )
+      }
+      return NextResponse.json(
+        { error: `Upstream PDS returned ${upstream.status}` },
+        { status: upstream.status }
+      )
+    }
+    const data = await upstream.json()
+    return NextResponse.json(data, { headers: FOREIGN_READ_CACHE_HEADERS })
+  } catch (err) {
+    logSafe("[xrpc] foreign-pds upstream", err, { method: methodName, pds: targetPds })
+    return NextResponse.json(
+      { error: "Upstream request failed", records: [] },
+      { status: 502 }
+    )
+  }
+}
+
+async function proxyPublicGetBlob(
+  methodName: string,
+  blobDid: string,
+  cid: string,
+): Promise<NextResponse> {
+  const targetPds = await resolvePdsUrl(blobDid)
+  if (!targetPds) {
+    return NextResponse.json({ error: "PDS not found for did" }, { status: 404 })
+  }
+  try {
+    const params = new URLSearchParams({ did: blobDid, cid })
+    const upstream = await fetch(
+      `${targetPds}/xrpc/com.atproto.sync.getBlob?${params.toString()}`,
+      { signal: AbortSignal.timeout(15_000) }
+    )
+    if (!upstream.ok) {
+      return NextResponse.json(
+        { error: `Upstream PDS returned ${upstream.status}` },
+        { status: upstream.status }
+      )
+    }
+    // Trust posture: short-circuit a *declared* oversize before streaming.
+    // A missing/lying Content-Length is out of scope (we don't wrap the
+    // stream to enforce the cap byte-by-byte).
+    const upstreamLength = upstream.headers.get("content-length")
+    if (upstreamLength && Number(upstreamLength) > MAX_FOREIGN_BLOB_SIZE) {
+      return NextResponse.json({ error: "Payload too large" }, { status: 413 })
+    }
+    return new NextResponse(upstream.body, {
+      status: 200,
+      headers: {
+        "Content-Type":
+          upstream.headers.get("content-type") || "application/octet-stream",
+        // Server-controlled directive — don't forward upstream's.
+        ...FOREIGN_BLOB_CACHE_HEADERS,
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
+      },
+    })
+  } catch (err) {
+    logSafe("[xrpc] foreign-pds upstream", err, { method: methodName, pds: targetPds })
+    return NextResponse.json({ error: "Upstream request failed" }, { status: 502 })
+  }
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ method: string[] }> }
@@ -235,42 +384,22 @@ export async function GET(
 
         // Foreign repo → resolve PDS and proxy the public XRPC directly.
         if (repo !== did) {
-          const targetPds = await resolvePdsUrl(repo)
-          if (!targetPds) {
-            return NextResponse.json({ error: "PDS not found for repo" }, { status: 404 })
-          }
+          return proxyPublicGetRecord(methodName, repo, collection, rkey, cid)
+        }
 
-          const params = new URLSearchParams({ repo, collection, rkey })
-          if (cid) params.set("cid", cid)
-
+        // Same-session repo path — prefer the bound agent (fresh,
+        // no-store). If it throws (expired/unrefreshable OAuth session or
+        // a transient PDS-auth error) fall back to the public read so a
+        // degraded session doesn't 500 a read of the user's own record.
+        if (agent) {
           try {
-            const upstream = await fetch(
-              `${targetPds}/xrpc/com.atproto.repo.getRecord?${params.toString()}`,
-              { signal: AbortSignal.timeout(10_000) }
-            )
-            if (!upstream.ok) {
-              const status = upstream.status
-              return NextResponse.json(
-                { error: `Upstream PDS returned ${status}` },
-                { status }
-              )
-            }
-            const data = await upstream.json()
-            return NextResponse.json(data, { headers: FOREIGN_READ_CACHE_HEADERS })
+            const result = await agent.com.atproto.repo.getRecord({ repo, collection, rkey, cid })
+            return NextResponse.json(result.data, { headers: SAME_SESSION_NO_STORE_HEADERS })
           } catch (err) {
-            logSafe("[xrpc] foreign-pds upstream", err, { method: methodName, pds: targetPds })
-            return NextResponse.json({ error: "Upstream request failed" }, { status: 502 })
+            logSafe("[xrpc] same-session read failed, falling back to public", err, { method: methodName })
           }
         }
-
-        // Same-session repo path — reuse the bound agent when we have
-        // one; null agent at this point is unreachable because the
-        // foreign-repo branch above already handled the !did case.
-        if (!agent) {
-          return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
-        }
-        const result = await agent.com.atproto.repo.getRecord({ repo, collection, rkey, cid })
-        return NextResponse.json(result.data, { headers: SAME_SESSION_NO_STORE_HEADERS })
+        return proxyPublicGetRecord(methodName, repo, collection, rkey, cid)
       }
       case "com.atproto.repo.listRecords": {
         const { repo, collection, cursor, reverse, rkeyEnd, rkeyStart } = queryParams
@@ -287,74 +416,31 @@ export async function GET(
         // works for any PDS in the network — we don't need to talk to
         // the target user's auth service.
         if (repo !== did) {
-          const targetPds = await resolvePdsUrl(repo)
-          if (!targetPds) {
-            // Cache the empty-result shortcut too — otherwise a feed
-            // that hits an unresolvable DID will repeatedly retry the
-            // (cached-as-null) DID lookup and short-circuit here.
-            return NextResponse.json(
-              { records: [] },
-              { headers: FOREIGN_READ_CACHE_HEADERS },
-            )
-          }
+          return proxyPublicListRecords(methodName, repo, collection, queryParams)
+        }
 
-          const params = new URLSearchParams({ repo, collection })
-          const limit = parseLimit(queryParams.limit)
-          if (limit !== undefined) params.set("limit", String(limit))
-          if (cursor) params.set("cursor", cursor)
-          if (reverse === "true") params.set("reverse", "true")
-          if (rkeyEnd) params.set("rkeyEnd", rkeyEnd)
-          if (rkeyStart) params.set("rkeyStart", rkeyStart)
-
+        // Same-session repo path — prefer the bound agent (fresh writes
+        // visible on a 5s cache). If it throws (expired/unrefreshable
+        // OAuth session or a transient PDS-auth error) fall back to the
+        // public read so a degraded session doesn't 500 the user's own
+        // Lists/Activities tabs — listRecords is a public XRPC.
+        if (agent) {
           try {
-            const upstream = await fetch(
-              `${targetPds}/xrpc/com.atproto.repo.listRecords?${params.toString()}`,
-              {
-                headers: { "Content-Type": "application/json" },
-                // Abort after 10s so a slow PDS doesn't block our handler.
-                signal: AbortSignal.timeout(10_000),
-              }
-            )
-            if (!upstream.ok) {
-              if (upstream.status === 400 || upstream.status === 404) {
-                return NextResponse.json(
-                  { records: [] },
-                  { headers: FOREIGN_READ_CACHE_HEADERS },
-                )
-              }
-              return NextResponse.json(
-                { error: `Upstream PDS returned ${upstream.status}` },
-                { status: upstream.status }
-              )
-            }
-            const data = await upstream.json()
-            // Short cache for foreign-repo public reads — a typical feed
-            // render fans this out across many DIDs and the user is fine
-            // seeing data that's <30s stale. Their *own* repo skips this
-            // (see else branch) so they always see fresh writes.
-            return NextResponse.json(data, { headers: FOREIGN_READ_CACHE_HEADERS })
+            const result = await agent.com.atproto.repo.listRecords({
+              repo,
+              collection,
+              limit: parseLimit(queryParams.limit),
+              cursor,
+              reverse: reverse === "true" ? true : undefined,
+              rkeyEnd,
+              rkeyStart,
+            })
+            return NextResponse.json(result.data, { headers: SAME_SESSION_LIST_HEADERS })
           } catch (err) {
-            logSafe("[xrpc] foreign-pds upstream", err, { method: methodName, pds: targetPds })
-            return NextResponse.json(
-              { error: "Upstream request failed", records: [] },
-              { status: 502 }
-            )
+            logSafe("[xrpc] same-session read failed, falling back to public", err, { method: methodName })
           }
         }
-
-        if (!agent) {
-          return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
-        }
-        const result = await agent.com.atproto.repo.listRecords({
-          repo,
-          collection,
-          limit: parseLimit(queryParams.limit),
-          cursor,
-          reverse: reverse === "true" ? true : undefined,
-          rkeyEnd,
-          rkeyStart,
-        })
-        return NextResponse.json(result.data, { headers: SAME_SESSION_LIST_HEADERS })
+        return proxyPublicListRecords(methodName, repo, collection, queryParams)
       }
       case "com.atproto.server.getSession": {
         if (!agent) {
@@ -373,66 +459,28 @@ export async function GET(
         // directly. Bound agent would target the session user's PDS,
         // which doesn't have the foreign user's blobs.
         if (blobDid !== did) {
-          const targetPds = await resolvePdsUrl(blobDid)
-          if (!targetPds) {
-            return NextResponse.json({ error: "PDS not found for did" }, { status: 404 })
-          }
+          return proxyPublicGetBlob(methodName, blobDid, cid)
+        }
 
+        // Same-session blob → prefer the bound agent, fall back to the
+        // public read if a degraded session makes it throw.
+        if (agent) {
           try {
-            const params = new URLSearchParams({ did: blobDid, cid })
-            const upstream = await fetch(
-              `${targetPds}/xrpc/com.atproto.sync.getBlob?${params.toString()}`,
-              { signal: AbortSignal.timeout(15_000) }
-            )
-            if (!upstream.ok) {
-              return NextResponse.json(
-                { error: `Upstream PDS returned ${upstream.status}` },
-                { status: upstream.status }
-              )
-            }
-            // Trust posture: short-circuit a *declared* oversize before
-            // streaming. A missing/lying Content-Length is out of scope
-            // (we don't wrap the stream to enforce the cap byte-by-byte).
-            const upstreamLength = upstream.headers.get("content-length")
-            if (
-              upstreamLength &&
-              Number(upstreamLength) > MAX_FOREIGN_BLOB_SIZE
-            ) {
-              return NextResponse.json(
-                { error: "Payload too large" },
-                { status: 413 }
-              )
-            }
-            return new NextResponse(upstream.body, {
-              status: 200,
+            const result = await agent.com.atproto.sync.getBlob({ did: blobDid, cid })
+            const blob = result.data as Uint8Array
+            return new NextResponse(Buffer.from(blob), {
               headers: {
                 "Content-Type":
-                  upstream.headers.get("content-type") || "application/octet-stream",
-                // Server-controlled directive — don't forward upstream's.
-                ...FOREIGN_BLOB_CACHE_HEADERS,
+                  result.headers["content-type"] || "application/octet-stream",
                 "X-Content-Type-Options": "nosniff",
                 "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
               },
             })
           } catch (err) {
-            logSafe("[xrpc] foreign-pds upstream", err, { method: methodName, pds: targetPds })
-            return NextResponse.json({ error: "Upstream request failed" }, { status: 502 })
+            logSafe("[xrpc] same-session read failed, falling back to public", err, { method: methodName })
           }
         }
-
-        if (!agent) {
-          return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
-        }
-        const result = await agent.com.atproto.sync.getBlob({ did: blobDid, cid })
-        const blob = result.data as Uint8Array
-        return new NextResponse(Buffer.from(blob), {
-          headers: {
-            "Content-Type":
-              result.headers["content-type"] || "application/octet-stream",
-            "X-Content-Type-Options": "nosniff",
-            "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
-          },
-        })
+        return proxyPublicGetBlob(methodName, blobDid, cid)
       }
       default:
         return NextResponse.json(
