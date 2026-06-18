@@ -376,8 +376,21 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
   }, [])
 
   // --- fullscreen --------------------------------------------------------
+  // Fullscreen the whole `.viz` container (graph + stats sidebar), not just
+  // the canvas — the sidebar's rankings and search stay usable. The host
+  // lives a few levels under `.viz`, so walk up to it.
+  const fullscreenTarget = useCallback(
+    () => hostRef.current?.closest(".viz") ?? hostRef.current,
+    [],
+  )
+
   useEffect(() => {
-    const onChange = () => setIsFullscreen(document.fullscreenElement === hostRef.current)
+    const onChange = () =>
+      setIsFullscreen(
+        !!document.fullscreenElement &&
+          !!hostRef.current &&
+          document.fullscreenElement.contains(hostRef.current),
+      )
     document.addEventListener("fullscreenchange", onChange)
     return () => document.removeEventListener("fullscreenchange", onChange)
   }, [])
@@ -386,9 +399,9 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
     if (document.fullscreenElement) {
       void document.exitFullscreen?.()
     } else {
-      void hostRef.current?.requestFullscreen?.()
+      void fullscreenTarget()?.requestFullscreen?.()
     }
-  }, [])
+  }, [fullscreenTarget])
 
   return (
     <div ref={hostRef} className="viz__canvas-host">
