@@ -20,8 +20,10 @@ import Link from "next/link"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import Input from "@/components/ui/input"
+import SegmentedControl from "@/components/ui/segmented-control"
 import { getInitials } from "@/lib/utils/initials"
 import { profileUrl } from "@/lib/urls"
+import { useTrustedEvaluators } from "@/hooks/use-trusted-evaluators"
 import type { GraphNode, GraphLink } from "@/hooks/use-endorsement-graph"
 
 type FGNode = NodeObject<GraphNode>
@@ -65,8 +67,102 @@ function readThemeColors(): ThemeColors {
   }
 }
 
-function nodeRadius(n: GraphNode): number {
+function nodeRadius(n: { given: number; received: number }): number {
   return Math.min(22, 4 + Math.sqrt(n.given + n.received) * 1.4)
+}
+
+// --- layout modes -----------------------------------------------------------
+// The graph ships several arrangements behind a switcher so the best-looking
+// one can be picked per dataset. Every mode runs a collision force so avatars
+// never overlap (the original default had none — hence the overlapping logos).
+
+export type LayoutMode = "network" | "spread" | "radial"
+
+export const LAYOUT_OPTIONS: { value: LayoutMode; label: string }[] = [
+  { value: "network", label: "Network" },
+  { value: "spread", label: "Spread" },
+  { value: "radial", label: "Radial" },
+]
+
+/** Minimal mutable node shape the custom d3 forces read/write. */
+interface SimNode {
+  id: string
+  given: number
+  received: number
+  x?: number
+  y?: number
+  vx?: number
+  vy?: number
+}
+
+/**
+ * Position-based collision force (mirrors d3-force's `forceCollide` so we
+ * don't add a dependency — `react-force-graph` bundles its own d3 and exposes
+ * only the simulation, not the force constructors). Each tick, any two nodes
+ * closer than the sum of their radii (+ padding) are pushed apart. O(n²) is
+ * fine for the few-hundred-node network.
+ */
+function makeCollideForce(padding: number) {
+  let ns: SimNode[] = []
+  const force = () => {
+    for (let i = 0; i < ns.length; i++) {
+      const a = ns[i]
+      if (a.x == null || a.y == null) continue
+      const ra = nodeRadius(a) + padding
+      for (let j = i + 1; j < ns.length; j++) {
+        const b = ns[j]
+        if (b.x == null || b.y == null) continue
+        const min = ra + nodeRadius(b) + padding
+        const dx = b.x - a.x
+        const dy = b.y - a.y
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1e-6
+        if (dist < min) {
+          const shift = ((min - dist) / dist) * 0.5 * 0.8 // 0.8 = strength
+          const sx = dx * shift
+          const sy = dy * shift
+          a.x -= sx
+          a.y -= sy
+          b.x += sx
+          b.y += sy
+        }
+      }
+    }
+  }
+  force.initialize = (nodes: SimNode[]) => {
+    ns = nodes
+  }
+  return force
+}
+
+/**
+ * Radial force pulling each node toward a ring whose radius is set by its
+ * influence (given + received): the most-endorsed accounts settle near the
+ * centre, leaf accounts on the outer ring. Centre is the simulation origin
+ * (0,0), where `forceCenter` already pins the graph.
+ */
+function makeRadialForce(
+  maxDegree: number,
+  innerR: number,
+  outerR: number,
+  strength: number,
+) {
+  let ns: SimNode[] = []
+  const force = (alpha: number) => {
+    for (const n of ns) {
+      if (n.x == null || n.y == null) continue
+      const deg = n.given + n.received
+      const target =
+        innerR + (1 - (maxDegree > 0 ? deg / maxDegree : 0)) * (outerR - innerR)
+      const dist = Math.sqrt(n.x * n.x + n.y * n.y) || 1e-6
+      const k = ((target - dist) / dist) * strength * alpha
+      n.vx = (n.vx ?? 0) + n.x * k
+      n.vy = (n.vy ?? 0) + n.y * k
+    }
+  }
+  force.initialize = (nodes: SimNode[]) => {
+    ns = nodes
+  }
+  return force
 }
 
 function linkEndId(end: string | NodeObject<GraphNode> | undefined): string | null {
@@ -86,6 +182,12 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
   // than the colours ref; updated alongside the ref on theme changes.
   const [bgColor, setBgColor] = useState<string | undefined>(undefined)
   const [onlyMutual, setOnlyMutual] = useState(false)
+  const [layout, setLayout] = useState<LayoutMode>("network")
+  // Default on: only show the web reachable from the trusted evaluators
+  // (any number of endorsement hops). Also hides stray disconnected
+  // clusters that otherwise float far out in empty space.
+  const [evaluatorConnectedOnly, setEvaluatorConnectedOnly] = useState(true)
+  const { evaluatorDids } = useTrustedEvaluators()
   const [search, setSearch] = useState("")
   const [searchOpen, setSearchOpen] = useState(false)
   const [hoverId, setHoverId] = useState<string | null>(null)
@@ -144,18 +246,112 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
 
   // --- filtered working data (mutual-only toggle) ------------------------
   const data = useMemo(() => {
-    if (!onlyMutual) return { nodes, links }
-    const mutualLinks = links.filter((l) => l.mutual)
-    const keep = new Set<string>()
-    for (const l of mutualLinks) {
-      keep.add(linkEndId(l.source) ?? "")
-      keep.add(linkEndId(l.target) ?? "")
+    let nds = nodes
+    let lks = links
+
+    // 1. mutual-only filter
+    if (onlyMutual) {
+      lks = links.filter((l) => l.mutual)
+      const keep = new Set<string>()
+      for (const l of lks) {
+        keep.add(linkEndId(l.source) ?? "")
+        keep.add(linkEndId(l.target) ?? "")
+      }
+      nds = nodes.filter((n) => keep.has(n.id))
     }
-    return {
-      nodes: nodes.filter((n) => keep.has(n.id)),
-      links: mutualLinks,
+
+    // 2. connected-to-evaluators filter — keep only the nodes reachable
+    //    from a trusted evaluator by following endorsements OUTWARD
+    //    (issuer → subject): an evaluator, everyone they endorse, everyone
+    //    those accounts endorse, and so on to any depth. Edges pointing
+    //    *into* the evaluator network don't pull a node in. Skipped until
+    //    the evaluator set has loaded, or if none of them appear in the
+    //    current graph (so we never blank the view out).
+    if (evaluatorConnectedOnly && evaluatorDids.length > 0) {
+      const nodeIds = new Set(nds.map((n) => n.id))
+      const adj = new Map<string, string[]>()
+      const link2 = (k: string, v: string) => {
+        const arr = adj.get(k)
+        if (arr) arr.push(v)
+        else adj.set(k, [v])
+      }
+      for (const l of lks) {
+        const s = linkEndId(l.source)
+        const t = linkEndId(l.target)
+        if (!s || !t) continue
+        // Directed: only follow issuer (source) -> subject (target).
+        link2(s, t)
+      }
+      const seen = new Set<string>()
+      const queue: string[] = []
+      for (const d of evaluatorDids) {
+        if (nodeIds.has(d) && !seen.has(d)) {
+          seen.add(d)
+          queue.push(d)
+        }
+      }
+      if (seen.size > 0) {
+        for (let i = 0; i < queue.length; i++) {
+          for (const nb of adj.get(queue[i]) ?? []) {
+            if (!seen.has(nb)) {
+              seen.add(nb)
+              queue.push(nb)
+            }
+          }
+        }
+        nds = nds.filter((n) => seen.has(n.id))
+        lks = lks.filter((l) => {
+          const s = linkEndId(l.source)
+          const t = linkEndId(l.target)
+          return s != null && t != null && seen.has(s) && seen.has(t)
+        })
+      }
     }
-  }, [nodes, links, onlyMutual])
+
+    return { nodes: nds, links: lks }
+  }, [nodes, links, onlyMutual, evaluatorConnectedOnly, evaluatorDids])
+
+  // --- layout forces -----------------------------------------------------
+  // Configure the simulation per layout mode. Re-runs when the mode or the
+  // working data changes (react-force-graph rebuilds its default charge/link/
+  // center forces on a graphData swap, so we re-apply our additions after) and
+  // once `size.w` flips positive — that's the render where the graph mounts
+  // and `fgRef.current` becomes available. Collision is on in every mode so
+  // avatars don't overlap.
+  useEffect(() => {
+    const fg = fgRef.current
+    if (!fg || size.w === 0) return
+    const charge = fg.d3Force("charge")
+    const link = fg.d3Force("link")
+    const count = data.nodes.length
+    const maxDegree = data.nodes.reduce(
+      (m, n) => Math.max(m, n.given + n.received),
+      0,
+    )
+
+    // Padding leaves room for the name label drawn beneath each node so
+    // text mostly clears its neighbours — a moderate gap (some overlap is
+    // fine; over-spreading just shrinks the avatars at overview zoom).
+    // Spread mode gets a bit more.
+    fg.d3Force("collide", makeCollideForce(layout === "spread" ? 18 : 10))
+
+    if (layout === "spread") {
+      charge?.strength?.(-200)
+      link?.distance?.(100)
+      fg.d3Force("radial", null)
+    } else if (layout === "radial") {
+      charge?.strength?.(-45)
+      link?.distance?.(60)
+      const outerR = Math.max(180, Math.sqrt(count) * 40)
+      fg.d3Force("radial", makeRadialForce(maxDegree, 30, outerR, 0.6))
+    } else {
+      // network (compact, the default)
+      charge?.strength?.(-70)
+      link?.distance?.(48)
+      fg.d3Force("radial", null)
+    }
+    fg.d3ReheatSimulation?.()
+  }, [layout, data, size.w])
 
   // --- adjacency for hover/selection highlight ---------------------------
   const adjacency = useMemo(() => {
@@ -289,7 +485,9 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
 
       // name label when zoomed in or active
       if (globalScale > 1.6 || isActive) {
-        const name = node.displayName || (node.handle ? `@${node.handle}` : node.id.slice(0, 12))
+        const raw = node.displayName || (node.handle ? `@${node.handle}` : node.id.slice(0, 12))
+        // Cap label width so a long name doesn't sprawl across neighbours.
+        const name = raw.length > 18 ? `${raw.slice(0, 17)}…` : raw
         ctx.font = `500 ${Math.max(3, 11 / globalScale)}px Inter, sans-serif`
         ctx.fillStyle = c.fg
         ctx.textAlign = "center"
@@ -482,6 +680,24 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
           )}
         </form>
         <div className="viz__control-row">
+          <SegmentedControl
+            className="viz__layout-toggle"
+            aria-label="Graph layout"
+            value={layout}
+            onValueChange={(v) => setLayout(v as LayoutMode)}
+            size="sm"
+            options={LAYOUT_OPTIONS}
+          />
+        </div>
+        <div className="viz__control-row">
+          <Button
+            variant={evaluatorConnectedOnly ? "primary" : "secondary"}
+            size="sm"
+            pressed={evaluatorConnectedOnly}
+            onClick={() => setEvaluatorConnectedOnly((v) => !v)}
+          >
+            Evaluator network
+          </Button>
           <Button
             variant={onlyMutual ? "primary" : "secondary"}
             size="sm"

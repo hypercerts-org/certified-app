@@ -359,6 +359,7 @@ ${ACTIVITY_NODE_SELECTION}
               ... on AppCertifiedDefsDid { did }
             }
             issuer { did handle displayName avatarCid pds }
+            response { state }
           }
         }
         pageInfo { hasNextPage endCursor }
