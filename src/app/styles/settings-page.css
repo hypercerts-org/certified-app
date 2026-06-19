@@ -197,6 +197,87 @@
   min-width: 0;
 }
 
+/* "Advanced" disclosure toggle — reuses .sx-menu__item; the chevron sits at
+   the trailing edge (the label is flex:1) and flips when expanded. */
+.sx-menu__chevron {
+  flex-shrink: 0;
+  color: var(--fg-muted);
+  transition: transform var(--transition-fast);
+}
+
+.sx-menu__chevron--open {
+  transform: rotate(180deg);
+}
+
+/* ---------- App passwords section ---------- */
+.app-passwords {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.app-passwords__create,
+.app-passwords__created {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.app-passwords__secret {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.app-passwords__secret-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--fg-primary);
+  overflow-wrap: anywhere;
+}
+
+.app-passwords__loading {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.app-passwords__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-passwords__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.app-passwords__row:first-child {
+  border-top: 0;
+}
+
+.app-passwords__row-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+  color: var(--fg-primary);
+}
+
 /* ------------------------------------------------------------------------
    Right pane — wrapper for ALL stacked sections.
    The wrapper itself is a flex column; the `gap` defines breathing

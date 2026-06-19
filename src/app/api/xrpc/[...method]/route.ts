@@ -8,6 +8,8 @@ import type {
   ComAtprotoServerRequestPasswordReset,
   ComAtprotoServerResetPassword,
   ComAtprotoServerUpdateEmail,
+  ComAtprotoServerCreateAppPassword,
+  ComAtprotoServerRevokeAppPassword,
 } from "@atproto/api"
 import { getOAuthClient } from "@/lib/auth/oauth-client"
 import { getSessionDid, deleteSession } from "@/lib/auth/session"
@@ -449,6 +451,13 @@ export async function GET(
         const result = await agent.com.atproto.server.getSession()
         return NextResponse.json(result.data, { headers: SAME_SESSION_NO_STORE_HEADERS })
       }
+      case "com.atproto.server.listAppPasswords": {
+        if (!agent) {
+          return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+        }
+        const result = await agent.com.atproto.server.listAppPasswords()
+        return NextResponse.json(result.data, { headers: SAME_SESSION_NO_STORE_HEADERS })
+      }
       case "com.atproto.sync.getBlob": {
         const { did: blobDid, cid } = queryParams
         if (!blobDid || !cid) {
@@ -670,6 +679,20 @@ export async function POST(
       case "com.atproto.server.updateEmail": {
         await agent.com.atproto.server.updateEmail(
           body as ComAtprotoServerUpdateEmail.InputSchema
+        )
+        return NextResponse.json({})
+      }
+      case "com.atproto.server.createAppPassword": {
+        // Returns the generated password ONCE (the PDS never reveals it
+        // again). The caller shows it for copy then drops it.
+        const result = await agent.com.atproto.server.createAppPassword(
+          body as ComAtprotoServerCreateAppPassword.InputSchema
+        )
+        return NextResponse.json(result.data)
+      }
+      case "com.atproto.server.revokeAppPassword": {
+        await agent.com.atproto.server.revokeAppPassword(
+          body as ComAtprotoServerRevokeAppPassword.InputSchema
         )
         return NextResponse.json({})
       }
