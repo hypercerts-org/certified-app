@@ -209,6 +209,52 @@
   transform: rotate(180deg);
 }
 
+/* Advanced disclosure — main-pane control. The sidebar nav is hidden on
+   mobile, so this full-width divider is the only reveal there. Leading
+   icon + label, trailing chevron that flips when expanded. */
+.sx-advanced-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 0;
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+  background: none;
+  color: var(--fg-muted);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.sx-advanced-divider:hover,
+.sx-advanced-divider:focus-visible {
+  color: var(--fg-primary);
+  outline: none;
+}
+
+.sx-advanced-divider:focus-visible {
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+.sx-advanced-divider__label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sx-advanced-divider__chevron {
+  flex-shrink: 0;
+  transition: transform var(--transition-fast);
+}
+
+.sx-advanced-divider__chevron--open {
+  transform: rotate(180deg);
+}
+
 /* ---------- App passwords section ---------- */
 .app-passwords {
   display: flex;
