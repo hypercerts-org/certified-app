@@ -19,9 +19,9 @@ import {
 import type { FundingReceipt } from "@/lib/atproto/indexer"
 
 const ROLE_LABEL: Record<ConfirmRole, string> = {
-  both: "Both",
-  sender: "Funder",
-  recipient: "Recipient",
+  both: "Funders & Recipient",
+  sender: "Only funder",
+  recipient: "Only recipient",
 }
 
 /**
