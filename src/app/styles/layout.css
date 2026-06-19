@@ -2102,6 +2102,9 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   flex-direction: column;
   gap: 2px;
   margin-top: 4px;
+  /* Let the name shrink within the sidebar so an unbreakable display name
+     truncates instead of overflowing into the main column. */
+  min-width: 0;
 }
 
 .profile-sidebar__name {
@@ -2112,6 +2115,11 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   color: var(--fg-primary);
   margin: 0;
   line-height: 1.2;
+  /* A display name with no spaces (e.g. a handle used as the name) can't
+     wrap — cut it off with an ellipsis rather than overflow. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .profile-sidebar__handle {
