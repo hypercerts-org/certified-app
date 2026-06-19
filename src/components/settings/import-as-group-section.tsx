@@ -102,6 +102,9 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
         The account, its handle, and its records are kept; nothing is deleted.
       </p>
 
+      <p className="settings__note">
+        Enter an app password to enable the promotion.
+      </p>
       <Input
         type="password"
         label="App password"
@@ -112,11 +115,6 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
         value={appPassword}
         onChange={(e) => setAppPassword(e.target.value)}
       />
-      <p className="settings__note">
-        Create an app password in your account&apos;s settings. It&apos;s stored
-        encrypted so the service can act for the group; you can revoke it
-        anytime.
-      </p>
 
       {error && <ErrorMessage message={error} />}
 
@@ -127,7 +125,7 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
           loading={isImporting}
           disabled={!appPassword.trim() || isImporting}
         >
-          Import as group
+          Promote to group
         </Button>
       </div>
     </form>
