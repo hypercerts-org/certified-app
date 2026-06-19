@@ -5,7 +5,10 @@ import dynamic from "next/dynamic"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import EndorsementStats from "@/components/visualization/endorsement-stats"
-import { useEndorsementGraph } from "@/hooks/use-endorsement-graph"
+import {
+  useEndorsementGraph,
+  type EndorsementGraph as EndorsementGraphData,
+} from "@/hooks/use-endorsement-graph"
 import { usePageTitle } from "@/lib/navbar-context"
 import type { FocusRequest } from "@/components/visualization/endorsement-graph"
 
@@ -25,6 +28,10 @@ const EndorsementGraph = dynamic(
 export default function Visualization() {
   const { graph, isLoading, error } = useEndorsementGraph()
   const [focusReq, setFocusReq] = useState<FocusRequest>({ did: null, nonce: 0 })
+  // Stats of the currently-visible (filtered) graph, emitted by the graph
+  // component so the sidebar mirrors the active scope / mutual filters.
+  // Falls back to the full graph until the first emit.
+  const [statsGraph, setStatsGraph] = useState<EndorsementGraphData | null>(null)
 
   // Shows "Endorsement network" in the top bar next to the brandmark (which
   // replaces the wordmark whenever a page title is set).
@@ -69,13 +76,15 @@ export default function Visualization() {
               nodes={graph.nodes}
               links={graph.links}
               focusReq={focusReq}
+              truncated={graph.truncated}
+              onStats={setStatsGraph}
             />
           )}
         </div>
       </div>
 
       {!isLoading && !error && graph && graph.nodes.length > 0 && (
-        <EndorsementStats graph={graph} onFocus={handleFocus} />
+        <EndorsementStats graph={statsGraph ?? graph} onFocus={handleFocus} />
       )}
     </div>
   )
