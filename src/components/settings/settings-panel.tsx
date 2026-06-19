@@ -92,8 +92,8 @@ const CATEGORIES: CategoryDef[] = [
   },
   {
     key: "group",
-    label: "Turn into a group",
-    description: "Promote this account into a Certified group.",
+    label: "Promote this account to a group account",
+    description: "",
     Icon: Users,
     advanced: true,
   },
@@ -235,7 +235,42 @@ export default function SettingsPanel() {
     )
   }
 
-  const panelCategories = advancedOpen ? CATEGORIES : REGULAR_CATEGORIES
+  const renderSection = (cat: CategoryDef) => (
+    <section
+      key={cat.key}
+      id={cat.key}
+      ref={setSectionRef(cat.key)}
+      className="sx-section"
+      aria-labelledby={`sx-section-${cat.key}-title`}
+    >
+      <header className="sx-panel__header">
+        <h2 id={`sx-section-${cat.key}-title`} className="sx-panel__title">
+          {cat.label}
+        </h2>
+        {cat.description ? (
+          <p className="sx-panel__desc">{cat.description}</p>
+        ) : null}
+      </header>
+
+      <div className="sx-panel__body">
+        {cat.key === "username" && (
+          <UsernameCard
+            handle={handle}
+            pdsUrl={pdsUrl || undefined}
+            did={did || undefined}
+          />
+        )}
+        {cat.key === "email" && <EmailSection email={email || ""} />}
+        {cat.key === "password" && <PasswordSection email={email || ""} />}
+        {cat.key === "appearance" && <ThemeToggle />}
+        {cat.key === "social-graph" && did ? (
+          <SyncSocialGraphSection did={did} ownDid={did} />
+        ) : null}
+        {cat.key === "app-passwords" && <AppPasswordsSection />}
+        {cat.key === "group" && did ? <ImportAsGroupSection did={did} /> : null}
+      </div>
+    </section>
+  )
 
   return (
     <div className="sx">
@@ -270,49 +305,26 @@ export default function SettingsPanel() {
         </aside>
 
         <div className="page-layout__main sx__panel">
-          {panelCategories.map((cat) => (
-            <section
-              key={cat.key}
-              id={cat.key}
-              ref={setSectionRef(cat.key)}
-              className="sx-section"
-              aria-labelledby={`sx-section-${cat.key}-title`}
-            >
-              <header className="sx-panel__header">
-                <h2
-                  id={`sx-section-${cat.key}-title`}
-                  className="sx-panel__title"
-                >
-                  {cat.label}
-                </h2>
-                <p className="sx-panel__desc">{cat.description}</p>
-              </header>
+          {REGULAR_CATEGORIES.map(renderSection)}
 
-              <div className="sx-panel__body">
-                {cat.key === "username" && (
-                  <UsernameCard
-                    handle={handle}
-                    pdsUrl={pdsUrl || undefined}
-                    did={did || undefined}
-                  />
-                )}
-                {cat.key === "email" && (
-                  <EmailSection email={email || ""} />
-                )}
-                {cat.key === "password" && (
-                  <PasswordSection email={email || ""} />
-                )}
-                {cat.key === "appearance" && <ThemeToggle />}
-                {cat.key === "social-graph" && did ? (
-                  <SyncSocialGraphSection did={did} ownDid={did} />
-                ) : null}
-                {cat.key === "app-passwords" && <AppPasswordsSection />}
-                {cat.key === "group" && did ? (
-                  <ImportAsGroupSection did={did} />
-                ) : null}
-              </div>
-            </section>
-          ))}
+          {/* Advanced disclosure in the main pane too — the sidebar nav is
+              hidden on mobile, so this is the only reveal control there. */}
+          <button
+            type="button"
+            className="sx-advanced-divider"
+            aria-expanded={advancedOpen}
+            onClick={() => setAdvancedOpen((open) => !open)}
+          >
+            <SlidersHorizontal size={16} strokeWidth={1.75} aria-hidden />
+            <span className="sx-advanced-divider__label">Advanced</span>
+            <ChevronDown
+              size={16}
+              aria-hidden
+              className={`sx-advanced-divider__chevron${advancedOpen ? " sx-advanced-divider__chevron--open" : ""}`}
+            />
+          </button>
+
+          {advancedOpen ? ADVANCED_CATEGORIES.map(renderSection) : null}
         </div>
       </div>
     </div>
