@@ -1090,6 +1090,46 @@ export default function ActivityDetail({
       </section>
     ) : null
 
+  // The Contributors list — shown on its own tab AND beneath the board on
+  // the Contributor Board tab.
+  const contributorsSection = (
+    <section className="cert-detail__section">
+      <div className="cert-detail__section-header">
+        <h2 className="cert-detail__section-title">Contributors</h2>
+        <span className="cert-detail__section-count">{contributorCount}</span>
+      </div>
+      {contributorCount > 0 ? (
+        (() => {
+          const weightPercents = buildWeightPercents(contributors)
+          return (
+            <>
+              {contributors.some((c) => c.contributionWeight != null) ? (
+                <ContributorWeightHeader />
+              ) : null}
+              <ul className="cert-detail__contributors">
+                {contributors.map((c, i) => {
+                  const roleText = contributionRoleText(c.contributionDetails)
+                  return (
+                    <ContributorRow
+                      key={contributorKey(c, i)}
+                      contributor={c}
+                      role={roleText}
+                      weight={
+                        weightPercents.get(i) ?? c.contributionWeight ?? null
+                      }
+                    />
+                  )
+                })}
+              </ul>
+            </>
+          )
+        })()
+      ) : (
+        <p className="cert-detail__short-desc">No contributors listed.</p>
+      )}
+    </section>
+  )
+
   return (
     <>
       {/* Editing banner sits ABOVE the cert-detail grid so it spans
@@ -1482,54 +1522,19 @@ export default function ActivityDetail({
             )}
           </section>
         ) : activeTab === "contributors" ? (
-          <section className="cert-detail__section">
-            <div className="cert-detail__section-header">
-              <h2 className="cert-detail__section-title">Contributors</h2>
-              <span className="cert-detail__section-count">
-                {contributorCount}
-              </span>
-            </div>
-            {contributorCount > 0 ? (
-              (() => {
-                const weightPercents = buildWeightPercents(contributors)
-                return (
-              <>
-                {contributors.some((c) => c.contributionWeight != null) ? (
-                  <ContributorWeightHeader />
-                ) : null}
-                <ul className="cert-detail__contributors">
-                  {contributors.map((c, i) => {
-                    const roleText = contributionRoleText(c.contributionDetails)
-                    return (
-                      <ContributorRow
-                        key={contributorKey(c, i)}
-                        contributor={c}
-                        role={roleText}
-                        weight={
-                          weightPercents.get(i) ??
-                          c.contributionWeight ??
-                          null
-                        }
-                      />
-                    )
-                  })}
-                </ul>
-              </>
-                )
-              })()
-            ) : (
-              <p className="cert-detail__short-desc">No contributors listed.</p>
-            )}
-          </section>
+          contributorsSection
         ) : activeTab === "contributor-board" ? (
-          <ActivityContributorBoard
-            did={did}
-            rkey={rkey}
-            value={value}
-            cid={cid}
-            contributors={contributors}
-            canEdit={isCreator && sessionDid === did}
-          />
+          <>
+            <ActivityContributorBoard
+              did={did}
+              rkey={rkey}
+              value={value}
+              cid={cid}
+              contributors={contributors}
+              canEdit={isCreator && sessionDid === did}
+            />
+            {contributorsSection}
+          </>
         ) : activeTab === "funding" ? (
           <section className="cert-detail__section">
             <div className="cert-detail__section-header">

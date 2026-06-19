@@ -78,6 +78,16 @@
     grid-column: 1;
     grid-row: 1;
   }
+
+  /* Contributor Board tab: drop the supplementary aside so the board (and
+     the contributors list beneath it) spans the full width of both panes. */
+  .cert-detail--wide.cert-detail--tab-contributor-board.page-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cert-detail--wide.cert-detail--tab-contributor-board.page-layout
+    > .cert-detail__aside {
+    display: none;
+  }
 }
 
 /* ---------- Mobile reading reorder (single column) ----------
