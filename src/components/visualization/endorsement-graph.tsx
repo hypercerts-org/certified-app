@@ -24,7 +24,11 @@ import SegmentedControl from "@/components/ui/segmented-control"
 import { getInitials } from "@/lib/utils/initials"
 import { profileUrl } from "@/lib/urls"
 import { useTrustedEvaluators } from "@/hooks/use-trusted-evaluators"
-import type { GraphNode, GraphLink } from "@/hooks/use-endorsement-graph"
+import type {
+  GraphNode,
+  GraphLink,
+  EndorsementGraph as EndorsementGraphData,
+} from "@/hooks/use-endorsement-graph"
 
 type FGNode = NodeObject<GraphNode>
 type FGLink = LinkObject<GraphNode, GraphLink>
@@ -39,6 +43,52 @@ interface EndorsementGraphProps {
   nodes: GraphNode[]
   links: GraphLink[]
   focusReq: FocusRequest
+  /** Whether the source dataset was capped — forwarded into the stats
+   *  the sidebar shows for the filtered view. */
+  truncated?: boolean
+  /** Emits the stats of the CURRENTLY-VISIBLE (filtered) graph so the
+   *  sidebar can mirror the active scope/mutual filters. */
+  onStats?: (stats: EndorsementGraphData) => void
+}
+
+/**
+ * Recompute sidebar stats over the visible (filtered) graph: per-node
+ * given/received/mutual within the shown edges, total shown edges, and
+ * mutual pairs. New node objects (not the canvas's) so the force
+ * simulation isn't disturbed.
+ */
+function computeFilteredStats(
+  nodes: GraphNode[],
+  links: GraphLink[],
+  truncated: boolean,
+): EndorsementGraphData {
+  const given = new Map<string, Set<string>>()
+  const received = new Map<string, Set<string>>()
+  const mutualCount = new Map<string, number>()
+  let mutualLinks = 0
+  for (const l of links) {
+    const s = linkEndId(l.source)
+    const t = linkEndId(l.target)
+    if (!s || !t) continue
+    ;(given.get(s) ?? given.set(s, new Set()).get(s)!).add(t)
+    ;(received.get(t) ?? received.set(t, new Set()).get(t)!).add(s)
+    if (l.mutual) {
+      mutualLinks++
+      mutualCount.set(s, (mutualCount.get(s) ?? 0) + 1)
+    }
+  }
+  return {
+    nodes: nodes.map((n) => ({
+      ...n,
+      given: given.get(n.id)?.size ?? 0,
+      received: received.get(n.id)?.size ?? 0,
+      mutual: mutualCount.get(n.id) ?? 0,
+    })),
+    links,
+    totalEndorsements: links.length,
+    mutualPairs: Math.round(mutualLinks / 2),
+    truncated,
+  }
 }
 
 interface ThemeColors {
@@ -171,7 +221,7 @@ function linkEndId(end: string | NodeObject<GraphNode> | undefined): string | nu
   return typeof end.id === "string" ? end.id : null
 }
 
-export default function EndorsementGraph({ nodes, links, focusReq }: EndorsementGraphProps) {
+export default function EndorsementGraph({ nodes, links, focusReq, truncated = false, onStats }: EndorsementGraphProps) {
   const hostRef = useRef<HTMLDivElement | null>(null)
   const fgRef = useRef<ForceGraphMethods<FGNode, FGLink> | undefined>(undefined)
   const colorsRef = useRef<ThemeColors | null>(null)
@@ -310,6 +360,16 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
 
     return { nodes: nds, links: lks }
   }, [nodes, links, onlyMutual, evaluatorConnectedOnly, evaluatorDids])
+
+  // Mirror the visible (filtered) graph's stats up to the sidebar so its
+  // counts + rankings track the active scope / mutual filters.
+  const filteredStats = useMemo(
+    () => computeFilteredStats(data.nodes, data.links, truncated),
+    [data, truncated],
+  )
+  useEffect(() => {
+    onStats?.(filteredStats)
+  }, [filteredStats, onStats])
 
   // --- layout forces -----------------------------------------------------
   // Configure the simulation per layout mode. Re-runs when the mode or the
@@ -690,14 +750,19 @@ export default function EndorsementGraph({ nodes, links, focusReq }: Endorsement
           />
         </div>
         <div className="viz__control-row">
-          <Button
-            variant={evaluatorConnectedOnly ? "primary" : "secondary"}
+          <SegmentedControl
+            className="viz__scope-toggle"
+            aria-label="Network scope"
+            value={evaluatorConnectedOnly ? "evaluator" : "everything"}
+            onValueChange={(v) => setEvaluatorConnectedOnly(v === "evaluator")}
             size="sm"
-            pressed={evaluatorConnectedOnly}
-            onClick={() => setEvaluatorConnectedOnly((v) => !v)}
-          >
-            Evaluator network
-          </Button>
+            options={[
+              { value: "evaluator", label: "Evaluator network" },
+              { value: "everything", label: "Everything" },
+            ]}
+          />
+        </div>
+        <div className="viz__control-row">
           <Button
             variant={onlyMutual ? "primary" : "secondary"}
             size="sm"

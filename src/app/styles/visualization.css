@@ -127,9 +127,10 @@
   min-width: 200px;
 }
 
-/* Layout switcher fills the control panel so its three segments read as one
-   clear toggle rather than floating short. */
-.viz__layout-toggle {
+/* Layout + scope switchers fill the control panel so their segments read
+   as one clear toggle rather than floating short. */
+.viz__layout-toggle,
+.viz__scope-toggle {
   width: 100%;
 }
 
