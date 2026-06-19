@@ -397,6 +397,13 @@
   color: var(--fg-primary);
 }
 
+/* Align everything under the byline (the preview card / endorsement
+   expansion) with the actor's name column rather than the avatar: indent
+   by the head's avatar column (32px) + its 10px gap. */
+.home-feed__card > :not(.home-feed__card-head) {
+  padding-left: 42px;
+}
+
 /* ---- Head: avatar + byline + verb sentence ---- */
 
 .home-feed__card-head {
