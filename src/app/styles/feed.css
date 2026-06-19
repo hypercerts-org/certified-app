@@ -406,6 +406,9 @@
   display: block;
   color: inherit;
   text-decoration: none;
+  /* Align the content with the author's name/handle, not the avatar:
+     indent by the byline avatar (sm = 32px) + its 10px gap. */
+  padding-left: 42px;
 }
 
 .feed-card__body:hover .feed-card__title {
