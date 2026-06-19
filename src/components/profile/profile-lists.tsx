@@ -29,12 +29,10 @@ import { useActivity } from "@/hooks/use-activity"
 import { useProject } from "@/hooks/use-project"
 import { useTypedLists } from "@/hooks/use-typed-lists"
 import { fetchIndexerActivities, INDEXER_PROXY_URL } from "@/lib/atproto/indexer"
-import { fetchNetworkActors } from "@/lib/atproto/workspace"
-import { loadResolvedProfile } from "@/lib/atproto/resolve-did-batch"
+import { searchMergedActors } from "@/lib/atproto/actor-search"
 import ProjectListRow from "@/components/explore-page/project-list-row"
 import {
   ITEM_NSID,
-  BSKY_ACTOR_PROFILE_NSID,
   LIST_ACCOUNTS_TYPE,
   LIST_CERTS_TYPE,
   LIST_PROJECTS_TYPE,
@@ -1349,106 +1347,14 @@ async function runSearch(
   return searchProjects(query, signal)
 }
 
-interface MergedActor {
-  did: string
-  displayName: string | null
-  handle: string | null
-  avatarUrl: string | null
-  /** Profile lexicon to strong-ref. Certified for indexer (onboarded)
-   *  accounts; Bluesky for bsky-only ones. Each points at a record that
-   *  actually exists, so the add-time `resolveRecordCid` always resolves. */
-  profileNsid: string
-}
-
-/** Bluesky AppView actor search — finds bsky-native accounts (which may
- *  have no Certified profile). Returns [] on any failure so a merge
- *  partner's results still surface. */
-async function searchBskyActors(
-  query: string,
-  signal: AbortSignal,
-): Promise<{ did: string; handle?: string; displayName?: string; avatar?: string }[]> {
-  try {
-    const res = await fetch(
-      `/api/search-actors?q=${encodeURIComponent(query)}&limit=10`,
-      { signal },
-    )
-    if (!res.ok) return []
-    const data = (await res.json()) as {
-      actors?: { did?: string; handle?: string; displayName?: string; avatar?: string }[]
-    }
-    return (data.actors ?? []).filter((a): a is { did: string } & typeof a => !!a.did)
-  } catch {
-    return []
-  }
-}
-
 async function searchAccounts(query: string, signal: AbortSignal): Promise<SearchResult[]> {
-  // Account-list items strong-ref a profile record, but membership in an
-  // accounts list must NOT require a Certified profile. So we search BOTH
-  // sources and merge by DID:
-  //   - the magic-indexer's Certified actor index — finds onboarded
-  //     accounts AND Certified-only orgs (e.g. biofi-project) that have
-  //     no Bluesky profile and so never appear in bsky search;
-  //   - Bluesky's AppView — finds bsky-native accounts (e.g. maearth.com)
-  //     that have no Certified profile.
-  // The source fixes which profile lexicon we point the strongRef at, so
-  // the URI always targets a record that exists and `resolveRecordCid`
-  // succeeds on add — no more "Couldn't resolve record CID".
-  const [indexerPage, bsky] = await Promise.all([
-    fetchNetworkActors({ first: 10, search: query, signal }).catch(() => ({ actors: [] })),
-    searchBskyActors(query, signal),
-  ])
-  if (signal.aborted) return []
-
-  const byDid = new Map<string, MergedActor>()
-  // Indexer (Certified) accounts first — these win on overlap and carry
-  // the Certified profile NSID.
-  for (const a of indexerPage.actors) {
-    byDid.set(a.did, {
-      did: a.did,
-      displayName: a.displayName,
-      handle: null,
-      avatarUrl: a.avatarUrl,
-      profileNsid: ITEM_NSID["list:accounts"],
-    })
-  }
-  // Bluesky accounts: fill the handle/display gaps on a Certified match,
-  // or add a bsky-only entry (Bluesky profile NSID) when unseen.
-  for (const a of bsky) {
-    const existing = byDid.get(a.did)
-    if (existing) {
-      existing.handle ??= a.handle ?? null
-      existing.displayName ??= a.displayName ?? null
-      existing.avatarUrl ??= a.avatar ?? null
-      continue
-    }
-    byDid.set(a.did, {
-      did: a.did,
-      displayName: a.displayName ?? null,
-      handle: a.handle ?? null,
-      avatarUrl: a.avatar ?? null,
-      profileNsid: BSKY_ACTOR_PROFILE_NSID,
-    })
-  }
-
-  // Resolve handles for entries still missing one (indexer-only accounts —
-  // the profile connection doesn't denormalise handle). Batched into a
-  // single /api/resolve-dids round-trip; failures just drop the subtitle.
-  const merged = [...byDid.values()]
-  await Promise.all(
-    merged.map(async (a) => {
-      if (a.handle) return
-      a.handle = await loadResolvedProfile(a.did)
-        .then((r) => r?.handle ?? null)
-        .catch(() => null)
-    }),
-  )
-  if (signal.aborted) return []
-
+  // Account-list membership must NOT require a Certified profile, so search
+  // Certified + Bluesky merged (see `searchMergedActors`). Each result
+  // strong-refs the profile record it actually has (`profileNsid`) — rkey
+  // is the literal "self" — so the URI always targets an existing record
+  // and `resolveRecordCid` succeeds on add.
+  const merged = await searchMergedActors(query, signal)
   return merged.map((a) => ({
-    // Strong-ref the profile record this account actually has; rkey is the
-    // literal "self". The empty CID placeholder is resolved on click by
-    // `resolveRecordCid` before the strongRef is written.
     uri: `at://${a.did}/${a.profileNsid}/self`,
     cid: "",
     title: a.displayName || (a.handle ? `@${a.handle}` : a.did),
