@@ -2,13 +2,24 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import dynamic from "next/dynamic"
-import { AtSign, KeyRound, Mail, Palette, Share2, Users } from "lucide-react"
+import {
+  AtSign,
+  ChevronDown,
+  Key,
+  KeyRound,
+  Mail,
+  Palette,
+  Share2,
+  SlidersHorizontal,
+  Users,
+} from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useSession } from "@/hooks/use-session"
 import { useOrg } from "@/lib/groups/org-context"
 import OrgSettings from "@/components/groups/org-settings"
 import SyncSocialGraphSection from "@/components/settings/sync-social-graph-section"
 import ImportAsGroupSection from "@/components/settings/import-as-group-section"
+import AppPasswordsSection from "@/components/settings/app-passwords-section"
 import ThemeToggle from "@/components/ui/theme-toggle"
 
 const UsernameCard = dynamic(
@@ -27,6 +38,7 @@ type CategoryKey =
   | "password"
   | "appearance"
   | "social-graph"
+  | "app-passwords"
   | "group"
 
 type CategoryDef = {
@@ -34,6 +46,8 @@ type CategoryDef = {
   label: string
   description: string
   Icon: typeof AtSign
+  /** Tucked behind the "Advanced" disclosure — hidden until expanded. */
+  advanced?: boolean
 }
 
 const CATEGORIES: CategoryDef[] = [
@@ -69,12 +83,24 @@ const CATEGORIES: CategoryDef[] = [
     Icon: KeyRound,
   },
   {
+    key: "app-passwords",
+    label: "App passwords",
+    description:
+      "Create passwords for other apps (and the group import). Shown once — revoke anytime.",
+    Icon: Key,
+    advanced: true,
+  },
+  {
     key: "group",
     label: "Turn into a group",
     description: "Promote this account into a Certified group.",
     Icon: Users,
+    advanced: true,
   },
 ]
+
+const REGULAR_CATEGORIES = CATEGORIES.filter((c) => !c.advanced)
+const ADVANCED_CATEGORIES = CATEGORIES.filter((c) => c.advanced)
 
 const DEFAULT_CATEGORY: CategoryKey = CATEGORIES[0].key
 
@@ -89,6 +115,9 @@ function readHashCategory(): CategoryKey | null {
  * Shared settings two-pane layout. Renders on both `/settings` and the
  * profile-page `?tab=settings` panel. Scroll-spy + deep-link behavior
  * is identical in both contexts.
+ *
+ * Advanced sections (App passwords, Turn into a group) live behind an
+ * "Advanced" disclosure in the menu — hidden until the user expands it.
  */
 export default function SettingsPanel() {
   const { did, pdsUrl } = useAuth()
@@ -96,11 +125,16 @@ export default function SettingsPanel() {
   const { activeOrg } = useOrg()
 
   const [active, setActive] = useState<CategoryKey>(DEFAULT_CATEGORY)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
   const sectionRefs = useRef<Map<CategoryKey, HTMLElement>>(new Map())
 
   useEffect(() => {
     const initial = readHashCategory()
     if (initial) {
+      // Deep-link straight to an advanced section: reveal the group first.
+      if (CATEGORIES.find((c) => c.key === initial)?.advanced) {
+        setAdvancedOpen(true)
+      }
       setActive(initial)
       requestAnimationFrame(() => {
         const el = sectionRefs.current.get(initial)
@@ -135,7 +169,8 @@ export default function SettingsPanel() {
 
     for (const [, el] of els) observer.observe(el)
     return () => observer.disconnect()
-  }, [])
+    // Re-observe when the advanced sections mount/unmount.
+  }, [advancedOpen])
 
   const onMenuClick = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>, key: CategoryKey) => {
@@ -180,6 +215,28 @@ export default function SettingsPanel() {
     return <OrgSettings groupDid={activeOrg.groupDid} org={activeOrg} />
   }
 
+  const renderNavItem = (cat: CategoryDef) => {
+    const isActive = cat.key === active
+    const Icon = cat.Icon
+    return (
+      <li key={cat.key}>
+        <a
+          href={`#${cat.key}`}
+          aria-current={isActive ? "true" : undefined}
+          className={`sx-menu__item${isActive ? " sx-menu__item--active" : ""}`}
+          onClick={(e) => onMenuClick(e, cat.key)}
+        >
+          <span className="sx-menu__icon" aria-hidden>
+            <Icon size={16} strokeWidth={1.75} />
+          </span>
+          <span className="sx-menu__label">{cat.label}</span>
+        </a>
+      </li>
+    )
+  }
+
+  const panelCategories = advancedOpen ? CATEGORIES : REGULAR_CATEGORIES
+
   return (
     <div className="sx">
       <h1 className="sx__heading sr-only">Settings</h1>
@@ -188,31 +245,32 @@ export default function SettingsPanel() {
         <aside className="sx__menu">
           <nav aria-label="Settings sections">
             <ul className="sx-menu">
-              {CATEGORIES.map((cat) => {
-                const isActive = cat.key === active
-                const Icon = cat.Icon
-                return (
-                  <li key={cat.key}>
-                    <a
-                      href={`#${cat.key}`}
-                      aria-current={isActive ? "true" : undefined}
-                      className={`sx-menu__item${isActive ? " sx-menu__item--active" : ""}`}
-                      onClick={(e) => onMenuClick(e, cat.key)}
-                    >
-                      <span className="sx-menu__icon" aria-hidden>
-                        <Icon size={16} strokeWidth={1.75} />
-                      </span>
-                      <span className="sx-menu__label">{cat.label}</span>
-                    </a>
-                  </li>
-                )
-              })}
+              {REGULAR_CATEGORIES.map(renderNavItem)}
+              <li>
+                <button
+                  type="button"
+                  className="sx-menu__item sx-menu__item--toggle"
+                  aria-expanded={advancedOpen}
+                  onClick={() => setAdvancedOpen((open) => !open)}
+                >
+                  <span className="sx-menu__icon" aria-hidden>
+                    <SlidersHorizontal size={16} strokeWidth={1.75} />
+                  </span>
+                  <span className="sx-menu__label">Advanced</span>
+                  <ChevronDown
+                    size={15}
+                    aria-hidden
+                    className={`sx-menu__chevron${advancedOpen ? " sx-menu__chevron--open" : ""}`}
+                  />
+                </button>
+              </li>
+              {advancedOpen ? ADVANCED_CATEGORIES.map(renderNavItem) : null}
             </ul>
           </nav>
         </aside>
 
         <div className="page-layout__main sx__panel">
-          {CATEGORIES.map((cat) => (
+          {panelCategories.map((cat) => (
             <section
               key={cat.key}
               id={cat.key}
@@ -248,6 +306,7 @@ export default function SettingsPanel() {
                 {cat.key === "social-graph" && did ? (
                   <SyncSocialGraphSection did={did} ownDid={did} />
                 ) : null}
+                {cat.key === "app-passwords" && <AppPasswordsSection />}
                 {cat.key === "group" && did ? (
                   <ImportAsGroupSection did={did} />
                 ) : null}
