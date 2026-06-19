@@ -348,6 +348,9 @@ export function useExploreData(opts: {
         setState({
           ...EMPTY,
           ...page,
+          // Don't offer "load more" when the indexer claims more pages but
+          // gave no cursor to fetch them with.
+          hasMore: page.hasMore && page.cursor !== null,
           isLoading: false,
         })
       } catch (err) {
@@ -457,6 +460,16 @@ export function useExploreData(opts: {
               ...page.fundingReceipts.filter((f) => !seenFunding.has(f.uri)),
             ]
 
+            // The indexer can report hasNextPage=true on the last page —
+            // with no usable cursor, or a next page that yields nothing.
+            // Stop paginating when there's no cursor to advance with or the
+            // page added no new items, so the load-more sentinel doesn't
+            // linger (and the auto-trigger doesn't loop on empty pages).
+            const addedAny =
+              certs.length > current.certs.length ||
+              projects.length > current.projects.length ||
+              users.length > current.users.length ||
+              fundingReceipts.length > current.fundingReceipts.length
             return {
               ...current,
               users,
@@ -465,7 +478,7 @@ export function useExploreData(opts: {
               certDids,
               fundingReceipts,
               cursor: page.cursor,
-              hasMore: page.hasMore,
+              hasMore: page.hasMore && page.cursor !== null && addedAny,
               isLoadingMore: false,
             }
           })
