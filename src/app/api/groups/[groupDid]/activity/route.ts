@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import {
   getAuthenticatedAgent,
-  createGroupAgent,
+  getServiceAuthToken,
 } from "@/lib/groups/proxy-agent"
+import { GROUP_SERVICE } from "@/lib/groups/constants"
 import { checkCsrf } from "@/lib/auth/csrf"
 import { isValidDid } from "@/lib/utils/did"
 import { extractRecordRef, extractRouteError, parseJsonBody, pickAllowedFields } from "@/lib/utils/api"
+import { logSafe } from "@/lib/utils/log-safe"
 
 const ACTIVITY_COLLECTION = "org.hypercerts.claim.activity"
 
@@ -91,7 +93,13 @@ export async function PUT(
       ACTIVITY_COLLECTION,
     )
 
-    const groupAgent = createGroupAgent(auth.agent, groupDid)
+    // Direct CGS call with a service-auth token, mirroring the working
+    // group routes (`/groups/import`, `/groups/register`,
+    // `/groups/[groupDid]/destroy`). The proxy-agent form
+    // (`agent.withProxy("certified_group_service", GROUP_SERVICE_DID)`)
+    // fails for these `repo.*` writes because the SDK tries to resolve a
+    // `#certified_group_service` service entry on the service DID that
+    // isn't deployed → "could not resolve proxy did".
     const method = rkey
       ? "app.certified.group.repo.putRecord"
       : "app.certified.group.repo.createRecord"
@@ -109,11 +117,47 @@ export async function PUT(
           record,
         }
 
-    const upstream = await groupAgent.call(method, {}, requestBody, {
-      encoding: "application/json",
+    const token = await getServiceAuthToken(auth.agent, method)
+    const res = await fetch(`${GROUP_SERVICE}/xrpc/${method}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(requestBody),
     })
 
-    const ref = extractRecordRef(upstream)
+    if (!res.ok) {
+      // Sanitize upstream 5xx — don't leak internal error details.
+      if (res.status >= 500) {
+        return NextResponse.json({ error: "Write failed" }, { status: 502 })
+      }
+      // Forward the atproto error discriminator (`InvalidSwap`, …) in
+      // `code` so the client write seam re-raises the typed error and
+      // its conflict-rebase machinery runs — bug-003. The redacted
+      // `message` is localised and never equals the discriminator.
+      let errorCode: string | undefined
+      let errorMessage = `Write failed: ${res.status}`
+      try {
+        const data = (await res.json()) as { error?: string; message?: string }
+        if (typeof data.error === "string") errorCode = data.error
+        if (typeof data.message === "string") errorMessage = data.message
+        else if (errorCode) errorMessage = errorCode
+      } catch (err) {
+        logSafe("[groups/activity] upstream non-JSON 4xx body", err, {
+          status: res.status,
+        })
+      }
+      return NextResponse.json(
+        { error: errorMessage, code: errorCode },
+        { status: res.status },
+      )
+    }
+
+    // CGS returns `{ uri, cid }` directly; wrap as `{ data }` so the
+    // shared `extractRecordRef` validator (which expects the agent's
+    // nested shape) can be reused.
+    const ref = extractRecordRef({ data: await res.json() })
     if (!ref) {
       return NextResponse.json(
         { error: "Upstream returned no record reference" },
@@ -169,13 +213,51 @@ export async function DELETE(
         { status: 400 },
       )
     }
-    const groupAgent = createGroupAgent(auth.agent, groupDid)
-    await groupAgent.call(
-      "app.certified.group.repo.deleteRecord",
-      {},
-      { repo: groupDid, collection: ACTIVITY_COLLECTION, rkey },
-      { encoding: "application/json" },
-    )
+    // Direct CGS call with a service-auth token, mirroring the working
+    // group routes — the proxy-agent form fails to resolve the
+    // `#certified_group_service` service entry (see the PUT handler).
+    const method = "app.certified.group.repo.deleteRecord"
+    const token = await getServiceAuthToken(auth.agent, method)
+    const res = await fetch(`${GROUP_SERVICE}/xrpc/${method}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        repo: groupDid,
+        collection: ACTIVITY_COLLECTION,
+        rkey,
+      }),
+    })
+
+    if (!res.ok) {
+      // Sanitize upstream 5xx — don't leak internal error details.
+      if (res.status >= 500) {
+        return NextResponse.json({ error: "Delete failed" }, { status: 502 })
+      }
+      // Forward the atproto error discriminator (`InvalidSwap`, …) in
+      // `code` so the client write seam re-raises the typed error and
+      // its conflict-rebase machinery runs — bug-003. The redacted
+      // `message` is localised and never equals the discriminator.
+      let errorCode: string | undefined
+      let errorMessage = `Delete failed: ${res.status}`
+      try {
+        const data = (await res.json()) as { error?: string; message?: string }
+        if (typeof data.error === "string") errorCode = data.error
+        if (typeof data.message === "string") errorMessage = data.message
+        else if (errorCode) errorMessage = errorCode
+      } catch (err) {
+        logSafe("[groups/activity DELETE] upstream non-JSON 4xx body", err, {
+          status: res.status,
+        })
+      }
+      return NextResponse.json(
+        { error: errorMessage, code: errorCode },
+        { status: res.status },
+      )
+    }
+
     return NextResponse.json({ ok: true })
   } catch (err: unknown) {
     // Preserve the atproto error discriminator (`InvalidSwap`, …) in
