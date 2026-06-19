@@ -2,12 +2,13 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import dynamic from "next/dynamic"
-import { AtSign, KeyRound, Mail, Palette, Share2 } from "lucide-react"
+import { AtSign, KeyRound, Mail, Palette, Share2, Users } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useSession } from "@/hooks/use-session"
 import { useOrg } from "@/lib/groups/org-context"
 import OrgSettings from "@/components/groups/org-settings"
 import SyncSocialGraphSection from "@/components/settings/sync-social-graph-section"
+import ImportAsGroupSection from "@/components/settings/import-as-group-section"
 import ThemeToggle from "@/components/ui/theme-toggle"
 
 const UsernameCard = dynamic(
@@ -26,6 +27,7 @@ type CategoryKey =
   | "password"
   | "appearance"
   | "social-graph"
+  | "group"
 
 type CategoryDef = {
   key: CategoryKey
@@ -65,6 +67,13 @@ const CATEGORIES: CategoryDef[] = [
     label: "Password",
     description: "Reset the password used to sign in to this account.",
     Icon: KeyRound,
+  },
+  {
+    key: "group",
+    label: "Turn into a group",
+    description:
+      "Promote this account into a Certified group — keep its handle, history, and records, with you as owner.",
+    Icon: Users,
   },
 ]
 
@@ -239,6 +248,9 @@ export default function SettingsPanel() {
                 {cat.key === "appearance" && <ThemeToggle />}
                 {cat.key === "social-graph" && did ? (
                   <SyncSocialGraphSection did={did} ownDid={did} />
+                ) : null}
+                {cat.key === "group" && did ? (
+                  <ImportAsGroupSection did={did} />
                 ) : null}
               </div>
             </section>
