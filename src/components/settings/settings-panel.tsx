@@ -71,8 +71,7 @@ const CATEGORIES: CategoryDef[] = [
   {
     key: "group",
     label: "Turn into a group",
-    description:
-      "Promote this account into a Certified group — keep its handle, history, and records, with you as owner.",
+    description: "Promote this account into a Certified group.",
     Icon: Users,
   },
 ]
