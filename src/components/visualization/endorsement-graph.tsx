@@ -215,6 +215,27 @@ function makeRadialForce(
   return force
 }
 
+/**
+ * Gentle gravity toward the origin (0,0). Disconnected components have no
+ * links pulling them together, so the charge force alone flings them far
+ * apart; a small inward pull keeps separate clusters near the centre and
+ * close to each other.
+ */
+function makeGravityForce(strength: number) {
+  let ns: SimNode[] = []
+  const force = (alpha: number) => {
+    for (const n of ns) {
+      if (n.x == null || n.y == null) continue
+      n.vx = (n.vx ?? 0) - n.x * strength * alpha
+      n.vy = (n.vy ?? 0) - n.y * strength * alpha
+    }
+  }
+  force.initialize = (nodes: SimNode[]) => {
+    ns = nodes
+  }
+  return force
+}
+
 function linkEndId(end: string | NodeObject<GraphNode> | undefined): string | null {
   if (end == null) return null
   if (typeof end === "string") return end
@@ -399,16 +420,22 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
       charge?.strength?.(-200)
       link?.distance?.(100)
       fg.d3Force("radial", null)
+      // Pull disconnected clusters back toward the centre so they don't
+      // drift into empty space (no links bind separate components).
+      fg.d3Force("gravity", makeGravityForce(0.05))
     } else if (layout === "radial") {
       charge?.strength?.(-45)
       link?.distance?.(60)
       const outerR = Math.max(180, Math.sqrt(count) * 40)
       fg.d3Force("radial", makeRadialForce(maxDegree, 30, outerR, 0.6))
+      // Radial already pulls toward rings around the origin — no gravity.
+      fg.d3Force("gravity", null)
     } else {
       // network (compact, the default)
       charge?.strength?.(-70)
       link?.distance?.(48)
       fg.d3Force("radial", null)
+      fg.d3Force("gravity", makeGravityForce(0.09))
     }
     fg.d3ReheatSimulation?.()
   }, [layout, data, size.w])
