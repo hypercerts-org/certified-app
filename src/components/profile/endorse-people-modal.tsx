@@ -14,6 +14,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
 import Tooltip from "@/components/ui/tooltip"
 import { getInitials } from "@/lib/utils/initials"
+import { searchMergedActors } from "@/lib/atproto/actor-search"
 
 interface Actor {
   did: string
@@ -124,9 +125,10 @@ export default function EndorsePeopleModal({
     inputRef.current?.focus()
   }, [])
 
-  // Debounced fetch against `/api/search-actors`. Same endpoint as the
-  // global PeopleSearch. We bail early when the query is empty so the
-  // results list collapses back to selected-only.
+  // Debounced merged search (Certified + Bluesky, deduped by DID — see
+  // `searchMergedActors`) so Certified-only orgs (e.g. biofi-project) and
+  // bsky-only accounts both surface. We bail early when the query is empty
+  // so the results list collapses back to selected-only.
   const runSearch = useCallback(async (q: string, seq: number) => {
     const trimmed = q.trim()
     if (!trimmed) {
@@ -136,18 +138,18 @@ export default function EndorsePeopleModal({
     }
     setIsSearching(true)
     try {
-      const res = await fetch(
-        `/api/search-actors?q=${encodeURIComponent(trimmed)}&limit=8`,
-        { headers: { Accept: "application/json" } },
-      )
+      const merged = await searchMergedActors(trimmed)
       if (seq !== requestSeq.current) return
-      if (res.ok) {
-        const data = (await res.json()) as { actors?: Actor[] }
-        setResults(data.actors ?? [])
-      } else {
-        setResults([])
-      }
+      setResults(
+        merged.map((a) => ({
+          did: a.did,
+          handle: a.handle ?? "",
+          displayName: a.displayName ?? "",
+          avatar: a.avatarUrl,
+        })),
+      )
     } catch (err) {
+      if (seq === requestSeq.current) setResults([])
       if (process.env.NODE_ENV !== "production") {
         console.warn("[endorse-people] search failed:", err)
       }
