@@ -100,7 +100,6 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
         Converts the account you&apos;re signed in as —{" "}
         <strong>{accountLabel}</strong> — into a group, with you as its owner.
         The account, its handle, and its records are kept; nothing is deleted.
-        To convert a different account, sign in as that account first.
       </p>
 
       <Input
