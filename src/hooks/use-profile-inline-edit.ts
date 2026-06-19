@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
+  getProfileWithCid,
   putProfile,
   uploadAvatar,
   uploadBanner,
   uploadBlob,
   type UploadedBlob,
 } from "@/lib/atproto/profile"
+import { InvalidSwapError } from "@/lib/atproto/repo-write"
 import { putOrgMarker } from "@/lib/groups/org-marker"
 import {
   putLocationRecord,
@@ -736,10 +738,26 @@ export function useProfileInlineEdit(
       // banner carrier, i.e. the data-loss surface) is guarded here.
       // (judgment-006 / #71)
       const profileSwapCid = profileSwapCidRef.current
-      await putProfile(sessionDid, next, {
-        ...(editTargetDid ? { targetDid: editTargetDid } : {}),
-        ...(profileSwapCid ? { swapRecord: profileSwapCid } : {}),
-      })
+      try {
+        await putProfile(sessionDid, next, {
+          ...(editTargetDid ? { targetDid: editTargetDid } : {}),
+          ...(profileSwapCid ? { swapRecord: profileSwapCid } : {}),
+        })
+      } catch (err) {
+        // The snapshot CID went stale since edit-start (a concurrent
+        // write from another tab/device, or a prior failed attempt).
+        // Re-read the live record's CID, refresh the swap precondition,
+        // and retry the write ONCE. A second failure bubbles to the
+        // outer catch (which surfaces `saveError`). (judgment-006 / #71)
+        if (!(err instanceof InvalidSwapError)) throw err
+        const fresh = await getProfileWithCid(sessionDid)
+        const freshSwapCid = fresh?.cid ?? null
+        profileSwapCidRef.current = freshSwapCid
+        await putProfile(sessionDid, next, {
+          ...(editTargetDid ? { targetDid: editTargetDid } : {}),
+          ...(freshSwapCid ? { swapRecord: freshSwapCid } : {}),
+        })
+      }
 
       let nextMarker: GroupMetadata | null = null
       if (sidebarIsOrg) {
