@@ -92,8 +92,8 @@ const CATEGORIES: CategoryDef[] = [
   },
   {
     key: "group",
-    label: "Turn into a group",
-    description: "Promote this account into a Certified group.",
+    label: "Promote this account to a group account",
+    description: "",
     Icon: Users,
     advanced: true,
   },
@@ -285,7 +285,9 @@ export default function SettingsPanel() {
                 >
                   {cat.label}
                 </h2>
-                <p className="sx-panel__desc">{cat.description}</p>
+                {cat.description ? (
+                  <p className="sx-panel__desc">{cat.description}</p>
+                ) : null}
               </header>
 
               <div className="sx-panel__body">
