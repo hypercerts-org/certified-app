@@ -125,8 +125,8 @@
   cursor: pointer;
 }
 
-/* Hover lights the tile up in gold — border, glow, and avatar ring all
-   pick up the accent. */
+/* Hover lights the tile up: the gold accent is carried by the BORDER only;
+   the interior glow + lift stay neutral. */
 .fancy-tile:hover {
   border-color: var(--accent-gold);
   box-shadow: var(--shadow-lg);
@@ -161,13 +161,14 @@
   transform: translateX(60%);
 }
 
-/* Radial gold glow that blooms from the tile centre on hover. */
+/* Radial glow that blooms from the tile centre on hover — neutral, so the
+   gold accent stays on the border only. */
 .fancy-tile__glow {
   position: absolute;
   inset: 0;
   background: radial-gradient(
     circle at 50% 38%,
-    var(--accent-gold-soft) 0%,
+    var(--color-surface-container-high) 0%,
     transparent 65%
   );
   opacity: 0;
@@ -217,7 +218,7 @@
 .fancy-tile:hover .fancy-tile__media {
   box-shadow:
     var(--shadow-md),
-    inset 0 0 0 1px var(--accent-gold);
+    inset 0 0 0 1px var(--border-hover);
 }
 
 .fancy-tile__img {
