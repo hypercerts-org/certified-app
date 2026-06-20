@@ -124,36 +124,40 @@
     display: contents;
   }
 
+  /* Single-column reading order. Lead with the title + image, then the
+     overview's narrative content block (summary / updates / funding /
+     locations), then the secondary "facts" meta rows (time period / work
+     scope / contributors / rights). This mirrors the desktop hierarchy,
+     where the main content column outranks the facts aside.
+
+     The content block (`.cert-detail__content`, the tab panel) is ordered
+     as a single unit; its inner sections then fall in natural DOM order
+     (summary first), instead of the panel floating above the title — which
+     happened because the panel itself carried the default `order: 0` while
+     the per-section `order`s inside it were inert. */
   .cert-detail--wide:not(.cert-detail--editing) .cert-detail__headline {
     order: 1;
   }
   .cert-detail--wide:not(.cert-detail--editing) .cert-detail__image {
     order: 2;
   }
-  .cert-detail--wide:not(.cert-detail--editing)
-    .cert-detail__meta-row--timeperiod {
+  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__content {
     order: 3;
   }
   .cert-detail--wide:not(.cert-detail--editing)
-    .cert-detail__meta-row--workscope {
+    .cert-detail__meta-row--timeperiod {
     order: 4;
   }
   .cert-detail--wide:not(.cert-detail--editing)
-    .cert-detail__meta-row--contributors {
+    .cert-detail__meta-row--workscope {
     order: 5;
   }
-  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__meta-row--rights {
+  .cert-detail--wide:not(.cert-detail--editing)
+    .cert-detail__meta-row--contributors {
     order: 6;
   }
-  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__section--summary {
+  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__meta-row--rights {
     order: 7;
-  }
-  .cert-detail--wide:not(.cert-detail--editing) .context-updates {
-    order: 8;
-  }
-  .cert-detail--wide:not(.cert-detail--editing)
-    .cert-detail__section--locations {
-    order: 9;
   }
 
   /* Create / edit activity form: lead with the title, then the image,
