@@ -80,17 +80,15 @@
   }
 
   /* Full-bleed tabs: drop the supplementary aside so the content spans the
-     full width of both panes. The Contributor Board tab adds the
-     contributors list beneath the board; Contributors / Description /
-     Funding / Updates just want the room. (Overview keeps the aside.) */
-  .cert-detail--wide.cert-detail--tab-contributor-board.page-layout,
+     full width of both panes. The Contributors tab carries the deluxe board
+     above the list; Description / Funding / Updates just want the room.
+     (Only Overview keeps the aside.) */
   .cert-detail--wide.cert-detail--tab-contributors.page-layout,
   .cert-detail--wide.cert-detail--tab-description.page-layout,
   .cert-detail--wide.cert-detail--tab-funding.page-layout,
   .cert-detail--wide.cert-detail--tab-updates.page-layout {
     grid-template-columns: minmax(0, 1fr);
   }
-  .cert-detail--wide.cert-detail--tab-contributor-board.page-layout > .cert-detail__aside,
   .cert-detail--wide.cert-detail--tab-contributors.page-layout > .cert-detail__aside,
   .cert-detail--wide.cert-detail--tab-description.page-layout > .cert-detail__aside,
   .cert-detail--wide.cert-detail--tab-funding.page-layout > .cert-detail__aside,
@@ -936,6 +934,40 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ---- Slim tab headline --------------------------------------------------
+   Used by every tab except Overview (Description / Contributors / Funding /
+   Updates): the title row carries the author (right-aligned) and a trailing
+   three-dot actions menu. No date / project byline. (Mostly hidden on mobile
+   by the reorder block above, like the other tab headlines.) */
+.cert-detail__headline--slim .cert-detail__title-row {
+  flex-wrap: nowrap;
+}
+
+/* Author + actions hug the right edge (the title, flex:1, takes the slack).
+   `stretch` makes the menu button match the author block's height. */
+.cert-slim-headline__trailing {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* The author's own content stays left-aligned (avatar then name/handle). */
+.cert-slim-headline__author {
+  flex-shrink: 0;
+}
+
+/* Drop the icon button's fixed 40px square so it stretches to the author's
+   height inside the trailing row; aspect-ratio keeps it square. The
+   two-class selector outranks the Tailwind h-/w- utilities. */
+.cert-detail__headline--slim .cert-slim-headline__menu {
+  height: auto;
+  width: auto;
+  min-height: 0;
+  aspect-ratio: 1 / 1;
 }
 
 /* Skeletons */

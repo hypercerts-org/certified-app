@@ -148,6 +148,12 @@
   --badge-accent-fg: #454747;
   --badge-accent-border: #dcdcdc;
 
+  /* Gold accent — the one splash of colour in the otherwise grayscale
+     system, used only by the deluxe contributor board to highlight a tile
+     on hover. Light + dark variants below. */
+  --accent-gold: #c9962a;
+  --accent-gold-soft: #f3e2b0;
+
   /* Primary button (inverts in dark mode) */
   --btn-primary-bg: var(--color-primary);
   --btn-primary-fg: var(--color-white);
@@ -307,6 +313,10 @@
   --badge-accent-bg: rgba(255, 255, 255, 0.08);
   --badge-accent-fg: #c7c7cc;
   --badge-accent-border: rgba(255, 255, 255, 0.14);
+
+  /* Gold accent — dark variant (richer so it glows on the dark stage). */
+  --accent-gold: #e8b73e;
+  --accent-gold-soft: #6b551d;
 
   /* Primary button inverts so it pops off the dark canvas */
   --btn-primary-bg: #f5f5f7;

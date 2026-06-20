@@ -19,6 +19,7 @@ import {
   Calendar,
   FileText,
   MapPin,
+  MoreVertical,
   Pencil,
   Plus,
   RefreshCw,
@@ -46,7 +47,7 @@ import { formatShortDate } from "@/lib/utils/format-date"
 import Avatar from "@/components/ui/avatar"
 import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import { ActivityContributorBoard } from "@/components/contributor-board/activity-contributor-board"
+import { ActivityFancyBoard } from "@/components/contributor-board/activity-fancy-board"
 import EditBanner from "@/components/ui/edit-banner"
 import Tooltip from "@/components/ui/tooltip"
 import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
@@ -64,6 +65,12 @@ import FundingReceiptFormModal from "@/components/funding/funding-receipt-form-m
 import FundingIdentityChoiceDialog from "@/components/funding/funding-identity-choice-dialog"
 import RightsDetailModal from "@/components/feed/rights-detail-modal"
 import Button from "@/components/ui/button"
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverItem,
+} from "@/components/ui/popover"
 import { useFundingConfirmedBy } from "@/hooks/use-funding-confirmed-by"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { TransitionLink } from "@/lib/view-transitions"
@@ -325,12 +332,10 @@ export default function ActivityDetail({
     | "overview"
     | "description"
     | "contributors"
-    | "contributor-board"
     | "funding"
     | "updates" =
     tabParam === "description" ||
     tabParam === "contributors" ||
-    tabParam === "contributor-board" ||
     tabParam === "funding" ||
     tabParam === "updates"
       ? tabParam
@@ -351,8 +356,6 @@ export default function ActivityDetail({
         ? contributorCount > 0
           ? `Contributors (${contributorCount})`
           : "Contributors"
-        : activeTab === "contributor-board"
-        ? "Contributor Board"
         : activeTab === "funding"
           ? shownFundingCount > 0
             ? `Funding (${shownFundingCount})`
@@ -1030,6 +1033,27 @@ export default function ActivityDetail({
     </header>
   )
 
+  // Slim headline — used by every tab except Overview: the activity title
+  // with the author pulled up onto the same row (right-aligned, no "Author"
+  // label) and the edit/delete actions tucked into a three-dot menu. No
+  // date-created / project byline (those live on the Overview tab).
+  const slimHeadline = (
+    <SlimTabHeadline
+      did={did}
+      title={effectiveValue.title}
+      isCreator={isCreator}
+      editHref={editHref}
+      editAsGroupLabel={
+        editAsGroup ? editAsGroup.displayName || editAsGroup.handle : null
+      }
+      onEditAsGroup={() => setGroupEditOpen(true)}
+      onDelete={() => {
+        setDeleteError(null)
+        setDeleteOpen(true)
+      }}
+    />
+  )
+
   // Overview-only shortDescription section. Lives BELOW the headline
   // (with `cert-detail__main`'s 24px gap) so its top edge aligns
   // with the first content row on the Description / Contributors
@@ -1090,8 +1114,8 @@ export default function ActivityDetail({
       </section>
     ) : null
 
-  // The Contributors list — shown on its own tab AND beneath the board on
-  // the Contributor Board tab.
+  // The Contributors list — shown on the Contributors tab beneath the
+  // deluxe board.
   const contributorsSection = (
     <section className="cert-detail__section">
       <div className="cert-detail__section-header">
@@ -1382,8 +1406,11 @@ export default function ActivityDetail({
 
       <div className="page-layout__main cert-detail__main">
         {/* Title stays put across tabs (the active tab shows in the top
-            bar's second row); only the per-tab content below slides. */}
-        {headline}
+            bar's second row); only the per-tab content below slides. Every
+            tab except Overview uses the slim headline (author on the title
+            row, actions in a three-dot menu, no date/project byline);
+            Overview keeps the full headline with the byline columns. */}
+        {activeTab === "overview" ? headline : slimHeadline}
 
         <TabPanelTransition
           className="cert-detail__content"
@@ -1522,17 +1549,14 @@ export default function ActivityDetail({
             )}
           </section>
         ) : activeTab === "contributors" ? (
-          contributorsSection
-        ) : activeTab === "contributor-board" ? (
           <>
-            <ActivityContributorBoard
-              did={did}
-              rkey={rkey}
-              value={value}
-              cid={cid}
-              contributors={contributors}
-              canEdit={isCreator && sessionDid === did}
-            />
+            {contributorCount > 0 ? (
+              <ActivityFancyBoard
+                did={did}
+                rkey={rkey}
+                contributors={contributors}
+              />
+            ) : null}
             {contributorsSection}
           </>
         ) : activeTab === "funding" ? (
@@ -1857,6 +1881,110 @@ function ContributorRow({ contributor, role, weight }: ContributorRowProps) {
         <span className="cert-detail__contributor-weight">{weight}</span>
       ) : null}
     </li>
+  )
+}
+
+/**
+ * Slim headline used by every tab except Overview (Description /
+ * Contributors / Funding / Updates): the activity title with the author
+ * pulled onto the same row (right-aligned, no "Author" label) and the owner
+ * actions (Edit / Delete) collapsed into a three-dot menu. No date-created /
+ * project byline — that detail lives on the Overview tab's full headline.
+ */
+function SlimTabHeadline({
+  did,
+  title,
+  isCreator,
+  editHref,
+  editAsGroupLabel,
+  onEditAsGroup,
+  onDelete,
+}: {
+  did: string
+  title: string
+  isCreator: boolean
+  editHref: string
+  /** Display label of the group the viewer may edit as, or null. */
+  editAsGroupLabel: string | null
+  onEditAsGroup: () => void
+  onDelete: () => void
+}) {
+  const router = useRouter()
+  const { info, isLoading: authorLoading } = useAuthorInfo(did)
+  const showMenu = isCreator || !!editAsGroupLabel
+
+  const displayName = info?.displayName || info?.handle || "Anonymous"
+  const profileHref = profileUrl(info?.handle || did)
+
+  return (
+    <header className="cert-detail__headline cert-detail__headline--slim">
+      <div className="cert-detail__title-row">
+        <h1 className="cert-detail__title">{title}</h1>
+
+        {/* Author + actions sit together at the right edge; the author's
+            own content stays left-aligned (avatar then name/handle). The
+            trailing row stretches so the menu button matches the author's
+            height. */}
+        <div className="cert-slim-headline__trailing">
+          {!authorLoading && info ? (
+            <Link
+              href={profileHref}
+              className="cert-detail__headline-author cert-slim-headline__author"
+              aria-label={`View ${displayName}'s profile`}
+            >
+              <Avatar
+                size="sm"
+                src={info.avatarUrl || undefined}
+                alt=""
+                fallbackInitials={getInitials(info.displayName, did)}
+              />
+              <span className="cert-detail__headline-author-meta">
+                <span className="cert-detail__headline-name">
+                  {displayName}
+                </span>
+                {info.handle ? (
+                  <span className="cert-detail__headline-handle">
+                    @{info.handle}
+                  </span>
+                ) : null}
+              </span>
+            </Link>
+          ) : null}
+
+          {showMenu ? (
+            <Popover>
+              <PopoverTrigger>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="cert-slim-headline__menu"
+                  aria-label="Activity actions"
+                >
+                  <MoreVertical size={16} strokeWidth={1.75} aria-hidden />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end">
+                {isCreator ? (
+                  <PopoverItem onClick={() => router.push(editHref)}>
+                    <Pencil size={14} strokeWidth={1.75} aria-hidden /> Edit
+                  </PopoverItem>
+                ) : (
+                  <PopoverItem onClick={onEditAsGroup}>
+                    <Pencil size={14} strokeWidth={1.75} aria-hidden /> Edit as{" "}
+                    {editAsGroupLabel}
+                  </PopoverItem>
+                )}
+                {isCreator ? (
+                  <PopoverItem onClick={onDelete}>
+                    <Trash2 size={14} strokeWidth={1.75} aria-hidden /> Delete
+                  </PopoverItem>
+                ) : null}
+              </PopoverContent>
+            </Popover>
+          ) : null}
+        </div>
+      </div>
+    </header>
   )
 }
 
