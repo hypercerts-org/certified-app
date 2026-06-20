@@ -80,18 +80,18 @@
   }
 
   /* Full-bleed tabs: drop the supplementary aside so the content spans the
-     full width of both panes. The Contributor Board tab adds the
-     contributors list beneath the board; Description / Funding / Updates
-     just want the room. (Overview + Contributors keep the aside.) */
+     full width of both panes. The Contributor Board + Contributors tabs add
+     the deluxe board above the list; Description / Funding / Updates just
+     want the room. (Only Overview keeps the aside.) */
   .cert-detail--wide.cert-detail--tab-contributor-board.page-layout,
-  .cert-detail--wide.cert-detail--tab-contributor-board-fancy.page-layout,
+  .cert-detail--wide.cert-detail--tab-contributors.page-layout,
   .cert-detail--wide.cert-detail--tab-description.page-layout,
   .cert-detail--wide.cert-detail--tab-funding.page-layout,
   .cert-detail--wide.cert-detail--tab-updates.page-layout {
     grid-template-columns: minmax(0, 1fr);
   }
   .cert-detail--wide.cert-detail--tab-contributor-board.page-layout > .cert-detail__aside,
-  .cert-detail--wide.cert-detail--tab-contributor-board-fancy.page-layout > .cert-detail__aside,
+  .cert-detail--wide.cert-detail--tab-contributors.page-layout > .cert-detail__aside,
   .cert-detail--wide.cert-detail--tab-description.page-layout > .cert-detail__aside,
   .cert-detail--wide.cert-detail--tab-funding.page-layout > .cert-detail__aside,
   .cert-detail--wide.cert-detail--tab-updates.page-layout > .cert-detail__aside {
@@ -936,6 +936,26 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ---- Contributors-tab headline -----------------------------------------
+   A slim variant: the title row carries the author (right-aligned) and a
+   trailing three-dot actions menu. No date / project byline. (Hidden on
+   mobile by the reorder block above, like the other tab headlines.) */
+.cert-detail__headline--contributors .cert-detail__title-row {
+  flex-wrap: nowrap;
+}
+
+/* Push the author + menu to the right; the title (flex:1) takes the slack. */
+.cert-contrib-headline__author {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* Avatar now trails the name, so the two-line meta reads right-aligned. */
+.cert-contrib-headline__author .cert-detail__headline-author-meta {
+  align-items: flex-end;
+  text-align: right;
 }
 
 /* Skeletons */

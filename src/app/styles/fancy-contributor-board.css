@@ -1,10 +1,10 @@
-/* Fancy Contributor Board — the deluxe "Board ✦" tab. Same weighted treemap
- * geometry as the standard board (positions/sizes set inline by the layout),
- * skinned with an ambient gradient stage, glassy gradient tiles with depth +
- * glow, rank medals for the top three, and a staggered entrance.
+/* Fancy Contributor Board — the deluxe board shown on the Contributors tab.
+ * Same weighted treemap geometry as the standard board (positions/sizes set
+ * inline by the layout), skinned with an ambient gradient stage, glassy
+ * gradient tiles with depth, a gold hover highlight, and a staggered entrance.
  *
  * All colours/radii/shadows come from tokens. The only colour in the system
- * is the rank-medal set (--medal-*), used exclusively here. No z-index
+ * is the gold accent (--accent-gold*), used here on hover. No z-index
  * literals: layering relies on DOM order + positioning (design rule #5). */
 
 .fancy-board {
@@ -125,8 +125,10 @@
   cursor: pointer;
 }
 
+/* Hover lights the tile up in gold — border, glow, and avatar ring all
+   pick up the accent. */
 .fancy-tile:hover {
-  border-color: var(--border-hover);
+  border-color: var(--accent-gold);
   box-shadow: var(--shadow-lg);
   transform: translate3d(0, -3px, 0) scale(1.025);
 }
@@ -159,13 +161,13 @@
   transform: translateX(60%);
 }
 
-/* Radial glow that blooms from the tile centre on hover. */
+/* Radial gold glow that blooms from the tile centre on hover. */
 .fancy-tile__glow {
   position: absolute;
   inset: 0;
   background: radial-gradient(
     circle at 50% 38%,
-    var(--color-surface-container-high) 0%,
+    var(--accent-gold-soft) 0%,
     transparent 65%
   );
   opacity: 0;
@@ -174,7 +176,7 @@
 }
 
 .fancy-tile:hover .fancy-tile__glow {
-  opacity: 0.9;
+  opacity: 0.85;
 }
 
 /* Content wrapper is positioned, so it paints above the sheen/glow layers
@@ -215,7 +217,7 @@
 .fancy-tile:hover .fancy-tile__media {
   box-shadow:
     var(--shadow-md),
-    inset 0 0 0 1px var(--border-hover);
+    inset 0 0 0 1px var(--accent-gold);
 }
 
 .fancy-tile__img {
@@ -270,53 +272,6 @@
 .fancy-tile:hover .fancy-tile__weight {
   opacity: 1;
   transform: translateY(0);
-}
-
-/* ---- Rank medals (top three) ------------------------------------------- */
-
-.fancy-tile__medal {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--medal-fg);
-  box-shadow: var(--shadow-sm);
-}
-
-.fancy-tile__medal--1 {
-  background: linear-gradient(140deg, var(--medal-gold) 0%, var(--medal-gold-soft) 100%);
-}
-
-.fancy-tile__medal--2 {
-  background: linear-gradient(140deg, var(--medal-silver) 0%, var(--medal-silver-soft) 100%);
-}
-
-.fancy-tile__medal--3 {
-  background: linear-gradient(140deg, var(--medal-bronze) 0%, var(--medal-bronze-soft) 100%);
-}
-
-/* The top-ranked tile gets a richer border + a steady ambient lift so it
-   reads as the centrepiece even before hover. */
-.fancy-tile--rank-1 {
-  border-color: var(--medal-gold);
-  box-shadow:
-    var(--shadow-md),
-    inset 0 0 0 1px var(--medal-gold-soft);
-}
-
-.fancy-tile--rank-1 .fancy-tile__media {
-  box-shadow:
-    var(--shadow-md),
-    inset 0 0 0 1px var(--medal-gold);
 }
 
 /* Respect reduced-motion: no drift, no sheen glide, instant tile reveal. */

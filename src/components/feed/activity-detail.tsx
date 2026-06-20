@@ -19,6 +19,7 @@ import {
   Calendar,
   FileText,
   MapPin,
+  MoreVertical,
   Pencil,
   Plus,
   RefreshCw,
@@ -65,6 +66,12 @@ import FundingReceiptFormModal from "@/components/funding/funding-receipt-form-m
 import FundingIdentityChoiceDialog from "@/components/funding/funding-identity-choice-dialog"
 import RightsDetailModal from "@/components/feed/rights-detail-modal"
 import Button from "@/components/ui/button"
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverItem,
+} from "@/components/ui/popover"
 import { useFundingConfirmedBy } from "@/hooks/use-funding-confirmed-by"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { TransitionLink } from "@/lib/view-transitions"
@@ -327,13 +334,11 @@ export default function ActivityDetail({
     | "description"
     | "contributors"
     | "contributor-board"
-    | "contributor-board-fancy"
     | "funding"
     | "updates" =
     tabParam === "description" ||
     tabParam === "contributors" ||
     tabParam === "contributor-board" ||
-    tabParam === "contributor-board-fancy" ||
     tabParam === "funding" ||
     tabParam === "updates"
       ? tabParam
@@ -356,8 +361,6 @@ export default function ActivityDetail({
           : "Contributors"
         : activeTab === "contributor-board"
         ? "Contributor Board"
-        : activeTab === "contributor-board-fancy"
-        ? "Board ✦"
         : activeTab === "funding"
           ? shownFundingCount > 0
             ? `Funding (${shownFundingCount})`
@@ -1035,6 +1038,27 @@ export default function ActivityDetail({
     </header>
   )
 
+  // Contributors-tab headline — a slimmer variant: the activity title with
+  // the author pulled up onto the same row (right-aligned, no "Author"
+  // label) and the edit/delete actions tucked into a three-dot menu. No
+  // date-created / project byline (those live on the Overview tab).
+  const contributorsHeadline = (
+    <ContributorsTabHeadline
+      did={did}
+      title={effectiveValue.title}
+      isCreator={isCreator}
+      editHref={editHref}
+      editAsGroupLabel={
+        editAsGroup ? editAsGroup.displayName || editAsGroup.handle : null
+      }
+      onEditAsGroup={() => setGroupEditOpen(true)}
+      onDelete={() => {
+        setDeleteError(null)
+        setDeleteOpen(true)
+      }}
+    />
+  )
+
   // Overview-only shortDescription section. Lives BELOW the headline
   // (with `cert-detail__main`'s 24px gap) so its top edge aligns
   // with the first content row on the Description / Contributors
@@ -1387,8 +1411,10 @@ export default function ActivityDetail({
 
       <div className="page-layout__main cert-detail__main">
         {/* Title stays put across tabs (the active tab shows in the top
-            bar's second row); only the per-tab content below slides. */}
-        {headline}
+            bar's second row); only the per-tab content below slides. The
+            Contributors tab uses a slimmer headline (author on the title
+            row, actions in a three-dot menu). */}
+        {activeTab === "contributors" ? contributorsHeadline : headline}
 
         <TabPanelTransition
           className="cert-detail__content"
@@ -1527,7 +1553,16 @@ export default function ActivityDetail({
             )}
           </section>
         ) : activeTab === "contributors" ? (
-          contributorsSection
+          <>
+            {contributorCount > 0 ? (
+              <ActivityFancyBoard
+                did={did}
+                rkey={rkey}
+                contributors={contributors}
+              />
+            ) : null}
+            {contributorsSection}
+          </>
         ) : activeTab === "contributor-board" ? (
           <>
             <ActivityContributorBoard
@@ -1537,15 +1572,6 @@ export default function ActivityDetail({
               cid={cid}
               contributors={contributors}
               canEdit={isCreator && sessionDid === did}
-            />
-            {contributorsSection}
-          </>
-        ) : activeTab === "contributor-board-fancy" ? (
-          <>
-            <ActivityFancyBoard
-              did={did}
-              rkey={rkey}
-              contributors={contributors}
             />
             {contributorsSection}
           </>
@@ -1871,6 +1897,96 @@ function ContributorRow({ contributor, role, weight }: ContributorRowProps) {
         <span className="cert-detail__contributor-weight">{weight}</span>
       ) : null}
     </li>
+  )
+}
+
+/**
+ * Slim headline for the Contributors tab: the activity title with the
+ * author pulled onto the same row (right-aligned, no "Author" label) and
+ * the owner actions (Edit / Delete) collapsed into a three-dot menu. No
+ * date-created / project byline — that detail lives on the Overview tab.
+ */
+function ContributorsTabHeadline({
+  did,
+  title,
+  isCreator,
+  editHref,
+  editAsGroupLabel,
+  onEditAsGroup,
+  onDelete,
+}: {
+  did: string
+  title: string
+  isCreator: boolean
+  editHref: string
+  /** Display label of the group the viewer may edit as, or null. */
+  editAsGroupLabel: string | null
+  onEditAsGroup: () => void
+  onDelete: () => void
+}) {
+  const router = useRouter()
+  const { info, isLoading: authorLoading } = useAuthorInfo(did)
+  const showMenu = isCreator || !!editAsGroupLabel
+
+  const displayName = info?.displayName || info?.handle || "Anonymous"
+  const profileHref = profileUrl(info?.handle || did)
+
+  return (
+    <header className="cert-detail__headline cert-detail__headline--contributors">
+      <div className="cert-detail__title-row">
+        <h1 className="cert-detail__title">{title}</h1>
+
+        {!authorLoading && info ? (
+          <Link
+            href={profileHref}
+            className="cert-detail__headline-author cert-contrib-headline__author"
+            aria-label={`View ${displayName}'s profile`}
+          >
+            <span className="cert-detail__headline-author-meta">
+              <span className="cert-detail__headline-name">{displayName}</span>
+              {info.handle ? (
+                <span className="cert-detail__headline-handle">
+                  @{info.handle}
+                </span>
+              ) : null}
+            </span>
+            <Avatar
+              size="sm"
+              src={info.avatarUrl || undefined}
+              alt=""
+              fallbackInitials={getInitials(info.displayName, did)}
+            />
+          </Link>
+        ) : null}
+
+        {showMenu ? (
+          <Popover>
+            <PopoverTrigger>
+              <Button size="icon" variant="ghost" aria-label="Activity actions">
+                <MoreVertical size={16} strokeWidth={1.75} aria-hidden />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end">
+              {isCreator ? (
+                <PopoverItem onClick={() => router.push(editHref)}>
+                  <Pencil size={14} strokeWidth={1.75} aria-hidden /> Edit
+                </PopoverItem>
+              ) : (
+                <PopoverItem onClick={onEditAsGroup}>
+                  <Pencil size={14} strokeWidth={1.75} aria-hidden /> Edit as{" "}
+                  {editAsGroupLabel}
+                </PopoverItem>
+              )}
+              {isCreator ? (
+                <PopoverItem onClick={onDelete}>
+                  <Trash2 size={14} strokeWidth={1.75} aria-hidden /> Delete
+                </PopoverItem>
+              ) : null}
+            </PopoverContent>
+          </Popover>
+        ) : null}
+      </div>
+    </header>
   )
 }
 

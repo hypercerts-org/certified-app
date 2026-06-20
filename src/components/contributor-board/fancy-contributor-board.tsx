@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
-import { Crown } from "lucide-react"
 import { getInitials } from "@/lib/utils/initials"
 import { layoutTreemap, tileSizing, type TreemapTile } from "@/lib/contributor-board/treemap"
 import type { BoardConfig, BoardEntry } from "@/lib/atproto/hyperboard-types"
@@ -45,14 +44,13 @@ function useElementSize() {
 
 interface FancyTileProps {
   tile: TreemapTile
-  rank: number
   /** share of total weight, 0–100 */
   percent: number
   /** staggered entrance delay (ms) */
   delay: number
 }
 
-function FancyTile({ tile, rank, percent, delay }: FancyTileProps) {
+function FancyTile({ tile, percent, delay }: FancyTileProps) {
   const { x, y, width, height, entry } = tile
   const { avatarSize, fontSize, showAvatar, showLabel } = tileSizing(width, height)
   const [imgError, setImgError] = useState(false)
@@ -60,8 +58,6 @@ function FancyTile({ tile, rank, percent, delay }: FancyTileProps) {
   const shapeClass = entry.circular
     ? "fancy-tile__media--circle"
     : "fancy-tile__media--square"
-  const rankClass =
-    rank <= 3 ? ` fancy-tile--rank fancy-tile--rank-${rank}` : ""
 
   const content = (
     <>
@@ -104,17 +100,6 @@ function FancyTile({ tile, rank, percent, delay }: FancyTileProps) {
           <span className="fancy-tile__weight">{Math.round(percent)}%</span>
         ) : null}
       </span>
-
-      {/* Medal sits last so it paints on top of everything. */}
-      {rank <= 3 ? (
-        <span className={`fancy-tile__medal fancy-tile__medal--${rank}`}>
-          {rank === 1 ? (
-            <Crown size={Math.max(10, Math.min(16, avatarSize * 0.26))} />
-          ) : (
-            rank
-          )}
-        </span>
-      ) : null}
     </>
   )
 
@@ -130,19 +115,19 @@ function FancyTile({ tile, rank, percent, delay }: FancyTileProps) {
   if (linkUrl) {
     return (
       <a
-        className={`fancy-tile fancy-tile--link${rankClass}`}
+        className="fancy-tile fancy-tile--link"
         style={style}
         href={linkUrl}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label={`${entry.name} — rank ${rank}`}
+        aria-label={entry.name}
       >
         {content}
       </a>
     )
   }
   return (
-    <div className={`fancy-tile${rankClass}`} style={style}>
+    <div className="fancy-tile" style={style}>
       {content}
     </div>
   )
@@ -151,9 +136,9 @@ function FancyTile({ tile, rank, percent, delay }: FancyTileProps) {
 /**
  * A deluxe rendering of the contributor board: same weighted treemap geometry
  * as {@link ContributorBoard}, skinned with an ambient gradient stage, glassy
- * gradient tiles with depth + glow, a crown / rank medals for the top three
- * contributors, weight badges, and a staggered entrance. Read-only showcase —
- * editing lives on the standard Contributor Board tab.
+ * gradient tiles with depth, a gold hover highlight, weight badges, and a
+ * staggered entrance. Read-only showcase — editing lives on the standard
+ * Contributor Board tab.
  */
 export function FancyContributorBoard({
   entries,
@@ -167,20 +152,14 @@ export function FancyContributorBoard({
     [entries, width, height],
   )
 
-  // Rank + weight share are derived from the entry weights (the treemap is
-  // already weight-sorted, but rank by value is independent of layout order).
-  const { rankByKey, percentByKey } = useMemo(() => {
+  // Each tile's share of the total contribution weight, for the hover badge.
+  const percentByKey = useMemo(() => {
     const total = entries.reduce((sum, e) => sum + Math.max(0, e.value), 0)
-    const sorted = [...entries]
-      .filter((e) => e.value > 0)
-      .sort((a, b) => b.value - a.value)
-    const rankByKey = new Map<string, number>()
-    const percentByKey = new Map<string, number>()
-    sorted.forEach((e, i) => {
-      rankByKey.set(e.key, i + 1)
-      percentByKey.set(e.key, total > 0 ? (e.value / total) * 100 : 0)
-    })
-    return { rankByKey, percentByKey }
+    const map = new Map<string, number>()
+    for (const e of entries) {
+      map.set(e.key, total > 0 ? (Math.max(0, e.value) / total) * 100 : 0)
+    }
+    return map
   }, [entries])
 
   const aspectRatio = ASPECT[config.aspectRatio ?? "16:9"] ?? "16 / 9"
@@ -197,7 +176,6 @@ export function FancyContributorBoard({
             <FancyTile
               key={tile.entry.key}
               tile={tile}
-              rank={rankByKey.get(tile.entry.key) ?? entries.length}
               percent={percentByKey.get(tile.entry.key) ?? 0}
               delay={Math.min(i * 45, 600)}
             />

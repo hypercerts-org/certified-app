@@ -14,11 +14,11 @@ interface ActivityFancyBoardProps {
 }
 
 /**
- * The "Board ✦" tab: a deluxe, read-only rendering of the same contributor
- * board record that the standard Contributor Board tab edits. It reuses the
- * weighted treemap geometry but skins it with depth, glow, rank medals, and
- * motion. Edits still happen on the plain Contributor Board tab — this is a
- * showcase view, so there's no edit affordance here.
+ * The deluxe contributor board shown at the top of the Contributors tab: a
+ * read-only rendering of the same board record the standard Contributor
+ * Board tab edits. It reuses the weighted treemap geometry but skins it with
+ * depth, a gold hover highlight, and motion. Edits still happen on the plain
+ * Contributor Board tab — this is a showcase view, no edit affordance here.
  */
 export function ActivityFancyBoard({
   did,

@@ -17,7 +17,6 @@ export const CERT_DETAIL_TABS: DetailTab[] = [
   { key: "description", label: "Description" },
   { key: "contributors", label: "Contributors" },
   { key: "contributor-board", label: "Contributor Board" },
-  { key: "contributor-board-fancy", label: "Board ✦" },
   { key: "funding", label: "Funding" },
   { key: "updates", label: "Updates" },
 ]

@@ -148,16 +148,11 @@
   --badge-accent-fg: #454747;
   --badge-accent-border: #dcdcdc;
 
-  /* Rank medals — the one splash of colour in the otherwise grayscale
-     system, used only by the deluxe "Board ✦" contributor view for the
-     top-three ranks. Light + dark variants below. */
-  --medal-gold: #d4a32b;
-  --medal-gold-soft: #f6e6b8;
-  --medal-silver: #9aa1a9;
-  --medal-silver-soft: #e3e7ec;
-  --medal-bronze: #b07248;
-  --medal-bronze-soft: #efd9c6;
-  --medal-fg: #2a2a2a;
+  /* Gold accent — the one splash of colour in the otherwise grayscale
+     system, used only by the deluxe contributor board to highlight a tile
+     on hover. Light + dark variants below. */
+  --accent-gold: #c9962a;
+  --accent-gold-soft: #f3e2b0;
 
   /* Primary button (inverts in dark mode) */
   --btn-primary-bg: var(--color-primary);
@@ -319,14 +314,9 @@
   --badge-accent-fg: #c7c7cc;
   --badge-accent-border: rgba(255, 255, 255, 0.14);
 
-  /* Rank medals — dark variants (richer so they glow on the dark stage). */
-  --medal-gold: #e8b73e;
-  --medal-gold-soft: #6b551d;
-  --medal-silver: #b9c0c9;
-  --medal-silver-soft: #4a5159;
-  --medal-bronze: #cd8a5a;
-  --medal-bronze-soft: #5e4030;
-  --medal-fg: #14140f;
+  /* Gold accent — dark variant (richer so it glows on the dark stage). */
+  --accent-gold: #e8b73e;
+  --accent-gold-soft: #6b551d;
 
   /* Primary button inverts so it pops off the dark canvas */
   --btn-primary-bg: #f5f5f7;
