@@ -54,6 +54,7 @@ import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
 import { CERT_DETAIL_TABS } from "@/lib/detail-tabs"
 import { useCertProjects } from "@/hooks/use-cert-projects"
 import { useActivityFunding } from "@/hooks/use-activity-funding"
+import { useContextUpdates } from "@/hooks/use-context-updates"
 import { useMergedFunding } from "@/hooks/use-merged-funding"
 import FundingReceiptRow, {
   FundingReceiptHeader,
@@ -257,6 +258,12 @@ export default function ActivityDetail({
     isLoading: fundingLoading,
     refetch: refetchFunding,
   } = useActivityFunding(did, rkey)
+  // Updates count — drives the "Updates (N)" mobile navbar title, mirroring
+  // the funding-count pattern.
+  const { updates } = useContextUpdates(
+    rkey ? `at://${did}/org.hypercerts.claim.activity/${rkey}` : null,
+  )
+  const updatesCount = updates.length
   // Overlay the viewer's optimistic confirmations + collapse matchingReceipt
   // pairs so a just-confirmed payment shows as one confirmed row immediately
   // (issue #186). A *recorded* (non-confirmation) receipt is not optimistically
@@ -361,25 +368,14 @@ export default function ActivityDetail({
             ? `Funding (${shownFundingCount})`
             : "Funding"
           : activeTab === "updates"
-            ? "Updates"
+            ? updatesCount > 0
+              ? `Updates (${updatesCount})`
+              : "Updates"
             : value.title || "Activity",
   )
   // Desktop top bar keeps the activity's name on every tab (the tab strip is
   // already visible there); only the mobile navbar title is tab-aware.
   usePageDesktopTitle(value.title || "Activity")
-  // Record-level overflow menu in the mobile navbar's right slot (Share /
-  // Add to list / Copy AT URI). Reads as page-level chrome instead of an
-  // action on the author. Desktop keeps the in-body menu (time-period row).
-  usePageRecordMenu(
-    rkey
-      ? {
-          targetUri: `at://${did}/org.hypercerts.claim.activity/${rkey}`,
-          targetCid: cid,
-          targetType: LIST_CERTS_TYPE,
-          shareTab: activeTab === "overview" ? null : activeTab,
-        }
-      : null,
-  )
 
   // Edit affordance — the viewer can act on the cert when they're
   // signed in as the cert's creator. Two paths:
@@ -606,6 +602,38 @@ export default function ActivityDetail({
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  // Record-level overflow menu in the mobile navbar's right slot: the owner's
+  // Edit / Delete (moved off the title row on mobile) + Share / Add to list /
+  // Copy AT URI. Reads as page-level chrome instead of an action on the
+  // author. Desktop keeps the inline title-row Edit/Delete + the in-body
+  // share menu (the navbar isn't rendered at >=800px). Placed here so it can
+  // reference the edit/delete handlers defined above.
+  usePageRecordMenu(
+    rkey
+      ? {
+          targetUri: `at://${did}/org.hypercerts.claim.activity/${rkey}`,
+          targetCid: cid,
+          targetType: LIST_CERTS_TYPE,
+          shareTab: activeTab === "overview" ? null : activeTab,
+          editActions:
+            !editing && (isCreator || editAsGroup)
+              ? {
+                  isCreator,
+                  editHref,
+                  editAsGroupLabel: editAsGroup
+                    ? editAsGroup.displayName || editAsGroup.handle
+                    : null,
+                  onEditAsGroup: () => setGroupEditOpen(true),
+                  onDelete: () => {
+                    setDeleteError(null)
+                    setDeleteOpen(true)
+                  },
+                }
+              : null,
+        }
+      : null,
+  )
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!rkey) return
@@ -981,87 +1009,49 @@ export default function ActivityDetail({
           <h1 className="cert-detail__title">{effectiveValue.title}</h1>
         )}
         {!editing && (isCreator || editAsGroup) ? (
-          <>
-            {/* Desktop: inline Edit + Delete. On mobile these collapse into
-                the three-dot menu below (the inline cluster is hidden there). */}
-            <span className="cert-detail__title-actions">
-              {isCreator ? (
-                <Link
-                  href={editHref}
-                  className="cert-detail__edit-btn"
-                  aria-label="Edit activity"
-                  title="Edit activity"
-                >
-                  <Pencil size={14} strokeWidth={1.75} aria-hidden />
-                  Edit
-                </Link>
-              ) : (
+          // Inline Edit + Delete — DESKTOP only. On mobile these move into the
+          // navbar's three-dot record menu (see usePageRecordMenu's
+          // editActions), so the title row stays clean. The cluster is hidden
+          // at <=799px via `.cert-detail__title-actions`.
+          <span className="cert-detail__title-actions">
+            {isCreator ? (
+              <Link
+                href={editHref}
+                className="cert-detail__edit-btn"
+                aria-label="Edit activity"
+                title="Edit activity"
+              >
+                <Pencil size={14} strokeWidth={1.75} aria-hidden />
+                Edit
+              </Link>
+            ) : (
+              <button
+                type="button"
+                className="cert-detail__edit-btn"
+                aria-label="Edit activity"
+                title={`Edit as ${editAsGroup!.displayName || editAsGroup!.handle}`}
+                onClick={() => setGroupEditOpen(true)}
+              >
+                <Pencil size={14} strokeWidth={1.75} aria-hidden />
+                Edit
+              </button>
+            )}
+            {isCreator ? (
+              <Tooltip label="Delete activity">
                 <button
                   type="button"
-                  className="cert-detail__edit-btn"
-                  aria-label="Edit activity"
-                  title={`Edit as ${editAsGroup!.displayName || editAsGroup!.handle}`}
-                  onClick={() => setGroupEditOpen(true)}
+                  className="cert-detail__delete-btn"
+                  aria-label="Delete activity"
+                  onClick={() => {
+                    setDeleteError(null)
+                    setDeleteOpen(true)
+                  }}
                 >
-                  <Pencil size={14} strokeWidth={1.75} aria-hidden />
-                  Edit
+                  <Trash2 size={14} strokeWidth={1.75} aria-hidden />
                 </button>
-              )}
-              {isCreator ? (
-                <Tooltip label="Delete activity">
-                  <button
-                    type="button"
-                    className="cert-detail__delete-btn"
-                    aria-label="Delete activity"
-                    onClick={() => {
-                      setDeleteError(null)
-                      setDeleteOpen(true)
-                    }}
-                  >
-                    <Trash2 size={14} strokeWidth={1.75} aria-hidden />
-                  </button>
-                </Tooltip>
-              ) : null}
-            </span>
-            {/* Mobile: the same Edit / Delete actions in a vertical three-dot
-                menu, right-aligned in the title row (matches the slim tab
-                headline used on the other tabs). */}
-            <span className="cert-detail__title-menu-wrap">
-              <Popover>
-                <PopoverTrigger>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label="Activity actions"
-                  >
-                    <MoreVertical size={16} strokeWidth={1.75} aria-hidden />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="end">
-                  {isCreator ? (
-                    <PopoverItem onClick={() => router.push(editHref)}>
-                      <Pencil size={14} strokeWidth={1.75} aria-hidden /> Edit
-                    </PopoverItem>
-                  ) : (
-                    <PopoverItem onClick={() => setGroupEditOpen(true)}>
-                      <Pencil size={14} strokeWidth={1.75} aria-hidden /> Edit as{" "}
-                      {editAsGroup!.displayName || editAsGroup!.handle}
-                    </PopoverItem>
-                  )}
-                  {isCreator ? (
-                    <PopoverItem
-                      onClick={() => {
-                        setDeleteError(null)
-                        setDeleteOpen(true)
-                      }}
-                    >
-                      <Trash2 size={14} strokeWidth={1.75} aria-hidden /> Delete
-                    </PopoverItem>
-                  ) : null}
-                </PopoverContent>
-              </Popover>
-            </span>
-          </>
+              </Tooltip>
+            ) : null}
+          </span>
         ) : null}
       </div>
       {/* No `action` here: on mobile the record menu lives in the navbar

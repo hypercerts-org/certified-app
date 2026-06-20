@@ -33,6 +33,19 @@ export interface PageTitleBreadcrumb {
  * `<AddToListMenu>` itself and the publishing hook's effect deps stay
  * stable across renders.
  */
+/** Owner-only Edit / Delete actions surfaced inside the navbar record menu.
+ *  The activity overview headline routes its inline Edit/Delete here on
+ *  mobile so the title row stays clean. Callbacks fire the page's own
+ *  handlers (delete-confirm dialog / edit-as-group switch). */
+export interface PageRecordEditActions {
+  isCreator: boolean;
+  editHref: string;
+  /** Display label of the group the viewer may edit as, or null. */
+  editAsGroupLabel: string | null;
+  onEditAsGroup: () => void;
+  onDelete: () => void;
+}
+
 export interface PageRecordMenu {
   targetUri: string;
   targetCid: string;
@@ -42,6 +55,8 @@ export interface PageRecordMenu {
   /** Active sub-tab key, so the menu's Share link deep-links to it.
    *  Null/omitted on the overview. */
   shareTab?: string | null;
+  /** Owner Edit / Delete actions, when the viewer can edit this record. */
+  editActions?: PageRecordEditActions | null;
 }
 
 interface NavbarContextValue {
@@ -218,8 +233,14 @@ export function usePageTitleBreadcrumb(b: PageTitleBreadcrumb | null) {
  */
 export function usePageRecordMenu(menu: PageRecordMenu | null) {
   const { setRecordMenu } = useContext(NavbarContext);
+  // Include the edit-action data (not the callbacks) so the menu re-sets when
+  // edit eligibility resolves (e.g. after auth loads), while a new object
+  // literal each render still doesn't re-fire (callbacks call stable setters).
+  const ea = menu?.editActions;
   const key = menu
-    ? `${menu.targetUri}|${menu.targetCid}|${menu.targetType}|${menu.shareTab ?? ""}`
+    ? `${menu.targetUri}|${menu.targetCid}|${menu.targetType}|${menu.shareTab ?? ""}|${
+        ea ? `${ea.isCreator}|${ea.editHref}|${ea.editAsGroupLabel ?? ""}` : ""
+      }`
     : null;
   useEffect(() => {
     setRecordMenu(menu);

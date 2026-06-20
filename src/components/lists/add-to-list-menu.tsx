@@ -1,8 +1,10 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Copy, ListPlus, MoreVertical, Share2 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Copy, ListPlus, MoreVertical, Pencil, Share2, Trash2 } from "lucide-react"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
+import type { PageRecordEditActions } from "@/lib/navbar-context"
 import Button from "@/components/ui/button"
 import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -44,6 +46,11 @@ interface AddToListMenuProps {
    *  Omit / pass null on the overview or on surfaces (feed cards, the
    *  profile sidebar) where the page tab is unrelated to this record. */
   shareTab?: string | null
+  /** Edit / Delete for the record owner. The activity overview headline
+   *  routes its inline Edit/Delete into this menu on mobile (the navbar's
+   *  three-dot menu) so they sit beside Share. Omitted when the viewer
+   *  can't edit the record. */
+  editActions?: PageRecordEditActions | null
 }
 
 /**
@@ -64,7 +71,9 @@ export default function AddToListMenu({
   targetCid,
   targetType,
   shareTab = null,
+  editActions = null,
 }: AddToListMenuProps) {
+  const router = useRouter()
   const { did: viewerDid, openSignIn } = useAuth()
   const [open, setOpen] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
@@ -124,6 +133,40 @@ export default function AddToListMenu({
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end">
+          {editActions ? (
+            <>
+              {editActions.isCreator ? (
+                <PopoverItem
+                  onClick={() => {
+                    setOpen(false)
+                    router.push(editActions.editHref)
+                  }}
+                >
+                  <Pencil size={13} strokeWidth={1.75} aria-hidden /> Edit
+                </PopoverItem>
+              ) : editActions.editAsGroupLabel ? (
+                <PopoverItem
+                  onClick={() => {
+                    setOpen(false)
+                    editActions.onEditAsGroup()
+                  }}
+                >
+                  <Pencil size={13} strokeWidth={1.75} aria-hidden /> Edit as{" "}
+                  {editActions.editAsGroupLabel}
+                </PopoverItem>
+              ) : null}
+              {editActions.isCreator ? (
+                <PopoverItem
+                  onClick={() => {
+                    setOpen(false)
+                    editActions.onDelete()
+                  }}
+                >
+                  <Trash2 size={13} strokeWidth={1.75} aria-hidden /> Delete
+                </PopoverItem>
+              ) : null}
+            </>
+          ) : null}
           {sharePath ? (
             <PopoverItem
               onClick={() =>

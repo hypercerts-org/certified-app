@@ -357,6 +357,7 @@ const Navbar: React.FC = () => {
                   targetCid={recordMenu.targetCid}
                   targetType={recordMenu.targetType as TypedListType}
                   shareTab={recordMenu.shareTab}
+                  editActions={recordMenu.editActions}
                 />
               </span>
             ) : null}

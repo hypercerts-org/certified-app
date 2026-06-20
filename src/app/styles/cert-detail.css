@@ -197,12 +197,15 @@
      count live in the navbar; the navbar Back button returns). */
   .cert-detail--tab-description .cert-detail__headline,
   .cert-detail--tab-contributors .cert-detail__headline,
+  .cert-detail--tab-funding .cert-detail__headline,
   .cert-detail--tab-updates .cert-detail__headline,
   .cert-detail--tab-description .cert-detail__image,
   .cert-detail--tab-contributors .cert-detail__image,
+  .cert-detail--tab-funding .cert-detail__image,
   .cert-detail--tab-updates .cert-detail__image,
   .cert-detail--tab-description .cert-detail__meta-row,
   .cert-detail--tab-contributors .cert-detail__meta-row,
+  .cert-detail--tab-funding .cert-detail__meta-row,
   .cert-detail--tab-updates .cert-detail__meta-row {
     display: none;
   }
@@ -210,6 +213,14 @@
   /* Contributors tab: title + count live in the navbar — drop the
      in-main section header. */
   .cert-detail--tab-contributors .cert-detail__section-header {
+    display: none;
+  }
+
+  /* Funding tab: the "Funding" title + count live in the navbar, so drop
+     them from the in-main section header (the record-funding + Confirmed-by
+     filter controls in the header stay). */
+  .cert-detail--tab-funding .cert-detail__section-title,
+  .cert-detail--tab-funding .cert-detail__section-count {
     display: none;
   }
 
@@ -579,16 +590,6 @@
   .cert-detail__meta-menu {
     display: none;
   }
-  /* Collapse the inline Edit/Delete cluster into the three-dot menu,
-     right-aligned in the title row. */
-  .cert-detail__title-actions {
-    display: none;
-  }
-  .cert-detail__title-menu-wrap {
-    display: inline-flex;
-    margin-left: auto;
-    align-self: flex-start;
-  }
   /* Author fills the first line minus the menu (basis 0 + grow) and
      truncates, so the menu never wraps to the next row. */
   .cert-detail__headline-col--author {
@@ -864,20 +865,19 @@
   outline-offset: 2px;
 }
 
-/* Desktop inline Edit / Delete cluster. `gap: 12px` reproduces the spacing
-   the two buttons had as direct title-row children before they were wrapped
-   in this span. Hidden on mobile (the three-dot menu takes over). */
+/* Inline Edit / Delete cluster — DESKTOP only. Hidden by default (mobile),
+   where the same actions live in the navbar's three-dot record menu. `gap:
+   12px` reproduces the spacing the two buttons had as direct title-row
+   children before they were wrapped in this span. */
 .cert-detail__title-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-}
-
-/* The title-row three-dot menu is the MOBILE affordance for Edit / Delete;
-   on desktop the inline `.cert-detail__title-actions` cluster shows instead.
-   (Toggled in the <=799px block above.) */
-.cert-detail__title-menu-wrap {
   display: none;
+}
+@media (min-width: 800px) {
+  .cert-detail__title-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+  }
 }
 
 /* "more" link below the short description — styling now lives in
