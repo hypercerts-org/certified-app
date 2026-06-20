@@ -47,6 +47,7 @@ import Avatar from "@/components/ui/avatar"
 import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { ActivityContributorBoard } from "@/components/contributor-board/activity-contributor-board"
+import { ActivityFancyBoard } from "@/components/contributor-board/activity-fancy-board"
 import EditBanner from "@/components/ui/edit-banner"
 import Tooltip from "@/components/ui/tooltip"
 import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
@@ -326,11 +327,13 @@ export default function ActivityDetail({
     | "description"
     | "contributors"
     | "contributor-board"
+    | "contributor-board-fancy"
     | "funding"
     | "updates" =
     tabParam === "description" ||
     tabParam === "contributors" ||
     tabParam === "contributor-board" ||
+    tabParam === "contributor-board-fancy" ||
     tabParam === "funding" ||
     tabParam === "updates"
       ? tabParam
@@ -353,6 +356,8 @@ export default function ActivityDetail({
           : "Contributors"
         : activeTab === "contributor-board"
         ? "Contributor Board"
+        : activeTab === "contributor-board-fancy"
+        ? "Board ✦"
         : activeTab === "funding"
           ? shownFundingCount > 0
             ? `Funding (${shownFundingCount})`
@@ -1532,6 +1537,15 @@ export default function ActivityDetail({
               cid={cid}
               contributors={contributors}
               canEdit={isCreator && sessionDid === did}
+            />
+            {contributorsSection}
+          </>
+        ) : activeTab === "contributor-board-fancy" ? (
+          <>
+            <ActivityFancyBoard
+              did={did}
+              rkey={rkey}
+              contributors={contributors}
             />
             {contributorsSection}
           </>

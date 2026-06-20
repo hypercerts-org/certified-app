@@ -84,12 +84,14 @@
      contributors list beneath the board; Description / Funding / Updates
      just want the room. (Overview + Contributors keep the aside.) */
   .cert-detail--wide.cert-detail--tab-contributor-board.page-layout,
+  .cert-detail--wide.cert-detail--tab-contributor-board-fancy.page-layout,
   .cert-detail--wide.cert-detail--tab-description.page-layout,
   .cert-detail--wide.cert-detail--tab-funding.page-layout,
   .cert-detail--wide.cert-detail--tab-updates.page-layout {
     grid-template-columns: minmax(0, 1fr);
   }
   .cert-detail--wide.cert-detail--tab-contributor-board.page-layout > .cert-detail__aside,
+  .cert-detail--wide.cert-detail--tab-contributor-board-fancy.page-layout > .cert-detail__aside,
   .cert-detail--wide.cert-detail--tab-description.page-layout > .cert-detail__aside,
   .cert-detail--wide.cert-detail--tab-funding.page-layout > .cert-detail__aside,
   .cert-detail--wide.cert-detail--tab-updates.page-layout > .cert-detail__aside {
