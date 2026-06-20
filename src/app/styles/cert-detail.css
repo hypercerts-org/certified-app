@@ -124,24 +124,20 @@
     display: contents;
   }
 
-  /* Single-column reading order. Lead with the title + image, then the
-     overview's narrative content block (summary / updates / funding /
-     locations), then the secondary "facts" meta rows (time period / work
-     scope / contributors / rights). This mirrors the desktop hierarchy,
-     where the main content column outranks the facts aside.
-
-     The content block (`.cert-detail__content`, the tab panel) is ordered
-     as a single unit; its inner sections then fall in natural DOM order
-     (summary first), instead of the panel floating above the title — which
-     happened because the panel itself carried the default `order: 0` while
-     the per-section `order`s inside it were inert. */
+  /* Single-column reading order:
+       title → image → summary → time period → work scope → contributors →
+       rights → tab content (updates / funding / locations).
+     The summary is rendered as a sibling of the tab panel (see
+     activity-detail.tsx) so the "facts" meta rows can sit between it and the
+     tab content. The panel itself (`.cert-detail__content`) is ordered last
+     as a single unit. */
   .cert-detail--wide:not(.cert-detail--editing) .cert-detail__headline {
     order: 1;
   }
   .cert-detail--wide:not(.cert-detail--editing) .cert-detail__image {
     order: 2;
   }
-  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__content {
+  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__section--summary {
     order: 3;
   }
   .cert-detail--wide:not(.cert-detail--editing)
@@ -158,6 +154,9 @@
   }
   .cert-detail--wide:not(.cert-detail--editing) .cert-detail__meta-row--rights {
     order: 7;
+  }
+  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__content {
+    order: 8;
   }
 
   /* Create / edit activity form: lead with the title, then the image,
@@ -580,6 +579,16 @@
   .cert-detail__meta-menu {
     display: none;
   }
+  /* Collapse the inline Edit/Delete cluster into the three-dot menu,
+     right-aligned in the title row. */
+  .cert-detail__title-actions {
+    display: none;
+  }
+  .cert-detail__title-menu-wrap {
+    display: inline-flex;
+    margin-left: auto;
+    align-self: flex-start;
+  }
   /* Author fills the first line minus the menu (basis 0 + grow) and
      truncates, so the menu never wraps to the next row. */
   .cert-detail__headline-col--author {
@@ -602,12 +611,10 @@
     color: var(--fg-muted);
     white-space: nowrap;
   }
-  /* Date now lives in the eyebrow row; the "Author" label is dropped.
-     Ancestor-scoped to beat the base `.cert-detail__headline-col`. */
+  /* Date now lives in the eyebrow row, so its column is hidden here.
+     Ancestor-scoped to beat the base `.cert-detail__headline-col`. The
+     "Author" eyebrow label is kept — it sits above the author avatar/name. */
   .cert-detail__headline-cols .cert-detail__headline-col--date {
-    display: none;
-  }
-  .cert-detail__headline-col--author .cert-detail__meta-label {
     display: none;
   }
 }
@@ -855,6 +862,22 @@
 .cert-detail__delete-btn:focus-visible {
   outline: 2px solid var(--color-error);
   outline-offset: 2px;
+}
+
+/* Desktop inline Edit / Delete cluster. `gap: 12px` reproduces the spacing
+   the two buttons had as direct title-row children before they were wrapped
+   in this span. Hidden on mobile (the three-dot menu takes over). */
+.cert-detail__title-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* The title-row three-dot menu is the MOBILE affordance for Edit / Delete;
+   on desktop the inline `.cert-detail__title-actions` cluster shows instead.
+   (Toggled in the <=799px block above.) */
+.cert-detail__title-menu-wrap {
+  display: none;
 }
 
 /* "more" link below the short description — styling now lives in

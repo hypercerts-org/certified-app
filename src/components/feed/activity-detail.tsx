@@ -982,43 +982,85 @@ export default function ActivityDetail({
         )}
         {!editing && (isCreator || editAsGroup) ? (
           <>
-            {isCreator ? (
-              <Link
-                href={editHref}
-                className="cert-detail__edit-btn"
-                aria-label="Edit activity"
-                title="Edit activity"
-              >
-                <Pencil size={14} strokeWidth={1.75} aria-hidden />
-                Edit
-              </Link>
-            ) : (
-              <button
-                type="button"
-                className="cert-detail__edit-btn"
-                aria-label="Edit activity"
-                title={`Edit as ${editAsGroup!.displayName || editAsGroup!.handle}`}
-                onClick={() => setGroupEditOpen(true)}
-              >
-                <Pencil size={14} strokeWidth={1.75} aria-hidden />
-                Edit
-              </button>
-            )}
-            {isCreator ? (
-              <Tooltip label="Delete activity">
+            {/* Desktop: inline Edit + Delete. On mobile these collapse into
+                the three-dot menu below (the inline cluster is hidden there). */}
+            <span className="cert-detail__title-actions">
+              {isCreator ? (
+                <Link
+                  href={editHref}
+                  className="cert-detail__edit-btn"
+                  aria-label="Edit activity"
+                  title="Edit activity"
+                >
+                  <Pencil size={14} strokeWidth={1.75} aria-hidden />
+                  Edit
+                </Link>
+              ) : (
                 <button
                   type="button"
-                  className="cert-detail__delete-btn"
-                  aria-label="Delete activity"
-                  onClick={() => {
-                    setDeleteError(null)
-                    setDeleteOpen(true)
-                  }}
+                  className="cert-detail__edit-btn"
+                  aria-label="Edit activity"
+                  title={`Edit as ${editAsGroup!.displayName || editAsGroup!.handle}`}
+                  onClick={() => setGroupEditOpen(true)}
                 >
-                  <Trash2 size={14} strokeWidth={1.75} aria-hidden />
+                  <Pencil size={14} strokeWidth={1.75} aria-hidden />
+                  Edit
                 </button>
-              </Tooltip>
-            ) : null}
+              )}
+              {isCreator ? (
+                <Tooltip label="Delete activity">
+                  <button
+                    type="button"
+                    className="cert-detail__delete-btn"
+                    aria-label="Delete activity"
+                    onClick={() => {
+                      setDeleteError(null)
+                      setDeleteOpen(true)
+                    }}
+                  >
+                    <Trash2 size={14} strokeWidth={1.75} aria-hidden />
+                  </button>
+                </Tooltip>
+              ) : null}
+            </span>
+            {/* Mobile: the same Edit / Delete actions in a vertical three-dot
+                menu, right-aligned in the title row (matches the slim tab
+                headline used on the other tabs). */}
+            <span className="cert-detail__title-menu-wrap">
+              <Popover>
+                <PopoverTrigger>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label="Activity actions"
+                  >
+                    <MoreVertical size={16} strokeWidth={1.75} aria-hidden />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end">
+                  {isCreator ? (
+                    <PopoverItem onClick={() => router.push(editHref)}>
+                      <Pencil size={14} strokeWidth={1.75} aria-hidden /> Edit
+                    </PopoverItem>
+                  ) : (
+                    <PopoverItem onClick={() => setGroupEditOpen(true)}>
+                      <Pencil size={14} strokeWidth={1.75} aria-hidden /> Edit as{" "}
+                      {editAsGroup!.displayName || editAsGroup!.handle}
+                    </PopoverItem>
+                  )}
+                  {isCreator ? (
+                    <PopoverItem
+                      onClick={() => {
+                        setDeleteError(null)
+                        setDeleteOpen(true)
+                      }}
+                    >
+                      <Trash2 size={14} strokeWidth={1.75} aria-hidden /> Delete
+                    </PopoverItem>
+                  ) : null}
+                </PopoverContent>
+              </Popover>
+            </span>
           </>
         ) : null}
       </div>
@@ -1412,6 +1454,14 @@ export default function ActivityDetail({
             Overview keeps the full headline with the byline columns. */}
         {activeTab === "overview" ? headline : slimHeadline}
 
+        {/* Short description / summary. Rendered as a SIBLING of the tab
+            panel (not inside it) so the mobile single-column order can place
+            the facts meta rows (time period / work scope / contributors /
+            rights) between the summary and the updates. Overview-only — null
+            on the other tabs. On desktop it sits in the same spot (right
+            after the headline, before the tab content). */}
+        {shortDescSection}
+
         <TabPanelTransition
           className="cert-detail__content"
           activeKey={activeTab}
@@ -1419,14 +1469,6 @@ export default function ActivityDetail({
         >
         {activeTab === "overview" ? (
           <>
-            {/* Short description + Read-full-description button sit
-                ABOVE the Contributors / Projects row so the cert's
-                narrative reads first, then the structural facts. The
-                Read button is sized to its content (inline-flex on the
-                link + align-self:flex-start in CSS so the flex-column
-                parent doesn't stretch it to full width). */}
-            {shortDescSection}
-
             {/* Updates preview sits above Locations: after the cert's
                 narrative (summary / read-full link) the reader sees
                 the latest activity, then the where. Capped at one
