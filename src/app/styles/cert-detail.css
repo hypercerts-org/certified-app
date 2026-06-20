@@ -946,16 +946,29 @@
   flex-wrap: nowrap;
 }
 
-/* Push the author + menu to the right; the title (flex:1) takes the slack. */
-.cert-contrib-headline__author {
-  flex-shrink: 0;
+/* Author + actions hug the right edge (the title, flex:1, takes the slack).
+   `stretch` makes the menu button match the author block's height. */
+.cert-contrib-headline__trailing {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
   margin-left: auto;
+  flex-shrink: 0;
 }
 
-/* Avatar now trails the name, so the two-line meta reads right-aligned. */
-.cert-contrib-headline__author .cert-detail__headline-author-meta {
-  align-items: flex-end;
-  text-align: right;
+/* The author's own content stays left-aligned (avatar then name/handle). */
+.cert-contrib-headline__author {
+  flex-shrink: 0;
+}
+
+/* Drop the icon button's fixed 40px square so it stretches to the author's
+   height inside the trailing row; aspect-ratio keeps it square. The
+   two-class selector outranks the Tailwind h-/w- utilities. */
+.cert-detail__headline--contributors .cert-contrib-headline__menu {
+  height: auto;
+  width: auto;
+  min-height: 0;
+  aspect-ratio: 1 / 1;
 }
 
 /* Skeletons */

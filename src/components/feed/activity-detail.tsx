@@ -1936,55 +1936,68 @@ function ContributorsTabHeadline({
       <div className="cert-detail__title-row">
         <h1 className="cert-detail__title">{title}</h1>
 
-        {!authorLoading && info ? (
-          <Link
-            href={profileHref}
-            className="cert-detail__headline-author cert-contrib-headline__author"
-            aria-label={`View ${displayName}'s profile`}
-          >
-            <span className="cert-detail__headline-author-meta">
-              <span className="cert-detail__headline-name">{displayName}</span>
-              {info.handle ? (
-                <span className="cert-detail__headline-handle">
-                  @{info.handle}
+        {/* Author + actions sit together at the right edge; the author's
+            own content stays left-aligned (avatar then name/handle). The
+            trailing row stretches so the menu button matches the author's
+            height. */}
+        <div className="cert-contrib-headline__trailing">
+          {!authorLoading && info ? (
+            <Link
+              href={profileHref}
+              className="cert-detail__headline-author cert-contrib-headline__author"
+              aria-label={`View ${displayName}'s profile`}
+            >
+              <Avatar
+                size="sm"
+                src={info.avatarUrl || undefined}
+                alt=""
+                fallbackInitials={getInitials(info.displayName, did)}
+              />
+              <span className="cert-detail__headline-author-meta">
+                <span className="cert-detail__headline-name">
+                  {displayName}
                 </span>
-              ) : null}
-            </span>
-            <Avatar
-              size="sm"
-              src={info.avatarUrl || undefined}
-              alt=""
-              fallbackInitials={getInitials(info.displayName, did)}
-            />
-          </Link>
-        ) : null}
+                {info.handle ? (
+                  <span className="cert-detail__headline-handle">
+                    @{info.handle}
+                  </span>
+                ) : null}
+              </span>
+            </Link>
+          ) : null}
 
-        {showMenu ? (
-          <Popover>
-            <PopoverTrigger>
-              <Button size="icon" variant="ghost" aria-label="Activity actions">
-                <MoreVertical size={16} strokeWidth={1.75} aria-hidden />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end">
-              {isCreator ? (
-                <PopoverItem onClick={() => router.push(editHref)}>
-                  <Pencil size={14} strokeWidth={1.75} aria-hidden /> Edit
-                </PopoverItem>
-              ) : (
-                <PopoverItem onClick={onEditAsGroup}>
-                  <Pencil size={14} strokeWidth={1.75} aria-hidden /> Edit as{" "}
-                  {editAsGroupLabel}
-                </PopoverItem>
-              )}
-              {isCreator ? (
-                <PopoverItem onClick={onDelete}>
-                  <Trash2 size={14} strokeWidth={1.75} aria-hidden /> Delete
-                </PopoverItem>
-              ) : null}
-            </PopoverContent>
-          </Popover>
-        ) : null}
+          {showMenu ? (
+            <Popover>
+              <PopoverTrigger>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="cert-contrib-headline__menu"
+                  aria-label="Activity actions"
+                >
+                  <MoreVertical size={16} strokeWidth={1.75} aria-hidden />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end">
+                {isCreator ? (
+                  <PopoverItem onClick={() => router.push(editHref)}>
+                    <Pencil size={14} strokeWidth={1.75} aria-hidden /> Edit
+                  </PopoverItem>
+                ) : (
+                  <PopoverItem onClick={onEditAsGroup}>
+                    <Pencil size={14} strokeWidth={1.75} aria-hidden /> Edit as{" "}
+                    {editAsGroupLabel}
+                  </PopoverItem>
+                )}
+                {isCreator ? (
+                  <PopoverItem onClick={onDelete}>
+                    <Trash2 size={14} strokeWidth={1.75} aria-hidden /> Delete
+                  </PopoverItem>
+                ) : null}
+              </PopoverContent>
+            </Popover>
+          ) : null}
+        </div>
       </div>
     </header>
   )
