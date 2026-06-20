@@ -47,7 +47,6 @@ import { formatShortDate } from "@/lib/utils/format-date"
 import Avatar from "@/components/ui/avatar"
 import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import { ActivityContributorBoard } from "@/components/contributor-board/activity-contributor-board"
 import { ActivityFancyBoard } from "@/components/contributor-board/activity-fancy-board"
 import EditBanner from "@/components/ui/edit-banner"
 import Tooltip from "@/components/ui/tooltip"
@@ -333,12 +332,10 @@ export default function ActivityDetail({
     | "overview"
     | "description"
     | "contributors"
-    | "contributor-board"
     | "funding"
     | "updates" =
     tabParam === "description" ||
     tabParam === "contributors" ||
-    tabParam === "contributor-board" ||
     tabParam === "funding" ||
     tabParam === "updates"
       ? tabParam
@@ -359,8 +356,6 @@ export default function ActivityDetail({
         ? contributorCount > 0
           ? `Contributors (${contributorCount})`
           : "Contributors"
-        : activeTab === "contributor-board"
-        ? "Contributor Board"
         : activeTab === "funding"
           ? shownFundingCount > 0
             ? `Funding (${shownFundingCount})`
@@ -1119,8 +1114,8 @@ export default function ActivityDetail({
       </section>
     ) : null
 
-  // The Contributors list — shown on its own tab AND beneath the board on
-  // the Contributor Board tab.
+  // The Contributors list — shown on the Contributors tab beneath the
+  // deluxe board.
   const contributorsSection = (
     <section className="cert-detail__section">
       <div className="cert-detail__section-header">
@@ -1561,18 +1556,6 @@ export default function ActivityDetail({
                 contributors={contributors}
               />
             ) : null}
-            {contributorsSection}
-          </>
-        ) : activeTab === "contributor-board" ? (
-          <>
-            <ActivityContributorBoard
-              did={did}
-              rkey={rkey}
-              value={value}
-              cid={cid}
-              contributors={contributors}
-              canEdit={isCreator && sessionDid === did}
-            />
             {contributorsSection}
           </>
         ) : activeTab === "funding" ? (

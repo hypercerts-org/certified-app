@@ -80,17 +80,15 @@
   }
 
   /* Full-bleed tabs: drop the supplementary aside so the content spans the
-     full width of both panes. The Contributor Board + Contributors tabs add
-     the deluxe board above the list; Description / Funding / Updates just
-     want the room. (Only Overview keeps the aside.) */
-  .cert-detail--wide.cert-detail--tab-contributor-board.page-layout,
+     full width of both panes. The Contributors tab carries the deluxe board
+     above the list; Description / Funding / Updates just want the room.
+     (Only Overview keeps the aside.) */
   .cert-detail--wide.cert-detail--tab-contributors.page-layout,
   .cert-detail--wide.cert-detail--tab-description.page-layout,
   .cert-detail--wide.cert-detail--tab-funding.page-layout,
   .cert-detail--wide.cert-detail--tab-updates.page-layout {
     grid-template-columns: minmax(0, 1fr);
   }
-  .cert-detail--wide.cert-detail--tab-contributor-board.page-layout > .cert-detail__aside,
   .cert-detail--wide.cert-detail--tab-contributors.page-layout > .cert-detail__aside,
   .cert-detail--wide.cert-detail--tab-description.page-layout > .cert-detail__aside,
   .cert-detail--wide.cert-detail--tab-funding.page-layout > .cert-detail__aside,
