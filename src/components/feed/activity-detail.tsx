@@ -1033,12 +1033,12 @@ export default function ActivityDetail({
     </header>
   )
 
-  // Contributors-tab headline — a slimmer variant: the activity title with
-  // the author pulled up onto the same row (right-aligned, no "Author"
+  // Slim headline — used by every tab except Overview: the activity title
+  // with the author pulled up onto the same row (right-aligned, no "Author"
   // label) and the edit/delete actions tucked into a three-dot menu. No
   // date-created / project byline (those live on the Overview tab).
-  const contributorsHeadline = (
-    <ContributorsTabHeadline
+  const slimHeadline = (
+    <SlimTabHeadline
       did={did}
       title={effectiveValue.title}
       isCreator={isCreator}
@@ -1406,10 +1406,11 @@ export default function ActivityDetail({
 
       <div className="page-layout__main cert-detail__main">
         {/* Title stays put across tabs (the active tab shows in the top
-            bar's second row); only the per-tab content below slides. The
-            Contributors tab uses a slimmer headline (author on the title
-            row, actions in a three-dot menu). */}
-        {activeTab === "contributors" ? contributorsHeadline : headline}
+            bar's second row); only the per-tab content below slides. Every
+            tab except Overview uses the slim headline (author on the title
+            row, actions in a three-dot menu, no date/project byline);
+            Overview keeps the full headline with the byline columns. */}
+        {activeTab === "overview" ? headline : slimHeadline}
 
         <TabPanelTransition
           className="cert-detail__content"
@@ -1884,12 +1885,13 @@ function ContributorRow({ contributor, role, weight }: ContributorRowProps) {
 }
 
 /**
- * Slim headline for the Contributors tab: the activity title with the
- * author pulled onto the same row (right-aligned, no "Author" label) and
- * the owner actions (Edit / Delete) collapsed into a three-dot menu. No
- * date-created / project byline — that detail lives on the Overview tab.
+ * Slim headline used by every tab except Overview (Description /
+ * Contributors / Funding / Updates): the activity title with the author
+ * pulled onto the same row (right-aligned, no "Author" label) and the owner
+ * actions (Edit / Delete) collapsed into a three-dot menu. No date-created /
+ * project byline — that detail lives on the Overview tab's full headline.
  */
-function ContributorsTabHeadline({
+function SlimTabHeadline({
   did,
   title,
   isCreator,
@@ -1915,7 +1917,7 @@ function ContributorsTabHeadline({
   const profileHref = profileUrl(info?.handle || did)
 
   return (
-    <header className="cert-detail__headline cert-detail__headline--contributors">
+    <header className="cert-detail__headline cert-detail__headline--slim">
       <div className="cert-detail__title-row">
         <h1 className="cert-detail__title">{title}</h1>
 
@@ -1923,11 +1925,11 @@ function ContributorsTabHeadline({
             own content stays left-aligned (avatar then name/handle). The
             trailing row stretches so the menu button matches the author's
             height. */}
-        <div className="cert-contrib-headline__trailing">
+        <div className="cert-slim-headline__trailing">
           {!authorLoading && info ? (
             <Link
               href={profileHref}
-              className="cert-detail__headline-author cert-contrib-headline__author"
+              className="cert-detail__headline-author cert-slim-headline__author"
               aria-label={`View ${displayName}'s profile`}
             >
               <Avatar
@@ -1955,7 +1957,7 @@ function ContributorsTabHeadline({
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="cert-contrib-headline__menu"
+                  className="cert-slim-headline__menu"
                   aria-label="Activity actions"
                 >
                   <MoreVertical size={16} strokeWidth={1.75} aria-hidden />
