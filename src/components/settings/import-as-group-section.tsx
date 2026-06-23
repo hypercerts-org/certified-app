@@ -1,13 +1,14 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { KeyRound } from "lucide-react"
+import { Check, KeyRound, Plus } from "lucide-react"
 import { useOrg } from "@/lib/groups/org-context"
 import { importGroup, putMembership, RegisterGroupError } from "@/lib/groups/api"
 import { authFetch } from "@/lib/auth/fetch"
 import Button from "@/components/ui/button"
 import Input from "@/components/ui/input"
 import ErrorMessage from "@/components/ui/error-message"
+import CreateAppPasswordDialog from "./create-app-password-dialog"
 
 /**
  * Settings section that promotes the signed-in account into a Certified
@@ -28,6 +29,7 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
   const [isImporting, setIsImporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [importedHandle, setImportedHandle] = useState<string | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
 
   // Resolve the signed-in account's handle so the copy can name which
   // account gets converted.
@@ -86,7 +88,8 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
   if (importedHandle) {
     return (
       <p className="settings__note" role="status">
-        ✓ <strong>@{importedHandle}</strong> is now a group, with you as its
+        <Check size={14} aria-hidden="true" />{" "}
+        <strong>@{importedHandle}</strong> is now a group, with you as its
         owner. Switch to it from the account menu to manage members and roles.
       </p>
     )
@@ -115,6 +118,24 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
         value={appPassword}
         onChange={(e) => setAppPassword(e.target.value)}
       />
+
+      <div className="org-members__add-submit">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setCreateOpen(true)}
+        >
+          <Plus size={14} /> Don&apos;t have one? Create an app password
+        </Button>
+      </div>
+
+      {createOpen && (
+        <CreateAppPasswordDialog
+          onUse={(password) => setAppPassword(password)}
+          onClose={() => setCreateOpen(false)}
+        />
+      )}
 
       {error && <ErrorMessage message={error} />}
 

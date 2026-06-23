@@ -1,11 +1,13 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Check, Copy, KeyRound, Plus, Trash2 } from "lucide-react"
+import { Check, Copy, KeyRound, Lock, Plus, Trash2, Unlock } from "lucide-react"
 import {
   createAppPassword,
   listAppPasswords,
   revokeAppPassword,
+  lockAppPasswords,
+  AppPasswordsLockedError,
   type AppPasswordInfo,
   type CreatedAppPassword,
 } from "@/lib/atproto/app-passwords"
@@ -14,16 +16,27 @@ import Button from "@/components/ui/button"
 import Input from "@/components/ui/input"
 import ErrorMessage from "@/components/ui/error-message"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import UnlockAppPasswordsDialog from "./unlock-app-passwords-dialog"
 
 /**
  * Create / list / revoke atproto app passwords (`com.atproto.server.*`).
  *
- * An app password lets another client — or the Certified Group Service's
- * group import — act for this account without the main password. The
- * generated secret is shown exactly once on creation (the PDS never returns
- * it again), so we surface it for copy and then drop it from state.
+ * These endpoints reject OAuth credentials, so they run inside a short-lived
+ * password session the user unlocks once (issue #223). The section therefore
+ * has three states: `checking` (probing for an existing session on mount),
+ * `locked` (show the Unlock gate), and `unlocked` (manage). A `locked` error
+ * mid-session (TTL expiry) drops back to the gate.
+ *
+ * An app password lets another client — or the group import — act for this
+ * account without the main password. The generated secret is shown exactly
+ * once on creation, so we surface it for copy and then drop it from state.
  */
+type Status = "checking" | "locked" | "unlocked"
+
 export default function AppPasswordsSection() {
+  const [status, setStatus] = useState<Status>("checking")
+  const [unlockOpen, setUnlockOpen] = useState(false)
+
   const [items, setItems] = useState<AppPasswordInfo[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -34,22 +47,43 @@ export default function AppPasswordsSection() {
   const [created, setCreated] = useState<CreatedAppPassword | null>(null)
 
   const [revoking, setRevoking] = useState<string | null>(null)
+  const [isLocking, setIsLocking] = useState(false)
   const { copied, copy } = useCopyToClipboard()
 
+  const goLocked = useCallback(() => {
+    setStatus("locked")
+    setItems([])
+    setCreated(null)
+    setLoadError(null)
+  }, [])
+
   const refresh = useCallback(async (signal?: AbortSignal) => {
+    setIsLoading(true)
     try {
       const list = await listAppPasswords(signal)
-      if (!signal?.aborted) {
-        setItems(list)
-        setLoadError(null)
+      if (signal?.aborted) return
+      setItems(list)
+      setLoadError(null)
+      setStatus("unlocked")
+    } catch (err) {
+      if (signal?.aborted) return
+      if (err instanceof AppPasswordsLockedError) {
+        // Route through goLocked so the one-time `created` secret is cleared
+        // too — otherwise it could resurface when the session is re-opened.
+        goLocked()
+        return
       }
-    } catch {
-      if (!signal?.aborted) setLoadError("Couldn't load app passwords.")
+      // A non-locked failure means the session is open but the list call
+      // failed — stay unlocked and surface the error.
+      setStatus("unlocked")
+      setLoadError("Couldn't load app passwords.")
     } finally {
       if (!signal?.aborted) setIsLoading(false)
     }
-  }, [])
+  }, [goLocked])
 
+  // On mount, probe for an already-open session so a recent unlock (within
+  // its ~10-min window) isn't re-prompted.
   useEffect(() => {
     const controller = new AbortController()
     void refresh(controller.signal)
@@ -69,6 +103,10 @@ export default function AppPasswordsSection() {
         setName("")
         await refresh()
       } catch (err) {
+        if (err instanceof AppPasswordsLockedError) {
+          goLocked()
+          return
+        }
         setCreateError(
           err instanceof Error ? err.message : "Failed to create app password",
         )
@@ -76,7 +114,7 @@ export default function AppPasswordsSection() {
         setIsCreating(false)
       }
     },
-    [name, isCreating, refresh],
+    [name, isCreating, refresh, goLocked],
   )
 
   const handleRevoke = useCallback(
@@ -85,15 +123,75 @@ export default function AppPasswordsSection() {
       try {
         await revokeAppPassword(pwName)
         await refresh()
-      } catch {
+      } catch (err) {
+        if (err instanceof AppPasswordsLockedError) {
+          goLocked()
+          return
+        }
         setLoadError("Couldn't revoke that app password.")
       } finally {
         setRevoking(null)
       }
     },
-    [refresh],
+    [refresh, goLocked],
   )
 
+  const handleLock = useCallback(async () => {
+    setIsLocking(true)
+    try {
+      await lockAppPasswords()
+    } catch {
+      // Best-effort — lock the UI regardless.
+    } finally {
+      setIsLocking(false)
+      goLocked()
+    }
+  }, [goLocked])
+
+  // ---- Checking (initial probe) -------------------------------------------
+  if (status === "checking") {
+    return (
+      <div className="app-passwords">
+        <div className="app-passwords__loading">
+          <LoadingSpinner size="sm" />
+        </div>
+      </div>
+    )
+  }
+
+  // ---- Locked gate --------------------------------------------------------
+  if (status === "locked") {
+    return (
+      <div className="app-passwords">
+        <p className="settings__note">
+          App passwords are protected. Unlock with your account password to
+          view, create, or revoke them — the session locks itself after a few
+          minutes.
+        </p>
+        <div className="org-members__add-submit">
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={() => setUnlockOpen(true)}
+          >
+            <Unlock size={14} /> Unlock
+          </Button>
+        </div>
+        {unlockOpen && (
+          <UnlockAppPasswordsDialog
+            onUnlocked={() => {
+              setUnlockOpen(false)
+              void refresh()
+            }}
+            onClose={() => setUnlockOpen(false)}
+          />
+        )}
+      </div>
+    )
+  }
+
+  // ---- Unlocked (manage) --------------------------------------------------
   return (
     <div className="app-passwords">
       {/* One-time reveal of a freshly created password. */}
@@ -182,6 +280,19 @@ export default function AppPasswordsSection() {
           ))}
         </ul>
       )}
+
+      <div className="org-members__add-submit">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          loading={isLocking}
+          disabled={isLocking}
+          onClick={handleLock}
+        >
+          <Lock size={14} /> Lock
+        </Button>
+      </div>
     </div>
   )
 }
