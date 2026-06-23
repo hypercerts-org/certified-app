@@ -136,6 +136,17 @@ export function projectUrl(actor: string, rkey: string): string {
 }
 
 /**
+ * In-app link to a single typed list on the owner's profile. Typed
+ * lists (`list:projects` / `list:accounts` / `list:certs`) don't get
+ * their own record route — they open in-place on the profile's Lists
+ * tab via `?tab=lists&list=<rkey>` (see profile-lists.tsx). `actor` is
+ * a handle (preferred) or a DID.
+ */
+export function listUrl(actor: string, rkey: string): string {
+  return `/${actor}?tab=lists&list=${rkey}`
+}
+
+/**
  * Build an in-app record link straight from an at:// URI, mapping the
  * collection to its friendly segment. Returns null for collections without
  * a record page. `actor` defaults to the URI's DID (durable); pass a handle

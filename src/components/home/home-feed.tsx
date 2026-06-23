@@ -9,7 +9,7 @@ import {
   type ReactNode,
   type SyntheticEvent,
 } from "react"
-import { profileUrl, recordUrl } from "@/lib/urls"
+import { listUrl, profileUrl, recordUrl } from "@/lib/urls"
 import Link from "next/link"
 import { ChevronDown, Inbox, MapPin, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
@@ -52,6 +52,7 @@ import { fetchOrgDidsByLabel } from "@/lib/atproto/workspace"
 import { useTrustedEvaluators } from "@/hooks/use-trusted-evaluators"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { CollectionRecord } from "@/lib/atproto/collection"
+import { TYPED_LIST_TYPES, type TypedListType } from "@/lib/atproto/typed-lists"
 
 const DEFAULT_INCLUDED_TIERS: ReadonlySet<HyperlabelTier> = new Set(
   HYPERLABEL_TIERS.filter(
@@ -1168,12 +1169,17 @@ function CollectionPreview({
   uri: string
 }) {
   const parsed = parseAtUri(uri)
-  const href = parsed
-    ? recordUrl(parsed.did, "project", parsed.rkey)
-    : null
   const v = record.value as Record<string, unknown>
   const collectionType =
     typeof v.type === "string" ? v.type.toLowerCase() : "project"
+  // Typed lists (projects / accounts / certs) have no record route —
+  // they open in-place on the owner's Lists tab. Everything else
+  // (project, list:endorsements, portfolio) keeps the project link.
+  const href = parsed
+    ? TYPED_LIST_TYPES.includes(collectionType as TypedListType)
+      ? listUrl(parsed.did, parsed.rkey)
+      : recordUrl(parsed.did, "project", parsed.rkey)
+    : null
   const fallbackTitle =
     collectionType === "list:endorsements"
       ? "Untitled list"
