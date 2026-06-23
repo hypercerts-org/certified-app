@@ -337,10 +337,19 @@
 /* Desktop: cap the feed at a 600px reading column and center it inside
    its grid track (the feed column keeps its full 1fr width; the timeline
    just sits centered within it). Applies in both the single-column band
-   (800–1299px, news rail hidden) and the two-column layout (≥1300px). */
+   (800–1299px, news rail hidden) and the two-column layout (≥1300px).
+
+   `width` (not just `max-width`) is deliberate: `margin-inline: auto`
+   on a grid item disables stretch, so a max-width-only column sizes to
+   its CONTENT (shrink-to-fit). That made the column — and the "For you"
+   tab strip / filter dropdown above it — visibly jump narrower for a
+   frame whenever a filter toggle refetched the feed and briefly rendered
+   narrower content. A definite width pins it to 600 regardless of
+   content; `max-width: 100%` keeps it from overflowing a narrower track. */
 @media (min-width: 800px) {
   .home__feed {
-    max-width: 600px;
+    width: 600px;
+    max-width: 100%;
     margin-inline: auto;
   }
 }
