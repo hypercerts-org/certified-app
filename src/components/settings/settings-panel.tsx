@@ -281,7 +281,7 @@ export default function SettingsPanel() {
           <nav aria-label="Settings sections">
             <ul className="sx-menu">
               {REGULAR_CATEGORIES.map(renderNavItem)}
-              <li>
+              <li className="sx-menu__advanced">
                 <button
                   type="button"
                   className="sx-menu__item sx-menu__item--toggle"

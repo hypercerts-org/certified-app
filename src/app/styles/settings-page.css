@@ -197,6 +197,14 @@
   min-width: 0;
 }
 
+/* Hairline divider above the "Advanced" disclosure, setting it apart from
+   the regular sections in the sidebar nav. */
+.sx-menu__advanced {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-subtle);
+}
+
 /* "Advanced" disclosure toggle — reuses .sx-menu__item; the chevron sits at
    the trailing edge (the label is flex:1) and flips when expanded. */
 .sx-menu__chevron {
