@@ -317,7 +317,11 @@
 .lp-topbar__btn {
   display: inline-flex;
   position: fixed;
-  top: 16px;
+  /* Center the button's box on the topbar's 32px midline (the 64px bar's
+     half-height) so it lines up vertically with the wordmark regardless of
+     the button's own height — including the taller avatar/account variant. */
+  top: 32px;
+  transform: translateY(-50%);
   right: 16px;
   z-index: var(--z-navbar);
   align-items: center;
