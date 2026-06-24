@@ -1051,175 +1051,183 @@ ${ACTIVITY_NODE_SELECTION}
     }
   `,
 
-}
-
-// ---------------------------------------------------------------------------
-// HydrateFeedPage — assembled dynamically (see buildHydrateFeedPageQuery).
-//
-// A feed page only ever contains a subset of the seven record kinds, and the
-// indexer rejects `where: { uri: { in: [] } }` ("in list must contain at
-// least one value"). So each kind contributes a connection — AND its variable
-// declaration — only when its URI list is non-empty; empty kinds are omitted
-// entirely. The client tolerates missing aliases (every reader is
-// `data?.<alias>?.edges ?? []`), so dropping a connection is safe.
-//
-// (This op also can't use `@include(if:)` to skip empty connections — the
-// magic-indexer GraphQL endpoint rejects directives outright.)
-// ---------------------------------------------------------------------------
-
-/** Per-kind fragment: the variable declaration(s) it adds to the operation
- *  header, plus the aliased connection selection. Keyed by the client's
- *  `*Uris` variable name. */
-const HYDRATE_FEED_CONNECTIONS: Record<
-  string,
-  { decl: string; selection: string }
-> = {
-  activityUris: {
-    // The activity connection is the only one carrying the cert-label
-    // filter, so it owns those two extra (nullable) declarations.
-    decl: "$activityUris: [String!]!\n$activityIncludeLabels: [String!]\n$activityExcludeLabels: [String!]",
-    selection: `
+  // Headline-render hydration for one FollowerEvents page. Buckets each
+  // event by `kind` into a per-lexicon URI list and fetches all four
+  // connections in one round-trip via `where: { uri: { in: $uris } }`.
+  // Empty arrays are valid (and expected — most pages only have a
+  // subset of the four kinds present); the indexer returns an empty
+  // connection for each empty filter.
+  //
+  // If `where: { uri: { in: [...] } }` is not supported by the indexer
+  // schema for one of these collections, the client falls back to a
+  // per-collection op fan-out — see the track-1 log for details.
+  HydrateFeedPage: `
+    query HydrateFeedPage(
+      $activityUris: [String!]!
+      $collectionUris: [String!]!
+      $badgeAwardUris: [String!]!
+      $evaluationUris: [String!]!
+      $measurementUris: [String!]!
+      $hyperboardUris: [String!]!
+      $attachmentUris: [String!]!
+      $activityExcludeLabels: [String!]
+      $activityIncludeLabels: [String!]
+    ) {
       activities: orgHypercertsClaimActivity(
         first: ${MAX_URI_LIST_PER_KIND}
         where: { uri: { in: $activityUris } }
         labels: $activityIncludeLabels
         excludeLabels: $activityExcludeLabels
       ) {
-        edges { node {
-          uri cid did title shortDescription createdAt startDate endDate labels
-          image {
-            __typename
-            ... on OrgHypercertsDefsUri { uri }
-            ... on OrgHypercertsDefsSmallImage { image { ref mimeType } }
+        edges {
+          node {
+            uri
+            cid
+            did
+            title
+            shortDescription
+            createdAt
+            startDate
+            endDate
+            labels
+            image {
+              __typename
+              ... on OrgHypercertsDefsUri { uri }
+              ... on OrgHypercertsDefsSmallImage { image { ref mimeType } }
+            }
+            workScope {
+              ... on OrgHypercertsClaimActivityWorkScopeString { scope }
+              ... on OrgHypercertsWorkscopeCel { expression }
+            }
           }
-          workScope {
-            ... on OrgHypercertsClaimActivityWorkScopeString { scope }
-            ... on OrgHypercertsWorkscopeCel { expression }
-          }
-        } }
-      }`,
-  },
-  collectionUris: {
-    decl: "$collectionUris: [String!]!",
-    selection: `
+        }
+      }
       collections: orgHypercertsCollection(
         first: ${MAX_URI_LIST_PER_KIND}
         where: { uri: { in: $collectionUris } }
       ) {
-        edges { node {
-          uri cid did createdAt title shortDescription type
-          items { itemIdentifier { ... on ComAtprotoRepoStrongRef { uri cid } } }
-          avatar {
-            __typename
-            ... on OrgHypercertsDefsUri { uri }
-            ... on OrgHypercertsDefsSmallImage { image { ref mimeType } }
+        edges {
+          node {
+            uri
+            cid
+            did
+            createdAt
+            title
+            shortDescription
+            type
+            items {
+              itemIdentifier {
+                ... on ComAtprotoRepoStrongRef { uri cid }
+              }
+            }
+            avatar {
+              __typename
+              ... on OrgHypercertsDefsUri { uri }
+              ... on OrgHypercertsDefsSmallImage { image { ref mimeType } }
+            }
+            banner {
+              __typename
+              ... on OrgHypercertsDefsUri { uri }
+              ... on OrgHypercertsDefsLargeImage { image { ref mimeType } }
+            }
           }
-          banner {
-            __typename
-            ... on OrgHypercertsDefsUri { uri }
-            ... on OrgHypercertsDefsLargeImage { image { ref mimeType } }
-          }
-        } }
-      }`,
-  },
-  badgeAwardUris: {
-    decl: "$badgeAwardUris: [String!]!",
-    selection: `
+        }
+      }
       badgeAwards: appCertifiedBadgeAward(
         first: ${MAX_URI_LIST_PER_KIND}
         where: { uri: { in: $badgeAwardUris } }
       ) {
-        edges { node {
-          uri cid did createdAt note
-          subject { __typename ... on AppCertifiedDefsDid { did } }
-        } }
-      }`,
-  },
-  evaluationUris: {
-    decl: "$evaluationUris: [String!]!",
-    selection: `
+        edges {
+          node {
+            uri
+            cid
+            did
+            createdAt
+            note
+            subject {
+              __typename
+              ... on AppCertifiedDefsDid { did }
+            }
+          }
+        }
+      }
       evaluations: orgHypercertsContextEvaluation(
         first: ${MAX_URI_LIST_PER_KIND}
         where: { uri: { in: $evaluationUris } }
       ) {
-        edges { node {
-          uri cid did createdAt summary
-          subject { __typename ... on ComAtprotoRepoStrongRef { uri cid } }
-        } }
-      }`,
-  },
-  measurementUris: {
-    decl: "$measurementUris: [String!]!",
-    selection: `
+        edges {
+          node {
+            uri
+            cid
+            did
+            createdAt
+            summary
+            subject {
+              __typename
+              ... on ComAtprotoRepoStrongRef { uri cid }
+            }
+          }
+        }
+      }
       measurements: orgHypercertsContextMeasurement(
         first: ${MAX_URI_LIST_PER_KIND}
         where: { uri: { in: $measurementUris } }
       ) {
-        edges { node {
-          uri cid did createdAt metric value unit
-          subjects { __typename ... on ComAtprotoRepoStrongRef { uri cid } }
-        } }
-      }`,
-  },
-  hyperboardUris: {
-    decl: "$hyperboardUris: [String!]!",
-    selection: `
+        edges {
+          node {
+            uri
+            cid
+            did
+            createdAt
+            metric
+            value
+            unit
+            subjects {
+              __typename
+              ... on ComAtprotoRepoStrongRef { uri cid }
+            }
+          }
+        }
+      }
       hyperboards: orgHyperboardsBoard(
         first: ${MAX_URI_LIST_PER_KIND}
         where: { uri: { in: $hyperboardUris } }
       ) {
-        edges { node { uri cid did createdAt } }
-      }`,
-  },
-  attachmentUris: {
-    decl: "$attachmentUris: [String!]!",
-    selection: `
+        edges {
+          node {
+            uri
+            cid
+            did
+            createdAt
+          }
+        }
+      }
       attachments: orgHypercertsContextAttachment(
         first: ${MAX_URI_LIST_PER_KIND}
         where: { uri: { in: $attachmentUris } }
       ) {
-        edges { node {
-          uri cid did createdAt title shortDescription
-          subjects { __typename ... on ComAtprotoRepoStrongRef { uri cid } }
-          content {
-            __typename
-            ... on OrgHypercertsDefsUri { uri }
-            ... on OrgHypercertsDefsSmallBlob { blob { ref mimeType } }
+        edges {
+          node {
+            uri
+            cid
+            did
+            createdAt
+            title
+            shortDescription
+            subjects {
+              __typename
+              ... on ComAtprotoRepoStrongRef { uri cid }
+            }
+            content {
+              __typename
+              ... on OrgHypercertsDefsUri { uri }
+              ... on OrgHypercertsDefsSmallBlob { blob { ref mimeType } }
+            }
           }
-        } }
-      }`,
-  },
-}
-
-/** Stable connection order (matches the legacy static op). */
-const HYDRATE_FEED_KINDS = [
-  "activityUris",
-  "collectionUris",
-  "badgeAwardUris",
-  "evaluationUris",
-  "measurementUris",
-  "hyperboardUris",
-  "attachmentUris",
-] as const
-
-/**
- * Build a `HydrateFeedPage` query containing only the connections whose URI
- * list is present (non-empty) in `variables`. Returns null when no kind is
- * present — the caller 400s rather than emit a connection-less query.
- */
-function buildHydrateFeedPageQuery(
-  variables: Record<string, unknown>,
-): string | null {
-  const present = HYDRATE_FEED_KINDS.filter((k) => {
-    const v = variables[k]
-    return Array.isArray(v) && v.length > 0
-  })
-  if (present.length === 0) return null
-  const decls = present.map((k) => HYDRATE_FEED_CONNECTIONS[k].decl).join("\n")
-  const selections = present
-    .map((k) => HYDRATE_FEED_CONNECTIONS[k].selection)
-    .join("")
-  return `query HydrateFeedPage(\n${decls}\n) {${selections}\n}`
+        }
+      }
+    }
+  `,
 }
 
 type ClientVariables = Record<string, unknown>
@@ -1350,13 +1358,12 @@ function readFollowerEventsSort(value: unknown): "SORT_AT" | "CREATED_AT" | null
 
 /**
  * Reads one of the `*Uris` array variables. Length 0..`maxItems`
- * inclusive — an empty array is valid here (a `HydrateFeedPage` page
- * only has events of a few kinds, so the unused buckets arrive as `[]`).
- * The HydrateFeedPage builder later DROPS the empty buckets before
- * querying, since the indexer rejects an empty `in` filter. The
- * `maxItems` arg lets the `ActivitiesByUris` path accept a larger set
- * than the per-kind hydration arrays (one indexer page = 100 URIs, vs
- * the feed hydration's 50-per-kind page-size cap).
+ * inclusive — empty arrays pass through because a typical
+ * `HydrateFeedPage` call only has events of a few kinds and the
+ * unused kinds should be `[]`. The `maxItems` arg lets the
+ * `ActivitiesByUris` path accept a larger set than the per-kind
+ * hydration arrays (one indexer page = 100 URIs, vs the feed
+ * hydration's 50-per-kind page-size cap).
  */
 function readUriList(value: unknown, maxItems: number): string[] | null {
   if (!Array.isArray(value)) return null
@@ -1635,40 +1642,47 @@ function buildVariables(
       }
     }
     case "HydrateFeedPage": {
-      // Every kind must be PROVIDED by the client (a missing bucket is a
-      // 400, preserving the original required-bucket contract), but an
-      // empty bucket is fine — it just means "no events of this kind on
-      // this page". `readUriList` returns [] for empty and null for
-      // malformed / oversized / missing.
-      const lists: Record<string, string[] | null> = {}
-      for (const kind of HYDRATE_FEED_KINDS) {
-        lists[kind] = readUriList(vars[kind], MAX_URI_LIST_PER_KIND)
+      const activityUris = readUriList(vars.activityUris, MAX_URI_LIST_PER_KIND)
+      const collectionUris = readUriList(vars.collectionUris, MAX_URI_LIST_PER_KIND)
+      const badgeAwardUris = readUriList(vars.badgeAwardUris, MAX_URI_LIST_PER_KIND)
+      const evaluationUris = readUriList(vars.evaluationUris, MAX_URI_LIST_PER_KIND)
+      const measurementUris = readUriList(vars.measurementUris, MAX_URI_LIST_PER_KIND)
+      const hyperboardUris = readUriList(vars.hyperboardUris, MAX_URI_LIST_PER_KIND)
+      const attachmentUris = readUriList(vars.attachmentUris, MAX_URI_LIST_PER_KIND)
+      if (
+        activityUris === null ||
+        collectionUris === null ||
+        badgeAwardUris === null ||
+        evaluationUris === null ||
+        measurementUris === null ||
+        hyperboardUris === null ||
+        attachmentUris === null
+      ) {
+        return null
       }
-      if (Object.values(lists).some((l) => l === null)) return null
-      // Forward ONLY the non-empty buckets. The dynamic query
-      // (buildHydrateFeedPageQuery) emits a connection — and its matching
-      // variable declaration — for exactly these, because the indexer
-      // rejects an empty `in` list. Empty buckets are dropped here so the
-      // query never declares a variable it doesn't use.
-      const out: Record<string, unknown> = {}
-      for (const kind of HYDRATE_FEED_KINDS) {
-        const list = lists[kind] as string[]
-        if (list.length > 0) out[kind] = list
-      }
-      // The cert-label filter lives on the activity connection only, so
-      // its declarations exist only when activities are present. Declare
-      // (and forward) the label vars in that case alone — GraphQL forbids
-      // declaring an unused variable.
+      // Optional inclusion / exclusion filter for the hyperlabel-style
+      // cert labels (`high-quality` / `standard` / `draft` /
+      // `likely-test`). Permissive reader — null when omitted or
+      // invalid; the GraphQL query treats null as "no filter" on each
+      // side. The client picks ONE of the two modes:
       //   - excludeLabels: include unlabeled records, drop the listed
       //     tiers (the home-feed default).
-      //   - includeLabels: only records carrying one of the listed tiers
-      //     pass; unlabeled records do not. Used when the "Not labeled
-      //     yet" checkbox is unchecked.
-      if (out.activityUris) {
-        out.activityIncludeLabels = readLabelList(vars.activityIncludeLabels)
-        out.activityExcludeLabels = readLabelList(vars.activityExcludeLabels)
+      //   - includeLabels: only records carrying one of the listed
+      //     tiers pass; unlabeled records do not. Used when the
+      //     "Not labeled yet" checkbox is unchecked.
+      const activityExcludeLabels = readLabelList(vars.activityExcludeLabels)
+      const activityIncludeLabels = readLabelList(vars.activityIncludeLabels)
+      return {
+        activityUris,
+        collectionUris,
+        badgeAwardUris,
+        evaluationUris,
+        measurementUris,
+        hyperboardUris,
+        attachmentUris,
+        activityExcludeLabels,
+        activityIncludeLabels,
       }
-      return out
     }
     default:
       return null
@@ -1721,11 +1735,8 @@ export async function POST(request: NextRequest) {
   }
   const operationName = parsed.operationName
 
-  // HydrateFeedPage is assembled dynamically (per-page kind subset); every
-  // other op is a static allowlist entry.
-  const isHydrateFeed = operationName === "HydrateFeedPage"
-  const staticQuery = OPERATIONS[operationName]
-  if (!isHydrateFeed && !staticQuery) {
+  const query = OPERATIONS[operationName]
+  if (!query) {
     return NextResponse.json({ error: "Unknown operation" }, { status: 400 })
   }
 
@@ -1739,26 +1750,6 @@ export async function POST(request: NextRequest) {
       { error: "Invalid variables for operation" },
       { status: 400 },
     )
-  }
-
-  let query: string
-  if (isHydrateFeed) {
-    const dynamic = buildHydrateFeedPageQuery(variables)
-    if (!dynamic) {
-      // No kind present — nothing to hydrate. The client guards against
-      // this (it skips the round-trip when every bucket is empty), so
-      // reaching here means a malformed request.
-      return NextResponse.json(
-        { error: "Invalid variables for operation" },
-        { status: 400 },
-      )
-    }
-    query = dynamic
-  } else if (staticQuery) {
-    query = staticQuery
-  } else {
-    // Unreachable: the allowlist guard above already rejected unknown ops.
-    return NextResponse.json({ error: "Unknown operation" }, { status: 400 })
   }
 
   const timeoutController = new AbortController()
