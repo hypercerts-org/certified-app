@@ -304,6 +304,41 @@ export default function ProductTour() {
     router.push("/home")
   }, [finish, router])
 
+  // Arrow keys step through the tour: Right advances (finishing on the last
+  // step, mirroring the primary button), Left goes back. Bail out when the
+  // user is typing into a field or holding a modifier, so we never hijack
+  // text navigation, and only preventDefault when we actually handle the key.
+  useEffect(() => {
+    if (!isActive) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+      const target = e.target as HTMLElement | null
+      const tag = target?.tagName
+      if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        target?.isContentEditable
+      ) {
+        return
+      }
+      if (e.key === "ArrowRight") {
+        e.preventDefault()
+        if (isLast) {
+          handleFinish()
+        } else {
+          next()
+        }
+      } else if (stepIndex > 0) {
+        e.preventDefault()
+        back()
+      }
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [isActive, isLast, stepIndex, next, back, handleFinish])
+
   // Lightweight focus trap: keep Tab cycling within the card's controls.
   const handleCardKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key !== "Tab") return
