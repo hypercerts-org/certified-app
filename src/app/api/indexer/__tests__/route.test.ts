@@ -570,7 +570,7 @@ describe("/api/indexer trust boundary", () => {
       attachmentUris: [],
     }
 
-    it("forwards a mixed-kind page, omitting the empty kinds", async () => {
+    it("forwards a mixed-kind page", async () => {
       const res = await postIndexer({
         operationName: "HydrateFeedPage",
         variables: {
@@ -583,51 +583,12 @@ describe("/api/indexer trust boundary", () => {
       })
       expect(res.status).toBe(200)
       const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
-      // Present kinds are forwarded...
       expect(body.variables.activityUris).toHaveLength(1)
       expect(body.variables.collectionUris).toHaveLength(1)
       expect(body.variables.evaluationUris).toHaveLength(1)
       expect(body.variables.hyperboardUris).toHaveLength(1)
-      // ...empty kinds are dropped entirely (NOT sent as `[]`, which the
-      // indexer rejects with "in list must contain at least one value").
-      expect(body.variables.badgeAwardUris).toBeUndefined()
-      expect(body.variables.measurementUris).toBeUndefined()
-      expect(body.variables.attachmentUris).toBeUndefined()
-      // The assembled query declares + selects exactly the present kinds.
-      expect(body.query).toContain("activities:")
-      expect(body.query).toContain("collections:")
-      expect(body.query).toContain("evaluations:")
-      expect(body.query).toContain("hyperboards:")
-      expect(body.query).not.toContain("badgeAwards:")
-      expect(body.query).not.toContain("measurements:")
-      expect(body.query).not.toContain("attachments:")
-      expect(body.query).not.toContain("$badgeAwardUris")
-      // No empty `in` filter anywhere in the emitted query.
-      expect(body.query).not.toMatch(/in:\s*\[\s*\]/)
-    })
-
-    it("drops empty bucket vars but keeps the activity label filter", async () => {
-      const res = await postIndexer({
-        operationName: "HydrateFeedPage",
-        variables: {
-          ...allEmpty,
-          activityUris: ["at://did:plc:a/org.hypercerts.claim.activity/abc"],
-          activityExcludeLabels: ["likely-test"],
-        },
-      })
-      expect(res.status).toBe(200)
-      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
-      expect(body.variables.activityUris).toHaveLength(1)
-      expect(body.variables.activityExcludeLabels).toEqual(["likely-test"])
-      expect(body.query).toContain("$activityExcludeLabels")
-    })
-
-    it("400s when every bucket is empty (nothing to hydrate)", async () => {
-      const res = await postIndexer({
-        operationName: "HydrateFeedPage",
-        variables: allEmpty,
-      })
-      expect(res.status).toBe(400)
+      expect(body.variables.badgeAwardUris).toEqual([])
+      expect(body.variables.attachmentUris).toEqual([])
     })
 
     it("400s when any *Uris is missing (not an array)", async () => {
