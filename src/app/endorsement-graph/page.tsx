@@ -7,6 +7,6 @@ export const metadata: Metadata = {
     "An interactive graph of the connections created through endorsements across the Certified network.",
 }
 
-export default function VisualizationPage() {
+export default function EndorsementGraphPage() {
   return <Visualization />
 }

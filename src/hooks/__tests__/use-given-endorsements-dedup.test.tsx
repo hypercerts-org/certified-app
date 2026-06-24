@@ -4,7 +4,7 @@ import type { BadgeAwardRecord } from "@/lib/atproto/badges"
 
 /**
  * The profile "Given" view counts UNIQUE endorsed accounts (matching the
- * /visualization graph, which dedupes issuer→subject edges). A recipient
+ * /endorsement-graph graph, which dedupes issuer→subject edges). A recipient
  * endorsed more than once must collapse to a single entry whose `rkeys`
  * lists every award, so a revoke can remove them all.
  */

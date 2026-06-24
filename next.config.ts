@@ -91,6 +91,13 @@ const nextConfig: NextConfig = {
         destination: "/apps",
         permanent: true,
       },
+      // The endorsement-network graph page was renamed /visualization ->
+      // /endorsement-graph. Redirect old / indexed links so they don't 404.
+      {
+        source: "/visualization",
+        destination: "/endorsement-graph",
+        permanent: true,
+      },
       // Handle-forward URL migration. Profiles and record detail pages
       // moved to the root, handle-first scheme; the legacy DID-based
       // paths 308 to the new form so previously shared links don't die.

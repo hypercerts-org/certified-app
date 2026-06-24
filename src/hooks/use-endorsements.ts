@@ -20,7 +20,7 @@ export interface GivenEndorsement {
   /**
    * Every award rkey issued to this recipient. The "Given" view counts
    * UNIQUE endorsed accounts (one entry per recipient) to match the
-   * /visualization graph, which dedupes issuer→subject edges — so a
+   * /endorsement-graph graph, which dedupes issuer→subject edges — so a
    * recipient endorsed more than once collapses to a single entry whose
    * `rkey`/`uri`/`cid` are the NEWEST award and whose `rkeys` lists all of
    * them. Revoking the entry removes every award in `rkeys`.
@@ -117,7 +117,7 @@ export function useGivenEndorsements(did: string | null): {
         // Collapse repeat endorsements of the same account into one
         // entry (sorted newest-first, so the first seen is the
         // representative). The count then reflects UNIQUE recipients,
-        // matching the /visualization graph.
+        // matching the /endorsement-graph graph.
         setEndorsements(dedupeBySubject(mapped))
       } catch (err) {
         if (signal?.aborted) return

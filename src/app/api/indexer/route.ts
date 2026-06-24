@@ -331,7 +331,7 @@ ${ACTIVITY_NODE_SELECTION}
   `,
 
   // Every endorsement-typed badge award across the network — backs the
-  // /visualization endorsement-graph page. Returns the directed edge
+  // /endorsement-graph page. Returns the directed edge
   // (issuer `did` → `subject` DID) plus the issuer's denormalised actor
   // profile (same `issuer { ... }` join as ReceivedEndorsements, drops a
   // per-issuer resolve fan-out). Subjects that never issued an award have
