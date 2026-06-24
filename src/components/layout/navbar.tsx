@@ -128,6 +128,11 @@ const Navbar: React.FC = () => {
   if (isDesktop) return null;
   // Embeds render bare (board-only) inside a third-party iframe.
   if (pathname?.startsWith("/embed")) return null;
+  // /welcome uses the minimal landing chrome (LandingTopBar: wordmark +
+  // sign-in) on mobile, matching desktop — where desktop-top-bar already
+  // returns null on /welcome. Suppress the full mobile navbar here so the
+  // landing page shows the same pared-back chrome at every width.
+  if (pathname === "/welcome") return null;
 
   const navClasses = [
     "navbar",

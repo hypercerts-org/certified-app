@@ -277,18 +277,20 @@
 
 /* ---------- Landing top bar ---------- */
 
-/* Hidden below 800px — mobile range has no wordmark / fixed button. */
+/* The landing chrome (wordmark + sign-in) is the only chrome on /welcome
+   at every width: the mobile navbar, bottom-nav and desktop-top-bar all
+   return null on /welcome. Wordmark: in normal page flow, top-left,
+   scrolls away with the page. Tighter inset below 800px. */
 .lp-topbar {
-  display: none;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  height: 64px;
+  padding-left: 16px;
 }
 
 @media (min-width: 800px) {
-  /* Wordmark: in normal page flow, top-left, scrolls away with the page. */
   .lp-topbar {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    height: 64px;
     padding-left: 32px;
   }
 }
@@ -309,49 +311,49 @@
   filter: invert(1);
 }
 
-/* Sign-in / open-app button: hidden on mobile, fixed top-right on desktop.
-   Persists on scroll while the wordmark above scrolls away.
+/* Sign-in / open-app button: fixed top-right at every width. Persists on
+   scroll while the wordmark above scrolls away.
    Styled after the guilloche-lab controls: small mono text, hairline border. */
 .lp-topbar__btn {
-  display: none;
+  display: inline-flex;
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: var(--z-navbar);
+  align-items: center;
+  padding: 8px 14px;
+  background: var(--color-off-white);
+  border: 1px solid var(--color-light-gray);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: var(--color-mid-gray);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 
 @media (min-width: 800px) {
   .lp-topbar__btn {
-    display: inline-flex;
-    position: fixed;
-    top: 16px;
     right: 32px;
-    z-index: var(--z-navbar);
-    align-items: center;
-    padding: 8px 14px;
-    background: var(--color-off-white);
-    border: 1px solid var(--color-light-gray);
-    border-radius: var(--radius);
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    letter-spacing: 0.04em;
-    color: var(--color-mid-gray);
-    text-decoration: none;
-    cursor: pointer;
-    transition: color var(--transition-fast), border-color var(--transition-fast);
   }
+}
 
-  .lp-topbar__btn:hover {
-    color: var(--color-navy);
-    border-color: var(--color-mid-gray);
-  }
+.lp-topbar__btn:hover {
+  color: var(--color-navy);
+  border-color: var(--color-mid-gray);
+}
 
-  /* Account variant: avatar + label, tighter left padding so the
-     avatar reads as the leading element. */
-  .lp-topbar__btn--account {
-    gap: 8px;
-    padding-left: 8px;
-  }
+/* Account variant: avatar + label, tighter left padding so the
+   avatar reads as the leading element. */
+.lp-topbar__btn--account {
+  gap: 8px;
+  padding-left: 8px;
+}
 
-  .lp-topbar__avatar {
-    flex: none;
-  }
+.lp-topbar__avatar {
+  flex: none;
 }
 
 /* ---------- Hero ---------- */

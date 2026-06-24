@@ -27,6 +27,11 @@ export default function BottomNav() {
   // Embeds render bare (board-only) inside a third-party iframe.
   if (pathname.startsWith("/embed")) return null;
 
+  // /welcome uses the minimal landing chrome (wordmark + sign-in) at every
+  // width — no bottom nav. Matches the mobile navbar + desktop-top-bar,
+  // which both return null on /welcome.
+  if (pathname === "/welcome") return null;
+
   const isHome = pathname === "/home" || pathname.startsWith("/home/");
 
   const handleHomeClick = () => {
