@@ -110,6 +110,30 @@
   gap: 16px;
 }
 
+/* Subtle hint that the arrow keys also navigate the tour. */
+.product-tour__kbd-hint {
+  margin: -4px 0 0;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  color: var(--fg-muted);
+  text-align: center;
+}
+
+.product-tour__kbd-hint kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  padding: 1px 4px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  line-height: 1;
+  color: var(--fg-secondary);
+}
+
 .product-tour__dots {
   display: flex;
   align-items: center;

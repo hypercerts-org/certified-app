@@ -502,6 +502,10 @@ export default function ProductTour() {
               </Button>
             </div>
           </div>
+          <p className="product-tour__kbd-hint">
+            Tip: use the <kbd>←</kbd> and <kbd>→</kbd> arrow keys to move between
+            steps.
+          </p>
         </div>
       </div>
     </div>,
