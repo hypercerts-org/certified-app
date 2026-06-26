@@ -146,10 +146,10 @@ const DANGER_GROUP: CategoryGroup = {
 
 /** Every defined category (incl. danger) — for hash-deep-link matching. */
 const ALL_DEFS: CategoryDef[] = [
+  ACCOUNT_PAGE,
   ...GROUPS.flatMap((g) => g.items),
   ...DANGER_GROUP.items,
 ]
-const DEFAULT_CATEGORY: CategoryKey = GROUPS[0].items[0].key
 
 // Map an audit entry's `result` to the CSS modifier suffix for its pill.
 // The allowlist must match `AuditEntry.result` ("permitted" | "denied")
@@ -450,8 +450,13 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   // The page whose panel renders. A non-owner deep-linking #danger falls back
   // to the default, since danger isn't in their visible set.
   const allowedKeys = new Set(visibleGroups.flatMap((g) => g.items.map((c) => c.key)))
+  // Default to the first item of the *visible* rail — for a self-owned group
+  // that's the Account page, not the static "handle" page (which is swapped
+  // out), so a fresh load lands on the right page without a hash.
   const selectedKey: CategoryKey =
-    active && allowedKeys.has(active) ? active : DEFAULT_CATEGORY
+    active && allowedKeys.has(active)
+      ? active
+      : visibleGroups[0].items[0].key
   const selected = ALL_DEFS.find((c) => c.key === selectedKey) ?? ALL_DEFS[0]
 
   const renderNavItem = (cat: CategoryDef) => {
