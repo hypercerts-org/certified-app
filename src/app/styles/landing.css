@@ -1768,20 +1768,6 @@
   border-bottom: 0;
 }
 
-/* Grouped Help FAQ — a small eyebrow heading above each themed accordion. */
-.help-faq__group + .help-faq__group {
-  margin-top: 28px;
-}
-
-.help-faq__group-title {
-  margin: 0 0 6px;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--fg-muted);
-}
-
 .legal-page h1 {
   color: var(--color-navy);
 }
