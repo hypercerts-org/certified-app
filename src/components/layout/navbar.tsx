@@ -55,7 +55,7 @@ const Navbar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
   const { transitionBack } = useViewTransition();
-  const { activeOrg, groups, switchOrg } = useOrg();
+  const { activeOrg, groups, selfGroup, switchOrg } = useOrg();
   const { orgAvatarUrl } = useOrgProfile();
 
   const sortedOrgs = useMemo(() => {
@@ -205,6 +205,7 @@ const Navbar: React.FC = () => {
                 profile={profile}
                 avatarUrl={avatarUrl || undefined}
                 sortedOrgs={sortedOrgs}
+                selfGroup={selfGroup}
                 activeOrg={activeOrg}
                 switchOrg={switchOrg}
                 onAfterSwitch={(next) => {
@@ -246,6 +247,7 @@ const Navbar: React.FC = () => {
           profile={profile}
           avatarUrl={avatarUrl || undefined}
           sortedOrgs={sortedOrgs}
+          selfGroup={selfGroup}
           activeOrg={activeOrg}
           switchOrg={switchOrg}
           onAfterSwitch={(next) => {

@@ -13,6 +13,10 @@ interface AccountSwitcherListProps {
   avatarUrl: string | undefined;
   sortedOrgs: Group[];
   activeOrg: Group | null;
+  /** Set when the logged-in account is itself a group (you promoted your own
+   *  account). The switcher then labels it "Group account" and hides the
+   *  groups list — a group acting inside other groups isn't a supported flow. */
+  selfGroup?: Group | null;
   switchOrg: (org: Group | null) => void;
   /** Called after a switch is committed. Receives the newly-selected org
    * (null = personal) so the parent can navigate to the right place
@@ -30,6 +34,7 @@ export default function AccountSwitcherList({
   avatarUrl,
   sortedOrgs,
   activeOrg,
+  selfGroup,
   switchOrg,
   onAfterSwitch,
   onSignOut,
@@ -39,8 +44,11 @@ export default function AccountSwitcherList({
 
   return (
     <>
-      {/* User section */}
-      <p className="account-switcher__section-label">User</p>
+      {/* User section — relabel to "Group account" when this account is
+          itself a group (self-owned). */}
+      <p className="account-switcher__section-label">
+        {selfGroup ? "Group account" : "User"}
+      </p>
       <div className="account-switcher__user-row">
         <button
           role="menuitem"
@@ -78,7 +86,7 @@ export default function AccountSwitcherList({
         </Tooltip>
       </div>
 
-      {sortedOrgs.length > 0 && (
+      {!selfGroup && sortedOrgs.length > 0 && (
         <>
           <div className="account-switcher__divider" />
           <p className="account-switcher__section-label">Groups</p>

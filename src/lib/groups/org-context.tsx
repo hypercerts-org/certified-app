@@ -17,8 +17,13 @@ const ACTIVE_ORG_KEY = "certified_active_org"
 interface OrgContextValue {
   /** The group the user is currently acting as, or null for personal account */
   activeOrg: Group | null
-  /** All groups the user belongs to */
+  /** All groups the user belongs to (excluding a self-owned group). */
   groups: Group[]
+  /** When the logged-in account is itself a group (you promoted your own
+   *  account, so its DID is your DID), the Group for that self-owned account —
+   *  else null. The account *is* this group, so the UI presents it as a
+   *  "Group account" with group settings rather than listing it as a peer. */
+  selfGroup: Group | null
   /** Loading state */
   isLoading: boolean
   /** Switch to a group (or null to go back to personal) */
@@ -61,6 +66,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading: authLoading, did } = useAuth()
   const [activeOrg, setActiveOrg] = useState<Group | null>(getInitialOrg)
   const [groups, setGroups] = useState<Group[]>([])
+  const [selfGroup, setSelfGroup] = useState<Group | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   // Clear org when logged out (only after auth has finished loading)
@@ -78,6 +84,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       if (authLoading) return
       if (!isAuthenticated || !did) {
         setGroups([])
+        setSelfGroup(null)
         setActiveOrg(null)
         persistOrg(null)
         return
@@ -90,8 +97,10 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
         // not a separate group to switch into. Hide it from the groups list
         // so it doesn't appear as a peer next to your own account.
         const orgs = resolved.filter((o) => o.groupDid !== did)
+        const self = resolved.find((o) => o.groupDid === did) ?? null
         if (!signal?.aborted) {
           setGroups(orgs)
+          setSelfGroup(self)
           // If active org is set, refresh it with latest data from the list
           setActiveOrg((prev) => {
             if (!prev) return null
@@ -133,7 +142,10 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     await fetchOrgs()
   }, [fetchOrgs])
 
-  const value = useMemo(() => ({ activeOrg, groups, isLoading, switchOrg, refetchOrgs }), [activeOrg, groups, isLoading, switchOrg, refetchOrgs])
+  const value = useMemo(
+    () => ({ activeOrg, groups, selfGroup, isLoading, switchOrg, refetchOrgs }),
+    [activeOrg, groups, selfGroup, isLoading, switchOrg, refetchOrgs],
+  )
 
   return (
     <OrgContext.Provider value={value}>

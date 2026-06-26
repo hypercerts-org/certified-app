@@ -125,7 +125,7 @@ export default function DesktopTopBar() {
   const desktopShownTitle = desktopTitle ?? pageTitle;
   const { profile, avatarUrl } = useProfile();
   const { handle } = useSession();
-  const { activeOrg, groups, switchOrg } = useOrg();
+  const { activeOrg, groups, selfGroup, switchOrg } = useOrg();
   const { orgAvatarUrl } = useOrgProfile();
 
   const sortedOrgs = useMemo(() => {
@@ -546,6 +546,7 @@ export default function DesktopTopBar() {
                     profile={profile ? { displayName: profile.displayName ?? undefined } : null}
                     avatarUrl={avatarUrl ?? undefined}
                     sortedOrgs={sortedOrgs}
+                    selfGroup={selfGroup}
                     activeOrg={activeOrg}
                     switchOrg={switchOrg}
                     onAfterSwitch={(next) => {

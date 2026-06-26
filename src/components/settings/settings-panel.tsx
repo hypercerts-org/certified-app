@@ -179,7 +179,7 @@ function readHashPage(): PageKey | null {
 export default function SettingsPanel() {
   const { did, pdsUrl } = useAuth()
   const { handle, email } = useSession()
-  const { activeOrg } = useOrg()
+  const { activeOrg, selfGroup } = useOrg()
 
   // `null` = no page actively selected. On desktop that resolves to the
   // first page (one is always shown); on mobile it means the master list is
@@ -220,8 +220,11 @@ export default function SettingsPanel() {
     }
   }, [])
 
-  if (activeOrg) {
-    return <OrgSettings groupDid={activeOrg.groupDid} org={activeOrg} />
+  // Acting as a group, OR the logged-in account is itself a group (you
+  // promoted your own account) — either way show the group settings.
+  const settingsOrg = activeOrg ?? selfGroup
+  if (settingsOrg) {
+    return <OrgSettings groupDid={settingsOrg.groupDid} org={settingsOrg} />
   }
 
   // The page whose panel renders on the right. On the mobile master list
