@@ -18,6 +18,7 @@ import OrgSettings from "@/components/groups/org-settings"
 import SyncSocialGraphSection from "@/components/settings/sync-social-graph-section"
 import ImportAsGroupSection from "@/components/settings/import-as-group-section"
 import AppPasswordsSection from "@/components/settings/app-passwords-section"
+import DidSection from "@/components/account/did-section"
 import ThemeToggle from "@/components/ui/theme-toggle"
 import SettingRow from "@/components/ui/setting-row"
 
@@ -39,6 +40,7 @@ type PageKey =
   | "group"
 
 type SectionKey =
+  | "did"
   | "username"
   | "email"
   | "password"
@@ -92,6 +94,12 @@ const GROUPS: PageGroup[] = [
         description: "Your handle, sign-in email, and password.",
         Icon: CircleUser,
         sections: [
+          {
+            key: "did",
+            title: "DID",
+            description:
+              "Your account's permanent identifier. Unlike your @handle, it never changes — apps and records reference you by it.",
+          },
           {
             key: "username",
             title: "Username",
@@ -262,6 +270,8 @@ export default function SettingsPanel() {
 
   const renderSectionBody = (key: SectionKey) => {
     switch (key) {
+      case "did":
+        return <DidSection did={did || undefined} />
       case "username":
         return (
           <UsernameCard

@@ -590,6 +590,63 @@
   }
 }
 
+/* ---- DID pill (click-to-copy stable identifier in Account settings) ---- */
+.did-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.did-pill:hover {
+  background: var(--bg-canvas);
+  border-color: var(--border-strong);
+}
+
+.did-pill:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.did-pill__value {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.8125rem;
+  color: var(--fg-primary);
+}
+
+.did-pill__icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  color: var(--fg-muted);
+}
+
+.did-pill:hover .did-pill__icon {
+  color: var(--fg-secondary);
+}
+
+/* Account-page fields are form controls, not full-bleed bars — cap them to a
+   comfortable content width rather than stretching the whole panel.
+   `.sx-subsections` is the multi-section Account page (personal + group). */
+.sx-subsections input,
+.sx-subsections .did-pill,
+.sx-subsections .settings-field,
+.sx-subsections .username-card__value {
+  max-width: 26rem;
+}
+
 
 /* ------------------------------------------------------------------------
    Mobile (<800px): the rail becomes a full-screen master list that drills
