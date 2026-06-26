@@ -1,40 +1,40 @@
 /* ========================================================================
-   Settings page — full-viewport two-pane layout, mirrors /explore.
+   Settings page — router-style two-pane.
 
-   Structure (same shape as before, restyled to match the explore page):
-     .sx                      page wrapper (carries the vertical
-                              sidebar/main divider via ::before)
-       .sx__layout            CSS grid: 220px sidebar + 1fr main
-         .sx__menu            <aside> hosting the scroll-spy nav
-                              (in-flow — scrolls with the page, like
-                              the explore sidebar)
-           .sx-menu             <ul>
-             .sx-menu__item     <a> per section (rounded filter button,
-                                active = fg-primary fill, matching
-                                .explore__filter--active)
-         .sx__panel           main pane wrapper, max-width 1400px
-           .sx-section          one per category — `id` matches the
-                                anchor in the left rail; carries
-                                `scroll-margin-top` so anchor jumps
-                                clear the sticky top bar
-             .sx-panel__header  title + description
-             .sx-panel__body    legacy inline editor lives here
+   Structure:
+     .sx                       page wrapper. `data-view` (list|detail) only
+                               matters at mobile widths.
+       .page-layout            shared grid: sidebar + 1fr main
+         .sx__menu             <aside> — grouped category rail
+           .sx-nav-group         a labelled group ("Account", …)
+             .sx-nav-group__label  uppercase group caption
+             .sx-menu              <ul>
+               .sx-menu__item        <a> per category (rounded pill on
+                                     desktop; full-width drill-in row on
+                                     mobile, trailing chevron)
+         .sx__panel            main pane — renders ONLY the selected
+                               category (no long scroll)
+           .sx-back              mobile-only "‹ Settings" back control
+           .sx-section           the selected category's card
+             .sx-panel__header     title + description
+             .sx-panel__body       the category's editor / controls
 
-   The page widens its own `.app-shell` chrome via `:has()` so the
-   layout spans the entire viewport — every other page keeps its
-   600px reading cap. Mirrors the patch in explore.css.
+   Desktop shows the rail + one panel side by side. Mobile is a master
+   list (data-view="list") that drills into a single panel
+   (data-view="detail") with a back control. Both render the same DOM;
+   CSS picks what's visible, so there's no desktop hydration flash.
+
+   The page widens its own `.app-shell` chrome via `:has()` so the layout
+   spans the full canvas — every other page keeps its 600px reading cap.
    ======================================================================== */
 
 .sx {
-  /* No outer padding — `.page-layout` (the profile-page grid we
-     reuse) carries its own 24px of padding on desktop and 24px /
-     16px on mobile. Stacking another layer here would push the
-     sidebar away from the page-frame border. */
+  /* No outer padding — `.page-layout` carries its own 24px (desktop) /
+     16px (mobile). */
   padding: 0 0 64px;
 }
 
-/* Visually-hidden heading. The navbar breadcrumb already carries the
-   page title; this <h1> exists for the accessibility tree only. */
+/* Visually-hidden heading; the navbar breadcrumb carries the visible title. */
 .sx .sr-only {
   position: absolute;
   width: 1px;
@@ -47,25 +47,15 @@
   border: 0;
 }
 
-/* Widen the app-shell content slot to the profile/cert-detail max
-   (1280px) and drop its 600/720px reading cap + 32px lateral
-   padding. The settings page is a two-pane editor surface, not a
-   reading column, and it should land at the same width as the
-   profile page so navigating between the two doesn't visibly
-   resize the canvas. Mirrors the `.app-shell:has(.cert-detail--wide)`
-   pattern in cert-detail.css. */
+/* Widen the app-shell content slot to the profile/cert-detail max and drop
+   its reading cap + lateral padding — settings is an editor surface, not a
+   reading column, and should land at the profile-page width. */
 .app-shell:has(.sx) .app-shell__content {
-  /* Zero ALL `.app-shell__content` padding so the page-frame
-     borders meet flush. Top spacing comes from `.page-layout`'s
-     own 24px padding on desktop. */
   padding: 0;
 }
 
-/* Mobile: the navbar is `position: fixed` (64px) and overlays the content
-   slot, so zeroing the slot's padding above slid the section-nav under the
-   navbar and clipped its top. The desktop top bar sits in normal flow, so this
-   clearance is only needed below the 800px breakpoint. `.page-layout`'s own
-   24px top padding then adds the breathing gap below the navbar. */
+/* Mobile: the navbar is fixed (64px) and overlays the content slot, so the
+   master list needs top clearance below it. */
 @media (max-width: 799px) {
   .app-shell:has(.sx) .app-shell__content {
     padding-top: var(--navbar-height);
@@ -79,45 +69,32 @@
 }
 
 /* ------------------------------------------------------------------------
-   Left pane — scroll-spy nav.
+   Left pane — grouped category rail.
    ------------------------------------------------------------------------ */
 .sx__menu {
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  /* No own top padding — `.page-layout` (the parent grid) handles
-     it with 24px on desktop, matching the profile sidebar's
-     starting offset. The filter pills hug the sidebar column's
-     left edge so the rounded background flows from the grid track. */
   padding: 0;
-  /* Travel with the scroll: pin the nav to the top of the
-     viewport (offset by the desktop top-bar's resolved height
-     plus a small breathing gap) so the section anchors are
-     always reachable while the main panel scrolls past them.
-     `--top-bar-total` is row 1 by default and bumps to row 1 +
-     row 2 on pages that render the tabs row — settings has no
-     tabs row, so the previous `row1 + row2` sum overshot by
-     ~44px and left a visible gap below the navbar. The grid
-     parent has `align-items: start`, so sticky resolves against
-     the page scroll context rather than the row's height. */
+  /* Travel with the scroll: pin the rail just below the desktop top bar so
+     it stays put while a tall panel scrolls. */
   position: sticky;
   top: calc(var(--top-bar-total) + 16px);
-  /* Cap the rail's height so a long menu can scroll internally
-     without ever clipping past the viewport bottom. */
   max-height: calc(100vh - var(--top-bar-total) - 32px);
   overflow-y: auto;
 }
 
-/* On mobile the page-layout grid collapses to a single column and the
-   section nav would just stack above the panel — drop it entirely; the
-   sections themselves are a short scroll and carry their own headings.
-   Deep links (#section) still work since the anchors live on the
-   sections, not the menu. */
-@media (max-width: 799px) {
-  .sx__menu {
-    display: none;
-  }
+.sx-nav-group + .sx-nav-group {
+  margin-top: 18px;
+}
+
+.sx-nav-group__label {
+  margin: 0 0 6px;
+  padding: 0 10px;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
 }
 
 .sx-menu {
@@ -160,10 +137,9 @@
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
-/* Active state mirrors .explore__filter--active: solid fg-primary fill
-   with inverted (--bg-canvas) text so it stays readable in dark mode,
-   where --fg-primary is near-white and a fixed white was white-on-white.
-   Keep the fill on hover so we don't get unreadable text mid-hover. */
+/* Active = the panel currently shown (solid fg-primary fill with inverted
+   text, mirroring .explore__filter--active). Desktop only — on the mobile
+   master list nothing is pre-selected, so the fill is suppressed below. */
 .sx-menu__item--active,
 .sx-menu__item--active:hover,
 .sx-menu__item--active:focus-visible {
@@ -197,70 +173,167 @@
   min-width: 0;
 }
 
-/* Hairline divider above the "Advanced" disclosure, setting it apart from
-   the regular sections in the sidebar nav. */
-.sx-menu__advanced {
-  margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px solid var(--border-subtle);
-}
-
-/* "Advanced" disclosure toggle — reuses .sx-menu__item; the chevron sits at
-   the trailing edge (the label is flex:1) and flips when expanded. */
+/* Trailing drill-in chevron — hidden on the desktop pills, shown on the
+   mobile master-list rows. */
 .sx-menu__chevron {
+  display: none;
   flex-shrink: 0;
   color: var(--fg-muted);
-  transition: transform var(--transition-fast);
 }
 
-.sx-menu__chevron--open {
-  transform: rotate(180deg);
+/* ------------------------------------------------------------------------
+   Right pane — the selected category's panel.
+   ------------------------------------------------------------------------ */
+.sx__panel {
+  gap: 12px;
 }
 
-/* Advanced disclosure — main-pane control. The sidebar nav is hidden on
-   mobile, so this full-width divider is the only reveal there. Leading
-   icon + label, trailing chevron that flips when expanded. */
-.sx-advanced-divider {
-  display: flex;
+/* Mobile-only back control above the panel. */
+.sx-back {
+  display: none;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 12px 0;
+  gap: 4px;
+  align-self: flex-start;
+  padding: 6px 8px 6px 4px;
   border: 0;
-  border-top: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
   background: none;
-  color: var(--fg-muted);
   font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.95rem;
+  font-size: 0.875rem;
   font-weight: 500;
-  text-align: left;
+  color: var(--fg-muted);
   cursor: pointer;
   transition: color var(--transition-fast);
 }
 
-.sx-advanced-divider:hover,
-.sx-advanced-divider:focus-visible {
+.sx-back:hover,
+.sx-back:focus-visible {
   color: var(--fg-primary);
   outline: none;
 }
 
-.sx-advanced-divider:focus-visible {
-  border-radius: var(--radius);
+.sx-back:focus-visible {
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
-.sx-advanced-divider__label {
-  flex: 1 1 auto;
+.sx-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  /* The panel is its own card so the editor surface reads as one coherent
+     block. */
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+}
+
+.sx-panel__header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sx-panel__title {
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--fg-primary);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.sx-panel__desc {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.sx-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ------------------------------------------------------------------------
+   Setting row — reusable labelled control (see ui/setting-row.tsx).
+   Title (+ desc) left, control right; stacks on narrow widths.
+   ------------------------------------------------------------------------ */
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.setting-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
 }
 
-.sx-advanced-divider__chevron {
-  flex-shrink: 0;
-  transition: transform var(--transition-fast);
+.setting-row__title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--fg-primary);
 }
 
-.sx-advanced-divider__chevron--open {
-  transform: rotate(180deg);
+.setting-row__desc {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--fg-muted);
+}
+
+.setting-row__control {
+  flex-shrink: 0;
+}
+
+/* ------------------------------------------------------------------------
+   Legacy editor chrome strip-down.
+   The username-card / email-section / password-section components carry
+   their own dash-card backgrounds + duplicate headings; the panel header
+   above already names the section, so strip the wrapper chrome for one
+   coherent surface.
+   ------------------------------------------------------------------------ */
+.sx-panel__body .dash-card {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  box-shadow: none;
+}
+
+.sx-panel__body .dash-card__title {
+  display: none;
+}
+
+/* ------------------------------------------------------------------------
+   Settings field row — read-only value (username / email / password) in a
+   highlighted box with its Edit action inline.
+   ------------------------------------------------------------------------ */
+.settings-field {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-field__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ---------- App passwords section ---------- */
@@ -333,147 +406,55 @@
 }
 
 /* ------------------------------------------------------------------------
-   Right pane — wrapper for ALL stacked sections.
-   The wrapper itself is a flex column; the `gap` defines breathing
-   room between sections. Each `.sx-section` carries
-   `scroll-margin-top` equal to the sticky top-bar height plus a little
-   buffer so anchor jumps from the left rail don't land underneath the
-   bar.
-   ------------------------------------------------------------------------ */
-.sx__panel {
-  /* `.page-layout__main` already supplies min-width:0 +
-     flex-direction:column. Layered class. Each section is its own card
-     now (see `.sx-section`), so a tighter gap reads as a clean stack of
-     distinct cards rather than line-separated blocks. */
-  gap: 16px;
-}
-
-.sx-section {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  /* Each section is its own card so the boundaries read clearly without
-     relying on divider lines between them. */
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  padding: 20px 24px;
-  /* Sticky top-bar offset + buffer. Includes row 2 so the freshly-
-     jumped section's header sits below the full top bar. */
-  scroll-margin-top: calc(var(--top-bar-row1) + var(--top-bar-row2) + 24px);
-  transition: background var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-/* Briefly highlight the destination when the user clicks a left-rail
-   menu item — only the section's heading flashes a soft background
-   (no border) so the cue is subtle but unambiguous. */
-.sx-section--flash > .sx-panel__header,
-.sx-section--flash .sx-section__title,
-.sx-section--flash h2:first-child {
-  animation: sx-section-flash-heading 1.4s ease-out;
-  border-radius: var(--radius);
-}
-
-@keyframes sx-section-flash-heading {
-  0% {
-    background: var(--overlay-weak);
-  }
-  100% {
-    background: transparent;
-  }
-}
-
-.sx-panel__header {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.sx-panel__title {
-  font-family: var(--font-headline), 'Noto Serif', serif;
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--fg-primary);
-  margin: 0;
-  line-height: 1.2;
-}
-
-.sx-panel__desc {
-  font-size: 0.875rem;
-  line-height: 1.55;
-  color: var(--fg-muted);
-  margin: 0;
-}
-
-.sx-panel__body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-/* ------------------------------------------------------------------------
-   Legacy editor chrome strip-down.
-   The username-card / email-section / password-section components carry
-   their own dash-card backgrounds and duplicate headings. Inside the
-   settings panel the header above already names the section, so we
-   strip the wrapper chrome and hide the duplicate titles for a single,
-   coherent panel surface.
-   ------------------------------------------------------------------------ */
-.sx-panel__body .dash-card {
-  background: transparent;
-  border: none;
-  padding: 0;
-  margin: 0;
-  box-shadow: none;
-}
-
-/* Defensive: hide any duplicate inner card title — the section header
-   above already names each section. */
-.sx-panel__body .dash-card__title {
-  display: none;
-}
-
-/* ------------------------------------------------------------------------
-   Settings field row.
-   The read-only value (username / email / password) sits in a
-   highlighted box, with its Edit action (and, for the username, the
-   domain switch buttons) inline on the same row. Wraps to the next line
-   on narrow widths.
-   ------------------------------------------------------------------------ */
-.settings-field {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.settings-field__value {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 0.875rem;
-  color: var(--fg-primary);
-  background: var(--bg-sunken);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  padding: 10px 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* ------------------------------------------------------------------------
-   Mobile tweaks. Match the profile-page breakpoint (800px) — under
-   that, .page-layout collapses to a single stack and the sidebar
-   sits on top of the panel.
+   Mobile (<800px): the rail becomes a full-screen master list that drills
+   into a single panel. `.page-layout` already collapses to one column.
    ------------------------------------------------------------------------ */
 @media (max-width: 799px) {
-  .sx-panel__title {
-    font-size: 1.25rem;
+  /* Rail spans the screen rather than sticking. */
+  .sx__menu {
+    position: static;
+    max-height: none;
+    overflow: visible;
   }
 
+  /* Master-list rows: roomier tap target, trailing chevron, and no
+     pre-selected fill (it's a list, nothing is "open" yet). */
   .sx-menu__item {
-    padding: 10px 10px;
+    padding: 11px 10px;
     font-size: 0.9375rem;
+  }
+
+  .sx-menu__chevron {
+    display: inline-flex;
+  }
+
+  .sx-menu__item--active,
+  .sx-menu__item--active:hover,
+  .sx-menu__item--active:focus-visible {
+    background: none;
+    color: var(--fg-primary);
+    font-weight: 450;
+  }
+
+  .sx-menu__item--active .sx-menu__icon,
+  .sx-menu__item--active:hover .sx-menu__icon {
+    color: var(--fg-muted);
+  }
+
+  /* Master ⇄ detail: exactly one is visible. */
+  .sx[data-view="list"] .sx__panel {
+    display: none;
+  }
+
+  .sx[data-view="detail"] .sx__menu {
+    display: none;
+  }
+
+  .sx[data-view="detail"] .sx-back {
+    display: inline-flex;
+  }
+
+  .sx-panel__title {
+    font-size: 1.25rem;
   }
 }
