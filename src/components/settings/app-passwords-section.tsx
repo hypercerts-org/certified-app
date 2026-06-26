@@ -248,23 +248,26 @@ export default function AppPasswordsSection() {
       ) : items.length === 0 ? (
         <p className="settings__note">No app passwords yet.</p>
       ) : (
-        <ul className="app-passwords__list">
-          {items.map((p) => (
-            <li key={p.name} className="app-passwords__row">
-              <span className="app-passwords__row-name">{p.name}</span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                loading={revoking === p.name}
-                disabled={revoking === p.name}
-                onClick={() => handleRevoke(p.name)}
-              >
-                <Trash2 size={14} /> Revoke
-              </Button>
-            </li>
-          ))}
-        </ul>
+        <div className="app-passwords__existing">
+          <h3 className="app-passwords__heading">Your app passwords</h3>
+          <ul className="app-passwords__list">
+            {items.map((p) => (
+              <li key={p.name} className="app-passwords__row">
+                <span className="app-passwords__row-name">{p.name}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  loading={revoking === p.name}
+                  disabled={revoking === p.name}
+                  onClick={() => handleRevoke(p.name)}
+                >
+                  <Trash2 size={14} /> Revoke
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
     </div>

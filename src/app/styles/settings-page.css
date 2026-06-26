@@ -449,6 +449,24 @@
   color: var(--fg-primary);
 }
 
+/* Existing-passwords list, shown after unlock — small section heading
+   above the rows. */
+.app-passwords__existing {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.app-passwords__heading {
+  margin: 0;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
 /* ---------- Promote-to-group form ---------- */
 .import-group {
   display: flex;
