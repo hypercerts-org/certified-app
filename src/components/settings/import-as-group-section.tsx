@@ -103,6 +103,8 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
         Converts the account you&apos;re signed in as —{" "}
         <strong>{accountLabel}</strong> — into a group, with you as its owner.
         The account, its handle, and its records are kept; nothing is deleted.
+        You&apos;ll need an app password to authorize it — it&apos;s used once
+        and never stored.
       </p>
 
       <div className="import-group__field">
@@ -113,7 +115,6 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
           autoComplete="off"
           leadingIcon={<KeyRound size={16} aria-hidden="true" />}
           placeholder="xxxx-xxxx-xxxx-xxxx"
-          helperText="Authorizes the promotion. It's used once and never stored."
           value={appPassword}
           onChange={(e) => setAppPassword(e.target.value)}
         />
