@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import {
   getAuthenticatedAgent,
-  createGroupAgent,
+  callGroupServiceJson,
 } from "@/lib/groups/proxy-agent"
 import { checkCsrf } from "@/lib/auth/csrf"
 import { isValidDid } from "@/lib/utils/did"
@@ -25,13 +25,13 @@ export async function GET(
     if (!auth)
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
 
-    const groupAgent = createGroupAgent(auth.agent, groupDid)
     const rawLimit = parseInt(request.nextUrl.searchParams.get("limit") || "50", 10)
     const limit = isNaN(rawLimit) ? 50 : Math.min(Math.max(1, rawLimit), 100)
 
-    const { data } = await groupAgent.call(
+    const data = await callGroupServiceJson(
+      auth.agent,
       "app.certified.group.member.list",
-      { repo: groupDid, limit }
+      { query: { repo: groupDid, limit } }
     )
 
     return NextResponse.json(data)
@@ -82,12 +82,10 @@ export async function POST(
       )
     }
 
-    const groupAgent = createGroupAgent(auth.agent, groupDid)
-    const { data } = await groupAgent.call(
+    const data = await callGroupServiceJson(
+      auth.agent,
       "app.certified.group.member.add",
-      {},
-      { repo: groupDid, memberDid, role },
-      { encoding: "application/json" }
+      { body: { repo: groupDid, memberDid, role } }
     )
 
     return NextResponse.json(data)
@@ -128,12 +126,10 @@ export async function DELETE(
       )
     }
 
-    const groupAgent = createGroupAgent(auth.agent, groupDid)
-    await groupAgent.call(
+    await callGroupServiceJson(
+      auth.agent,
       "app.certified.group.member.remove",
-      {},
-      { repo: groupDid, memberDid },
-      { encoding: "application/json" }
+      { body: { repo: groupDid, memberDid } }
     )
 
     return NextResponse.json({ success: true })

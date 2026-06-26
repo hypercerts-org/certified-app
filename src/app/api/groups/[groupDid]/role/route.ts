@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import {
   getAuthenticatedAgent,
-  createGroupAgent,
+  callGroupServiceJson,
 } from "@/lib/groups/proxy-agent"
 import { checkCsrf } from "@/lib/auth/csrf"
 import { isValidDid } from "@/lib/utils/did"
@@ -49,12 +49,10 @@ export async function PUT(
       )
     }
 
-    const groupAgent = createGroupAgent(auth.agent, groupDid)
-    await groupAgent.call(
+    await callGroupServiceJson(
+      auth.agent,
       "app.certified.group.role.set",
-      {},
-      { repo: groupDid, memberDid, role },
-      { encoding: "application/json" }
+      { body: { repo: groupDid, memberDid, role } }
     )
 
     return NextResponse.json({ success: true })

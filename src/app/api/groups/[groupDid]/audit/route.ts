@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import {
   getAuthenticatedAgent,
-  createGroupAgent,
+  callGroupServiceJson,
 } from "@/lib/groups/proxy-agent"
 import { isValidDid } from "@/lib/utils/did"
 import { extractRouteError } from "@/lib/utils/api"
@@ -23,8 +23,6 @@ export async function GET(
     if (!auth)
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
 
-    const groupAgent = createGroupAgent(auth.agent, groupDid)
-
     const queryParams: Record<string, string> = { repo: groupDid }
     const actorDid = request.nextUrl.searchParams.get("actorDid")
     const action = request.nextUrl.searchParams.get("action")
@@ -44,9 +42,10 @@ export async function GET(
     queryParams.limit = String(clampedLimit)
     if (cursor) queryParams.cursor = cursor
 
-    const { data } = await groupAgent.call(
+    const data = await callGroupServiceJson(
+      auth.agent,
       "app.certified.group.audit.query",
-      queryParams
+      { query: queryParams }
     )
 
     return NextResponse.json(data)
