@@ -165,8 +165,8 @@ export default function AppPasswordsSection() {
       <div className="app-passwords">
         <p className="settings__note">
           App passwords are protected. Unlock with your account password to
-          view, create, or revoke them — the session locks itself after a few
-          minutes.
+          view, create, or revoke them — the session locks itself again about
+          10 minutes after you unlock.
         </p>
         <div className="org-members__add-submit">
           <Button
@@ -285,7 +285,7 @@ export default function AppPasswordsSection() {
         <p className="settings__note">
           Locking ends this session right away, so your account password is
           needed to view, create, or revoke app passwords again. It also locks
-          on its own after a few minutes.
+          itself about 10 minutes after you unlock.
         </p>
         <Button
           type="button"

@@ -134,7 +134,7 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
 
   if (state === "form") {
     return (
-      <div className="dash-card mt-4">
+      <div className="dash-card">
         <div className="password-section__header">
           <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Password</h2>
         </div>
@@ -190,7 +190,7 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
   }
 
   return (
-    <div className="dash-card mt-4">
+    <div className="dash-card">
       <div className="settings-field">
         <span className="settings-field__value">••••••••••••</span>
         <Button
@@ -211,11 +211,6 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
       </div>
       {state === "success" && (
         <p className="password-section__status password-section__status--success">Password updated successfully.</p>
-      )}
-      {state === "idle" && (
-        <p className="password-section__hint">
-          Use the password to sign in to other AT Protocol apps (like Bluesky) with your Certified username. Your primary sign-in method for Certified apps remains the passwordless email code.
-        </p>
       )}
       {idleError && (
         <Banner variant="error" className="mt-3">

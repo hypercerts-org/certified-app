@@ -106,7 +106,7 @@ const GROUPS: PageGroup[] = [
             key: "password",
             title: "Password",
             description:
-              "The password used to sign in to other AT Protocol apps with your handle.",
+              "Lets you sign in to other AT Protocol apps (like Bluesky) with your handle. Your main sign-in here stays the passwordless email code.",
           },
         ],
       },
