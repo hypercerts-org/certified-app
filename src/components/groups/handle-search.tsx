@@ -26,6 +26,15 @@ function looksLikeCompleteDid(value: string): boolean {
          (trimmed.startsWith("did:web:") && trimmed.length >= 12)
 }
 
+/** A full domain-style handle (≥2 dot-separated labels), e.g.
+ *  `test002.certified.one`. Used to direct-resolve a handle the actor search
+ *  didn't surface (brand-new / unindexed accounts). */
+function looksLikeCompleteHandle(value: string): boolean {
+  return /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/i.test(
+    value.trim(),
+  )
+}
+
 export default function HandleSearch({
   label = "Handle",
   placeholder = "Search by handle...",
@@ -92,21 +101,51 @@ export default function HandleSearch({
     setSearchError(null)
     setIsSearching(true)
     try {
+      let actors: Actor[] = []
+      let error: string | null = null
       const res = await fetch(
         `/api/search-actors?q=${encodeURIComponent(trimmed)}&limit=8`,
         { headers: { Accept: "application/json" } }
       )
       if (res.ok) {
-        const data = (await res.json()) as { actors?: Actor[] }
-        const actors = data.actors ?? []
-        setResults(actors)
-        setIsOpen(actors.length > 0)
+        actors = ((await res.json()) as { actors?: Actor[] }).actors ?? []
       } else if (res.status >= 500) {
         // Backend is degraded — surface a hint so the user doesn't think
         // their handle is wrong.
-        setSearchError("Search backend is having trouble. Try again in a moment.")
-        setIsOpen(true)
+        error = "Search backend is having trouble. Try again in a moment."
       }
+
+      // An exact handle the search didn't surface — e.g. a brand-new account
+      // not yet in the appview/indexer (no bsky profile). Resolve it directly,
+      // just like a pasted DID, so it's still addable. Clears the error since
+      // we found a real match.
+      if (
+        looksLikeCompleteHandle(trimmed) &&
+        !actors.some((a) => a.handle.toLowerCase() === trimmed.toLowerCase())
+      ) {
+        try {
+          const r = await fetch(
+            `/api/resolve-handle?handle=${encodeURIComponent(trimmed)}`,
+            { headers: { Accept: "application/json" } }
+          )
+          if (r.ok) {
+            const { did } = (await r.json()) as { did?: string }
+            if (did) {
+              actors = [
+                { did, handle: trimmed, displayName: "", avatar: null },
+                ...actors,
+              ]
+              error = null
+            }
+          }
+        } catch {
+          // Resolve is best-effort; fall back to whatever search returned.
+        }
+      }
+
+      setSearchError(error)
+      setResults(actors)
+      setIsOpen(actors.length > 0 || !!error)
     } catch (err) {
       if (process.env.NODE_ENV !== "production") {
         console.warn("[handle-search] fetch failed:", err)
