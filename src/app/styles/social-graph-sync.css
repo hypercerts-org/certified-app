@@ -269,29 +269,21 @@
   border-radius: var(--radius);
 }
 
+/* The row hosts a <Checkbox> primitive that doesn't forward a className to
+   its wrapper, so the padding + hover live on the row itself — the gutter
+   keeps the checkbox off the list border. */
 .social-graph-sync__modal-row {
+  padding: 8px 16px;
   border-bottom: 1px solid var(--border-subtle);
+  transition: background var(--transition-fast);
+}
+
+.social-graph-sync__modal-row:hover {
+  background: var(--overlay-weak);
 }
 
 .social-graph-sync__modal-row:last-child {
   border-bottom: none;
-}
-
-/* The row hosts a <Checkbox> primitive whose internal label slot holds the
-   avatar + name block. We pad/hover the primitive's wrapper so the whole row
-   reads as one hit target, and let the inner label stretch full-width. */
-.social-graph-sync__modal-row-label {
-  padding: 8px 12px;
-  transition: background var(--transition-fast);
-}
-
-.social-graph-sync__modal-row-label:hover {
-  background: var(--overlay-weak);
-}
-
-.social-graph-sync__modal-row-label label {
-  flex: 1;
-  min-width: 0;
 }
 
 .social-graph-sync__modal-row-content {
