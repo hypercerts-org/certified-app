@@ -450,11 +450,14 @@
 }
 
 /* Existing-passwords list, shown after unlock — small section heading
-   above the rows. */
+   above the rows, set apart from the create form above it. */
 .app-passwords__existing {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-top: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-subtle);
 }
 
 .app-passwords__heading {
