@@ -86,19 +86,21 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
           console.error("[settings/import-group] revoke failed", err)
         }
       }
-      setWorking(false)
     }
 
     // On success, hand off to the group settings: flag the celebration, point
     // the hash at #members, then refetch so the panel swaps to OrgSettings —
-    // which reads the flag on arrival and shows the celebration there. (Keeping
-    // a modal here would flash it over the personal page that's about to unmount.)
+    // which reads the flag on arrival and shows the celebration there. Keep
+    // `working` true so the button stays spinning through the redirect (the
+    // panel swap unmounts this component); only re-enable it on failure.
     if (promotedHandle) {
       if (typeof window !== "undefined") {
         sessionStorage.setItem(GROUP_PROMOTED_FLAG, promotedHandle)
         window.location.hash = "members"
       }
       await refetchOrgs()
+    } else {
+      setWorking(false)
     }
   }, [handle, refetchOrgs])
 
