@@ -85,6 +85,11 @@ export async function POST(request: NextRequest) {
         scope: "atproto transition:generic identity:handle account:email",
         ...(safePrompt ? { prompt: safePrompt } : {}),
       })
+      // ePDS reads `prompt` from the authorize URL query, not the PAR body
+      // (which `client.authorize` puts it in) — so a PAR-only prompt is
+      // silently ignored and the account chooser still shows. Mirror it onto
+      // the URL so forcing a fresh sign-in actually engages. (epds-login skill)
+      if (safePrompt) url.searchParams.set("prompt", safePrompt)
       return NextResponse.json({ url: url.href })
     }
 
@@ -104,6 +109,9 @@ export async function POST(request: NextRequest) {
         ...(safePrompt ? { prompt: safePrompt } : {}),
       })
       url.searchParams.set("login_hint", input)
+      // ePDS honors `prompt` only on the authorize URL query (PAR body is
+      // ignored) — mirror it so a forced fresh sign-in engages. (epds-login)
+      if (safePrompt) url.searchParams.set("prompt", safePrompt)
       return NextResponse.json({ url: url.href })
     }
 
