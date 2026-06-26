@@ -1,6 +1,10 @@
 "use client";
 
+import { useState } from "react";
+import { Network } from "lucide-react";
 import FaqAccordion from "@/components/landing/sections/faq-accordion";
+import Button from "@/components/ui/button";
+import EndorsementGraphModal from "./endorsement-graph-modal";
 
 /**
  * The Help-page FAQ. Reuses the landing `FaqAccordion` (the hairline,
@@ -35,16 +39,6 @@ const HELP_FAQ_ITEMS = [
       "A group represents an organization or team. It has its own profile, activities, and endorsements, just like an individual account. Groups have an owner, admins, and members: owners and admins manage the group and its membership, while members contribute under the group's identity.\n\nWhen you switch to acting as a group, the activities you create and the endorsements you give are attributed to that group rather than to you personally. You can also import an existing organization account into a group.",
   },
   {
-    question: "What are lists for?",
-    answer:
-      "Lists are collections you curate yourself — of activities, of projects, or of accounts. They're a lightweight way to bring structure to what matters to you: a reading list of impactful work, a roster of accounts to watch, or a themed grouping you want to point people to and share.",
-  },
-  {
-    question: "What's the difference between my feed and Explore?",
-    answer:
-      "Your feed is the home stream of recent activity from the accounts and groups you follow — the place to keep up with people you already care about. Explore is the discovery surface: it helps you find activities, projects, and accounts you don't yet follow, so you can broaden your view across the whole network.",
-  },
-  {
     question: "Do my Bluesky followers carry over?",
     answer:
       "Following on Certified runs on its own follow graph, kept separately from your Bluesky follows, so the two sets may not match exactly. Because both apps share the same AT Protocol identities, they aren't locked apart: you can sync your Bluesky follows into Certified so you don't have to rebuild your network from scratch.",
@@ -67,5 +61,34 @@ const HELP_FAQ_ITEMS = [
 ];
 
 export default function HelpFaq() {
-  return <FaqAccordion items={HELP_FAQ_ITEMS} />;
+  const [graphOpen, setGraphOpen] = useState(false);
+
+  // Inject a "see it live" button into the endorsement answer that opens the
+  // graph in a large modal (the cta lives here so it can drive modal state).
+  const items = HELP_FAQ_ITEMS.map((item) =>
+    item.question === "What does it mean to endorse someone?"
+      ? {
+          ...item,
+          cta: (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setGraphOpen(true)}
+            >
+              <Network size={14} strokeWidth={1.75} aria-hidden />
+              Open the endorsement graph
+            </Button>
+          ),
+        }
+      : item,
+  );
+
+  return (
+    <>
+      <FaqAccordion items={items} />
+      {graphOpen && (
+        <EndorsementGraphModal onClose={() => setGraphOpen(false)} />
+      )}
+    </>
+  );
 }

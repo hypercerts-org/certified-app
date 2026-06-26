@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import ContactCta from "@/components/landing/contact-cta";
 
 interface FaqItem {
   question: string;
   answer: string;
+  /** Optional element rendered at the end of the answer — e.g. a button that
+   *  opens a live demo. */
+  cta?: ReactNode;
 }
 
 /** Occurrences of "get in touch" in an answer become contact-modal
@@ -73,6 +76,9 @@ export default function FaqAccordion({ items }: { items: FaqItem[] }) {
                 {item.answer.split("\n\n").map((paragraph, p) => (
                   <p key={p}>{withContactLinks(paragraph)}</p>
                 ))}
+                {item.cta ? (
+                  <div className="lp-faq__answer-cta">{item.cta}</div>
+                ) : null}
               </div>
             </div>
           </div>

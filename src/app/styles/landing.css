@@ -1311,6 +1311,12 @@
   min-height: 0;
 }
 
+/* A button/link at the end of an answer (e.g. open the endorsement graph) —
+   matches the answer paragraphs' bottom rhythm. */
+.lp-faq__answer-cta {
+  padding-bottom: 24px;
+}
+
 .lp-faq__answer p {
   padding: 0 0 24px;
   font-size: 1rem;
