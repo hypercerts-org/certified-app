@@ -135,7 +135,7 @@ const GROUPS: PageGroup[] = [
         key: "app-passwords",
         label: "App passwords",
         description:
-          "Create passwords for other apps (and the group import). Shown once — revoke anytime.",
+          "Create passwords for other apps. Shown once — revoke anytime.",
         Icon: Key,
         sections: [{ key: "app-passwords" }],
       },

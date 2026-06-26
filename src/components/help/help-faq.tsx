@@ -17,7 +17,7 @@ const HELP_FAQ_ITEMS = [
   {
     question: "What is an activity?",
     answer:
-      "An activity is the basic unit of impact on Certified: a structured, shareable record of work that was done or is planned. Each one captures the essentials of a verifiable claim — what the work is, who contributes to it, the time period it covers, its scope, and where it happens.\n\nContributors can be recognized for their part, so an activity reads as \"this work is being carried out, by these people, over this period.\"",
+      "An activity is the basic unit on Certified: a structured, shareable record of work that was done or is planned. Each one captures the essentials of a verifiable claim — what the work is, who contributes to it, the time period it covers, its scope, and where it happens.\n\nContributors can be recognized for their part, so an activity reads as \"this work is being carried out, by these people, over this period.\"",
   },
   {
     question: "How are projects different from activities?",
