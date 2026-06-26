@@ -84,7 +84,12 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       }
       setIsLoading(true)
       try {
-        const orgs = await resolveGroups(did, signal)
+        const resolved = await resolveGroups(did, signal)
+        // A self-owned group — one whose DID is your own account (you
+        // promoted your own account to a group) — is that account itself,
+        // not a separate group to switch into. Hide it from the groups list
+        // so it doesn't appear as a peer next to your own account.
+        const orgs = resolved.filter((o) => o.groupDid !== did)
         if (!signal?.aborted) {
           setGroups(orgs)
           // If active org is set, refresh it with latest data from the list
