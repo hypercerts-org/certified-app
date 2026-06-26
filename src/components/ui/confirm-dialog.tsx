@@ -61,18 +61,28 @@ export default function ConfirmDialog({
           {message}
         </p>
         {confirmPhrase ? (
-          <div style={{ marginBottom: 20 }}>
+          // A form so the phrase input submits on Enter (implicit submission) —
+          // type the phrase, hit Enter, no mouse needed. Guarded so Enter only
+          // confirms once the phrase matches.
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (phraseMatches && !isConfirming) void onConfirm()
+            }}
+            style={{ marginBottom: 20 }}
+          >
             <Input
               label={`Type ${confirmPhrase} to confirm`}
               size="md"
               autoComplete="off"
               autoCapitalize="none"
               spellCheck={false}
+              autoFocus
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
               disabled={isConfirming}
             />
-          </div>
+          </form>
         ) : null}
         <div className={DIALOG_FOOTER_ACTIONS_CLASS}>
           <Button

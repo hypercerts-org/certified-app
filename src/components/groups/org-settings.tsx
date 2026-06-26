@@ -755,6 +755,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
           message={`Remove @${org.handle} from Certified? This deletes the group from the service only — the underlying account and its records remain. You can promote the account to a group again later.`}
           confirmLabel="Remove group"
           confirmPhrase={org.handle}
+          isConfirming={destroying}
           onCancel={() => setConfirmDestroy(false)}
           onConfirm={handleDestroy}
         />
