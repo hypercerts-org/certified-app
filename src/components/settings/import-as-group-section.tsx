@@ -1,13 +1,13 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Check } from "lucide-react"
 import { useOrg } from "@/lib/groups/org-context"
 import { importGroup, putMembership, RegisterGroupError } from "@/lib/groups/api"
 import { createAppPassword, revokeAppPassword } from "@/lib/atproto/app-passwords"
 import { authFetch } from "@/lib/auth/fetch"
 import Button from "@/components/ui/button"
 import ErrorMessage from "@/components/ui/error-message"
+import GroupResultModal from "@/components/groups/group-result-modal"
 import {
   useUnlockAppPasswords,
   UnlockAppPasswordFields,
@@ -72,7 +72,9 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
       } catch (err) {
         console.error("[settings/import-group] putMembership failed", err)
       }
-      await refetchOrgs()
+      // Show the celebration first; refetch + switch to the group on dismiss
+      // (refetching now would swap this panel for the group settings and
+      // unmount the modal before it's seen).
       setImportedHandle(result.handle || handle)
     } catch (err) {
       if (
@@ -94,19 +96,16 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
       }
       setWorking(false)
     }
-  }, [did, handle, refetchOrgs])
+  }, [did, handle])
 
   const unlock = useUnlockAppPasswords(() => void runImport())
 
-  if (importedHandle) {
-    return (
-      <p className="settings__note" role="status">
-        <Check size={14} aria-hidden="true" />{" "}
-        <strong>@{importedHandle}</strong> is now a group, with you as its
-        owner. Switch to it from the account menu to manage members and roles.
-      </p>
-    )
-  }
+  // Dismiss the celebration: now sync (the account is a group → selfGroup) and
+  // jump to the group's members page.
+  const goToGroup = useCallback(() => {
+    if (typeof window !== "undefined") window.location.hash = "members"
+    void refetchOrgs()
+  }, [refetchOrgs])
 
   const accountLabel = handle ? `@${handle}` : did
   const busy = unlock.submitting || working
@@ -142,6 +141,16 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
           Promote to group
         </Button>
       </div>
+
+      {importedHandle ? (
+        <GroupResultModal
+          variant="created"
+          handle={importedHandle}
+          primaryLabel="Manage your group"
+          onPrimary={goToGroup}
+          onClose={goToGroup}
+        />
+      ) : null}
     </form>
   )
 }

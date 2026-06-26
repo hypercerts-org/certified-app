@@ -486,6 +486,110 @@
   display: flex;
 }
 
+/* ---- Group created / removed outcome modal ---- */
+.group-result {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 4px 4px 0;
+}
+
+.group-result__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  margin-bottom: 16px;
+  animation: groupBadgePop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.group-result__badge--created {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.group-result__badge--removed {
+  background: var(--bg-sunken);
+  color: var(--fg-secondary);
+}
+
+.group-result__title {
+  margin: 0 0 8px;
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+}
+
+.group-result__body {
+  margin: 0 0 20px;
+  max-width: 32ch;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--fg-secondary);
+}
+
+.group-result__body strong {
+  font-weight: 600;
+  color: var(--fg-primary);
+}
+
+/* Confetti — a handful of dots flung outward once on open. The hsl() hues are
+   decorative/celebratory (not a fixed brand color), the one place raw hsl is
+   intentional here, like the avatar ring. */
+.group-result__confetti {
+  position: absolute;
+  top: 26px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.group-result__confetti-bit {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 1px;
+  opacity: 0;
+  animation: groupConfetti 0.9s ease-out 0.08s both;
+}
+
+@keyframes groupBadgePop {
+  0% { transform: scale(0.3); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes groupConfetti {
+  0% { transform: translate(0, 0) scale(0.5) rotate(0deg); opacity: 0; }
+  25% { opacity: 1; }
+  100% { transform: translate(var(--gx), var(--gy)) scale(1) rotate(var(--gr)); opacity: 0; }
+}
+
+.gr-c0 { --gx: -62px; --gy: -30px; --gr: 140deg; background: hsl(150 38% 55%); }
+.gr-c1 { --gx: 60px; --gy: -26px; --gr: -110deg; background: hsl(25 55% 60%); }
+.gr-c2 { --gx: -46px; --gy: 30px; --gr: 80deg; background: hsl(210 45% 58%); }
+.gr-c3 { --gx: 48px; --gy: 34px; --gr: -70deg; background: hsl(45 60% 58%); }
+.gr-c4 { --gx: -30px; --gy: -44px; --gr: 200deg; background: hsl(280 35% 62%); }
+.gr-c5 { --gx: 34px; --gy: -46px; --gr: -160deg; background: hsl(340 50% 64%); }
+.gr-c6 { --gx: -72px; --gy: 6px; --gr: 90deg; background: hsl(190 42% 55%); }
+.gr-c7 { --gx: 70px; --gy: 10px; --gr: -100deg; background: hsl(95 38% 55%); }
+.gr-c8 { --gx: -14px; --gy: 46px; --gr: 50deg; background: hsl(15 55% 60%); }
+.gr-c9 { --gx: 16px; --gy: 48px; --gr: -60deg; background: hsl(255 40% 64%); }
+
+@media (prefers-reduced-motion: reduce) {
+  .group-result__badge {
+    animation: none;
+  }
+  .group-result__confetti {
+    display: none;
+  }
+}
+
 
 /* ------------------------------------------------------------------------
    Mobile (<800px): the rail becomes a full-screen master list that drills

@@ -221,8 +221,15 @@ export default function SettingsPanel() {
   }, [])
 
   // Acting as a group, OR the logged-in account is itself a group (you
-  // promoted your own account) — either way show the group settings.
-  const settingsOrg = activeOrg ?? selfGroup
+  // promoted your own account) — either way show the group settings. For a
+  // self-owned group the resolved handle can lag (DID-doc resolution), so
+  // prefer the session handle (it's our own account) — otherwise settings and
+  // the delete-confirm would show the raw DID instead of @handle.
+  const settingsOrg =
+    activeOrg ??
+    (selfGroup
+      ? { ...selfGroup, handle: handle || selfGroup.handle }
+      : null)
   if (settingsOrg) {
     return <OrgSettings groupDid={settingsOrg.groupDid} org={settingsOrg} />
   }

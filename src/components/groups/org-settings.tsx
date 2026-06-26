@@ -31,6 +31,7 @@ import Badge from "@/components/ui/badge"
 import Select from "@/components/ui/select"
 import IdentityRow from "@/components/ui/identity-row"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
+import GroupResultModal from "@/components/groups/group-result-modal"
 import HandleSearch from "@/components/groups/handle-search"
 import ErrorMessage from "@/components/ui/error-message"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -167,6 +168,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   const [confirmDestroy, setConfirmDestroy] = useState(false)
   const [destroying, setDestroying] = useState(false)
   const [destroyError, setDestroyError] = useState<string | null>(null)
+  const [removed, setRemoved] = useState(false)
 
   const handleDestroy = async () => {
     setDestroying(true)
@@ -174,11 +176,8 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
     try {
       await destroyGroup(groupDid)
       setConfirmDestroy(false)
-      // Stop acting as the now-deleted group (otherwise you stay "signed in"
-      // as it) and drop it from the switcher list, then leave the page.
-      switchOrg(null)
-      void refetchOrgs()
-      router.push("/home")
+      // Show the dry confirmation; stop acting as the group + leave on dismiss.
+      setRemoved(true)
     } catch (err) {
       setDestroyError(
         err instanceof Error ? err.message : "Failed to remove group",
@@ -187,6 +186,14 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
     } finally {
       setDestroying(false)
     }
+  }
+
+  // Dismiss the "removed" modal: stop acting as the now-deleted group (else you
+  // stay "signed in" as it), drop it from the switcher, and leave the page.
+  const finishRemoval = () => {
+    switchOrg(null)
+    void refetchOrgs()
+    router.push("/home")
   }
 
   // Members state
@@ -736,6 +743,16 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
           confirmPhrase={org.handle}
           onCancel={() => setConfirmDestroy(false)}
           onConfirm={handleDestroy}
+        />
+      ) : null}
+
+      {removed ? (
+        <GroupResultModal
+          variant="removed"
+          handle={org.handle}
+          primaryLabel="Done"
+          onPrimary={finishRemoval}
+          onClose={finishRemoval}
         />
       ) : null}
     </div>
