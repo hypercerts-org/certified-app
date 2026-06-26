@@ -29,6 +29,10 @@ export interface ThemeToggleProps {
   variant?: "segmented" | "cycle";
   /** Compact hides labels on the segmented variant. Ignored for "cycle". */
   compact?: boolean;
+  /** Layout of the segmented variant. "horizontal" (default) is a row of
+   *  equal segments; "vertical" is a left-aligned stack of labelled rows
+   *  (icon + name), suited to a settings page. Ignored for "cycle". */
+  orientation?: "horizontal" | "vertical";
   className?: string;
 }
 
@@ -44,6 +48,7 @@ export interface ThemeToggleProps {
 export default function ThemeToggle({
   variant = "segmented",
   compact = false,
+  orientation = "horizontal",
   className = "",
 }: ThemeToggleProps) {
   const { theme, setTheme } = useTheme();
@@ -93,12 +98,20 @@ export default function ThemeToggle({
     );
   }
 
+  const isVertical = orientation === "vertical";
+  // Vertical always shows labels (a left-aligned list of named rows); compact
+  // only applies to the horizontal track.
+  const showLabels = isVertical || !compact;
+
   // Container mirrors the former `.theme-toggle` BEM rules: a sunken, bordered
-  // track that holds the three options. `compact` drops the max-width so it
-  // hugs its content (former `.theme-toggle--compact`).
+  // track that holds the three options. Horizontal `compact` hugs its content;
+  // vertical is a left-aligned stack capped at a readable width.
   const groupClassName = [
-    "inline-flex items-stretch gap-0.5 rounded border border-[var(--border-default)] bg-[var(--bg-sunken)] p-[3px]",
-    compact ? "w-auto" : "w-full max-w-[360px]",
+    "gap-0.5 rounded border border-[var(--border-default)] bg-[var(--bg-sunken)] p-[3px]",
+    isVertical
+      ? "flex flex-col items-stretch w-full max-w-[280px]"
+      : "inline-flex items-stretch",
+    !isVertical && (compact ? "w-auto" : "w-full max-w-[360px]"),
     className,
   ]
     .filter(Boolean)
@@ -109,17 +122,17 @@ export default function ThemeToggle({
       value={current}
       onValueChange={(v) => setTheme(v)}
       aria-label="Theme"
+      orientation={orientation}
       className={groupClassName}
     >
       {OPTIONS.map((opt) => {
         const selected = current === opt.value;
         // Per-option styling replaces the former `.theme-toggle__option` /
-        // `--selected` rules. Radius is `rounded` (= var(--radius)); the old CSS
-        // used the off-spec calc(var(--radius) + 1px). The Radio base already
-        // supplies `rounded`, the focus-visible ring, and roving tabindex.
+        // `--selected` rules. Radius is `rounded` (= var(--radius)). The Radio
+        // base supplies `rounded`, the focus-visible ring, and roving tabindex.
         const optionClassName = [
-          "flex-1 justify-center font-medium text-[13px]",
-          compact ? "px-2.5 py-1.5" : "px-3 py-2",
+          "font-medium text-[13px] px-3 py-2",
+          isVertical ? "justify-start" : "flex-1 justify-center",
           selected
             ? "bg-[var(--bg-elevated)] text-[var(--fg-primary)] shadow-[var(--shadow-sm)]"
             : "text-[var(--fg-muted)] hover:text-[var(--fg-primary)]",
@@ -130,7 +143,7 @@ export default function ThemeToggle({
             <span className="inline-flex items-center" aria-hidden="true">
               {opt.icon}
             </span>
-            {!compact && <span className="leading-none">{opt.label}</span>}
+            {showLabels && <span className="leading-none">{opt.label}</span>}
           </Radio>
         );
       })}

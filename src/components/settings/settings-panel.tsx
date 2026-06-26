@@ -115,7 +115,7 @@ const GROUPS: PageGroup[] = [
         label: "Appearance",
         description: "Set how Certified looks on this device.",
         Icon: Palette,
-        sections: [{ key: "theme", title: "Theme" }],
+        sections: [{ key: "theme" }],
       },
       {
         key: "social-graph",
@@ -265,7 +265,7 @@ export default function SettingsPanel() {
       case "password":
         return <PasswordSection email={email || ""} />
       case "theme":
-        return <ThemeToggle compact />
+        return <ThemeToggle orientation="vertical" />
       case "social-graph":
         return did ? <SyncSocialGraphSection did={did} ownDid={did} /> : null
       case "app-passwords":
