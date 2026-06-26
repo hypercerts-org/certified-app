@@ -214,12 +214,6 @@ export default function DesktopTopBar() {
   // stays the primary "discard" action.
   const isOnCreatePage = pathname === "/create" || pathname === "/project/new";
   const showBackRow = isOnCertDetail || isOnProjectDetail || isOnCreatePage;
-  // /explore renders its own contextual "Search Certified" field inside the
-  // page chrome (it doubles as the cross-kind filter), so the top-bar's
-  // global search field is a redundant second "Search Certified" input at
-  // every width ≥800px. Suppress the top-bar copy there — Explore owns the
-  // search affordance on its own surface.
-  const isOnExplore = pathname === "/explore";
   // Settings is its own standalone surface now (reachable from the
   // site drawer); no tab strip there. The edit-profile page is the one
   // exception — it borrows the profile strip (locked to Overview, see
@@ -416,11 +410,11 @@ export default function DesktopTopBar() {
         </div>
 
         <div className="desktop-top-bar__right">
-          {isOnExplore ? null : (
-            <div className="desktop-top-bar__search">
-              <GlobalSearch placeholder="Search Certified" />
-            </div>
-          )}
+          {/* Shown everywhere, including /explore — the navbar search stays
+              available even though Explore has its own contextual field. */}
+          <div className="desktop-top-bar__search">
+            <GlobalSearch placeholder="Search Certified" />
+          </div>
 
           {isAuthenticated ? (
             <div
