@@ -281,7 +281,12 @@ export default function AppPasswordsSection() {
         </ul>
       )}
 
-      <div className="org-members__add-submit">
+      <div className="app-passwords__lock">
+        <p className="settings__note">
+          Locking ends this session right away, so your account password is
+          needed to view, create, or revoke app passwords again. It also locks
+          on its own after a few minutes.
+        </p>
         <Button
           type="button"
           variant="ghost"
