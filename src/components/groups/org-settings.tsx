@@ -1,9 +1,11 @@
 "use client"
 
-import React, { useState, useEffect, useCallback, useRef } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import {
   AtSign,
+  ChevronLeft,
+  ChevronRight,
   ScrollText,
   Share2,
   ShieldAlert,
@@ -32,48 +34,88 @@ import ErrorMessage from "@/components/ui/error-message"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Tooltip from "@/components/ui/tooltip"
 
-type CategoryKey = "handle" | "members" | "activity" | "social-graph" | "danger"
+type CategoryKey = "handle" | "social-graph" | "members" | "activity" | "danger"
+
 type CategoryDef = {
   key: CategoryKey
+  /** Panel heading. */
   label: string
+  /** Shorter label for the rail / mobile list. Defaults to `label`. */
+  navLabel?: string
   description: string
   Icon: typeof AtSign
 }
-// Owner-only; appended to the nav + rendered only for owners.
-const DANGER_CATEGORY: CategoryDef = {
-  key: "danger",
-  label: "Danger zone",
-  description: "Remove this group from the service.",
-  Icon: ShieldAlert,
-}
-const CATEGORIES: CategoryDef[] = [
+
+type CategoryGroup = { label: string; items: CategoryDef[] }
+
+/**
+ * Group settings share the personal-settings router layout (see
+ * `SettingsPanel`): a grouped rail of pages; selecting one shows only that
+ * page (no long scroll). On mobile the rail is a master list that drills
+ * into a single page with a back control. Both views render the same DOM;
+ * `data-view` + CSS pick which is visible, so there's no desktop hydration
+ * flash.
+ */
+const GROUPS: CategoryGroup[] = [
   {
-    key: "handle",
-    label: "Handle",
-    description: "The group's handle on the network.",
-    Icon: AtSign,
+    label: "General",
+    items: [
+      {
+        key: "handle",
+        label: "Handle",
+        description:
+          "The group's handle on the network. Set during registration; editing coming soon.",
+        Icon: AtSign,
+      },
+      {
+        key: "social-graph",
+        label: "Sync social graph",
+        navLabel: "Social graph",
+        description:
+          "Compare this group's Certified follows with its Bluesky follows and import any that are missing.",
+        Icon: Share2,
+      },
+    ],
   },
   {
-    key: "social-graph",
-    label: "Sync social graph",
-    description:
-      "Compare this group's Certified follows with its Bluesky follows and import any that are missing.",
-    Icon: Share2,
-  },
-  {
-    key: "members",
-    label: "Members & Roles",
-    description: "Manage who can act on behalf of this group.",
-    Icon: Users,
-  },
-  {
-    key: "activity",
-    label: "Activity Log",
-    description: "Recent actions performed within this group.",
-    Icon: ScrollText,
+    label: "Management",
+    items: [
+      {
+        key: "members",
+        label: "Members & Roles",
+        description: "Manage who can access and act on behalf of this group.",
+        Icon: Users,
+      },
+      {
+        key: "activity",
+        label: "Activity Log",
+        description: "Recent actions performed within this group.",
+        Icon: ScrollText,
+      },
+    ],
   },
 ]
-const DEFAULT_CATEGORY: CategoryKey = CATEGORIES[0].key
+
+/** Owner-only group, appended to the rail + rendered only for owners. */
+const DANGER_GROUP: CategoryGroup = {
+  label: "Danger zone",
+  items: [
+    {
+      key: "danger",
+      label: "Danger zone",
+      description:
+        "Remove this group from Certified. This deletes the group's membership and settings from the service only — the underlying account and its records are left intact, and the group can be imported again later.",
+      Icon: ShieldAlert,
+    },
+  ],
+}
+
+/** Every defined category (incl. danger) — for hash-deep-link matching. */
+const ALL_DEFS: CategoryDef[] = [
+  ...GROUPS.flatMap((g) => g.items),
+  ...DANGER_GROUP.items,
+]
+const DEFAULT_CATEGORY: CategoryKey = GROUPS[0].items[0].key
 
 // Map an audit entry's `result` to the CSS modifier suffix for its pill.
 // The allowlist must match `AuditEntry.result` ("permitted" | "denied")
@@ -94,7 +136,7 @@ export function remainingAfterAddIndex<T>(members: T[], failedIndex: number): T[
 function readHashCategory(): CategoryKey | null {
   if (typeof window === "undefined") return null
   const raw = window.location.hash.replace(/^#/, "").toLowerCase()
-  const match = CATEGORIES.find((c) => c.key === raw)
+  const match = ALL_DEFS.find((c) => c.key === raw)
   return match ? match.key : null
 }
 
@@ -114,8 +156,8 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   const isOwner = org.role === "owner"
   const isAdmin = org.role === "admin" || isOwner
 
-  // Owners get the Danger zone (remove group) in the nav + panel.
-  const visibleCategories = isOwner ? [...CATEGORIES, DANGER_CATEGORY] : CATEGORIES
+  // Owners get the Danger zone (remove group) in the rail + panel.
+  const visibleGroups = isOwner ? [...GROUPS, DANGER_GROUP] : GROUPS
 
   // Remove-group (destroy) state.
   const [confirmDestroy, setConfirmDestroy] = useState(false)
@@ -289,478 +331,378 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
     }
   }
 
-  // ----- Scroll-spy nav (mirrors <SettingsPanel> for personal accounts) -----
-  const [active, setActive] = useState<CategoryKey>(DEFAULT_CATEGORY)
-  const sectionRefs = useRef<Map<CategoryKey, HTMLElement>>(new Map())
+  // ----- Router-style nav (mirrors <SettingsPanel> for personal accounts) ---
+  // `null` = no page actively selected → first page on desktop, master list
+  // on mobile. Driven by the `#<key>` hash so deep links + back/forward work.
+  const [active, setActive] = useState<CategoryKey | null>(null)
 
   useEffect(() => {
-    const initial = readHashCategory()
-    if (initial) {
-      setActive(initial)
-      requestAnimationFrame(() => {
-        const el = sectionRefs.current.get(initial)
-        if (el) el.scrollIntoView({ block: "start", behavior: "auto" })
-      })
+    const sync = () => setActive(readHashCategory())
+    sync()
+    window.addEventListener("hashchange", sync)
+    return () => window.removeEventListener("hashchange", sync)
+  }, [])
+
+  const select = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>, key: CategoryKey) => {
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+        return
+      }
+      e.preventDefault()
+      setActive(key)
+      if (typeof window !== "undefined") {
+        window.history.replaceState(null, "", `#${key}`)
+        window.scrollTo({ top: 0 })
+      }
+    },
+    [],
+  )
+
+  const back = useCallback(() => {
+    setActive(null)
+    if (typeof window !== "undefined") {
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + window.location.search,
+      )
+      window.scrollTo({ top: 0 })
     }
   }, [])
 
-  useEffect(() => {
-    const els = Array.from(sectionRefs.current.entries())
-    if (els.length === 0) return
-    const observer = new IntersectionObserver(
-      () => {
-        let best: { key: CategoryKey; top: number } | null = null
-        for (const [key, el] of sectionRefs.current.entries()) {
-          const rect = el.getBoundingClientRect()
-          if (rect.top <= 120) {
-            if (!best || rect.top > best.top) best = { key, top: rect.top }
-          }
-        }
-        if (best) setActive(best.key)
-        else setActive(CATEGORIES[0].key)
-      },
-      { rootMargin: "-15% 0px -60% 0px", threshold: [0, 0.1, 0.5, 1] },
+  // The page whose panel renders. A non-owner deep-linking #danger falls back
+  // to the default, since danger isn't in their visible set.
+  const allowedKeys = new Set(visibleGroups.flatMap((g) => g.items.map((c) => c.key)))
+  const selectedKey: CategoryKey =
+    active && allowedKeys.has(active) ? active : DEFAULT_CATEGORY
+  const selected = ALL_DEFS.find((c) => c.key === selectedKey) ?? ALL_DEFS[0]
+
+  const renderNavItem = (cat: CategoryDef) => {
+    const isActive = cat.key === selectedKey
+    const Icon = cat.Icon
+    return (
+      <li key={cat.key}>
+        <a
+          href={`#${cat.key}`}
+          aria-current={isActive ? "true" : undefined}
+          className={`sx-menu__item${isActive ? " sx-menu__item--active" : ""}`}
+          onClick={(e) => select(e, cat.key)}
+        >
+          <span className="sx-menu__icon" aria-hidden>
+            <Icon size={16} strokeWidth={1.75} />
+          </span>
+          <span className="sx-menu__label">{cat.navLabel ?? cat.label}</span>
+          <ChevronRight className="sx-menu__chevron" size={16} aria-hidden />
+        </a>
+      </li>
     )
-    for (const [, el] of els) observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
+  }
 
-  const onMenuClick = useCallback(
-    (e: React.MouseEvent<HTMLAnchorElement>, key: CategoryKey) => {
-      if (
-        e.button !== 0 ||
-        e.metaKey ||
-        e.ctrlKey ||
-        e.shiftKey ||
-        e.altKey
-      )
-        return
-      e.preventDefault()
-      const el = sectionRefs.current.get(key)
-      if (el) {
-        el.scrollIntoView({ block: "start", behavior: "smooth" })
-        el.classList.remove("sx-section--flash")
-        void el.offsetWidth
-        el.classList.add("sx-section--flash")
-        window.setTimeout(() => el.classList.remove("sx-section--flash"), 1500)
-      }
-      if (typeof window !== "undefined") {
-        const next = `#${key}`
-        if (window.location.hash !== next) {
-          window.history.replaceState(null, "", next)
-        }
-      }
-      setActive(key)
-    },
-    [],
-  )
+  const renderBody = (key: CategoryKey) => {
+    switch (key) {
+      // Handle — read-only; group service doesn't support handle changes
+      // after registration.
+      case "handle":
+        return <p className="username-card__value">@{org.handle}</p>
 
-  const setSectionRef = useCallback(
-    (key: CategoryKey) => (el: HTMLElement | null) => {
-      if (el) sectionRefs.current.set(key, el)
-      else sectionRefs.current.delete(key)
-    },
-    [],
-  )
+      case "social-graph":
+        return did ? (
+          <SyncSocialGraphSection
+            did={groupDid}
+            ownDid={did}
+            targetDid={groupDid}
+          />
+        ) : (
+          <p className="settings__note">Sign in to sync this group.</p>
+        )
+
+      // Members — list + role controls + add affordance.
+      case "members":
+        return membersLoading ? (
+          <div className="org-members__loading">
+            <LoadingSpinner size="sm" />
+          </div>
+        ) : (
+          <>
+            {memberError && <ErrorMessage message={memberError} />}
+
+            <div className="org-members__list">
+              {members
+                .slice(membersPage * MEMBERS_PER_PAGE, (membersPage + 1) * MEMBERS_PER_PAGE)
+                .map((member) => (
+                <div key={member.did} className="org-members__item">
+                  <div className="org-members__item-info">
+                    <p className="org-members__item-handle">
+                      @{member.handle && member.handle !== member.did ? member.handle : member.did}
+                    </p>
+                    <p className="org-members__item-did">{member.did}</p>
+                  </div>
+                  <div className="org-members__item-actions">
+                    {isOwner && member.role !== "owner" ? (
+                      <Select
+                        size="sm"
+                        aria-label="Member role"
+                        value={member.role}
+                        onChange={(e) =>
+                          handleRoleChange(member.did, e.target.value as OrgRole)
+                        }
+                      >
+                        <option value="member">Member</option>
+                        <option value="admin">Admin</option>
+                      </Select>
+                    ) : (
+                      <Badge variant="role">{member.role}</Badge>
+                    )}
+                    {isAdmin && member.did !== did && member.role !== "owner" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Remove member"
+                        onClick={() => setConfirmRemove(member.did)}
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {members.length > MEMBERS_PER_PAGE && (
+              <div className="pagination">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setMembersPage((p) => p - 1)}
+                  disabled={membersPage === 0}
+                >
+                  Previous
+                </Button>
+                <span className="pagination__info">
+                  {membersPage + 1} / {Math.ceil(members.length / MEMBERS_PER_PAGE)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setMembersPage((p) => p + 1)}
+                  disabled={(membersPage + 1) * MEMBERS_PER_PAGE >= members.length}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+
+            {/* Add member form */}
+            {isAdmin && (
+              <div className="org-members__add">
+                <h3 className="org-members__add-title">Add member</h3>
+                <HandleSearch
+                  label=""
+                  placeholder="Search by handle or DID"
+                  onSelect={(selectedDid, selectedHandle) => {
+                    if (!pendingMembers.some((m) => m.did === selectedDid)) {
+                      setPendingMembers((prev) => [...prev, { did: selectedDid, handle: selectedHandle }])
+                    }
+                  }}
+                />
+                {pendingMembers.length > 0 && (
+                  <>
+                    <div className="org-members__selected">
+                      {pendingMembers.map((m) => (
+                        <span key={m.did} className="org-members__selected-tag">
+                          @{m.handle}
+                          <Tooltip label={`Remove ${m.handle}`}>
+                            <button
+                              type="button"
+                              className="org-members__selected-remove"
+                              onClick={() => removePendingMember(m.did)}
+                              aria-label={`Remove ${m.handle}`}
+                            >
+                              &times;
+                            </button>
+                          </Tooltip>
+                        </span>
+                      ))}
+                    </div>
+                    {addError && <ErrorMessage message={addError} />}
+                    <div className="org-members__add-submit">
+                      <span className="org-members__add-submit-label">Add as</span>
+                      <Select
+                        size="sm"
+                        aria-label="Role for new member"
+                        value={newMemberRole}
+                        onChange={(e) => setNewMemberRole(e.target.value as OrgRole)}
+                      >
+                        <option value="member">Member</option>
+                        <option value="admin">Admin</option>
+                      </Select>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleAddMembers}
+                        loading={isAdding}
+                        disabled={isAdding}
+                      >
+                        <UserPlus size={14} />
+                        Add
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </>
+        )
+
+      case "activity":
+        return !isAdmin ? (
+          <p className="settings__note">Only admins and owners can view the activity log.</p>
+        ) : auditLoading ? (
+          <div className="org-audit__loading">
+            <LoadingSpinner size="sm" />
+          </div>
+        ) : auditError ? (
+          <p className="settings__error" role="alert">
+            Couldn&apos;t load the activity log: {auditError}
+          </p>
+        ) : auditEntries.length === 0 ? (
+          <p className="settings__note">No activity recorded yet.</p>
+        ) : (
+          <>
+            <div className="org-audit__list">
+              {auditEntries
+                .slice(auditPage * AUDIT_PER_PAGE, (auditPage + 1) * AUDIT_PER_PAGE)
+                .map((entry) => (
+                <div key={entry.id} className="org-audit__item">
+                  <div className="org-audit__item-main">
+                    <span className="org-audit__action">{entry.action}</span>
+                    {(() => {
+                      const safeResult = auditResultClassSuffix(entry.result)
+                      return (
+                        <span
+                          className={`org-audit__result org-audit__result--${safeResult}`}
+                        >
+                          {entry.result}
+                        </span>
+                      )
+                    })()}
+                  </div>
+                  <dl className="org-audit__item-meta">
+                    <div className="org-audit__detail-row">
+                      <dt className="org-audit__detail-label">by</dt>
+                      <dd className="org-audit__detail-value">{entry.actorDid}</dd>
+                    </div>
+                    <div className="org-audit__detail-row">
+                      <dt className="org-audit__detail-label">at</dt>
+                      <dd className="org-audit__detail-value">{new Date(entry.createdAt).toLocaleString()}</dd>
+                    </div>
+                  </dl>
+                  {(entry.collection || entry.rkey || (entry.detail && Object.keys(entry.detail).length > 0)) && (
+                    <dl className="org-audit__detail">
+                      {entry.collection && (
+                        <div className="org-audit__detail-row">
+                          <dt className="org-audit__detail-label">collection</dt>
+                          <dd className="org-audit__detail-value">{entry.collection}</dd>
+                        </div>
+                      )}
+                      {entry.rkey && (
+                        <div className="org-audit__detail-row">
+                          <dt className="org-audit__detail-label">rkey</dt>
+                          <dd className="org-audit__detail-value">{entry.rkey}</dd>
+                        </div>
+                      )}
+                      {entry.detail && Object.entries(entry.detail)
+                        .filter(([key]) => key !== "collection" && key !== "rkey")
+                        .map(([key, value]) => (
+                        <div key={key} className="org-audit__detail-row">
+                          <dt className="org-audit__detail-label">{key}</dt>
+                          <dd className="org-audit__detail-value">
+                            {typeof value === "object" ? JSON.stringify(value) : String(value)}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                </div>
+              ))}
+            </div>
+            {auditEntries.length > AUDIT_PER_PAGE && (
+              <div className="pagination">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setAuditPage((p) => p - 1)}
+                  disabled={auditPage === 0}
+                >
+                  Previous
+                </Button>
+                <span className="pagination__info">
+                  {auditPage + 1} / {Math.ceil(auditEntries.length / AUDIT_PER_PAGE)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setAuditPage((p) => p + 1)}
+                  disabled={(auditPage + 1) * AUDIT_PER_PAGE >= auditEntries.length}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+          </>
+        )
+
+      // Danger zone — owner-only (gated by the visible-set check above).
+      case "danger":
+        return (
+          <>
+            {destroyError && <ErrorMessage message={destroyError} />}
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setConfirmDestroy(true)}
+              loading={destroying}
+              disabled={destroying}
+            >
+              <Trash2 size={14} />
+              Remove group
+            </Button>
+          </>
+        )
+    }
+  }
 
   return (
-    <div className="sx">
+    <div className="sx" data-view={active ? "detail" : "list"}>
       <h1 className="sx__heading sr-only">Group settings</h1>
 
       <div className="page-layout">
         <aside className="sx__menu">
           <nav aria-label="Group settings sections">
-            <ul className="sx-menu">
-              {visibleCategories.map((cat) => {
-                const isActive = cat.key === active
-                const Icon = cat.Icon
-                return (
-                  <li key={cat.key}>
-                    <a
-                      href={`#${cat.key}`}
-                      aria-current={isActive ? "true" : undefined}
-                      className={`sx-menu__item${isActive ? " sx-menu__item--active" : ""}`}
-                      onClick={(e) => onMenuClick(e, cat.key)}
-                    >
-                      <span className="sx-menu__icon" aria-hidden>
-                        <Icon size={16} strokeWidth={1.75} />
-                      </span>
-                      <span className="sx-menu__label">{cat.label}</span>
-                    </a>
-                  </li>
-                )
-              })}
-            </ul>
+            {visibleGroups.map((group) => (
+              <div className="sx-nav-group" key={group.label}>
+                <p className="sx-nav-group__label">{group.label}</p>
+                <ul className="sx-menu">{group.items.map(renderNavItem)}</ul>
+              </div>
+            ))}
           </nav>
         </aside>
 
         <div className="page-layout__main sx__panel">
-          {/* Handle — read-only; group service doesn't support
-              handle changes after registration. */}
-          <section
-            id="handle"
-            ref={setSectionRef("handle")}
-            className="sx-section"
-            aria-labelledby="sx-section-handle-title"
-          >
+          <button type="button" className="sx-back" onClick={back}>
+            <ChevronLeft size={16} aria-hidden />
+            Settings
+          </button>
+          <section className="sx-section" aria-labelledby="sx-section-title">
             <header className="sx-panel__header">
-              <h2
-                id="sx-section-handle-title"
-                className="sx-panel__title"
-              >
-                Handle
+              <h2 id="sx-section-title" className="sx-panel__title">
+                {selected.label}
               </h2>
-              <p className="sx-panel__desc">
-                The group&apos;s handle on the network. Set during
-                registration; editing coming soon.
-              </p>
+              {selected.description ? (
+                <p className="sx-panel__desc">{selected.description}</p>
+              ) : null}
             </header>
-            <div className="sx-panel__body">
-              <p className="username-card__value">@{org.handle}</p>
-            </div>
+            <div className="sx-panel__body">{renderBody(selectedKey)}</div>
           </section>
-
-          <section
-            id="social-graph"
-            ref={setSectionRef("social-graph")}
-            className="sx-section"
-            aria-labelledby="sx-section-social-graph-title"
-          >
-            <header className="sx-panel__header">
-              <h2
-                id="sx-section-social-graph-title"
-                className="sx-panel__title"
-              >
-                Sync social graph
-              </h2>
-              <p className="sx-panel__desc">
-                Compare this group&apos;s Certified follows with its Bluesky
-                follows and import any that are missing.
-              </p>
-            </header>
-            <div className="sx-panel__body">
-              {did ? (
-                <SyncSocialGraphSection
-                  did={groupDid}
-                  ownDid={did}
-                  targetDid={groupDid}
-                />
-              ) : (
-                <p className="settings__note">Sign in to sync this group.</p>
-              )}
-            </div>
-          </section>
-
-          {/* Members — list + role controls + add affordance. */}
-          <section
-            id="members"
-            ref={setSectionRef("members")}
-            className="sx-section"
-            aria-labelledby="sx-section-members-title"
-          >
-            <header className="sx-panel__header">
-              <h2
-                id="sx-section-members-title"
-                className="sx-panel__title"
-              >
-                Members &amp; Roles
-              </h2>
-              <p className="sx-panel__desc">
-                Manage who can access and act on behalf of this group.
-              </p>
-            </header>
-            <div className="sx-panel__body">
-              {membersLoading ? (
-              <div className="org-members__loading">
-                <LoadingSpinner size="sm" />
-              </div>
-            ) : (
-              <>
-                {memberError && <ErrorMessage message={memberError} />}
-
-                <div className="org-members__list">
-                  {members
-                    .slice(membersPage * MEMBERS_PER_PAGE, (membersPage + 1) * MEMBERS_PER_PAGE)
-                    .map((member) => (
-                    <div key={member.did} className="org-members__item">
-                      <div className="org-members__item-info">
-                        <p className="org-members__item-handle">
-                          @{member.handle && member.handle !== member.did ? member.handle : member.did}
-                        </p>
-                        <p className="org-members__item-did">{member.did}</p>
-                      </div>
-                      <div className="org-members__item-actions">
-                        {isOwner && member.role !== "owner" ? (
-                          <Select
-                            size="sm"
-                            aria-label="Member role"
-                            value={member.role}
-                            onChange={(e) =>
-                              handleRoleChange(member.did, e.target.value as OrgRole)
-                            }
-                          >
-                            <option value="member">Member</option>
-                            <option value="admin">Admin</option>
-                          </Select>
-                        ) : (
-                          <Badge variant="role">{member.role}</Badge>
-                        )}
-                        {isAdmin && member.did !== did && member.role !== "owner" && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label="Remove member"
-                            onClick={() => setConfirmRemove(member.did)}
-                          >
-                            <Trash2 size={14} />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {members.length > MEMBERS_PER_PAGE && (
-                  <div className="pagination">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setMembersPage((p) => p - 1)}
-                      disabled={membersPage === 0}
-                    >
-                      Previous
-                    </Button>
-                    <span className="pagination__info">
-                      {membersPage + 1} / {Math.ceil(members.length / MEMBERS_PER_PAGE)}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setMembersPage((p) => p + 1)}
-                      disabled={(membersPage + 1) * MEMBERS_PER_PAGE >= members.length}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                )}
-
-                {/* Add member form */}
-                {isAdmin && (
-                  <div className="org-members__add">
-                    <h3 className="org-members__add-title">Add member</h3>
-                    <HandleSearch
-                      label=""
-                      placeholder="Search by handle or DID"
-                      onSelect={(selectedDid, selectedHandle) => {
-                        if (!pendingMembers.some((m) => m.did === selectedDid)) {
-                          setPendingMembers((prev) => [...prev, { did: selectedDid, handle: selectedHandle }])
-                        }
-                      }}
-                    />
-                    {pendingMembers.length > 0 && (
-                      <>
-                        <div className="org-members__selected">
-                          {pendingMembers.map((m) => (
-                            <span key={m.did} className="org-members__selected-tag">
-                              @{m.handle}
-                              <Tooltip label={`Remove ${m.handle}`}>
-                                <button
-                                  type="button"
-                                  className="org-members__selected-remove"
-                                  onClick={() => removePendingMember(m.did)}
-                                  aria-label={`Remove ${m.handle}`}
-                                >
-                                  &times;
-                                </button>
-                              </Tooltip>
-                            </span>
-                          ))}
-                        </div>
-                        {addError && <ErrorMessage message={addError} />}
-                        <div className="org-members__add-submit">
-                          <span className="org-members__add-submit-label">Add as</span>
-                          <Select
-                            size="sm"
-                            aria-label="Role for new member"
-                            value={newMemberRole}
-                            onChange={(e) => setNewMemberRole(e.target.value as OrgRole)}
-                          >
-                            <option value="member">Member</option>
-                            <option value="admin">Admin</option>
-                          </Select>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={handleAddMembers}
-                            loading={isAdding}
-                            disabled={isAdding}
-                          >
-                            <UserPlus size={14} />
-                            Add
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-            </div>
-          </section>
-
-          {/* Activity Log section */}
-          <section
-            id="activity"
-            ref={setSectionRef("activity")}
-            className="sx-section"
-            aria-labelledby="sx-section-activity-title"
-          >
-            <header className="sx-panel__header">
-              <h2
-                id="sx-section-activity-title"
-                className="sx-panel__title"
-              >
-                Activity Log
-              </h2>
-              <p className="sx-panel__desc">
-                Recent actions performed within this group.
-              </p>
-            </header>
-            <div className="sx-panel__body">
-            {!isAdmin ? (
-              <p className="settings__note">Only admins and owners can view the activity log.</p>
-            ) : auditLoading ? (
-              <div className="org-audit__loading">
-                <LoadingSpinner size="sm" />
-              </div>
-            ) : auditError ? (
-              <p className="settings__error" role="alert">
-                Couldn&apos;t load the activity log: {auditError}
-              </p>
-            ) : auditEntries.length === 0 ? (
-              <p className="settings__note">No activity recorded yet.</p>
-            ) : (
-                <>
-                  <div className="org-audit__list">
-                    {auditEntries
-                      .slice(auditPage * AUDIT_PER_PAGE, (auditPage + 1) * AUDIT_PER_PAGE)
-                      .map((entry) => (
-                      <div key={entry.id} className="org-audit__item">
-                        <div className="org-audit__item-main">
-                          <span className="org-audit__action">{entry.action}</span>
-                          {(() => {
-                            const safeResult = auditResultClassSuffix(entry.result)
-                            return (
-                              <span
-                                className={`org-audit__result org-audit__result--${safeResult}`}
-                              >
-                                {entry.result}
-                              </span>
-                            )
-                          })()}
-                        </div>
-                        <dl className="org-audit__item-meta">
-                          <div className="org-audit__detail-row">
-                            <dt className="org-audit__detail-label">by</dt>
-                            <dd className="org-audit__detail-value">{entry.actorDid}</dd>
-                          </div>
-                          <div className="org-audit__detail-row">
-                            <dt className="org-audit__detail-label">at</dt>
-                            <dd className="org-audit__detail-value">{new Date(entry.createdAt).toLocaleString()}</dd>
-                          </div>
-                        </dl>
-                        {(entry.collection || entry.rkey || (entry.detail && Object.keys(entry.detail).length > 0)) && (
-                          <dl className="org-audit__detail">
-                            {entry.collection && (
-                              <div className="org-audit__detail-row">
-                                <dt className="org-audit__detail-label">collection</dt>
-                                <dd className="org-audit__detail-value">{entry.collection}</dd>
-                              </div>
-                            )}
-                            {entry.rkey && (
-                              <div className="org-audit__detail-row">
-                                <dt className="org-audit__detail-label">rkey</dt>
-                                <dd className="org-audit__detail-value">{entry.rkey}</dd>
-                              </div>
-                            )}
-                            {entry.detail && Object.entries(entry.detail)
-                              .filter(([key]) => key !== "collection" && key !== "rkey")
-                              .map(([key, value]) => (
-                              <div key={key} className="org-audit__detail-row">
-                                <dt className="org-audit__detail-label">{key}</dt>
-                                <dd className="org-audit__detail-value">
-                                  {typeof value === "object" ? JSON.stringify(value) : String(value)}
-                                </dd>
-                              </div>
-                            ))}
-                          </dl>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  {auditEntries.length > AUDIT_PER_PAGE && (
-                    <div className="pagination">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setAuditPage((p) => p - 1)}
-                        disabled={auditPage === 0}
-                      >
-                        Previous
-                      </Button>
-                      <span className="pagination__info">
-                        {auditPage + 1} / {Math.ceil(auditEntries.length / AUDIT_PER_PAGE)}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setAuditPage((p) => p + 1)}
-                        disabled={(auditPage + 1) * AUDIT_PER_PAGE >= auditEntries.length}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </section>
-
-          {/* Danger zone — owner-only. Removes the group from the
-              service (account left intact, re-importable). */}
-          {isOwner ? (
-            <section
-              id="danger"
-              ref={setSectionRef("danger")}
-              className="sx-section"
-              aria-labelledby="sx-section-danger-title"
-            >
-              <header className="sx-panel__header">
-                <h2 id="sx-section-danger-title" className="sx-panel__title">
-                  Danger zone
-                </h2>
-                <p className="sx-panel__desc">
-                  Remove this group from Certified. This deletes the group&apos;s
-                  membership and settings from the service only — the underlying
-                  account and its records are left intact, and the group can be
-                  imported again later.
-                </p>
-              </header>
-              <div className="sx-panel__body">
-                {destroyError && <ErrorMessage message={destroyError} />}
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setConfirmDestroy(true)}
-                  loading={destroying}
-                  disabled={destroying}
-                >
-                  <Trash2 size={14} />
-                  Remove group
-                </Button>
-              </div>
-            </section>
-          ) : null}
-
         </div>
       </div>
 
