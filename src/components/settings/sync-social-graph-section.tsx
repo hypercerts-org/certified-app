@@ -57,8 +57,6 @@ type SyncDirection = "import" | "export"
 /** Direction-specific copy so one modal serves both Bluesky → Certified
  *  (import) and Certified → Bluesky (export). */
 interface DirectionCopy {
-  /** Modal + action title, e.g. "Sync from Bluesky". */
-  title: string
   /** Graph the candidates come from. */
   source: string
   /** Graph we write to. */
@@ -72,7 +70,6 @@ interface DirectionCopy {
 }
 
 const IMPORT_COPY: DirectionCopy = {
-  title: "Sync from Bluesky",
   source: "Bluesky",
   target: "Certified",
   verb: "Import",
@@ -81,7 +78,6 @@ const IMPORT_COPY: DirectionCopy = {
 }
 
 const EXPORT_COPY: DirectionCopy = {
-  title: "Sync to Bluesky",
   source: "Certified",
   target: "Bluesky",
   verb: "Add",
@@ -143,8 +139,38 @@ export default function SyncSocialGraphSection({
         <p className="social-graph-sync__summary">{summary}</p>
       ) : null}
 
+      {/* Persistent direction toggle — the active one is `pressed`, so the
+          user can switch directions in one click without cancelling. */}
+      <div className="social-graph-sync__actions">
+        <Button
+          variant="secondary"
+          size="sm"
+          pressed={modalDir === "import"}
+          onClick={() => setModalDir((d) => (d === "import" ? null : "import"))}
+          disabled={sync.isLoading || sync.truncated || onlyBluesky === 0}
+        >
+          <RefreshCw size={14} strokeWidth={1.75} aria-hidden />
+          Sync from Bluesky
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          pressed={modalDir === "export"}
+          onClick={() => setModalDir((d) => (d === "export" ? null : "export"))}
+          disabled={
+            sync.isLoading || sync.blueskyTruncated || onlyCertified === 0
+          }
+        >
+          <RefreshCw size={14} strokeWidth={1.75} aria-hidden />
+          Sync to Bluesky
+        </Button>
+      </div>
+
+      {/* `key` remounts the flow on a direction switch so its step/selection
+          state resets to the new direction's candidates. */}
       {modalDir ? (
         <SyncFlow
+          key={modalDir}
           copy={modalDir === "import" ? IMPORT_COPY : EXPORT_COPY}
           candidateDids={
             modalDir === "import"
@@ -158,38 +184,13 @@ export default function SyncSocialGraphSection({
               : sync.exportDids(dids, opts)
           }
         />
-      ) : (
-        <>
-          <div className="social-graph-sync__actions">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setModalDir("import")}
-              disabled={sync.isLoading || sync.truncated || onlyBluesky === 0}
-            >
-              <RefreshCw size={14} strokeWidth={1.75} aria-hidden />
-              Sync from Bluesky
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setModalDir("export")}
-              disabled={
-                sync.isLoading || sync.blueskyTruncated || onlyCertified === 0
-              }
-            >
-              <RefreshCw size={14} strokeWidth={1.75} aria-hidden />
-              Sync to Bluesky
-            </Button>
-          </div>
+      ) : null}
 
-          {inSync ? (
-            <span className="social-graph-sync__hint">
-              Your Certified and Bluesky follows are already in sync.
-            </span>
-          ) : null}
-        </>
-      )}
+      {inSync ? (
+        <span className="social-graph-sync__hint">
+          Your Certified and Bluesky follows are already in sync.
+        </span>
+      ) : null}
     </div>
   )
 }
@@ -282,30 +283,30 @@ function SyncFlow({ copy, candidateDids, onClose, onImport }: SyncModalProps) {
       role="region"
       aria-label="Sync social graph"
     >
-      <div className="social-graph-sync__flow-head">
-        {step === "select" && !result ? (
-          <button
-            type="button"
-            className="social-graph-sync__modal-back"
-            onClick={() => {
-              if (isImporting) return
-              setStep("choose")
-              setError(null)
-            }}
-            aria-label="Back to sync options"
-            disabled={isImporting}
-          >
-            <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
-          </button>
-        ) : null}
-        <h3 className="social-graph-sync__flow-title">
-          {result
-            ? "Sync complete"
-            : step === "choose"
-              ? copy.title
-              : `Select people to ${copy.verbLower}`}
-        </h3>
-      </div>
+      {/* The choose step needs no title — the pressed direction button above
+          labels it; only select/result get a header. */}
+      {result || step === "select" ? (
+        <div className="social-graph-sync__flow-head">
+          {step === "select" && !result ? (
+            <button
+              type="button"
+              className="social-graph-sync__modal-back"
+              onClick={() => {
+                if (isImporting) return
+                setStep("choose")
+                setError(null)
+              }}
+              aria-label="Back to sync options"
+              disabled={isImporting}
+            >
+              <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
+            </button>
+          ) : null}
+          <h3 className="social-graph-sync__flow-title">
+            {result ? "Sync complete" : `Select people to ${copy.verbLower}`}
+          </h3>
+        </div>
+      ) : null}
 
       <div className="social-graph-sync__modal-body">
         {result ? (
