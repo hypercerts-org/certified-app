@@ -78,7 +78,7 @@ const GROUPS: CategoryGroup[] = [
     ],
   },
   {
-    label: "Management",
+    label: "Group Management",
     items: [
       {
         key: "members",
