@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
+import { GROUP_PROMOTED_FLAG } from "@/lib/groups/constants"
 import SyncSocialGraphSection from "@/components/settings/sync-social-graph-section"
 import {
   listOrgMembers,
@@ -169,6 +170,19 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   const [destroying, setDestroying] = useState(false)
   const [destroyError, setDestroyError] = useState<string | null>(null)
   const [removed, setRemoved] = useState(false)
+
+  // The promote-to-group flow drops a flag right before switching here, so the
+  // celebration shows on the group settings (not over the personal page it just
+  // left). Read it once on mount, then clear it.
+  const [createdHandle, setCreatedHandle] = useState<string | null>(null)
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const promoted = sessionStorage.getItem(GROUP_PROMOTED_FLAG)
+    if (promoted) {
+      sessionStorage.removeItem(GROUP_PROMOTED_FLAG)
+      setCreatedHandle(promoted)
+    }
+  }, [])
 
   const handleDestroy = async () => {
     setDestroying(true)
@@ -743,6 +757,16 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
           confirmPhrase={org.handle}
           onCancel={() => setConfirmDestroy(false)}
           onConfirm={handleDestroy}
+        />
+      ) : null}
+
+      {createdHandle ? (
+        <GroupResultModal
+          variant="created"
+          handle={createdHandle}
+          primaryLabel="Add members"
+          onPrimary={() => setCreatedHandle(null)}
+          onClose={() => setCreatedHandle(null)}
         />
       ) : null}
 

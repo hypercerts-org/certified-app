@@ -5,9 +5,9 @@ import { useOrg } from "@/lib/groups/org-context"
 import { importGroup, RegisterGroupError } from "@/lib/groups/api"
 import { createAppPassword, revokeAppPassword } from "@/lib/atproto/app-passwords"
 import { authFetch } from "@/lib/auth/fetch"
+import { GROUP_PROMOTED_FLAG } from "@/lib/groups/constants"
 import Button from "@/components/ui/button"
 import ErrorMessage from "@/components/ui/error-message"
-import GroupResultModal from "@/components/groups/group-result-modal"
 import {
   useUnlockAppPasswords,
   UnlockAppPasswordFields,
@@ -37,7 +37,6 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
   // successful unlock. Separate from the unlock hook's own `submitting`.
   const [working, setWorking] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [importedHandle, setImportedHandle] = useState<string | null>(null)
 
   // Resolve the signed-in account's handle so the copy can name which
   // account gets converted.
@@ -61,16 +60,14 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
     setWorking(true)
     setError(null)
     let appPwName: string | null = null
+    let promotedHandle: string | null = null
     try {
       const created = await createAppPassword(
         `group-import-${Math.random().toString(36).slice(2, 8)}`,
       )
       appPwName = created.name
       const result = await importGroup(created.password)
-      // Show the celebration first; refetch + switch to the group on dismiss
-      // (refetching now would swap this panel for the group settings and
-      // unmount the modal before it's seen).
-      setImportedHandle(result.handle || handle)
+      promotedHandle = result.handle || handle
     } catch (err) {
       if (
         err instanceof RegisterGroupError &&
@@ -91,16 +88,21 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
       }
       setWorking(false)
     }
-  }, [handle])
+
+    // On success, hand off to the group settings: flag the celebration, point
+    // the hash at #members, then refetch so the panel swaps to OrgSettings —
+    // which reads the flag on arrival and shows the celebration there. (Keeping
+    // a modal here would flash it over the personal page that's about to unmount.)
+    if (promotedHandle) {
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(GROUP_PROMOTED_FLAG, promotedHandle)
+        window.location.hash = "members"
+      }
+      await refetchOrgs()
+    }
+  }, [handle, refetchOrgs])
 
   const unlock = useUnlockAppPasswords(() => void runImport())
-
-  // Dismiss the celebration: now sync (the account is a group → selfGroup) and
-  // jump to the group's members page.
-  const goToGroup = useCallback(() => {
-    if (typeof window !== "undefined") window.location.hash = "members"
-    void refetchOrgs()
-  }, [refetchOrgs])
 
   const accountLabel = handle ? `@${handle}` : did
   const busy = unlock.submitting || working
@@ -136,16 +138,6 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
           Promote to group
         </Button>
       </div>
-
-      {importedHandle ? (
-        <GroupResultModal
-          variant="created"
-          handle={importedHandle}
-          primaryLabel="Manage your group"
-          onPrimary={goToGroup}
-          onClose={goToGroup}
-        />
-      ) : null}
     </form>
   )
 }
