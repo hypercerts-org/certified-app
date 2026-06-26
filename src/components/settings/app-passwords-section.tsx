@@ -1,12 +1,11 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Check, Copy, KeyRound, Lock, Plus, Trash2, Unlock } from "lucide-react"
+import { Check, Copy, KeyRound, Plus, Trash2, Unlock } from "lucide-react"
 import {
   createAppPassword,
   listAppPasswords,
   revokeAppPassword,
-  lockAppPasswords,
   AppPasswordsLockedError,
   type AppPasswordInfo,
   type CreatedAppPassword,
@@ -47,7 +46,6 @@ export default function AppPasswordsSection() {
   const [created, setCreated] = useState<CreatedAppPassword | null>(null)
 
   const [revoking, setRevoking] = useState<string | null>(null)
-  const [isLocking, setIsLocking] = useState(false)
   const { copied, copy } = useCopyToClipboard()
 
   const goLocked = useCallback(() => {
@@ -135,18 +133,6 @@ export default function AppPasswordsSection() {
     },
     [refresh, goLocked],
   )
-
-  const handleLock = useCallback(async () => {
-    setIsLocking(true)
-    try {
-      await lockAppPasswords()
-    } catch {
-      // Best-effort — lock the UI regardless.
-    } finally {
-      setIsLocking(false)
-      goLocked()
-    }
-  }, [goLocked])
 
   // ---- Checking (initial probe) -------------------------------------------
   if (status === "checking") {
@@ -281,23 +267,6 @@ export default function AppPasswordsSection() {
         </ul>
       )}
 
-      <div className="app-passwords__lock">
-        <p className="settings__note">
-          Locking ends this session right away, so your account password is
-          needed to view, create, or revoke app passwords again. It also locks
-          itself about 10 minutes after you unlock.
-        </p>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          loading={isLocking}
-          disabled={isLocking}
-          onClick={handleLock}
-        >
-          <Lock size={14} /> Lock
-        </Button>
-      </div>
     </div>
   )
 }
