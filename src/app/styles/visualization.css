@@ -76,20 +76,22 @@
   overflow: hidden;
 }
 
-/* The endorsement graph hosted in the Help modal: it carries its own padding;
-   trim the graph height a touch so the dialog (header + body) clears the
-   viewport without scrolling. */
+/* The endorsement graph hosted in the Help modal: fill nearly the whole
+   screen (a little margin shows the modal). The body owns the height; `.viz`
+   fills it and the graph flexes instead of using its standalone 60vh min. */
 .endorsement-graph-modal__body {
   display: flex;
+  height: 86vh;
   min-height: 0;
 }
 
 .endorsement-graph-modal__body .viz {
   width: 100%;
+  height: 100%;
 }
 
 .endorsement-graph-modal__body .viz__graph {
-  min-height: 52vh;
+  min-height: 0;
 }
 
 .viz__canvas-host {
