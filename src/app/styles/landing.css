@@ -1761,6 +1761,13 @@
   padding-top: 2rem;
 }
 
+/* The FAQ accordion carries its own bottom hairline; on legal/help pages the
+   `section + section` divider above already separates it from what follows,
+   so drop the accordion's closing line to avoid a stacked double rule. */
+.legal-page .prose .lp-faq {
+  border-bottom: 0;
+}
+
 .legal-page h1 {
   color: var(--color-navy);
 }
