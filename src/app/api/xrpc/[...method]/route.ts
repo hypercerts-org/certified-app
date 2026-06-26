@@ -28,7 +28,6 @@ import {
 const ALLOWED_WRITE_COLLECTIONS = [
   "org.impactindexer.link.attestation",
   "app.certified.actor.profile",
-  "app.certified.actor.membership",
   "app.certified.actor.organization",
   "app.certified.location",
   // Badge lexicons (issue #65 tracks indexer-side support). `definition`

@@ -6,7 +6,7 @@ import { KeyRound, Users } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { usePageTitle } from "@/lib/navbar-context"
-import { importGroup, putMembership, RegisterGroupError } from "@/lib/groups/api"
+import { importGroup, RegisterGroupError } from "@/lib/groups/api"
 import { authFetch } from "@/lib/auth/fetch"
 import Button from "@/components/ui/button"
 import Input from "@/components/ui/input"
@@ -64,14 +64,7 @@ export default function ImportGroupPage() {
       setIsImporting(true)
       setError(null)
       try {
-        const result = await importGroup(appPassword.trim())
-        // Stitch the owner membership marker so the imported group shows
-        // up in the account switcher + group list (mirrors create step 7).
-        try {
-          await putMembership(did, result.groupDid, "owner")
-        } catch (err) {
-          console.error("[groups/import] putMembership failed", err)
-        }
+        await importGroup(appPassword.trim())
         await refetchOrgs()
         router.push("/home")
       } catch (err) {

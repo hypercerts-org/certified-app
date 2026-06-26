@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useOrg } from "@/lib/groups/org-context"
-import { importGroup, putMembership, RegisterGroupError } from "@/lib/groups/api"
+import { importGroup, RegisterGroupError } from "@/lib/groups/api"
 import { createAppPassword, revokeAppPassword } from "@/lib/atproto/app-passwords"
 import { authFetch } from "@/lib/auth/fetch"
 import Button from "@/components/ui/button"
@@ -67,11 +67,6 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
       )
       appPwName = created.name
       const result = await importGroup(created.password)
-      try {
-        await putMembership(did, result.groupDid, "owner")
-      } catch (err) {
-        console.error("[settings/import-group] putMembership failed", err)
-      }
       // Show the celebration first; refetch + switch to the group on dismiss
       // (refetching now would swap this panel for the group settings and
       // unmount the modal before it's seen).
@@ -96,7 +91,7 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
       }
       setWorking(false)
     }
-  }, [did, handle])
+  }, [handle])
 
   const unlock = useUnlockAppPasswords(() => void runImport())
 

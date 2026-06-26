@@ -8,99 +8,9 @@ import type {
   GroupMetadata,
   OrgMember,
   AuditEntry,
-  MembershipRecord,
   OrgRole,
   RemoteMembership,
 } from "./types"
-import { ORG_MEMBERSHIP_COLLECTION } from "./constants"
-
-// ─── Membership records (stored in user's own PDS) ───────────────────
-
-/**
- * List all membership records from the current user's PDS.
- * Each record represents a group the user belongs to.
- */
-export async function listMemberships(
-  did: string,
-  signal?: AbortSignal
-): Promise<MembershipRecord[]> {
-  const res = await authFetch(
-    `/api/xrpc/com/atproto/repo/listRecords?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(ORG_MEMBERSHIP_COLLECTION)}&limit=100`,
-    { signal }
-  )
-  if (!res.ok) {
-    if (res.status === 400 || res.status === 404) return []
-    throw new Error(`Failed to list memberships: ${res.statusText}`)
-  }
-  const data = await res.json()
-  return (data.records || []).map(
-    (r: { value: MembershipRecord; uri: string }) => ({
-      ...r.value,
-      rkey: r.uri.split("/").pop(),
-    })
-  )
-}
-
-/**
- * Create a membership record in the user's PDS.
- * Uses createRecord so the PDS assigns a TID-based rkey.
- * If a membership for this groupDid already exists, this is a no-op.
- */
-export async function putMembership(
-  did: string,
-  groupDid: string,
-  role: OrgRole
-): Promise<void> {
-  // Check if membership already exists to avoid duplicates
-  const existing = await listMemberships(did)
-  if (existing.some((m) => m.groupDid === groupDid)) return
-
-  const record: MembershipRecord = {
-    $type: "app.certified.actor.membership",
-    groupDid,
-    role,
-    joinedAt: new Date().toISOString(),
-  }
-  const res = await authFetch("/api/xrpc/com/atproto/repo/createRecord", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      repo: did,
-      collection: ORG_MEMBERSHIP_COLLECTION,
-      record,
-    }),
-  })
-  if (!res.ok) {
-    throw new Error(await extractError(res, "Failed to save membership"))
-  }
-}
-
-/**
- * Delete a membership record from the user's PDS.
- * Finds the record by groupDid, then deletes by its TID rkey.
- */
-export async function deleteMembership(
-  did: string,
-  groupDid: string
-): Promise<void> {
-  // Find the membership record to get its rkey
-  const memberships = await listMemberships(did)
-  const membership = memberships.find((m) => m.groupDid === groupDid)
-  if (!membership?.rkey) return // Nothing to delete
-
-  const res = await authFetch("/api/xrpc/com/atproto/repo/deleteRecord", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      repo: did,
-      collection: ORG_MEMBERSHIP_COLLECTION,
-      rkey: membership.rkey,
-    }),
-  })
-  if (!res.ok) {
-    throw new Error(await extractError(res, "Failed to delete membership"))
-  }
-}
 
 // ─── Group service operations (proxied through BFF API routes) ───────
 
@@ -512,17 +422,12 @@ export async function getSelfCreatedOrgCount(
  * (source of truth) with local PDS records (to determine accepted status).
  */
 export async function resolveGroups(
-  did: string,
+  _did: string,
   signal?: AbortSignal
 ): Promise<Group[]> {
-  // Fetch both sources in parallel
-  const [remoteMemberships, localMemberships] = await Promise.all([
-    fetchRemoteMemberships(signal),
-    listMemberships(did, signal),
-  ])
-
-  // Build set of locally-accepted groupDids
-  const acceptedSet = new Set(localMemberships.map((m) => m.groupDid))
+  // Groups come from the CGS membership list (the source of truth). We no
+  // longer keep a local `app.certified.actor.membership` marker.
+  const remoteMemberships = await fetchRemoteMemberships(signal)
 
   // Resolve all remote memberships in parallel (profile, handle, PDS per org)
   const orgs = await Promise.all(
@@ -549,16 +454,13 @@ export async function resolveGroups(
       } catch {
         // ignore — profile or handle may not resolve
       }
-      // Get rkey from the local membership record (if accepted)
-      const localRecord = localMemberships.find((m) => m.groupDid === rm.groupDid)
       return {
         groupDid: rm.groupDid,
         handle,
         displayName,
         role: rm.role,
-        accepted: acceptedSet.has(rm.groupDid),
+        accepted: true,
         avatarUrl,
-        rkey: localRecord?.rkey,
       } satisfies Group
     })
   )

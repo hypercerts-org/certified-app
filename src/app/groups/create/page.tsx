@@ -20,7 +20,6 @@ import { MAX_SELF_CREATED_ORGS } from "@/lib/groups/constants"
 import {
   registerGroup,
   RegisterGroupError,
-  putMembership,
   putOrgProfile,
   putOrgMetadata,
   createBskyProfile,
@@ -270,9 +269,6 @@ export default function CreateGroupPage() {
         console.error("[groups/create] putOrgMetadata failed", err)
       }
 
-      // 7. Stitch the membership so the creator shows up as owner
-      // in the account switcher + group list.
-      await putMembership(did, groupDid, "owner")
       await refetchOrgs()
       router.push("/home")
     } catch (err) {
