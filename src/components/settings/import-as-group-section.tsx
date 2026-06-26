@@ -119,7 +119,7 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
       }}
       className="import-group"
     >
-      <p className="settings__note">
+      <p className="text-sm text-[var(--fg-secondary)]">
         Converts the account you&apos;re signed in as —{" "}
         <strong>{accountLabel}</strong> — into a group, with you as its owner.
         The account, its handle, and its records are kept; nothing is deleted.
