@@ -14,7 +14,6 @@ import Checkbox from "@/components/ui/checkbox"
 import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Skeleton from "@/components/ui/skeleton"
-import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import {
   useSocialGraphSync,
@@ -144,37 +143,8 @@ export default function SyncSocialGraphSection({
         <p className="social-graph-sync__summary">{summary}</p>
       ) : null}
 
-      <div className="social-graph-sync__actions">
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={() => setModalDir("import")}
-          disabled={sync.isLoading || sync.truncated || onlyBluesky === 0}
-        >
-          <RefreshCw size={14} strokeWidth={1.75} aria-hidden />
-          Sync from Bluesky
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => setModalDir("export")}
-          disabled={
-            sync.isLoading || sync.blueskyTruncated || onlyCertified === 0
-          }
-        >
-          <RefreshCw size={14} strokeWidth={1.75} aria-hidden />
-          Sync to Bluesky
-        </Button>
-      </div>
-
-      {inSync ? (
-        <span className="social-graph-sync__hint">
-          Your Certified and Bluesky follows are already in sync.
-        </span>
-      ) : null}
-
       {modalDir ? (
-        <SyncModal
+        <SyncFlow
           copy={modalDir === "import" ? IMPORT_COPY : EXPORT_COPY}
           candidateDids={
             modalDir === "import"
@@ -188,7 +158,38 @@ export default function SyncSocialGraphSection({
               : sync.exportDids(dids, opts)
           }
         />
-      ) : null}
+      ) : (
+        <>
+          <div className="social-graph-sync__actions">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setModalDir("import")}
+              disabled={sync.isLoading || sync.truncated || onlyBluesky === 0}
+            >
+              <RefreshCw size={14} strokeWidth={1.75} aria-hidden />
+              Sync from Bluesky
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setModalDir("export")}
+              disabled={
+                sync.isLoading || sync.blueskyTruncated || onlyCertified === 0
+              }
+            >
+              <RefreshCw size={14} strokeWidth={1.75} aria-hidden />
+              Sync to Bluesky
+            </Button>
+          </div>
+
+          {inSync ? (
+            <span className="social-graph-sync__hint">
+              Your Certified and Bluesky follows are already in sync.
+            </span>
+          ) : null}
+        </>
+      )}
     </div>
   )
 }
@@ -215,7 +216,7 @@ function StatTile({ label, value, isLoading, highlight }: StatTileProps) {
   )
 }
 
-// =============================== Modal ===============================
+// ========================= Sync flow (inline) =========================
 
 type ModalStep = "choose" | "select"
 
@@ -231,7 +232,7 @@ interface SyncModalProps {
 
 const PAGE_SIZE = 50
 
-function SyncModal({ copy, candidateDids, onClose, onImport }: SyncModalProps) {
+function SyncFlow({ copy, candidateDids, onClose, onImport }: SyncModalProps) {
   const [step, setStep] = useState<ModalStep>("choose")
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [isImporting, setIsImporting] = useState(false)
@@ -240,16 +241,15 @@ function SyncModal({ copy, candidateDids, onClose, onImport }: SyncModalProps) {
   const [query, setQuery] = useState("")
   const [page, setPage] = useState(0)
 
-  // AbortController scoped to the modal's lifetime. If the modal
-  // unmounts (user closes, navigates away) mid-import, abort()
-  // signals the importDids loop to stop after the current write —
-  // otherwise it keeps writing follows to the user's repo and
-  // populating the local cache with rows they thought they cancelled.
+  // AbortController scoped to the flow's lifetime. If the flow unmounts
+  // (user cancels, navigates away) mid-import, abort() signals the
+  // importDids loop to stop after the current write — otherwise it keeps
+  // writing follows to the user's repo and populating the local cache with
+  // rows they thought they cancelled.
   const abortControllerRef = useRef<AbortController | null>(null)
 
-  // Abort any in-flight import on modal unmount. AppDialog handles
-  // the dialog lifecycle (showModal/close/Esc); this only owns the
-  // import-abort side.
+  // Abort any in-flight import when the flow unmounts (Cancel / leaving the
+  // page).
   useEffect(() => {
     return () => {
       abortControllerRef.current?.abort()
@@ -277,78 +277,72 @@ function SyncModal({ copy, candidateDids, onClose, onImport }: SyncModalProps) {
   )
 
   return (
-    <AppDialog
-      ariaLabel="Sync social graph"
-      className="social-graph-sync__modal"
-      maxWidth={560}
-      onClose={onClose}
-      disableBackdropClose={isImporting}
+    <div
+      className="social-graph-sync__flow"
+      role="region"
+      aria-label="Sync social graph"
     >
-      <AppDialogHeader
-        title={
-          <span className="social-graph-sync__modal-title-row">
-            {step === "select" && !result ? (
-              <button
-                type="button"
-                className="social-graph-sync__modal-back"
-                onClick={() => {
-                  if (isImporting) return
-                  setStep("choose")
-                  setError(null)
-                }}
-                aria-label="Back to sync options"
-                disabled={isImporting}
-              >
-                <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
-              </button>
-            ) : null}
-            {result
-              ? "Sync complete"
-              : step === "choose"
-                ? copy.title
-                : `Select people to ${copy.verbLower}`}
-          </span>
-        }
-        onClose={onClose}
-        disabled={isImporting}
-      />
+      <div className="social-graph-sync__flow-head">
+        {step === "select" && !result ? (
+          <button
+            type="button"
+            className="social-graph-sync__modal-back"
+            onClick={() => {
+              if (isImporting) return
+              setStep("choose")
+              setError(null)
+            }}
+            aria-label="Back to sync options"
+            disabled={isImporting}
+          >
+            <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
+          </button>
+        ) : null}
+        <h3 className="social-graph-sync__flow-title">
+          {result
+            ? "Sync complete"
+            : step === "choose"
+              ? copy.title
+              : `Select people to ${copy.verbLower}`}
+        </h3>
+      </div>
 
-        <AppDialogBody className="social-graph-sync__modal-body">
-          {result ? (
-            <ResultView
-              copy={copy}
-              result={result}
-              candidateCount={candidateDids.length}
-              onClose={onClose}
-            />
-          ) : step === "choose" ? (
-            <ChooseStep
-              copy={copy}
-              candidateCount={candidateDids.length}
-              isImporting={isImporting}
-              error={error}
-              onCancel={onClose}
-              onImportAll={() => runImport(candidateDids)}
-              onPick={() => setStep("select")}
-            />
-          ) : (
-            <SelectStep
-              copy={copy}
-              candidateDids={candidateDids}
-              selected={selected}
-              setSelected={setSelected}
-              query={query}
-              setQuery={setQuery}
-              page={page}
-              setPage={setPage}
-              isImporting={isImporting}
-              error={error}
-              onCancel={onClose}
-              onImport={() => runImport(Array.from(selected))}
-            />
-          )}
-        </AppDialogBody>
-    </AppDialog>
+      <div className="social-graph-sync__modal-body">
+        {result ? (
+          <ResultView
+            copy={copy}
+            result={result}
+            candidateCount={candidateDids.length}
+            onClose={onClose}
+          />
+        ) : step === "choose" ? (
+          <ChooseStep
+            copy={copy}
+            candidateCount={candidateDids.length}
+            isImporting={isImporting}
+            error={error}
+            onCancel={onClose}
+            onImportAll={() => runImport(candidateDids)}
+            onPick={() => setStep("select")}
+          />
+        ) : (
+          <SelectStep
+            copy={copy}
+            candidateDids={candidateDids}
+            selected={selected}
+            setSelected={setSelected}
+            query={query}
+            setQuery={setQuery}
+            page={page}
+            setPage={setPage}
+            isImporting={isImporting}
+            error={error}
+            onCancel={onClose}
+            onImport={() => runImport(Array.from(selected))}
+          />
+        )}
+      </div>
+    </div>
   )
 }
 

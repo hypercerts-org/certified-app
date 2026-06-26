@@ -91,19 +91,37 @@
   line-height: 1.4;
 }
 
-/* =================== Sync modal — choose + select =================== */
+/* ============== Sync flow (inline panel) — choose + select ============== */
+
+/* The flow replaces the action buttons in place; a top divider sets it
+   apart from the stats above. */
+.social-graph-sync__flow {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.social-graph-sync__flow-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.social-graph-sync__flow-title {
+  margin: 0;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+}
 
 .social-graph-sync__modal-body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-/* Wraps the optional back button + the title text inside
-   AppDialogHeader's title slot so the glyph and text align. */
-.social-graph-sync__modal-title-row {
-  display: inline-flex;
-  align-items: center;
 }
 
 .social-graph-sync__modal-back {
