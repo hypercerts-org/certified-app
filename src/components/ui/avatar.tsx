@@ -8,6 +8,10 @@ export interface AvatarProps {
   alt?: string;
   size?: "sm" | "md" | "lg" | "xl" | "2xl";
   fallbackInitials?: string;
+  /** Stable identity string (ideally the DID) the placeholder ring's gradient
+   *  is derived from. Falls back to the initials, so the ring is at least
+   *  stable per name when a caller can't supply a DID. */
+  seed?: string;
   className?: string;
   bordered?: boolean;
 }
@@ -33,11 +37,48 @@ const sizePx: Record<NonNullable<AvatarProps["size"]>, number> = {
   "2xl": 240,
 };
 
+// Conic-gradient ring width per size (the avatar's outer padding). Scales
+// with the avatar so the ring stays proportional from chip to profile hero.
+const ringPx: Record<NonNullable<AvatarProps["size"]>, number> = {
+  sm: 2,
+  md: 2.5,
+  lg: 3,
+  xl: 3.5,
+  "2xl": 6,
+};
+
+// FNV-1a — small, fast, deterministic. Pure (no Math.random), so it's safe
+// to run during render and yields the same ring for the same identity on
+// every device and SSR/CSR pass.
+function hashSeed(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+// Three identity-derived hues swept into a conic gradient for the fallback
+// ring. The hues are *generated* per identity, so they can't be design
+// tokens — this is the one place raw hsl() is intentional (the neutral fill
+// + every other surface stays on tokens).
+function conicRingFor(seed: string): string {
+  const h = hashSeed(seed);
+  const h2 = hashSeed(seed + "x");
+  const h3 = hashSeed(seed + "yy");
+  const a = h % 360;
+  const b = (a + 60 + (h2 % 120)) % 360;
+  const c = (a + 200 + (h3 % 80)) % 360;
+  return `conic-gradient(from ${h % 360}deg, hsl(${a} 62% 55%), hsl(${b} 62% 55%), hsl(${c} 60% 52%), hsl(${a} 62% 55%))`;
+}
+
 const Avatar: React.FC<AvatarProps> = ({
   src,
   alt = "",
   size = "md",
   fallbackInitials = "?",
+  seed,
   className = "",
   bordered = false,
 }) => {
@@ -45,39 +86,53 @@ const Avatar: React.FC<AvatarProps> = ({
 
   React.useEffect(() => { setImageError(false) }, [src]);
 
+  const showFallback = !src || imageError;
+
+  // Placeholder: a deterministic conic-gradient ring around the neutral fill
+  // + initials. `overflow-hidden` and the flat border are dropped here — the
+  // ring (the outer padding showing the gradient) is the visible edge.
+  if (showFallback) {
+    return (
+      <div
+        className={`${sizeMap[size]} shrink-0 rounded-full flex items-center justify-center ${className}`}
+        style={{
+          padding: ringPx[size],
+          background: conicRingFor(seed || fallbackInitials || alt || ""),
+          // Keep the elevated separator for stacked/overlapping contexts.
+          ...(bordered ? { boxShadow: "0 0 0 2px var(--bg-elevated)" } : {}),
+        }}
+      >
+        <div className="w-full h-full rounded-full bg-[var(--color-surface-container-high)] text-[var(--fg-primary)] font-semibold flex items-center justify-center">
+          {fallbackInitials.slice(0, 2).toUpperCase()}
+        </div>
+      </div>
+    );
+  }
+
   const borderStyles = bordered
     ? "border-2 border-[var(--bg-elevated)]"
     : "border border-[var(--border-subtle)]";
-
-  const showFallback = !src || imageError;
-  const px = sizePx[size];
 
   return (
     <div
       className={`${sizeMap[size]} shrink-0 rounded-full overflow-hidden flex items-center justify-center ${borderStyles} ${className}`}
     >
-      {showFallback ? (
-        <div className="w-full h-full bg-[var(--color-surface-container-high)] text-[var(--fg-primary)] font-semibold flex items-center justify-center">
-          {fallbackInitials.slice(0, 2).toUpperCase()}
-        </div>
-      ) : (
-        <Image
-          src={src as string}
-          alt={alt}
-          width={px}
-          height={px}
-          className="w-full h-full object-cover"
-          onError={() => setImageError(true)}
-          // unoptimized: avatar URLs come from many foreign sources
-          // (Bluesky CDN, foreign PDS getBlob endpoints, our same-
-          // origin resolve-did proxy). next.config.ts allowlist only
-          // covers **.certified.app; rather than expand it to every
-          // possible blob host, skip optimisation for avatars. We
-          // still get layout-shift-free rendering from the explicit
-          // width/height + the framework's lazy-loading default.
-          unoptimized
-        />
-      )}
+      <Image
+        src={src as string}
+        alt={alt}
+        width={sizePx[size]}
+        height={sizePx[size]}
+        className="w-full h-full object-cover"
+        onError={() => setImageError(true)}
+        // unoptimized: avatar URLs come from many foreign sources
+        // (Bluesky CDN, foreign PDS getBlob endpoints, our same-
+        // origin resolve-did proxy). next.config.ts allowlist only
+        // covers **.certified.app; rather than expand it to every
+        // possible blob host, skip optimisation for avatars. We
+        // still get layout-shift-free rendering from the explicit
+        // width/height + the framework's lazy-loading default.
+        unoptimized
+      />
     </div>
   );
 };

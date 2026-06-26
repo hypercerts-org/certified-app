@@ -38,7 +38,7 @@ export default function OwnerByline({ group, role, className = "" }: OwnerByline
     <span className={`owner-byline${className ? ` ${className}` : ""}`}>
       <span className="owner-byline__label">by</span>
       <span className="owner-byline__avatar" aria-hidden="true">
-        <Avatar size="sm" src={group.avatarUrl} alt="" fallbackInitials={initials} />
+        <Avatar size="sm" src={group.avatarUrl} alt="" fallbackInitials={initials} seed={group.groupDid} />
       </span>
       <span className="owner-byline__name">{name}</span>
       {role ? <span className="sr-only">, {role}</span> : null}

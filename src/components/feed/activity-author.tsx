@@ -61,6 +61,7 @@ export default function ActivityAuthor({ did, nameSuffix }: ActivityAuthorProps)
         src={info.avatarUrl || undefined}
         alt=""
         fallbackInitials={initials}
+        seed={did}
         className="shrink-0"
       />
       <span className="feed-card__author-meta">

@@ -62,6 +62,7 @@ export default function PersonCard({
             src={info?.avatarUrl || undefined}
             alt=""
             fallbackInitials={initials}
+            seed={did}
           />
         )}
         {/* Vertical stack — name (row 1), @handle (row 2), date

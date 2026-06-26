@@ -84,6 +84,7 @@ export default function IdentityRow({
         src={avatarUrl || undefined}
         alt=""
         fallbackInitials={getInitials(displayName, did)}
+        seed={did}
       />
       <span className="flex flex-col min-w-0">
         <span

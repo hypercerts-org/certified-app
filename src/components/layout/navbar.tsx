@@ -189,7 +189,7 @@ const Navbar: React.FC = () => {
                 onClick={() => { setDropdownOpen(false); }}
                 aria-label="Switch account"
               >
-                <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
+                <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} seed={did ?? undefined} />
                 <ChevronDown size={14} className="navbar__chevron-desktop" />
               </button>
             </PopoverTrigger>
@@ -227,7 +227,7 @@ const Navbar: React.FC = () => {
             aria-haspopup="menu"
             aria-expanded={switcherOpen}
           >
-            <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
+            <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} seed={did ?? undefined} />
             <ChevronDown size={14} className="navbar__chevron-desktop" />
           </button>
         )}

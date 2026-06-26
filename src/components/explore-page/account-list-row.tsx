@@ -53,6 +53,7 @@ export default function AccountListRow({
           src={avatarUrl ?? undefined}
           alt=""
           fallbackInitials={initials}
+          seed={actor.did}
           className="account-list-row__avatar"
         />
         <div className="account-list-row__body">
