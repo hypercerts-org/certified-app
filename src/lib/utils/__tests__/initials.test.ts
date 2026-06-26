@@ -25,22 +25,21 @@ describe("getInitials", () => {
     expect(getInitials("Alice    Cooper")).toBe("AC")
   })
 
-  it("falls back to the DID slice when displayName is missing", () => {
-    expect(getInitials(null, "did:plc:abcd1234")).toBe("pl")
-    expect(getInitials(undefined, "did:web:example.com")).toBe("we")
+  it("falls back to the handle's first two characters when displayName is missing", () => {
+    expect(getInitials(null, "alice.bsky.social")).toBe("al")
+    expect(getInitials(undefined, "@bob.certified.one")).toBe("bo")
+    expect(getInitials("   ", "carol.example.com")).toBe("ca")
   })
 
-  it("falls back to the DID slice when displayName is whitespace-only", () => {
-    expect(getInitials("   ", "did:plc:abcd1234")).toBe("pl")
+  it("never derives initials from a DID (would give a misleading 'pl' from did:plc)", () => {
+    expect(getInitials(null, "did:plc:abcd1234")).toBe("?")
+    expect(getInitials(undefined, "did:web:example.com")).toBe("?")
+    expect(getInitials("   ", "did:plc:abcd1234")).toBe("?")
   })
 
-  it("returns '?' when both displayName and DID are missing", () => {
+  it("returns '?' when both displayName and handle are missing", () => {
     expect(getInitials()).toBe("?")
     expect(getInitials(null, null)).toBe("?")
     expect(getInitials("", "")).toBe("?")
-  })
-
-  it("returns '?' when DID is too short to slice", () => {
-    expect(getInitials(undefined, "did")).toBe("?")
   })
 })

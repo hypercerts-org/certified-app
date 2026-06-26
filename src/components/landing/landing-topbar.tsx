@@ -28,10 +28,11 @@ export default function LandingTopBar() {
         isAuthenticated ? (
           <Link href="/home" className="lp-topbar__btn lp-topbar__btn--account">
             <Avatar
-              size="sm"
+              size="xs"
               src={avatarUrl || undefined}
-              fallbackInitials={getInitials(profile?.displayName, did)}
-              className="lp-topbar__avatar !h-5 !w-5"
+              fallbackInitials={getInitials(profile?.displayName)}
+              seed={did ?? undefined}
+              className="lp-topbar__avatar"
             />
             Open app
           </Link>

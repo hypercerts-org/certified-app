@@ -6,7 +6,7 @@ import Image from "next/image";
 export interface AvatarProps {
   src?: string;
   alt?: string;
-  size?: "sm" | "md" | "lg" | "xl" | "2xl";
+  size?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
   fallbackInitials?: string;
   /** Stable identity string (ideally the DID) the placeholder ring's gradient
    *  is derived from. Falls back to the initials, so the ring is at least
@@ -17,6 +17,7 @@ export interface AvatarProps {
 }
 
 const sizeMap = {
+  xs: "h-5 w-5 text-[0.625rem]",
   sm: "h-8 w-8 text-body-sm",
   md: "h-12 w-12 text-body",
   lg: "h-16 w-16 text-h4",
@@ -30,6 +31,7 @@ const sizeMap = {
 // needs explicit width+height (or `fill`); explicit values give it the
 // intrinsic aspect ratio it needs for layout-shift-free rendering.
 const sizePx: Record<NonNullable<AvatarProps["size"]>, number> = {
+  xs: 20,
   sm: 32,
   md: 48,
   lg: 64,
@@ -40,6 +42,7 @@ const sizePx: Record<NonNullable<AvatarProps["size"]>, number> = {
 // Conic-gradient ring width per size (the avatar's outer padding). Scales
 // with the avatar so the ring stays proportional from chip to profile hero.
 const ringPx: Record<NonNullable<AvatarProps["size"]>, number> = {
+  xs: 1.5,
   sm: 2,
   md: 2.5,
   lg: 3,
