@@ -42,6 +42,11 @@ const ALLOWED_WRITE_COLLECTIONS = [
   // the followers view is served by the magic-indexer via the
   // `appCertifiedGraphFollow` connection.
   "app.certified.graph.follow",
+  // Bluesky social graph — own-repo follow records, written by the
+  // settings "Sync to Bluesky" direction (Certified → Bluesky). A follow
+  // record is additive and safe; unlike `app.bsky.actor.profile` (see the
+  // invariant above) it never clobbers existing Bluesky data.
+  "app.bsky.graph.follow",
   "org.hypercerts.claim.activity",
   // Project records (and other curated collections like favorites /
   // portfolio / program — same NSID, distinguished by `type` field).

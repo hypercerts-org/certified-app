@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react"
 import { useBlueskyFollows } from "@/hooks/use-bluesky-follows"
 import { useFollowing } from "@/hooks/use-following"
-import { createFollow } from "@/lib/atproto/follow"
+import { createFollow, createBlueskyFollow } from "@/lib/atproto/follow"
 
 export interface SocialGraphSyncStats {
   /** Subject DIDs followed on BOTH Certified and Bluesky. */
@@ -56,10 +56,21 @@ export function useSocialGraphSync(
    *  and re-importing would create duplicate follows on the user's
    *  PDS. Callers must refuse to act on `stats` when this is true. */
   truncated: boolean
+  /** True when the BLUESKY side's follow list was truncated by the 10k
+   *  safety cap. While true, `onlyCertified` may contain false-positives,
+   *  so the Certified → Bluesky export (`exportDids`) must refuse. */
+  blueskyTruncated: boolean
   isLoading: boolean
   error: string | null
   refetch: () => Promise<void>
+  /** Bluesky → Certified: write a certified follow per DID. */
   importDids: (
+    dids: string[],
+    opts?: { signal?: AbortSignal },
+  ) => Promise<SocialGraphSyncResult>
+  /** Certified → Bluesky: write an `app.bsky.graph.follow` per DID.
+   *  Personal repo only — refuses when acting-as-group. */
+  exportDids: (
     dids: string[],
     opts?: { signal?: AbortSignal },
   ) => Promise<SocialGraphSyncResult>
@@ -77,8 +88,12 @@ export function useSocialGraphSync(
     refetch: certifiedRefetch,
     addFollow: certifiedAddFollow,
   } = useFollowing(did)
-  const { followedDids: blueskyDids, isLoading: blueskyLoading, error: blueskyError } =
-    useBlueskyFollows(did)
+  const {
+    followedDids: blueskyDids,
+    truncated: blueskyTruncated,
+    isLoading: blueskyLoading,
+    error: blueskyError,
+  } = useBlueskyFollows(did)
   const blueskyCount = blueskyDids.size
   const ownDid = opts?.ownDid ?? did
   const targetDid = opts?.targetDid
@@ -186,14 +201,72 @@ export function useSocialGraphSync(
     [ownDid, targetDid, isWriting, certifiedSubjects, certifiedTruncated, certifiedAddFollow, certifiedRefetch],
   )
 
+  const exportDids = useCallback(
+    async (
+      dids: string[],
+      opts?: { signal?: AbortSignal },
+    ): Promise<SocialGraphSyncResult> => {
+      const failAll = (message: string): SocialGraphSyncResult => ({
+        imported: 0,
+        failed: dids.length,
+        errors: dids.map((subjectDid) => ({ subjectDid, message })),
+      })
+      if (!ownDid) return failAll("Not signed in")
+      // Writing to Bluesky goes to the signed-in account's own repo via the
+      // XRPC proxy — there's no group BFF path, so refuse when acting-as-group.
+      if (targetDid && targetDid !== ownDid) {
+        return failAll("Syncing to Bluesky isn't available for group accounts")
+      }
+      if (isWriting) return { imported: 0, failed: 0, errors: [] }
+      // Refuse when the Bluesky set is truncated — `blueskyDids.has()` below
+      // would return false-negatives past the 10k cap and we'd write
+      // duplicate `app.bsky.graph.follow` records to the user's repo.
+      if (blueskyTruncated) {
+        return failAll("Your Bluesky follow list is too large to sync safely")
+      }
+      setIsWriting(true)
+      let imported = 0
+      const errors: { subjectDid: string; message: string }[] = []
+      try {
+        const seen = new Set<string>()
+        for (const subjectDid of dids) {
+          if (opts?.signal?.aborted) break
+          if (seen.has(subjectDid)) continue
+          seen.add(subjectDid)
+          // Skip anyone already followed on Bluesky — duplicate guard +
+          // covers the open-modal-then-follow race.
+          if (blueskyDids.has(subjectDid)) continue
+          try {
+            await createBlueskyFollow(ownDid, subjectDid)
+            imported++
+          } catch (err) {
+            errors.push({
+              subjectDid,
+              message:
+                err instanceof Error ? err.message : "Failed to create follow",
+            })
+          }
+        }
+        // No optimistic update / refetch: `useBlueskyFollows` exposes neither
+        // an add nor a refetch, and its cache refreshes on focus.
+      } finally {
+        setIsWriting(false)
+      }
+      return { imported, failed: errors.length, errors }
+    },
+    [ownDid, targetDid, isWriting, blueskyDids, blueskyTruncated],
+  )
+
   return {
     certifiedCount,
     blueskyCount,
     stats,
     truncated: certifiedTruncated,
+    blueskyTruncated,
     isLoading: certifiedLoading || blueskyLoading,
     error: certifiedError || blueskyError,
     refetch,
     importDids,
+    exportDids,
   }
 }

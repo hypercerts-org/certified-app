@@ -53,15 +53,60 @@ interface SyncSocialGraphSectionProps {
  * follows on the personal repo; the group flow writes on the group's
  * repo via the BFF.
  */
+type SyncDirection = "import" | "export"
+
+/** Direction-specific copy so one modal serves both Bluesky → Certified
+ *  (import) and Certified → Bluesky (export). */
+interface DirectionCopy {
+  /** Modal + action title, e.g. "Sync from Bluesky". */
+  title: string
+  /** Graph the candidates come from. */
+  source: string
+  /** Graph we write to. */
+  target: string
+  /** Action verb, e.g. "Import" / "Add". */
+  verb: string
+  /** Lower-case verb for inline copy. */
+  verbLower: string
+  /** Past-tense verb for the result line. */
+  verbPast: string
+}
+
+const IMPORT_COPY: DirectionCopy = {
+  title: "Sync from Bluesky",
+  source: "Bluesky",
+  target: "Certified",
+  verb: "Import",
+  verbLower: "import",
+  verbPast: "Imported",
+}
+
+const EXPORT_COPY: DirectionCopy = {
+  title: "Sync to Bluesky",
+  source: "Certified",
+  target: "Bluesky",
+  verb: "Add",
+  verbLower: "add",
+  verbPast: "Added",
+}
+
 export default function SyncSocialGraphSection({
   did,
   ownDid,
   targetDid,
 }: SyncSocialGraphSectionProps) {
   const sync = useSocialGraphSync(did, { ownDid, targetDid })
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [modalDir, setModalDir] = useState<SyncDirection | null>(null)
 
   const summary = sync.isLoading ? "Comparing graphs…" : null
+  const onlyCertified = sync.stats.onlyCertified.length
+  const onlyBluesky = sync.stats.onlyBluesky.length
+  const inSync =
+    !sync.isLoading &&
+    !sync.truncated &&
+    !sync.blueskyTruncated &&
+    onlyCertified === 0 &&
+    onlyBluesky === 0
 
   return (
     <div className="social-graph-sync" data-tour="settings-bsky-sync">
@@ -73,14 +118,15 @@ export default function SyncSocialGraphSection({
         />
         <StatTile
           label="Only on Certified"
-          value={sync.stats.onlyCertified.length}
+          value={onlyCertified}
           isLoading={sync.isLoading}
+          highlight={onlyCertified > 0}
         />
         <StatTile
           label="Only on Bluesky"
-          value={sync.stats.onlyBluesky.length}
+          value={onlyBluesky}
           isLoading={sync.isLoading}
-          highlight={sync.stats.onlyBluesky.length > 0}
+          highlight={onlyBluesky > 0}
         />
       </div>
 
@@ -88,11 +134,11 @@ export default function SyncSocialGraphSection({
         <p className="social-graph-sync__error" role="alert">
           {sync.error}
         </p>
-      ) : sync.truncated ? (
+      ) : sync.truncated || sync.blueskyTruncated ? (
         <p className="social-graph-sync__error" role="alert">
-          Your follow list is too large to compare safely (more than
-          10,000 follows). Importing would risk creating duplicate
-          records — sync is disabled.
+          One of your follow lists is too large to compare safely (more than
+          10,000 follows). Syncing would risk creating duplicate records — it&apos;s
+          disabled.
         </p>
       ) : summary ? (
         <p className="social-graph-sync__summary">{summary}</p>
@@ -102,31 +148,45 @@ export default function SyncSocialGraphSection({
         <Button
           variant="primary"
           size="sm"
-          onClick={() => setIsModalOpen(true)}
-          disabled={
-            sync.isLoading ||
-            sync.truncated ||
-            sync.stats.onlyBluesky.length === 0
-          }
+          onClick={() => setModalDir("import")}
+          disabled={sync.isLoading || sync.truncated || onlyBluesky === 0}
         >
           <RefreshCw size={14} strokeWidth={1.75} aria-hidden />
           Sync from Bluesky
         </Button>
-        {!sync.truncated &&
-        sync.stats.onlyBluesky.length === 0 &&
-        !sync.isLoading ? (
-          <span className="social-graph-sync__hint">
-            Nothing new to import — Certified is up to date with your Bluesky
-            follows.
-          </span>
-        ) : null}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setModalDir("export")}
+          disabled={
+            sync.isLoading || sync.blueskyTruncated || onlyCertified === 0
+          }
+        >
+          <RefreshCw size={14} strokeWidth={1.75} aria-hidden />
+          Sync to Bluesky
+        </Button>
       </div>
 
-      {isModalOpen ? (
+      {inSync ? (
+        <span className="social-graph-sync__hint">
+          Your Certified and Bluesky follows are already in sync.
+        </span>
+      ) : null}
+
+      {modalDir ? (
         <SyncModal
-          candidateDids={sync.stats.onlyBluesky}
-          onClose={() => setIsModalOpen(false)}
-          onImport={(dids, opts) => sync.importDids(dids, opts)}
+          copy={modalDir === "import" ? IMPORT_COPY : EXPORT_COPY}
+          candidateDids={
+            modalDir === "import"
+              ? sync.stats.onlyBluesky
+              : sync.stats.onlyCertified
+          }
+          onClose={() => setModalDir(null)}
+          onImport={(dids, opts) =>
+            modalDir === "import"
+              ? sync.importDids(dids, opts)
+              : sync.exportDids(dids, opts)
+          }
         />
       ) : null}
     </div>
@@ -160,6 +220,7 @@ function StatTile({ label, value, isLoading, highlight }: StatTileProps) {
 type ModalStep = "choose" | "select"
 
 interface SyncModalProps {
+  copy: DirectionCopy
   candidateDids: string[]
   onClose: () => void
   onImport: (
@@ -170,7 +231,7 @@ interface SyncModalProps {
 
 const PAGE_SIZE = 50
 
-function SyncModal({ candidateDids, onClose, onImport }: SyncModalProps) {
+function SyncModal({ copy, candidateDids, onClose, onImport }: SyncModalProps) {
   const [step, setStep] = useState<ModalStep>("choose")
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [isImporting, setIsImporting] = useState(false)
@@ -235,7 +296,7 @@ function SyncModal({ candidateDids, onClose, onImport }: SyncModalProps) {
                   setStep("choose")
                   setError(null)
                 }}
-                aria-label="Back to import options"
+                aria-label="Back to sync options"
                 disabled={isImporting}
               >
                 <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
@@ -244,8 +305,8 @@ function SyncModal({ candidateDids, onClose, onImport }: SyncModalProps) {
             {result
               ? "Sync complete"
               : step === "choose"
-                ? "Sync from Bluesky"
-                : "Select people to import"}
+                ? copy.title
+                : `Select people to ${copy.verbLower}`}
           </span>
         }
         onClose={onClose}
@@ -255,12 +316,14 @@ function SyncModal({ candidateDids, onClose, onImport }: SyncModalProps) {
         <AppDialogBody className="social-graph-sync__modal-body">
           {result ? (
             <ResultView
+              copy={copy}
               result={result}
               candidateCount={candidateDids.length}
               onClose={onClose}
             />
           ) : step === "choose" ? (
             <ChooseStep
+              copy={copy}
               candidateCount={candidateDids.length}
               isImporting={isImporting}
               error={error}
@@ -270,6 +333,7 @@ function SyncModal({ candidateDids, onClose, onImport }: SyncModalProps) {
             />
           ) : (
             <SelectStep
+              copy={copy}
               candidateDids={candidateDids}
               selected={selected}
               setSelected={setSelected}
@@ -291,6 +355,7 @@ function SyncModal({ candidateDids, onClose, onImport }: SyncModalProps) {
 // ---------------- Step 1: choose import-all vs pick ----------------
 
 interface ChooseStepProps {
+  copy: DirectionCopy
   candidateCount: number
   isImporting: boolean
   error: string | null
@@ -300,6 +365,7 @@ interface ChooseStepProps {
 }
 
 function ChooseStep({
+  copy,
   candidateCount,
   isImporting,
   error,
@@ -311,8 +377,8 @@ function ChooseStep({
     <>
       <p className="social-graph-sync__modal-lede">
         You follow <strong>{candidateCount}</strong>{" "}
-        {candidateCount === 1 ? "person" : "people"} on Bluesky who you don’t
-        follow yet on Certified.
+        {candidateCount === 1 ? "person" : "people"} on {copy.source} who you
+        don’t follow yet on {copy.target}.
       </p>
 
       <div className="social-graph-sync__modal-choices">
@@ -323,10 +389,11 @@ function ChooseStep({
           disabled={isImporting || candidateCount === 0}
         >
           <span className="social-graph-sync__modal-choice-title">
-            Import all
+            {copy.verb} all
           </span>
           <span className="social-graph-sync__modal-choice-desc">
-            Follow everyone from your Bluesky graph on Certified in one batch.
+            Follow everyone from your {copy.source} graph on {copy.target} in
+            one batch.
           </span>
         </button>
         <button
@@ -336,7 +403,7 @@ function ChooseStep({
           disabled={isImporting || candidateCount === 0}
         >
           <span className="social-graph-sync__modal-choice-title">
-            Import selected
+            {copy.verb} selected
           </span>
           <span className="social-graph-sync__modal-choice-desc">
             Pick exactly who to add. Search + pagination across all{" "}
@@ -368,6 +435,7 @@ function ChooseStep({
 // -------------------- Step 2: pick a subset --------------------------
 
 interface SelectStepProps {
+  copy: DirectionCopy
   candidateDids: string[]
   selected: Set<string>
   setSelected: React.Dispatch<React.SetStateAction<Set<string>>>
@@ -382,6 +450,7 @@ interface SelectStepProps {
 }
 
 function SelectStep({
+  copy,
   candidateDids,
   selected,
   setSelected,
@@ -447,7 +516,7 @@ function SelectStep({
         type="search"
         size="sm"
         leadingIcon={<Search size={16} strokeWidth={1.75} aria-hidden />}
-        placeholder="Search Bluesky-only follows…"
+        placeholder={`Search ${copy.source}-only follows…`}
         value={query}
         onChange={(e) => {
           setQuery(e.target.value)
@@ -473,7 +542,7 @@ function SelectStep({
         </span>
       </div>
 
-      <ul className="social-graph-sync__modal-list" role="listbox" aria-label="Bluesky-only follows">
+      <ul className="social-graph-sync__modal-list" role="listbox" aria-label={`${copy.source}-only follows`}>
         {pageDids.map((d) => (
           <CandidateRow
             key={d}
@@ -487,7 +556,7 @@ function SelectStep({
           <li className="social-graph-sync__modal-empty">
             {query.trim()
               ? `No matches for "${query.trim()}".`
-              : "Nothing to import."}
+              : `Nothing to ${copy.verbLower}.`}
           </li>
         ) : null}
       </ul>
@@ -533,8 +602,8 @@ function SelectStep({
           disabled={isImporting || selected.size === 0}
         >
           {selected.size > 1
-            ? `Import ${selected.size} selected followers`
-            : "Import selected follower"}
+            ? `${copy.verb} ${selected.size} selected`
+            : `${copy.verb} selected`}
         </Button>
       </div>
     </>
@@ -589,12 +658,13 @@ function CandidateRow({ did, checked, onToggle, disabled }: CandidateRowProps) {
 // --------------------------- Result view ----------------------------
 
 interface ResultViewProps {
+  copy: DirectionCopy
   result: SocialGraphSyncResult
   candidateCount: number
   onClose: () => void
 }
 
-function ResultView({ result, candidateCount, onClose }: ResultViewProps) {
+function ResultView({ copy, result, candidateCount, onClose }: ResultViewProps) {
   return (
     <>
       <div className="social-graph-sync__result">
@@ -605,11 +675,11 @@ function ResultView({ result, candidateCount, onClose }: ResultViewProps) {
           aria-hidden
         />
         <p className="social-graph-sync__result-text">
-          Imported{" "}
+          {copy.verbPast}{" "}
           <strong>
             {result.imported} of {candidateCount}
           </strong>{" "}
-          {result.imported === 1 ? "follow" : "follows"} into the Certified
+          {result.imported === 1 ? "follow" : "follows"} into the {copy.target}{" "}
           graph.
           {result.failed > 0 ? (
             <>

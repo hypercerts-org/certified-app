@@ -101,6 +101,55 @@ export async function createFollow(
   return { uri: data.uri, cid: data.cid }
 }
 
+export const BLUESKY_FOLLOW_COLLECTION = "app.bsky.graph.follow"
+
+interface BlueskyFollowRecordValue {
+  $type?: typeof BLUESKY_FOLLOW_COLLECTION
+  subject: string
+  createdAt: string
+}
+
+/**
+ * Create an `app.bsky.graph.follow` record on the viewer's own repo — the
+ * Bluesky side of the social-graph sync (Certified → Bluesky). Personal
+ * repo only: writes to `ownDid` via the XRPC proxy. Group Bluesky writes
+ * aren't supported (no group BFF path), so callers must restrict this to
+ * the personal case.
+ *
+ * As with `createFollow`, the caller is responsible for not creating
+ * duplicates — the PDS accepts them.
+ */
+export async function createBlueskyFollow(
+  ownDid: string,
+  subjectDid: string,
+  opts?: { createdAt?: string },
+): Promise<{ uri: string; cid: string }> {
+  const createdAt = opts?.createdAt ?? new Date().toISOString()
+  const res = await authFetch("/api/xrpc/com/atproto/repo/createRecord", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      repo: ownDid,
+      collection: BLUESKY_FOLLOW_COLLECTION,
+      record: {
+        $type: BLUESKY_FOLLOW_COLLECTION,
+        subject: subjectDid,
+        createdAt,
+      } satisfies BlueskyFollowRecordValue,
+    }),
+  })
+  if (!res.ok) {
+    throw new Error(await extractError(res, "Failed to create Bluesky follow"))
+  }
+  const data = (await res.json()) as { uri?: string; cid?: string }
+  if (!data.uri || !data.cid) {
+    throw new Error(
+      "createBlueskyFollow: upstream returned no record reference",
+    )
+  }
+  return { uri: data.uri, cid: data.cid }
+}
+
 /**
  * Delete a follow record by rkey.
  *

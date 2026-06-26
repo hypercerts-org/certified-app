@@ -122,7 +122,7 @@ const GROUPS: PageGroup[] = [
         label: "Sync social graph",
         navLabel: "Social graph",
         description:
-          "Compare your Certified follows with your Bluesky follows and import any that are missing.",
+          "Compare your Certified and Bluesky follows, and sync the missing ones in either direction.",
         Icon: Share2,
         sections: [{ key: "social-graph" }],
       },
