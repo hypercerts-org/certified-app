@@ -97,7 +97,7 @@ export default function FormDialog({
       initialFocusRef={initialFocusRef}
     >
       <AppDialogHeader title={title} onClose={onClose} disabled={isSubmitting} />
-      <form className="px-5 pb-5 pt-0" onSubmit={handleSubmit}>
+      <form className="px-5 pb-5 pt-4" onSubmit={handleSubmit}>
         {children}
         <div className={DIALOG_FOOTER_ACTIONS_CLASS}>
           <Button

@@ -14,6 +14,7 @@ import {
   Users,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useOrg } from "@/lib/groups/org-context"
 import SyncSocialGraphSection from "@/components/settings/sync-social-graph-section"
 import {
   listOrgMembers,
@@ -154,6 +155,7 @@ interface OrgSettingsProps {
 
 export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   const { did } = useAuth()
+  const { switchOrg, refetchOrgs } = useOrg()
   const router = useRouter()
   const isOwner = org.role === "owner"
   const isAdmin = org.role === "admin" || isOwner
@@ -172,7 +174,10 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
     try {
       await destroyGroup(groupDid)
       setConfirmDestroy(false)
-      // The group is gone from the service — leave the settings page.
+      // Stop acting as the now-deleted group (otherwise you stay "signed in"
+      // as it) and drop it from the switcher list, then leave the page.
+      switchOrg(null)
+      void refetchOrgs()
       router.push("/home")
     } catch (err) {
       setDestroyError(
@@ -728,6 +733,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
           title="Remove group"
           message={`Remove @${org.handle} from Certified? This deletes the group from the service only — the underlying account and its records remain. The group can be imported again later.`}
           confirmLabel="Remove group"
+          confirmPhrase={org.handle}
           onCancel={() => setConfirmDestroy(false)}
           onConfirm={handleDestroy}
         />

@@ -818,7 +818,7 @@ function CreateListModal({
         onClose={() => !isWriting && onCancel()}
         disabled={isWriting}
       />
-      <form className="px-5 pb-5 pt-0 profile-lists__create-form" onSubmit={submit}>
+      <form className="px-5 pb-5 pt-4 profile-lists__create-form" onSubmit={submit}>
         <label className="profile-lists__create-field">
           <span className="profile-lists__create-label">Name</span>
           <input

@@ -129,7 +129,7 @@ export default function EndorseReasonModal({
         disabled={isWriting}
       />
 
-        <form className="px-5 pb-5 pt-0 endorse-reason-modal__body" onSubmit={handleSubmit}>
+        <form className="px-5 pb-5 pt-4 endorse-reason-modal__body" onSubmit={handleSubmit}>
           {actingAs ? (
             <p className="endorse-reason-modal__acting-as" role="note">
               <b>{actingAs.orgName}</b> will endorse {subjectLabel}. You (@

@@ -723,7 +723,7 @@ function CreateListModal({
     >
       <AppDialogHeader title={headerLabel} onClose={onClose} disabled={isSaving} />
 
-      <form className="px-5 pb-5 pt-0" onSubmit={handleSubmit}>
+      <form className="px-5 pb-5 pt-4" onSubmit={handleSubmit}>
         <label className="endorsement-lists__create-field">
           <span className="endorsement-lists__create-label">Title</span>
           <input

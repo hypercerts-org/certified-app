@@ -254,7 +254,7 @@ export default function FundingReceiptDetailModal({
     >
       <AppDialogHeader title="Funding receipt" onClose={onClose} center />
 
-      <div className="px-5 pb-5 pt-0">
+      <div className="px-5 pb-5 pt-4">
         {/* Grouped as a top-to-bottom narrative: who paid whom (Transfer),
             how it settled (Payment), and how it's recorded (Record). */}
         <DetailSection title="Transfer" defaultOpen>

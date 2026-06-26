@@ -62,7 +62,7 @@ export default function DeleteRecordDialog({
         disabled={isDeleting}
       />
       <form
-        className="px-5 pb-5 pt-0"
+        className="px-5 pb-5 pt-4"
         onSubmit={(e) => {
           e.preventDefault()
           // The dialog is portalled to body but React synthetic

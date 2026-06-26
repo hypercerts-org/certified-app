@@ -53,7 +53,7 @@ export default function RightsDetailModal({
     >
       <AppDialogHeader title="Rights" onClose={onClose} center />
 
-      <div className="px-5 pb-5 pt-0">
+      <div className="px-5 pb-5 pt-4">
         {isLoading && !record ? (
           <div className="flex justify-center py-6">
             <LoadingSpinner size="sm" />
