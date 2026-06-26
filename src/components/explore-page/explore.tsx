@@ -11,7 +11,7 @@ import {
   HandCoins,
   LayoutGrid,
   List as ListIcon,
-  Search,
+  TextSearch,
   Users,
 } from "lucide-react"
 import {
@@ -749,7 +749,7 @@ function ExploreMain({
                 type="search"
                 size="sm"
                 leadingIcon={
-                  <Search size={14} strokeWidth={1.75} aria-hidden />
+                  <TextSearch size={14} strokeWidth={1.75} aria-hidden />
                 }
                 placeholder={searchPlaceholder(kind)}
                 value={localQuery}
@@ -1256,11 +1256,11 @@ function ExploreAllBlocks() {
               <Input
                 type="search"
                 size="sm"
-                leadingIcon={<Search size={14} strokeWidth={1.75} aria-hidden />}
-                placeholder="Search Certified"
+                leadingIcon={<TextSearch size={14} strokeWidth={1.75} aria-hidden />}
+                placeholder="Search all of Explore…"
                 value={localQuery}
                 onChange={(e) => setLocalQuery(e.target.value)}
-                aria-label="Search Certified"
+                aria-label="Search all of Explore…"
               />
             </div>
 
