@@ -24,17 +24,22 @@ const OPTIONS: ThemeOption[] = [
 const CYCLE: ThemeValue[] = ["system", "light", "dark"];
 
 export interface ThemeToggleProps {
-  /** "segmented" (default) is the full 3-state radio group.
-   *  "cycle" is a single icon button that cycles system → light → dark on click. */
-  variant?: "segmented" | "cycle";
-  /** Compact hides labels on the segmented variant. Ignored for "cycle". */
+  /** "segmented" (default) is the horizontal 3-segment track.
+   *  "cards" is three distinct option buttons (icon over label), suited to a
+   *  settings page. "cycle" is a single icon button that cycles
+   *  system → light → dark on click. */
+  variant?: "segmented" | "cards" | "cycle";
+  /** Compact hides labels on the segmented variant. Ignored otherwise. */
   compact?: boolean;
-  /** Layout of the segmented variant. "horizontal" (default) is a row of
-   *  equal segments; "vertical" is a left-aligned stack of labelled rows
-   *  (icon + name), suited to a settings page. Ignored for "cycle". */
-  orientation?: "horizontal" | "vertical";
   className?: string;
 }
+
+/** Larger icons for the card variant (the row/segment icons are size 14). */
+const CARD_ICONS: Record<ThemeValue, React.ReactNode> = {
+  light: <Sun size={20} />,
+  dark: <Moon size={20} />,
+  system: <Monitor size={20} />,
+};
 
 /**
  * Theme selector backed by next-themes.
@@ -48,7 +53,6 @@ export interface ThemeToggleProps {
 export default function ThemeToggle({
   variant = "segmented",
   compact = false,
-  orientation = "horizontal",
   className = "",
 }: ThemeToggleProps) {
   const { theme, setTheme } = useTheme();
@@ -98,20 +102,45 @@ export default function ThemeToggle({
     );
   }
 
-  const isVertical = orientation === "vertical";
-  // Vertical always shows labels (a left-aligned list of named rows); compact
-  // only applies to the horizontal track.
-  const showLabels = isVertical || !compact;
+  // Three distinct option buttons (icon over label). Each card is its own
+  // bordered button; the selected one carries an fg-primary border + elevated
+  // fill. Left-aligned, wraps on narrow widths.
+  if (variant === "cards") {
+    return (
+      <RadioGroup
+        value={current}
+        onValueChange={(v) => setTheme(v)}
+        aria-label="Theme"
+        className={`flex flex-wrap gap-2 ${className}`.trim()}
+      >
+        {OPTIONS.map((opt) => {
+          const selected = current === opt.value;
+          const cardClassName = [
+            "flex-col justify-center gap-2 rounded border px-5 py-4 min-w-[96px] font-medium text-[13px]",
+            selected
+              ? "border-[var(--fg-primary)] bg-[var(--bg-elevated)] text-[var(--fg-primary)] shadow-[var(--shadow-sm)]"
+              : "border-[var(--border-default)] text-[var(--fg-muted)] hover:text-[var(--fg-primary)] hover:border-[var(--fg-muted)]",
+          ].join(" ");
 
-  // Container mirrors the former `.theme-toggle` BEM rules: a sunken, bordered
-  // track that holds the three options. Horizontal `compact` hugs its content;
-  // vertical is a left-aligned stack capped at a readable width.
+          return (
+            <Radio key={opt.value} value={opt.value} className={cardClassName}>
+              <span className="inline-flex items-center" aria-hidden="true">
+                {CARD_ICONS[opt.value]}
+              </span>
+              <span className="leading-none">{opt.label}</span>
+            </Radio>
+          );
+        })}
+      </RadioGroup>
+    );
+  }
+
+  // Segmented (default): a sunken, bordered track holding the three options.
+  // `compact` drops the max-width + labels so it hugs its content (former
+  // `.theme-toggle--compact`).
   const groupClassName = [
-    "gap-0.5 rounded border border-[var(--border-default)] bg-[var(--bg-sunken)] p-[3px]",
-    isVertical
-      ? "flex flex-col items-stretch w-full max-w-[280px]"
-      : "inline-flex items-stretch",
-    !isVertical && (compact ? "w-auto" : "w-full max-w-[360px]"),
+    "inline-flex items-stretch gap-0.5 rounded border border-[var(--border-default)] bg-[var(--bg-sunken)] p-[3px]",
+    compact ? "w-auto" : "w-full max-w-[360px]",
     className,
   ]
     .filter(Boolean)
@@ -122,17 +151,13 @@ export default function ThemeToggle({
       value={current}
       onValueChange={(v) => setTheme(v)}
       aria-label="Theme"
-      orientation={orientation}
       className={groupClassName}
     >
       {OPTIONS.map((opt) => {
         const selected = current === opt.value;
-        // Per-option styling replaces the former `.theme-toggle__option` /
-        // `--selected` rules. Radius is `rounded` (= var(--radius)). The Radio
-        // base supplies `rounded`, the focus-visible ring, and roving tabindex.
         const optionClassName = [
-          "font-medium text-[13px] px-3 py-2",
-          isVertical ? "justify-start" : "flex-1 justify-center",
+          "flex-1 justify-center font-medium text-[13px]",
+          compact ? "px-2.5 py-1.5" : "px-3 py-2",
           selected
             ? "bg-[var(--bg-elevated)] text-[var(--fg-primary)] shadow-[var(--shadow-sm)]"
             : "text-[var(--fg-muted)] hover:text-[var(--fg-primary)]",
@@ -143,7 +168,7 @@ export default function ThemeToggle({
             <span className="inline-flex items-center" aria-hidden="true">
               {opt.icon}
             </span>
-            {showLabels && <span className="leading-none">{opt.label}</span>}
+            {!compact && <span className="leading-none">{opt.label}</span>}
           </Radio>
         );
       })}

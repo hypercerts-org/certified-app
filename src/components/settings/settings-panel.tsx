@@ -265,7 +265,7 @@ export default function SettingsPanel() {
       case "password":
         return <PasswordSection email={email || ""} />
       case "theme":
-        return <ThemeToggle orientation="vertical" />
+        return <ThemeToggle variant="cards" />
       case "social-graph":
         return did ? <SyncSocialGraphSection did={did} ownDid={did} /> : null
       case "app-passwords":
