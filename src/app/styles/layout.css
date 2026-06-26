@@ -2870,6 +2870,9 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   align-items: center;
   gap: 8px;
   margin-left: auto;
+  /* Bottom-align with the `self-end` tab strip so the 30px controls sit on
+     the same baseline as the taller tabs instead of floating above them. */
+  align-self: flex-end;
   padding-bottom: 8px;
 }
 
