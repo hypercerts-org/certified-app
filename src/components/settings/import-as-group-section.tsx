@@ -98,48 +98,39 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
   const accountLabel = handle ? `@${handle}` : did
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} className="import-group">
       <p className="settings__note">
         Converts the account you&apos;re signed in as —{" "}
         <strong>{accountLabel}</strong> — into a group, with you as its owner.
         The account, its handle, and its records are kept; nothing is deleted.
       </p>
 
-      <p className="settings__note">
-        Enter an app password to enable the promotion.
-      </p>
-      <Input
-        type="password"
-        label="App password"
-        size="md"
-        autoComplete="off"
-        leadingIcon={<KeyRound size={16} aria-hidden="true" />}
-        placeholder="xxxx-xxxx-xxxx-xxxx"
-        value={appPassword}
-        onChange={(e) => setAppPassword(e.target.value)}
-      />
-
-      <div className="org-members__add-submit">
+      <div className="import-group__field">
+        <Input
+          type="password"
+          label="App password"
+          size="md"
+          autoComplete="off"
+          leadingIcon={<KeyRound size={16} aria-hidden="true" />}
+          placeholder="xxxx-xxxx-xxxx-xxxx"
+          helperText="Authorizes the promotion. It's used once and never stored."
+          value={appPassword}
+          onChange={(e) => setAppPassword(e.target.value)}
+        />
         <Button
           type="button"
           variant="ghost"
           size="sm"
+          className="import-group__create"
           onClick={() => setCreateOpen(true)}
         >
           <Plus size={14} /> Don&apos;t have one? Create an app password
         </Button>
       </div>
 
-      {createOpen && (
-        <CreateAppPasswordDialog
-          onUse={(password) => setAppPassword(password)}
-          onClose={() => setCreateOpen(false)}
-        />
-      )}
-
       {error && <ErrorMessage message={error} />}
 
-      <div className="org-members__add-submit">
+      <div className="import-group__actions">
         <Button
           type="submit"
           variant="primary"
@@ -149,6 +140,13 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
           Promote to group
         </Button>
       </div>
+
+      {createOpen && (
+        <CreateAppPasswordDialog
+          onUse={(password) => setAppPassword(password)}
+          onClose={() => setCreateOpen(false)}
+        />
+      )}
     </form>
   )
 }

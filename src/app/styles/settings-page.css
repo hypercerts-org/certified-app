@@ -449,6 +449,33 @@
   color: var(--fg-primary);
 }
 
+/* ---------- Promote-to-group form ---------- */
+.import-group {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* The flex gap owns the rhythm — clear the notes' own block margins. */
+.import-group > p {
+  margin: 0;
+}
+
+.import-group__field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.import-group__create {
+  align-self: flex-start;
+}
+
+.import-group__actions {
+  display: flex;
+}
+
 /* Lock footer — the explanatory note + the Lock control that ends the
    unlocked management session. */
 .app-passwords__lock {
