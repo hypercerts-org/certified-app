@@ -3,12 +3,10 @@
 import React, { useCallback, useEffect, useState } from "react"
 import dynamic from "next/dynamic"
 import {
-  AtSign,
   ChevronLeft,
   ChevronRight,
+  CircleUser,
   Key,
-  KeyRound,
-  Mail,
   Palette,
   Share2,
   Users,
@@ -33,68 +31,91 @@ const PasswordSection = dynamic(
   () => import("@/components/account/password-section"),
 )
 
-type CategoryKey =
-  | "username"
-  | "email"
-  | "password"
+type PageKey =
+  | "account"
   | "appearance"
   | "social-graph"
   | "app-passwords"
   | "group"
 
-type CategoryDef = {
-  key: CategoryKey
-  /** Panel heading — the full, descriptive title. */
-  label: string
-  /** Shorter label for the nav rail / mobile list. Defaults to `label`. */
-  navLabel?: string
-  description: string
-  Icon: typeof AtSign
+type SectionKey =
+  | "username"
+  | "email"
+  | "password"
+  | "theme"
+  | "social-graph"
+  | "app-passwords"
+  | "group"
+
+/** A control within a page. Pages with more than one section render each
+ *  under its own sub-heading; single-section pages render the body directly
+ *  under the page header. */
+type SectionDef = {
+  key: SectionKey
+  title?: string
+  description?: string
 }
 
-type CategoryGroup = { label: string; items: CategoryDef[] }
+type PageDef = {
+  key: PageKey
+  /** Panel heading. */
+  label: string
+  /** Shorter label for the rail / mobile list. Defaults to `label`. */
+  navLabel?: string
+  description: string
+  Icon: typeof CircleUser
+  sections: SectionDef[]
+}
+
+type PageGroup = { label: string; items: PageDef[] }
 
 /**
- * Settings are organised into a grouped left-rail of categories; selecting
- * one shows ONLY that category's panel (no long scroll). New settings slot
- * into an existing group — or a new group — without changing the layout, so
- * the surface scales as more are added. On mobile the rail is the first
- * screen (a master list); tapping a row drills into its panel with a back
- * control. Both views render the same DOM; `data-view` + CSS pick which is
- * visible, so there's no desktop hydration flash.
+ * Settings are organised into a grouped rail of pages; selecting one shows
+ * only that page (no long scroll). Each page bundles its related controls,
+ * so we never strand a single field on its own screen — the small account
+ * controls share one "Account" page, while substantial features (social
+ * graph, app passwords, group import) are pages in their own right. New
+ * settings slot into an existing page's sections or a new page without
+ * touching the layout.
+ *
+ * On mobile the rail is a master list; tapping a row drills into its page
+ * with a back control. Both views render the same DOM; `data-view` + CSS
+ * pick which is visible, so there's no desktop hydration flash.
  */
-const GROUPS: CategoryGroup[] = [
+const GROUPS: PageGroup[] = [
   {
-    label: "Account",
+    label: "General",
     items: [
       {
-        key: "username",
-        label: "Username",
-        description: "The @handle people use to find you on Certified.",
-        Icon: AtSign,
+        key: "account",
+        label: "Account",
+        description: "Your handle, sign-in email, and password.",
+        Icon: CircleUser,
+        sections: [
+          {
+            key: "username",
+            title: "Username",
+            description: "The @handle people use to find you on Certified.",
+          },
+          {
+            key: "email",
+            title: "Email",
+            description: "Used to sign in and recover your account.",
+          },
+          {
+            key: "password",
+            title: "Password",
+            description:
+              "The password used to sign in to other AT Protocol apps with your handle.",
+          },
+        ],
       },
-      {
-        key: "email",
-        label: "Email",
-        description: "Used to sign in and recover your account.",
-        Icon: Mail,
-      },
-      {
-        key: "password",
-        label: "Password",
-        description: "The password used to sign in to other AT Protocol apps.",
-        Icon: KeyRound,
-      },
-    ],
-  },
-  {
-    label: "Preferences",
-    items: [
       {
         key: "appearance",
         label: "Appearance",
         description: "Set how Certified looks on this device.",
         Icon: Palette,
+        sections: [{ key: "theme", title: "Theme" }],
       },
       {
         key: "social-graph",
@@ -103,6 +124,7 @@ const GROUPS: CategoryGroup[] = [
         description:
           "Compare your Certified follows with your Bluesky follows and import any that are missing.",
         Icon: Share2,
+        sections: [{ key: "social-graph" }],
       },
     ],
   },
@@ -115,6 +137,7 @@ const GROUPS: CategoryGroup[] = [
         description:
           "Create passwords for other apps (and the group import). Shown once — revoke anytime.",
         Icon: Key,
+        sections: [{ key: "app-passwords" }],
       },
       {
         key: "group",
@@ -123,18 +146,29 @@ const GROUPS: CategoryGroup[] = [
         description:
           "Turn this personal account into a shared group that several people can manage.",
         Icon: Users,
+        sections: [{ key: "group" }],
       },
     ],
   },
 ]
 
-const ALL_CATEGORIES = GROUPS.flatMap((g) => g.items)
-const DEFAULT_CATEGORY: CategoryKey = ALL_CATEGORIES[0].key
+const ALL_PAGES = GROUPS.flatMap((g) => g.items)
+const DEFAULT_PAGE: PageKey = ALL_PAGES[0].key
 
-function readHashCategory(): CategoryKey | null {
+/** Old per-field deep links (#username / #email / #password) now live as
+ *  sections of the Account page — map them so shared links still land. */
+const SECTION_HASH_ALIASES: Record<string, PageKey> = {
+  username: "account",
+  email: "account",
+  password: "account",
+}
+
+function readHashPage(): PageKey | null {
   if (typeof window === "undefined") return null
   const raw = window.location.hash.replace(/^#/, "").toLowerCase()
-  const match = ALL_CATEGORIES.find((c) => c.key === raw)
+  const aliased = SECTION_HASH_ALIASES[raw]
+  if (aliased) return aliased
+  const match = ALL_PAGES.find((p) => p.key === raw)
   return match ? match.key : null
 }
 
@@ -147,21 +181,20 @@ export default function SettingsPanel() {
   const { handle, email } = useSession()
   const { activeOrg } = useOrg()
 
-  // `null` = no category actively selected. On desktop that resolves to the
-  // first category (a panel is always shown); on mobile it means the master
-  // list is showing. Driven by the `#<key>` hash so deep links + back/forward
-  // work.
-  const [active, setActive] = useState<CategoryKey | null>(null)
+  // `null` = no page actively selected. On desktop that resolves to the
+  // first page (one is always shown); on mobile it means the master list is
+  // showing. Driven by the `#<key>` hash so deep links + back/forward work.
+  const [active, setActive] = useState<PageKey | null>(null)
 
   useEffect(() => {
-    const sync = () => setActive(readHashCategory())
+    const sync = () => setActive(readHashPage())
     sync()
     window.addEventListener("hashchange", sync)
     return () => window.removeEventListener("hashchange", sync)
   }, [])
 
   const select = useCallback(
-    (e: React.MouseEvent<HTMLAnchorElement>, key: CategoryKey) => {
+    (e: React.MouseEvent<HTMLAnchorElement>, key: PageKey) => {
       if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
         return
       }
@@ -191,34 +224,33 @@ export default function SettingsPanel() {
     return <OrgSettings groupDid={activeOrg.groupDid} org={activeOrg} />
   }
 
-  // The category whose panel renders on the right. On the mobile master list
+  // The page whose panel renders on the right. On the mobile master list
   // (active === null) the panel is hidden, so the resolved default is moot.
-  const selectedKey: CategoryKey = active ?? DEFAULT_CATEGORY
-  const selected =
-    ALL_CATEGORIES.find((c) => c.key === selectedKey) ?? ALL_CATEGORIES[0]
+  const selectedKey: PageKey = active ?? DEFAULT_PAGE
+  const selected = ALL_PAGES.find((p) => p.key === selectedKey) ?? ALL_PAGES[0]
 
-  const renderNavItem = (cat: CategoryDef) => {
-    const isActive = cat.key === selectedKey
-    const Icon = cat.Icon
+  const renderNavItem = (page: PageDef) => {
+    const isActive = page.key === selectedKey
+    const Icon = page.Icon
     return (
-      <li key={cat.key}>
+      <li key={page.key}>
         <a
-          href={`#${cat.key}`}
+          href={`#${page.key}`}
           aria-current={isActive ? "true" : undefined}
           className={`sx-menu__item${isActive ? " sx-menu__item--active" : ""}`}
-          onClick={(e) => select(e, cat.key)}
+          onClick={(e) => select(e, page.key)}
         >
           <span className="sx-menu__icon" aria-hidden>
             <Icon size={16} strokeWidth={1.75} />
           </span>
-          <span className="sx-menu__label">{cat.navLabel ?? cat.label}</span>
+          <span className="sx-menu__label">{page.navLabel ?? page.label}</span>
           <ChevronRight className="sx-menu__chevron" size={16} aria-hidden />
         </a>
       </li>
     )
   }
 
-  const renderBody = (key: CategoryKey) => {
+  const renderSectionBody = (key: SectionKey) => {
     switch (key) {
       case "username":
         return (
@@ -232,12 +264,8 @@ export default function SettingsPanel() {
         return <EmailSection email={email || ""} />
       case "password":
         return <PasswordSection email={email || ""} />
-      case "appearance":
-        return (
-          <SettingRow title="Theme">
-            <ThemeToggle compact />
-          </SettingRow>
-        )
+      case "theme":
+        return <ThemeToggle compact />
       case "social-graph":
         return did ? <SyncSocialGraphSection did={did} ownDid={did} /> : null
       case "app-passwords":
@@ -245,6 +273,40 @@ export default function SettingsPanel() {
       case "group":
         return did ? <ImportAsGroupSection did={did} /> : null
     }
+  }
+
+  const renderPageBody = (page: PageDef) => {
+    // A single-section page with a section title is really one labelled
+    // control — render it as a SettingRow so the title/description sit beside
+    // the control rather than stacked above a lone widget.
+    if (page.sections.length === 1) {
+      const only = page.sections[0]
+      if (only.title) {
+        return (
+          <SettingRow title={only.title} description={only.description}>
+            {renderSectionBody(only.key)}
+          </SettingRow>
+        )
+      }
+      return renderSectionBody(only.key)
+    }
+    return (
+      <div className="sx-subsections">
+        {page.sections.map((s) => (
+          <div className="sx-subsection" key={s.key}>
+            {s.title ? (
+              <div className="sx-subsection__head">
+                <h3 className="sx-subsection__title">{s.title}</h3>
+                {s.description ? (
+                  <p className="sx-subsection__desc">{s.description}</p>
+                ) : null}
+              </div>
+            ) : null}
+            {renderSectionBody(s.key)}
+          </div>
+        ))}
+      </div>
+    )
   }
 
   return (
@@ -277,7 +339,7 @@ export default function SettingsPanel() {
                 <p className="sx-panel__desc">{selected.description}</p>
               ) : null}
             </header>
-            <div className="sx-panel__body">{renderBody(selectedKey)}</div>
+            <div className="sx-panel__body">{renderPageBody(selected)}</div>
           </section>
         </div>
       </div>

@@ -258,6 +258,50 @@
 }
 
 /* ------------------------------------------------------------------------
+   Sub-sections — a page that bundles several controls (e.g. Account =
+   username + email + password) stacks them with a small heading each,
+   hairline-separated, so the page reads as a set of related settings.
+   ------------------------------------------------------------------------ */
+.sx-subsections {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.sx-subsection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sx-subsection + .sx-subsection {
+  padding-top: 24px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.sx-subsection__head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sx-subsection__title {
+  margin: 0;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--fg-primary);
+}
+
+.sx-subsection__desc {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--fg-muted);
+}
+
+/* ------------------------------------------------------------------------
    Setting row — reusable labelled control (see ui/setting-row.tsx).
    Title (+ desc) left, control right; stacks on narrow widths.
    ------------------------------------------------------------------------ */
