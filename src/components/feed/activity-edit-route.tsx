@@ -54,7 +54,6 @@ import { InvalidSwapError } from "@/lib/atproto/repo-write"
 import { saveWithSwap } from "@/lib/atproto/save-with-swap"
 import { splitLocationName } from "@/lib/atproto/location"
 import { usePageTitle } from "@/lib/navbar-context"
-import { useTour } from "@/lib/tour/tour-context"
 import { countGraphemes } from "@/lib/utils/graphemes"
 
 /**
@@ -183,10 +182,6 @@ export default function ActivityEditRoute({
 }) {
   usePageTitle("Edit activity")
   const router = useRouter()
-  // During the product tour, don't auto-focus the title — the tour's
-  // arrow-key navigation needs focus on its own card, not trapped in this
-  // field (the "Give it a title" step highlights it without typing in it).
-  const { isActive: tourActive } = useTour()
 
   const { isAuthenticated, isLoading: authLoading, did: sessionDid } = useAuth()
   const { activeOrg } = useOrg()
@@ -1004,7 +999,7 @@ export default function ActivityEditRoute({
                 value={title}
                 maxLength={TITLE_MAX}
                 onChange={(e) => setTitle(e.target.value)}
-                autoFocus={!tourActive}
+                autoFocus
               />
               <p
                 className={`create-cert__counter${

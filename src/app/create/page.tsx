@@ -44,6 +44,7 @@ import LocationPickerDialog, {
 import type { HypercertsSmallImage } from "@/lib/atproto/types"
 import type { StrongRef } from "@/lib/atproto/location"
 import { usePageTitle } from "@/lib/navbar-context"
+import { useTour } from "@/lib/tour/tour-context"
 import { countGraphemes } from "@/lib/utils/graphemes"
 
 /**
@@ -136,6 +137,10 @@ export default function CreatePage() {
   const { isAuthenticated, isLoading, did } = useAuth()
   const { activeOrg } = useOrg()
   const router = useRouter()
+  // During the product tour, don't auto-focus the title — the tour's
+  // arrow-key navigation needs focus on its own card, not trapped in this
+  // field (the "Give it a title" step highlights it without typing in it).
+  const { isActive: tourActive } = useTour()
   // "Effective identity" — the DID the cert is published as on
   // this page. When the user has switched into a group, that's the
   // group's DID; otherwise their own session DID. Used anywhere
@@ -848,7 +853,7 @@ export default function CreatePage() {
                 value={title}
                 maxLength={TITLE_MAX}
                 onChange={(e) => setTitle(e.target.value)}
-                autoFocus
+                autoFocus={!tourActive}
                 data-tour="create-title"
               />
               <p
