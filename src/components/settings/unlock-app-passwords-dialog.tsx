@@ -12,9 +12,10 @@ import {
  * tokens — it only POSTs the password to our route, which opens the
  * server-side session. On success it calls `onUnlocked`.
  *
- * The group-import "Create one" flow does NOT use this wrapper; it renders
- * the same fields inline in its own dialog so it can keep one modal open
- * across unlock→create (see create-app-password-dialog.tsx).
+ * The group-import (promote-to-group) flow does NOT use this wrapper; it
+ * renders the same {@link UnlockAppPasswordFields} inline and, on unlock,
+ * mints a throwaway app password to import with, then revokes it (see
+ * import-as-group-section.tsx).
  */
 export default function UnlockAppPasswordsDialog({
   onUnlocked,

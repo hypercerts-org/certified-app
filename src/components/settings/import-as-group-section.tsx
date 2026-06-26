@@ -1,35 +1,43 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Check, KeyRound, Plus } from "lucide-react"
+import { Check } from "lucide-react"
 import { useOrg } from "@/lib/groups/org-context"
 import { importGroup, putMembership, RegisterGroupError } from "@/lib/groups/api"
+import { createAppPassword, revokeAppPassword } from "@/lib/atproto/app-passwords"
 import { authFetch } from "@/lib/auth/fetch"
 import Button from "@/components/ui/button"
-import Input from "@/components/ui/input"
 import ErrorMessage from "@/components/ui/error-message"
-import CreateAppPasswordDialog from "./create-app-password-dialog"
+import {
+  useUnlockAppPasswords,
+  UnlockAppPasswordFields,
+} from "./unlock-app-passwords-fields"
 
 /**
- * Settings section that promotes the signed-in account into a Certified
- * group via the CGS `app.certified.group.import` procedure (wrapped by
- * `importGroup`). The account being converted is always the one you're
- * signed in as — CGS requires the service-auth token's `iss` to equal the
- * imported account — so the copy names it explicitly and tells you to sign
- * in as a different account if you meant to convert that one instead.
+ * Settings section that promotes the signed-in account into a Certified group
+ * via the CGS `app.certified.group.import` procedure (wrapped by
+ * `importGroup`). The account being converted is always the one you're signed
+ * in as — CGS requires the service-auth token's `iss` to equal the imported
+ * account.
+ *
+ * The import needs an app password of the account being imported. Rather than
+ * make the user mint and paste one, this collects only the **account
+ * password** (+ emailed 2FA code if enabled, via the shared unlock fields):
+ * on unlock it mints a throwaway app password in the background, imports with
+ * it, then revokes it — so the credential is never shown or kept.
  *
  * Unlike the standalone `/groups/import` page, this stays inline (no
- * redirect): on success it shows a confirmation and the new group appears
- * in the account switcher via `refetchOrgs`.
+ * redirect): on success it shows a confirmation and the new group appears in
+ * the account switcher via `refetchOrgs`.
  */
 export default function ImportAsGroupSection({ did }: { did: string }) {
   const { refetchOrgs } = useOrg()
   const [handle, setHandle] = useState<string | null>(null)
-  const [appPassword, setAppPassword] = useState("")
-  const [isImporting, setIsImporting] = useState(false)
+  // True while minting the app password → importing → revoking, after a
+  // successful unlock. Separate from the unlock hook's own `submitting`.
+  const [working, setWorking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [importedHandle, setImportedHandle] = useState<string | null>(null)
-  const [createOpen, setCreateOpen] = useState(false)
 
   // Resolve the signed-in account's handle so the copy can name which
   // account gets converted.
@@ -46,44 +54,49 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
     }
   }, [did])
 
-  const handleSubmit = useCallback(
-    async (e?: React.FormEvent) => {
-      e?.preventDefault()
-      if (!appPassword.trim() || isImporting) return
-      setIsImporting(true)
-      setError(null)
+  // Runs once the account password (+ 2FA) has opened the elevated session:
+  // mint a one-time app password, import with it, then revoke it no matter
+  // what so nothing is left behind.
+  const runImport = useCallback(async () => {
+    setWorking(true)
+    setError(null)
+    let appPwName: string | null = null
+    try {
+      const created = await createAppPassword(
+        `group-import-${Math.random().toString(36).slice(2, 8)}`,
+      )
+      appPwName = created.name
+      const result = await importGroup(created.password)
       try {
-        const result = await importGroup(appPassword.trim())
-        // Stitch the owner membership marker so the imported group shows up
-        // in the account switcher + group list (mirrors the create flow).
-        try {
-          await putMembership(did, result.groupDid, "owner")
-        } catch (err) {
-          console.error("[settings/import-group] putMembership failed", err)
-        }
-        await refetchOrgs()
-        setImportedHandle(result.handle || handle)
-        setAppPassword("")
+        await putMembership(did, result.groupDid, "owner")
       } catch (err) {
-        if (
-          err instanceof RegisterGroupError &&
-          err.code === "GroupAlreadyRegistered"
-        ) {
-          setError("This account is already registered as a group.")
-        } else if (
-          err instanceof RegisterGroupError &&
-          err.code === "InvalidAppPassword"
-        ) {
-          setError("That app password was not accepted. Check it and try again.")
-        } else {
-          setError(err instanceof Error ? err.message : "Import failed")
-        }
-      } finally {
-        setIsImporting(false)
+        console.error("[settings/import-group] putMembership failed", err)
       }
-    },
-    [did, appPassword, isImporting, refetchOrgs, handle],
-  )
+      await refetchOrgs()
+      setImportedHandle(result.handle || handle)
+    } catch (err) {
+      if (
+        err instanceof RegisterGroupError &&
+        err.code === "GroupAlreadyRegistered"
+      ) {
+        setError("This account is already registered as a group.")
+      } else {
+        setError(err instanceof Error ? err.message : "Import failed")
+      }
+    } finally {
+      // Revoke the throwaway app password — on success and on failure.
+      if (appPwName) {
+        try {
+          await revokeAppPassword(appPwName)
+        } catch (err) {
+          console.error("[settings/import-group] revoke failed", err)
+        }
+      }
+      setWorking(false)
+    }
+  }, [did, handle, refetchOrgs])
+
+  const unlock = useUnlockAppPasswords(() => void runImport())
 
   if (importedHandle) {
     return (
@@ -96,38 +109,26 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
   }
 
   const accountLabel = handle ? `@${handle}` : did
+  const busy = unlock.submitting || working
 
   return (
-    <form onSubmit={handleSubmit} className="import-group">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        void unlock.submit()
+      }}
+      className="import-group"
+    >
       <p className="settings__note">
         Converts the account you&apos;re signed in as —{" "}
         <strong>{accountLabel}</strong> — into a group, with you as its owner.
         The account, its handle, and its records are kept; nothing is deleted.
-        You&apos;ll need an app password to authorize it — it&apos;s used once
-        and never stored.
       </p>
 
-      <div className="import-group__field">
-        <Input
-          type="password"
-          label="App password"
-          size="md"
-          autoComplete="off"
-          leadingIcon={<KeyRound size={16} aria-hidden="true" />}
-          placeholder="xxxx-xxxx-xxxx-xxxx"
-          value={appPassword}
-          onChange={(e) => setAppPassword(e.target.value)}
-        />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="import-group__create"
-          onClick={() => setCreateOpen(true)}
-        >
-          <Plus size={14} /> Don&apos;t have one? Create an app password
-        </Button>
-      </div>
+      <UnlockAppPasswordFields
+        state={unlock}
+        intro="Enter your account password to authorize the promotion. We create a one-time app password in the background and revoke it as soon as the group is created — nothing is shown or stored."
+      />
 
       {error && <ErrorMessage message={error} />}
 
@@ -135,19 +136,12 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
         <Button
           type="submit"
           variant="primary"
-          loading={isImporting}
-          disabled={!appPassword.trim() || isImporting}
+          loading={busy}
+          disabled={!unlock.canSubmit || busy}
         >
           Promote to group
         </Button>
       </div>
-
-      {createOpen && (
-        <CreateAppPasswordDialog
-          onUse={(password) => setAppPassword(password)}
-          onClose={() => setCreateOpen(false)}
-        />
-      )}
     </form>
   )
 }

@@ -482,22 +482,6 @@
   margin: 0;
 }
 
-.import-group__field {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-/* Keep the create-password link-button left-aligned even when its label
-   wraps on a narrow screen (the Button base is justify-center; the
-   descendant selector out-specifies it). */
-.import-group .import-group__create {
-  align-self: flex-start;
-  justify-content: flex-start;
-  text-align: left;
-}
-
 .import-group__actions {
   display: flex;
 }
