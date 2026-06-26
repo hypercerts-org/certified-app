@@ -72,6 +72,9 @@ interface ProfileSidebarProps {
    *  (bsky fallback) and we surface a "Bluesky profile" tag so
    *  the viewer knows. Issue #74. */
   hasCertifiedProfile?: boolean
+  /** Whether the account has a populated app.bsky.actor.profile record. The
+   *  tag only shows when there's no certified profile but a bsky one exists. */
+  hasBlueskyProfile?: boolean
   /** Pre-formatted founded-date string. `null` when the field is empty
    *  so the sidebar can skip the row entirely. When present this row
    *  replaces the generic "Joined ..." line below. */
@@ -124,6 +127,7 @@ export default function ProfileSidebar({
   isOrg = false,
   additionalUrls,
   hasCertifiedProfile = false,
+  hasBlueskyProfile = false,
   orgFoundedDate = null,
   canInlineEdit = false,
   isEditing = false,
@@ -138,7 +142,7 @@ export default function ProfileSidebar({
   saveError = null,
 }: ProfileSidebarProps) {
   const displayName = profile?.displayName || handle || "Anonymous"
-  const initials = getInitials(profile?.displayName, did)
+  const initials = getInitials(profile?.displayName, handle ?? did)
   const { isBskyHosted } = useProfilePds(did)
 
   const joinedText = formatJoined(profile?.createdAt)
@@ -464,7 +468,7 @@ export default function ProfileSidebar({
             />
           </li>
         ) : null}
-        {!hasCertifiedProfile && handle ? (
+        {!hasCertifiedProfile && hasBlueskyProfile && handle ? (
           <li className="profile-sidebar__bsky-row">
             {/* Tag-style chip (not a regular link) so the viewer can
                 tell at a glance that this profile's metadata is

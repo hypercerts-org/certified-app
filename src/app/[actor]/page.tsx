@@ -99,6 +99,7 @@ export default function UserProfilePage() {
     isLoading: isProfileLoading,
     error: profileError,
     hasCertifiedProfile,
+    hasBlueskyProfile,
   } = useUserProfile(handleOrDid)
 
   const { isAuthenticated, did: sessionDid } = useAuth()
@@ -423,6 +424,7 @@ export default function UserProfilePage() {
           settingsHref={settingsHref}
           eyebrow={eyebrow}
           hasCertifiedProfile={hasCertifiedProfile}
+          hasBlueskyProfile={hasBlueskyProfile}
           basePath={pathname || ""}
         />
       </div>
@@ -502,6 +504,7 @@ export default function UserProfilePage() {
             isOrg={sidebarIsOrg}
             additionalUrls={effectiveAdditionalUrls}
             hasCertifiedProfile={hasCertifiedProfile}
+            hasBlueskyProfile={hasBlueskyProfile}
             orgFoundedDate={displayFoundedDate}
             canInlineEdit={canEditInline}
             isEditing={editing}

@@ -39,6 +39,9 @@ interface ProfileHeaderProps {
    *  description / avatar / banner all came from `app.bsky.actor.profile`
    *  and we show a "Bluesky profile" tag next to the handle. Issue #74. */
   hasCertifiedProfile?: boolean
+  /** Whether the account has a populated app.bsky.actor.profile record. The
+   *  tag only shows when there's no certified profile but a bsky one exists. */
+  hasBlueskyProfile?: boolean
 }
 
 /**
@@ -66,10 +69,11 @@ export default function ProfileHeader({
   settingsHref,
   eyebrow,
   hasCertifiedProfile = false,
+  hasBlueskyProfile = false,
   basePath = "",
 }: ProfileHeaderProps) {
   const displayName = profile?.displayName || (handle ? `@${handle}` : "Anonymous")
-  const initials = getInitials(profile?.displayName, did)
+  const initials = getInitials(profile?.displayName, handle ?? did)
 
   // Follower / following / endorsed-by counts for THIS profile. The desktop
   // sidebar (always mounted, just CSS-hidden on mobile) already fetches these,
@@ -162,7 +166,7 @@ export default function ProfileHeader({
                 profile data came from app.bsky.actor.profile because
                 no app.certified.actor.profile record with a
                 displayName exists for this user. Issue #74. */}
-            {!hasCertifiedProfile ? (
+            {!hasCertifiedProfile && hasBlueskyProfile ? (
               <span
                 className="profile-hero__pds-tag"
                 title="This profile information is imported from Bluesky"

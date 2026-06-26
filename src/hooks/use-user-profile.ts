@@ -39,6 +39,8 @@ export function useUserProfile(handleOrDid: string | null): {
    *  want to flag bsky-sourced profile data ("Bluesky profile" tag
    *  in the sidebar / header — issue #74) read this. */
   hasCertifiedProfile: boolean
+  /** Whether the account has a populated app.bsky.actor.profile record. */
+  hasBlueskyProfile: boolean
 } {
   const { did: myDid } = useAuth()
   const [did, setDid] = useState<string | null>(null)
@@ -47,6 +49,7 @@ export function useUserProfile(handleOrDid: string | null): {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [bannerUrl, setBannerUrl] = useState<string | null>(null)
   const [hasCertifiedProfile, setHasCertifiedProfile] = useState(false)
+  const [hasBlueskyProfile, setHasBlueskyProfile] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -93,6 +96,7 @@ export function useUserProfile(handleOrDid: string | null): {
           banner?: string
           createdAt?: string
           hasCertifiedProfile?: boolean
+          hasBlueskyProfile?: boolean
         }
         if (signal.aborted) return
 
@@ -108,6 +112,7 @@ export function useUserProfile(handleOrDid: string | null): {
         setAvatarUrl(data.avatar ?? null)
         setBannerUrl(data.banner ?? null)
         setHasCertifiedProfile(!!data.hasCertifiedProfile)
+        setHasBlueskyProfile(!!data.hasBlueskyProfile)
       } catch (err) {
         if (signal.aborted) return
         console.error("Failed to load user profile:", err)
@@ -144,5 +149,6 @@ export function useUserProfile(handleOrDid: string | null): {
     isLoading,
     error,
     hasCertifiedProfile,
+    hasBlueskyProfile,
   }
 }
