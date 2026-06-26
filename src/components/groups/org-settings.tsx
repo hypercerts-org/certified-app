@@ -28,6 +28,7 @@ import { authFetch } from "@/lib/auth/fetch"
 import Button from "@/components/ui/button"
 import Badge from "@/components/ui/badge"
 import Select from "@/components/ui/select"
+import IdentityRow from "@/components/ui/identity-row"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import HandleSearch from "@/components/groups/handle-search"
 import ErrorMessage from "@/components/ui/error-message"
@@ -143,6 +144,7 @@ function readHashCategory(): CategoryKey | null {
 interface ResolvedMember extends OrgMember {
   handle?: string
   displayName?: string
+  avatarUrl?: string
 }
 
 interface OrgSettingsProps {
@@ -226,6 +228,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                   ...member,
                   handle: data.handle || undefined,
                   displayName: data.displayName || undefined,
+                  avatarUrl: data.avatar || undefined,
                 }
               }
             } catch {
@@ -432,10 +435,13 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                 .map((member) => (
                 <div key={member.did} className="org-members__item">
                   <div className="org-members__item-info">
-                    <p className="org-members__item-handle">
-                      @{member.handle && member.handle !== member.did ? member.handle : member.did}
-                    </p>
-                    <p className="org-members__item-did">{member.did}</p>
+                    <IdentityRow
+                      did={member.did}
+                      handle={member.handle}
+                      displayName={member.displayName}
+                      avatarUrl={member.avatarUrl}
+                      size="sm"
+                    />
                   </div>
                   <div className="org-members__item-actions">
                     {isOwner && member.role !== "owner" ? (
@@ -659,6 +665,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
             <Button
               variant="destructive"
               size="sm"
+              className="self-start"
               onClick={() => setConfirmDestroy(true)}
               loading={destroying}
               disabled={destroying}
