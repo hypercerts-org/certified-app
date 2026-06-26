@@ -41,7 +41,7 @@ function Rank({
             <Avatar
               src={n.avatarUrl || undefined}
               size="sm"
-              fallbackInitials={getInitials(n.displayName, n.id)}
+              fallbackInitials={getInitials(n.displayName, n.handle)}
             />
             <span className="viz__rank-name">
               <span className="viz__rank-name-primary">

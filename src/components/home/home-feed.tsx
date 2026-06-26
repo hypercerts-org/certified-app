@@ -713,7 +713,7 @@ function FeedCardHead({
     buildAvatarUrlFromCid(actorProfile.did, actorProfile.avatarCid)
   const actorInitials = getInitials(
     lookup?.displayName ?? actorProfile.displayName,
-    actor,
+    actorHandle,
   )
   const profileHref = profileUrl(actorHandle || actor)
 

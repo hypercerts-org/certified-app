@@ -557,7 +557,7 @@ function AccountItemRow({
   const did = uri.split("/")[2] ?? null
   const { info } = useAuthorInfo(did)
   const display = info?.displayName || info?.handle || did || "Unknown"
-  const initials = getInitials(info?.displayName, did ?? undefined)
+  const initials = getInitials(info?.displayName, info?.handle ?? did ?? undefined)
   const href = did ? profileUrl(info?.handle || did) : null
   return (
     <ItemRowShell
@@ -1360,7 +1360,7 @@ async function searchAccounts(query: string, signal: AbortSignal): Promise<Searc
     title: a.displayName || (a.handle ? `@${a.handle}` : a.did),
     subtitle: a.handle ? `@${a.handle}` : null,
     avatarUrl: a.avatarUrl,
-    initials: getInitials(a.displayName, a.did),
+    initials: getInitials(a.displayName, a.handle ?? a.did),
   }))
 }
 

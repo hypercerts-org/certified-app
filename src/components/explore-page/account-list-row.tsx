@@ -42,7 +42,7 @@ export default function AccountListRow({
     truncateDid(actor.did)
   const handle = info?.handle ?? null
   const avatarUrl = actor.avatarUrl || info?.avatarUrl || null
-  const initials = getInitials(displayName, actor.did)
+  const initials = getInitials(displayName, handle)
   const profileHref = profileUrl(handle || actor.did)
 
   return (

@@ -562,7 +562,7 @@ function EndorsementPreviewRow({ endorsement }: EndorsementPreviewRowProps) {
   const handle = idxIssuer?.handle ?? info?.handle ?? null
   const initials = getInitials(
     idxIssuer?.displayName ?? info?.displayName,
-    endorsement.issuerDid,
+    handle ?? endorsement.issuerDid,
   )
   const avatarSrc = indexerAvatar || info?.avatarUrl || undefined
   const href = profileUrl(handle || endorsement.issuerDid)

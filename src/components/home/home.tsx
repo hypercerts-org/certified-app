@@ -244,7 +244,7 @@ function SidebarSection<T>({
 // ----------------------------- Row variants ---------------------------------
 
 function GroupRow({ group }: { group: Group }) {
-  const initials = getInitials(group.displayName ?? group.handle, group.groupDid)
+  const initials = getInitials(group.displayName ?? group.handle, group.handle)
   const label = group.displayName || group.handle || "Group"
   return (
     <li>

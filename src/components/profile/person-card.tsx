@@ -45,7 +45,7 @@ export default function PersonCard({
 }) {
   const displayName = info?.displayName || info?.handle || did
   const handle = info?.handle && info.handle !== info.did ? info.handle : null
-  const initials = getInitials(info?.displayName, did)
+  const initials = getInitials(info?.displayName, info?.handle ?? did)
   const href = profileUrl(info?.handle || did)
 
   return (

@@ -27,7 +27,7 @@ export interface OwnerBylineProps {
  */
 export default function OwnerByline({ group, role, className = "" }: OwnerBylineProps) {
   const name = group.displayName || group.handle || "Group"
-  const initials = getInitials(group.displayName ?? group.handle, group.groupDid)
+  const initials = getInitials(group.displayName ?? group.handle, group.handle)
 
   return (
     // The visible "by {name}" text IS the accessible name — read naturally

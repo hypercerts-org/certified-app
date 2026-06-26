@@ -477,7 +477,7 @@ function PersonRowItem({
       <Avatar
         size="sm"
         src={actor.avatar || undefined}
-        fallbackInitials={getInitials(name, actor.did)}
+        fallbackInitials={getInitials(name, actor.handle)}
         className="shrink-0"
       />
       <div className="people-search__item-info">

@@ -418,7 +418,7 @@ function ResultsList({
                 src={actor.avatar || undefined}
                 fallbackInitials={getInitials(
                   actor.displayName || actor.handle,
-                  actor.did,
+                  actor.handle ?? actor.did,
                 )}
               />
               <div className="endorse-people-modal__result-info">
@@ -473,7 +473,7 @@ function SelectedList({ selected, writing, onRemove, disabled }: SelectedListPro
                 src={actor.avatar || undefined}
                 fallbackInitials={getInitials(
                   actor.displayName || actor.handle,
-                  actor.did,
+                  actor.handle ?? actor.did,
                 )}
               />
               <span className="endorse-people-modal__chip-name">

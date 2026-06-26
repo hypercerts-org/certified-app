@@ -44,7 +44,7 @@ export default function ActivityAuthor({ did, nameSuffix }: ActivityAuthorProps)
   }
 
   const displayName = info.displayName || info.handle || "Anonymous"
-  const initials = getInitials(info.displayName, did)
+  const initials = getInitials(info.displayName, info.handle)
   const profileHref = profileUrl(info.handle || did)
 
   return (

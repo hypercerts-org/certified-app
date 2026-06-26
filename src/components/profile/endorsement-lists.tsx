@@ -599,7 +599,7 @@ function ListItemRow({ subjectDid, createdAt, note, revoke }: ListItemRowProps) 
   const { info, isLoading } = useAuthorInfo(subjectDid)
   const displayName = info?.displayName || info?.handle || subjectDid || "Unknown"
   const handle = info?.handle && info.handle !== info.did ? info.handle : null
-  const initials = getInitials(info?.displayName, subjectDid ?? undefined)
+  const initials = getInitials(info?.displayName, info?.handle ?? subjectDid ?? undefined)
   const href = subjectDid
     ? profileUrl(info?.handle || subjectDid)
     : null

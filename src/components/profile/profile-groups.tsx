@@ -208,7 +208,7 @@ function GroupRow({ group }: GroupRowProps) {
   const router = useRouter()
   const { groups: orgGroups, activeOrg, switchOrg } = useOrg()
   const name = group.displayName || group.handle
-  const initials = getInitials(name, group.groupDid)
+  const initials = getInitials(name, group.handle ?? group.groupDid)
   const joinedLabel = group.joinedAt
     ? `Joined ${formatRelativeTime(group.joinedAt)}`
     : null

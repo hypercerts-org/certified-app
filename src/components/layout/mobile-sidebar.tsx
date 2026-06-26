@@ -55,7 +55,7 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
     : avatarUrl || undefined;
   const displayInitials = activeOrg
     ? (activeOrg.displayName || activeOrg.handle || "?").slice(0, 2).toUpperCase()
-    : getInitials(profile?.displayName, did);
+    : getInitials(profile?.displayName, handle);
 
   const handleFeedbackClick = () => {
     onClose();

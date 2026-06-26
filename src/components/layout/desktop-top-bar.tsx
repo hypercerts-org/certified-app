@@ -151,7 +151,7 @@ export default function DesktopTopBar() {
         name: profile?.displayName,
         handle,
         avatarUrl: avatarUrl || undefined,
-        initials: getInitials(profile?.displayName, did),
+        initials: getInitials(profile?.displayName, handle),
       };
 
   // Profile shortcut target — mirrors the left rail. When acting as a

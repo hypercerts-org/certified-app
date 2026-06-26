@@ -117,7 +117,7 @@ const Navbar: React.FC = () => {
   // "active page" markers were removed in the titled-navbar refactor).
   const avatarInitials = activeOrg
     ? (activeOrg.displayName || activeOrg.handle || "O").slice(0, 2).toUpperCase()
-    : getInitials(profile?.displayName, did);
+    : getInitials(profile?.displayName, handle);
   const displayAvatarUrl = activeOrg ? (orgAvatarUrl || undefined) : (avatarUrl || undefined);
 
   // Don't render navbar while auth is loading — prevents white flash.

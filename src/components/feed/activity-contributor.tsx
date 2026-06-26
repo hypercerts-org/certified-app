@@ -60,7 +60,7 @@ function deriveContributorDisplay(
 
   const initials = getInitials(
     info?.displayName || contribInfo?.displayName || null,
-    info?.did || null,
+    handle,
   )
 
   const hasAnyHydratedField =

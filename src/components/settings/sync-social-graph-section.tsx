@@ -632,7 +632,7 @@ function CandidateRow({ did, checked, onToggle, disabled }: CandidateRowProps) {
               <Avatar
                 size="sm"
                 src={info?.avatarUrl || undefined}
-                fallbackInitials={getInitials(info?.displayName, did)}
+                fallbackInitials={getInitials(info?.displayName, info?.handle)}
               />
             )}
             <span className="social-graph-sync__modal-row-info">

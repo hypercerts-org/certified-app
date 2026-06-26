@@ -555,7 +555,7 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
       } else {
         ctx.fillStyle = c.disc
         ctx.fill()
-        const label = getInitials(node.displayName, node.id)
+        const label = getInitials(node.displayName, node.handle)
         ctx.fillStyle = c.discText
         ctx.font = `600 ${r * 0.9}px Inter, sans-serif`
         ctx.textAlign = "center"
@@ -749,7 +749,7 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
                     <Avatar
                       src={n.avatarUrl || undefined}
                       size="sm"
-                      fallbackInitials={getInitials(n.displayName, n.id)}
+                      fallbackInitials={getInitials(n.displayName, n.handle)}
                     />
                     <span className="viz__search-result-name">
                       <span className="viz__search-result-primary">
@@ -896,7 +896,7 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
             <Avatar
               src={panelNode.avatarUrl || undefined}
               size="md"
-              fallbackInitials={getInitials(panelNode.displayName, panelNode.id)}
+              fallbackInitials={getInitials(panelNode.displayName, panelNode.handle)}
               bordered
             />
             <div className="viz__panel-id">
@@ -954,7 +954,7 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
                     <Avatar
                       src={n.avatarUrl || undefined}
                       size="sm"
-                      fallbackInitials={getInitials(n.displayName, n.id)}
+                      fallbackInitials={getInitials(n.displayName, n.handle)}
                     />
                   </span>
                 ))}
@@ -973,7 +973,7 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
                     <Avatar
                       src={n.avatarUrl || undefined}
                       size="sm"
-                      fallbackInitials={getInitials(n.displayName, n.id)}
+                      fallbackInitials={getInitials(n.displayName, n.handle)}
                     />
                   </span>
                 ))}

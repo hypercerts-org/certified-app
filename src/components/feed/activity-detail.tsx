@@ -1845,7 +1845,7 @@ function ContributorRow({ contributor, role, weight }: ContributorRowProps) {
     : null
   const initials = getInitials(
     info?.displayName || contribInfo?.displayName || null,
-    info?.did || null,
+    handle,
   )
 
   const hasAnyHydratedField =
@@ -1968,7 +1968,7 @@ function SlimTabHeadline({
                 size="sm"
                 src={info.avatarUrl || undefined}
                 alt=""
-                fallbackInitials={getInitials(info.displayName, did)}
+                fallbackInitials={getInitials(info.displayName, info.handle)}
               />
               <span className="cert-detail__headline-author-meta">
                 <span className="cert-detail__headline-name">
@@ -2070,7 +2070,7 @@ function CertHeadlineColumns({
         ) : (
           (() => {
             const displayName = info.displayName || info.handle || "Anonymous"
-            const initials = getInitials(info.displayName, did)
+            const initials = getInitials(info.displayName, info.handle)
             const profileHref = profileUrl(info.handle || did)
             return (
               <Link

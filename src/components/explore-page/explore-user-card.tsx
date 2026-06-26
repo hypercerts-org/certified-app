@@ -39,7 +39,7 @@ export default function ExploreUserCard({
   const handle = info?.handle ?? null
   const avatarUrl = actor.avatarUrl || info?.avatarUrl || null
   const description = actor.description ?? null
-  const initials = getInitials(displayName, actor.did)
+  const initials = getInitials(displayName, handle)
   // Profile route accepts either a handle or a DID in the [handle]
   // slot — prefer the handle so the URL is readable.
   const profileHref = profileUrl(handle || actor.did)

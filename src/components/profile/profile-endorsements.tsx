@@ -1125,7 +1125,7 @@ function EndorsementRowBody({
         size="sm"
         src={info?.avatarUrl ?? undefined}
         alt=""
-        fallbackInitials={getInitials(info?.displayName, did)}
+        fallbackInitials={getInitials(info?.displayName, info?.handle ?? did)}
       />
       <span className="profile-endorsements-v2__row-text">
         <span className="profile-endorsements-v2__row-name">{display}</span>
