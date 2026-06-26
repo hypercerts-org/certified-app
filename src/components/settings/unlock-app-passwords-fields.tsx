@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useState } from "react"
+import Link from "next/link"
 import Input from "@/components/ui/input"
 import Banner from "@/components/ui/banner"
 import { unlockAppPasswords } from "@/lib/atproto/app-passwords"
@@ -134,12 +135,12 @@ export function UnlockAppPasswordFields({
           {!state.needsCode && (
             <p className="text-xs text-[var(--fg-muted)]">
               Don&apos;t know it?{" "}
-              <a
+              <Link
                 href="/settings#account"
                 className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 Set or reset your password
-              </a>{" "}
+              </Link>{" "}
               under Settings → Account.
             </p>
           )}
@@ -169,12 +170,12 @@ export function UnlockAppPasswordFields({
         <Banner variant="error" className="mb-4">
           That password wasn&apos;t accepted. If you sign in with email codes
           and haven&apos;t set a password yet,{" "}
-          <a
+          <Link
             href="/settings#account"
             className="font-medium underline hover:opacity-80"
           >
             set one under Settings → Account
-          </a>{" "}
+          </Link>{" "}
           first, then unlock.
         </Banner>
       )}
