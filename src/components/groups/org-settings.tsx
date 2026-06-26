@@ -1,11 +1,13 @@
 "use client"
 
 import React, { useState, useEffect, useCallback } from "react"
+import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import {
   AtSign,
   ChevronLeft,
   ChevronRight,
+  CircleUser,
   ScrollText,
   Share2,
   ShieldAlert,
@@ -14,8 +16,20 @@ import {
   Users,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useSession } from "@/hooks/use-session"
 import { useOrg } from "@/lib/groups/org-context"
 import { GROUP_PROMOTED_FLAG } from "@/lib/groups/constants"
+import DidSection from "@/components/account/did-section"
+
+// Self-owned-group Account page reuses the personal account controls — you're
+// signed in as the group account itself, so they act on the right session.
+const UsernameCard = dynamic(
+  () => import("@/components/dashboard/username-card"),
+)
+const EmailSection = dynamic(() => import("@/components/account/email-section"))
+const PasswordSection = dynamic(
+  () => import("@/components/account/password-section"),
+)
 import SyncSocialGraphSection from "@/components/settings/sync-social-graph-section"
 import {
   listOrgMembers,
@@ -38,7 +52,13 @@ import ErrorMessage from "@/components/ui/error-message"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Tooltip from "@/components/ui/tooltip"
 
-type CategoryKey = "handle" | "social-graph" | "members" | "activity" | "danger"
+type CategoryKey =
+  | "account"
+  | "handle"
+  | "social-graph"
+  | "members"
+  | "activity"
+  | "danger"
 
 type CategoryDef = {
   key: CategoryKey
@@ -100,6 +120,16 @@ const GROUPS: CategoryGroup[] = [
   },
 ]
 
+/** Replaces the read-only Handle page when you're signed in as the group
+ *  itself (self-owned). You hold the account's own credentials, so you manage
+ *  its handle, sign-in email, and password just like an individual account. */
+const ACCOUNT_PAGE: CategoryDef = {
+  key: "account",
+  label: "Account",
+  description: "This group's handle, sign-in email, and password.",
+  Icon: CircleUser,
+}
+
 /** Owner-only group, appended to the rail + rendered only for owners. */
 const DANGER_GROUP: CategoryGroup = {
   label: "Danger zone",
@@ -156,14 +186,32 @@ interface OrgSettingsProps {
 }
 
 export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
-  const { did } = useAuth()
+  const { did, pdsUrl } = useAuth()
+  const { email } = useSession()
   const { switchOrg, refetchOrgs } = useOrg()
   const router = useRouter()
   const isOwner = org.role === "owner"
   const isAdmin = org.role === "admin" || isOwner
+  // Signed in as the group account itself (you promoted your own account):
+  // you hold its credentials, so it gets the full Account page.
+  const isSelfOwned = !!did && groupDid === did
+
+  // A self-owned group swaps the read-only Handle page for the Account page.
+  const baseGroups: CategoryGroup[] = isSelfOwned
+    ? GROUPS.map((g) =>
+        g.label === "General"
+          ? {
+              ...g,
+              items: g.items.map((c) =>
+                c.key === "handle" ? ACCOUNT_PAGE : c,
+              ),
+            }
+          : g,
+      )
+    : GROUPS
 
   // Owners get the Danger zone (remove group) in the rail + panel.
-  const visibleGroups = isOwner ? [...GROUPS, DANGER_GROUP] : GROUPS
+  const visibleGroups = isOwner ? [...baseGroups, DANGER_GROUP] : baseGroups
 
   // Remove-group (destroy) state.
   const [confirmDestroy, setConfirmDestroy] = useState(false)
@@ -429,6 +477,56 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
 
   const renderBody = (key: CategoryKey) => {
     switch (key) {
+      // Account — only for a self-owned group (you're signed in as the account):
+      // its DID, handle, sign-in email, and password, same as an individual.
+      case "account":
+        return (
+          <div className="sx-subsections">
+            <div className="sx-subsection">
+              <div className="sx-subsection__head">
+                <h3 className="sx-subsection__title">DID</h3>
+                <p className="sx-subsection__desc">
+                  This group&apos;s permanent identifier. Unlike its @handle, it
+                  never changes — apps and records reference it by this.
+                </p>
+              </div>
+              <DidSection did={groupDid} />
+            </div>
+            <div className="sx-subsection">
+              <div className="sx-subsection__head">
+                <h3 className="sx-subsection__title">Handle</h3>
+                <p className="sx-subsection__desc">
+                  The @handle people use to find this group on Certified.
+                </p>
+              </div>
+              <UsernameCard
+                handle={org.handle}
+                pdsUrl={pdsUrl || undefined}
+                did={did || undefined}
+                groupDid={groupDid}
+              />
+            </div>
+            <div className="sx-subsection">
+              <div className="sx-subsection__head">
+                <h3 className="sx-subsection__title">Email</h3>
+                <p className="sx-subsection__desc">
+                  Used to sign in and recover this account.
+                </p>
+              </div>
+              <EmailSection email={email || ""} />
+            </div>
+            <div className="sx-subsection">
+              <div className="sx-subsection__head">
+                <h3 className="sx-subsection__title">Password</h3>
+                <p className="sx-subsection__desc">
+                  Lets you sign in to other AT Protocol apps with this handle.
+                </p>
+              </div>
+              <PasswordSection email={email || ""} />
+            </div>
+          </div>
+        )
+
       // Handle — read-only; group service doesn't support handle changes
       // after registration.
       case "handle":
