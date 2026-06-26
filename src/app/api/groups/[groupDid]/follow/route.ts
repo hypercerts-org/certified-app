@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import {
   getAuthenticatedAgent,
-  createGroupAgent,
+  createGroupClient,
 } from "@/lib/groups/proxy-agent"
 import { checkCsrf } from "@/lib/auth/csrf"
 import { isValidDid } from "@/lib/utils/did"
@@ -75,7 +75,7 @@ export async function POST(
       createdAt,
     }
 
-    const groupAgent = createGroupAgent(auth.agent, groupDid)
+    const groupAgent = createGroupClient(auth.agent, groupDid)
     const upstream = await groupAgent.call(
       "app.certified.group.repo.createRecord",
       {},
@@ -140,7 +140,7 @@ export async function DELETE(
       )
     }
 
-    const groupAgent = createGroupAgent(auth.agent, groupDid)
+    const groupAgent = createGroupClient(auth.agent, groupDid)
     await groupAgent.call(
       "app.certified.group.repo.deleteRecord",
       {},

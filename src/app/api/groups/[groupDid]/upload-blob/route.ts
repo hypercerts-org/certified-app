@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import {
   getAuthenticatedAgent,
-  createGroupAgent,
+  createGroupClient,
 } from "@/lib/groups/proxy-agent"
 import { checkCsrf } from "@/lib/auth/csrf"
 import { isValidDid } from "@/lib/utils/did"
@@ -49,7 +49,7 @@ export async function POST(
       return NextResponse.json({ error: "Payload too large (max 5MB)" }, { status: 413 })
     }
 
-    const groupAgent = createGroupAgent(auth.agent, groupDid)
+    const groupAgent = createGroupClient(auth.agent, groupDid)
 
     // uploadBlob has a binary body, so the group selector goes on the
     // querystring (body-less convention — see CGS aud-migration.md).

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getAuthenticatedAgent, getServiceAuthToken, createGroupAgent } from "@/lib/groups/proxy-agent"
+import { getAuthenticatedAgent, getServiceAuthToken, createGroupClient } from "@/lib/groups/proxy-agent"
 import { GROUP_SERVICE, GROUP_SERVICE_DID, MAX_SELF_CREATED_ORGS } from "@/lib/groups/constants"
 import { checkCsrf } from "@/lib/auth/csrf"
 import { extractRouteError, parseJsonBody } from "@/lib/utils/api"
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
         const results = await Promise.all(
           batch.map(async (g) => {
             try {
-              const groupAgent = createGroupAgent(auth.agent, g.groupDid)
+              const groupAgent = createGroupClient(auth.agent, g.groupDid)
               // We only need to know whether the caller's OWN entry was
               // self-added, so stop paginating the member list as soon as that
               // entry is found — no later page can change the boolean answer.

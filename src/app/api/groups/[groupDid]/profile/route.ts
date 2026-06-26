@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import {
   getAuthenticatedAgent,
-  createGroupAgent,
+  createGroupClient,
 } from "@/lib/groups/proxy-agent"
 import { resolvePdsUrl } from "@/lib/atproto/did"
 import { checkCsrf } from "@/lib/auth/csrf"
@@ -98,7 +98,7 @@ export async function PUT(
       ? body.swapRecord
       : undefined
     const record = pickAllowedFields(body, PROFILE_FIELDS, "app.certified.actor.profile")
-    const groupAgent = createGroupAgent(auth.agent, groupDid)
+    const groupAgent = createGroupClient(auth.agent, groupDid)
 
     // Use custom NSID for writes — PDS proxies to group service
     await groupAgent.call(

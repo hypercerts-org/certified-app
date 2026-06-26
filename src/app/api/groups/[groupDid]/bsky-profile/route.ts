@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import {
   getAuthenticatedAgent,
-  createGroupAgent,
+  createGroupClient,
 } from "@/lib/groups/proxy-agent"
 import { checkCsrf } from "@/lib/auth/csrf"
 import { isValidDid } from "@/lib/utils/did"
@@ -28,7 +28,7 @@ export async function POST(
     if (!auth)
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
 
-    const groupAgent = createGroupAgent(auth.agent, groupDid)
+    const groupAgent = createGroupClient(auth.agent, groupDid)
 
     await groupAgent.call(
       "app.certified.group.repo.putRecord",

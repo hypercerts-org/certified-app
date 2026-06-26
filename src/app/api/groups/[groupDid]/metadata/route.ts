@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import {
   getAuthenticatedAgent,
-  createGroupAgent,
+  createGroupClient,
 } from "@/lib/groups/proxy-agent"
 import { resolvePdsUrl } from "@/lib/atproto/did"
 import { checkCsrf } from "@/lib/auth/csrf"
@@ -87,7 +87,7 @@ export async function PUT(
       ? body.swapRecord
       : undefined
     const record = pickAllowedFields(body, METADATA_FIELDS, "app.certified.actor.organization")
-    const groupAgent = createGroupAgent(auth.agent, groupDid)
+    const groupAgent = createGroupClient(auth.agent, groupDid)
 
     await groupAgent.call(
       "app.certified.group.repo.putRecord",

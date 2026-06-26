@@ -316,3 +316,37 @@ export async function callGroupServiceJson(
   }
   throw Object.assign(new Error(message), { status: res.status, error: code })
 }
+
+/**
+ * Drop-in replacement for `createGroupAgent(agent, repo)` on the **default**
+ * (non-legacy) path: returns an object whose `.call(nsid, params, data, opts)`
+ * matches `Agent.call` — same arg order, same `{ data }` return, same
+ * `{ status, error }`-shaped throw — but routes through {@link
+ * callGroupServiceJson} (direct service-auth call) instead of the broken
+ * `withProxy` proxy-DID resolution. So a route migrates by renaming the
+ * constructor only; its `groupAgent.call(...)` sites and `catch` are untouched.
+ *
+ * `params` (querystring) carries `repo` for queries + `uploadBlob`; `data`
+ * (body) carries it for JSON procedures — exactly as the lexicon expects.
+ * Does NOT cover the legacy `{ legacy: true }` path (handle/updateHandle),
+ * which still needs a real proxied Agent — keep using `createGroupAgent` there.
+ */
+export function createGroupClient(agent: Agent, _groupDid: string) {
+  return {
+    async call(
+      nsid: string,
+      params?: Record<string, unknown>,
+      data?: unknown,
+      opts?: { encoding?: string }
+    ): Promise<{ data: unknown }> {
+      const body = await callGroupServiceJson(agent, nsid, {
+        query: params as
+          | Record<string, string | number | undefined | null>
+          | undefined,
+        body: data,
+        encoding: opts?.encoding,
+      })
+      return { data: body }
+    },
+  }
+}
