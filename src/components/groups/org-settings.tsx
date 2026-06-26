@@ -88,7 +88,7 @@ const GROUPS: CategoryGroup[] = [
         key: "handle",
         label: "Handle",
         description:
-          "The group's handle on the network. Set during registration; editing coming soon.",
+          "This group's permanent DID and the @handle people use to find it.",
         Icon: AtSign,
       },
       {
@@ -532,10 +532,42 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
           </div>
         )
 
-      // Handle — read-only; group service doesn't support handle changes
-      // after registration.
+      // Handle page for a non-self group: the DID plus the handle. Owners and
+      // admins can edit the handle (via the CGS handle route); members see it
+      // read-only.
       case "handle":
-        return <p className="username-card__value">@{org.handle}</p>
+        return (
+          <div className="sx-subsections">
+            <div className="sx-subsection">
+              <div className="sx-subsection__head">
+                <h3 className="sx-subsection__title">DID</h3>
+                <p className="sx-subsection__desc">
+                  This group&apos;s permanent identifier. Unlike its @handle, it
+                  never changes — apps and records reference it by this.
+                </p>
+              </div>
+              <DidSection did={groupDid} />
+            </div>
+            <div className="sx-subsection">
+              <div className="sx-subsection__head">
+                <h3 className="sx-subsection__title">Handle</h3>
+                <p className="sx-subsection__desc">
+                  The @handle people use to find this group on Certified.
+                </p>
+              </div>
+              {isAdmin ? (
+                <UsernameCard
+                  handle={org.handle}
+                  pdsUrl={pdsUrl || undefined}
+                  did={did || undefined}
+                  groupDid={groupDid}
+                />
+              ) : (
+                <p className="username-card__value">@{org.handle}</p>
+              )}
+            </div>
+          </div>
+        )
 
       case "social-graph":
         return did ? (
