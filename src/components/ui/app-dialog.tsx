@@ -140,7 +140,7 @@ export function AppDialogHeader({
   return (
     <div
       className={`flex shrink-0 items-center gap-2.5 border-b border-[var(--color-light-gray)] pt-5 pb-3 ${
-        center ? "px-10" : "pl-6 pr-10"
+        center ? "px-10" : "pl-5 pr-10"
       }`}
     >
       <span

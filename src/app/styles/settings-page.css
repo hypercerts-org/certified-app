@@ -489,8 +489,13 @@
   gap: 8px;
 }
 
-.import-group__create {
+/* Keep the create-password link-button left-aligned even when its label
+   wraps on a narrow screen (the Button base is justify-center; the
+   descendant selector out-specifies it). */
+.import-group .import-group__create {
   align-self: flex-start;
+  justify-content: flex-start;
+  text-align: left;
 }
 
 .import-group__actions {

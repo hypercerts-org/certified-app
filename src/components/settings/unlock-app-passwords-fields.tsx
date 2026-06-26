@@ -121,15 +121,29 @@ export function UnlockAppPasswordFields({
       <p className="mb-4 text-sm text-[var(--fg-secondary)]">{intro}</p>
 
       <div className="mb-4 flex flex-col gap-4">
-        <Input
-          label="Account password"
-          type="password"
-          size="md"
-          autoComplete="current-password"
-          value={state.password}
-          onChange={(e) => state.setPassword(e.target.value)}
-          disabled={state.submitting}
-        />
+        <div className="flex flex-col gap-1.5">
+          <Input
+            label="Account password"
+            type="password"
+            size="md"
+            autoComplete="current-password"
+            value={state.password}
+            onChange={(e) => state.setPassword(e.target.value)}
+            disabled={state.submitting}
+          />
+          {!state.needsCode && (
+            <p className="text-xs text-[var(--fg-muted)]">
+              Don&apos;t know it?{" "}
+              <a
+                href="/settings#account"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+              >
+                Set or reset your password
+              </a>{" "}
+              under Settings → Account.
+            </p>
+          )}
+        </div>
         {state.needsCode && (
           <Input
             label="Email code"
@@ -154,8 +168,14 @@ export function UnlockAppPasswordFields({
       {state.invalid && (
         <Banner variant="error" className="mb-4">
           That password wasn&apos;t accepted. If you sign in with email codes
-          and haven&apos;t set a password yet, set one under Settings →
-          Password first, then unlock.
+          and haven&apos;t set a password yet,{" "}
+          <a
+            href="/settings#account"
+            className="font-medium underline hover:opacity-80"
+          >
+            set one under Settings → Account
+          </a>{" "}
+          first, then unlock.
         </Banner>
       )}
       {state.error && (
