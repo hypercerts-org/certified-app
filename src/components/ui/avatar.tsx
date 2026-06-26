@@ -67,10 +67,13 @@ function conicRingFor(seed: string): string {
   const h = hashSeed(seed);
   const h2 = hashSeed(seed + "x");
   const h3 = hashSeed(seed + "yy");
+  // Analogous hues (within ~95°) make a calm tonal sweep rather than a
+  // saturated rainbow, and the muted saturation sits with the app's soft,
+  // near-monochrome palette instead of standing out as glossy.
   const a = h % 360;
-  const b = (a + 60 + (h2 % 120)) % 360;
-  const c = (a + 200 + (h3 % 80)) % 360;
-  return `conic-gradient(from ${h % 360}deg, hsl(${a} 62% 55%), hsl(${b} 62% 55%), hsl(${c} 60% 52%), hsl(${a} 62% 55%))`;
+  const b = (a + 28 + (h2 % 34)) % 360;
+  const c = (a + 62 + (h3 % 34)) % 360;
+  return `conic-gradient(from ${h % 360}deg, hsl(${a} 38% 58%), hsl(${b} 36% 55%), hsl(${c} 34% 52%), hsl(${a} 38% 58%))`;
 }
 
 const Avatar: React.FC<AvatarProps> = ({
