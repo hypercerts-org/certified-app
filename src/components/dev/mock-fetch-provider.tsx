@@ -64,11 +64,9 @@ import {
   managedProjectsConnection,
   managedActivitiesConnection,
   managedGroupsMembershipsResponse,
-  managedMembershipRecords,
   managedOrgProfile,
   managedPlcDidDocument,
 } from "@/lib/dev/fixtures/managed"
-import { ORG_MEMBERSHIP_COLLECTION } from "@/lib/groups/constants"
 
 export type MockScenario = "populated" | "empty"
 
@@ -304,13 +302,6 @@ function xrpcResponse(
   if (method === "com.atproto.repo.listRecords") {
     if (collection === "app.certified.graph.follow") {
       return json(empty ? { records: [] } : followRecords())
-    }
-    // Managed scenario: the viewer's local membership records, so
-    // `resolveGroups` marks each managed group `accepted: true`. Only
-    // intercepts the membership collection — every other listRecords
-    // (activities-by-PDS, etc.) still returns an empty list.
-    if (managed && collection === ORG_MEMBERSHIP_COLLECTION) {
-      return json(managedMembershipRecords())
     }
     // Memberships, activities-by-PDS, and anything else → empty list.
     return json({ records: [] })

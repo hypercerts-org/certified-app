@@ -11,7 +11,6 @@ export const GROUP_SERVICE_DID =
   process.env.NEXT_PUBLIC_GROUP_SERVICE_DID ||
   "did:web:groups.certified.app"
 
-export const ORG_MEMBERSHIP_COLLECTION = "app.certified.actor.membership"
 export const ORG_MARKER_COLLECTION = "app.certified.actor.organization"
 
 export const MAX_SELF_CREATED_ORGS = 5

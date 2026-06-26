@@ -8,7 +8,6 @@ import {
   MANAGED_AGGREGATED_DIDS,
   isManagedAuthorsRequest,
   managedGroupsMembershipsResponse,
-  managedMembershipRecords,
   managedProjectsConnection,
   managedActivitiesConnection,
   managedGroups,
@@ -94,17 +93,6 @@ describe("managed fixtures — group resolution wiring", () => {
     expect(roleByDid[MANAGED_OWNER_GROUP_DID]).toBe("owner")
     expect(roleByDid[MANAGED_ADMIN_GROUP_DID]).toBe("admin")
     expect(roleByDid[MANAGED_MEMBER_GROUP_DID]).toBe("member")
-  })
-
-  it("local membership records mirror the groups so all resolve accepted", () => {
-    const { records } = managedMembershipRecords()
-    expect(records).toHaveLength(MANAGED_GROUPS.length)
-    const recordDids = records.map((r) => r.value.groupDid).sort()
-    const groupDids = MANAGED_GROUPS.map((g) => g.groupDid).sort()
-    expect(recordDids).toEqual(groupDids)
-    for (const r of records) {
-      expect(r.uri.startsWith(`at://${MOCK_DID}/`)).toBe(true)
-    }
   })
 
   it("managedGroups() returns all three as accepted with their roles", () => {

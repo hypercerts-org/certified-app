@@ -17,9 +17,6 @@
  *     returns the three managed groups as `RemoteMembership[]` so
  *     `fetchRemoteMemberships` (and therefore `resolveGroups` →
  *     `useOrg().groups`) resolves to them.
- *   - PDS `listRecords(app.certified.actor.membership)` → the matching
- *     local membership records (see `managedMembershipRecords`) so
- *     `resolveGroups` marks each group `accepted: true`.
  *   - PLC directory + `/api/groups/{groupDid}/profile` → per-group
  *     handle + displayName so the aggregation rows read "by {group}".
  *   - `/api/indexer` `Projects` / `Activities` with an `authors[]` that
@@ -32,7 +29,7 @@
  * consistent with the existing feed / groups fixtures.
  */
 
-import type { RemoteMembership, OrgRole, MembershipRecord } from "@/lib/groups/types"
+import type { RemoteMembership, OrgRole } from "@/lib/groups/types"
 import { MOCK_DID } from "./session"
 
 /** One managed group per role. Same `did:plc:` shape as MOCK_DID so
@@ -146,28 +143,6 @@ export function managedGroups(): {
     role: g.role,
     accepted: true,
   }))
-}
-
-/** ---- PDS listRecords(app.certified.actor.membership) -------------- */
-
-/** Local membership records on the viewer's PDS — one per managed group,
- *  so `resolveGroups` marks each `accepted: true`. Shape matches what
- *  `listMemberships` reads (`{ records: [{ uri, cid, value }] }`). */
-export function managedMembershipRecords(): {
-  records: { uri: string; cid: string; value: MembershipRecord }[]
-} {
-  return {
-    records: MANAGED_GROUPS.map((g, i) => ({
-      uri: `at://${MOCK_DID}/app.certified.actor.membership/membership${i}`,
-      cid: `bafymembership${i}00000000000000000000000000000000000000000000`,
-      value: {
-        $type: "app.certified.actor.membership",
-        groupDid: g.groupDid,
-        role: g.role,
-        joinedAt: g.joinedAt,
-      },
-    })),
-  }
 }
 
 /** ---- /api/groups/{groupDid}/profile ------------------------------- */

@@ -8,7 +8,6 @@ export interface Group {
   role: OrgRole
   accepted: boolean
   avatarUrl?: string
-  rkey?: string
 }
 
 export interface RemoteMembership {
@@ -62,15 +61,6 @@ export interface GroupMetadata {
 export interface OrgUrlItem {
   url: string
   label?: string
-}
-
-export interface MembershipRecord {
-  $type: "app.certified.actor.membership"
-  groupDid: string
-  role: OrgRole
-  joinedAt: string
-  /** The record key (TID), extracted from the AT URI after listing. */
-  rkey?: string
 }
 
 export interface AuditEntry {
