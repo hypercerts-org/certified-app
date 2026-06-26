@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import Link from "next/link"
 import Input from "@/components/ui/input"
 import Banner from "@/components/ui/banner"
 import { unlockAppPasswords } from "@/lib/atproto/app-passwords"
@@ -113,9 +112,14 @@ export function useUnlockAppPasswords(onUnlocked: () => void): UnlockState {
 export function UnlockAppPasswordFields({
   state,
   intro,
+  onNavigate,
 }: {
   state: UnlockState
   intro: string
+  /** Called when the user clicks the "set password" link — the host closes
+   *  its dialog so the in-app navigation to Settings → Account isn't left
+   *  underneath an open modal. */
+  onNavigate?: () => void
 }) {
   return (
     <>
@@ -134,14 +138,15 @@ export function UnlockAppPasswordFields({
           />
           {!state.needsCode && (
             <p className="text-xs text-[var(--fg-muted)]">
-              Don&apos;t know it?{" "}
-              <Link
-                href="/settings#account"
+              Don&apos;t know it? Set or reset it under{" "}
+              <a
+                href="#account"
+                onClick={onNavigate}
                 className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
-                Set or reset your password
-              </Link>{" "}
-              under Settings → Account.
+                Settings → Account
+              </a>
+              .
             </p>
           )}
         </div>
@@ -169,13 +174,14 @@ export function UnlockAppPasswordFields({
       {state.invalid && (
         <Banner variant="error" className="mb-4">
           That password wasn&apos;t accepted. If you sign in with email codes
-          and haven&apos;t set a password yet,{" "}
-          <Link
-            href="/settings#account"
+          and haven&apos;t set a password yet, set one under{" "}
+          <a
+            href="#account"
+            onClick={onNavigate}
             className="font-medium underline hover:opacity-80"
           >
-            set one under Settings → Account
-          </Link>{" "}
+            Settings → Account
+          </a>{" "}
           first, then unlock.
         </Banner>
       )}

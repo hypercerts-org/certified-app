@@ -119,6 +119,7 @@ export default function CreateAppPasswordDialog({
             <UnlockAppPasswordFields
               state={unlock}
               intro="Confirm your account password to mint an app password for the group import. It's used once to open a short, secure session — it isn't stored."
+              onNavigate={onClose}
             />
             <div className={DIALOG_FOOTER_ACTIONS_CLASS}>
               <Button

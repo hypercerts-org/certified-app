@@ -41,7 +41,11 @@ export default function UnlockAppPasswordsDialog({
       submitLabel={state.needsCode ? "Confirm code" : submitLabel}
       autoFocusFirst
     >
-      <UnlockAppPasswordFields state={state} intro={intro} />
+      <UnlockAppPasswordFields
+        state={state}
+        intro={intro}
+        onNavigate={onClose}
+      />
     </FormDialog>
   )
 }
