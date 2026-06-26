@@ -107,7 +107,7 @@ const DANGER_GROUP: CategoryGroup = {
       key: "danger",
       label: "Danger zone",
       description:
-        "Remove this group from Certified. This deletes the group's membership and settings from the service only — the underlying account and its records are left intact, and the group can be imported again later.",
+        "Remove this group from Certified. This deletes the group's membership and settings from the service only — the underlying account and its records are left intact, and you can promote the account to a group again later.",
       Icon: ShieldAlert,
     },
   ],
@@ -738,7 +738,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
       {confirmDestroy ? (
         <ConfirmDialog
           title="Remove group"
-          message={`Remove @${org.handle} from Certified? This deletes the group from the service only — the underlying account and its records remain. The group can be imported again later.`}
+          message={`Remove @${org.handle} from Certified? This deletes the group from the service only — the underlying account and its records remain. You can promote the account to a group again later.`}
           confirmLabel="Remove group"
           confirmPhrase={org.handle}
           onCancel={() => setConfirmDestroy(false)}

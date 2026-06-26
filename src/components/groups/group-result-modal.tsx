@@ -65,8 +65,8 @@ export default function GroupResultModal({
             ) : (
               <>
                 <strong>@{handle}</strong> is no longer a group. The account,
-                its handle, and its records remain — you can import it again
-                later.
+                its handle, and its records remain — you can promote it to a
+                group again later.
               </>
             )}
           </p>

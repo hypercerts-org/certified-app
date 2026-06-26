@@ -104,8 +104,8 @@ export default function ImportGroupPage() {
           <div className="dashboard__main">
             <EmptyState
               icon={Users}
-              title="Sign in to import an account"
-              description="Sign in as the account you want to convert into a group."
+              title="Sign in to promote an account"
+              description="Sign in as the account you want to promote to a group."
             >
               <Button variant="primary" onClick={() => openSignIn()}>
                 Sign in
@@ -125,11 +125,11 @@ export default function ImportGroupPage() {
         <div className="dashboard__main">
           <form className="cert-detail__section" onSubmit={handleSubmit}>
             <header className="sx-panel__header">
-              <h1 className="sx-panel__title">Import an account as a group</h1>
+              <h1 className="sx-panel__title">Promote an account to a group</h1>
               <p className="sx-panel__desc">
                 This converts the account you&apos;re signed in as —{" "}
                 <strong>{accountLabel}</strong> — into a group, with you as its
-                owner. To import a different account, sign in as that account
+                owner. To promote a different account, sign in as that account
                 first. The underlying account and its records are kept; nothing
                 is deleted.
               </p>
