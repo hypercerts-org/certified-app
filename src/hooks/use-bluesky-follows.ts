@@ -156,5 +156,21 @@ export function useBlueskyFollows(did: string | null) {
     }
   }, [doFetch])
 
-  return { followedDids, truncated, isLoading, error }
+  // Optimistically add a follow to the local set (and the module cache) so a
+  // just-written `app.bsky.graph.follow` reflects immediately — used by the
+  // Certified → Bluesky sync — without waiting for the focus refetch. No-op
+  // if the DID is already present.
+  const addFollow = useCallback((subjectDid: string) => {
+    setFollowedDids((prev) => {
+      if (prev.has(subjectDid)) return prev
+      const next = new Set(prev)
+      next.add(subjectDid)
+      if (cache && cache.did === didRef.current) {
+        cache = { ...cache, data: next }
+      }
+      return next
+    })
+  }, [])
+
+  return { followedDids, truncated, isLoading, error, addFollow }
 }

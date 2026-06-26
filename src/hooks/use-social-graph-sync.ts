@@ -93,6 +93,7 @@ export function useSocialGraphSync(
     truncated: blueskyTruncated,
     isLoading: blueskyLoading,
     error: blueskyError,
+    addFollow: blueskyAddFollow,
   } = useBlueskyFollows(did)
   const blueskyCount = blueskyDids.size
   const ownDid = opts?.ownDid ?? did
@@ -238,6 +239,10 @@ export function useSocialGraphSync(
           if (blueskyDids.has(subjectDid)) continue
           try {
             await createBlueskyFollow(ownDid, subjectDid)
+            // Optimistically add to the local Bluesky set so the stats
+            // (onlyCertified / inBoth) flip immediately, mirroring the
+            // import direction's `certifiedAddFollow`.
+            blueskyAddFollow(subjectDid)
             imported++
           } catch (err) {
             errors.push({
@@ -247,14 +252,12 @@ export function useSocialGraphSync(
             })
           }
         }
-        // No optimistic update / refetch: `useBlueskyFollows` exposes neither
-        // an add nor a refetch, and its cache refreshes on focus.
       } finally {
         setIsWriting(false)
       }
       return { imported, failed: errors.length, errors }
     },
-    [ownDid, targetDid, isWriting, blueskyDids, blueskyTruncated],
+    [ownDid, targetDid, isWriting, blueskyDids, blueskyTruncated, blueskyAddFollow],
   )
 
   return {
