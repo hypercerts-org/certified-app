@@ -14,7 +14,6 @@ import {
   ArrowLeft,
   Building2,
   ChevronDown,
-  Compass,
   FileBadge,
   FolderKanban,
   HelpCircle,
@@ -447,16 +446,6 @@ export default function DesktopTopBar() {
               <span className="desktop-top-bar__icon-label">Home</span>
             </Link>
           ) : null}
-
-          <Link
-            href="/explore"
-            className="desktop-top-bar__icon-btn"
-            aria-label="Explore"
-            data-tour="nav-explore"
-          >
-            <Compass size={20} strokeWidth={1.5} aria-hidden />
-            <span className="desktop-top-bar__icon-label">Explore</span>
-          </Link>
 
           <Link
             href="/apps"
