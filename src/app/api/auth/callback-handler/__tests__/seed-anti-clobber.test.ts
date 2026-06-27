@@ -6,14 +6,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
  *
  * Two guarantees under test:
  *
- *   B1 (INVARIANT): certified-app NEVER writes `app.bsky.actor.profile`.
- *       Sign-in only ever seeds `app.certified.actor.profile`.
+ *   B1: certified-app seeds an empty `app.bsky.actor.profile` (createdAt only)
+ *       so profile-less accounts are discoverable in the Bluesky appview — but
+ *       ONLY when genuinely absent, never clobbering an existing one.
  *
- *   C  (anti-clobber): the surviving app.certified seed only runs on a
- *       GENUINE record-not-found. On any other getRecord failure (5xx /
- *       network / timeout / rate-limit) we must NOT putRecord, because we
- *       can't prove the record is absent and seeding could clobber it.
- *       When the record already exists, we also must not putRecord.
+ *   C  (anti-clobber): each seed only runs on a GENUINE record-not-found. On
+ *       any other getRecord failure (5xx / network / timeout / rate-limit) we
+ *       must NOT putRecord, because we can't prove the record is absent and
+ *       seeding could clobber it. When the record already exists, we also must
+ *       not putRecord (and `swapRecord: null` makes the PDS reject it anyway).
  *
  * The route builds an Agent from the restored OAuth session at request
  * time, so we mock `@atproto/api`'s Agent to expose controllable
@@ -104,8 +105,8 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe("auth callback — profile seeding (B1 invariant + C anti-clobber)", () => {
-  it("(i) seeds app.certified on RecordNotFound, and NEVER writes app.bsky", async () => {
+describe("auth callback — profile seeding (bsky discoverability + anti-clobber)", () => {
+  it("(i) seeds both app.certified and app.bsky on RecordNotFound, create-if-absent only", async () => {
     getRecord.mockRejectedValue(recordNotFoundError())
     const { GET } = await import("../route")
 
@@ -114,17 +115,23 @@ describe("auth callback — profile seeding (B1 invariant + C anti-clobber)", ()
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ did: DID })
 
-    expect(putRecord).toHaveBeenCalledTimes(1)
-    const input = putRecord.mock.calls[0][0]
-    expect(input.collection).toBe("app.certified.actor.profile")
-    // create-if-absent only (belt-and-suspenders).
-    expect(input.swapRecord).toBeNull()
+    // Both profile collections are seeded when genuinely absent.
+    expect(putRecord).toHaveBeenCalledTimes(2)
+    const collections = putRecord.mock.calls.map((c) => c[0].collection).sort()
+    expect(collections).toEqual([
+      "app.bsky.actor.profile",
+      "app.certified.actor.profile",
+    ])
 
-    // The invariant: app.bsky.actor.profile is never written.
-    const wroteBsky = putRecord.mock.calls.some(
-      (c) => c[0]?.collection === "app.bsky.actor.profile",
-    )
-    expect(wroteBsky).toBe(false)
+    // Every seed is create-if-absent (swapRecord: null) and createdAt-only.
+    for (const call of putRecord.mock.calls) {
+      const input = call[0]
+      expect(input.swapRecord).toBeNull()
+      expect(input.record).toEqual({
+        $type: input.collection,
+        createdAt: expect.any(String),
+      })
+    }
   })
 
   it("(ii) does NOT putRecord when getRecord throws a 5xx/network error", async () => {

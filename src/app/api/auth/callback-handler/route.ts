@@ -8,13 +8,21 @@ import { clientIp } from "@/lib/utils/ip"
 
 /**
  * Collections that should always have a "self" record after sign-in.
+ * `ensureProfileRecords` seeds an empty record (createdAt only) ONLY when one
+ * is genuinely absent.
  *
- * INVARIANT: certified-app must NEVER write `app.bsky.actor.profile`.
- * Seeding an empty bsky profile here clobbers the user's existing Bluesky
- * profile (avatar, banner, display name) — the avatar-data-loss bug. This
- * array is the loop's only consumer, so it is the sole gate on what we seed.
+ * `app.bsky.actor.profile` is seeded so profile-less accounts are discoverable
+ * in the Bluesky appview. This is SAFE because the seed cannot clobber an
+ * existing profile: it writes only on a genuine `RecordNotFound`, AND uses
+ * `swapRecord: null` so the PDS rejects the write if a record already exists.
+ * Weakening either guard reintroduces the avatar-data-loss bug (overwriting a
+ * user's existing avatar / banner / display name) — never write these
+ * unconditionally or on an uncertain check.
  */
-const PROFILE_COLLECTIONS = ["app.certified.actor.profile"]
+const PROFILE_COLLECTIONS = [
+  "app.certified.actor.profile",
+  "app.bsky.actor.profile",
+]
 
 // 20/min by IP — the OAuth callback completes the PDS handshake;
 // legitimate users hit it once per sign-in. Higher than zero to
