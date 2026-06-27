@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import { Lock, Pencil } from "lucide-react"
+import { Lock, Pencil, Unlock } from "lucide-react"
 import {
   unlockGroupAccount,
   lockGroupAccount,
@@ -13,10 +13,8 @@ import {
 import Input from "@/components/ui/input"
 import Button from "@/components/ui/button"
 import ErrorMessage from "@/components/ui/error-message"
-import {
-  useUnlockSession,
-  UnlockAppPasswordFields,
-} from "@/components/settings/unlock-app-passwords-fields"
+import { useUnlockSession } from "@/components/settings/unlock-app-passwords-fields"
+import { UnlockSessionDialog } from "@/components/settings/unlock-app-passwords-dialog"
 
 /**
  * Owner/admin email management for a non-self group. Unlock once with the
@@ -26,6 +24,7 @@ import {
  */
 export default function GroupAccountEmail({ groupDid }: { groupDid: string }) {
   const [unlocked, setUnlocked] = useState(false)
+  const [unlockOpen, setUnlockOpen] = useState(false)
 
   // Email (once unlocked)
   const [email, setEmail] = useState<string | null>(null)
@@ -62,6 +61,7 @@ export default function GroupAccountEmail({ groupDid }: { groupDid: string }) {
   )
 
   const onUnlocked = useCallback(() => {
+    setUnlockOpen(false)
     setUnlocked(true)
     void loadEmail()
   }, [loadEmail])
@@ -117,30 +117,26 @@ export default function GroupAccountEmail({ groupDid }: { groupDid: string }) {
 
   if (!unlocked) {
     return (
-      <form
-        className="group-acct__form"
-        onSubmit={(e) => {
-          e.preventDefault()
-          void unlock.submit()
-        }}
-      >
-        <UnlockAppPasswordFields
-          state={unlock}
-          intro="Enter the group's password to view and change its sign-in email. This opens a short-lived session that's cleared when you lock it — nothing is stored."
-          passwordLabel="Group password"
-          passwordHint={null}
-          invalidMessage="That password wasn't accepted for the group account."
-          codeHelper="We emailed a sign-in code to the group's address."
-        />
-        <Button
-          type="submit"
-          variant="primary"
-          loading={unlock.submitting}
-          disabled={!unlock.canSubmit || unlock.submitting}
-        >
-          Unlock
-        </Button>
-      </form>
+      <div className="group-acct">
+        <div className="org-members__add-submit">
+          <Button variant="secondary" onClick={() => setUnlockOpen(true)}>
+            <Unlock size={14} strokeWidth={1.75} aria-hidden />
+            Unlock
+          </Button>
+        </div>
+        {unlockOpen ? (
+          <UnlockSessionDialog
+            state={unlock}
+            onClose={() => setUnlockOpen(false)}
+            title="Unlock group account"
+            intro="Enter the group's password to view and change its sign-in email. It's used once to open a short, secure session — it isn't stored."
+            passwordLabel="Group password"
+            passwordHint={null}
+            invalidMessage="That password wasn't accepted for the group account."
+            codeHelper="We emailed a sign-in code to the group's address."
+          />
+        ) : null}
+      </div>
     )
   }
 
