@@ -505,17 +505,26 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
               <div className="sx-subsection__head">
                 <h3 className="sx-subsection__title">Handle</h3>
                 <p className="sx-subsection__desc">
-                  The @handle people use to find this group on Certified.
+                  {isSelfOwned
+                    ? "The @handle people use to find this group on Certified."
+                    : "The @handle people use to find this group on Certified. Set during registration — changing a group's handle isn't supported yet."}
                 </p>
               </div>
-              {isAdmin ? (
+              {isSelfOwned ? (
+                // Self-owned: the group account IS your account, so change the
+                // handle via the standard personal updateHandle (no groupDid →
+                // no group proxy).
                 <UsernameCard
                   handle={org.handle}
                   pdsUrl={pdsUrl || undefined}
                   did={did || undefined}
-                  groupDid={groupDid}
                 />
               ) : (
+                // Read-only for a non-self group: a proxied
+                // `com.atproto.identity.updateHandle` is handled locally by the
+                // PDS for the AUTHENTICATED account, so it renames the caller,
+                // not the group (CGS doesn't proxy identity ops). Never wire an
+                // edit here until CGS exposes a real group-handle endpoint.
                 <p className="username-card__value">@{org.handle}</p>
               )}
             </div>
