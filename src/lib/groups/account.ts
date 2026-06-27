@@ -82,3 +82,19 @@ export async function updateGroupEmail(
   if (await isLocked(res)) return LOCKED
   if (!res.ok) throw new Error(await extractError(res, "Failed to update email"))
 }
+
+/** Change the group's handle through the unlocked group session (renames the
+ *  group, not the caller — unlike the old proxy route). */
+export async function updateGroupHandle(
+  groupDid: string,
+  handle: string,
+): Promise<typeof LOCKED | void> {
+  const res = await authFetch(`${base(groupDid)}/handle`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ handle }),
+  })
+  if (await isLocked(res)) return LOCKED
+  if (!res.ok)
+    throw new Error(await extractError(res, "Failed to update handle"))
+}

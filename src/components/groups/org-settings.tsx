@@ -21,7 +21,7 @@ import { useOrg } from "@/lib/groups/org-context"
 import { GROUP_PROMOTED_FLAG } from "@/lib/groups/constants"
 import DidSection from "@/components/account/did-section"
 import GroupPasswordReset from "@/components/groups/group-password-reset"
-import GroupAccountEmail from "@/components/groups/group-account-email"
+import GroupAccountManager from "@/components/groups/group-account-manager"
 
 // Self-owned-group Account page reuses the personal account controls — you're
 // signed in as the group account itself, so they act on the right session.
@@ -501,35 +501,23 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
               </div>
               <DidSection did={groupDid} />
             </div>
-            <div className="sx-subsection">
-              <div className="sx-subsection__head">
-                <h3 className="sx-subsection__title">Handle</h3>
-                <p className="sx-subsection__desc">
-                  {isSelfOwned
-                    ? "The @handle people use to find this group on Certified."
-                    : "The @handle people use to find this group on Certified. Set during registration — changing a group's handle isn't supported yet."}
-                </p>
-              </div>
-              {isSelfOwned ? (
-                // Self-owned: the group account IS your account, so change the
-                // handle via the standard personal updateHandle (no groupDid →
-                // no group proxy).
-                <UsernameCard
-                  handle={org.handle}
-                  pdsUrl={pdsUrl || undefined}
-                  did={did || undefined}
-                />
-              ) : (
-                // Read-only for a non-self group: a proxied
-                // `com.atproto.identity.updateHandle` is handled locally by the
-                // PDS for the AUTHENTICATED account, so it renames the caller,
-                // not the group (CGS doesn't proxy identity ops). Never wire an
-                // edit here until CGS exposes a real group-handle endpoint.
-                <p className="username-card__value">@{org.handle}</p>
-              )}
-            </div>
             {isSelfOwned ? (
               <>
+                <div className="sx-subsection">
+                  <div className="sx-subsection__head">
+                    <h3 className="sx-subsection__title">Handle</h3>
+                    <p className="sx-subsection__desc">
+                      The @handle people use to find this group on Certified.
+                    </p>
+                  </div>
+                  {/* Self-owned: the group account IS your account, so change
+                      the handle via the standard personal updateHandle. */}
+                  <UsernameCard
+                    handle={org.handle}
+                    pdsUrl={pdsUrl || undefined}
+                    did={did || undefined}
+                  />
+                </div>
                 <div className="sx-subsection">
                   <div className="sx-subsection__head">
                     <h3 className="sx-subsection__title">Email</h3>
@@ -552,19 +540,13 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
               </>
             ) : isAdmin ? (
               <>
-                {/* Unlock with the group's password to read + change its email
-                    (the CGS proxy can't reach account-level info). Short-lived
-                    elevated session, same as the app-password unlock. */}
-                <div className="sx-subsection">
-                  <div className="sx-subsection__head">
-                    <h3 className="sx-subsection__title">Email</h3>
-                    <p className="sx-subsection__desc">
-                      Unlock with the group&apos;s password to view and change
-                      its sign-in email.
-                    </p>
-                  </div>
-                  <GroupAccountEmail groupDid={groupDid} />
-                </div>
+                {/* Unlock with the group's password → a real group session, so
+                    updateHandle renames the GROUP (not the caller) and the email
+                    can be read + changed. */}
+                <GroupAccountManager
+                  groupDid={groupDid}
+                  currentHandle={org.handle}
+                />
                 {/* Password reset by email (for when you don't know the
                     password): you enter the group's email and reset against it. */}
                 <div className="sx-subsection">
@@ -580,7 +562,17 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                   <GroupPasswordReset groupDid={groupDid} />
                 </div>
               </>
-            ) : null}
+            ) : (
+              <div className="sx-subsection">
+                <div className="sx-subsection__head">
+                  <h3 className="sx-subsection__title">Handle</h3>
+                  <p className="sx-subsection__desc">
+                    The @handle people use to find this group on Certified.
+                  </p>
+                </div>
+                <p className="username-card__value">@{org.handle}</p>
+              </div>
+            )}
           </div>
         )
 
