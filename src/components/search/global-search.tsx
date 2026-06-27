@@ -250,20 +250,24 @@ export default function GlobalSearch({
   // Enter submits the typed query to the full Explore results page
   // (seeded via `?q=`), rather than activating a dropdown row. Typing
   // still shows the live dropdown; clicking a row still deep-links to
-  // that person/activity. Trimmed-empty queries are a no-op.
+  // that person/activity. A blank Enter opens Explore unfiltered.
   const handleSubmitQuery = useCallback(
     (raw: string) => {
       const q = raw.trim()
-      if (!q) return
       setPeople([])
       setCerts([])
       setIsOpen(false)
       setIsSearching(false)
+      setIntent(null)
       inputRef.current?.blur()
+      // Blank query → just open Explore so the user can browse.
+      if (!q) {
+        router.push("/explore")
+        return
+      }
       // A pasted identifier jumps straight to its target (bypassing the
       // indexer); anything else runs a full Explore search.
       const jump = parseSearchIntent(q)
-      setIntent(null)
       router.push(jump ? jump.href : `/explore?q=${encodeURIComponent(q)}`)
     },
     [router],
@@ -293,6 +297,7 @@ export default function GlobalSearch({
       onOpenChange={setIsOpen}
       onSelect={select}
       onSubmit={handleSubmitQuery}
+      submitOnEmpty
       inputRef={inputRef}
       listboxClassName="people-search__dropdown"
       liveStatus={{

@@ -121,6 +121,14 @@ export interface ComboboxProps<T> {
    */
   onSubmit?: (raw: string) => void;
 
+  /**
+   * Optional: when true, `onSubmit` also fires on Enter with an EMPTY
+   * value (passing `""`). Lets a surface treat a blank Enter as a submit
+   * — global search uses it to open the unfiltered Explore page. Default
+   * false (blank Enter is a no-op, the prior behaviour).
+   */
+  submitOnEmpty?: boolean;
+
   /** Render one option row. See {@link ComboboxOptionRenderProps}. */
   renderOption: (props: ComboboxOptionRenderProps<T>) => React.ReactNode;
   /**
@@ -222,6 +230,7 @@ function Combobox<T>({
   onSelect,
   onSubmitNoMatch,
   onSubmit,
+  submitOnEmpty,
   renderOption,
   renderEmpty,
   renderListHeader,
@@ -350,7 +359,7 @@ function Combobox<T>({
           // takes precedence over row selection: Enter on a non-empty
           // query jumps to the full results page rather than committing
           // whatever row the live dropdown happens to be highlighting.
-          if (onSubmit && value.trim().length > 0) {
+          if (onSubmit && (submitOnEmpty || value.trim().length > 0)) {
             e.preventDefault();
             onSubmit(value.trim());
             return;
@@ -397,6 +406,7 @@ function Combobox<T>({
       commitHighlighted,
       handleEscape,
       onSubmit,
+      submitOnEmpty,
       onSubmitNoMatch,
       value,
     ],
