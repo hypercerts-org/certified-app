@@ -119,9 +119,13 @@ export default function GroupAccountEmail({ groupDid }: { groupDid: string }) {
     return (
       <div className="group-acct">
         <div className="org-members__add-submit">
-          <Button variant="secondary" onClick={() => setUnlockOpen(true)}>
-            <Unlock size={14} strokeWidth={1.75} aria-hidden />
-            Unlock
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={() => setUnlockOpen(true)}
+          >
+            <Unlock size={14} /> Unlock
           </Button>
         </div>
         {unlockOpen ? (
