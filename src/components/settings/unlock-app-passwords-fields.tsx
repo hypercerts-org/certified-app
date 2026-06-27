@@ -1,23 +1,23 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useState, type ReactNode } from "react"
 import Input from "@/components/ui/input"
 import Banner from "@/components/ui/banner"
 import { unlockAppPasswords } from "@/lib/atproto/app-passwords"
 
 /**
- * Shared unlock logic + fields for app-password management (issue #223).
+ * Shared unlock logic + fields for elevated-session flows (issue #223).
  *
- * App-password endpoints need a password session, so the user confirms their
- * account password once. If the account has email-2FA on, the PDS replies
- * `twoFactorRequired` (and emails a code) — we reveal a code field and
+ * The user confirms a password once; if the account has email-2FA on, the PDS
+ * replies `twoFactorRequired` (and emails a code) — we reveal a code field and
  * re-submit; a wrong/expired code comes back as `invalidCode`.
  *
+ * Generic over the unlock call (`useUnlockSession`) so the same UI serves both
+ * app-password management (the user's own account) and the group-account unlock
+ * (a group's account). `useUnlockAppPasswords` is the app-password specialism.
+ *
  * Split into a hook + a presentational fields component (rather than a
- * self-contained dialog) so it can render INSIDE a single host dialog — the
- * group-import "Create one" flow keeps one `<dialog>` open across its
- * unlock→create phases instead of swapping modal elements (which flashes the
- * slide-up animation and bounces focus).
+ * self-contained dialog) so it can render INSIDE a single host dialog.
  */
 
 export interface UnlockState {
@@ -37,10 +37,23 @@ export interface UnlockState {
   submit: () => Promise<void>
 }
 
+type UnlockResult = {
+  status: "ok" | "twoFactorRequired" | "invalidCode" | "invalid"
+}
+/** Performs the actual unlock. Must be stable (module fn or `useCallback`). */
+export type UnlockFn = (
+  password: string,
+  authFactorToken?: string,
+) => Promise<UnlockResult>
+
 /**
- * Owns the unlock state machine. `onUnlocked` fires on a successful unlock.
+ * Owns the unlock state machine for an arbitrary unlock call. `onUnlocked`
+ * fires on a successful unlock.
  */
-export function useUnlockAppPasswords(onUnlocked: () => void): UnlockState {
+export function useUnlockSession(
+  unlockFn: UnlockFn,
+  onUnlocked: () => void,
+): UnlockState {
   const [password, setPassword] = useState("")
   const [code, setCode] = useState("")
   const [needsCode, setNeedsCode] = useState(false)
@@ -62,7 +75,7 @@ export function useUnlockAppPasswords(onUnlocked: () => void): UnlockState {
     setInvalid(false)
     setInvalidCode(false)
     try {
-      const result = await unlockAppPasswords(
+      const result = await unlockFn(
         password,
         needsCode ? code.trim() : undefined,
       )
@@ -75,12 +88,9 @@ export function useUnlockAppPasswords(onUnlocked: () => void): UnlockState {
         return
       }
       if (result.status === "invalidCode") {
-        // Password was accepted; only the emailed code was wrong/expired.
-        // Keep the code field up so the user can retry it directly.
         setInvalidCode(true)
         return
       }
-      // invalid
       setInvalid(true)
     } catch (err) {
       setError(
@@ -91,7 +101,7 @@ export function useUnlockAppPasswords(onUnlocked: () => void): UnlockState {
     } finally {
       setSubmitting(false)
     }
-  }, [submitting, password, code, needsCode, onUnlocked])
+  }, [submitting, password, code, needsCode, onUnlocked, unlockFn])
 
   return {
     password,
@@ -108,11 +118,21 @@ export function useUnlockAppPasswords(onUnlocked: () => void): UnlockState {
   }
 }
 
-/** Presentational fields driven by {@link useUnlockAppPasswords}. */
+/** App-password specialism of {@link useUnlockSession}. */
+export function useUnlockAppPasswords(onUnlocked: () => void): UnlockState {
+  return useUnlockSession(unlockAppPasswords, onUnlocked)
+}
+
+/** Presentational fields driven by {@link useUnlockSession}. Copy defaults to
+ *  the app-password wording; pass overrides for other accounts (e.g. a group). */
 export function UnlockAppPasswordFields({
   state,
   intro,
   onNavigate,
+  passwordLabel = "Account password",
+  passwordHint,
+  invalidMessage,
+  codeHelper = "We emailed a sign-in code to the address on your account.",
 }: {
   state: UnlockState
   intro: string
@@ -120,7 +140,45 @@ export function UnlockAppPasswordFields({
    *  its dialog so the in-app navigation to Settings → Account isn't left
    *  underneath an open modal. */
   onNavigate?: () => void
+  /** Override the password field label (default "Account password"). */
+  passwordLabel?: string
+  /** Override the under-field hint. Omit for the default Settings → Account
+   *  link; pass `null` to hide it; pass a node for custom copy. */
+  passwordHint?: ReactNode
+  /** Override the wrong-password banner copy. */
+  invalidMessage?: ReactNode
+  /** Override the 2FA code field helper text. */
+  codeHelper?: string
 }) {
+  const defaultHint = (
+    <p className="text-xs text-[var(--fg-muted)]">
+      Don&apos;t know it? Set or reset it under{" "}
+      <a
+        href="#account"
+        onClick={onNavigate}
+        className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+      >
+        Settings → Account
+      </a>
+      .
+    </p>
+  )
+
+  const defaultInvalid = (
+    <>
+      That password wasn&apos;t accepted. If you sign in with email codes and
+      haven&apos;t set a password yet, set one under{" "}
+      <a
+        href="#account"
+        onClick={onNavigate}
+        className="font-medium underline hover:opacity-80"
+      >
+        Settings → Account
+      </a>{" "}
+      first, then unlock.
+    </>
+  )
+
   return (
     <>
       <p className="mb-4 text-sm text-[var(--fg-secondary)]">{intro}</p>
@@ -128,7 +186,7 @@ export function UnlockAppPasswordFields({
       <div className="mb-4 flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <Input
-            label="Account password"
+            label={passwordLabel}
             type="password"
             size="md"
             autoComplete="current-password"
@@ -136,19 +194,8 @@ export function UnlockAppPasswordFields({
             onChange={(e) => state.setPassword(e.target.value)}
             disabled={state.submitting}
           />
-          {!state.needsCode && (
-            <p className="text-xs text-[var(--fg-muted)]">
-              Don&apos;t know it? Set or reset it under{" "}
-              <a
-                href="#account"
-                onClick={onNavigate}
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
-              >
-                Settings → Account
-              </a>
-              .
-            </p>
-          )}
+          {!state.needsCode &&
+            (passwordHint !== undefined ? passwordHint : defaultHint)}
         </div>
         {state.needsCode && (
           <Input
@@ -158,7 +205,7 @@ export function UnlockAppPasswordFields({
             autoComplete="one-time-code"
             inputMode="numeric"
             placeholder="Code from your email"
-            helperText="We emailed a sign-in code to the address on your account."
+            helperText={codeHelper}
             value={state.code}
             onChange={(e) => state.setCode(e.target.value)}
             error={
@@ -173,16 +220,7 @@ export function UnlockAppPasswordFields({
 
       {state.invalid && (
         <Banner variant="error" className="mb-4">
-          That password wasn&apos;t accepted. If you sign in with email codes
-          and haven&apos;t set a password yet, set one under{" "}
-          <a
-            href="#account"
-            onClick={onNavigate}
-            className="font-medium underline hover:opacity-80"
-          >
-            Settings → Account
-          </a>{" "}
-          first, then unlock.
+          {invalidMessage ?? defaultInvalid}
         </Banner>
       )}
       {state.error && (

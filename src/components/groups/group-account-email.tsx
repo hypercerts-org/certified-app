@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import { KeyRound, Lock, Pencil } from "lucide-react"
+import { Lock, Pencil } from "lucide-react"
 import {
   unlockGroupAccount,
   lockGroupAccount,
@@ -13,22 +13,19 @@ import {
 import Input from "@/components/ui/input"
 import Button from "@/components/ui/button"
 import ErrorMessage from "@/components/ui/error-message"
+import {
+  useUnlockSession,
+  UnlockAppPasswordFields,
+} from "@/components/settings/unlock-app-passwords-fields"
 
 /**
  * Owner/admin email management for a non-self group. Unlock once with the
- * group's password (+ emailed 2FA code if on) — the same short-lived elevated
- * session as the app-password unlock — then view and change the group's email.
- * Locking (or the ~10-min TTL) tears the session down server-side.
+ * group's password (+ emailed 2FA code if on) via the SAME unlock UI as the
+ * app-password flow — a short-lived elevated session — then view and change the
+ * group's email. Locking (or the ~10-min TTL) tears the session down.
  */
 export default function GroupAccountEmail({ groupDid }: { groupDid: string }) {
   const [unlocked, setUnlocked] = useState(false)
-
-  // Unlock fields
-  const [password, setPassword] = useState("")
-  const [code, setCode] = useState("")
-  const [needsCode, setNeedsCode] = useState(false)
-  const [unlocking, setUnlocking] = useState(false)
-  const [unlockError, setUnlockError] = useState<string | null>(null)
 
   // Email (once unlocked)
   const [email, setEmail] = useState<string | null>(null)
@@ -49,40 +46,27 @@ export default function GroupAccountEmail({ groupDid }: { groupDid: string }) {
     setEmailError(null)
   }, [])
 
-  const unlock = async () => {
-    if (!password.trim()) return
-    setUnlocking(true)
-    setUnlockError(null)
-    try {
-      const { status } = await unlockGroupAccount(
-        groupDid,
-        password,
-        needsCode ? code.trim() : undefined,
-      )
-      if (status === "ok") {
-        setPassword("")
-        setCode("")
-        setNeedsCode(false)
-        const result = await getGroupEmail(groupDid)
-        if (result === LOCKED) {
-          setUnlockError("Session expired — please unlock again.")
-          return
-        }
-        setEmail(result.email)
-        setUnlocked(true)
-      } else if (status === "twoFactorRequired") {
-        setNeedsCode(true)
-      } else if (status === "invalidCode") {
-        setUnlockError("That code wasn't accepted. Check it and try again.")
-      } else {
-        setUnlockError("That password wasn't accepted for the group account.")
-      }
-    } catch (err) {
-      setUnlockError(err instanceof Error ? err.message : "Unlock failed")
-    } finally {
-      setUnlocking(false)
+  const loadEmail = useCallback(async () => {
+    const result = await getGroupEmail(groupDid)
+    if (result === LOCKED) {
+      relock()
+      return
     }
-  }
+    setEmail(result.email)
+  }, [groupDid, relock])
+
+  const unlockFn = useCallback(
+    (password: string, authFactorToken?: string) =>
+      unlockGroupAccount(groupDid, password, authFactorToken),
+    [groupDid],
+  )
+
+  const onUnlocked = useCallback(() => {
+    setUnlocked(true)
+    void loadEmail()
+  }, [loadEmail])
+
+  const unlock = useUnlockSession(unlockFn, onUnlocked)
 
   const lock = async () => {
     try {
@@ -137,37 +121,23 @@ export default function GroupAccountEmail({ groupDid }: { groupDid: string }) {
         className="group-acct__form"
         onSubmit={(e) => {
           e.preventDefault()
-          void unlock()
+          void unlock.submit()
         }}
       >
-        <Input
-          label="Group password"
-          type="password"
-          autoComplete="off"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          disabled={unlocking}
+        <UnlockAppPasswordFields
+          state={unlock}
+          intro="Enter the group's password to view and change its sign-in email. This opens a short-lived session that's cleared when you lock it — nothing is stored."
+          passwordLabel="Group password"
+          passwordHint={null}
+          invalidMessage="That password wasn't accepted for the group account."
+          codeHelper="We emailed a sign-in code to the group's address."
         />
-        {needsCode ? (
-          <Input
-            label="Email code"
-            autoComplete="one-time-code"
-            inputMode="numeric"
-            placeholder="Code from the group's email"
-            helperText="We emailed a sign-in code to the group's address."
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            disabled={unlocking}
-          />
-        ) : null}
-        {unlockError && <ErrorMessage message={unlockError} />}
         <Button
           type="submit"
           variant="primary"
-          loading={unlocking}
-          disabled={!password.trim() || unlocking}
+          loading={unlock.submitting}
+          disabled={!unlock.canSubmit || unlock.submitting}
         >
-          <KeyRound size={16} strokeWidth={1.75} aria-hidden />
           Unlock
         </Button>
       </form>
