@@ -548,7 +548,9 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                 <div className="sx-subsection__head">
                   <h3 className="sx-subsection__title">Password</h3>
                   <p className="sx-subsection__desc">
-                    Reset the group&apos;s password using its connected email —
+                    Reset the group&apos;s password using its connected email.
+                    Be sure to enter the group&apos;s own email — this changes
+                    the password of whatever account that email belongs to — and
                     you&apos;ll need access to that mailbox to finish.
                   </p>
                 </div>
