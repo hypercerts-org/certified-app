@@ -170,7 +170,7 @@ export async function PUT(
     return NextResponse.json(
       {
         error:
-          "That reset code was for a different account, not this group — the group's password was not changed. Make sure you enter the group's own email.",
+          "That reset code was for a different account, not this group — so the password for whichever account owns the email you entered was changed, but this group's password was not. To reset the group, enter the group's own email.",
       },
       { status: 409 },
     )
