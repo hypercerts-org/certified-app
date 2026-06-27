@@ -120,13 +120,14 @@ const GROUPS: CategoryGroup[] = [
   },
 ]
 
-/** Replaces the read-only Handle page when you're signed in as the group
- *  itself (self-owned). You hold the account's own credentials, so you manage
- *  its handle, sign-in email, and password just like an individual account. */
+/** Replaces the static "handle" item for every group — the Account page,
+ *  same shape as an individual's. Shows the DID + handle; a self-owned group
+ *  also gets email + password (the header description + those sections switch
+ *  on `isSelfOwned`). */
 const ACCOUNT_PAGE: CategoryDef = {
   key: "account",
   label: "Account",
-  description: "This group's handle, sign-in email, and password.",
+  description: "This group's DID and handle.",
   Icon: CircleUser,
 }
 
@@ -196,19 +197,17 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   // you hold its credentials, so it gets the full Account page.
   const isSelfOwned = !!did && groupDid === did
 
-  // A self-owned group swaps the read-only Handle page for the Account page.
-  const baseGroups: CategoryGroup[] = isSelfOwned
-    ? GROUPS.map((g) =>
-        g.label === "General"
-          ? {
-              ...g,
-              items: g.items.map((c) =>
-                c.key === "handle" ? ACCOUNT_PAGE : c,
-              ),
-            }
-          : g,
-      )
-    : GROUPS
+  // Every group's General settings use the Account page (same shape as an
+  // individual's Account); a self-owned group additionally gets email +
+  // password since you hold the account's own credentials.
+  const baseGroups: CategoryGroup[] = GROUPS.map((g) =>
+    g.label === "General"
+      ? {
+          ...g,
+          items: g.items.map((c) => (c.key === "handle" ? ACCOUNT_PAGE : c)),
+        }
+      : g,
+  )
 
   // Owners get the Danger zone (remove group) in the rail + panel.
   const visibleGroups = isOwner ? [...baseGroups, DANGER_GROUP] : baseGroups
@@ -482,60 +481,12 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
 
   const renderBody = (key: CategoryKey) => {
     switch (key) {
-      // Account — only for a self-owned group (you're signed in as the account):
-      // its DID, handle, sign-in email, and password, same as an individual.
+      // Account page — every group, structured exactly like an individual's
+      // Account: DID + handle (owners/admins can edit the handle via the CGS
+      // route; members see it read-only). A self-owned group additionally
+      // manages its sign-in email + password (you hold the account's own
+      // credentials); other owners/admins can't reach those.
       case "account":
-        return (
-          <div className="sx-subsections">
-            <div className="sx-subsection">
-              <div className="sx-subsection__head">
-                <h3 className="sx-subsection__title">DID</h3>
-                <p className="sx-subsection__desc">
-                  This group&apos;s permanent identifier. Unlike its @handle, it
-                  never changes — apps and records reference it by this.
-                </p>
-              </div>
-              <DidSection did={groupDid} />
-            </div>
-            <div className="sx-subsection">
-              <div className="sx-subsection__head">
-                <h3 className="sx-subsection__title">Handle</h3>
-                <p className="sx-subsection__desc">
-                  The @handle people use to find this group on Certified.
-                </p>
-              </div>
-              <UsernameCard
-                handle={org.handle}
-                pdsUrl={pdsUrl || undefined}
-                did={did || undefined}
-                groupDid={groupDid}
-              />
-            </div>
-            <div className="sx-subsection">
-              <div className="sx-subsection__head">
-                <h3 className="sx-subsection__title">Email</h3>
-                <p className="sx-subsection__desc">
-                  Used to sign in and recover this account.
-                </p>
-              </div>
-              <EmailSection email={email || ""} />
-            </div>
-            <div className="sx-subsection">
-              <div className="sx-subsection__head">
-                <h3 className="sx-subsection__title">Password</h3>
-                <p className="sx-subsection__desc">
-                  Lets you sign in to other AT Protocol apps with this handle.
-                </p>
-              </div>
-              <PasswordSection email={email || ""} />
-            </div>
-          </div>
-        )
-
-      // Handle page for a non-self group: the DID plus the handle. Owners and
-      // admins can edit the handle (via the CGS handle route); members see it
-      // read-only.
-      case "handle":
         return (
           <div className="sx-subsections">
             <div className="sx-subsection">
@@ -566,6 +517,29 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                 <p className="username-card__value">@{org.handle}</p>
               )}
             </div>
+            {isSelfOwned ? (
+              <>
+                <div className="sx-subsection">
+                  <div className="sx-subsection__head">
+                    <h3 className="sx-subsection__title">Email</h3>
+                    <p className="sx-subsection__desc">
+                      Used to sign in and recover this account.
+                    </p>
+                  </div>
+                  <EmailSection email={email || ""} />
+                </div>
+                <div className="sx-subsection">
+                  <div className="sx-subsection__head">
+                    <h3 className="sx-subsection__title">Password</h3>
+                    <p className="sx-subsection__desc">
+                      Lets you sign in to other AT Protocol apps with this
+                      handle.
+                    </p>
+                  </div>
+                  <PasswordSection email={email || ""} />
+                </div>
+              </>
+            ) : null}
           </div>
         )
 
@@ -865,9 +839,15 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
               <h2 id="sx-section-title" className="sx-panel__title">
                 {selected.label}
               </h2>
-              {selected.description ? (
-                <p className="sx-panel__desc">{selected.description}</p>
-              ) : null}
+              {(() => {
+                // The Account page gains email + password when self-owned, so
+                // its header description reflects that.
+                const desc =
+                  selected.key === "account" && isSelfOwned
+                    ? "This group's DID, handle, sign-in email, and password."
+                    : selected.description
+                return desc ? <p className="sx-panel__desc">{desc}</p> : null
+              })()}
             </header>
             <div className="sx-panel__body">{renderBody(selectedKey)}</div>
           </section>
