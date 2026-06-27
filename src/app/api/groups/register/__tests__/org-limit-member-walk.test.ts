@@ -19,7 +19,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
  *
  * The route pulls in server-only deps (OAuth client, session, atproto Agent)
  * at import time, so we mock those and drive the POST handler through the
- * org-limit check via a mocked `createGroupAgent`.
+ * org-limit check via a mocked `createGroupClient`.
  */
 
 vi.mock("@/lib/auth/csrf", () => ({ checkCsrf: vi.fn(() => null) }))
@@ -30,10 +30,10 @@ vi.mock("@/lib/auth/rate-limit", () => ({
 vi.mock("@/lib/groups/proxy-agent", () => ({
   getAuthenticatedAgent: vi.fn(),
   getServiceAuthToken: vi.fn(async () => "register-token"),
-  createGroupAgent: vi.fn(),
+  createGroupClient: vi.fn(),
 }))
 
-import { getAuthenticatedAgent, createGroupAgent } from "@/lib/groups/proxy-agent"
+import { getAuthenticatedAgent, createGroupClient } from "@/lib/groups/proxy-agent"
 
 const OWNER_DID = "did:plc:owner"
 
@@ -117,7 +117,7 @@ describe("groups/register org-limit member-walk early exit (quality-056-authz-re
         },
       }
     })
-    vi.mocked(createGroupAgent).mockReturnValue({
+    vi.mocked(createGroupClient).mockReturnValue({
       call: memberListCall,
     } as never)
 

@@ -26,6 +26,12 @@ vi.mock("@/hooks/use-author-info", () => ({
   useAuthorInfo: () => ({ info: null }),
 }))
 
+// The cert create page reads the onboarding tour state; the test renders it
+// outside a TourProvider, so stub the hook to an inactive tour.
+vi.mock("@/lib/tour/tour-context", () => ({
+  useTour: () => ({ isActive: false }),
+}))
+
 // authFetch is used for the rights dropdown load — keep it inert so the
 // effect resolves to an empty list without a real network call.
 vi.mock("@/lib/auth/fetch", () => ({
