@@ -318,7 +318,9 @@ export default function GroupAccountManager({
             </div>
           )
         ) : (
-          <p className="settings-field__value">••••••••</p>
+          <span className="settings-field__value group-acct__masked">
+            ••••••••
+          </span>
         )}
       </div>
 

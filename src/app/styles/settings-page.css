@@ -677,10 +677,19 @@
 }
 
 .group-acct__view .settings-field__value {
-  flex: 1;
+  /* As wide as its content, not stretched to fill the row. */
+  flex: 0 1 auto;
   min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
   white-space: nowrap;
+}
+
+/* Masked email shown while locked — a narrow, fixed-width placeholder. */
+.group-acct__masked {
+  flex: 0 0 auto;
+  display: inline-block;
+  width: 10ch;
 }
 
 .group-acct__actions {

@@ -74,9 +74,10 @@ export default function CreateGroupPage() {
   const [handle, setHandle] = useState("")
   const [shortDescription, setShortDescription] = useState("")
   const [website, setWebsite] = useState("")
-  // Optional sign-in email for the group account. Must be unique on the PDS —
-  // there's no availability check (it would leak registered emails), so a
-  // duplicate is rejected at registration and surfaced here.
+  // Required sign-in email for the group account — its recovery anchor (you
+  // can't set it later without the password, nor reset the password without
+  // it). Must be unique on the PDS; there's no availability check (it would
+  // leak registered emails), so a duplicate is rejected at registration.
   const [email, setEmail] = useState("")
 
   // Metadata fields
@@ -144,12 +145,13 @@ export default function CreateGroupPage() {
     return true
   }
 
-  // Email is optional; validate format only when provided.
+  // Email is required: it's the group account's recovery anchor (you can't set
+  // it later without the password, and can't reset the password without it).
   const validateEmail = (value: string) => {
     const v = value.trim()
     if (!v) {
-      setEmailError("")
-      return true
+      setEmailError("Email is required")
+      return false
     }
     if (v.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) {
       setEmailError("Enter a valid email address")
@@ -207,7 +209,7 @@ export default function CreateGroupPage() {
 
     try {
       // 1. Mint the group DID
-      const result = await registerGroup(handle, did, email.trim() || undefined)
+      const result = await registerGroup(handle, did, email.trim())
       const groupDid = result.groupDid
 
       // 2. Empty bsky profile so the group is discoverable on
@@ -382,8 +384,10 @@ export default function CreateGroupPage() {
   const canSubmit =
     !!displayName.trim() &&
     !!handle.trim() &&
+    !!email.trim() &&
     !nameError &&
     !handleError &&
+    !emailError &&
     !isCreating
 
   return (
@@ -569,7 +573,7 @@ export default function CreateGroupPage() {
                 type="email"
                 className="cert-detail__meta-input create-cert__field--full"
                 aria-label="Group email"
-                placeholder="group@example.com (optional)"
+                placeholder="group@example.com"
                 value={email}
                 maxLength={254}
                 autoComplete="off"
