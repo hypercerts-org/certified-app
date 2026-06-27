@@ -56,18 +56,23 @@ function persistOrg(org: Group | null) {
   }
 }
 
-// Initialize synchronously so the first render already has the org
-function getInitialOrg(): Group | null {
-  if (typeof window === "undefined") return null
-  return loadPersistedOrg()
-}
-
 export function OrgProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading: authLoading, did } = useAuth()
-  const [activeOrg, setActiveOrg] = useState<Group | null>(getInitialOrg)
+  // Start null so the server render and the first client render agree; the
+  // persisted org is restored in an effect below. Reading sessionStorage in the
+  // initializer caused a hydration mismatch (React #418): the server had no org
+  // and rendered the personal settings, the client immediately rendered the
+  // group settings, and that broke hydration on /settings.
+  const [activeOrg, setActiveOrg] = useState<Group | null>(null)
   const [groups, setGroups] = useState<Group[]>([])
   const [selfGroup, setSelfGroup] = useState<Group | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+
+  // Restore the persisted active org after mount (client-only).
+  useEffect(() => {
+    const persisted = loadPersistedOrg()
+    if (persisted) setActiveOrg(persisted)
+  }, [])
 
   // Clear org when logged out (only after auth has finished loading)
   useEffect(() => {
