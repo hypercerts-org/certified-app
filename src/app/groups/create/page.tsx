@@ -10,6 +10,7 @@ import {
   FileText,
   Globe,
   Image as ImageIcon,
+  Mail,
   Users,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -73,6 +74,10 @@ export default function CreateGroupPage() {
   const [handle, setHandle] = useState("")
   const [shortDescription, setShortDescription] = useState("")
   const [website, setWebsite] = useState("")
+  // Optional sign-in email for the group account. Must be unique on the PDS —
+  // there's no availability check (it would leak registered emails), so a
+  // duplicate is rejected at registration and surfaced here.
+  const [email, setEmail] = useState("")
 
   // Metadata fields
   const [organizationType, setOrganizationType] = useState("")
@@ -90,6 +95,7 @@ export default function CreateGroupPage() {
   const [error, setError] = useState<string | null>(null)
   const [nameError, setNameError] = useState("")
   const [handleError, setHandleError] = useState("")
+  const [emailError, setEmailError] = useState("")
 
   useEffect(() => {
     return () => {
@@ -138,6 +144,21 @@ export default function CreateGroupPage() {
     return true
   }
 
+  // Email is optional; validate format only when provided.
+  const validateEmail = (value: string) => {
+    const v = value.trim()
+    if (!v) {
+      setEmailError("")
+      return true
+    }
+    if (v.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) {
+      setEmailError("Enter a valid email address")
+      return false
+    }
+    setEmailError("")
+    return true
+  }
+
   // Banner / avatar pickers — we just stage the File locally; the
   // actual blob upload runs after registerGroup mints the repo.
   const handleBannerFile = useCallback(async (file: File) => {
@@ -178,14 +199,15 @@ export default function CreateGroupPage() {
 
     const nameValid = validateName(displayName)
     const handleValid = validateHandle(handle)
-    if (!nameValid || !handleValid) return
+    const emailValid = validateEmail(email)
+    if (!nameValid || !handleValid || !emailValid) return
 
     setIsCreating(true)
     setError(null)
 
     try {
       // 1. Mint the group DID
-      const result = await registerGroup(handle, did)
+      const result = await registerGroup(handle, did, email.trim() || undefined)
       const groupDid = result.groupDid
 
       // 2. Empty bsky profile so the group is discoverable on
@@ -273,6 +295,8 @@ export default function CreateGroupPage() {
       router.push("/home")
     } catch (err) {
       console.error("[groups/create] failed", err)
+      const message =
+        err instanceof Error ? err.message : "Failed to create group"
       if (
         err instanceof RegisterGroupError &&
         err.code === "HandleNotAvailable"
@@ -280,10 +304,15 @@ export default function CreateGroupPage() {
         setHandleError(
           "This handle is already taken. Please choose another.",
         )
+      } else if (
+        /email/i.test(message) &&
+        /(taken|in use|already|exist|registered)/i.test(message)
+      ) {
+        // The PDS rejects a duplicate email at registration — surface it on
+        // the field rather than as a generic error.
+        setEmailError("That email is already in use. Try another.")
       } else {
-        setError(
-          err instanceof Error ? err.message : "Failed to create group",
-        )
+        setError(message)
       }
     } finally {
       setIsCreating(false)
@@ -527,6 +556,36 @@ export default function CreateGroupPage() {
                   style={{ marginTop: 4 }}
                 >
                   {handleError}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="project-detail__meta-row">
+              <span className="project-detail__meta-label">
+                <Mail size={11} strokeWidth={2} aria-hidden />
+                Email
+              </span>
+              <input
+                type="email"
+                className="cert-detail__meta-input create-cert__field--full"
+                aria-label="Group email"
+                placeholder="group@example.com (optional)"
+                value={email}
+                maxLength={254}
+                autoComplete="off"
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  if (emailError) validateEmail(e.target.value)
+                }}
+                onBlur={(e) => validateEmail(e.target.value)}
+              />
+              {emailError ? (
+                <p
+                  className="create-cert__contrib-error"
+                  role="alert"
+                  style={{ marginTop: 4 }}
+                >
+                  {emailError}
                 </p>
               ) : null}
             </div>
