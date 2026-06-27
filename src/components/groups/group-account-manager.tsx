@@ -15,6 +15,7 @@ import {
 import Input from "@/components/ui/input"
 import Button from "@/components/ui/button"
 import ErrorMessage from "@/components/ui/error-message"
+import CopyPill from "@/components/account/copy-pill"
 import { useUnlockSession } from "@/components/settings/unlock-app-passwords-fields"
 import { UnlockSessionDialog } from "@/components/settings/unlock-app-passwords-dialog"
 
@@ -219,7 +220,7 @@ export default function GroupAccountManager({
           </form>
         ) : (
           <div className="group-acct__view">
-            <span className="settings-field__value">@{handle}</span>
+            <CopyPill value={handle} display={`@${handle}`} label="handle" inline />
             {unlocked ? (
               <Button
                 variant="secondary"
@@ -233,7 +234,16 @@ export default function GroupAccountManager({
                 <Pencil size={14} strokeWidth={1.75} aria-hidden />
                 Edit
               </Button>
-            ) : null}
+            ) : (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setUnlockOpen(true)}
+              >
+                <Lock size={14} strokeWidth={1.75} aria-hidden />
+                Unlock
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -318,13 +328,23 @@ export default function GroupAccountManager({
             </div>
           )
         ) : (
-          <span className="settings-field__value group-acct__masked">
-            ••••••••
-          </span>
+          <div className="group-acct__view">
+            <span className="settings-field__value group-acct__masked">
+              ••••••••
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setUnlockOpen(true)}
+            >
+              <Lock size={14} strokeWidth={1.75} aria-hidden />
+              Unlock
+            </Button>
+          </div>
         )}
       </div>
 
-      {/* Unlock / Lock */}
+      {/* Lock — the per-section Unlock buttons (handle + email) live above. */}
       {unlocked ? (
         <button
           type="button"
@@ -334,18 +354,7 @@ export default function GroupAccountManager({
           <Lock size={13} strokeWidth={1.75} aria-hidden />
           Lock
         </button>
-      ) : (
-        <div className="org-members__add-submit">
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={() => setUnlockOpen(true)}
-          >
-            <Lock size={14} /> Unlock to manage
-          </Button>
-        </div>
-      )}
+      ) : null}
 
       {unlockOpen ? (
         <UnlockSessionDialog

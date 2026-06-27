@@ -607,6 +607,17 @@
     border-color 0.12s ease;
 }
 
+/* Inline variant: size to content (e.g. the handle, beside an Edit/Unlock
+   button) instead of filling the row. */
+.did-pill--inline {
+  width: auto;
+  max-width: 100%;
+}
+
+.did-pill--inline .did-pill__value {
+  font-family: inherit;
+}
+
 .did-pill:hover {
   background: var(--bg-canvas);
   border-color: var(--border-strong);
