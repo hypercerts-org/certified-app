@@ -661,6 +661,47 @@
   gap: 8px;
 }
 
+/* ---- Group account email (unlock → view / edit) ---- */
+.group-acct,
+.group-acct__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 26rem;
+}
+
+.group-acct__view {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.group-acct__view .settings-field__value {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.group-acct__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.group-acct__lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.group-acct__lock:hover {
+  color: var(--fg-secondary);
+}
+
 
 /* ------------------------------------------------------------------------
    Mobile (<800px): the rail becomes a full-screen master list that drills

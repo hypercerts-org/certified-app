@@ -21,6 +21,7 @@ import { useOrg } from "@/lib/groups/org-context"
 import { GROUP_PROMOTED_FLAG } from "@/lib/groups/constants"
 import DidSection from "@/components/account/did-section"
 import GroupPasswordReset from "@/components/groups/group-password-reset"
+import GroupAccountEmail from "@/components/groups/group-account-email"
 
 // Self-owned-group Account page reuses the personal account controls — you're
 // signed in as the group account itself, so they act on the right session.
@@ -541,21 +542,35 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                 </div>
               </>
             ) : isAdmin ? (
-              // Non-self owner/admin: the app can't read the group's email, so
-              // reset the password via the group's connected email (you enter
-              // it). Never touches your own account.
-              <div className="sx-subsection">
-                <div className="sx-subsection__head">
-                  <h3 className="sx-subsection__title">Password</h3>
-                  <p className="sx-subsection__desc">
-                    Reset the group&apos;s password using its connected email.
-                    Be sure to enter the group&apos;s own email — this changes
-                    the password of whatever account that email belongs to — and
-                    you&apos;ll need access to that mailbox to finish.
-                  </p>
+              <>
+                {/* Unlock with the group's password to read + change its email
+                    (the CGS proxy can't reach account-level info). Short-lived
+                    elevated session, same as the app-password unlock. */}
+                <div className="sx-subsection">
+                  <div className="sx-subsection__head">
+                    <h3 className="sx-subsection__title">Email</h3>
+                    <p className="sx-subsection__desc">
+                      Unlock with the group&apos;s password to view and change
+                      its sign-in email.
+                    </p>
+                  </div>
+                  <GroupAccountEmail groupDid={groupDid} />
                 </div>
-                <GroupPasswordReset groupDid={groupDid} />
-              </div>
+                {/* Password reset by email (for when you don't know the
+                    password): you enter the group's email and reset against it. */}
+                <div className="sx-subsection">
+                  <div className="sx-subsection__head">
+                    <h3 className="sx-subsection__title">Password</h3>
+                    <p className="sx-subsection__desc">
+                      Reset the group&apos;s password using its connected email.
+                      Be sure to enter the group&apos;s own email — this changes
+                      the password of whatever account that email belongs to —
+                      and you&apos;ll need access to that mailbox to finish.
+                    </p>
+                  </div>
+                  <GroupPasswordReset groupDid={groupDid} />
+                </div>
+              </>
             ) : null}
           </div>
         )
