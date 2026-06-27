@@ -162,6 +162,24 @@ export function auditResultClassSuffix(result: string): "permitted" | "denied" |
   return result === "permitted" || result === "denied" ? result : "unknown"
 }
 
+// Members & Roles remove-button gate (mirrors CGS RBAC): a caller can remove
+// a member only when it isn't themselves, isn't the owner, and either the
+// caller is the owner or the target is a plain member. Owners can remove
+// admins + members; admins can remove only members.
+export function canRemoveMember(params: {
+  memberDid: string
+  memberRole: OrgRole
+  callerDid: string | null | undefined
+  isOwner: boolean
+}): boolean {
+  const { memberDid, memberRole, callerDid, isOwner } = params
+  return (
+    memberDid !== callerDid &&
+    memberRole !== "owner" &&
+    (isOwner || memberRole === "member")
+  )
+}
+
 // groups-6: when the add-members loop fails part-way through, the members
 // before `failedIndex` were already accepted by the service. Re-staging the
 // whole list would double-add them, so keep only the failing member onward
@@ -630,9 +648,12 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                     {/* Owners can remove admins + members; admins can remove
                         only members (not other admins, not the owner, not
                         themselves). Mirrors CGS RBAC. */}
-                    {member.did !== did &&
-                      member.role !== "owner" &&
-                      (isOwner || member.role === "member") && (
+                    {canRemoveMember({
+                      memberDid: member.did,
+                      memberRole: member.role,
+                      callerDid: did,
+                      isOwner,
+                    }) && (
                         <Button
                           variant="ghost"
                           size="icon"
