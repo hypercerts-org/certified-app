@@ -685,22 +685,17 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  /* Match the DID field width so the email reads as a normal full field. The
+     handle stays content-width because it's a `.did-pill--inline`, not a
+     `.settings-field__value`. */
+  max-width: 26rem;
 }
 
 .group-acct__view .settings-field__value {
-  /* As wide as its content, not stretched to fill the row. */
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-width: 0;
-  max-width: 100%;
   overflow-x: auto;
   white-space: nowrap;
-}
-
-/* Masked email shown while locked — a narrow, fixed-width placeholder. */
-.group-acct__masked {
-  flex: 0 0 auto;
-  display: inline-block;
-  width: 10ch;
 }
 
 .group-acct__actions {

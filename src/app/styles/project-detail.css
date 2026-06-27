@@ -1294,6 +1294,20 @@
   gap: 6px;
 }
 
+/* Account section: handle + email stacked under a short explainer, rather than
+   flowing into the 3-column profile-meta grid. */
+.create-group__account {
+  grid-template-columns: 1fr;
+}
+
+.create-group__account-explainer {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--fg-muted);
+  max-width: 42rem;
+}
+
 @media (max-width: 799px) {
   /* Display-name field reads at the same size as the short-description
      placeholder rather than the large serif title size. */

@@ -1,11 +1,10 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import { Lock, Pencil } from "lucide-react"
+import { Pencil, Unlock } from "lucide-react"
 import { useOrg } from "@/lib/groups/org-context"
 import {
   unlockGroupAccount,
-  lockGroupAccount,
   getGroupEmail,
   requestGroupEmailUpdate,
   updateGroupEmail,
@@ -90,15 +89,6 @@ export default function GroupAccountManager({
   }, [loadEmail])
 
   const unlock = useUnlockSession(unlockFn, onUnlocked)
-
-  const lock = async () => {
-    try {
-      await lockGroupAccount(groupDid)
-    } catch {
-      // best-effort
-    }
-    relock()
-  }
 
   const saveHandle = async () => {
     if (!subdomain.trim()) return
@@ -236,12 +226,12 @@ export default function GroupAccountManager({
               </Button>
             ) : (
               <Button
-                variant="secondary"
+                type="button"
+                variant="primary"
                 size="sm"
                 onClick={() => setUnlockOpen(true)}
               >
-                <Lock size={14} strokeWidth={1.75} aria-hidden />
-                Unlock
+                <Unlock size={14} /> Unlock
               </Button>
             )}
           </div>
@@ -333,28 +323,16 @@ export default function GroupAccountManager({
               ••••••••
             </span>
             <Button
-              variant="secondary"
+              type="button"
+              variant="primary"
               size="sm"
               onClick={() => setUnlockOpen(true)}
             >
-              <Lock size={14} strokeWidth={1.75} aria-hidden />
-              Unlock
+              <Unlock size={14} /> Unlock
             </Button>
           </div>
         )}
       </div>
-
-      {/* Lock — the per-section Unlock buttons (handle + email) live above. */}
-      {unlocked ? (
-        <button
-          type="button"
-          className="group-acct__lock"
-          onClick={() => void lock()}
-        >
-          <Lock size={13} strokeWidth={1.75} aria-hidden />
-          Lock
-        </button>
-      ) : null}
 
       {unlockOpen ? (
         <UnlockSessionDialog

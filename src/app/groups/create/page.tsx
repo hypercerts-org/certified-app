@@ -530,7 +530,17 @@ export default function CreateGroupPage() {
             </div>
           </section>
 
-          <section className="project-detail__meta create-project__meta">
+          <section className="project-detail__meta create-project__meta create-group__account">
+            <span className="project-detail__meta-label">
+              <AtSign size={11} strokeWidth={2} aria-hidden />
+              Account
+            </span>
+            <p className="create-group__account-explainer">
+              Your handle is how people find this group on Certified. The email
+              is its sign-in and recovery — you&apos;ll need it to reset the
+              password or manage the account later, so use an address you
+              control (not your personal one).
+            </p>
             <div className="project-detail__meta-row">
               <span className="project-detail__meta-label">
                 <AtSign size={11} strokeWidth={2} aria-hidden />
@@ -593,7 +603,9 @@ export default function CreateGroupPage() {
                 </p>
               ) : null}
             </div>
+          </section>
 
+          <section className="project-detail__meta create-project__meta">
             <div className="project-detail__meta-row">
               <span className="project-detail__meta-label">
                 <Globe size={11} strokeWidth={2} aria-hidden />
