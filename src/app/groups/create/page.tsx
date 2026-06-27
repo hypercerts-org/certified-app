@@ -27,6 +27,7 @@ import {
   uploadOrgBlob,
 } from "@/lib/groups/api"
 import Button from "@/components/ui/button"
+import ConfirmDialog from "@/components/ui/confirm-dialog"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
@@ -93,6 +94,7 @@ export default function CreateGroupPage() {
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null)
 
   const [isCreating, setIsCreating] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [nameError, setNameError] = useState("")
   const [handleError, setHandleError] = useState("")
@@ -195,7 +197,9 @@ export default function CreateGroupPage() {
     })
   }, [])
 
-  const handleSubmit = async (e?: React.FormEvent) => {
+  // Clicking "Create group" validates, then opens a confirmation modal so the
+  // user can verify the (permanent, recovery-critical) email before we create.
+  const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault()
     if (!did) return
 
@@ -203,6 +207,12 @@ export default function CreateGroupPage() {
     const handleValid = validateHandle(handle)
     const emailValid = validateEmail(email)
     if (!nameValid || !handleValid || !emailValid) return
+
+    setConfirmOpen(true)
+  }
+
+  const doCreate = async () => {
+    if (!did) return
 
     setIsCreating(true)
     setError(null)
@@ -318,6 +328,7 @@ export default function CreateGroupPage() {
       }
     } finally {
       setIsCreating(false)
+      setConfirmOpen(false)
     }
   }
 
@@ -680,6 +691,18 @@ export default function CreateGroupPage() {
           </p>
         </div>
       </article>
+
+      {confirmOpen ? (
+        <ConfirmDialog
+          title="Confirm the group's email"
+          message={`This group will sign in and recover with ${email.trim()}. You'll need access to this inbox to reset its password or manage the account later, so make sure it's correct.`}
+          confirmLabel="Create group"
+          cancelLabel="Back"
+          confirmVariant="primary"
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={doCreate}
+        />
+      ) : null}
     </form>
   )
 }
