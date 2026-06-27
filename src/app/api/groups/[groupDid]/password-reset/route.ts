@@ -130,7 +130,50 @@ export async function PUT(
         { status: res.status },
       )
     }
-    return NextResponse.json({ success: true })
+
+    // resetPassword carries no DID — the token targets whatever account owns
+    // the email that was entered, which we can't pre-verify (we can't read the
+    // group's email). So confirm the reset actually applied to THIS group:
+    // log in as the group DID with the new password. If it doesn't work, a
+    // different account was reset and the group's password is unchanged.
+    const verify = await fetch(
+      `${g.pds}/xrpc/com.atproto.server.createSession`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: groupDid, password }),
+      },
+    )
+    if (verify.ok) {
+      // Tear down the throwaway session we just opened (best-effort).
+      try {
+        const sess = (await verify.json()) as { refreshJwt?: string }
+        if (sess.refreshJwt) {
+          await fetch(`${g.pds}/xrpc/com.atproto.server.deleteSession`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${sess.refreshJwt}` },
+          })
+        }
+      } catch {
+        // ignore cleanup failures
+      }
+      return NextResponse.json({ success: true })
+    }
+    // A correct password on a 2FA-enabled account surfaces as
+    // AuthFactorTokenRequired — that still confirms it applied to the group.
+    const verifyErr = (await verify.json().catch(() => ({}))) as {
+      error?: string
+    }
+    if (verifyErr.error === "AuthFactorTokenRequired") {
+      return NextResponse.json({ success: true })
+    }
+    return NextResponse.json(
+      {
+        error:
+          "That reset code was for a different account, not this group — the group's password was not changed. Make sure you enter the group's own email.",
+      },
+      { status: 409 },
+    )
   } catch (err: unknown) {
     logSafe("[groups/pw-reset/confirm] failed", err)
     const { status, message } = extractRouteError(err)
