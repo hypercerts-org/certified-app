@@ -20,6 +20,7 @@ import { useSession } from "@/hooks/use-session"
 import { useOrg } from "@/lib/groups/org-context"
 import { GROUP_PROMOTED_FLAG } from "@/lib/groups/constants"
 import DidSection from "@/components/account/did-section"
+import GroupPasswordReset from "@/components/groups/group-password-reset"
 
 // Self-owned-group Account page reuses the personal account controls — you're
 // signed in as the group account itself, so they act on the right session.
@@ -539,6 +540,20 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                   <PasswordSection email={email || ""} />
                 </div>
               </>
+            ) : isAdmin ? (
+              // Non-self owner/admin: the app can't read the group's email, so
+              // reset the password via the group's connected email (you enter
+              // it). Never touches your own account.
+              <div className="sx-subsection">
+                <div className="sx-subsection__head">
+                  <h3 className="sx-subsection__title">Password</h3>
+                  <p className="sx-subsection__desc">
+                    Reset the group&apos;s password using its connected email —
+                    you&apos;ll need access to that mailbox to finish.
+                  </p>
+                </div>
+                <GroupPasswordReset groupDid={groupDid} />
+              </div>
             ) : null}
           </div>
         )

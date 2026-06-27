@@ -159,6 +159,47 @@ export async function destroyGroup(
 }
 
 /**
+ * Group password reset (owner/admin), enter-email flow. The owner supplies the
+ * group's email; the BFF runs atproto's email-gated recovery against the
+ * group's PDS (see the route). Step 1 sends a code to that mailbox.
+ */
+export async function requestGroupPasswordReset(
+  groupDid: string,
+  email: string,
+): Promise<void> {
+  const res = await authFetch(
+    `/api/groups/${encodeURIComponent(groupDid)}/password-reset`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    },
+  )
+  if (!res.ok) {
+    throw new Error(await extractError(res, "Failed to send reset code"))
+  }
+}
+
+/** Step 2: complete the reset with the emailed code + a new password. */
+export async function confirmGroupPasswordReset(
+  groupDid: string,
+  token: string,
+  password: string,
+): Promise<void> {
+  const res = await authFetch(
+    `/api/groups/${encodeURIComponent(groupDid)}/password-reset`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, password }),
+    },
+  )
+  if (!res.ok) {
+    throw new Error(await extractError(res, "Failed to reset password"))
+  }
+}
+
+/**
  * Get a group's profile (reads go to the PDS directly).
  */
 export async function getOrgProfile(
