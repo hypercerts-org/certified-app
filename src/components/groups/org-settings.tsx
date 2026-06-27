@@ -627,16 +627,21 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                     ) : (
                       <Badge variant="role">{member.role}</Badge>
                     )}
-                    {isAdmin && member.did !== did && member.role !== "owner" && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Remove member"
-                        onClick={() => setConfirmRemove(member.did)}
-                      >
-                        <Trash2 size={14} />
-                      </Button>
-                    )}
+                    {/* Owners can remove admins + members; admins can remove
+                        only members (not other admins, not the owner, not
+                        themselves). Mirrors CGS RBAC. */}
+                    {member.did !== did &&
+                      member.role !== "owner" &&
+                      (isOwner || member.role === "member") && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Remove member"
+                          onClick={() => setConfirmRemove(member.did)}
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                      )}
                   </div>
                 </div>
               ))}
