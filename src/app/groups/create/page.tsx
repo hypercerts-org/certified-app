@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import {
+  ArrowLeftRight,
   AtSign,
   Building2,
   Calendar,
@@ -685,10 +686,26 @@ export default function CreateGroupPage() {
             </Button>
           </div>
 
-          <p className="settings__note">
-            Already have an account you want to use as a group? Log in as that
-            account, then open Settings → Group account to convert it.
-          </p>
+          <aside className="create-group__convert">
+            <ArrowLeftRight
+              size={16}
+              strokeWidth={2}
+              aria-hidden
+              className="create-group__convert-icon"
+            />
+            <div className="create-group__convert-body">
+              <p className="create-group__convert-title">
+                Already have an account for this group?
+              </p>
+              <p className="create-group__convert-text">
+                Log in as that account, then open{" "}
+                <span className="create-group__convert-path">
+                  Settings → Group account
+                </span>{" "}
+                to convert it.
+              </p>
+            </div>
+          </aside>
         </div>
       </article>
 
