@@ -531,10 +531,6 @@ export default function CreateGroupPage() {
           </section>
 
           <section className="project-detail__meta create-project__meta create-group__account">
-            <span className="project-detail__meta-label create-group__account-title">
-              <AtSign size={11} strokeWidth={2} aria-hidden />
-              Account
-            </span>
             <div className="project-detail__meta-row">
               <span className="project-detail__meta-label">
                 <AtSign size={11} strokeWidth={2} aria-hidden />
@@ -679,15 +675,8 @@ export default function CreateGroupPage() {
           </div>
 
           <p className="settings__note">
-            Already have an account you want to use as a group?{" "}
-            <button
-              type="button"
-              className="cursor-pointer border-0 bg-transparent p-0 text-[var(--fg-primary)] underline disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={() => router.push("/groups/import")}
-              disabled={isCreating}
-            >
-              Import an existing account
-            </button>
+            Already have an account you want to use as a group? Log in as that
+            account, then open Settings → Group account to convert it.
           </p>
         </div>
       </article>

@@ -1306,10 +1306,6 @@
   }
 }
 
-.create-group__account-title {
-  grid-column: 1 / -1;
-}
-
 .create-group__field-hint {
   margin: 0;
   font-size: 0.75rem;
