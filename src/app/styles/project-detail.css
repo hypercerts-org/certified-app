@@ -1294,18 +1294,27 @@
   gap: 6px;
 }
 
-/* Account section: handle + email stacked under a short explainer, rather than
-   flowing into the 3-column profile-meta grid. */
+/* Account section: handle + email side by side at desktop (stacked on mobile),
+   each with its own hint, separate from the 3-column profile-meta grid. */
 .create-group__account {
   grid-template-columns: 1fr;
 }
 
-.create-group__account-explainer {
+@media (min-width: 800px) {
+  .create-group__account {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.create-group__account-title {
+  grid-column: 1 / -1;
+}
+
+.create-group__field-hint {
   margin: 0;
-  font-size: 0.8125rem;
-  line-height: 1.5;
+  font-size: 0.75rem;
+  line-height: 1.4;
   color: var(--fg-muted);
-  max-width: 42rem;
 }
 
 @media (max-width: 799px) {

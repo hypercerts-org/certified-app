@@ -531,16 +531,10 @@ export default function CreateGroupPage() {
           </section>
 
           <section className="project-detail__meta create-project__meta create-group__account">
-            <span className="project-detail__meta-label">
+            <span className="project-detail__meta-label create-group__account-title">
               <AtSign size={11} strokeWidth={2} aria-hidden />
               Account
             </span>
-            <p className="create-group__account-explainer">
-              Your handle is how people find this group on Certified. The email
-              is its sign-in and recovery — you&apos;ll need it to reset the
-              password or manage the account later, so use an address you
-              control (not your personal one).
-            </p>
             <div className="project-detail__meta-row">
               <span className="project-detail__meta-label">
                 <AtSign size={11} strokeWidth={2} aria-hidden />
@@ -563,6 +557,9 @@ export default function CreateGroupPage() {
                   if (handleError) validateHandle(cleaned)
                 }}
               />
+              <p className="create-group__field-hint">
+                How people find this group on Certified.
+              </p>
               {handleError ? (
                 <p
                   className="create-cert__contrib-error"
@@ -593,6 +590,9 @@ export default function CreateGroupPage() {
                 }}
                 onBlur={(e) => validateEmail(e.target.value)}
               />
+              <p className="create-group__field-hint">
+                Sign-in and recovery — use an address you control.
+              </p>
               {emailError ? (
                 <p
                   className="create-cert__contrib-error"
@@ -637,7 +637,7 @@ export default function CreateGroupPage() {
               />
             </div>
 
-            <div className="project-detail__meta-row project-detail__meta-row--wide">
+            <div className="project-detail__meta-row">
               <span className="project-detail__meta-label">
                 <Building2 size={11} strokeWidth={2} aria-hidden />
                 Organization type
