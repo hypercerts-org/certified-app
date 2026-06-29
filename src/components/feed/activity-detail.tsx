@@ -49,6 +49,7 @@ import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { ActivityFancyBoard } from "@/components/contributor-board/activity-fancy-board"
 import EditBanner from "@/components/ui/edit-banner"
+import Banner from "@/components/ui/banner"
 import Tooltip from "@/components/ui/tooltip"
 import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
 import { CERT_DETAIL_TABS } from "@/lib/detail-tabs"
@@ -328,6 +329,20 @@ export default function ActivityDetail({
       triggerVariant="section"
     />
   )
+
+  // Section-scoped note explaining the default Confirmed-by filter: out of the
+  // box the funding section lists only receipts the recipient has confirmed.
+  // Shown only while the filter is at its default (and there's something to
+  // explain) — it drops away the moment the user widens the filter, since
+  // `confirmedBy.isDefault` flips to false. Built once and rendered in both the
+  // overview preview and the Funding tab.
+  const recipientConfirmedNote =
+    confirmedBy.isDefault && fundingReceipts.length > 0 ? (
+      <Banner variant="info" className="mb-3">
+        This section shows only funding receipts the recipient has confirmed.
+        Change the filter to include others.
+      </Banner>
+    ) : null
 
   // Tab strip on the top bar (back-row) drives which slice of the
   // record renders in the right pane. Keep the left aside identical
@@ -1503,6 +1518,7 @@ export default function ActivityDetail({
                   </div>
                 </div>
                 {fundingRecordedNote}
+                {recipientConfirmedNote}
                 {fundingReceipts.length === 0 ? (
                   fundingJustRecorded ? null : (
                     <p className="cert-detail__short-desc">
@@ -1608,6 +1624,7 @@ export default function ActivityDetail({
               ) : null}
             </div>
             {fundingRecordedNote}
+            {recipientConfirmedNote}
             {fundingLoading && fundingReceipts.length === 0 ? (
               <div className="cert-detail__funding-loading">
                 <LoadingSpinner size="sm" />
