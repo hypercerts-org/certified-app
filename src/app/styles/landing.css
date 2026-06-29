@@ -311,19 +311,33 @@
   filter: invert(1);
 }
 
-/* Sign-in / open-app button: fixed top-right at every width. Persists on
-   scroll while the wordmark above scrolls away.
-   Styled after the guilloche-lab controls: small mono text, hairline border. */
-.lp-topbar__btn {
-  display: inline-flex;
+/* Theme switch + sign-in / open-app button: fixed top-right at every width.
+   Persists on scroll while the wordmark above scrolls away. The container
+   owns the fixed position so its children sit side by side. */
+.lp-topbar__actions {
   position: fixed;
-  /* Center the button's box on the topbar's 32px midline (the 64px bar's
+  /* Center the row's box on the topbar's 32px midline (the 64px bar's
      half-height) so it lines up vertically with the wordmark regardless of
-     the button's own height — including the taller avatar/account variant. */
+     the children's height — including the taller avatar/account variant. */
   top: 32px;
   transform: translateY(-50%);
   right: 16px;
   z-index: var(--z-navbar);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (min-width: 800px) {
+  .lp-topbar__actions {
+    right: 32px;
+  }
+}
+
+/* Sign-in / open-app button.
+   Styled after the guilloche-lab controls: small mono text, hairline border. */
+.lp-topbar__btn {
+  display: inline-flex;
   align-items: center;
   padding: 8px 14px;
   background: var(--color-off-white);
@@ -338,15 +352,35 @@
   transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 
-@media (min-width: 800px) {
-  .lp-topbar__btn {
-    right: 32px;
-  }
-}
-
 .lp-topbar__btn:hover {
   color: var(--color-navy);
   border-color: var(--color-mid-gray);
+}
+
+/* Light/dark switch — same pill surface as the sign-in button, sized to a
+   square icon target so it reads as a sibling control. */
+.lp-topbar__theme {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background: var(--color-off-white);
+  border: 1px solid var(--color-light-gray);
+  border-radius: var(--radius);
+  color: var(--color-mid-gray);
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.lp-topbar__theme:hover {
+  color: var(--color-navy);
+  border-color: var(--color-mid-gray);
+}
+
+.lp-topbar__theme-icon {
+  display: inline-flex;
 }
 
 /* Account variant: avatar + label, tighter left padding so the
@@ -1124,9 +1158,12 @@
   background: var(--color-navy);
   color: var(--color-off-white);
   padding: clamp(80px, 8vw, 128px) 32px;
-  /* Rules, buttons, and the focus ring flip with the band, not the
-     page — the global --focus-ring (#5e5e5e / #8e8e93) lands below
-     3:1 against the inverted surface. */
+  /* Rules, buttons, and the focus ring flip WITH the band, not the page.
+     This band is polarity-inverted (its background is --color-navy, so it's
+     a dark panel on the light page and a light panel on the dark page), and
+     the global --focus-ring lands below the 3:1 UI threshold against that
+     inverted surface in BOTH themes (light 2.91:1, dark 2.38:1). Keep this
+     override — brightening the global ring does not fix the polarity. */
   --band-rule: rgba(255, 255, 255, 0.22);
   --btn-primary-bg: var(--color-off-white);
   --btn-primary-fg: var(--color-navy);
