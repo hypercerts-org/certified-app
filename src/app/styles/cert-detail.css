@@ -1175,12 +1175,23 @@
   margin-top: 0;
 }
 
-/* Centered "Read full description" affordance below the Overview summary.
+/* Centered "Read full description" disclosure below the Overview summary.
    Centres the design-system Button; matches the section top rhythm. */
 .cert-detail__read-more {
   display: flex;
   justify-content: center;
   padding-top: 16px;
+}
+
+/* The chevron encodes the toggle: down to expand, flipped up once open.
+   Driven off the button's aria-expanded so state + visual can't drift.
+   (The global reduced-motion rule zeroes this transition.) */
+.cert-detail__read-more-chevron {
+  transition: transform var(--transition-fast);
+}
+
+.cert-detail__read-more-btn[aria-expanded="true"] .cert-detail__read-more-chevron {
+  transform: rotate(180deg);
 }
 
 .cert-detail__content > .cert-detail__section + .cert-detail__section {

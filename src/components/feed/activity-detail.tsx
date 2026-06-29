@@ -17,6 +17,7 @@ import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { authFetch } from "@/lib/auth/fetch"
 import {
   Calendar,
+  ChevronDown,
   FileText,
   MapPin,
   MoreVertical,
@@ -344,7 +345,7 @@ export default function ActivityDetail({
     confirmedBy.isDefault && fundingReceipts.length > 0 ? (
       <Banner variant="info" className="mb-3 py-2.5">
         Showing only receipts the recipient has confirmed. Change the filter to
-        see all.
+        see more.
       </Banner>
     ) : null
 
@@ -1142,29 +1143,47 @@ export default function ActivityDetail({
       </section>
     ) : null
 
-  // Overview "Read full description": a centered button below the summary
-  // that reveals the full rich description inline as its own Description
-  // section. Once expanded the button is replaced by the section. Hidden
-  // entirely while editing (the Description editor lives on its own tab) and
-  // when there's no rich description to show.
+  // Overview "Read full description": a centered disclosure button below the
+  // summary that reveals the full rich description inline as its own
+  // Description section, and collapses it again. The chevron encodes the
+  // behaviour — it points down to expand and rotates to point up once open
+  // (rotation driven off the button's aria-expanded in CSS), so the control
+  // reads as an in-place toggle rather than a navigation. Hidden while editing
+  // (the Description editor lives on its own tab) and when there's no rich
+  // description to show.
+  const descriptionToggle = (
+    <div className="cert-detail__read-more">
+      <Button
+        variant="secondary"
+        size="sm"
+        aria-expanded={descriptionExpanded}
+        onClick={() => setDescriptionExpanded((open) => !open)}
+        className="cert-detail__read-more-btn"
+      >
+        {descriptionExpanded ? "Hide description" : "Read full description"}
+        <ChevronDown
+          size={15}
+          strokeWidth={2}
+          aria-hidden
+          className="cert-detail__read-more-chevron"
+        />
+      </Button>
+    </div>
+  )
+
   const descriptionReveal =
     !showFullDescription || editing ? null : descriptionExpanded ? (
-      <section className="cert-detail__section">
-        <div className="cert-detail__section-header">
-          <h2 className="cert-detail__section-title">Description</h2>
-        </div>
-        <LeafletDocument value={effectiveValue.description} did={did} />
-      </section>
+      <>
+        <section className="cert-detail__section">
+          <div className="cert-detail__section-header">
+            <h2 className="cert-detail__section-title">Description</h2>
+          </div>
+          <LeafletDocument value={effectiveValue.description} did={did} />
+        </section>
+        {descriptionToggle}
+      </>
     ) : (
-      <div className="cert-detail__read-more">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => setDescriptionExpanded(true)}
-        >
-          Read full description
-        </Button>
-      </div>
+      descriptionToggle
     )
 
   // The Contributors list — shown on the Contributors tab beneath the
