@@ -243,7 +243,11 @@
   /* Foregrounds */
   --fg-primary: #f5f5f7;
   --fg-secondary: #c7c7cc;
-  --fg-muted: #8e8e93;
+  /* Lightened from #8e8e93 (4.2:1 — below WCAG AA 4.5) so muted text clears
+     AA on the LIGHTEST dark surface too: --bg-elevated #2d2d33 (cards,
+     dialogs) carries captions / timestamps. #9a9aa1 → 4.89:1 on elevated,
+     6.34:1 on canvas, staying in the same neutral grey family. */
+  --fg-muted: #9a9aa1;
 
   /* Accent (muted interactive) */
   --color-accent: #a0a0a8;
@@ -278,7 +282,10 @@
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
 
   /* Focus + selection */
-  --focus-ring: #8e8e93;
+  /* Follow --color-accent like light mode does, instead of a dimmer literal
+     (#8e8e93, same luminance as muted text). #a0a0a8 → 6.82:1 on canvas, so
+     keyboard focus reads clearly; restores the light/dark token symmetry. */
+  --focus-ring: var(--color-accent);
   --selection-bg: #f5f5f7;
   --selection-fg: #0b0b0d;
 
