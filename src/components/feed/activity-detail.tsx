@@ -51,7 +51,6 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import { ActivityFancyBoard } from "@/components/contributor-board/activity-fancy-board"
 import EditBanner from "@/components/ui/edit-banner"
 import Banner from "@/components/ui/banner"
-import Tooltip from "@/components/ui/tooltip"
 import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
 import { CERT_DETAIL_TABS } from "@/lib/detail-tabs"
 import { useCertProjects } from "@/hooks/use-cert-projects"
@@ -1036,49 +1035,36 @@ export default function ActivityDetail({
         ) : (
           <h1 className="cert-detail__title">{effectiveValue.title}</h1>
         )}
-        {!editing && (isCreator || editAsGroup) ? (
-          // Inline Edit + Delete — DESKTOP only. On mobile these move into the
-          // navbar's three-dot record menu (see usePageRecordMenu's
-          // editActions), so the title row stays clean. The cluster is hidden
-          // at <=799px via `.cert-detail__title-actions`.
+        {!editing && rkey ? (
+          // Three-dot record menu — DESKTOP only, right-aligned on the title
+          // row (the title is flex:1, so it pushes this to the end). Folds the
+          // owner's Edit / Delete (when available) in with Share / Add to list
+          // / Copy AT URI, replacing the old separate Edit + Delete buttons.
+          // On mobile the same menu lives in the navbar (usePageRecordMenu);
+          // this cluster is hidden at <=799px via `.cert-detail__title-actions`.
           <span className="cert-detail__title-actions">
-            {isCreator ? (
-              <Link
-                href={editHref}
-                className="cert-detail__edit-btn"
-                aria-label="Edit activity"
-                title="Edit activity"
-              >
-                <Pencil size={14} strokeWidth={1.75} aria-hidden />
-                Edit
-              </Link>
-            ) : (
-              <button
-                type="button"
-                className="cert-detail__edit-btn"
-                aria-label="Edit activity"
-                title={`Edit as ${editAsGroup!.displayName || editAsGroup!.handle}`}
-                onClick={() => setGroupEditOpen(true)}
-              >
-                <Pencil size={14} strokeWidth={1.75} aria-hidden />
-                Edit
-              </button>
-            )}
-            {isCreator ? (
-              <Tooltip label="Delete activity">
-                <button
-                  type="button"
-                  className="cert-detail__delete-btn"
-                  aria-label="Delete activity"
-                  onClick={() => {
-                    setDeleteError(null)
-                    setDeleteOpen(true)
-                  }}
-                >
-                  <Trash2 size={14} strokeWidth={1.75} aria-hidden />
-                </button>
-              </Tooltip>
-            ) : null}
+            <AddToListMenu
+              targetUri={`at://${did}/org.hypercerts.claim.activity/${rkey}`}
+              targetCid={cid}
+              targetType={LIST_CERTS_TYPE}
+              shareTab={activeTab === "overview" ? null : activeTab}
+              editActions={
+                isCreator || editAsGroup
+                  ? {
+                      isCreator,
+                      editHref,
+                      editAsGroupLabel: editAsGroup
+                        ? editAsGroup.displayName || editAsGroup.handle
+                        : null,
+                      onEditAsGroup: () => setGroupEditOpen(true),
+                      onDelete: () => {
+                        setDeleteError(null)
+                        setDeleteOpen(true)
+                      },
+                    }
+                  : null
+              }
+            />
           </span>
         ) : null}
       </div>
@@ -1314,22 +1300,11 @@ export default function ActivityDetail({
           {/* "Created" lives in the headline byline now — no need to
               repeat it in the aside meta list. */}
           <div className="cert-detail__meta-row cert-detail__meta-row--timeperiod">
-            <dt className="cert-detail__meta-label cert-detail__meta-label--with-action">
+            <dt className="cert-detail__meta-label">
               <span className="cert-detail__meta-label-text">
                 <Calendar size={11} strokeWidth={2} aria-hidden />
                 Time period
               </span>
-              {rkey ? (
-                // Desktop only — on mobile the menu moves to the author row.
-                <span className="cert-detail__meta-menu">
-                  <AddToListMenu
-                    targetUri={`at://${did}/org.hypercerts.claim.activity/${rkey}`}
-                    targetCid={cid}
-                    targetType={LIST_CERTS_TYPE}
-                    shareTab={activeTab === "overview" ? null : activeTab}
-                  />
-                </span>
-              ) : null}
             </dt>
             <dd className="cert-detail__meta-value">
               {editing ? (

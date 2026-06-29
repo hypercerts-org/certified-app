@@ -748,9 +748,13 @@
    so the button drops below the title rather than colliding. */
 .cert-detail__title-row {
   display: flex;
-  align-items: center;
+  /* Top-align so the three-dot menu sits on the title's first line even when
+     the title wraps to multiple lines. */
+  align-items: flex-start;
   gap: 12px;
-  flex-wrap: wrap;
+  /* nowrap so the menu stays on the title row, right-aligned (the title is
+     flex:1 and shrinks to make room) instead of wrapping below it. */
+  flex-wrap: nowrap;
 }
 
 .cert-detail__title-row .cert-detail__title {
@@ -758,69 +762,9 @@
   min-width: 0;
 }
 
-.cert-detail__edit-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  height: 32px;
-  padding: 0 12px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border-default);
-  background: var(--bg-elevated);
-  color: var(--fg-primary);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  text-decoration: none;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-}
-
-.cert-detail__edit-btn:hover {
-  background: var(--bg-sunken);
-  border-color: var(--border-hover);
-}
-
-.cert-detail__edit-btn:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-/* Destructive sibling of the Edit button — same height + radius
-   but icon-only (square 32×32) and hover paints the red tint.
-   Sits to the right of Edit in the head-actions cluster. */
-.cert-detail__delete-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border-radius: var(--radius);
-  border: 1px solid var(--border-default);
-  background: var(--bg-elevated);
-  color: var(--fg-secondary);
-  cursor: pointer;
-  transition: background var(--transition-fast),
-    border-color var(--transition-fast),
-    color var(--transition-fast);
-}
-
-.cert-detail__delete-btn:hover {
-  background: var(--bg-sunken);
-  border-color: var(--color-error);
-  color: var(--color-error);
-}
-
-.cert-detail__delete-btn:focus-visible {
-  outline: 2px solid var(--color-error);
-  outline-offset: 2px;
-}
-
-/* Inline Edit / Delete cluster — DESKTOP only. Hidden by default (mobile),
-   where the same actions live in the navbar's three-dot record menu. `gap:
-   12px` reproduces the spacing the two buttons had as direct title-row
-   children before they were wrapped in this span. */
+/* Title-row action cluster (the three-dot record menu) — DESKTOP only.
+   Hidden by default (mobile), where the same actions live in the navbar's
+   three-dot record menu. */
 .cert-detail__title-actions {
   display: none;
 }
