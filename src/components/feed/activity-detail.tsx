@@ -1152,20 +1152,20 @@ export default function ActivityDetail({
   // (the Description editor lives on its own tab) and when there's no rich
   // description to show.
   const descriptionToggle = (
-    <div className="cert-detail__read-more">
+    <div className="cert-detail__desc-toggle">
       <Button
         variant="secondary"
         size="sm"
         aria-expanded={descriptionExpanded}
         onClick={() => setDescriptionExpanded((open) => !open)}
-        className="cert-detail__read-more-btn"
+        className="cert-detail__desc-toggle-btn"
       >
         {descriptionExpanded ? "Hide description" : "Read full description"}
         <ChevronDown
           size={15}
           strokeWidth={2}
           aria-hidden
-          className="cert-detail__read-more-chevron"
+          className="cert-detail__desc-toggle-chevron"
         />
       </Button>
     </div>

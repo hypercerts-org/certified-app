@@ -237,14 +237,6 @@
     padding-top: 0;
     border-top: none;
   }
-
-  /* "Read full description" centers on phones (both the activity and
-     project detail pages use this class). Ancestor-scoped to beat the
-     base `align-self: flex-start`. */
-  .cert-detail--wide .cert-detail__read-more,
-  .project-detail .cert-detail__read-more {
-    align-self: center;
-  }
 }
 
 /* ---------- Loading + error ---------- */
@@ -743,56 +735,6 @@
   color: var(--fg-muted);
 }
 
-/* "Read full description" affordance below the short description.
-   Replaces the older quiet "more" text-link with an inline-flex
-   pill that reads as a clearer call to navigate — left-aligned
-   (so the eye finds it at the end of the paragraph's reading
-   track) and chevron-tailed to signal "this takes you elsewhere".
-   Kept restrained — secondary color, no fill — so it doesn't
-   compete with primary actions on the page. */
-.cert-detail__read-more {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  /* Anchor to the start so the button sizes to its content
-     instead of stretching to fill the flex-column parent. */
-  align-self: flex-start;
-  margin-top: 8px;
-  /* Shape matches the canonical Button secondary variant
-     (`rounded` = 4px, transparent fill, fg-primary text, neutral
-     border). Replaces the earlier full-pill (`border-radius: 999px`)
-     which read as a different button family from the rest of the
-     app. */
-  padding: 6px 16px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border-default);
-  background: transparent;
-  color: var(--fg-primary);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  text-decoration: none;
-  /* Works as both <a> (desktop, tab link) and <button> (mobile,
-     inline disclosure) — reset the UA button font + cursor. */
-  font-family: inherit;
-  cursor: pointer;
-  transition: background var(--transition-fast),
-    border-color var(--transition-fast);
-}
-
-/* Full description expanded in place on mobile, below the summary. */
-.cert-detail__inline-description {
-  margin-top: 12px;
-}
-
-.cert-detail__read-more:hover {
-  border-color: var(--border-hover);
-  background: var(--bg-sunken);
-}
-
-.cert-detail__read-more:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
 
 /* Title row — keeps the cert title on the left and floats the
    creator-only Edit button to the far right. Wrap on small screens
@@ -1177,7 +1119,7 @@
 
 /* Centered "Read full description" disclosure below the Overview summary.
    Centres the design-system Button; matches the section top rhythm. */
-.cert-detail__read-more {
+.cert-detail__desc-toggle {
   display: flex;
   justify-content: center;
   /* The flex-column tab panel doesn't stretch this wrapper, so pin it to the
@@ -1190,11 +1132,11 @@
 /* The chevron encodes the toggle: down to expand, flipped up once open.
    Driven off the button's aria-expanded so state + visual can't drift.
    (The global reduced-motion rule zeroes this transition.) */
-.cert-detail__read-more-chevron {
+.cert-detail__desc-toggle-chevron {
   transition: transform var(--transition-fast);
 }
 
-.cert-detail__read-more-btn[aria-expanded="true"] .cert-detail__read-more-chevron {
+.cert-detail__desc-toggle-btn[aria-expanded="true"] .cert-detail__desc-toggle-chevron {
   transform: rotate(180deg);
 }
 
