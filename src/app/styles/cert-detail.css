@@ -1126,7 +1126,11 @@
      column width — otherwise justify-content centres within the button's own
      width and it reads as left-aligned. */
   width: 100%;
-  padding-top: 16px;
+  /* Pull the button up toward the summary: .cert-detail__main puts a 32px
+     flex gap between the summary and the content panel (shared by all tabs,
+     so not reduced globally). A negative top margin tightens just this
+     control to sit close under the summary. */
+  margin-top: -16px;
 }
 
 /* The chevron encodes the toggle: down to expand, flipped up once open.

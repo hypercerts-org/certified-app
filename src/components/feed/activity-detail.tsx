@@ -415,14 +415,27 @@ export default function ActivityDetail({
   // indexer has caught up (it's eventually consistent), so offer a refresh.
   const fundingRecordedNote = fundingJustRecorded ? (
     <p className="cert-detail__short-desc funding-form__recorded-note">
-      Funding recorded — it may take a moment to appear in the list.
+      {fundingLoading
+        ? "Checking for the new receipt…"
+        : "Funding recorded — it may take a moment to appear in the list."}
       <button
         type="button"
         className="funding-form__recorded-refresh"
-        aria-label="Refresh the funding list"
+        aria-label={
+          fundingLoading ? "Refreshing the funding list" : "Refresh the funding list"
+        }
+        aria-busy={fundingLoading}
+        disabled={fundingLoading}
         onClick={() => refetchFunding()}
       >
-        <RefreshCw size={14} strokeWidth={2} aria-hidden />
+        <RefreshCw
+          size={14}
+          strokeWidth={2}
+          aria-hidden
+          className={
+            fundingLoading ? "animate-spin motion-reduce:animate-none" : undefined
+          }
+        />
       </button>
     </p>
   ) : null
