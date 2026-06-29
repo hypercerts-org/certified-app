@@ -85,9 +85,11 @@ export async function POST(request: NextRequest) {
     const csrfError = checkCsrf(request)
     if (csrfError) return csrfError
 
+    // requestEmailUpdate takes NO input — sending even an empty `{}` body
+    // makes the PDS reject it ("A request body was provided when none was
+    // expected"). Omit the body so callPds sends a bodyless POST.
     const r = await callPds(g.did, "com.atproto.server.requestEmailUpdate", {
       method: "POST",
-      body: {},
     })
     if (r.kind === "locked") return locked()
     if (!r.response.ok)

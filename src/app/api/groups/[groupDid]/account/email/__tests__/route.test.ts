@@ -176,7 +176,7 @@ describe("POST (request email update)", () => {
       "did:plc:alice",
       GROUP_DID,
       "com.atproto.server.requestEmailUpdate",
-      { method: "POST", body: {} },
+      { method: "POST" },
     )
   })
 

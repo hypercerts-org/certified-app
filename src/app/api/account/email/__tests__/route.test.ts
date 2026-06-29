@@ -150,7 +150,7 @@ describe("POST (request email update)", () => {
     expect(callPds).toHaveBeenCalledWith(
       "did:plc:alice",
       "com.atproto.server.requestEmailUpdate",
-      { method: "POST", body: {} },
+      { method: "POST" },
     )
   })
 
