@@ -98,7 +98,7 @@ const GROUPS: PageGroup[] = [
             key: "did",
             title: "DID",
             description:
-              "Your account's permanent identifier. Unlike your @handle, it never changes — apps and records reference you by it.",
+              "Your account's permanent identifier. Unlike your @handle, it never changes — apps and records reference you by it. It's shown here for reference only; there's nothing you need to do with it.",
           },
           {
             key: "username",
