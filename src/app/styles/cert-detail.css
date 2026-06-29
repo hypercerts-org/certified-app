@@ -1175,6 +1175,14 @@
   margin-top: 0;
 }
 
+/* Centered "Read full description" affordance below the Overview summary.
+   Centres the design-system Button; matches the section top rhythm. */
+.cert-detail__read-more {
+  display: flex;
+  justify-content: center;
+  padding-top: 16px;
+}
+
 .cert-detail__content > .cert-detail__section + .cert-detail__section {
   border-top: 1px solid var(--border-subtle);
 }

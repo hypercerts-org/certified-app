@@ -237,6 +237,10 @@ export default function ActivityDetail({
   const contributorCount = contributors.length
   const locations = value.locations ?? []
   const showFullDescription = isRenderableDescription(value.description)
+  // Overview "Read full description": reveals the full description inline as
+  // its own Description section (the user stays on Overview). The Description
+  // tab remains reachable from the top-bar tab strip for deep links.
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false)
 
   // ClaimActivity doesn't carry its own rkey. The page route at
   // /activity/[did]/[rkey] does, and we want to pass it to the
@@ -499,7 +503,6 @@ export default function ActivityDetail({
     const qs = params.toString()
     return qs ? `${pathname}?${qs}` : pathname
   }
-  const descriptionHref = tabHref("description")
   const fundingHref = tabHref("funding")
 
   // -------------------------------------------------------------------
@@ -1105,30 +1108,12 @@ export default function ActivityDetail({
   // (with `cert-detail__main`'s 24px gap) so its top edge aligns
   // with the first content row on the Description / Contributors
   // tabs.
-  // Small label that opens the short description on Overview —
-  // styled the same as the headline columns above (Date created /
-  // Author / Project) so the section reads as another peer in the
-  // overview's labelled-meta family.
-  // "Read full description" affordance — navigates to the Description
-  // tab as a real history entry, sliding the view right (Back reverses
-  // it). Styled like the project page's: a "See all"-style link on the
-  // Summary heading row, right-aligned.
-  const descriptionDisclosure =
-    showFullDescription && descriptionHref ? (
-      <TransitionLink
-        href={descriptionHref}
-        className="cert-detail__section-see-all"
-      >
-        Read full description →
-      </TransitionLink>
-    ) : null
-
-  // Summary heading row: label on the left, "Read full description" link
-  // on the right (same shape as the project page).
+  // Summary heading row — just the label now; the "Read full description"
+  // affordance moved to a centered button below the summary (see
+  // `descriptionReveal`).
   const summaryHead = (
     <div className="cert-detail__summary-head">
       <span className="cert-detail__meta-label">Summary</span>
-      {descriptionDisclosure}
     </div>
   )
 
@@ -1155,11 +1140,32 @@ export default function ActivityDetail({
           {effectiveValue.shortDescription}
         </p>
       </section>
-    ) : descriptionDisclosure ? (
-      <section className="cert-detail__section cert-detail__section--summary">
-        {summaryHead}
-      </section>
     ) : null
+
+  // Overview "Read full description": a centered button below the summary
+  // that reveals the full rich description inline as its own Description
+  // section. Once expanded the button is replaced by the section. Hidden
+  // entirely while editing (the Description editor lives on its own tab) and
+  // when there's no rich description to show.
+  const descriptionReveal =
+    !showFullDescription || editing ? null : descriptionExpanded ? (
+      <section className="cert-detail__section">
+        <div className="cert-detail__section-header">
+          <h2 className="cert-detail__section-title">Description</h2>
+        </div>
+        <LeafletDocument value={effectiveValue.description} did={did} />
+      </section>
+    ) : (
+      <div className="cert-detail__read-more">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setDescriptionExpanded(true)}
+        >
+          Read full description
+        </Button>
+      </div>
+    )
 
   // The Contributors list — shown on the Contributors tab beneath the
   // deluxe board.
@@ -1474,6 +1480,9 @@ export default function ActivityDetail({
         >
         {activeTab === "overview" ? (
           <>
+            {/* Read-full-description: centered button below the summary that
+                reveals the full description inline as a Description section. */}
+            {descriptionReveal}
             {/* Updates preview sits above Locations: after the cert's
                 narrative (summary / read-full link) the reader sees
                 the latest activity, then the where. Capped at one
