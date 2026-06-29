@@ -1521,7 +1521,7 @@ export default function ActivityDetail({
                 {recipientConfirmedNote}
                 {fundingReceipts.length === 0 ? (
                   fundingJustRecorded ? null : (
-                    <p className="cert-detail__short-desc">
+                    <p className="cert-detail__short-desc cert-detail__funding-empty">
                       No funding receipts for this activity yet.
                     </p>
                   )
@@ -1541,7 +1541,7 @@ export default function ActivityDetail({
                     ))}
                   </ul>
                 ) : (
-                  <p className="cert-detail__short-desc">
+                  <p className="cert-detail__short-desc cert-detail__funding-empty">
                     No funding receipts match this filter.
                   </p>
                 )}
@@ -1631,7 +1631,7 @@ export default function ActivityDetail({
               </div>
             ) : fundingReceipts.length === 0 ? (
               fundingJustRecorded ? null : (
-                <p className="cert-detail__short-desc">
+                <p className="cert-detail__short-desc cert-detail__funding-empty">
                   No funding receipts for this activity yet.
                 </p>
               )
@@ -1651,7 +1651,7 @@ export default function ActivityDetail({
                 ))}
               </ul>
             ) : (
-              <p className="cert-detail__short-desc">
+              <p className="cert-detail__short-desc cert-detail__funding-empty">
                 No funding receipts match this filter.
               </p>
             )}

@@ -601,8 +601,11 @@
   }
 
   /* Summary reads at the same size as the meta values (e.g. work scope).
-     Scoped via the section to beat the base 1rem rule. */
-  .cert-detail__section--summary .cert-detail__short-desc {
+     Scoped via the section to beat the base 1rem rule. The funding
+     empty-state copy tracks the same size so it matches the short
+     description at every width (both are 1rem on desktop). */
+  .cert-detail__section--summary .cert-detail__short-desc,
+  .cert-detail__funding-empty {
     font-size: 0.875rem;
   }
   .cert-detail__eyebrow-date {
