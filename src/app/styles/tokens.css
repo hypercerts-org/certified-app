@@ -283,6 +283,15 @@
   --selection-fg: #0b0b0d;
 
   /* Semantic colors — tuned for dark backgrounds */
+  /* Base status hues, dark-tuned. Direct foreground / fill uses of these
+     tokens (e.g. .response-menu__trigger--accepted, the accept/reject
+     quick-action pills in feed.css) would otherwise keep the saturated
+     light-mode hues (#2ECC71 / #F5A623) on the dark canvas, clashing with
+     the softer dark -text family (#6ee7a7 / #fbbf24). Soften the base hues
+     so every direct use harmonizes; filled pills keep dark glyphs
+     (color: var(--bg-canvas)), which stay high-contrast on these. */
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
   --color-warning-bg: rgba(245, 166, 35, 0.1);
   --color-warning-border: rgba(245, 166, 35, 0.3);
   --color-warning-text: #fbbf24;
