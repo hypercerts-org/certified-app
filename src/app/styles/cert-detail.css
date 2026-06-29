@@ -1180,6 +1180,10 @@
 .cert-detail__read-more {
   display: flex;
   justify-content: center;
+  /* The flex-column tab panel doesn't stretch this wrapper, so pin it to the
+     column width — otherwise justify-content centres within the button's own
+     width and it reads as left-aligned. */
+  width: 100%;
   padding-top: 16px;
 }
 
