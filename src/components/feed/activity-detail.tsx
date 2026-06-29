@@ -339,8 +339,8 @@ export default function ActivityDetail({
   const recipientConfirmedNote =
     confirmedBy.isDefault && fundingReceipts.length > 0 ? (
       <Banner variant="info" className="mb-3">
-        This section shows only funding receipts the recipient has confirmed.
-        Change the filter to include others.
+        Showing only receipts the recipient has confirmed. Change the filter to
+        see all.
       </Banner>
     ) : null
 
