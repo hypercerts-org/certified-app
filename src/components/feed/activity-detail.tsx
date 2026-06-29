@@ -342,7 +342,7 @@ export default function ActivityDetail({
   // overview preview and the Funding tab.
   const recipientConfirmedNote =
     confirmedBy.isDefault && fundingReceipts.length > 0 ? (
-      <Banner variant="info" className="mb-3">
+      <Banner variant="info" className="mb-3 py-2.5">
         Showing only receipts the recipient has confirmed. Change the filter to
         see all.
       </Banner>
