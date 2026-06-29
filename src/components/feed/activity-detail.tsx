@@ -357,11 +357,9 @@ export default function ActivityDetail({
   const tabParam = searchParams?.get("tab") ?? "overview"
   const activeTab:
     | "overview"
-    | "description"
     | "contributors"
     | "funding"
     | "updates" =
-    tabParam === "description" ||
     tabParam === "contributors" ||
     tabParam === "funding" ||
     tabParam === "updates"
@@ -377,13 +375,11 @@ export default function ActivityDetail({
   // it with the author handle — the mobile bar is too narrow to show both,
   // and the name is the useful identifier.)
   usePageTitle(
-    activeTab === "description"
-      ? "Description"
-      : activeTab === "contributors"
-        ? contributorCount > 0
-          ? `Contributors (${contributorCount})`
-          : "Contributors"
-        : activeTab === "funding"
+    activeTab === "contributors"
+      ? contributorCount > 0
+        ? `Contributors (${contributorCount})`
+        : "Contributors"
+      : activeTab === "funding"
           ? shownFundingCount > 0
             ? `Funding (${shownFundingCount})`
             : "Funding"
@@ -1184,20 +1180,39 @@ export default function ActivityDetail({
     </div>
   )
 
-  const descriptionReveal =
-    !showFullDescription || editing ? null : descriptionExpanded ? (
-      <>
-        <section className="cert-detail__section">
-          <div className="cert-detail__section-header">
-            <h2 className="cert-detail__section-title">Description</h2>
-          </div>
-          <LeafletDocument value={effectiveValue.description} did={did} />
-        </section>
-        {descriptionToggle}
-      </>
-    ) : (
-      descriptionToggle
-    )
+  // While editing, the full-description editor lives here on the overview
+  // (the dedicated Description tab was removed — the overview now owns both
+  // reading and editing the description). Otherwise: the centered toggle
+  // reveals the read-only description inline.
+  const descriptionReveal = editing ? (
+    <section className="cert-detail__section">
+      <div className="cert-detail__section-header">
+        <h2 className="cert-detail__section-title">Description</h2>
+      </div>
+      <LeafletEditor
+        value={drafts.description}
+        onChange={(next) => setDrafts((d) => ({ ...d, description: next }))}
+        placeholder="Full description of this activity."
+        ariaLabel="Activity description"
+        did={did}
+        onImageUpload={(file) =>
+          uploadBlob(file, editTargetDid ? { targetDid: editTargetDid } : undefined)
+        }
+      />
+    </section>
+  ) : !showFullDescription ? null : descriptionExpanded ? (
+    <>
+      <section className="cert-detail__section">
+        <div className="cert-detail__section-header">
+          <h2 className="cert-detail__section-title">Description</h2>
+        </div>
+        <LeafletDocument value={effectiveValue.description} did={did} />
+      </section>
+      {descriptionToggle}
+    </>
+  ) : (
+    descriptionToggle
+  )
 
   // The Contributors list — shown on the Contributors tab beneath the
   // deluxe board.
@@ -1611,32 +1626,6 @@ export default function ActivityDetail({
               </section>
             ) : null}
           </>
-        ) : activeTab === "description" ? (
-          <section className="cert-detail__section">
-            {editing ? (
-              <LeafletEditor
-                value={drafts.description}
-                onChange={(next) =>
-                  setDrafts((d) => ({ ...d, description: next }))
-                }
-                placeholder="Full description of this activity."
-                ariaLabel="Activity description"
-                did={did}
-                onImageUpload={(file) =>
-                  uploadBlob(
-                    file,
-                    editTargetDid ? { targetDid: editTargetDid } : undefined,
-                  )
-                }
-              />
-            ) : showFullDescription ? (
-              <LeafletDocument value={effectiveValue.description} did={did} />
-            ) : (
-              <p className="cert-detail__short-desc">
-                {effectiveValue.shortDescription || "No description yet."}
-              </p>
-            )}
-          </section>
         ) : activeTab === "contributors" ? (
           <>
             {contributorCount > 0 ? (
