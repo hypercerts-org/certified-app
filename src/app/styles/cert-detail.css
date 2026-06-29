@@ -690,6 +690,13 @@
   border-top: 1px solid var(--border-subtle);
 }
 
+/* No divider above the Updates preview on the Overview — it reads as part
+   of the overview narrative, not a ruled-off section. (The mobile rule
+   above drops the base .context-updates border; this covers desktop.) */
+.cert-detail__content > .context-updates--overview {
+  border-top: none;
+}
+
 /* Divider before a `.cert-detail__section` that immediately follows the
    2-col row — the existing `section + section` rule doesn't match
    across the 2-col wrapper, so add the equivalent here. */
