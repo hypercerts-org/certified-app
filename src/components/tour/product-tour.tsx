@@ -242,15 +242,21 @@ export default function ProductTour() {
         centered()
         return
       }
-      const hit = findAnchor(step.anchor)
+      const anchor = step.anchor
+      const hit = findAnchor(anchor)
       if (hit) {
         if (!scrolled) {
           scrolled = true
           scrollAnchorToTop(hit.el)
-          // Re-measure next frame, after the scroll has applied.
+          // Re-measure next frame, after the scroll has applied. Re-query the
+          // anchor rather than reusing `hit.el`: the page may re-render between
+          // frames (e.g. Explore's async loaders swap the chrome) and detach
+          // the captured node, whose getBoundingClientRect would read as zero —
+          // leaving the spotlight stuck at the top-left corner.
           rafId = requestAnimationFrame(() => {
             found = true
-            finalize(hit.el.getBoundingClientRect())
+            const rehit = findAnchor(anchor)
+            finalize(rehit ? rehit.rect : hit.el.getBoundingClientRect())
           })
           return
         }
@@ -283,9 +289,15 @@ export default function ProductTour() {
       capture: true,
     })
     globalThis.addEventListener("resize", onReflow, { passive: true })
+    // Content can reflow after first paint without any scroll/resize — async
+    // loaders populating, sections mounting late — which moves or replaces the
+    // anchor. Watch the document so we re-measure and the spotlight follows.
+    const ro = new ResizeObserver(onReflow)
+    ro.observe(document.body)
     return () => {
       cancelAnimationFrame(rafId)
       if (reflowRaf) cancelAnimationFrame(reflowRaf)
+      ro.disconnect()
       globalThis.removeEventListener("scroll", onReflow, {
         capture: true,
       } as EventListenerOptions)
