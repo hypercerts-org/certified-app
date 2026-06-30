@@ -17,8 +17,8 @@ import { useAuthorInfo } from "@/hooks/use-author-info"
 const COPY = {
   feedback: {
     title: "Share Feedback",
-    note: "Certified.app is in beta; your feedback shapes it.",
-    messageLabel: "Please share your feedback, suggestions, and questions.",
+    note: "Certified.app is in beta, and your feedback shapes it.",
+    messageLabel: "Tell us what's working, what's not, or what you'd like to see.",
     emailLabel:
       "If you would like us to follow up with you regarding your feedback, please provide your email address (optional).",
     submit: "Send Feedback",
@@ -133,7 +133,7 @@ export default function FeedbackModal() {
       {greetingName ? (
         <p className="feedback-modal__greeting">Hi, {greetingName}!</p>
       ) : null}
-      <p className="feedback-modal__intro">
+      <p className="feedback-modal__prompt">
         {copy.note ? `${copy.note} ${copy.messageLabel}` : copy.messageLabel}
       </p>
       <Textarea
@@ -148,10 +148,11 @@ export default function FeedbackModal() {
       />
 
       <div className="mt-4">
+        <p className="feedback-modal__prompt">{copy.emailLabel}</p>
         <Input
           id="feedback-email"
           type="email"
-          label={copy.emailLabel}
+          aria-label={copy.emailLabel}
           value={email}
           onChange={(e) => { setEmail(e.target.value); if (emailError) validateEmail(e.target.value) }}
           onBlur={() => validateEmail(email)}
