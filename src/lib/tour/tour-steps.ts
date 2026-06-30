@@ -200,7 +200,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
   },
   {
     id: "settings-handle",
-    navigateTo: "/settings",
+    navigateTo: "/settings#account",
     anchor: "settings-handle",
     title: "Your handle and identity",
     body: "This is your handle — your username on the network. Behind it sits a permanent DID that owns your data, so your work stays yours even if you rename your handle.",
@@ -208,7 +208,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
   },
   {
     id: "settings-sync",
-    navigateTo: "/settings",
+    navigateTo: "/settings#social-graph",
     anchor: "settings-bsky-sync",
     title: "Bring your Bluesky follows",
     body: "Certified has its own follow graph, kept separate from Bluesky. Sync here any time so you don't have to rebuild your network from scratch.",

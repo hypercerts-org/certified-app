@@ -178,14 +178,30 @@ export default function ProductTour() {
   useEffect(() => {
     if (!isActive || !step || !mounted) return
     if (!step.navigateTo) return
+    // A step may target a sub-view via #hash (e.g. a settings sub-page). The
+    // pathname drives routing; the hash drives same-page state.
+    const hashAt = step.navigateTo.indexOf("#")
+    const targetPath =
+      hashAt === -1 ? step.navigateTo : step.navigateTo.slice(0, hashAt)
+    const targetHash = hashAt === -1 ? "" : step.navigateTo.slice(hashAt + 1)
     if (step.anchor) {
       if (findAnchor(step.anchor)) return // already where we need to be
-    } else if (pathname === step.navigateTo) {
+    } else if (pathname === targetPath) {
       return
     }
     if (navedForStep.current === stepIndex) return
     navedForStep.current = stepIndex
-    router.push(step.navigateTo)
+    if (pathname === targetPath && targetHash) {
+      // Same route, different sub-view. router.push() uses history.pushState,
+      // which doesn't fire `hashchange`, so components that key off the hash
+      // (the settings rail) wouldn't react. Set the hash directly instead —
+      // that does fire `hashchange` — so the right section actually mounts.
+      if (window.location.hash.slice(1) !== targetHash) {
+        window.location.hash = targetHash
+      }
+    } else {
+      router.push(step.navigateTo)
+    }
   }, [isActive, step, stepIndex, mounted, pathname, router])
 
   // Resolve + position the spotlight. Polls for the anchor (it mounts
