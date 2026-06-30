@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pencil } from "lucide-react";
 import Banner from "@/components/ui/banner";
 import Button from "@/components/ui/button";
@@ -26,6 +26,15 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
   // The current address — updated locally on success so the row reflects the
   // change without a full session refresh.
   const [currentEmail, setCurrentEmail] = useState(email);
+
+  // On a hard refresh the session loads after this mounts, so `email` arrives
+  // empty and fills in a tick later. Sync the prop in so the row updates
+  // instead of staying stuck on the dash fallback. Keying on `email` means a
+  // local optimistic update on success isn't clobbered until the session
+  // itself catches up.
+  useEffect(() => {
+    setCurrentEmail(email);
+  }, [email]);
 
   const [state, setState] = useState<State>("idle");
   const [tokenRequired, setTokenRequired] = useState(false);
