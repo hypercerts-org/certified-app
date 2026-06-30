@@ -1497,6 +1497,12 @@
   color: var(--color-off-white);
 }
 
+/* Dark mode flips the trigger to a light button with dark ink, so the
+   translucent-white pill disappears against it — swap to a dark pill. */
+[data-theme="dark"] .feedback-trigger__beta {
+  background: rgba(0, 0, 0, 0.16);
+}
+
 .feedback-modal__backdrop {
   position: fixed;
   inset: 0;
