@@ -1243,7 +1243,7 @@ function ExploreAllBlocks() {
 
         <main className="explore__main">
           <div className="explore__chrome">
-            <span className="explore__category-dropdown" data-tour="explore-category">
+            <span className="explore__category-dropdown">
               <AllCategoryDropdown
                 show="all"
                 onSelect={onShowOptionClick}
@@ -1562,7 +1562,11 @@ function AllCategoryDropdown({
     <UiPopover open={open} onOpenChange={setOpen}>
       <Tooltip label="Filter by type">
         <PopoverTrigger>
-          <button type="button" className="explore__sub-dropdown-trigger">
+          {/* data-tour anchors the product tour's "Activities, projects, and
+              accounts" step. It lives on the trigger button (a real box) and
+              not the wrapping .explore__category-dropdown span, which is
+              display:contents and so has no rect for the spotlight to find. */}
+          <button type="button" className="explore__sub-dropdown-trigger" data-tour="explore-category">
             <span className="explore__sub-dropdown-label">{active.label}</span>
             <ChevronDown size={13} strokeWidth={1.75} aria-hidden />
           </button>
