@@ -34,16 +34,31 @@ export default function FeedbackTrigger() {
   }, [])
 
   useEffect(() => {
-    // Defer the first measure to after paint so it doesn't setState
-    // synchronously in the effect body (cascading-render lint), and so the
-    // footer has laid out before we read its rect.
-    const raf = requestAnimationFrame(updatePosition)
-    window.addEventListener("scroll", updatePosition, { passive: true })
-    window.addEventListener("resize", updatePosition, { passive: true })
+    // Coalesce every trigger into one measure per frame. rAF also keeps the
+    // first measure out of the synchronous effect body (cascading-render
+    // lint) and lets the footer lay out before we read its rect.
+    let raf = 0
+    const schedule = () => {
+      if (raf) return
+      raf = requestAnimationFrame(() => {
+        raf = 0
+        updatePosition()
+      })
+    }
+    schedule()
+    window.addEventListener("scroll", schedule, { passive: true })
+    window.addEventListener("resize", schedule, { passive: true })
+    // Content often grows or shrinks after first paint as data loads, which
+    // moves the footer without firing scroll or resize — leaving the button
+    // stamped to a stale offset (overlapping the footer, or floating where
+    // the footer used to be). Re-measure on any document reflow.
+    const ro = new ResizeObserver(schedule)
+    ro.observe(document.body)
     return () => {
-      cancelAnimationFrame(raf)
-      window.removeEventListener("scroll", updatePosition)
-      window.removeEventListener("resize", updatePosition)
+      if (raf) cancelAnimationFrame(raf)
+      window.removeEventListener("scroll", schedule)
+      window.removeEventListener("resize", schedule)
+      ro.disconnect()
     }
   }, [updatePosition])
 
