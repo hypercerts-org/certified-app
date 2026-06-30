@@ -278,10 +278,44 @@ export default function ActivityDetail({
   const fundingReceipts = useMergedFunding(fetchedFunding, fundingForUri)
 
   // Record-funding modal (opener gating is derived after `useAuth` below).
-  // After a successful write we just flag a "recorded, pending" note (no
-  // optimistic insert for a fresh recording).
   const [recordFundingOpen, setRecordFundingOpen] = useState(false)
-  const [fundingJustRecorded, setFundingJustRecorded] = useState(false)
+  // After recording funding we poll the indexer until the new receipt lands
+  // (it's eventually consistent) — it then renders through the normal list. We
+  // deliberately don't optimistically insert it: a freshly-recorded receipt
+  // carries no attestations yet, so the "Confirmed by" filter would hide it —
+  // provenance must come from the indexer. `pendingFundingUri` is the receipt
+  // we're waiting on; the timeout flag falls back to a manual refresh if the
+  // indexer is unusually slow.
+  const [pendingFundingUri, setPendingFundingUri] = useState<string | null>(null)
+  const [fundingRecordPollTimedOut, setFundingRecordPollTimedOut] =
+    useState(false)
+
+  // Stop polling once the indexer returns the just-recorded receipt.
+  useEffect(() => {
+    if (!pendingFundingUri) return
+    if (fetchedFunding.some((r) => r.uri === pendingFundingUri)) {
+      setPendingFundingUri(null)
+      setFundingRecordPollTimedOut(false)
+    }
+  }, [pendingFundingUri, fetchedFunding])
+
+  // Poll the indexer after recording until the receipt lands, then give up to
+  // a manual refresh. Kept separate from the arrival check so the interval
+  // isn't torn down and restarted on every fetch result.
+  useEffect(() => {
+    if (!pendingFundingUri) return
+    let attempts = 0
+    const id = setInterval(() => {
+      attempts += 1
+      refetchFunding()
+      if (attempts >= 10) {
+        clearInterval(id)
+        setPendingFundingUri(null)
+        setFundingRecordPollTimedOut(true)
+      }
+    }, 1500)
+    return () => clearInterval(id)
+  }, [pendingFundingUri, refetchFunding])
   // When the viewer is an owner/admin of the authoring group, clicking Record
   // first asks whether to record as themselves or as the group.
   const [recordIdentityOpen, setRecordIdentityOpen] = useState(false)
@@ -408,17 +442,27 @@ export default function ActivityDetail({
   const canRecordFunding = isAuthenticated && !!sessionDid
   // Shown after a successful record — the receipt only appears once the
   // indexer has caught up (it's eventually consistent), so offer a refresh.
-  const fundingRecordedNote = fundingJustRecorded ? (
+  // We recorded a receipt and it hasn't surfaced from the indexer yet — used
+  // to suppress the "no receipts yet" empty state while we wait.
+  const fundingRecordInFlight =
+    pendingFundingUri !== null || fundingRecordPollTimedOut
+  const fundingRecordedNote = pendingFundingUri ? (
     <p className="cert-detail__short-desc funding-form__recorded-note">
-      {fundingLoading
-        ? "Checking for the new receipt…"
-        : "Funding recorded — it may take a moment to appear in the list."}
+      Recording your funding — it will appear here shortly…
+      <RefreshCw
+        size={14}
+        strokeWidth={2}
+        aria-hidden
+        className="animate-spin motion-reduce:animate-none ml-1.5 inline-block align-middle"
+      />
+    </p>
+  ) : fundingRecordPollTimedOut ? (
+    <p className="cert-detail__short-desc funding-form__recorded-note">
+      Funding recorded. It is taking longer than usual to appear.
       <button
         type="button"
         className="funding-form__recorded-refresh"
-        aria-label={
-          fundingLoading ? "Refreshing the funding list" : "Refresh the funding list"
-        }
+        aria-label="Refresh the funding list"
         aria-busy={fundingLoading}
         disabled={fundingLoading}
         onClick={() => refetchFunding()}
@@ -452,7 +496,8 @@ export default function ActivityDetail({
   // Opening the record form: ask the identity question first when the viewer
   // could record as the group, else go straight in as the individual.
   const openRecordFunding = () => {
-    setFundingJustRecorded(false)
+    setPendingFundingUri(null)
+    setFundingRecordPollTimedOut(false)
     if (fundingAuthoringGroup) {
       setRecordIdentityOpen(true)
     } else {
@@ -1551,7 +1596,7 @@ export default function ActivityDetail({
                 {fundingRecordedNote}
                 {recipientConfirmedNote}
                 {fundingReceipts.length === 0 ? (
-                  fundingJustRecorded ? null : (
+                  fundingRecordInFlight ? null : (
                     <p className="cert-detail__short-desc cert-detail__funding-empty">
                       No funding receipts for this activity yet.
                     </p>
@@ -1635,7 +1680,7 @@ export default function ActivityDetail({
                 <LoadingSpinner size="sm" />
               </div>
             ) : fundingReceipts.length === 0 ? (
-              fundingJustRecorded ? null : (
+              fundingRecordInFlight ? null : (
                 <p className="cert-detail__short-desc cert-detail__funding-empty">
                   No funding receipts for this activity yet.
                 </p>
@@ -1733,7 +1778,10 @@ export default function ActivityDetail({
                 title: effectiveValue.title || undefined,
               }}
               onClose={() => setRecordFundingOpen(false)}
-              onCreated={() => setFundingJustRecorded(true)}
+              onCreated={(result) => {
+                setFundingRecordPollTimedOut(false)
+                setPendingFundingUri(result.uri)
+              }}
             />
           )
         })()
