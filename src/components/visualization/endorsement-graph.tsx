@@ -320,33 +320,28 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
     let nds = nodes
     let lks = links
 
-    // 1. mutual-only filter
-    if (onlyMutual) {
-      lks = links.filter((l) => l.mutual)
-      const keep = new Set<string>()
-      for (const l of lks) {
-        keep.add(linkEndId(l.source) ?? "")
-        keep.add(linkEndId(l.target) ?? "")
-      }
-      nds = nodes.filter((n) => keep.has(n.id))
-    }
-
-    // 2. connected-to-evaluators filter — keep only the nodes reachable
+    // 1. connected-to-evaluators filter — keep only the nodes reachable
     //    from a trusted evaluator by following endorsements OUTWARD
     //    (issuer → subject): an evaluator, everyone they endorse, everyone
     //    those accounts endorse, and so on to any depth. Edges pointing
     //    *into* the evaluator network don't pull a node in. Skipped until
     //    the evaluator set has loaded, or if none of them appear in the
     //    current graph (so we never blank the view out).
+    //
+    //    Reachability is computed over the FULL graph — all nodes and all
+    //    edges — and runs BEFORE the mutual-only filter. Otherwise mutual-only
+    //    would drop one-way edges first, and an evaluator who only endorses
+    //    one-way would vanish from the seed set, leaving `seen` empty and this
+    //    whole filter a silent no-op (the reported bug).
     if (evaluatorConnectedOnly && evaluatorDids.length > 0) {
-      const nodeIds = new Set(nds.map((n) => n.id))
+      const fullNodeIds = new Set(nodes.map((n) => n.id))
       const adj = new Map<string, string[]>()
       const link2 = (k: string, v: string) => {
         const arr = adj.get(k)
         if (arr) arr.push(v)
         else adj.set(k, [v])
       }
-      for (const l of lks) {
+      for (const l of links) {
         const s = linkEndId(l.source)
         const t = linkEndId(l.target)
         if (!s || !t) continue
@@ -356,7 +351,7 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
       const seen = new Set<string>()
       const queue: string[] = []
       for (const d of evaluatorDids) {
-        if (nodeIds.has(d) && !seen.has(d)) {
+        if (fullNodeIds.has(d) && !seen.has(d)) {
           seen.add(d)
           queue.push(d)
         }
@@ -377,6 +372,19 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
           return s != null && t != null && seen.has(s) && seen.has(t)
         })
       }
+    }
+
+    // 2. mutual-only filter — applied last, a pure display constraint on the
+    //    (possibly evaluator-scoped) graph: keep mutual edges and the nodes
+    //    they touch.
+    if (onlyMutual) {
+      lks = lks.filter((l) => l.mutual)
+      const keep = new Set<string>()
+      for (const l of lks) {
+        keep.add(linkEndId(l.source) ?? "")
+        keep.add(linkEndId(l.target) ?? "")
+      }
+      nds = nds.filter((n) => keep.has(n.id))
     }
 
     return { nodes: nds, links: lks }
