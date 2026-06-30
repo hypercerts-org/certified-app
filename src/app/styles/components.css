@@ -254,11 +254,14 @@
   line-height: 1.3;
 }
 
-.feedback-modal__note {
-  font-size: 0.8125rem;
+/* Combined intro lead — the beta note + the "share your feedback" prompt as
+   one block. Deliberately a readable 0.875rem paragraph, distinct from the
+   small 0.6875rem tracked field labels further down the form. */
+.feedback-modal__intro {
+  font-size: 0.875rem;
   color: var(--fg-secondary);
   margin: 0 0 16px;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 .feedback-modal__label {

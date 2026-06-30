@@ -133,13 +133,13 @@ export default function FeedbackModal() {
       {greetingName ? (
         <p className="feedback-modal__greeting">Hi, {greetingName}!</p>
       ) : null}
-      {copy.note ? (
-        <p className="feedback-modal__note">{copy.note}</p>
-      ) : null}
+      <p className="feedback-modal__intro">
+        {copy.note ? `${copy.note} ${copy.messageLabel}` : copy.messageLabel}
+      </p>
       <Textarea
         ref={textareaRef}
         id="feedback-message"
-        label={copy.messageLabel}
+        aria-label={copy.messageLabel}
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         required
