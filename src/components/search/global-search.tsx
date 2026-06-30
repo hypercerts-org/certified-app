@@ -306,7 +306,7 @@ export default function GlobalSearch({
         empty: "No results",
       }}
       inputProps={{
-        size: "md",
+        size: "sm",
         placeholder,
         autoFocus,
         "aria-label": placeholder,
