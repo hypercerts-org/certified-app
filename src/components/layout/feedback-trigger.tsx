@@ -73,7 +73,8 @@ export default function FeedbackTrigger() {
       aria-label="Share feedback"
     >
       <MessageSquare size={16} />
-      <span>Share Feedback</span>
+      <span>Feedback</span>
+      <span className="feedback-trigger__beta">Beta</span>
     </button>
   )
 }

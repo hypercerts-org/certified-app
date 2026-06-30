@@ -17,6 +17,7 @@ import { useAuthorInfo } from "@/hooks/use-author-info"
 const COPY = {
   feedback: {
     title: "Share Feedback",
+    note: "Certified.app is in beta; your feedback shapes it.",
     messageLabel: "Please share your feedback, suggestions, and questions.",
     emailLabel:
       "If you would like us to follow up with you regarding your feedback, please provide your email address (optional).",
@@ -27,6 +28,7 @@ const COPY = {
   },
   contact: {
     title: "Get in Touch",
+    note: "",
     messageLabel:
       "Tell us about your organization, platform, or program, and what you have in mind.",
     emailLabel: "Your email, so we can get back to you (optional).",
@@ -130,6 +132,9 @@ export default function FeedbackModal() {
     <form onSubmit={handleSubmit}>
       {greetingName ? (
         <p className="feedback-modal__greeting">Hi, {greetingName}!</p>
+      ) : null}
+      {copy.note ? (
+        <p className="feedback-modal__note">{copy.note}</p>
       ) : null}
       <Textarea
         ref={textareaRef}
