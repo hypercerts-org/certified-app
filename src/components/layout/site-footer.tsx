@@ -1,5 +1,4 @@
 import Link from "next/link"
-import FeedbackFooterLink from "@/components/layout/feedback-footer-link"
 
 /**
  * Minimal site footer — GitHub-flavour. Single horizontal row at
@@ -44,7 +43,6 @@ export default function SiteFooter() {
           <Link href="/imprint" className="site-footer__link">
             Imprint
           </Link>
-          <FeedbackFooterLink />
         </nav>
       </div>
     </footer>
