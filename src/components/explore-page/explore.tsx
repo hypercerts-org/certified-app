@@ -744,7 +744,7 @@ function ExploreMain({
               />
             ) : null}
 
-            <div className="explore__search-field" data-tour="explore-search">
+            <div className="explore__search-field">
               <Input
                 type="search"
                 size="sm"
@@ -1243,7 +1243,7 @@ function ExploreAllBlocks() {
 
         <main className="explore__main">
           <div className="explore__chrome">
-            <span className="explore__category-dropdown">
+            <span className="explore__category-dropdown" data-tour="explore-category">
               <AllCategoryDropdown
                 show="all"
                 onSelect={onShowOptionClick}
@@ -1252,7 +1252,7 @@ function ExploreAllBlocks() {
               />
             </span>
 
-            <div className="explore__search-field" data-tour="explore-search">
+            <div className="explore__search-field">
               <Input
                 type="search"
                 size="sm"

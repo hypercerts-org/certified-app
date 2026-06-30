@@ -99,19 +99,20 @@ export const TOUR_STEPS: readonly TourStep[] = [
   {
     id: "nav-explore",
     navigateTo: "/explore",
-    anchor: "nav-explore",
-    title: "Explore",
-    body: "Explore takes you beyond who you already follow — to discover work from across the whole network.",
+    anchor: "navbar-search",
+    title: "Search the network",
+    body: "The search bar up here is always with you. Look up any activity, project, or account from across the whole network — from any page in the app.",
     placement: "bottom",
     platform: "desktop",
   },
   {
     id: "explore-search",
     navigateTo: "/explore",
-    anchor: "explore-search",
-    title: "Search the network",
-    body: "Search across activities, projects, and accounts from every app on the network, no matter which one created them.",
+    anchor: "explore-category",
+    title: "Activities, projects, and accounts",
+    body: "On Explore, this dropdown sets what you're looking through. Browse all of it at once, or narrow to just activities, projects, or accounts.",
     placement: "bottom",
+    align: "start",
   },
 
   // ---- Apps ----------------------------------------------------------

@@ -45,7 +45,7 @@ export default function BottomNav() {
   const showCreate = isRouteVisibleToActor("create", !!activeOrg);
   const items = [
     { key: "home", label: "Home", icon: Newspaper, onClick: handleHomeClick, active: isHome, tour: "nav-home" },
-    { key: "explore", label: "Explore", icon: Search, onClick: () => router.push("/explore"), active: pathname === "/explore", tour: "nav-explore" },
+    { key: "explore", label: "Explore", icon: Search, onClick: () => router.push("/explore"), active: pathname === "/explore", tour: undefined },
     ...(showCreate
       ? [{ key: "create", label: "Create", icon: PlusCircle, onClick: () => router.push("/create"), active: pathname === "/create", tour: "nav-create" }]
       : []),

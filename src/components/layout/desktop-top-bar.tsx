@@ -410,8 +410,10 @@ export default function DesktopTopBar() {
 
         <div className="desktop-top-bar__right">
           {/* Shown everywhere, including /explore — the navbar search stays
-              available even though Explore has its own contextual field. */}
-          <div className="desktop-top-bar__search">
+              available even though Explore has its own contextual field.
+              Also the product tour's "search the network" spotlight (the
+              standalone Explore nav button is gone), via data-tour. */}
+          <div className="desktop-top-bar__search" data-tour="navbar-search">
             <GlobalSearch placeholder="Search Certified" />
           </div>
 
