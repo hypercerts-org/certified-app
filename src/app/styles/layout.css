@@ -1797,20 +1797,6 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   width: 260px;
 }
 
-/* Run the navbar search shorter than the default field — the size="sm"
-   input ships a fixed h-9 (36px), so override the height directly. Scoped to
-   the top bar so other search inputs keep their height. */
-.desktop-top-bar__search input {
-  height: 30px;
-  padding-top: 4px;
-  padding-bottom: 4px;
-}
-
-.desktop-top-bar__search .people-search__clear {
-  width: 28px;
-  height: 28px;
-}
-
 @media (min-width: 1100px) {
   .desktop-top-bar__search {
     width: 300px;
