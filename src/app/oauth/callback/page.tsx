@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import Brandmark from "@/components/ui/brandmark"
 import { resolvePostSigninPath } from "@/lib/auth/post-signin"
+import { markTourPending } from "@/lib/tour/tour-sentinel"
 
 export default function OAuthCallbackPage() {
   const [error, setError] = useState<string | null>(null)
@@ -29,8 +30,14 @@ export default function OAuthCallbackPage() {
           throw new Error(data.error || "Authentication failed")
         }
 
-        const { did } = await res.json()
+        const { did, isNewCertifiedUser } = await res.json()
         if (cancelled) return
+
+        // First time on certified.app (the server just seeded the Certified
+        // profile) — queue the walk-through. The tour provider auto-starts it
+        // once the app loads authenticated, i.e. after this redirect, so it
+        // runs after the profile records exist.
+        if (isNewCertifiedUser && did) markTourPending(did)
 
         const isInIframe = window.parent !== window
 

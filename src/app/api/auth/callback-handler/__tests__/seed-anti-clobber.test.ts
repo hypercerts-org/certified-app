@@ -113,7 +113,8 @@ describe("auth callback — profile seeding (bsky discoverability + anti-clobber
     const res = await GET(makeRequest())
 
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ did: DID })
+    // Certified profile was seeded → first-time-on-certified signal.
+    expect(await res.json()).toEqual({ did: DID, isNewCertifiedUser: true })
 
     // Both profile collections are seeded when genuinely absent.
     expect(putRecord).toHaveBeenCalledTimes(2)
@@ -142,7 +143,8 @@ describe("auth callback — profile seeding (bsky discoverability + anti-clobber
 
     // Sign-in still succeeds (seeding is best-effort).
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ did: DID })
+    // Couldn't determine absence → don't misfire the tour.
+    expect(await res.json()).toEqual({ did: DID, isNewCertifiedUser: false })
     expect(putRecord).not.toHaveBeenCalled()
   })
 
@@ -153,7 +155,27 @@ describe("auth callback — profile seeding (bsky discoverability + anti-clobber
     const res = await GET(makeRequest())
 
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ did: DID })
+    // Certified profile already existed → returning user, no tour.
+    expect(await res.json()).toEqual({ did: DID, isNewCertifiedUser: false })
     expect(putRecord).not.toHaveBeenCalled()
+  })
+
+  it("(iv) isNewCertifiedUser is false when only the bsky profile is seeded", async () => {
+    // Certified profile already exists; only the bsky profile is absent.
+    getRecord.mockImplementation(
+      (args: { collection: string }) =>
+        args.collection === "app.certified.actor.profile"
+          ? Promise.resolve({ data: { uri: "at://exists" } })
+          : Promise.reject(recordNotFoundError()),
+    )
+    const { GET } = await import("../route")
+
+    const res = await GET(makeRequest())
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ did: DID, isNewCertifiedUser: false })
+    // Only the bsky profile was seeded.
+    expect(putRecord).toHaveBeenCalledTimes(1)
+    expect(putRecord.mock.calls[0][0].collection).toBe("app.bsky.actor.profile")
   })
 })

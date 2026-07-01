@@ -68,16 +68,27 @@ export async function GET(request: NextRequest) {
     )
     await createSession(session.did)
 
-    // Best-effort: ensure profile records exist (don't fail sign-in if this errors)
+    // Best-effort: ensure profile records exist (don't fail sign-in if this
+    // errors). If we had to SEED the Certified profile, this is the account's
+    // first time on certified.app — a brand-new signup, or an account created
+    // in another app (e.g. Ma Earth) signing in here. Flag it so the client
+    // can auto-start the walk-through once the user lands (after the records
+    // are created). If seeding errors out we leave it false — better to skip
+    // the tour than misfire it.
+    let isNewCertifiedUser = false
     try {
       const oauthSession = await client.restore(session.did)
       const agent = new Agent(oauthSession)
-      await ensureProfileRecords(agent, session.did)
+      const { seededCertifiedProfile } = await ensureProfileRecords(
+        agent,
+        session.did,
+      )
+      isNewCertifiedUser = seededCertifiedProfile
     } catch (err) {
       logSafe("[auth] profile seeding failed", err, { did: session.did })
     }
 
-    return NextResponse.json({ did: session.did })
+    return NextResponse.json({ did: session.did, isNewCertifiedUser })
   } catch (err) {
     logSafe("[auth] callback error", err)
     return NextResponse.json({ error: "Authentication failed" }, { status: 500 })
@@ -88,8 +99,14 @@ export async function GET(request: NextRequest) {
  * For each profile collection, check if a "self" record exists.
  * If not, create an empty one with only createdAt set.
  */
-async function ensureProfileRecords(agent: Agent, did: string) {
+async function ensureProfileRecords(
+  agent: Agent,
+  did: string,
+): Promise<{ seededCertifiedProfile: boolean }> {
   const now = new Date().toISOString()
+  // Whether we actually created the Certified profile this sign-in (i.e. it
+  // was genuinely absent) — the "new to certified.app" signal.
+  let seededCertifiedProfile = false
 
   for (const collection of PROFILE_COLLECTIONS) {
     try {
@@ -132,11 +149,16 @@ async function ensureProfileRecords(agent: Agent, did: string) {
           },
         }
         await agent.com.atproto.repo.putRecord(input)
+        if (collection === "app.certified.actor.profile") {
+          seededCertifiedProfile = true
+        }
       } catch (putErr) {
         logSafe("[auth] profile putRecord failed", putErr, { did, collection })
       }
     }
   }
+
+  return { seededCertifiedProfile }
 }
 
 /**
