@@ -7,6 +7,7 @@ import { authFetch } from "@/lib/auth/fetch";
 interface SessionData {
   handle: string | null;
   email: string | null;
+  emailConfirmed: boolean;
 }
 
 // Module-level cache: one promise shared across all hook instances
@@ -17,18 +18,27 @@ function fetchSession(): Promise<SessionData> {
   if (cachedPromise) return cachedPromise;
   cachedPromise = authFetch("/api/xrpc/com/atproto/server/getSession")
     .then((res) => (res.ok ? res.json() : null))
-    .then((data: { handle?: string; email?: string } | null) => {
-      const result: SessionData = {
-        handle: data?.handle ?? null,
-        email: data?.email ?? null,
-      };
-      cachedResult = result;
-      return result;
-    })
+    .then(
+      (
+        data: {
+          handle?: string;
+          email?: string;
+          emailConfirmed?: boolean;
+        } | null,
+      ) => {
+        const result: SessionData = {
+          handle: data?.handle ?? null,
+          email: data?.email ?? null,
+          emailConfirmed: !!data?.emailConfirmed,
+        };
+        cachedResult = result;
+        return result;
+      },
+    )
     .catch(() => {
       // Reset promise on error so a future mount can retry
       cachedPromise = null;
-      return { handle: null, email: null };
+      return { handle: null, email: null, emailConfirmed: false };
     });
   return cachedPromise;
 }
@@ -48,6 +58,7 @@ export function peekSessionHandle(): string | null {
 export function useSession(): {
   handle: string | null;
   email: string | null;
+  emailConfirmed: boolean;
   isLoading: boolean;
   error: string | null;
 } {
@@ -58,6 +69,9 @@ export function useSession(): {
   );
   const [email, setEmail] = useState<string | null>(
     isAuthenticated ? (cachedResult?.email ?? null) : null
+  );
+  const [emailConfirmed, setEmailConfirmed] = useState<boolean>(
+    isAuthenticated ? (cachedResult?.emailConfirmed ?? false) : false
   );
   // Start as true when authenticated (spec requirement), false otherwise
   const [isLoading, setIsLoading] = useState<boolean>(
@@ -76,6 +90,7 @@ export function useSession(): {
       // not existing ones.
       setHandle(null);
       setEmail(null);
+      setEmailConfirmed(false);
       setError(null);
       setIsLoading(false);
       return;
@@ -85,6 +100,7 @@ export function useSession(): {
     if (cachedResult) {
       setHandle(cachedResult.handle);
       setEmail(cachedResult.email);
+      setEmailConfirmed(cachedResult.emailConfirmed);
       setIsLoading(false);
       return;
     }
@@ -94,6 +110,7 @@ export function useSession(): {
       .then((data) => {
         setHandle(data.handle);
         setEmail(data.email);
+        setEmailConfirmed(data.emailConfirmed);
         setError(null);
       })
       .catch((err) => {
@@ -104,7 +121,7 @@ export function useSession(): {
       });
   }, [isAuthenticated]);
 
-  return { handle, email, isLoading, error };
+  return { handle, email, emailConfirmed, isLoading, error };
 }
 
 export function clearSessionCache(): void {

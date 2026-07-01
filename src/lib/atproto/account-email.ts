@@ -98,3 +98,35 @@ export async function updateEmail(
   if (await isLocked(res)) throw new EmailLockedError()
   if (!res.ok) throw new Error(await errorMessage(res, "Failed to update email"))
 }
+
+/**
+ * Ask the PDS to email a confirmation code to the CURRENT address. After a
+ * change that's the just-set new address, so this is how the UI proves the
+ * user controls it. Pair the returned code with `confirmEmail`.
+ */
+export async function requestEmailConfirmation(): Promise<void> {
+  const res = await authFetch(`${BASE}/confirm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  })
+  if (await isLocked(res)) throw new EmailLockedError()
+  if (!res.ok)
+    throw new Error(
+      await errorMessage(res, "Failed to send the confirmation code"),
+    )
+}
+
+/**
+ * Confirm the CURRENT address with the code from `requestEmailConfirmation`.
+ * `email` must be the current account email (the PDS rejects a mismatch).
+ */
+export async function confirmEmail(email: string, token: string): Promise<void> {
+  const res = await authFetch(`${BASE}/confirm`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, token }),
+  })
+  if (await isLocked(res)) throw new EmailLockedError()
+  if (!res.ok)
+    throw new Error(await errorMessage(res, "Failed to confirm your email"))
+}

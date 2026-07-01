@@ -5,60 +5,106 @@ import { Pencil } from "lucide-react";
 import Banner from "@/components/ui/banner";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
+import { useAuth } from "@/lib/auth/auth-context";
 import {
   requestEmailUpdate,
   updateEmail,
+  requestEmailConfirmation,
+  confirmEmail,
   EmailLockedError,
 } from "@/lib/atproto/account-email";
 import UnlockAppPasswordsDialog from "@/components/settings/unlock-app-passwords-dialog";
 
 interface EmailSectionProps {
   email: string;
+  /** Whether the CURRENT address is confirmed (from the session). Drives the
+   *  persistent "unconfirmed — verify" state after a change or reload. */
+  emailConfirmed: boolean;
 }
 
-type State = "idle" | "requesting" | "form" | "success";
+type State = "idle" | "requesting" | "form" | "confirm" | "success";
 
 // Authoritative validation happens on the PDS; this is just a friendly
 // pre-check so an obvious typo doesn't cost a round-trip.
 const looksLikeEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
+const EmailSection: React.FC<EmailSectionProps> = ({ email, emailConfirmed }) => {
+  const { did } = useAuth();
+  // Where to remember the pre-change address so "Revert" survives a reload
+  // while the new one is unconfirmed. Session-scoped: it's the user's own
+  // email, only needed until they confirm or revert.
+  const revertKey = did ? `certified:email-revert:${did}` : null;
+
   // The current address — updated locally on success so the row reflects the
   // change without a full session refresh.
   const [currentEmail, setCurrentEmail] = useState(email);
+  // Whether `currentEmail` is confirmed. Seeded from the session, then owned
+  // locally as the user changes / confirms without a full session refetch.
+  const [confirmed, setConfirmed] = useState(emailConfirmed);
+  // The address to offer reverting to (the last *confirmed* one before a
+  // change). Loaded from session storage on mount so it survives a reload.
+  const [previousEmail, setPreviousEmail] = useState<string | null>(null);
 
-  // On a hard refresh the session loads after this mounts, so `email` arrives
-  // empty and fills in a tick later. Sync the prop in so the row updates
-  // instead of staying stuck on the dash fallback. Keying on `email` means a
-  // local optimistic update on success isn't clobbered until the session
-  // itself catches up.
+  // On a hard refresh the session loads after this mounts, so the props arrive
+  // empty/false and fill in a tick later. Sync them in.
   useEffect(() => {
     setCurrentEmail(email);
   }, [email]);
+  useEffect(() => {
+    setConfirmed(emailConfirmed);
+  }, [emailConfirmed]);
+  useEffect(() => {
+    if (!revertKey) return;
+    try {
+      setPreviousEmail(sessionStorage.getItem(revertKey));
+    } catch {
+      /* storage unavailable — revert just won't be offered */
+    }
+  }, [revertKey]);
+
+  const rememberPrevious = (value: string | null) => {
+    setPreviousEmail(value);
+    if (!revertKey) return;
+    try {
+      if (value) sessionStorage.setItem(revertKey, value);
+      else sessionStorage.removeItem(revertKey);
+    } catch {
+      /* ignore */
+    }
+  };
 
   const [state, setState] = useState<State>("idle");
   const [tokenRequired, setTokenRequired] = useState(false);
   const [unlockOpen, setUnlockOpen] = useState(false);
 
   const [newEmail, setNewEmail] = useState("");
+  const [confirmNewEmail, setConfirmNewEmail] = useState("");
   const [token, setToken] = useState("");
+  const [code, setCode] = useState("");
 
   const [idleError, setIdleError] = useState<string | null>(null);
   const [newEmailError, setNewEmailError] = useState<string | null>(null);
+  const [confirmNewEmailError, setConfirmNewEmailError] = useState<string | null>(
+    null,
+  );
   const [tokenError, setTokenError] = useState<string | null>(null);
+  const [codeError, setCodeError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const clearFormState = () => {
     setNewEmail("");
+    setConfirmNewEmail("");
     setToken("");
     setNewEmailError(null);
+    setConfirmNewEmailError(null);
     setTokenError(null);
     setFormError(null);
   };
 
   // Start (or resume after unlocking) an email change: ask the PDS to begin,
-  // which tells us whether it emailed a confirmation code.
+  // which tells us whether it emailed a confirmation code to the current
+  // address (only when that address is confirmed).
   const beginChange = async () => {
     setState("requesting");
     setIdleError(null);
@@ -69,7 +115,6 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
       setState("form");
     } catch (err) {
       if (err instanceof EmailLockedError) {
-        // No elevated session yet — gate behind the unlock dialog, then retry.
         setState("idle");
         setUnlockOpen(true);
         return;
@@ -83,16 +128,50 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
     }
   };
 
+  // Move into the confirm step and email a fresh code to the current address.
+  const startConfirmation = async () => {
+    setState("confirm");
+    setCode("");
+    setCodeError(null);
+    setFormError(null);
+    setSaving(true);
+    try {
+      await requestEmailConfirmation();
+    } catch (err) {
+      if (err instanceof EmailLockedError) {
+        setState("idle");
+        setUnlockOpen(true);
+        return;
+      }
+      setFormError(
+        err instanceof Error
+          ? err.message
+          : "Couldn't send the confirmation code.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSave = async () => {
+    const next = newEmail.trim();
     let valid = true;
-    if (!looksLikeEmail(newEmail.trim())) {
+    if (!looksLikeEmail(next)) {
       setNewEmailError("Enter a valid email address.");
       valid = false;
-    } else if (newEmail.trim().toLowerCase() === currentEmail.toLowerCase()) {
+    } else if (next.toLowerCase() === currentEmail.toLowerCase()) {
       setNewEmailError("That's already your email address.");
       valid = false;
     } else {
       setNewEmailError(null);
+    }
+
+    // Double entry — catch a typo before it becomes the account email.
+    if (confirmNewEmail.trim().toLowerCase() !== next.toLowerCase()) {
+      setConfirmNewEmailError("The two emails don't match.");
+      valid = false;
+    } else {
+      setConfirmNewEmailError(null);
     }
 
     if (tokenRequired && !token.trim()) {
@@ -107,17 +186,17 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
     setSaving(true);
     setFormError(null);
     try {
-      await updateEmail(
-        newEmail.trim(),
-        tokenRequired ? token.trim() : undefined,
-      );
-      setCurrentEmail(newEmail.trim());
+      await updateEmail(next, tokenRequired ? token.trim() : undefined);
+      // Only capture the revert target when leaving a *confirmed* address, so
+      // repeated fixes of a typo still revert to the original good address.
+      if (confirmed && currentEmail) rememberPrevious(currentEmail);
+      setCurrentEmail(next);
+      setConfirmed(false);
       clearFormState();
-      setState("success");
-      setTimeout(() => setState("idle"), 4000);
+      // The new address is unconfirmed — prove control of it.
+      await startConfirmation();
     } catch (err) {
       if (err instanceof EmailLockedError) {
-        // Session expired mid-change — drop back and re-gate.
         clearFormState();
         setState("idle");
         setUnlockOpen(true);
@@ -125,11 +204,70 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
       }
       const msg =
         err instanceof Error ? err.message : "Couldn't update your email.";
-      if (/token|code/i.test(msg)) {
-        setFormError("That code looks wrong or expired. Request a new one.");
-      } else {
-        setFormError(msg);
+      setFormError(
+        /token|code/i.test(msg)
+          ? "That code looks wrong or expired. Request a new one."
+          : msg,
+      );
+      setSaving(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (!code.trim()) {
+      setCodeError("Enter the code we sent to your email.");
+      return;
+    }
+    setCodeError(null);
+    setSaving(true);
+    setFormError(null);
+    try {
+      await confirmEmail(currentEmail, code.trim());
+      setConfirmed(true);
+      rememberPrevious(null);
+      setCode("");
+      setState("success");
+      setTimeout(() => setState("idle"), 4000);
+    } catch (err) {
+      if (err instanceof EmailLockedError) {
+        setState("idle");
+        setUnlockOpen(true);
+        return;
       }
+      const msg =
+        err instanceof Error ? err.message : "Couldn't confirm your email.";
+      setFormError(
+        /token|code/i.test(msg)
+          ? "That code looks wrong or expired. Resend a new one."
+          : msg,
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Revert to the last confirmed address. Tokenless because the current
+  // address is unconfirmed; the reverted address then needs confirming too.
+  const handleRevert = async () => {
+    if (!previousEmail) return;
+    setSaving(true);
+    setFormError(null);
+    try {
+      await updateEmail(previousEmail);
+      setCurrentEmail(previousEmail);
+      setConfirmed(false);
+      rememberPrevious(null);
+      clearFormState();
+      setState("idle");
+    } catch (err) {
+      if (err instanceof EmailLockedError) {
+        setState("idle");
+        setUnlockOpen(true);
+        return;
+      }
+      setFormError(
+        err instanceof Error ? err.message : "Couldn't revert your email.",
+      );
     } finally {
       setSaving(false);
     }
@@ -147,7 +285,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
           <p className="password-section__hint">
             {tokenRequired
               ? `We sent a confirmation code to ${currentEmail}. Enter it with your new email address.`
-              : "Enter the email address you'd like to use."}
+              : "Enter the email address you'd like to use. We'll send a code to confirm it."}
           </p>
           <div className="password-section__fields">
             <Input
@@ -158,6 +296,15 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               error={newEmailError ?? undefined}
+            />
+            <Input
+              label="Confirm new email"
+              type="email"
+              placeholder="you@example.com"
+              autoComplete="email"
+              value={confirmNewEmail}
+              onChange={(e) => setConfirmNewEmail(e.target.value)}
+              error={confirmNewEmailError ?? undefined}
             />
             {tokenRequired && (
               <Input
@@ -194,6 +341,77 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
     );
   }
 
+  if (state === "confirm") {
+    return (
+      <div className="dash-card">
+        <div className="password-section--form">
+          <p className="password-section__hint">
+            Your email is now <strong>{currentEmail}</strong>, but it isn&rsquo;t
+            confirmed yet. Enter the code we sent there to confirm it. Until you
+            do, you can change it again or revert with no code.
+          </p>
+          <div className="password-section__fields">
+            <Input
+              label="Confirmation code"
+              type="text"
+              placeholder="Enter code from email"
+              autoComplete="one-time-code"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              error={codeError ?? undefined}
+            />
+          </div>
+          {formError && (
+            <Banner variant="error" className="mt-2">
+              {formError}
+            </Banner>
+          )}
+          <div className="password-section__actions">
+            <Button size="sm" onClick={handleConfirm} disabled={saving}>
+              {saving ? "Confirming…" : "Confirm email"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void startConfirmation()}
+              disabled={saving}
+            >
+              Resend code
+            </Button>
+          </div>
+          <div className="password-section__actions mt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void beginChange()}
+              disabled={saving}
+            >
+              Use a different email
+            </Button>
+            {previousEmail && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRevert}
+                disabled={saving}
+              >
+                Revert to {previousEmail}
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setState("idle")}
+              disabled={saving}
+            >
+              Later
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="dash-card">
       <div className="settings-field">
@@ -214,9 +432,30 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
           )}
         </Button>
       </div>
+      {state !== "success" && currentEmail && !confirmed && (
+        <Banner variant="warning" className="mt-3">
+          This email isn&rsquo;t confirmed yet — confirm it so sign-in and
+          recovery messages reach you.
+          <div className="password-section__actions mt-2">
+            <Button size="sm" onClick={() => void startConfirmation()}>
+              Verify email
+            </Button>
+            {previousEmail && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRevert}
+                disabled={saving}
+              >
+                Revert to {previousEmail}
+              </Button>
+            )}
+          </div>
+        </Banner>
+      )}
       {state === "success" && (
         <p className="password-section__status password-section__status--success">
-          Email updated successfully.
+          Email confirmed.
         </p>
       )}
       {idleError && (
