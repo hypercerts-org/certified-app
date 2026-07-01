@@ -251,14 +251,18 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
           {!showingForm && (
             <div className="settings-field">
               {/* Click-to-copy the bare handle (no @), mirroring the DID pill —
-                  `display` keeps the familiar @handle on screen. */}
-              <span data-tour="settings-handle">
+                  `display` keeps the familiar @handle on screen. The wrapper
+                  fills the row (like .settings-field__value) so the pill is as
+                  wide as the email / password fields. */}
+              <span
+                className="flex-1 min-w-0"
+                data-tour="settings-handle"
+              >
                 {handle ? (
                   <CopyPill
                     value={handle}
                     display={`@${handle}`}
                     label="username"
-                    inline
                   />
                 ) : (
                   <span className="settings-field__value">@...</span>
@@ -270,40 +274,45 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
                   Edit
                 </Button>
               )}
-              {did && !(isCertifiedHandle && groupDid) &&
-                (isCertifiedHandle ? (
-                  !groupDid && (
-                    <button
-                      className="username-card__domain-btn"
-                      onClick={() => setIsDomainModalOpen(true)}
-                      type="button"
-                    >
-                      <Globe size={14} aria-hidden="true" />
-                      Use my own domain
-                    </button>
-                  )
-                ) : (
-                  <>
-                    {!groupDid && (
+              {/* Domain-switch buttons on their own full-width row so the pill
+                  above fills the field like the email / password values. */}
+              {did && !(isCertifiedHandle && groupDid) && (
+                <div className="basis-full flex flex-wrap gap-2">
+                  {isCertifiedHandle ? (
+                    !groupDid && (
                       <button
                         className="username-card__domain-btn"
                         onClick={() => setIsDomainModalOpen(true)}
                         type="button"
                       >
                         <Globe size={14} aria-hidden="true" />
-                        Use a different domain
+                        Use my own domain
                       </button>
-                    )}
-                    <button
-                      className="username-card__domain-btn"
-                      onClick={handleStartCertified}
-                      type="button"
-                    >
-                      <AtSign size={14} aria-hidden="true" />
-                      Use a Certified username
-                    </button>
-                  </>
-                ))}
+                    )
+                  ) : (
+                    <>
+                      {!groupDid && (
+                        <button
+                          className="username-card__domain-btn"
+                          onClick={() => setIsDomainModalOpen(true)}
+                          type="button"
+                        >
+                          <Globe size={14} aria-hidden="true" />
+                          Use a different domain
+                        </button>
+                      )}
+                      <button
+                        className="username-card__domain-btn"
+                        onClick={handleStartCertified}
+                        type="button"
+                      >
+                        <AtSign size={14} aria-hidden="true" />
+                        Use a Certified username
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
