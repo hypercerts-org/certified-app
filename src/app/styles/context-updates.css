@@ -1,0 +1,393 @@
+/* ---------- Context updates (cert & project detail pages) ---------- */
+
+.context-updates {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 24px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Heading row matches the cert-detail section-header pattern
+   (Contributors, Description, etc.) so the Updates tab heading
+   reads at the same visual weight as the other sections on the
+   cert + project detail pages — small uppercase muted label,
+   baseline-aligned count pill. Drops the previous distinct
+   "h2 + icon" treatment that read as a different family. */
+.context-updates__head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+/* Icon kept in the DOM (renderers still mount it) but hidden so
+   the heading layout matches Contributors / Description / etc.
+   which carry no leading icon. */
+.context-updates__icon {
+  display: none;
+}
+
+/* Identical to `.cert-detail__meta-label` (the Author / Date
+   created / Project headings on the cert overview headline) so
+   the Updates section heading reads as a peer of those labels —
+   same font-size, weight, uppercase + letter-spacing, color, and
+   inline-flex line-height. The h2 needs an explicit
+   `line-height: 1` because the browser default (~1.2) makes the
+   uppercase glyphs sit lower than the inline-flex spans they're
+   supposed to match. */
+.context-updates__heading {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+}
+
+.context-updates__count {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+  background: var(--overlay-weak);
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-feature-settings: 'tnum' 1;
+}
+
+.context-updates__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.context-updates__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  /* Spacing between updates comes from the per-item divider below. */
+  gap: 0;
+}
+
+/* No card box around updates — plain stacked rows. */
+.context-updates__item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Light divider + generous spacing between consecutive updates. */
+.context-updates__item + .context-updates__item {
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 24px;
+  padding-top: 24px;
+}
+
+/* "Update N" label + date on one row, numbering each card on the
+   Updates tab. Same small uppercase muted style as the section headings. */
+.context-updates__item-number-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.context-updates__item-number {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  line-height: 1;
+}
+
+/* Date trailing the "Update N" label, right-aligned, same size + weight. */
+.context-updates__item-number-date {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.context-updates__item-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.context-updates__title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  margin: 0;
+  color: var(--fg-primary);
+  flex: 1;
+  min-width: 0;
+}
+
+.context-updates__when {
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  white-space: nowrap;
+}
+
+/* Short summary line shown above the rich-text body. */
+.context-updates__lead {
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+  margin: 0 0 8px;
+}
+
+.context-updates__doc-wrap {
+  /* Wrapper around the LeafletDocument so we can clamp via line-clamp
+     while letting the renderer keep its own block-level layout. */
+  display: block;
+}
+
+.context-updates__doc-wrap--clamped {
+  /* Hard max-height: roughly 4 lines of body text. Using line-clamp
+     fails when the child renderer emits block-level elements (the
+     leaflet renderer wraps text in <p>/<h*>); max-height + hidden
+     overflow clamps reliably regardless of inner structure. */
+  max-height: calc(1.5em * 4);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Fade-out only when the body is actually truncated (i.e. a "Read more"
+   is offered). Fully-visible content gets no fade. */
+.context-updates__doc-wrap--truncated::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 1.6em;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--bg-elevated)
+  );
+  pointer-events: none;
+}
+
+.context-updates__doc {
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+  line-height: 1.5;
+}
+
+.context-updates__expand {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--fg-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.context-updates__expand:hover {
+  color: var(--fg-primary);
+}
+
+.context-updates__see-all {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.context-updates__see-all:hover {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.context-updates__empty {
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+  margin: 0;
+}
+
+/* ---- Attachments strip below the description ---- */
+
+.context-updates__attachments {
+  list-style: none;
+  margin: 4px 0 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.context-updates__attachment {
+  display: flex;
+}
+
+.context-updates__attachment-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: inherit;
+  border-radius: var(--radius);
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+/* Image: square thumbnail. `display: block` (not flex) so the inner
+   img's object-fit: cover correctly crops the bitmap to fill. */
+.context-updates__attachment--image .context-updates__attachment-link {
+  display: block;
+  width: 88px;
+  height: 88px;
+  background: var(--bg-sunken);
+  overflow: hidden;
+  padding: 0;
+}
+
+.context-updates__attachment-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.context-updates__attachment--image .context-updates__attachment-link:hover {
+  outline: 2px solid var(--border-hover);
+  outline-offset: -2px;
+}
+
+/* Video URI (e.g. YouTube): vertical tile — 16:9 thumbnail on top
+   with a play-icon overlay, host label underneath. */
+.context-updates__attachment--video .context-updates__attachment-link {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 156px;
+  padding: 0;
+}
+
+.context-updates__attachment-thumb {
+  position: relative;
+  display: block;
+  width: 156px;
+  height: 88px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-sunken);
+}
+
+.context-updates__attachment-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.context-updates__attachment-thumb-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.context-updates__attachment-play {
+  width: 32px;
+  height: 32px;
+  padding: 6px;
+  /* Play glyph sits over a media thumbnail — intentionally a fixed
+     white-on-dark scrim regardless of theme. */
+  color: var(--color-white);
+  background: var(--navy-overlay-70);
+  border-radius: 999px;
+}
+
+.context-updates__attachment-host {
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  line-height: 1.3;
+}
+
+.context-updates__attachment--video .context-updates__attachment-link:hover
+  .context-updates__attachment-thumb {
+  outline: 2px solid var(--border-hover);
+  outline-offset: -2px;
+}
+
+/* File + URI: pill-shaped link card with icon + meta. */
+.context-updates__attachment--file .context-updates__attachment-link,
+.context-updates__attachment--uri .context-updates__attachment-link {
+  padding: 8px 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  max-width: 260px;
+}
+
+.context-updates__attachment--file .context-updates__attachment-link:hover,
+.context-updates__attachment--uri .context-updates__attachment-link:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-sunken);
+}
+
+.context-updates__attachment-icon {
+  color: var(--fg-secondary);
+  flex-shrink: 0;
+}
+
+.context-updates__attachment-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.context-updates__attachment-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  line-height: 1.3;
+}
+
+.context-updates__attachment-size,
+.context-updates__attachment-uri {
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 799px) {
+  .context-updates__item {
+    padding: 0;
+  }
+  .context-updates__attachment--image .context-updates__attachment-link {
+    width: 72px;
+    height: 72px;
+  }
+  .context-updates__attachment--video .context-updates__attachment-link,
+  .context-updates__attachment-thumb {
+    width: 128px;
+  }
+  .context-updates__attachment-thumb {
+    height: 72px;
+  }
+}

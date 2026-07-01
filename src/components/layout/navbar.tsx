@@ -1,43 +1,63 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { createPortal } from "react-dom";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
-import { useNavbarVariant } from "@/lib/navbar-context";
+import { useNavbarContext } from "@/lib/navbar-context";
+import { useViewTransition } from "@/lib/view-transitions";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
 import Avatar from "@/components/ui/avatar";
+import Button from "@/components/ui/button";
 import { getInitials } from "@/lib/utils/initials";
 import { useOrg } from "@/lib/groups/org-context";
+import { routeForActorSwitch } from "@/lib/groups/navigation";
 import { useOrgProfile } from "@/hooks/use-org-profile";
-import { Menu, X, ChevronDown, LogOut } from "lucide-react";
+import { useScrollHideNavbar } from "@/hooks/use-scroll-hide-navbar";
+import { Menu, X, ChevronDown, ArrowLeft } from "lucide-react";
+import MobileSidebar from "./mobile-sidebar";
+import AccountSwitcherList from "./account-switcher-list";
+import Brandmark from "@/components/ui/brandmark";
+import BottomSheet from "@/components/ui/bottom-sheet";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import Tooltip from "@/components/ui/tooltip";
+import AddToListMenu from "@/components/lists/add-to-list-menu";
+import type { TypedListType } from "@/lib/atproto/typed-lists";
+import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints";
 
-const PERSONAL_NAV_LINKS = (profileHref: string) => [
-  { href: profileHref, label: "Profile" },
-  { href: "/groups", label: "Groups" },
-  { href: "/connected-apps", label: "Apps" },
-  { href: "/settings", label: "Settings" },
-];
+const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
 
-const ORG_NAV_LINKS = (profileHref: string) => [
-  { href: profileHref, label: "Profile" },
-  { href: "/connected-apps", label: "Apps" },
-  { href: "/settings", label: "Settings" },
-];
+// Top-level destinations. These set a centered page title but are NOT
+// sub-pages, so the mobile top bar shows the hamburger (which opens the
+// left sidebar) + account switcher / sign-in instead of a back arrow.
+// Anything not listed here that sets a title (detail routes, settings
+// sub-pages, someone else's profile, breadcrumbs) keeps the back arrow.
+// Exact-match only, so e.g. /settings shows the menu but /settings/edit
+// shows a back arrow.
+const ROOT_PATHS = new Set<string>([
+  "/home",
+  "/explore",
+  "/apps",
+  "/profile",
+  "/settings",
+  "/endorsements",
+  "/help",
+]);
+
 
 const Navbar: React.FC = () => {
   const { isLoading, isAuthenticated, did, openSignIn, signOut } = useAuth();
-  const { variant } = useNavbarVariant();
+  const { pageTitle, breadcrumb, recordMenu, profileOverlay } =
+    useNavbarContext();
   const { profile, avatarUrl } = useProfile();
   const { handle } = useSession();
   const pathname = usePathname();
   const router = useRouter();
-  const { activeOrg, groups, switchOrg } = useOrg();
+  const { transitionBack } = useViewTransition();
+  const { activeOrg, groups, selfGroup, switchOrg } = useOrg();
   const { orgAvatarUrl } = useOrgProfile();
 
-  const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
   const sortedOrgs = useMemo(() => {
     return [...groups].sort((a, b) => {
       if (a.accepted !== b.accepted) return a.accepted ? -1 : 1;
@@ -50,18 +70,10 @@ const Navbar: React.FC = () => {
     });
   }, [groups]);
   const switcherRef = useRef<HTMLDivElement>(null);
-  const mobileSwitcherRef = useRef<HTMLDivElement>(null);
-  const [scrolled, setScrolled] = useState(false);
+  const { scrolled, navHidden } = useScrollHideNavbar();
+  const { isDesktop } = useLayoutBreakpoints();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   // Close dropdowns on navigation
   useEffect(() => {
@@ -69,22 +81,30 @@ const Navbar: React.FC = () => {
     setSwitcherOpen(false);
   }, [pathname]);
 
-  // Bottom sheet drag handle + expand/collapse/dismiss
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const [sheetExpanded, setSheetExpanded] = useState(false);
-  const dragStartY = useRef(0);
-  const isDragging = useRef(false);
+  // Clear sidebar / sheet state when crossing the mobile↔desktop boundary
+  // (the hamburger button and mobile sidebar unmount at ≥800px; leftover
+  // `dropdownOpen` would re-open the drawer on resize back down).
+  useEffect(() => {
+    setDropdownOpen(false);
+    setSwitcherOpen(false);
+  }, [isDesktop]);
 
-  // Close account switcher on outside click
+  // Close account switcher on outside click. The desktop inline menu now
+  // lives in a portal <Popover> (which owns its own click-outside), so at
+  // ≥800px this is redundant; below 800px the <BottomSheet> portals its
+  // content (and backdrop) to document.body — outside `switcherRef` — so we
+  // skip mousedowns landing inside the sheet and let the sheet own its own
+  // dismissal (backdrop tap / Esc / drag). Kept as a harmless guard for the
+  // trigger so the mobile switcher state can't get stuck open.
   useEffect(() => {
     if (!switcherOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
       const inDesktop = switcherRef.current?.contains(target);
-      const inMobile = mobileSwitcherRef.current?.contains(target);
-      const inSheet = sheetRef.current?.contains(target);
-      const inBackdrop = (target as Element).classList?.contains("bottom-sheet__backdrop");
-      if (!inDesktop && !inMobile && !inSheet && !inBackdrop) {
+      const inSheet =
+        target instanceof Element &&
+        target.closest(".bottom-sheet, .bottom-sheet__backdrop") !== null;
+      if (!inDesktop && !inSheet) {
         setSwitcherOpen(false);
       }
     };
@@ -92,326 +112,288 @@ const Navbar: React.FC = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [switcherOpen]);
 
-  // Lock body scroll when bottom sheet is open (mobile only)
-  useEffect(() => {
-    if (switcherOpen && window.innerWidth <= 768) {
-      document.body.style.overflow = "hidden";
-      return () => { document.body.style.overflow = ""; };
-    }
-  }, [switcherOpen]);
-
-  // Reset expanded state when sheet closes
-  useEffect(() => {
-    if (!switcherOpen) setSheetExpanded(false);
-  }, [switcherOpen]);
-
-  const onHandleTouchStart = useCallback((e: React.TouchEvent) => {
-    dragStartY.current = e.touches[0].clientY;
-    isDragging.current = true;
-    if (sheetRef.current) {
-      sheetRef.current.style.transition = "none";
-    }
-  }, []);
-
-  const onHandleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isDragging.current || !sheetRef.current) return;
-    e.preventDefault();
-    const dy = e.touches[0].clientY - dragStartY.current;
-    // Dragging down: translate sheet down (only positive values)
-    // Dragging up: no transform needed, we'll expand on release
-    if (dy > 0) {
-      sheetRef.current.style.transform = `translateY(${dy}px)`;
-    }
-  }, []);
-
-  const onHandleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (!isDragging.current || !sheetRef.current) return;
-    isDragging.current = false;
-    const dy = e.changedTouches[0].clientY - dragStartY.current;
-    sheetRef.current.style.transition = "transform 0.3s ease-out, max-height 0.3s ease-out";
-    sheetRef.current.style.transform = "translateY(0)";
-
-    if (dy > 80) {
-      // Swiped down far enough — dismiss
-      sheetRef.current.style.transform = "translateY(100%)";
-      setTimeout(() => setSwitcherOpen(false), 250);
-    } else if (dy < -40) {
-      // Swiped up — expand to full height
-      setSheetExpanded(true);
-    } else if (dy > 20 && sheetExpanded) {
-      // Small swipe down while expanded — collapse back
-      setSheetExpanded(false);
-    }
-  }, [sheetExpanded]);
-
-  // Derive display state from org context
-  const profileDid = activeOrg?.groupDid || did;
-  const profileHref = profileDid ? `/profile/${encodeURIComponent(profileDid)}` : "/";
-  const selfProfileHref = did ? `/profile/${encodeURIComponent(did)}` : "/";
-  const navLinks = activeOrg ? ORG_NAV_LINKS(profileHref) : PERSONAL_NAV_LINKS(profileHref);
-  const displayName = activeOrg
-    ? (activeOrg.displayName || activeOrg.handle)
-    : profile?.displayName;
+  // Derive display state from org context (avatar is the only display
+  // field the navbar actually uses — nav links, display name and
+  // "active page" markers were removed in the titled-navbar refactor).
   const avatarInitials = activeOrg
     ? (activeOrg.displayName || activeOrg.handle || "O").slice(0, 2).toUpperCase()
-    : getInitials(profile?.displayName, did);
+    : getInitials(profile?.displayName, handle);
   const displayAvatarUrl = activeOrg ? (orgAvatarUrl || undefined) : (avatarUrl || undefined);
 
-  // Don't render navbar while auth is loading — prevents white flash
+  // Don't render navbar while auth is loading — prevents white flash.
+  // Also hide on desktop — the left rail hosts the brandmark there.
+  // Both early returns sit AFTER every hook so the rules-of-hooks
+  // contract (always-same call order) is preserved.
   if (isLoading) return null;
-
-  const isTransparent = !isAuthenticated && variant === "transparent";
+  if (isDesktop) return null;
+  // Embeds render bare (board-only) inside a third-party iframe.
+  if (pathname?.startsWith("/embed")) return null;
+  // /welcome uses the minimal landing chrome (LandingTopBar: wordmark +
+  // sign-in) on mobile, matching desktop — where desktop-top-bar already
+  // returns null on /welcome. Suppress the full mobile navbar here so the
+  // landing page shows the same pared-back chrome at every width.
+  if (pathname === "/welcome") return null;
 
   const navClasses = [
     "navbar",
-    isAuthenticated ? "navbar--default" : (isTransparent ? "navbar--transparent" : "navbar--default"),
+    profileOverlay ? "navbar--profile-overlay" : "navbar--default",
     scrolled ? "navbar--scrolled" : "",
+    navHidden && !dropdownOpen && !switcherOpen ? "navbar--hidden" : "",
   ]
     .filter(Boolean)
     .join(" ");
 
-  const isActive = (href: string) => {
-    if (href === "/") return pathname === "/" || pathname === "/settings/edit-profile";
-    if (href.startsWith("/profile/")) {
-      return pathname === "/" || pathname.startsWith("/profile/") || pathname === "/settings/edit-profile";
-    }
-    return pathname.startsWith(href);
-  };
+  // Reverse-slide back gesture. The default navigate (see
+  // ViewTransitionProvider) already guards against walking out of the
+  // app when there's no in-app history, pushing "/" instead.
+  const handleBack = () => transitionBack();
+
+  // Top-level destinations show the hamburger + account switcher / sign-in
+  // even though they also set a centered page title; sub-pages keep the
+  // back arrow. Breadcrumbs are always sub-pages. Without this, every
+  // titled page replaced the hamburger with a back arrow, leaving the
+  // mobile left sidebar unreachable and hiding the sign-in button.
+  const isRootLevel = !breadcrumb && ROOT_PATHS.has(pathname);
+
+  // Left control for the default + root-level layouts: the hamburger
+  // (opens the mobile sidebar) for signed-in AND signed-out viewers.
+  // Signed-out viewers get a slimmed-down sidebar (Explore / Apps /
+  // Help) so the app is still navigable before signing in; the theme
+  // toggle lives inside the sidebar in both states. No Tooltip — this
+  // bar only renders <800px, where a tap surfaces the tooltip bubble
+  // as a stray tag instead of hover help.
+  const leftControl = (
+    <button
+      className="navbar__hamburger"
+      onClick={() => { setDropdownOpen(!dropdownOpen); setSwitcherOpen(false); }}
+      aria-label={dropdownOpen ? "Close menu" : "Open menu"}
+      aria-haspopup="menu"
+      aria-expanded={dropdownOpen}
+      data-tour="nav-menu"
+    >
+      {dropdownOpen ? <X size={22} /> : <Menu size={22} />}
+    </button>
+  );
+
+  // Right cluster for the default + root-level layouts: account switcher
+  // (signed in) or the sign-in button (signed out), plus the portaled
+  // bottom sheet + sidebar those controls drive.
+  const accountCluster = isAuthenticated ? (
+    <>
+      <div className="account-switcher" ref={switcherRef}>
+        {isDesktop ? (
+          <Popover open={switcherOpen} onOpenChange={setSwitcherOpen}>
+            <PopoverTrigger>
+              <button
+                className="account-switcher__trigger"
+                onClick={() => { setDropdownOpen(false); }}
+                aria-label="Switch account"
+              >
+                <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} seed={did ?? undefined} />
+                <ChevronDown size={14} className="navbar__chevron-desktop" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              portal
+              side="bottom"
+              align="end"
+              minWidth={260}
+              className="max-h-[70vh] overflow-y-auto [scrollbar-gutter:stable]"
+            >
+              <AccountSwitcherList
+                session={{ handle }}
+                profile={profile}
+                avatarUrl={avatarUrl || undefined}
+                sortedOrgs={sortedOrgs}
+                selfGroup={selfGroup}
+                activeOrg={activeOrg}
+                switchOrg={switchOrg}
+                onAfterSwitch={(next) => {
+                  setSwitcherOpen(false);
+                  router.push(routeForActorSwitch(pathname, next));
+                }}
+                onSignOut={signOut}
+                onSwitchAccount={() => {
+                  setSwitcherOpen(false);
+                  openSignIn();
+                }}
+              />
+            </PopoverContent>
+          </Popover>
+        ) : (
+          <button
+            className="account-switcher__trigger"
+            onClick={() => { setSwitcherOpen(!switcherOpen); setDropdownOpen(false); }}
+            aria-label="Switch account"
+            aria-haspopup="menu"
+            aria-expanded={switcherOpen}
+          >
+            <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} seed={did ?? undefined} />
+            <ChevronDown size={14} className="navbar__chevron-desktop" />
+          </button>
+        )}
+      </div>
+
+      {/* Mobile bottom sheet for account switcher — the canonical
+          BottomSheet primitive owns the portal shell, backdrop,
+          drag-to-dismiss, Esc, focus trap and scroll lock. */}
+      <BottomSheet
+        open={switcherOpen}
+        onClose={() => setSwitcherOpen(false)}
+        ariaLabel="Switch account"
+      >
+        <AccountSwitcherList
+          session={{ handle }}
+          profile={profile}
+          avatarUrl={avatarUrl || undefined}
+          sortedOrgs={sortedOrgs}
+          selfGroup={selfGroup}
+          activeOrg={activeOrg}
+          switchOrg={switchOrg}
+          onAfterSwitch={(next) => {
+            setSwitcherOpen(false);
+            router.push(routeForActorSwitch(pathname, next));
+          }}
+          onSignOut={signOut}
+          onSwitchAccount={() => {
+            setSwitcherOpen(false);
+            openSignIn();
+          }}
+        />
+      </BottomSheet>
+    </>
+  ) : (
+    // Quiet outline button rather than the filled black sign-in lockup —
+    // a second solid-black element reads heavy next to the (black)
+    // brandmark in the bar's center slot.
+    <Button variant="secondary" size="sm" onClick={openSignIn}>
+      Sign in
+    </Button>
+  );
+
+  const rightCluster = (
+    <>
+      {accountCluster}
+      {/* Mobile sidebar (hamburger menu) — mounted for signed-in and
+          signed-out viewers alike, since the hamburger is the left
+          control in both states. The early-return at the top of this
+          component already guarantees we're on mobile here. */}
+      <MobileSidebar isOpen={dropdownOpen} onClose={() => setDropdownOpen(false)} />
+    </>
+  );
+
+  // Profile overlay layout: transparent background, back arrow only (no
+  // brandmark, no account switcher). Floats over a full-bleed page like
+  // the profile banner. Set via useProfileNavbar().
+  if (profileOverlay) {
+    return (
+      <nav className={navClasses} aria-label="Profile navigation">
+        <div className="navbar__inner">
+          <div className="navbar__left">
+            <Tooltip label="Go back">
+              <button
+                type="button"
+                className="navbar__back-overlay"
+                onClick={handleBack}
+                aria-label="Go back"
+              >
+                <ArrowLeft size={20} />
+              </button>
+            </Tooltip>
+          </div>
+          <div />
+          <div />
+        </div>
+      </nav>
+    );
+  }
+
+  // Titled page layout: back button on the left, title in the center, empty right.
+  // Used by any page that calls usePageTitle(...) or usePageTitleBreadcrumb(...).
+  if (pageTitle || breadcrumb) {
+    const ariaLabel = breadcrumb
+      ? breadcrumb.right
+        ? `${breadcrumb.left.text} / ${breadcrumb.right.text}`
+        : breadcrumb.left.text
+      : pageTitle!;
+    return (
+      <nav className={navClasses} aria-label={ariaLabel}>
+        <div className="navbar__inner">
+          <div className="navbar__left">
+            {isRootLevel ? (
+              leftControl
+            ) : (
+              <Tooltip label="Go back">
+                <button
+                  type="button"
+                  className="navbar__hamburger"
+                  onClick={handleBack}
+                  aria-label="Go back"
+                >
+                  <ArrowLeft size={22} />
+                </button>
+              </Tooltip>
+            )}
+          </div>
+          <div className="navbar__title">
+            {breadcrumb ? (
+              <>
+                <Link href={breadcrumb.left.href} className="navbar__title-part">
+                  {breadcrumb.left.text}
+                </Link>
+                {breadcrumb.right ? (
+                  <>
+                    <span className="navbar__title-sep" aria-hidden="true"> / </span>
+                    <Link href={breadcrumb.right.href} className="navbar__title-part">
+                      {breadcrumb.right.text}
+                    </Link>
+                  </>
+                ) : null}
+              </>
+            ) : (
+              pageTitle
+            )}
+          </div>
+          <div className="navbar__right">
+            {isRootLevel ? (
+              rightCluster
+            ) : recordMenu ? (
+              <span className="navbar__action">
+                <AddToListMenu
+                  targetUri={recordMenu.targetUri}
+                  targetCid={recordMenu.targetCid}
+                  targetType={recordMenu.targetType as TypedListType}
+                  shareTab={recordMenu.shareTab}
+                  editActions={recordMenu.editActions}
+                />
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <nav className={navClasses}>
       <div className="navbar__inner">
-        <Link href="/" className="navbar__logo">
-          <img src="/assets/certified_wordmark_black.svg" alt="Certified" className="navbar__logo-img" />
-          <span className="navbar__beta-label">beta</span>
+        {/* Left: hamburger menu (mobile only — the early-return above already
+            short-circuited the desktop case, so isDesktop is implicitly false
+            for everything below). */}
+        <div className="navbar__left">{leftControl}</div>
+
+        {/* Center: brandmark — links to /home for signed-in viewers and
+            straight to /welcome once we know the viewer is signed out.
+            While auth is still resolving we keep /home; its own guard
+            redirects an unauthenticated viewer to /welcome, so the worst
+            case is a one-tick bounce rather than stranding a signed-in
+            viewer on the marketing page during the loading flash. */}
+        <Link href={!isLoading && !isAuthenticated ? "/welcome" : "/home"} className="navbar__logo">
+          <Brandmark className="navbar__logo-img" title="Certified" />
         </Link>
 
-        {isAuthenticated ? (
-          <>
-            {/* Desktop: nav links */}
-            <div className="navbar__app-links">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`navbar__app-link ${isActive(link.href) ? "navbar__app-link--active" : ""}`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-
-            {/* Desktop: account switcher + sign out */}
-            <div className="navbar__user">
-              <div className="account-switcher" ref={switcherRef}>
-                <button
-                  className="account-switcher__trigger"
-                  onClick={() => setSwitcherOpen(!switcherOpen)}
-                  aria-label="Switch account"
-                  aria-haspopup="menu"
-                  aria-expanded={switcherOpen}
-                >
-                  <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
-                  <ChevronDown size={14} />
-                </button>
-                {switcherOpen && (
-                  <div className="account-switcher__menu" role="menu">
-                    {/* User section */}
-                    <p className="account-switcher__section-label">User</p>
-                    <div className="account-switcher__user-row">
-                      <button
-                        role="menuitem"
-                        className={`account-switcher__item ${!activeOrg ? "account-switcher__item--active" : ""}`}
-                        onClick={() => { switchOrg(null); setSwitcherOpen(false); router.push(selfProfileHref); }}
-                      >
-                        <Avatar
-                          src={avatarUrl || undefined}
-                          alt={profile?.displayName || "Personal"}
-                          size="sm"
-                          fallbackInitials={getInitials(profile?.displayName || handle || "?")}
-                        />
-                        <div>
-                          <p className="account-switcher__item-name">
-                            {profile?.displayName || "Personal"}
-                          </p>
-                          <p className="account-switcher__item-handle">@{handle}</p>
-                        </div>
-                      </button>
-                      <button
-                        role="menuitem"
-                        className="account-switcher__signout"
-                        onClick={(e) => { e.stopPropagation(); signOut(); }}
-                        aria-label="Sign out"
-                      >
-                        <LogOut size={16} />
-                      </button>
-                    </div>
-
-                    {groups.length > 0 && (
-                      <>
-                        <div className="account-switcher__divider" />
-                        <p className="account-switcher__section-label">Groups</p>
-                        {sortedOrgs.map((org) => (
-                          <button
-                            role="menuitem"
-                            key={org.groupDid}
-                            className={`account-switcher__item ${activeOrg?.groupDid === org.groupDid ? "account-switcher__item--active" : ""}`}
-                            onClick={() => {
-                              switchOrg(org);
-                              setSwitcherOpen(false);
-                              router.push(`/profile/${encodeURIComponent(org.groupDid)}`);
-                            }}
-                          >
-                            <Avatar
-                              src={org.avatarUrl}
-                              alt={org.displayName || org.handle}
-                              size="sm"
-                              fallbackInitials={(org.displayName || org.handle).slice(0, 2)}
-                            />
-                            <div>
-                              <p className="account-switcher__item-name">
-                                {org.displayName || org.handle}
-                              </p>
-                              <p className="account-switcher__item-handle">{org.role}</p>
-                            </div>
-                          </button>
-                        ))}
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Mobile: avatar + hamburger, right-aligned */}
-            <div className="navbar__mobile-actions">
-              <div className="navbar__mobile-switcher" ref={mobileSwitcherRef}>
-                <button
-                  className="navbar__mobile-avatar"
-                  onClick={() => { setSwitcherOpen(!switcherOpen); setDropdownOpen(false); }}
-                  aria-label="Switch account"
-                >
-                  <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} />
-                </button>
-              {switcherOpen && createPortal(
-                <>
-                  <div className="bottom-sheet__backdrop" onClick={() => setSwitcherOpen(false)} />
-                  <div
-                    className={`bottom-sheet ${sheetExpanded ? "bottom-sheet--expanded" : ""}`}
-                    ref={sheetRef}
-                  >
-                    <div
-                      className="bottom-sheet__handle"
-                      onTouchStart={onHandleTouchStart}
-                      onTouchMove={onHandleTouchMove}
-                      onTouchEnd={onHandleTouchEnd}
-                    />
-                    <div className="bottom-sheet__content">
-                      <p className="account-switcher__section-label">User</p>
-                      <div className="account-switcher__user-row">
-                        <button
-                          role="menuitem"
-                          className={`account-switcher__item ${!activeOrg ? "account-switcher__item--active" : ""}`}
-                          onClick={() => { switchOrg(null); setSwitcherOpen(false); router.push(selfProfileHref); }}
-                        >
-                          <Avatar
-                            src={avatarUrl || undefined}
-                            alt={profile?.displayName || "Personal"}
-                            size="sm"
-                            fallbackInitials={getInitials(profile?.displayName || handle || "?")}
-                          />
-                          <div>
-                            <p className="account-switcher__item-name">
-                              {profile?.displayName || "Personal"}
-                            </p>
-                            <p className="account-switcher__item-handle">@{handle}</p>
-                          </div>
-                        </button>
-                        <button
-                          role="menuitem"
-                          className="account-switcher__signout"
-                          onClick={(e) => { e.stopPropagation(); signOut(); }}
-                          aria-label="Sign out"
-                        >
-                          <LogOut size={16} />
-                        </button>
-                      </div>
-
-                      {groups.length > 0 && (
-                        <>
-                          <div className="account-switcher__divider" />
-                          <p className="account-switcher__section-label">Groups</p>
-                          {sortedOrgs.map((org) => (
-                            <button
-                              role="menuitem"
-                              key={org.groupDid}
-                              className={`account-switcher__item ${activeOrg?.groupDid === org.groupDid ? "account-switcher__item--active" : ""}`}
-                              onClick={() => {
-                                switchOrg(org);
-                                setSwitcherOpen(false);
-                                router.push(`/profile/${encodeURIComponent(org.groupDid)}`);
-                              }}
-                            >
-                              <Avatar
-                                src={org.avatarUrl}
-                                alt={org.displayName || org.handle}
-                                size="sm"
-                                fallbackInitials={(org.displayName || org.handle).slice(0, 2)}
-                              />
-                              <div>
-                                <p className="account-switcher__item-name">
-                                  {org.displayName || org.handle}
-                                </p>
-                                <p className="account-switcher__item-handle">{org.role}</p>
-                              </div>
-                            </button>
-                          ))}
-                        </>
-                      )}
-
-
-                    </div>
-                  </div>
-                </>,
-                document.body
-              )}
-              </div>
-
-              {/* Mobile: hamburger */}
-              <button
-                className="navbar__hamburger"
-                onClick={() => { setDropdownOpen(!dropdownOpen); setSwitcherOpen(false); }}
-                aria-label={dropdownOpen ? "Close menu" : "Open menu"}
-                aria-haspopup="menu"
-                aria-expanded={dropdownOpen}
-              >
-                {dropdownOpen ? <X size={22} /> : <Menu size={22} />}
-              </button>
-            </div>
-
-            {/* Mobile: nav dropdown */}
-            <div className={`navbar__dropdown ${dropdownOpen ? "navbar__dropdown--open" : ""}`}>
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`navbar__dropdown-link ${isActive(link.href) ? "navbar__dropdown-link--active" : ""}`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="navbar__right">
-            <button
-              onClick={openSignIn}
-              className="navbar__signin"
-            >
-              <img src="/assets/certified_signin_black.svg" alt="Sign in" className="navbar__signin-img" />
-            </button>
-          </div>
-        )}
+        {/* Right: profile switcher or sign in */}
+        <div className="navbar__right">{rightCluster}</div>
       </div>
     </nav>
   );

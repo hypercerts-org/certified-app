@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import LandingTopBar from "@/components/landing/landing-topbar";
 
 export const metadata: Metadata = {
   title: "Imprint",
@@ -11,23 +13,24 @@ export const metadata: Metadata = {
       "Imprint (Impressum) for Certified, the identity platform operated by the Hypercerts Foundation.",
     url: "https://certified.app/imprint",
     type: "website",
-    images: [{ url: "/assets/certified-hero-1200x630.png", width: 1200, height: 630, alt: "Certified — One account, any app" }],
+    images: [{ url: "/assets/certs-hero-1200x630.png", width: 1200, height: 630, alt: "Certified — One account. Your work. Recognized everywhere." }],
   },
 };
 
 export default function ImprintPage() {
   return (
-    <div className="app-page">
-      <div className="app-page__inner max-w-3xl">
-        <h1 className="font-mono text-h1 text-navy tracking-tight mb-8">
-          Imprint — Certified
+    <div className="app-page legal-page">
+      <LandingTopBar />
+      <div className="app-page__inner">
+        <h1 className="font-headline text-h1 text-[var(--fg-primary)] tracking-tight mb-8">
+          Imprint
         </h1>
 
-        <p className="text-sm text-gray-500 mb-8">Last updated: May 11, 2026</p>
+        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: May 11, 2026</p>
 
-        <div className="prose prose-navy max-w-none space-y-8">
+        <div className="prose max-w-none space-y-8">
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">Service operator</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">Service operator</h2>
             <p>
               <strong>Hypercerts Foundation</strong>
               <br />
@@ -44,7 +47,7 @@ export default function ImprintPage() {
               Email:{" "}
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 legal@hypercerts.org
               </a>
@@ -52,12 +55,12 @@ export default function ImprintPage() {
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">Authorized representatives</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">Authorized representatives</h2>
             <p>Holke Brammer (Director)</p>
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               Representative in the European Union
             </h2>
             <p>In accordance with Article 27 GDPR:</p>
@@ -74,7 +77,7 @@ export default function ImprintPage() {
               Email:{" "}
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 legal@hypercerts.org
               </a>
@@ -82,23 +85,23 @@ export default function ImprintPage() {
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               Contact for legal notices and Digital Services Act communications
             </h2>
             <p>
               Email:{" "}
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 legal@hypercerts.org
               </a>
             </p>
             <p className="mt-4">
               Notice-and-action procedures for content reports are described on the{" "}
-              <a href="/dsa" className="text-blue-600 underline hover:text-blue-800">
+              <Link href="/dsa" className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]">
                 DSA Compliance Page
-              </a>
+              </Link>
               .
             </p>
           </section>

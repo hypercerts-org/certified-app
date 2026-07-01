@@ -2,7 +2,9 @@ import { Agent } from "@atproto/api"
 import type { LexiconDoc } from "@atproto/lexicon"
 import { getOAuthClient } from "@/lib/auth/oauth-client"
 import { getSessionDid, deleteSession } from "@/lib/auth/session"
-import { GROUP_SERVICE_DID } from "./constants"
+import { getServiceAuthToken as mintServiceAuthToken } from "@/lib/atproto/service-auth"
+import { logSafe } from "@/lib/utils/log-safe"
+import { GROUP_SERVICE, GROUP_SERVICE_DID } from "./constants"
 
 /**
  * Custom lexicon definitions for the group service.
@@ -162,7 +164,13 @@ export async function getAuthenticatedAgent(): Promise<{
   let oauthSession
   try {
     oauthSession = await client.restore(did)
-  } catch {
+  } catch (err) {
+    // Mirrors the XRPC proxy's pattern at
+    // `src/app/api/xrpc/[...method]/route.ts:152` — without this log,
+    // every BFF route's session-expiry event is invisible in Vercel
+    // logs and operator can't tell user-reported "I got signed out"
+    // events from real auth failures.
+    logSafe("[proxy-agent] oauth restore failed", err)
     await deleteSession()
     return null
   }
@@ -171,11 +179,37 @@ export async function getAuthenticatedAgent(): Promise<{
 }
 
 /**
- * Create a proxy agent that routes requests through the user's PDS
- * to the group service for a specific group.
+ * Create a proxy agent that routes requests through the user's PDS to
+ * the group service.
+ *
+ * Targeting (CGS #27 migration, see `docs/aud-migration.md` in the
+ * certified-group-service repo):
+ *
+ *   - **Default (new form):** proxy to the *service* DID via the
+ *     `certified_group_service` service id. The user's PDS resolves the
+ *     service's `/.well-known/did.json`, mints `aud` = the service DID,
+ *     and forwards. The target group is then named by an explicit
+ *     `repo` field on each call — in the body for JSON-body procedures
+ *     (`repo.*`, `member.add/remove`, `role.set`), on the querystring
+ *     for queries (`member.list`, `audit.query`) and body-less methods
+ *     (`repo.uploadBlob`). Callers MUST include `repo` or CGS can't
+ *     resolve the group.
+ *   - **Legacy form (`opts.legacy`):** proxy to the *group* DID via the
+ *     `certified_group` service id, so `aud` = the group DID and the
+ *     group is read from `aud`. Deprecated upstream and slated for
+ *     removal; kept only for `com.atproto.identity.updateHandle`, a
+ *     stock method with no `repo` field that CGS targets via `aud`.
  */
-export function createGroupAgent(agent: Agent, groupDid: string): Agent {
-  const proxied = agent.withProxy("certified_group", groupDid) as Agent
+export function createGroupAgent(
+  agent: Agent,
+  groupDid: string,
+  opts?: { legacy?: boolean },
+): Agent {
+  const proxied = (
+    opts?.legacy
+      ? agent.withProxy("certified_group", groupDid)
+      : agent.withProxy("certified_group_service", GROUP_SERVICE_DID)
+  ) as Agent
   for (const doc of GROUP_LEXICONS) {
     proxied.lex.add(doc)
   }
@@ -190,9 +224,129 @@ export async function getServiceAuthToken(
   agent: Agent,
   lxm: string
 ): Promise<string> {
-  const { data } = await agent.com.atproto.server.getServiceAuth({
-    aud: GROUP_SERVICE_DID,
-    lxm,
+  return mintServiceAuthToken(agent, GROUP_SERVICE_DID, lxm)
+}
+
+/**
+ * Direct (non-proxied) CGS XRPC call authenticated with a service-auth JWT
+ * (`aud` = the service DID), bypassing `agent.withProxy(...)`.
+ *
+ * The proxied form needs the *user's* PDS to resolve the service DID's
+ * `#certified_group_service` entry and mint the token itself; the certified.one
+ * ePDS can't ("could not resolve proxy did"), so every proxied group call 500s.
+ * This direct form is the supported, fully-`repo`-migrated path (CGS skill +
+ * aud→repo #27) and mirrors the working /groups/import, /register, /destroy and
+ * /activity routes.
+ *
+ * Per #27: queries put `repo` (+ filters) on the querystring; JSON-body
+ * procedures put `repo` in the body. Returns the raw Response so the caller can
+ * map status and forward the typed atproto error `code` where it matters.
+ */
+export async function groupServiceFetch(
+  agent: Agent,
+  nsid: string,
+  opts: {
+    query?: Record<string, string | number | undefined | null>
+    body?: unknown
+    encoding?: string
+  } = {}
+): Promise<Response> {
+  const token = await getServiceAuthToken(agent, nsid)
+  let url = `${GROUP_SERVICE}/xrpc/${nsid}`
+  if (opts.query) {
+    const qs = new URLSearchParams()
+    for (const [k, v] of Object.entries(opts.query)) {
+      if (v !== undefined && v !== null && v !== "") qs.set(k, String(v))
+    }
+    const s = qs.toString()
+    if (s) url += `?${s}`
+  }
+  const hasBody = opts.body !== undefined
+  const encoding = opts.encoding ?? "application/json"
+  return fetch(url, {
+    method: hasBody ? "POST" : "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(hasBody ? { "Content-Type": encoding } : {}),
+    },
+    ...(hasBody
+      ? {
+          body:
+            encoding === "application/json"
+              ? JSON.stringify(opts.body)
+              : (opts.body as BodyInit),
+        }
+      : {}),
+    signal: AbortSignal.timeout(15_000),
   })
-  return data.token
+}
+
+/**
+ * {@link groupServiceFetch} + JSON handling. Returns the parsed response body
+ * on 2xx (the same shape `agent.call(...).data` used to yield); on a non-2xx
+ * throws an object shaped for {@link extractRouteError} (`{ status, error?,
+ * message }`) so a route's `catch` maps the upstream status + atproto error
+ * `code` exactly as it did for the old proxied `.call()` (which threw
+ * `XRPCError`). Drop-in replacement for `const { data } = await
+ * createGroupAgent(agent, repo).call(nsid, ...)`.
+ */
+export async function callGroupServiceJson(
+  agent: Agent,
+  nsid: string,
+  opts?: {
+    query?: Record<string, string | number | undefined | null>
+    body?: unknown
+    encoding?: string
+  }
+): Promise<unknown> {
+  const res = await groupServiceFetch(agent, nsid, opts)
+  if (res.ok) {
+    const text = await res.text()
+    return text ? JSON.parse(text) : {}
+  }
+  let code: string | undefined
+  let message = `Group service error ${res.status}`
+  try {
+    const data = (await res.json()) as { error?: string; message?: string }
+    if (typeof data.error === "string") code = data.error
+    if (typeof data.message === "string") message = data.message
+    else if (code) message = code
+  } catch {
+    // non-JSON error body — keep the generic message
+  }
+  throw Object.assign(new Error(message), { status: res.status, error: code })
+}
+
+/**
+ * Drop-in replacement for `createGroupAgent(agent, repo)` on the **default**
+ * (non-legacy) path: returns an object whose `.call(nsid, params, data, opts)`
+ * matches `Agent.call` — same arg order, same `{ data }` return, same
+ * `{ status, error }`-shaped throw — but routes through {@link
+ * callGroupServiceJson} (direct service-auth call) instead of the broken
+ * `withProxy` proxy-DID resolution. So a route migrates by renaming the
+ * constructor only; its `groupAgent.call(...)` sites and `catch` are untouched.
+ *
+ * `params` (querystring) carries `repo` for queries + `uploadBlob`; `data`
+ * (body) carries it for JSON procedures — exactly as the lexicon expects.
+ * Does NOT cover the legacy `{ legacy: true }` path (handle/updateHandle),
+ * which still needs a real proxied Agent — keep using `createGroupAgent` there.
+ */
+export function createGroupClient(agent: Agent, _groupDid: string) {
+  return {
+    async call(
+      nsid: string,
+      params?: Record<string, unknown>,
+      data?: unknown,
+      opts?: { encoding?: string }
+    ): Promise<{ data: unknown }> {
+      const body = await callGroupServiceJson(agent, nsid, {
+        query: params as
+          | Record<string, string | number | undefined | null>
+          | undefined,
+        body: data,
+        encoding: opts?.encoding,
+      })
+      return { data: body }
+    },
+  }
 }

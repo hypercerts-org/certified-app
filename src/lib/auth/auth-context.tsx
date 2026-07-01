@@ -14,17 +14,23 @@ import { sanitizeEmail, sanitizeHandle } from "@/lib/utils/sanitize";
 import SignInModal from "@/components/ui/sign-in-modal";
 import ProviderRedirectOverlay from "@/components/ui/provider-redirect-overlay";
 import { setOnUnauthorized } from "./fetch";
-import { clearSessionCache } from "@/hooks/use-session";
+import { clearAllDraftsForViewer } from "@/lib/utils/swap-drafts";
+import { clearSessionCache, peekSessionHandle } from "@/hooks/use-session";
+import {
+  recordPreSigninLocation,
+  resolvePostSigninPath,
+} from "./post-signin";
 
 /**
  * Validate and navigate to a URL returned by the auth API.
- * Only allows https: URLs (and http: in development). Prevents protocol injection.
+ * Only allows https: URLs (and http: outside production, i.e. dev/test).
+ * Prevents protocol injection.
  * Note: this intentionally allows cross-origin redirects because the OAuth flow
  * redirects to external PDS authorization servers.
  */
 const safeRedirect = (url: string) => {
   const parsed = new URL(url);
-  const allowHttp = process.env.NODE_ENV === "development";
+  const allowHttp = process.env.NODE_ENV !== "production";
   if (parsed.protocol !== "https:" && !(allowHttp && parsed.protocol === "http:")) {
     throw new Error("Invalid redirect URL");
   }
@@ -40,7 +46,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [pdsUrl, setPdsUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalInitialView, setModalInitialView] = useState<"certified" | "atproto">("certified");
   const [isRedirectingToProvider, setIsRedirectingToProvider] = useState(false);
 
   // Shared session fetch — used by both init and OAuth callback
@@ -94,6 +99,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         await refreshSession();
+        // Route the user back to where they were before sign-in. The
+        // `/profile/<old-handle>` segment (if present in the saved
+        // path) gets rewritten to the new identity's DID so the URL
+        // resolves to the new viewer rather than rendering blank
+        // panels (e.g. the settings tab, gated on isViewerThisEntity).
+        const newSub = typeof event.data?.sub === "string" ? event.data.sub : null;
+        const target = resolvePostSigninPath(newSub);
+        if (target && target !== "/") {
+          window.location.assign(target);
+        }
       } catch (err) {
         console.error("Session refresh error:", err);
         setError(
@@ -108,6 +123,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("message", handleMessage);
   }, [refreshSession]);
 
+  // Shared logic: handle the login API response (restored session or redirect URL)
+  const handleLoginResponse = useCallback(async (res: Response) => {
+    if (!res.ok) {
+      const data = await res.json() as { error?: string };
+      throw new Error(data.error ?? "Failed to sign in");
+    }
+    const data = await res.json() as { restored?: boolean; url?: string; did?: string };
+    if (data.restored && data.did) {
+      setIsRedirectingToProvider(false);
+      await refreshSession();
+    } else if (data.url) {
+      safeRedirect(data.url);
+    } else {
+      throw new Error("Unexpected login response");
+    }
+  }, [refreshSession]);
+
   // Listen for switch-provider postMessage from PDS OAuth UI iframe
   useEffect(() => {
     const handleSwitchProvider = async (event: MessageEvent) => {
@@ -116,7 +148,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const input = event.data.input;
       if (!input || typeof input !== "string") return;
 
-      // Show the full-screen overlay before closing the modal
       setIsRedirectingToProvider(true);
       setIsModalOpen(false);
 
@@ -126,14 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ input: sanitizeHandle(input), mode: "handle" }),
         });
-
-        if (!res.ok) {
-          const data = await res.json() as { error?: string };
-          throw new Error(data.error ?? "Failed to sign in with external provider");
-        }
-
-        const data = await res.json() as { url: string };
-        safeRedirect(data.url);
+        await handleLoginResponse(res);
       } catch (err) {
         console.error("External provider sign-in error:", err);
         setIsRedirectingToProvider(false);
@@ -147,49 +171,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     window.addEventListener("message", handleSwitchProvider);
     return () => window.removeEventListener("message", handleSwitchProvider);
-  }, []);
+  }, [handleLoginResponse]);
 
-  // Trigger the default Certified-PDS OAuth flow with no login_hint.
-  // If the PDS has an active session for this browser (e.g. from another partner
-  // app), this returns silently with a code; otherwise the PDS shows its own UI.
+  // Silent-default OAuth bounce: POST to /api/auth/login with no email
+  // or handle. The server calls client.authorize(PDS_URL, ...) without
+  // a login_hint, so the PDS's authorization server can return a code
+  // immediately if the browser already has a session at the PDS (e.g.
+  // from another partner app). Otherwise it shows its own login UI.
+  // On any failure we fall back to opening the modal so the user can
+  // still type an email or handle by hand.
   const submitDefault = useCallback(async () => {
     try {
       setError(null);
       setIsRedirectingToProvider(true);
       setIsModalOpen(false);
-
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: "default" }),
       });
-
-      if (!res.ok) {
-        const data = await res.json() as { error?: string };
-        throw new Error(data.error ?? "Failed to sign in");
-      }
-
-      const data = await res.json() as { url: string };
-      safeRedirect(data.url);
+      await handleLoginResponse(res);
     } catch (err) {
       console.error("Default sign-in error:", err);
-      // Hide the redirect overlay and fall back to the modal so the user can
-      // try email or an ATProto handle manually.
       setIsRedirectingToProvider(false);
       setError(err instanceof Error ? err.message : "Failed to sign in");
       setIsModalOpen(true);
     }
-  }, []);
+  }, [handleLoginResponse]);
 
-  // Primary public entry point. Triggers the silent-default flow above.
   const openSignIn = useCallback(async () => {
+    // Stash the current pathname + handle so the post-signin handler
+    // (iframe message OR `/oauth/callback` redirect) can put the user
+    // back where they were instead of dropping them at `/`. Reading
+    // the handle synchronously via the use-session cache avoids
+    // having to thread it through every call site.
+    recordPreSigninLocation(peekSessionHandle());
     await submitDefault();
   }, [submitDefault]);
 
-  // Manual fallback — opens the modal so the user can pick email or a handle.
-  const openSignInModal = useCallback((view: "certified" | "atproto" = "certified") => {
+  // Email-first entry point: skip the silent-default bounce and open
+  // the modal straight away. Used by CTAs whose label promises an
+  // email field ("Sign in with your email") — the silent bounce would
+  // contradict the label for users with no existing PDS session.
+  const openSignInModal = useCallback(() => {
+    recordPreSigninLocation(peekSessionHandle());
     setError(null);
-    setModalInitialView(view);
     setIsModalOpen(true);
   }, []);
 
@@ -239,14 +265,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ input: sanitizeHandle(handle), mode: "handle" }),
       });
-
-      if (!res.ok) {
-        const data = await res.json() as { error?: string };
-        throw new Error(data.error ?? "Failed to sign in with that handle");
-      }
-
-      const data = await res.json() as { url: string };
-      safeRedirect(data.url);
+      await handleLoginResponse(res);
     } catch (err) {
       console.error("Handle sign-in error:", err);
       setIsRedirectingToProvider(false);
@@ -257,13 +276,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
       setIsModalOpen(true);
     }
-  }, []);
+  }, [handleLoginResponse]);
 
   const signOut = useCallback(async () => {
     // Clear local state immediately (optimistic sign-out).
     // Server-side session cleanup is best-effort; the client should always
     // clear its local state even if the fetch throws.
     clearSessionCache();
+    // Purge any same-field-conflict drafts the viewer left in
+    // localStorage (issue #71). Without this, a different user
+    // signing in on the same browser would see the previous
+    // viewer's pending drafts on the "Restore draft" affordance.
+    const previousDid = did;
+    if (previousDid) {
+      clearAllDraftsForViewer(previousDid);
+    }
     setIsAuthenticated(false);
     setDid(null);
     setPdsUrl(null);
@@ -273,7 +300,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Sign out error (server-side cleanup failed):", err);
       // Local state already cleared — user is signed out client-side.
     }
-  }, []);
+  }, [did]);
 
   // Register the 401 interceptor so authFetch can clear auth state on session expiry
   useEffect(() => {
@@ -309,7 +336,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {isRedirectingToProvider && <ProviderRedirectOverlay />}
       <SignInModal
         isOpen={isModalOpen}
-        initialView={modalInitialView}
         error={error}
         onClose={closeModal}
         onSubmitEmail={submitEmail}

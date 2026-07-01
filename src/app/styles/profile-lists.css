@@ -1,0 +1,920 @@
+/* ========================================================================
+   Profile → Lists tab.
+
+   Three stacked sections (certs / projects / accounts), each showing the
+   viewer's `list:*` collection records of that type. Section headings are
+   left-aligned, a + button is right-aligned on the same row, and the
+   list rows below click through to a detail view that shows the
+   underlying items + an Add-items modal.
+
+   Most of the chrome reuses tokens from profile-endorsements.css so the
+   surface reads as a sibling of the existing endorsement-lists UI.
+   ======================================================================== */
+
+.profile-lists {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 0;
+}
+
+.profile-lists__loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+/* ---------- Section ---------- */
+
+.profile-lists__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-lists__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.profile-lists__section-title {
+  margin: 0;
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--fg-primary);
+}
+
+.profile-lists__create-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.profile-lists__create-btn:hover {
+  background: var(--bg-sunken);
+}
+
+.profile-lists__create-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring, var(--fg-primary));
+}
+
+.profile-lists__empty {
+  margin: 0;
+  padding: 12px 0;
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+}
+
+/* ---------- List summary rows ---------- */
+
+.profile-lists__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-lists__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  color: var(--fg-primary);
+}
+
+.profile-lists__row:hover {
+  background: var(--bg-sunken);
+  border-color: var(--border-medium);
+}
+
+.profile-lists__row-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.profile-lists__row-title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-lists__row-desc {
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-lists__row-meta {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+/* ---------- Detail view ---------- */
+
+.profile-lists__detail-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.profile-lists__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.profile-lists__back:hover {
+  background: var(--bg-sunken);
+}
+
+.profile-lists__detail-title {
+  flex: 1;
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+}
+
+.profile-lists__detail-count {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+}
+
+.profile-lists__detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-lists__detail-desc {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+  line-height: 1.5;
+}
+
+/* ---------- Bulk-select toolbar ---------- */
+
+.profile-lists__bulk-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 4px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 8px;
+}
+
+.profile-lists__bulk-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.profile-lists__bulk-select-all input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--fg-primary);
+  cursor: pointer;
+}
+
+/* ---------- Items list ---------- */
+
+.profile-lists__items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Each row: optional selection checkbox on the left + the
+   per-kind ItemRow body. The checkbox sits aligned to the row's
+   vertical center so it lines up with the title regardless of
+   whether the row is a tall project card or a slim account row. */
+.profile-lists__items-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-lists__items-check {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--fg-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.profile-lists__items-row-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-lists__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  background: transparent;
+  transition: background var(--transition-fast);
+}
+
+.profile-lists__item:hover {
+  background: var(--bg-sunken);
+}
+
+.profile-lists__item-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.profile-lists__item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.profile-lists__item-title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-lists__item-subtitle {
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-lists__item-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  margin-right: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.profile-lists__item-remove:hover {
+  background: var(--bg-sunken);
+  color: var(--color-error);
+}
+
+.profile-lists__item-remove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- Project items (reuse explore-page row) ---------- */
+
+/* Wrapper around <ProjectListRow> with a right-aligned remove button.
+   The row already supplies its own border + hover via .cert-list-row,
+   so we just keep it inside a horizontal flex with the × button. */
+.profile-lists__project {
+  display: flex;
+  /* Center on the cross-axis so the 26px × button sits at the
+     vertical midline of the (taller) cert-list-row rather than
+     pinning to the top. */
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+/* The reused ActivityAuthor byline carries a 12px margin-bottom from
+   the feed-card surface it was first designed for, which visually
+   tops-anchors the avatar+name pair inside a row that's otherwise
+   centered. Strip that margin in the lists-tab context so the
+   byline aligns with the title + remove button on the same line. */
+.profile-lists__project .feed-card__author {
+  margin-bottom: 0;
+}
+
+.profile-lists__project:hover {
+  border-color: var(--border-medium);
+}
+
+.profile-lists__project-row {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The cert-list-row inside the wrapper renders flush with the
+   wrapper edges — its own padding handles inner spacing. Strip
+   the wrapper's hover from the row's own hover so the wash
+   applies uniformly across both halves. */
+.profile-lists__project .cert-list-row {
+  padding: 10px 14px;
+}
+
+.profile-lists__project:hover .cert-list-row {
+  background: var(--bg-sunken);
+}
+
+.profile-lists__project--loading {
+  align-items: center;
+  padding: 10px 14px;
+  min-height: 60px;
+}
+
+.profile-lists__project-skel {
+  display: block;
+  flex: 1;
+  height: 40px;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+/* ---------- Thumbnails / avatar placeholder ---------- */
+
+.profile-lists__thumb {
+  display: block;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--radius);
+  object-fit: cover;
+  background: var(--bg-sunken);
+}
+
+.profile-lists__thumb--placeholder {
+  border: 1px solid var(--border-subtle);
+}
+
+/* ---------- Create modal ---------- */
+
+.profile-lists__create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.profile-lists__create-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-lists__create-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+}
+
+.profile-lists__create-input,
+.profile-lists__create-textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--fg-primary);
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+}
+
+.profile-lists__create-textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.profile-lists__create-input:focus,
+.profile-lists__create-textarea:focus {
+  outline: none;
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+.profile-lists__create-error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-error);
+}
+
+.profile-lists__create-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---------- AddToListMenu (cert / project / profile overviews) ---------- */
+
+.add-to-list {
+  position: relative;
+  display: inline-flex;
+}
+
+.add-to-list__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.add-to-list__trigger:hover {
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
+.add-to-list__trigger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring, var(--fg-primary));
+}
+
+.add-to-list__pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  /* Anchored to the trigger's right edge so the menu flows LEFT
+     instead of RIGHT. The trigger lives on the right edge of the
+     aside meta rows (Time period, Locations) where a
+     right-flowing menu would overflow past the cert column. */
+  right: 0;
+  z-index: 50;
+  min-width: 168px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+}
+
+.add-to-list__pop-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-primary);
+  font: inherit;
+  font-size: 0.875rem;
+  /* Explicit normal weight — the kebab trigger lives inside meta
+     labels (`.cert-detail__meta-label`, `font-weight: 600`) and
+     similar uppercase-label contexts, which `font: inherit` was
+     dragging into the menu items as a bold default. The pop-out
+     menu should always read as normal-weight body text regardless
+     of where the trigger sits. */
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+}
+
+.add-to-list__pop-item:hover {
+  background: var(--bg-sunken);
+}
+
+/* ---------- AddToListModal ---------- */
+
+.add-to-list__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.add-to-list__loading {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0;
+}
+
+.add-to-list__empty {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+}
+
+.add-to-list__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.add-to-list__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+}
+
+.add-to-list__row-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.add-to-list__error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-error);
+}
+
+.add-to-list__create-btn {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 6px 10px;
+  border: 1px dashed var(--border-medium);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-primary);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.add-to-list__create-btn:hover {
+  background: var(--bg-sunken);
+}
+
+.add-to-list__create-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.add-to-list__create {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.add-to-list__create-input {
+  width: 100%;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--fg-primary);
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+}
+
+.add-to-list__create-input:focus {
+  outline: none;
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+.add-to-list__create-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---------- Bulk-paste modal ---------- */
+
+.profile-lists__paste-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-lists__paste-help {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--fg-secondary);
+}
+
+.profile-lists__paste-nsid {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+  padding: 1px 5px;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
+.profile-lists__paste-textarea {
+  width: 100%;
+  font: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+  color: var(--fg-primary);
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  resize: vertical;
+  min-height: 96px;
+  line-height: 1.5;
+}
+
+.profile-lists__paste-textarea:focus {
+  outline: none;
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+/* Overall progress strip — sits above the per-row results list and
+   gives the viewer one-glance feedback while a long paste run is
+   underway. Spinner + counter on top of a thin progress bar. */
+.profile-lists__paste-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.profile-lists__paste-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8125rem;
+}
+
+.profile-lists__paste-progress-label {
+  flex: 1;
+  color: var(--fg-primary);
+}
+
+.profile-lists__paste-progress-percent {
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-secondary);
+}
+
+.profile-lists__paste-progress-bar {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  background: var(--bg-sunken);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.profile-lists__paste-progress-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--fg-primary);
+  border-radius: 999px;
+  transition: width 200ms ease-out;
+}
+
+.profile-lists__paste-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 240px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.profile-lists__paste-row {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  align-items: baseline;
+  column-gap: 10px;
+  row-gap: 2px;
+  padding: 6px 4px;
+  font-size: 0.8125rem;
+}
+
+.profile-lists__paste-status {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+}
+
+.profile-lists__paste-row--added .profile-lists__paste-status {
+  color: var(--color-success);
+}
+
+.profile-lists__paste-row--already .profile-lists__paste-status,
+.profile-lists__paste-row--wrong-type .profile-lists__paste-status,
+.profile-lists__paste-row--missing .profile-lists__paste-status,
+.profile-lists__paste-row--error .profile-lists__paste-status {
+  color: var(--color-error);
+}
+
+.profile-lists__paste-row--writing .profile-lists__paste-status {
+  color: var(--fg-primary);
+}
+
+.profile-lists__paste-uri {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.profile-lists__paste-message {
+  grid-column: 2;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.profile-lists__paste-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---------- Add-items modal ---------- */
+
+.profile-lists__add-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-lists__add-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-canvas);
+  color: var(--fg-secondary);
+}
+
+.profile-lists__add-search:focus-within {
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+.profile-lists__add-input {
+  flex: 1;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--fg-primary);
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+.profile-lists__add-spinner {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0;
+}
+
+.profile-lists__add-empty {
+  margin: 0;
+  padding: 8px 0;
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  text-align: center;
+}
+
+.profile-lists__add-error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-error);
+}
+
+.profile-lists__add-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.profile-lists__add-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-subtle);
+}
+
+.profile-lists__add-row:hover {
+  background: var(--bg-sunken);
+}
+
+.profile-lists__add-avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.profile-lists__add-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.profile-lists__add-title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-lists__add-subtitle {
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

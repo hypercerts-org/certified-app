@@ -2,9 +2,16 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import Brandmark from "@/components/ui/brandmark"
+import { resolvePostSigninPath } from "@/lib/auth/post-signin"
+import { markTourPending } from "@/lib/tour/tour-sentinel"
 
 export default function OAuthCallbackPage() {
   const [error, setError] = useState<string | null>(null)
+  // True when the failure is a recoverable sign-in interruption (ePDS
+  // clean-exit / user-denied / expired flow, #154) rather than a hard
+  // error — drives a "try again" affordance instead of a dead end.
+  const [canRetry, setCanRetry] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -16,12 +23,21 @@ export default function OAuthCallbackPage() {
         const res = await fetch(callbackUrl)
 
         if (!res.ok) {
-          const data = await res.json().catch(() => ({ error: "Callback failed" }))
+          const data = await res
+            .json()
+            .catch(() => ({ error: "Callback failed" }))
+          if (!cancelled && data.retry) setCanRetry(true)
           throw new Error(data.error || "Authentication failed")
         }
 
-        const { did } = await res.json()
+        const { did, isNewCertifiedUser } = await res.json()
         if (cancelled) return
+
+        // First time on certified.app (the server just seeded the Certified
+        // profile) — queue the walk-through. The tour provider auto-starts it
+        // once the app loads authenticated, i.e. after this redirect, so it
+        // runs after the profile records exist.
+        if (isNewCertifiedUser && did) markTourPending(did)
 
         const isInIframe = window.parent !== window
 
@@ -31,7 +47,13 @@ export default function OAuthCallbackPage() {
             window.location.origin
           )
         } else {
-          window.location.replace("/")
+          // Restore the page the user was on before sign-in. Any
+          // `/profile/<old-handle>` segment in the saved path is
+          // rewritten to the new identity's DID so URLs that were
+          // identity-scoped (e.g. ?tab=settings) resolve to the new
+          // viewer's equivalent rather than rendering blank panels.
+          // Falls back to `/` when no path was stashed.
+          window.location.replace(resolvePostSigninPath(did ?? null))
         }
       } catch (err) {
         if (cancelled) return
@@ -46,10 +68,15 @@ export default function OAuthCallbackPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--color-off-white)]">
-        <div className="text-center">
-          <p className="text-sm text-error mb-4 font-mono">{error}</p>
-          <Link href="/" className="text-sm text-accent font-mono hover:text-deep transition-colors duration-150">
+      <div className="loading-screen">
+        <div className="loading-screen__inner">
+          <p className="loading-screen__error">{error}</p>
+          {canRetry ? (
+            <Link href="/welcome" className="loading-screen__link">
+              Try signing in again
+            </Link>
+          ) : null}
+          <Link href="/" className="loading-screen__link">
             Return to home
           </Link>
         </div>
@@ -60,12 +87,7 @@ export default function OAuthCallbackPage() {
   return (
     <div className="loading-screen">
       <div className="loading-screen__inner">
-        <img
-          src="/assets/certified_brandmark_black.svg"
-          alt="Certified"
-          className="loading-screen__logo"
-        />
-        <p className="mt-6 text-sm text-black/30 font-mono">Completing sign in...</p>
+        <Brandmark title="Certified" className="loading-screen__logo" />
       </div>
     </div>
   )

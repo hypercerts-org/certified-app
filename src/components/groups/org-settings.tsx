@@ -1,27 +1,205 @@
 "use client"
 
 import React, { useState, useEffect, useCallback } from "react"
-import { UserPlus, Trash2, ChevronDown } from "lucide-react"
+import dynamic from "next/dynamic"
+import { useRouter } from "next/navigation"
+import {
+  AtSign,
+  ChevronLeft,
+  ChevronRight,
+  CircleUser,
+  ScrollText,
+  Share2,
+  ShieldAlert,
+  Trash2,
+  UserPlus,
+  Users,
+} from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useSession } from "@/hooks/use-session"
+import { useOrg } from "@/lib/groups/org-context"
+import { GROUP_PROMOTED_FLAG } from "@/lib/groups/constants"
+import DidSection from "@/components/account/did-section"
+import GroupPasswordReset from "@/components/groups/group-password-reset"
+import GroupAccountManager from "@/components/groups/group-account-manager"
+
+// Self-owned-group Account page reuses the personal account controls — you're
+// signed in as the group account itself, so they act on the right session.
+const UsernameCard = dynamic(
+  () => import("@/components/dashboard/username-card"),
+)
+const EmailSection = dynamic(() => import("@/components/account/email-section"))
+const PasswordSection = dynamic(
+  () => import("@/components/account/password-section"),
+)
+import SyncSocialGraphSection from "@/components/settings/sync-social-graph-section"
 import {
   listOrgMembers,
   addOrgMember,
   removeOrgMember,
   setOrgMemberRole,
   queryOrgAuditLog,
+  destroyGroup,
 } from "@/lib/groups/api"
 import type { Group, OrgMember, AuditEntry, OrgRole } from "@/lib/groups/types"
 import { authFetch } from "@/lib/auth/fetch"
 import Button from "@/components/ui/button"
+import Badge from "@/components/ui/badge"
+import Select from "@/components/ui/select"
+import IdentityRow from "@/components/ui/identity-row"
+import ConfirmDialog from "@/components/ui/confirm-dialog"
+import GroupResultModal from "@/components/groups/group-result-modal"
 import HandleSearch from "@/components/groups/handle-search"
+import ErrorMessage from "@/components/ui/error-message"
+import LoadingSpinner from "@/components/ui/loading-spinner"
+import Tooltip from "@/components/ui/tooltip"
 
+type CategoryKey =
+  | "account"
+  | "handle"
+  | "social-graph"
+  | "members"
+  | "activity"
+  | "danger"
+
+type CategoryDef = {
+  key: CategoryKey
+  /** Panel heading. */
+  label: string
+  /** Shorter label for the rail / mobile list. Defaults to `label`. */
+  navLabel?: string
+  description: string
+  Icon: typeof AtSign
+}
+
+type CategoryGroup = { label: string; items: CategoryDef[] }
+
+/**
+ * Group settings share the personal-settings router layout (see
+ * `SettingsPanel`): a grouped rail of pages; selecting one shows only that
+ * page (no long scroll). On mobile the rail is a master list that drills
+ * into a single page with a back control. Both views render the same DOM;
+ * `data-view` + CSS pick which is visible, so there's no desktop hydration
+ * flash.
+ */
+const GROUPS: CategoryGroup[] = [
+  {
+    label: "General",
+    items: [
+      {
+        key: "handle",
+        label: "Handle",
+        description:
+          "This group's permanent DID and the @handle people use to find it.",
+        Icon: AtSign,
+      },
+      {
+        key: "social-graph",
+        label: "Sync social graph",
+        navLabel: "Social graph",
+        description:
+          "Compare this group's Certified follows with its Bluesky follows and import any that are missing.",
+        Icon: Share2,
+      },
+    ],
+  },
+  {
+    label: "Group Management",
+    items: [
+      {
+        key: "members",
+        label: "Members & Roles",
+        description: "Manage who can access and act on behalf of this group.",
+        Icon: Users,
+      },
+      {
+        key: "activity",
+        label: "Activity Log",
+        description: "Recent actions performed within this group.",
+        Icon: ScrollText,
+      },
+    ],
+  },
+]
+
+/** Replaces the static "handle" item for every group — the Account page,
+ *  same shape as an individual's. Shows the DID + handle; a self-owned group
+ *  also gets email + password (the header description + those sections switch
+ *  on `isSelfOwned`). */
+const ACCOUNT_PAGE: CategoryDef = {
+  key: "account",
+  label: "Account",
+  description: "This group's DID and handle.",
+  Icon: CircleUser,
+}
+
+/** Owner-only group, appended to the rail + rendered only for owners. */
+const DANGER_GROUP: CategoryGroup = {
+  label: "Danger zone",
+  items: [
+    {
+      key: "danger",
+      label: "Danger zone",
+      description:
+        "Remove this group from Certified. This deletes the group's membership and settings from the service only — the underlying account and its records are left intact, and you can promote the account to a group again later.",
+      Icon: ShieldAlert,
+    },
+  ],
+}
+
+/** Every defined category (incl. danger) — for hash-deep-link matching. */
+const ALL_DEFS: CategoryDef[] = [
+  ACCOUNT_PAGE,
+  ...GROUPS.flatMap((g) => g.items),
+  ...DANGER_GROUP.items,
+]
+
+// Map an audit entry's `result` to the CSS modifier suffix for its pill.
+// The allowlist must match `AuditEntry.result` ("permitted" | "denied")
+// and the only styled classes (`--permitted` / `--denied`); anything
+// else falls back to the neutral `--unknown` class.
+export function auditResultClassSuffix(result: string): "permitted" | "denied" | "unknown" {
+  return result === "permitted" || result === "denied" ? result : "unknown"
+}
+
+// Members & Roles remove-button gate (mirrors CGS RBAC): a caller can remove
+// a member only when it isn't themselves, isn't the owner, and either the
+// caller is the owner or the target is a plain member. Owners can remove
+// admins + members; admins can remove only members.
+export function canRemoveMember(params: {
+  memberDid: string
+  memberRole: OrgRole
+  callerDid: string | null | undefined
+  isOwner: boolean
+}): boolean {
+  const { memberDid, memberRole, callerDid, isOwner } = params
+  return (
+    memberDid !== callerDid &&
+    memberRole !== "owner" &&
+    (isOwner || memberRole === "member")
+  )
+}
+
+// groups-6: when the add-members loop fails part-way through, the members
+// before `failedIndex` were already accepted by the service. Re-staging the
+// whole list would double-add them, so keep only the failing member onward
+// (the one that failed plus any not-yet-attempted).
+export function remainingAfterAddIndex<T>(members: T[], failedIndex: number): T[] {
+  return members.slice(failedIndex)
+}
+
+function readHashCategory(): CategoryKey | null {
+  if (typeof window === "undefined") return null
+  const raw = window.location.hash.replace(/^#/, "").toLowerCase()
+  const match = ALL_DEFS.find((c) => c.key === raw)
+  return match ? match.key : null
+}
 
 interface ResolvedMember extends OrgMember {
   handle?: string
   displayName?: string
+  avatarUrl?: string
 }
-import ErrorMessage from "@/components/ui/error-message"
-import LoadingSpinner from "@/components/ui/loading-spinner"
 
 interface OrgSettingsProps {
   groupDid: string
@@ -29,9 +207,75 @@ interface OrgSettingsProps {
 }
 
 export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
-  const { did } = useAuth()
+  const { did, pdsUrl } = useAuth()
+  const { email } = useSession()
+  const { switchOrg, refetchOrgs } = useOrg()
+  const router = useRouter()
   const isOwner = org.role === "owner"
   const isAdmin = org.role === "admin" || isOwner
+  // Signed in as the group account itself (you promoted your own account):
+  // you hold its credentials, so it gets the full Account page.
+  const isSelfOwned = !!did && groupDid === did
+
+  // Every group's General settings use the Account page (same shape as an
+  // individual's Account); a self-owned group additionally gets email +
+  // password since you hold the account's own credentials.
+  const baseGroups: CategoryGroup[] = GROUPS.map((g) =>
+    g.label === "General"
+      ? {
+          ...g,
+          items: g.items.map((c) => (c.key === "handle" ? ACCOUNT_PAGE : c)),
+        }
+      : g,
+  )
+
+  // Owners get the Danger zone (remove group) in the rail + panel.
+  const visibleGroups = isOwner ? [...baseGroups, DANGER_GROUP] : baseGroups
+
+  // Remove-group (destroy) state.
+  const [confirmDestroy, setConfirmDestroy] = useState(false)
+  const [destroying, setDestroying] = useState(false)
+  const [destroyError, setDestroyError] = useState<string | null>(null)
+  const [removed, setRemoved] = useState(false)
+
+  // The promote-to-group flow drops a flag right before switching here, so the
+  // celebration shows on the group settings (not over the personal page it just
+  // left). Read it once on mount, then clear it.
+  const [createdHandle, setCreatedHandle] = useState<string | null>(null)
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const promoted = sessionStorage.getItem(GROUP_PROMOTED_FLAG)
+    if (promoted) {
+      sessionStorage.removeItem(GROUP_PROMOTED_FLAG)
+      setCreatedHandle(promoted)
+    }
+  }, [])
+
+  const handleDestroy = async () => {
+    setDestroying(true)
+    setDestroyError(null)
+    try {
+      await destroyGroup(groupDid)
+      setConfirmDestroy(false)
+      // Show the dry confirmation; stop acting as the group + leave on dismiss.
+      setRemoved(true)
+    } catch (err) {
+      setDestroyError(
+        err instanceof Error ? err.message : "Failed to remove group",
+      )
+      setConfirmDestroy(false)
+    } finally {
+      setDestroying(false)
+    }
+  }
+
+  // Dismiss the "removed" modal: stop acting as the now-deleted group (else you
+  // stay "signed in" as it), drop it from the switcher, and leave the page.
+  const finishRemoval = () => {
+    switchOrg(null)
+    void refetchOrgs()
+    router.push("/home")
+  }
 
   // Members state
   const [members, setMembers] = useState<ResolvedMember[]>([])
@@ -39,6 +283,9 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   const [memberError, setMemberError] = useState<string | null>(null)
   const [membersPage, setMembersPage] = useState(0)
   const MEMBERS_PER_PAGE = 5
+
+  // Remove confirmation
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
 
   // Add member form
   const [pendingMembers, setPendingMembers] = useState<{ did: string; handle: string }[]>([])
@@ -49,6 +296,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   // Audit log
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([])
   const [auditLoading, setAuditLoading] = useState(true)
+  const [auditError, setAuditError] = useState<string | null>(null)
   const [auditPage, setAuditPage] = useState(0)
   const AUDIT_PER_PAGE = 20
 
@@ -73,6 +321,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                   ...member,
                   handle: data.handle || undefined,
                   displayName: data.displayName || undefined,
+                  avatarUrl: data.avatar || undefined,
                 }
               }
             } catch {
@@ -101,10 +350,15 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
       if (!isAdmin) return
       try {
         setAuditLoading(true)
+        setAuditError(null)
         const entries = await queryOrgAuditLog(groupDid, {}, signal)
         if (!signal?.aborted) setAuditEntries(entries)
-      } catch {
-        // ignore
+      } catch (err) {
+        // Surface the failure so admins notice when the log can't load,
+        // instead of silently seeing "No activity recorded yet."
+        if (signal?.aborted) return
+        const message = err instanceof Error ? err.message : "Couldn't load activity log"
+        setAuditError(message)
       } finally {
         if (!signal?.aborted) setAuditLoading(false)
       }
@@ -124,14 +378,22 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
     setIsAdding(true)
     setAddError(null)
     try {
-      for (const m of pendingMembers) {
-        await addOrgMember(groupDid, m.did, newMemberRole)
+      for (let i = 0; i < pendingMembers.length; i++) {
+        try {
+          await addOrgMember(groupDid, pendingMembers[i].did, newMemberRole)
+        } catch (err) {
+          // Partial failure: members before `i` were already added. Re-stage
+          // only the failing member onward so a retry doesn't double-add them.
+          setPendingMembers(remainingAfterAddIndex(pendingMembers, i))
+          setAddError(
+            err instanceof Error ? err.message : "Failed to add member"
+          )
+          return
+        }
       }
       setPendingMembers([])
       setNewMemberRole("member")
       await Promise.all([fetchMembers(), fetchAudit()])
-    } catch (err) {
-      setAddError(err instanceof Error ? err.message : "Failed to add member")
     } finally {
       setIsAdding(false)
     }
@@ -142,14 +404,15 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   }
 
   const handleRemoveMember = async (memberDid: string) => {
-    if (!confirm("Remove this member?")) return
     try {
       await removeOrgMember(groupDid, memberDid)
+      setConfirmRemove(null)
       await Promise.all([fetchMembers(), fetchAudit()])
     } catch (err) {
       setMemberError(
         err instanceof Error ? err.message : "Failed to remove member"
       )
+      setConfirmRemove(null)
     }
   }
 
@@ -164,259 +427,533 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
     }
   }
 
-  return (
-    <div className="dashboard">
-      <div className="dashboard__topbar">
-        <h1 className="dashboard__page-title">Settings</h1>
-      </div>
+  // ----- Router-style nav (mirrors <SettingsPanel> for personal accounts) ---
+  // `null` = no page actively selected → first page on desktop, master list
+  // on mobile. Driven by the `#<key>` hash so deep links + back/forward work.
+  const [active, setActive] = useState<CategoryKey | null>(null)
 
-      <div className="dashboard__body dashboard__body--single">
-        <div className="dashboard__main">
-          {/* Handle section (read-only — group service doesn't support handle changes after registration) */}
-          <div className="dash-card">
-            <h2 className="dash-card__title">Handle</h2>
-            <p className="dash-card__desc">
-              The group&apos;s handle on the network. Set during registration. Function to edit the handle coming soon.
-            </p>
-            <p className="username-card__value">@{org.handle}</p>
-          </div>
+  useEffect(() => {
+    const sync = () => setActive(readHashCategory())
+    sync()
+    window.addEventListener("hashchange", sync)
+    return () => window.removeEventListener("hashchange", sync)
+  }, [])
 
-          {/* Members section */}
-          <div className="dash-card">
-            <h2 className="dash-card__title">Members &amp; Roles</h2>
-            <p className="dash-card__desc">
-              Manage who can access and act on behalf of this group.
-            </p>
+  const select = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>, key: CategoryKey) => {
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+        return
+      }
+      e.preventDefault()
+      setActive(key)
+      if (typeof window !== "undefined") {
+        window.history.replaceState(null, "", `#${key}`)
+        window.scrollTo({ top: 0 })
+      }
+    },
+    [],
+  )
 
-            {membersLoading ? (
-              <div className="org-members__loading">
-                <LoadingSpinner size="sm" />
+  const back = useCallback(() => {
+    setActive(null)
+    if (typeof window !== "undefined") {
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + window.location.search,
+      )
+      window.scrollTo({ top: 0 })
+    }
+  }, [])
+
+  // The page whose panel renders. A non-owner deep-linking #danger falls back
+  // to the default, since danger isn't in their visible set.
+  const allowedKeys = new Set(visibleGroups.flatMap((g) => g.items.map((c) => c.key)))
+  // Default to the first item of the *visible* rail — for a self-owned group
+  // that's the Account page, not the static "handle" page (which is swapped
+  // out), so a fresh load lands on the right page without a hash.
+  const selectedKey: CategoryKey =
+    active && allowedKeys.has(active)
+      ? active
+      : visibleGroups[0].items[0].key
+  const selected = ALL_DEFS.find((c) => c.key === selectedKey) ?? ALL_DEFS[0]
+
+  const renderNavItem = (cat: CategoryDef) => {
+    const isActive = cat.key === selectedKey
+    const Icon = cat.Icon
+    return (
+      <li key={cat.key}>
+        <a
+          href={`#${cat.key}`}
+          aria-current={isActive ? "true" : undefined}
+          className={`sx-menu__item${isActive ? " sx-menu__item--active" : ""}`}
+          onClick={(e) => select(e, cat.key)}
+        >
+          <span className="sx-menu__icon" aria-hidden>
+            <Icon size={16} strokeWidth={1.75} />
+          </span>
+          <span className="sx-menu__label">{cat.navLabel ?? cat.label}</span>
+          <ChevronRight className="sx-menu__chevron" size={16} aria-hidden />
+        </a>
+      </li>
+    )
+  }
+
+  const renderBody = (key: CategoryKey) => {
+    switch (key) {
+      // Account page — every group, structured exactly like an individual's
+      // Account: DID + handle (owners/admins can edit the handle via the CGS
+      // route; members see it read-only). A self-owned group additionally
+      // manages its sign-in email + password (you hold the account's own
+      // credentials); other owners/admins can't reach those.
+      case "account":
+        return (
+          <div className="sx-subsections">
+            <div className="sx-subsection">
+              <div className="sx-subsection__head">
+                <h3 className="sx-subsection__title">DID</h3>
+                <p className="sx-subsection__desc">
+                  This group&apos;s permanent identifier. Unlike its @handle, it
+                  never changes — apps and records reference it by this.
+                </p>
               </div>
-            ) : (
+              <DidSection did={groupDid} />
+            </div>
+            {isSelfOwned ? (
               <>
-                {memberError && <ErrorMessage message={memberError} />}
+                <div className="sx-subsection">
+                  <div className="sx-subsection__head">
+                    <h3 className="sx-subsection__title">Handle</h3>
+                    <p className="sx-subsection__desc">
+                      The @handle people use to find this group on Certified.
+                    </p>
+                  </div>
+                  {/* Self-owned: the group account IS your account, so change
+                      the handle via the standard personal updateHandle. */}
+                  <UsernameCard
+                    handle={org.handle}
+                    pdsUrl={pdsUrl || undefined}
+                    did={did || undefined}
+                  />
+                </div>
+                <div className="sx-subsection">
+                  <div className="sx-subsection__head">
+                    <h3 className="sx-subsection__title">Email</h3>
+                    <p className="sx-subsection__desc">
+                      Used to sign in and recover this account.
+                    </p>
+                  </div>
+                  <EmailSection email={email || ""} />
+                </div>
+                <div className="sx-subsection">
+                  <div className="sx-subsection__head">
+                    <h3 className="sx-subsection__title">Password</h3>
+                    <p className="sx-subsection__desc">
+                      Lets you sign in to other AT Protocol apps with this
+                      handle.
+                    </p>
+                  </div>
+                  <PasswordSection email={email || ""} />
+                </div>
+              </>
+            ) : isAdmin ? (
+              <>
+                {/* Unlock with the group's password → a real group session, so
+                    updateHandle renames the GROUP (not the caller) and the email
+                    can be read + changed. */}
+                <GroupAccountManager
+                  groupDid={groupDid}
+                  currentHandle={org.handle}
+                />
+                {/* Password reset by email (for when you don't know the
+                    password): you enter the group's email and reset against it. */}
+                <div className="sx-subsection">
+                  <div className="sx-subsection__head">
+                    <h3 className="sx-subsection__title">Password</h3>
+                    <p className="sx-subsection__desc">
+                      Reset the group&apos;s password using its connected email.
+                      Be sure to enter the group&apos;s own email — this changes
+                      the password of whatever account that email belongs to —
+                      and you&apos;ll need access to that mailbox to finish.
+                    </p>
+                  </div>
+                  <GroupPasswordReset groupDid={groupDid} />
+                </div>
+              </>
+            ) : (
+              <div className="sx-subsection">
+                <div className="sx-subsection__head">
+                  <h3 className="sx-subsection__title">Handle</h3>
+                  <p className="sx-subsection__desc">
+                    The @handle people use to find this group on Certified.
+                  </p>
+                </div>
+                <p className="username-card__value">@{org.handle}</p>
+              </div>
+            )}
+          </div>
+        )
 
-                <div className="org-members__list">
-                  {members
-                    .slice(membersPage * MEMBERS_PER_PAGE, (membersPage + 1) * MEMBERS_PER_PAGE)
-                    .map((member) => (
-                    <div key={member.did} className="org-members__item">
-                      <div className="org-members__item-info">
-                        <p className="org-members__item-handle">
-                          @{member.handle && member.handle !== member.did ? member.handle : member.did}
-                        </p>
-                        <p className="org-members__item-did">{member.did}</p>
-                      </div>
+      case "social-graph":
+        return did ? (
+          <SyncSocialGraphSection
+            did={groupDid}
+            ownDid={did}
+            targetDid={groupDid}
+          />
+        ) : (
+          <p className="settings__note">Sign in to sync this group.</p>
+        )
 
-                      {isOwner ? (
-                        <div className="org-members__item-role-select">
-                          <select
-                            value={member.role}
-                            onChange={(e) =>
-                              handleRoleChange(member.did, e.target.value as OrgRole)
-                            }
-                            className="org-members__role-dropdown"
-                          >
-                            <option value="member">Member</option>
-                            <option value="admin">Admin</option>
-                            <option value="owner">Owner</option>
-                          </select>
-                          <ChevronDown size={14} className="org-members__role-icon" />
-                        </div>
-                      ) : (
-                        <span className="org-members__item-role-badge">
-                          {member.role}
-                        </span>
-                      )}
+      // Members — list + role controls + add affordance.
+      case "members":
+        return membersLoading ? (
+          <div className="org-members__loading">
+            <LoadingSpinner size="sm" />
+          </div>
+        ) : (
+          <>
+            {memberError && <ErrorMessage message={memberError} />}
 
-                      {isAdmin && member.did !== did && (
-                        <button
-                          className="org-members__remove-btn"
-                          onClick={() => handleRemoveMember(member.did)}
-                          title="Remove member"
+            <div className="org-members__list">
+              {members
+                .slice(membersPage * MEMBERS_PER_PAGE, (membersPage + 1) * MEMBERS_PER_PAGE)
+                .map((member) => (
+                <div key={member.did} className="org-members__item">
+                  <div className="org-members__item-info">
+                    <IdentityRow
+                      did={member.did}
+                      handle={member.handle}
+                      displayName={member.displayName}
+                      avatarUrl={member.avatarUrl}
+                      size="sm"
+                    />
+                  </div>
+                  <div className="org-members__item-actions">
+                    {isOwner && member.role !== "owner" ? (
+                      <Select
+                        size="sm"
+                        aria-label="Member role"
+                        value={member.role}
+                        onChange={(e) =>
+                          handleRoleChange(member.did, e.target.value as OrgRole)
+                        }
+                      >
+                        <option value="member">Member</option>
+                        <option value="admin">Admin</option>
+                      </Select>
+                    ) : (
+                      <Badge variant="role">{member.role}</Badge>
+                    )}
+                    {/* Owners can remove admins + members; admins can remove
+                        only members (not other admins, not the owner, not
+                        themselves). Mirrors CGS RBAC. */}
+                    {canRemoveMember({
+                      memberDid: member.did,
+                      memberRole: member.role,
+                      callerDid: did,
+                      isOwner,
+                    }) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Remove member"
+                          onClick={() => setConfirmRemove(member.did)}
                         >
                           <Trash2 size={14} />
-                        </button>
+                        </Button>
                       )}
-                    </div>
-                  ))}
-                </div>
-                {members.length > MEMBERS_PER_PAGE && (
-                  <div className="pagination">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setMembersPage((p) => p - 1)}
-                      disabled={membersPage === 0}
-                    >
-                      Previous
-                    </Button>
-                    <span className="pagination__info">
-                      {membersPage + 1} / {Math.ceil(members.length / MEMBERS_PER_PAGE)}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setMembersPage((p) => p + 1)}
-                      disabled={(membersPage + 1) * MEMBERS_PER_PAGE >= members.length}
-                    >
-                      Next
-                    </Button>
                   </div>
-                )}
+                </div>
+              ))}
+            </div>
+            {members.length > MEMBERS_PER_PAGE && (
+              <div className="pagination">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setMembersPage((p) => p - 1)}
+                  disabled={membersPage === 0}
+                >
+                  Previous
+                </Button>
+                <span className="pagination__info">
+                  {membersPage + 1} / {Math.ceil(members.length / MEMBERS_PER_PAGE)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setMembersPage((p) => p + 1)}
+                  disabled={(membersPage + 1) * MEMBERS_PER_PAGE >= members.length}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
 
-                {/* Add member form */}
-                {isAdmin && (
-                  <div className="org-members__add">
-                    <h3 className="org-members__add-title">Add member</h3>
-                    <div className="org-members__add-form">
-                      <HandleSearch
-                        label=""
-                        placeholder="DID or username"
-                        onSelect={(selectedDid, selectedHandle) => {
-                          if (!pendingMembers.some((m) => m.did === selectedDid)) {
-                            setPendingMembers((prev) => [...prev, { did: selectedDid, handle: selectedHandle }])
-                          }
-                        }}
-                      />
-                      {pendingMembers.length > 0 && (
-                        <div className="org-members__selected">
-                          <span className="org-members__selected-label">Selected:</span>
-                          {pendingMembers.map((m, i) => (
-                            <span key={m.did} className="org-members__selected-tag">
-                              {i > 0 && ", "}
-                              @{m.handle}
-                              <button
-                                type="button"
-                                className="org-members__selected-remove"
-                                onClick={() => removePendingMember(m.did)}
-                                aria-label={`Remove ${m.handle}`}
-                              >
-                                &times;
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      <div className="org-members__add-role">
-                        <label className="org-members__add-role-label">Role</label>
-                        <select
-                          value={newMemberRole}
-                          onChange={(e) => setNewMemberRole(e.target.value as OrgRole)}
-                          className="org-members__role-dropdown"
-                        >
-                          <option value="member">Member</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                      </div>
-                      {addError && <ErrorMessage message={addError} />}
+            {/* Add member form */}
+            {isAdmin && (
+              <div className="org-members__add">
+                <h3 className="org-members__add-title">Add member</h3>
+                <HandleSearch
+                  label=""
+                  placeholder="Search by handle or DID"
+                  onSelect={(selectedDid, selectedHandle) => {
+                    if (!pendingMembers.some((m) => m.did === selectedDid)) {
+                      setPendingMembers((prev) => [...prev, { did: selectedDid, handle: selectedHandle }])
+                    }
+                  }}
+                />
+                {pendingMembers.length > 0 && (
+                  <>
+                    <div className="org-members__selected">
+                      {pendingMembers.map((m) => (
+                        <span key={m.did} className="org-members__selected-tag">
+                          @{m.handle}
+                          <Tooltip label={`Remove ${m.handle}`}>
+                            <button
+                              type="button"
+                              className="org-members__selected-remove"
+                              onClick={() => removePendingMember(m.did)}
+                              aria-label={`Remove ${m.handle}`}
+                            >
+                              &times;
+                            </button>
+                          </Tooltip>
+                        </span>
+                      ))}
+                    </div>
+                    {addError && <ErrorMessage message={addError} />}
+                    <div className="org-members__add-submit">
+                      <span className="org-members__add-submit-label">Add as</span>
+                      <Select
+                        size="sm"
+                        aria-label="Role for new member"
+                        value={newMemberRole}
+                        onChange={(e) => setNewMemberRole(e.target.value as OrgRole)}
+                      >
+                        <option value="member">Member</option>
+                        <option value="admin">Admin</option>
+                      </Select>
                       <Button
                         variant="primary"
                         size="sm"
                         onClick={handleAddMembers}
                         loading={isAdding}
-                        disabled={pendingMembers.length === 0 || isAdding}
+                        disabled={isAdding}
                       >
                         <UserPlus size={14} />
-                        Add Member
+                        Add
                       </Button>
                     </div>
-                  </div>
+                  </>
                 )}
-              </>
-            )}
-          </div>
-
-          {/* Activity Log */}
-          <div className="dash-card">
-            <h2 className="dash-card__title">Activity Log</h2>
-            <p className="dash-card__desc">
-              Recent actions performed within this group.
-            </p>
-
-            {!isAdmin ? (
-              <p className="settings__note">Only admins and owners can view the activity log.</p>
-            ) : auditLoading ? (
-              <div className="org-audit__loading">
-                <LoadingSpinner size="sm" />
               </div>
-            ) : auditEntries.length === 0 ? (
-              <p className="settings__note">No activity recorded yet.</p>
-            ) : (
-                <>
-                  <div className="org-audit__list">
-                    {auditEntries
-                      .slice(auditPage * AUDIT_PER_PAGE, (auditPage + 1) * AUDIT_PER_PAGE)
-                      .map((entry) => (
-                      <div key={entry.id} className="org-audit__item">
-                        <div className="org-audit__item-main">
-                          <span className="org-audit__action">{entry.action}</span>
-                          <span
-                            className={`org-audit__result org-audit__result--${entry.result}`}
-                          >
-                            {entry.result}
-                          </span>
-                        </div>
-                        <div className="org-audit__item-meta">
-                          <span className="org-audit__actor">
-                            {entry.actorDid}
-                          </span>
-                          <span className="org-audit__time">
-                            {new Date(entry.createdAt).toLocaleString()}
-                          </span>
-                        </div>
-                        {(entry.collection || entry.rkey || (entry.detail && Object.keys(entry.detail).length > 0)) && (
-                          <div className="org-audit__detail">
-                            {entry.collection && (
-                              <span className="org-audit__detail-item">
-                                collection: {entry.collection}
-                              </span>
-                            )}
-                            {entry.rkey && (
-                              <span className="org-audit__detail-item">
-                                rkey: {entry.rkey}
-                              </span>
-                            )}
-                            {entry.detail && Object.entries(entry.detail)
-                              .filter(([key]) => key !== "collection" && key !== "rkey")
-                              .map(([key, value]) => (
-                              <span key={key} className="org-audit__detail-item">
-                                {key}: {typeof value === "object" ? JSON.stringify(value) : String(value)}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+            )}
+          </>
+        )
+
+      case "activity":
+        return !isAdmin ? (
+          <p className="settings__note">Only admins and owners can view the activity log.</p>
+        ) : auditLoading ? (
+          <div className="org-audit__loading">
+            <LoadingSpinner size="sm" />
+          </div>
+        ) : auditError ? (
+          <p className="settings__error" role="alert">
+            Couldn&apos;t load the activity log: {auditError}
+          </p>
+        ) : auditEntries.length === 0 ? (
+          <p className="settings__note">No activity recorded yet.</p>
+        ) : (
+          <>
+            <div className="org-audit__list">
+              {auditEntries
+                .slice(auditPage * AUDIT_PER_PAGE, (auditPage + 1) * AUDIT_PER_PAGE)
+                .map((entry) => (
+                <div key={entry.id} className="org-audit__item">
+                  <div className="org-audit__item-main">
+                    <span className="org-audit__action">{entry.action}</span>
+                    {(() => {
+                      const safeResult = auditResultClassSuffix(entry.result)
+                      return (
+                        <span
+                          className={`org-audit__result org-audit__result--${safeResult}`}
+                        >
+                          {entry.result}
+                        </span>
+                      )
+                    })()}
                   </div>
-                  {auditEntries.length > AUDIT_PER_PAGE && (
-                    <div className="pagination">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setAuditPage((p) => p - 1)}
-                        disabled={auditPage === 0}
-                      >
-                        Previous
-                      </Button>
-                      <span className="pagination__info">
-                        {auditPage + 1} / {Math.ceil(auditEntries.length / AUDIT_PER_PAGE)}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setAuditPage((p) => p + 1)}
-                        disabled={(auditPage + 1) * AUDIT_PER_PAGE >= auditEntries.length}
-                      >
-                        Next
-                      </Button>
+                  <dl className="org-audit__item-meta">
+                    <div className="org-audit__detail-row">
+                      <dt className="org-audit__detail-label">by</dt>
+                      <dd className="org-audit__detail-value">{entry.actorDid}</dd>
                     </div>
+                    <div className="org-audit__detail-row">
+                      <dt className="org-audit__detail-label">at</dt>
+                      <dd className="org-audit__detail-value">{new Date(entry.createdAt).toLocaleString()}</dd>
+                    </div>
+                  </dl>
+                  {(entry.collection || entry.rkey || (entry.detail && Object.keys(entry.detail).length > 0)) && (
+                    <dl className="org-audit__detail">
+                      {entry.collection && (
+                        <div className="org-audit__detail-row">
+                          <dt className="org-audit__detail-label">collection</dt>
+                          <dd className="org-audit__detail-value">{entry.collection}</dd>
+                        </div>
+                      )}
+                      {entry.rkey && (
+                        <div className="org-audit__detail-row">
+                          <dt className="org-audit__detail-label">rkey</dt>
+                          <dd className="org-audit__detail-value">{entry.rkey}</dd>
+                        </div>
+                      )}
+                      {entry.detail && Object.entries(entry.detail)
+                        .filter(([key]) => key !== "collection" && key !== "rkey")
+                        .map(([key, value]) => (
+                        <div key={key} className="org-audit__detail-row">
+                          <dt className="org-audit__detail-label">{key}</dt>
+                          <dd className="org-audit__detail-value">
+                            {typeof value === "object" ? JSON.stringify(value) : String(value)}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
                   )}
-                </>
-              )}
+                </div>
+              ))}
             </div>
+            {auditEntries.length > AUDIT_PER_PAGE && (
+              <div className="pagination">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setAuditPage((p) => p - 1)}
+                  disabled={auditPage === 0}
+                >
+                  Previous
+                </Button>
+                <span className="pagination__info">
+                  {auditPage + 1} / {Math.ceil(auditEntries.length / AUDIT_PER_PAGE)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setAuditPage((p) => p + 1)}
+                  disabled={(auditPage + 1) * AUDIT_PER_PAGE >= auditEntries.length}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+          </>
+        )
+
+      // Danger zone — owner-only (gated by the visible-set check above).
+      case "danger":
+        return (
+          <>
+            {destroyError && <ErrorMessage message={destroyError} />}
+            <Button
+              variant="destructive"
+              size="sm"
+              className="self-start"
+              onClick={() => setConfirmDestroy(true)}
+              loading={destroying}
+              disabled={destroying}
+            >
+              <Trash2 size={14} />
+              Remove group
+            </Button>
+          </>
+        )
+    }
+  }
+
+  return (
+    <div className="sx" data-view={active ? "detail" : "list"}>
+      <h1 className="sx__heading sr-only">Group settings</h1>
+
+      <div className="page-layout">
+        <aside className="sx__menu">
+          <nav aria-label="Group settings sections">
+            {visibleGroups.map((group) => (
+              <div className="sx-nav-group" key={group.label}>
+                <p className="sx-nav-group__label">{group.label}</p>
+                <ul className="sx-menu">{group.items.map(renderNavItem)}</ul>
+              </div>
+            ))}
+          </nav>
+        </aside>
+
+        <div className="page-layout__main sx__panel">
+          <button type="button" className="sx-back" onClick={back}>
+            <ChevronLeft size={16} aria-hidden />
+            Settings
+          </button>
+          <section className="sx-section" aria-labelledby="sx-section-title">
+            <header className="sx-panel__header">
+              <h2 id="sx-section-title" className="sx-panel__title">
+                {selected.label}
+              </h2>
+              {(() => {
+                // The Account page gains email + password when self-owned, so
+                // its header description reflects that.
+                const desc =
+                  selected.key === "account" && isSelfOwned
+                    ? "This group's DID, handle, sign-in email, and password."
+                    : selected.description
+                return desc ? <p className="sx-panel__desc">{desc}</p> : null
+              })()}
+            </header>
+            <div className="sx-panel__body">{renderBody(selectedKey)}</div>
+          </section>
         </div>
       </div>
+
+      {confirmRemove ? (
+        <ConfirmDialog
+          title="Remove member"
+          message="Are you sure you want to remove this member from the group?"
+          confirmLabel="Remove"
+          onCancel={() => setConfirmRemove(null)}
+          onConfirm={() => handleRemoveMember(confirmRemove)}
+        />
+      ) : null}
+
+      {confirmDestroy ? (
+        <ConfirmDialog
+          title="Remove group"
+          message={`Remove @${org.handle} from Certified? This deletes the group from the service only — the underlying account and its records remain. You can promote the account to a group again later.`}
+          confirmLabel="Remove group"
+          confirmPhrase={org.handle}
+          isConfirming={destroying}
+          onCancel={() => setConfirmDestroy(false)}
+          onConfirm={handleDestroy}
+        />
+      ) : null}
+
+      {createdHandle ? (
+        <GroupResultModal
+          variant="created"
+          handle={createdHandle}
+          primaryLabel="Add members"
+          onPrimary={() => setCreatedHandle(null)}
+          onClose={() => setCreatedHandle(null)}
+        />
+      ) : null}
+
+      {removed ? (
+        <GroupResultModal
+          variant="removed"
+          handle={org.handle}
+          primaryLabel="Done"
+          onPrimary={finishRemoval}
+          onClose={finishRemoval}
+        />
+      ) : null}
     </div>
   )
 }

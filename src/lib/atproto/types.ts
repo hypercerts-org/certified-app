@@ -1,13 +1,36 @@
 import { BlobRef } from "@atproto/api";
 
 /**
- * Extract the CID $link from a BlobRef, handling both typed and JSON-deserialized forms.
- * When a BlobRef comes from the AT Protocol SDK it has a typed `ref` property,
- * but when deserialized from JSON the `ref` becomes a plain `{ $link: string }` object.
+ * Extract the CID $link from a BlobRef.ref. The atproto SDK types `ref` as
+ * a `CID` instance, but in practice the value can also arrive as a JSON-
+ * deserialised `{ $link: string }` (e.g. when read from a getRecord
+ * response that wasn't passed through the lexicon). Both shapes are
+ * supported; anything else falls back to `String(ref)` which yields the
+ * CID's `toString()`.
+ *
+ * Workaround for a magic-indexer bug (hypercerts-org/magic-indexer#110):
+ * when serialising `Blob.ref` to a GraphQL `String!`, the resolver uses
+ * Go's default `fmt.Sprintf("%v", m)` on the underlying map and emits
+ * `map[$link:<cid>]` instead of just `<cid>`. We strip that wrapper here
+ * so downstream image URLs still work on records that use the
+ * lexicon-canonical `smallImage` / `largeImage` shape. Remove once the
+ * indexer fixes its resolver.
  */
-export function getBlobRefLink(ref: BlobRef["ref"]): string {
-  if (typeof ref === "object" && ref !== null && "$link" in (ref as Record<string, unknown>)) {
-    return (ref as unknown as { $link: string }).$link;
+const INDEXER_MAP_LINK_RE = /^map\[\$link:([^\]]+)\]$/;
+
+export function getBlobRefLink(ref: unknown): string {
+  if (
+    typeof ref === "object" &&
+    ref !== null &&
+    "$link" in ref &&
+    typeof (ref as { $link: unknown }).$link === "string"
+  ) {
+    return (ref as { $link: string }).$link;
+  }
+  if (typeof ref === "string") {
+    const m = ref.match(INDEXER_MAP_LINK_RE);
+    if (m) return m[1];
+    return ref;
   }
   return String(ref);
 }
@@ -47,7 +70,7 @@ export interface BlueskyProfile {
   $type?: "app.bsky.actor.profile";
   displayName?: string;
   description?: string;
-  avatar?: { $type: string; ref: { $link: string }; mimeType: string; size: number } | Record<string, unknown>;
-  banner?: { $type: string; ref: { $link: string }; mimeType: string; size: number } | Record<string, unknown>;
+  avatar?: { $type: string; ref: { $link: string }; mimeType: string; size: number } | { ref?: { $link: string }; [key: string]: unknown };
+  banner?: { $type: string; ref: { $link: string }; mimeType: string; size: number } | { ref?: { $link: string }; [key: string]: unknown };
   createdAt?: string;
 }

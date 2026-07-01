@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import {
-  getAuthenticatedAgent,
-  createGroupAgent,
-} from "@/lib/groups/proxy-agent"
+import { getAuthenticatedAgent } from "@/lib/groups/proxy-agent"
 import { checkCsrf } from "@/lib/auth/csrf"
+import { isValidDid } from "@/lib/utils/did"
+import { extractRouteError } from "@/lib/utils/api"
+import { logSafe } from "@/lib/utils/log-safe"
 
 /**
  * PUT /api/groups/[groupDid]/handle
@@ -18,32 +18,26 @@ export async function PUT(
 
   try {
     const { groupDid } = await params
+    if (!isValidDid(groupDid)) {
+      return NextResponse.json({ error: "Invalid group DID" }, { status: 400 })
+    }
     const auth = await getAuthenticatedAgent()
     if (!auth)
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
 
-    const body = await request.json()
-    const { handle } = body as { handle: string }
-
-    if (!handle?.trim()) {
-      return NextResponse.json({ error: "Handle is required" }, { status: 400 })
-    }
-
-    const groupAgent = createGroupAgent(auth.agent, groupDid)
-
-    // Use the standard identity.updateHandle through the proxy
-    // The group service intercepts this and updates the group's handle
-    await groupAgent.com.atproto.identity.updateHandle({
-      handle: handle.trim(),
-    })
-
-    return NextResponse.json({ success: true })
-  } catch (err: unknown) {
-    console.error("Update org handle error:", err)
-    const error = err as { status?: number; message?: string }
+    // DISABLED — changing a group's handle is not supported. CGS does not
+    // proxy `com.atproto.identity.updateHandle`; when called through the group
+    // proxy the caller's PDS handles the identity op LOCALLY for the
+    // authenticated account, so it renames the CALLER, not the group (it
+    // corrupted an admin's own handle in testing). Re-enable only once CGS
+    // exposes a real, group-targeted handle endpoint.
     return NextResponse.json(
-      { error: error?.message || "Failed to update handle" },
-      { status: error?.status || 500 }
+      { error: "Changing a group's handle isn't supported yet." },
+      { status: 501 },
     )
+  } catch (err: unknown) {
+    logSafe("[groups/handle] update failed", err)
+    const { status, message } = extractRouteError(err)
+    return NextResponse.json({ error: message }, { status })
   }
 }

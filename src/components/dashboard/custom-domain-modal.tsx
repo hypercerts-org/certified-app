@@ -1,9 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Globe, Copy, Check, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Globe, Copy, Check, AlertCircle, CheckCircle2 } from "lucide-react";
 import { authFetch } from "@/lib/auth/fetch";
 import { clearSessionCache } from "@/hooks/use-session";
+import Button from "@/components/ui/button";
+import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog";
+import Tooltip from "@/components/ui/tooltip";
 
 interface CustomDomainModalProps {
   isOpen: boolean;
@@ -14,8 +17,16 @@ interface CustomDomainModalProps {
 type Step = "enter-domain" | "dns-setup" | "verify";
 
 export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomainModalProps) {
-  const backdropRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear any pending reload timer if the modal unmounts before it fires
+  // (e.g., user closes the success state too fast).
+  useEffect(() => {
+    return () => {
+      if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+    };
+  }, []);
 
   const [step, setStep] = useState<Step>("enter-domain");
   const [domain, setDomain] = useState("");
@@ -24,7 +35,9 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Reset state when modal opens
+  // Reset state when modal opens. AppDialog owns the Esc-to-close,
+  // body-scroll-lock, focus trap, and focus save/restore; this effect
+  // only resets the wizard's own state and focuses the domain input.
   useEffect(() => {
     if (isOpen) {
       setStep("enter-domain");
@@ -35,26 +48,6 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
       setIsSuccess(false);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
-  }, [isOpen]);
-
-  // Close on Escape
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
-
-  // Prevent body scroll
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
 
   const cleanDomain = useCallback((input: string) => {
@@ -116,7 +109,7 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
       clearSessionCache();
 
       // Reload after a brief moment so the user sees the success state
-      setTimeout(() => {
+      reloadTimerRef.current = setTimeout(() => {
         window.location.reload();
       }, 1500);
     } catch (err) {
@@ -132,32 +125,26 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
   const dnsValue = `did=${did}`;
 
   return (
-    <div
-      className="domain-modal__backdrop"
-      ref={backdropRef}
-      onClick={(e) => { if (e.target === backdropRef.current) onClose(); }}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Use your own domain as your username"
+    <AppDialog
+      ariaLabel="Use your own domain as your username"
+      className="domain-modal"
+      maxWidth={480}
+      onClose={onClose}
     >
-      <div className="domain-modal">
-        {/* Header */}
-        <div className="domain-modal__header">
-          <Globe size={18} className="domain-modal__header-icon" />
-          <span className="domain-modal__title">Use your own domain</span>
-          <button
-            className="domain-modal__close"
-            onClick={onClose}
-            aria-label="Close"
+      <AppDialogHeader
+        title={
+          <span
+            style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M4 4l8 8M12 4l-8 8" />
-            </svg>
-          </button>
-        </div>
+            <Globe size={18} className="domain-modal__header-icon" aria-hidden />
+            Use your own domain
+          </span>
+        }
+        onClose={onClose}
+      />
 
-        {/* Steps indicator */}
-        <div className="domain-modal__steps">
+      {/* Steps indicator */}
+      <div className="domain-modal__steps">
           <div className={`domain-modal__step ${step === "enter-domain" ? "domain-modal__step--active" : ""} ${step !== "enter-domain" ? "domain-modal__step--done" : ""}`}>
             <span className="domain-modal__step-num">1</span>
             <span className="domain-modal__step-label">Enter domain</span>
@@ -199,21 +186,18 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
                 Enter the domain you want to use as your username. You must have access to its DNS settings.
               </p>
               <div className="domain-modal__actions">
-                <button
-                  className="domain-modal__btn domain-modal__btn--ghost"
-                  onClick={onClose}
-                  type="button"
-                >
+                <Button variant="ghost" size="sm" onClick={onClose} type="button">
                   Cancel
-                </button>
-                <button
-                  className="domain-modal__btn domain-modal__btn--primary"
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
                   onClick={handleContinue}
                   disabled={!cleanDomain(domain)}
                   type="button"
                 >
                   Next
-                </button>
+                </Button>
               </div>
             </>
           )}
@@ -233,28 +217,32 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
                   <div className="domain-modal__dns-label">Host</div>
                   <div className="domain-modal__dns-val domain-modal__dns-val--mono">
                     <span>{dnsHost}</span>
-                    <button
-                      className="domain-modal__copy-btn"
-                      onClick={() => handleCopy(dnsHost, "host")}
-                      aria-label="Copy host"
-                      type="button"
-                    >
-                      {copied === "host" ? <Check size={14} /> : <Copy size={14} />}
-                    </button>
+                    <Tooltip label="Copy host">
+                      <button
+                        className="domain-modal__copy-btn"
+                        onClick={() => handleCopy(dnsHost, "host")}
+                        aria-label="Copy host"
+                        type="button"
+                      >
+                        {copied === "host" ? <Check size={14} /> : <Copy size={14} />}
+                      </button>
+                    </Tooltip>
                   </div>
                 </div>
                 <div className="domain-modal__dns-row domain-modal__dns-row--last">
                   <div className="domain-modal__dns-label">Value</div>
                   <div className="domain-modal__dns-val domain-modal__dns-val--mono">
                     <span className="domain-modal__dns-val-break">{dnsValue}</span>
-                    <button
-                      className="domain-modal__copy-btn"
-                      onClick={() => handleCopy(dnsValue, "value")}
-                      aria-label="Copy value"
-                      type="button"
-                    >
-                      {copied === "value" ? <Check size={14} /> : <Copy size={14} />}
-                    </button>
+                    <Tooltip label="Copy value">
+                      <button
+                        className="domain-modal__copy-btn"
+                        onClick={() => handleCopy(dnsValue, "value")}
+                        aria-label="Copy value"
+                        type="button"
+                      >
+                        {copied === "value" ? <Check size={14} /> : <Copy size={14} />}
+                      </button>
+                    </Tooltip>
                   </div>
                 </div>
               </div>
@@ -265,20 +253,22 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
               </div>
 
               <div className="domain-modal__actions">
-                <button
-                  className="domain-modal__btn domain-modal__btn--ghost"
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setStep("enter-domain")}
                   type="button"
                 >
                   Back
-                </button>
-                <button
-                  className="domain-modal__btn domain-modal__btn--primary"
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
                   onClick={() => { setVerifyError(null); setStep("verify"); }}
                   type="button"
                 >
-                  I've added the DNS record
-                </button>
+                  I&apos;ve added the DNS record
+                </Button>
               </div>
             </>
           )}
@@ -296,7 +286,7 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
               ) : (
                 <>
                   <p className="domain-modal__desc">
-                    We'll check that <strong>{domain}</strong> has the correct DNS record pointing to your identity.
+                    We&apos;ll check that <strong>{domain}</strong> has the correct DNS record pointing to your identity.
                   </p>
 
                   <div className="domain-modal__verify-summary">
@@ -318,36 +308,31 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
                   )}
 
                   <div className="domain-modal__actions">
-                    <button
-                      className="domain-modal__btn domain-modal__btn--ghost"
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => { setVerifyError(null); setStep("dns-setup"); }}
                       type="button"
                       disabled={isVerifying}
                     >
                       Back
-                    </button>
-                    <button
-                      className="domain-modal__btn domain-modal__btn--primary"
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
                       onClick={handleVerify}
+                      loading={isVerifying}
                       disabled={isVerifying}
                       type="button"
                     >
-                      {isVerifying ? (
-                        <>
-                          <Loader2 size={16} className="domain-modal__spinner" />
-                          Verifying...
-                        </>
-                      ) : (
-                        "Verify DNS record"
-                      )}
-                    </button>
+                      {isVerifying ? "Verifying…" : "Verify DNS record"}
+                    </Button>
                   </div>
                 </>
               )}
             </>
           )}
         </div>
-      </div>
-    </div>
+    </AppDialog>
   );
 }

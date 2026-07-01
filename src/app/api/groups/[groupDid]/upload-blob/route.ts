@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import {
   getAuthenticatedAgent,
-  createGroupAgent,
+  createGroupClient,
 } from "@/lib/groups/proxy-agent"
 import { checkCsrf } from "@/lib/auth/csrf"
+import { isValidDid } from "@/lib/utils/did"
+import { extractRouteError } from "@/lib/utils/api"
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
@@ -21,6 +23,9 @@ export async function POST(
 
   try {
     const { groupDid } = await params
+    if (!isValidDid(groupDid)) {
+      return NextResponse.json({ error: "Invalid group DID" }, { status: 400 })
+    }
     const auth = await getAuthenticatedAgent()
     if (!auth)
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
@@ -32,27 +37,35 @@ export async function POST(
       return NextResponse.json({ error: "Unsupported media type" }, { status: 415 })
     }
 
+    // Reject oversized uploads early via Content-Length before reading
+    // the full body into memory.
+    const contentLengthHeader = request.headers.get("content-length")
+    if (contentLengthHeader && Number(contentLengthHeader) > MAX_SIZE) {
+      return NextResponse.json({ error: "Payload too large (max 5MB)" }, { status: 413 })
+    }
+
     const buffer = await request.arrayBuffer()
     if (buffer.byteLength > MAX_SIZE) {
       return NextResponse.json({ error: "Payload too large (max 5MB)" }, { status: 413 })
     }
 
-    const groupAgent = createGroupAgent(auth.agent, groupDid)
+    const groupAgent = createGroupClient(auth.agent, groupDid)
 
+    // uploadBlob has a binary body, so the group selector goes on the
+    // querystring (body-less convention — see CGS aud-migration.md).
     const { data } = await groupAgent.call(
       "app.certified.group.repo.uploadBlob",
-      {},
+      { repo: groupDid },
       new Uint8Array(buffer),
       { encoding: contentType }
     )
 
     return NextResponse.json(data)
   } catch (err: unknown) {
-    console.error("Upload blob error:", err)
-    const error = err as { status?: number; message?: string }
-    return NextResponse.json(
-      { error: error?.message || "Internal server error" },
-      { status: error?.status || 500 }
-    )
+    // extractRouteError calls logSafe internally — no separate
+    // console.error needed (would duplicate the log line and would
+    // also bypass the redactSecrets pass).
+    const { status, message } = extractRouteError(err, "[groups/upload-blob]")
+    return NextResponse.json({ error: message }, { status })
   }
 }

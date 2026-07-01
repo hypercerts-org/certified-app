@@ -1,0 +1,579 @@
+/* Endorsement network visualization — the /endorsement-graph page.
+ * Tokens only: colors via --bg, --fg, --border tokens; radius via
+ * --radius; shadows via --shadow tokens; z-index via --z tokens.
+ * Breakpoints 800/1100/1300. */
+
+/* Opt the page out of the shell's 720px reading column so the graph uses
+   the full grid width (capped at 1300px by .app-shell__grid). The shell's
+   horizontal padding is dropped here — `.viz`'s own padding is the gutter —
+   while its navbar-offset top/bottom padding is kept. */
+.app-shell:has(.viz) .app-shell__content {
+  max-width: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* On wide desktop the layout is a graph + sidebar row; cap it to the
+   viewport so the main view never grows past the screen. Drop the shell's
+   vertical padding, fix the content cell to the space below the top bar,
+   and let the sidebar scroll internally. Below 1100px the layout stacks
+   and the page scrolls normally. */
+@media (min-width: 1100px) {
+  .app-shell:has(.viz) .app-shell__content {
+    height: calc(100dvh - var(--top-bar-total, var(--top-bar-row1, 52px)));
+    min-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+
+  .viz {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .viz__main {
+    min-height: 0;
+  }
+
+  .viz__graph {
+    min-height: 0;
+  }
+}
+
+.viz {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: var(--space-4, 16px);
+  width: 100%;
+  padding: var(--space-4, 16px);
+  box-sizing: border-box;
+}
+
+.viz__main {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.viz__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.viz__graph {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 60vh;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  overflow: hidden;
+}
+
+/* The endorsement graph hosted in the Help modal: fill nearly the whole
+   screen (a little margin shows the modal). The body owns the height; `.viz`
+   fills it and the graph flexes instead of using its standalone 60vh min. */
+.endorsement-graph-modal__body {
+  display: flex;
+  height: 86vh;
+  min-height: 0;
+}
+
+.endorsement-graph-modal__body .viz {
+  width: 100%;
+  height: 100%;
+}
+
+.endorsement-graph-modal__body .viz__graph {
+  min-height: 0;
+}
+
+.viz__canvas-host {
+  position: absolute;
+  inset: 0;
+}
+
+/* Fullscreen mode covers the whole `.viz` row — graph AND the stats
+   sidebar — so the rankings and search stay usable. Fill the screen with
+   the page background (not the browser's default black) and let the
+   sidebar scroll within the fixed height. */
+.viz:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  background: var(--bg-canvas);
+  overflow: hidden;
+}
+
+.viz:fullscreen .viz__main,
+.viz:fullscreen .viz__graph,
+.viz:fullscreen .viz__sidebar {
+  min-height: 0;
+}
+
+/* Fallback: if the `.viz` ancestor can't be found we fullscreen the canvas
+   host alone — give it the graph background so there's no letterboxing. */
+.viz__canvas-host:fullscreen {
+  background: var(--bg-sunken);
+}
+
+/* ---- Floating controls (top-left of the graph) ---- */
+.viz__controls {
+  position: absolute;
+  top: var(--space-3, 12px);
+  left: var(--space-3, 12px);
+  z-index: var(--z-rail);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  max-width: 280px;
+}
+
+.viz__control-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  flex-wrap: wrap;
+}
+
+.viz__search {
+  min-width: 200px;
+}
+
+/* Layout + scope switchers fill the control panel so their segments read
+   as one clear toggle rather than floating short. */
+.viz__layout-toggle,
+.viz__scope-toggle {
+  width: 100%;
+}
+
+.viz__search-wrap {
+  position: relative;
+  width: 240px;
+  max-width: 100%;
+}
+
+.viz__search-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: var(--z-popover);
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.viz__search-result {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast, 150ms ease-out);
+}
+
+.viz__search-result:hover {
+  background: var(--overlay-weak, var(--bg-raised));
+}
+
+.viz__search-result-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.viz__search-result-primary {
+  color: var(--fg-primary);
+  font-size: var(--text-body-sm, 0.875rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.viz__search-result-secondary {
+  color: var(--fg-muted);
+  font-size: var(--text-caption, 0.75rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.viz__zoom {
+  position: absolute;
+  bottom: var(--space-3, 12px);
+  right: var(--space-3, 12px);
+  z-index: var(--z-rail);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+/* ---- Legend ---- */
+.viz__legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  font-size: var(--text-caption, 0.75rem);
+  color: var(--fg-secondary);
+}
+
+.viz__legend-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+
+.viz__legend-swatch {
+  width: 22px;
+  height: 0;
+  border-top-width: 2px;
+  border-top-style: solid;
+  flex: 0 0 auto;
+}
+
+.viz__legend-swatch--uni {
+  border-top-color: var(--fg-muted);
+}
+
+.viz__legend-swatch--mutual {
+  border-top-color: var(--color-success);
+  border-top-width: 3px;
+}
+
+/* ---- Hover / selected node info panel ---- */
+.viz__panel {
+  position: absolute;
+  top: var(--space-3, 12px);
+  right: var(--space-3, 12px);
+  z-index: var(--z-popover);
+  width: 280px;
+  max-width: calc(100% - var(--space-6, 24px));
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-3, 12px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.viz__panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  min-width: 0;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.viz__panel-head:active {
+  cursor: grabbing;
+}
+
+.viz__panel-id {
+  flex: 1 1 auto;
+}
+
+.viz__panel-collapse {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast, 150ms ease-out);
+}
+
+.viz__panel-collapse:hover {
+  background: var(--overlay-weak, var(--bg-raised));
+  color: var(--fg-secondary);
+}
+
+.viz__panel-collapse svg {
+  transition: transform var(--transition-fast, 150ms ease-out);
+}
+
+/* Chevron points up when expanded (click to collapse), down when collapsed. */
+.viz__panel:not([data-collapsed]) .viz__panel-collapse svg {
+  transform: rotate(180deg);
+}
+
+.viz__panel-id {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.viz__panel-name {
+  font-weight: 600;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.viz__panel-handle {
+  font-size: var(--text-body-sm, 0.875rem);
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.viz__panel-counts {
+  display: flex;
+  gap: var(--space-4, 16px);
+}
+
+.viz__panel-count {
+  display: flex;
+  flex-direction: column;
+}
+
+.viz__panel-count-value {
+  font-weight: 600;
+  color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.viz__panel-count-label {
+  font-size: var(--text-caption, 0.75rem);
+  color: var(--fg-muted);
+}
+
+.viz__panel-section-title {
+  font-size: var(--text-caption, 0.75rem);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-muted);
+  margin-bottom: var(--space-1, 4px);
+}
+
+.viz__neighbours {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1, 4px);
+}
+
+.viz__neighbour {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* "View profile" button-link in the node panel. */
+.viz__profile-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 9px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  color: var(--fg-primary);
+  font-size: var(--text-body-sm, 0.875rem);
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background var(--transition-fast, 150ms ease-out),
+    border-color var(--transition-fast, 150ms ease-out),
+    transform var(--transition-fast, 150ms ease-out);
+}
+
+.viz__profile-link:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-hover);
+}
+
+.viz__profile-link:active {
+  transform: scale(0.98);
+}
+
+.viz__profile-link-icon {
+  color: var(--fg-muted);
+  transition: transform var(--transition-fast, 150ms ease-out);
+}
+
+.viz__profile-link:hover .viz__profile-link-icon {
+  transform: translate(1px, -1px);
+  color: var(--fg-secondary);
+}
+
+/* ---- Stats sidebar ---- */
+.viz__sidebar {
+  flex: 0 0 320px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+  overflow-y: auto;
+}
+
+.viz__stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3, 12px);
+}
+
+.viz__stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+  padding: var(--space-3, 12px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+}
+
+.viz__stat-value {
+  font-family: var(--font-headline);
+  font-size: var(--text-h3, 1.5rem);
+  color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.viz__stat-label {
+  font-size: var(--text-caption, 0.75rem);
+  color: var(--fg-muted);
+}
+
+.viz__rank {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+.viz__rank-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.viz__rank-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  width: 100%;
+  padding: var(--space-2, 8px) 0;
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast, 150ms ease-out);
+  border-radius: var(--radius);
+}
+
+.viz__rank-item:hover {
+  background: var(--overlay-weak, var(--bg-raised));
+}
+
+.viz__rank-item:last-child {
+  border-bottom: 0;
+}
+
+.viz__rank-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.viz__rank-name-primary {
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--text-body-sm, 0.875rem);
+}
+
+.viz__rank-name-secondary {
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--text-caption, 0.75rem);
+}
+
+.viz__rank-count {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-secondary);
+  font-weight: 600;
+}
+
+.viz__notice {
+  font-size: var(--text-caption, 0.75rem);
+  color: var(--fg-muted);
+}
+
+.viz__state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 60vh;
+}
+
+/* Sidebar drops below the graph under the wide-desktop breakpoint. */
+@media (max-width: 1099px) {
+  .viz {
+    flex-direction: column;
+  }
+
+  .viz__sidebar {
+    flex: 1 1 auto;
+    overflow-y: visible;
+  }
+
+  .viz__stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 799px) {
+  .viz {
+    padding: var(--space-2, 8px);
+  }
+
+  .viz__stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .viz__panel {
+    width: 220px;
+  }
+}

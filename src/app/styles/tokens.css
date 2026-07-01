@@ -1,0 +1,414 @@
+/* ========== Design Tokens & Base Styles ==========
+   CSS custom properties, dark theme overrides, global resets,
+   OpenType features, and accessibility primitives. */
+
+/* Skip navigation link — visible only on focus */
+.skip-nav {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 9999;
+  padding: 8px 16px;
+  background: var(--color-primary);
+  color: var(--color-white);
+  font-size: 0.875rem;
+  font-family: var(--font-inter);
+  text-decoration: none;
+  border-radius: 0 0 var(--radius) 0;
+}
+.skip-nav:focus {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: auto;
+  height: auto;
+  overflow: visible;
+}
+
+:root {
+  color-scheme: light dark;
+
+  /* ===== Invariant primitives (do NOT override in dark theme) ===== */
+  --color-primary: #111111;
+  --color-white: #FFFFFF;
+  --color-accent: #5e5e5e;
+  --color-accent-hover: #454747;
+
+  /* Landing-page palette. Previously documented as "invariant so /welcome
+     always renders light-themed" — that policy is gone; landing now has
+     proper dark-mode support via the [data-theme="dark"] block below.
+     Three of these tokens (--color-light-gray, --color-mid-gray,
+     --color-surface) were referenced from landing.css but never
+     defined, resulting in inherited fallback colors. Now defined. */
+  --color-navy: #111111;
+  --color-off-white: #f9f9f9;
+  --color-gray-100: #eeeeee;
+  --color-light-gray: #e5e5e5;
+  --color-mid-gray: #6b6263;
+  --color-dark-gray: #4c4546;
+  --color-surface: #f9f9f9;
+  --color-surface-container-low: #f3f3f3;
+  /* One step above --color-surface-container-low; a touch more contained
+     than --bg-sunken (#eeeeee). Avatar initials-chip fallback background. */
+  --color-surface-container-high: #e7e7e7;
+
+  /* ===== Semantic tokens (overridden in dark theme) ===== */
+
+  /* Surfaces (elevation ramp — lightest to darkest in light mode) */
+  --bg-canvas: #f9f9f9;
+  --bg-sunken: #eeeeee;
+  --bg-raised: #f3f3f3;
+  --bg-elevated: #FFFFFF;
+
+  /* Foregrounds */
+  --fg-primary: #111111;
+  --fg-secondary: #4c4546;
+  /* --fg-muted darkened from #7e7576 (4.46:1) to #6b6263 (~5.4:1) so
+     small-text contrast on --bg-canvas clears WCAG AA (4.5:1). */
+  --fg-muted: #6b6263;
+
+  /* Borders (transparent overlays — adapt naturally) */
+  --border-subtle: rgba(0, 0, 0, 0.04);
+  --border-light: rgba(0, 0, 0, 0.06);
+  --border-default: rgba(0, 0, 0, 0.08);
+  --border-medium: rgba(0, 0, 0, 0.1);
+  --border-hover: rgba(0, 0, 0, 0.15);
+  --border-hover-soft: rgba(0, 0, 0, 0.12);
+
+  /* Overlays */
+  --overlay-weak: rgba(0, 0, 0, 0.04);
+  --overlay-medium: rgba(0, 0, 0, 0.08);
+  --navy-overlay-30: rgba(0, 0, 0, 0.3);
+  --navy-overlay-70: rgba(0, 0, 0, 0.7);
+
+  /* Modal backdrop — the ::backdrop fill behind a native modal
+     <dialog> (AppDialog). Mirrors the live `dialog.signin-modal::backdrop`
+     rule: rgba(0,0,0,0.5) in light, --navy-overlay-70 in dark (see the
+     dark-theme override below). Tokenized so the AppDialog engine can
+     reference it from TSX without a raw rgb() literal. */
+  --modal-backdrop: rgba(0, 0, 0, 0.5);
+
+  /* Media letterbox — opaque backdrop behind embedded video / iframe
+     content. Intentionally invariant (not overridden in dark mode): a
+     player surround reads as black in both themes. */
+  --media-letterbox: #000000;
+
+  /* Navbar + sheets */
+  --navbar-bg: rgba(255, 255, 255, 0.8);
+  --navbar-border: rgba(0, 0, 0, 0.05);
+  --sheet-bg: rgba(255, 255, 255, 0.95);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.12);
+
+  /* Focus + selection */
+  --focus-ring: var(--color-accent);
+  --selection-bg: var(--color-primary);
+  --selection-fg: var(--color-white);
+
+  /* Status colors */
+  --color-success: #2ECC71;
+  --color-success-text: #047857;
+  /* Soft success tint surface (pairs with --color-success-text). */
+  --color-success-bg: rgba(46, 204, 113, 0.1);
+  --color-warning: #F5A623;
+  --color-warning-bg: #fef9e7;
+  --color-warning-border: #f5d880;
+  --color-warning-text: #7a6420;
+  --color-error: #ba1a1a;
+  /* Subtle error-tint surface + border that pair with --color-error text.
+     Soft red consistent with #ba1a1a at low alpha over the light canvas. */
+  --color-error-bg: rgba(186, 26, 26, 0.08);
+  --color-error-border: rgba(186, 26, 26, 0.22);
+
+  /* Badges */
+  --badge-success-bg: #e8f5e9;
+  --badge-success-fg: #1b7a3d;
+  --badge-warning-bg: #fff3e0;
+  --badge-warning-fg: #b37100;
+  --badge-neutral-bg: #f5f5f5;
+  /* Darkened from #9ca3af (~2.8:1 on bg) to align with --fg-muted at
+     ~5.4:1 — small uppercase badge text needs WCAG AA contrast. */
+  --badge-neutral-fg: #6b6263;
+  --badge-neutral-border: #e5e7eb;
+  /* Notification count badge — saturated red, white text, WCAG-compliant in both themes */
+  --badge-count-bg: #b91c1c;
+  --badge-count-fg: #ffffff;
+  /* Danger + accent badge tones — additive for cross-app canonical parity
+     (danger derives from --color-error #ba1a1a). Unreferenced today. */
+  --badge-danger-bg: #fdecea;
+  --badge-danger-fg: #9f1717;
+  --badge-danger-border: #f4c7c3;
+  --badge-accent-bg: #ededed;
+  --badge-accent-fg: #454747;
+  --badge-accent-border: #dcdcdc;
+
+  /* Gold accent — the one splash of colour in the otherwise grayscale
+     system, used only by the deluxe contributor board to highlight a tile
+     on hover. Light + dark variants below. */
+  --accent-gold: #c9962a;
+  --accent-gold-soft: #f3e2b0;
+
+  /* Primary button (inverts in dark mode) */
+  --btn-primary-bg: var(--color-primary);
+  --btn-primary-fg: var(--color-white);
+
+  /* Transitions */
+  --transition-fast: 150ms ease-out;
+  --transition-base: 250ms ease-out;
+  --transition-slow: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Radius */
+  --radius: 2px;
+  --radius-pill: 999px;            /* pills — codifies hard-rule #1 */
+
+  /* Monospace stack — additive; some CSS already references it with a fallback */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Navbar */
+  --navbar-height: 64px;
+
+  /* Bottom nav (mobile-first). Base height lives here so the desktop
+     zeroing in the @media block below actually wins — defining the base
+     in layout.css (imported AFTER this file) clobbered the override and
+     left `.app-shell__content` with ~56px of phantom bottom padding on
+     desktop. Zeroed at ≥800px below. */
+  --bottom-nav-height: 56px;
+
+  /* Desktop top bar (rendered ≥800px). Row 1 is chrome
+     (brandmark + page title + search + icon buttons + switcher); row 2
+     is the profile tabs strip, conditional on /profile/[handle]. The
+     `--top-bar-total` value is row 1 by default and is bumped to
+     row 1 + row 2 on the .app-shell--fullbleed marker, which the
+     profile page sets via useProfileNavbar(). Right rail uses
+     --top-bar-total for its sticky top so it never slides under
+     the bar. */
+  --top-bar-row1: 52px;
+  --top-bar-row2: 44px;
+  --top-bar-total: var(--top-bar-row1);
+
+  /* ===== Breakpoints (informational; CSS @media rules hardcode these
+     numbers because vanilla CSS can't `var()` inside @media queries.
+     Keep CSS in sync with these tokens AND with src/lib/hooks/use-layout-breakpoints.ts. */
+  --bp-gt-mobile: 800px;            /* desktop layout begins; bottom-nav + hamburger unmount */
+  --bp-gt-narrow-desktop: 1100px;   /* + right rail mounted */
+  --bp-gt-desktop: 1300px;          /* + left rail expands to icon+label */
+
+  /* ===== Z-index map — keep all UI layers here. */
+  --z-rail-sticky: 10;              /* sticky elements inside the rails */
+  --z-rail: 30;                     /* left + right rails (below navbar) */
+  --z-popover: 40;                  /* in-flow popovers / typeahead dropdowns */
+  --z-navbar: 50;                   /* fixed top navbar */
+  --z-bottom-nav: 50;               /* only mounted < 800px; never co-mounts with rails */
+  --z-portal-sheet: 60;             /* bottom-sheet, mobile-sidebar drawer */
+  --z-modal: 100;                   /* generic modals */
+  --z-skip-nav: 9999;               /* skip-nav link */
+  --z-feedback: 10000;              /* feedback modal portal (above skip-nav) */
+  --z-feedback-above: 10001;        /* feedback expanded variant */
+  --z-tour-backdrop: 10015;         /* walk-through spotlight dim panels + ring */
+  --z-tour-card: 10016;             /* walk-through step card (above its backdrop) */
+  --z-tooltip: 10020;               /* hover/focus tooltips — always topmost */
+}
+
+/* Zero the bottom-nav height at desktop widths so any consumer of the
+   variable (notably .app-shell__content's padding-bottom) reclaims the
+   space without per-component JS. */
+@media (min-width: 800px) {
+  :root {
+    --bottom-nav-height: 0px;
+  }
+}
+
+/* ========== Dark theme ==========
+   Overrides semantic tokens only. Invariant primitives
+   (--color-primary, --color-white) are NOT overridden. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Surfaces — elevated is LIGHTER than canvas in dark.
+     Values sit in the zinc-900..zinc-700 band so the page reads as
+     "dark gray" rather than near-black (GitHub-dark uses #0d1117 for
+     reference; we sit slightly lighter to give surfaces visible
+     separation without losing dark-mode contrast). */
+  --bg-canvas: #18181b;
+  --bg-sunken: #111114;
+  --bg-raised: #26262b;
+  --bg-elevated: #2d2d33;
+
+  /* Foregrounds */
+  --fg-primary: #f5f5f7;
+  --fg-secondary: #c7c7cc;
+  /* Lightened from #8e8e93 (4.2:1 — below WCAG AA 4.5) so muted text clears
+     AA on the LIGHTEST dark surface too: --bg-elevated #2d2d33 (cards,
+     dialogs) carries captions / timestamps. #9a9aa1 → 4.89:1 on elevated,
+     6.34:1 on canvas, staying in the same neutral grey family. */
+  --fg-muted: #9a9aa1;
+
+  /* Accent (muted interactive) */
+  --color-accent: #a0a0a8;
+  --color-accent-hover: #c7c7cc;
+
+  /* Borders flip to white-on-transparent */
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --border-light: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.12);
+  --border-hover: rgba(255, 255, 255, 0.18);
+  --border-hover-soft: rgba(255, 255, 255, 0.14);
+
+  /* Overlays */
+  --overlay-weak: rgba(255, 255, 255, 0.04);
+  --overlay-medium: rgba(255, 255, 255, 0.08);
+  --navy-overlay-30: rgba(0, 0, 0, 0.5);
+  --navy-overlay-70: rgba(0, 0, 0, 0.8);
+
+  /* Modal backdrop — dark. Mirrors `[data-theme="dark"]
+     dialog.signin-modal::backdrop { background: var(--navy-overlay-70) }`. */
+  --modal-backdrop: var(--navy-overlay-70);
+
+  /* Navbar + sheets */
+  --navbar-bg: rgba(11, 11, 13, 0.8);
+  --navbar-border: rgba(255, 255, 255, 0.06);
+  --sheet-bg: rgba(20, 20, 23, 0.95);
+
+  /* Shadows — stronger on dark */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+
+  /* Focus + selection */
+  /* Follow --color-accent like light mode does, instead of a dimmer literal
+     (#8e8e93, same luminance as muted text). #a0a0a8 → 6.82:1 on canvas, so
+     keyboard focus reads clearly; restores the light/dark token symmetry. */
+  --focus-ring: var(--color-accent);
+  --selection-bg: #f5f5f7;
+  --selection-fg: #0b0b0d;
+
+  /* Semantic colors — tuned for dark backgrounds */
+  /* Base status hues, dark-tuned. Direct foreground / fill uses of these
+     tokens (e.g. .response-menu__trigger--accepted, the accept/reject
+     quick-action pills in feed.css) would otherwise keep the saturated
+     light-mode hues (#2ECC71 / #F5A623) on the dark canvas, clashing with
+     the softer dark -text family (#6ee7a7 / #fbbf24). Soften the base hues
+     so every direct use harmonizes; filled pills keep dark glyphs
+     (color: var(--bg-canvas)), which stay high-contrast on these. */
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-warning-bg: rgba(245, 166, 35, 0.1);
+  --color-warning-border: rgba(245, 166, 35, 0.3);
+  --color-warning-text: #fbbf24;
+  --color-success-text: #6ee7a7;
+  /* Soft success tint over the dark canvas (based on #6ee7a7). */
+  --color-success-bg: rgba(110, 231, 167, 0.12);
+  --color-error: #f87171;
+  /* Subtle error-tint surface + border over the dark canvas (based on
+     #f87171) that pair with --color-error text. */
+  --color-error-bg: rgba(248, 113, 113, 0.12);
+  --color-error-border: rgba(248, 113, 113, 0.3);
+
+  /* Badges */
+  --badge-success-bg: rgba(46, 204, 113, 0.15);
+  --badge-success-fg: #6ee7a7;
+  --badge-warning-bg: rgba(245, 166, 35, 0.15);
+  --badge-warning-fg: #fbbf24;
+  --badge-neutral-bg: rgba(255, 255, 255, 0.06);
+  --badge-neutral-fg: #8e8e93;
+  --badge-neutral-border: rgba(255, 255, 255, 0.1);
+  /* Notification count badge — brighter red on dark surfaces for contrast */
+  --badge-count-bg: #dc2626;
+  --badge-count-fg: #ffffff;
+  /* Danger + accent badge tones — dark (additive, cross-app parity). */
+  --badge-danger-bg: rgba(248, 113, 113, 0.15);
+  --badge-danger-fg: #f87171;
+  --badge-danger-border: rgba(248, 113, 113, 0.3);
+  --badge-accent-bg: rgba(255, 255, 255, 0.08);
+  --badge-accent-fg: #c7c7cc;
+  --badge-accent-border: rgba(255, 255, 255, 0.14);
+
+  /* Gold accent — dark variant (richer so it glows on the dark stage). */
+  --accent-gold: #e8b73e;
+  --accent-gold-soft: #6b551d;
+
+  /* Primary button inverts so it pops off the dark canvas */
+  --btn-primary-bg: #f5f5f7;
+  --btn-primary-fg: #0b0b0d;
+
+  /* Landing palette — dark mode. Built to mirror the rest of the
+     dark theme: near-black canvas, light-on-dark text, transparent
+     overlays for borders. The landing sections that previously held
+     a hard-coded near-white background now read as dark surfaces. */
+  --color-navy: #f5f5f7;            /* used as "ink" for headings — invert */
+  --color-off-white: #18181b;       /* hero / page surface — becomes the dark canvas */
+  --color-gray-100: #26262b;        /* mid surface */
+  --color-light-gray: rgba(255, 255, 255, 0.1);  /* faint divider */
+  --color-mid-gray: #8e8e93;        /* muted text */
+  --color-dark-gray: #c7c7cc;       /* secondary text */
+  --color-surface: #18181b;         /* hero background */
+  --color-surface-container-low: #111114; /* recessed section background */
+  /* Elevated container, one step above --bg-elevated (#2d2d33).
+     Avatar initials-chip fallback background. */
+  --color-surface-container-high: #3a3a40;
+}
+
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Reserve scrollbar space in the layout so pages with overflow and
+   pages without don't shift horizontally on Windows/Linux Chromium
+   (where the scrollbar takes ~15-17px). Older Safari (<18) silently
+   falls back to no reservation, which is acceptable. */
+html {
+  scrollbar-gutter: stable;
+}
+
+body {
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  color: var(--fg-secondary);
+  background: var(--bg-canvas); /* matches page canvas in both light and dark */
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--fg-primary);
+}
+
+/* OpenType features for Inter — tabular numerals for aligned counts,
+   case-sensitive forms for uppercase labels */
+.feed-card__time,
+.dash-card__stat-value,
+.profile-hero__count-value {
+  font-feature-settings: 'tnum' 1;
+}
+
+.app-card__label,
+.dash-card__title,
+.dash-card__preview-label,
+.navbar__app-link,
+.domain-modal__label,
+.domain-modal__dns-label,
+.domain-modal__verify-label,
+.username-card__form-label,
+.location-card__type {
+  font-feature-settings: 'case' 1;
+}
+
+::selection {
+  background: var(--selection-bg);
+  color: var(--selection-fg);
+}

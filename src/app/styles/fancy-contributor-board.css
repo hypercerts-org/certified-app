@@ -1,0 +1,290 @@
+/* Fancy Contributor Board — the deluxe board shown on the Contributors tab.
+ * Same weighted treemap geometry as the standard board (positions/sizes set
+ * inline by the layout), skinned with an ambient gradient stage, glassy
+ * gradient tiles with depth, a gold hover highlight, and a staggered entrance.
+ *
+ * All colours/radii/shadows come from tokens. The only colour in the system
+ * is the gold accent (--accent-gold*), used here on hover. No z-index
+ * literals: layering relies on DOM order + positioning (design rule #5). */
+
+.fancy-board {
+  position: relative;
+  width: 100%;
+}
+
+.fancy-board__stage {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  /* Layered gradient base: a soft diagonal between the raised + sunken
+     surfaces reads as depth under the translucent tiles. */
+  background:
+    linear-gradient(135deg, var(--bg-raised) 0%, var(--bg-sunken) 100%);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Drifting ambient light — two large radial blooms that slowly orbit behind
+   the tiles, giving the stage a living, premium feel. Painted first (behind). */
+.fancy-board__ambient {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(40% 40% at 20% 25%, var(--color-surface-container-high) 0%, transparent 70%),
+    radial-gradient(45% 45% at 80% 75%, var(--color-surface-container-high) 0%, transparent 70%);
+  opacity: 0.6;
+  filter: blur(8px);
+  animation: fancy-board-drift 22s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+/* Faint engraved grid for texture. */
+.fancy-board__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border-subtle) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px);
+  background-size: 44px 44px;
+  -webkit-mask-image: radial-gradient(120% 120% at 50% 0%, black 35%, transparent 80%);
+  mask-image: radial-gradient(120% 120% at 50% 0%, black 35%, transparent 80%);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.fancy-board__canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.fancy-board__empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  text-align: center;
+  color: var(--fg-muted);
+  font-size: 0.875rem;
+}
+
+@keyframes fancy-board-drift {
+  0% {
+    transform: translate3d(-4%, -2%, 0) scale(1.05);
+  }
+  100% {
+    transform: translate3d(4%, 3%, 0) scale(1.12);
+  }
+}
+
+/* ---- Tile --------------------------------------------------------------- */
+
+.fancy-tile {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  /* Glassy gradient surface — top-lit, so tiles read as raised glass. */
+  background:
+    linear-gradient(
+      160deg,
+      var(--color-surface-container-low) 0%,
+      var(--color-surface-container-high) 100%
+    );
+  color: var(--fg-primary);
+  text-decoration: none;
+  box-shadow: var(--shadow-sm);
+  transform: translateZ(0);
+  transition:
+    transform var(--transition-base),
+    box-shadow var(--transition-base),
+    border-color var(--transition-base);
+  /* Staggered entrance (delay set inline per tile). */
+  opacity: 0;
+  animation: fancy-tile-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes fancy-tile-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.fancy-tile--link {
+  cursor: pointer;
+}
+
+/* Hover lights the tile up: the gold accent is carried by the BORDER only;
+   the interior glow + lift stay neutral. */
+.fancy-tile:hover {
+  border-color: var(--accent-gold);
+  box-shadow: var(--shadow-lg);
+  transform: translate3d(0, -3px, 0) scale(1.025);
+}
+
+.fancy-tile:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* Diagonal sheen sweep — a soft highlight that glides across on hover. */
+.fancy-tile__sheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    var(--color-surface-container-high) 48%,
+    transparent 66%
+  );
+  opacity: 0;
+  transform: translateX(-60%);
+  transition:
+    opacity var(--transition-base),
+    transform 0.7s ease;
+  pointer-events: none;
+}
+
+.fancy-tile:hover .fancy-tile__sheen {
+  opacity: 0.7;
+  transform: translateX(60%);
+}
+
+/* Radial glow that blooms from the tile centre on hover — neutral, so the
+   gold accent stays on the border only. */
+.fancy-tile__glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 50% 38%,
+    var(--color-surface-container-high) 0%,
+    transparent 65%
+  );
+  opacity: 0;
+  transition: opacity var(--transition-base);
+  pointer-events: none;
+}
+
+.fancy-tile:hover .fancy-tile__glow {
+  opacity: 0.85;
+}
+
+/* Content wrapper is positioned, so it paints above the sheen/glow layers
+   (which come earlier in the DOM) without needing a z-index. */
+.fancy-tile__content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  width: 100%;
+  height: 100%;
+}
+
+.fancy-tile__media {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--bg-sunken);
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 0 0 1px var(--border-subtle);
+  transition: box-shadow var(--transition-base);
+}
+
+.fancy-tile__media--circle {
+  border-radius: 50%;
+}
+
+.fancy-tile__media--square {
+  border-radius: var(--radius);
+}
+
+.fancy-tile:hover .fancy-tile__media {
+  box-shadow:
+    var(--shadow-md),
+    inset 0 0 0 1px var(--border-hover);
+}
+
+.fancy-tile__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fancy-tile__initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-weight: 600;
+  font-size: 0.9em;
+  color: var(--fg-muted);
+  letter-spacing: 0.02em;
+}
+
+.fancy-tile__name {
+  max-width: 96%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 550;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--fg-primary);
+}
+
+/* Weight badge — sits at the bottom, fades up into view on hover. */
+.fancy-tile__weight {
+  position: absolute;
+  bottom: 0;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity var(--transition-base),
+    transform var(--transition-base);
+  pointer-events: none;
+}
+
+.fancy-tile:hover .fancy-tile__weight {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Respect reduced-motion: no drift, no sheen glide, instant tile reveal. */
+@media (prefers-reduced-motion: reduce) {
+  .fancy-board__ambient {
+    animation: none;
+  }
+  .fancy-tile {
+    animation: none;
+    opacity: 1;
+  }
+  .fancy-tile__sheen {
+    transition: opacity var(--transition-base);
+  }
+}

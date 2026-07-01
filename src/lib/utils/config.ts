@@ -1,5 +1,7 @@
 const DEV_FALLBACK = "http://localhost:3000"
 
+export const DEFAULT_PDS_URL = process.env.NEXT_PUBLIC_PDS_URL || "https://certified.one"
+
 /**
  * The application's public URL. Always defined — falls back to localhost in development.
  * Used by CSRF protection and anywhere a guaranteed URL is needed.

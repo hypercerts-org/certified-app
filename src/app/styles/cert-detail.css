@@ -1,0 +1,2552 @@
+/* ========== Cert detail page ==========
+
+   The cert page shares its outer layout with the profile page: the
+   article root uses `.page-layout` (2-column grid: 296px sidebar +
+   fluid main) and the right pane uses `.page-layout__main`.
+   This keeps the page chrome (sidebar slot, main pane, gutters) and
+   the inline-edit banner visually identical to the profile page. The
+   cert-specific content classes (`.cert-detail__aside`,
+   `.cert-detail__image`, `.cert-detail__meta`, etc.) carry only the
+   cert pane's interior styling.
+
+   `.cert-detail--wide` is the opt-in marker on the article root. The
+   `:has()` rule below mirrors `.app-shell--fullbleed` so the shell's
+   content slot caps at 1280px with no lateral padding — same as the
+   profile page's full-bleed shell — and the banner renders at the
+   same width on both pages. We keep the shell's default padding-top
+   though, because the cert page does NOT use an overlay navbar; its
+   content must start below the solid top bar. */
+
+.cert-detail-page {
+  padding-bottom: 64px;
+}
+
+.app-shell:has(.cert-detail--wide) .app-shell__content {
+  /* Zero ALL `.app-shell__content` padding so the cert page renders
+     edge-to-edge like the profile page's `.app-shell--fullbleed`.
+     Top spacing for the read-only view comes from the inner
+     `.page-layout` (which has padding: 24px on desktop); top spacing
+     in edit mode comes from the edit banner's own margin-top. */
+  padding: 0;
+}
+
+/* On phones the navbar is a fixed overlay, so the zeroed content slot
+   would let the title slide under it. Re-add the navbar-height top
+   offset (the inner .page-layout's 24px provides the gap below it). */
+@media (max-width: 799px) {
+  .app-shell:has(.cert-detail--wide) .app-shell__content {
+    padding-top: var(--navbar-height);
+  }
+}
+
+@media (min-width: 800px) {
+  /* Cap the cert-detail two-pane layout so its total content width
+     matches the single-pane project page (.project-detail max-width
+     960px): 1008 = 960 inner content + 48 (.page-layout's 24px of
+     horizontal padding on each side). The aside stays at 296px; only
+     the flex main column narrows to ~632px. Applies to both the
+     read-only activity overview and the /create publish form (both
+     carry `.cert-detail--wide`), so the app reads at one consistent
+     width across activity, create, and project pages. */
+  .app-shell:has(.cert-detail--wide) .app-shell__content {
+    max-width: 1008px;
+  }
+
+  /* Cert detail flips the shared `.page-layout` column order — main
+     reading column on the LEFT, supplementary aside on the RIGHT.
+     Same widths as before; just swap which side they sit on.
+     Profile page keeps the original 296px-left / 1fr-right since it
+     doesn't carry the `.cert-detail--wide` modifier.
+     DOM order stays aside-first (semantic supplementary block);
+     CSS grid-column placement does the visual flip.
+
+     Both items pinned to `grid-row: 1` because aside is DOM-first
+     and explicit-placed in column 2 — without an explicit row, CSS
+     grid auto-placement leaves the cursor at row 1 / col 2 after
+     aside lands, then pushes main (which wants column 1) DOWN to
+     row 2 to "move forward" from the cursor. Result was the main
+     pane starting at the y-position where aside content ended.
+     Pinning both to row 1 keeps them side-by-side. */
+  .cert-detail--wide.page-layout {
+    grid-template-columns: minmax(0, 1fr) 296px;
+  }
+  .cert-detail--wide.page-layout > .cert-detail__aside {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .cert-detail--wide.page-layout > .cert-detail__main {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  /* Full-bleed tabs: drop the supplementary aside so the content spans the
+     full width of both panes. The Contributors tab carries the deluxe board
+     above the list; Description / Funding / Updates just want the room.
+     (Only Overview keeps the aside.) */
+  .cert-detail--wide.cert-detail--tab-contributors.page-layout,
+  .cert-detail--wide.cert-detail--tab-description.page-layout,
+  .cert-detail--wide.cert-detail--tab-funding.page-layout,
+  .cert-detail--wide.cert-detail--tab-updates.page-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cert-detail--wide.cert-detail--tab-contributors.page-layout > .cert-detail__aside,
+  .cert-detail--wide.cert-detail--tab-description.page-layout > .cert-detail__aside,
+  .cert-detail--wide.cert-detail--tab-funding.page-layout > .cert-detail__aside,
+  .cert-detail--wide.cert-detail--tab-updates.page-layout > .cert-detail__aside {
+    display: none;
+  }
+}
+
+/* ---------- Mobile reading reorder (single column) ----------
+   On phones the two-column reading view collapses into one prescribed
+   vertical order. The DOM keeps its desktop structure; `display:
+   contents` dissolves the aside / main / meta wrappers so their leaf
+   blocks become direct items of the single-column `.page-layout` grid,
+   and `order` sequences them:
+
+     1 title + byline   2 image          3 time period (+ menu)
+     4 work scope       5 contributors   6 rights
+     7 summary          8 updates        9 locations
+
+   Scoped to the reading view (`:not(.cert-detail--editing)`) so the
+   inline edit form keeps its own DOM-order layout. */
+@media (max-width: 799px) {
+  /* Single-column grid with a 0-floored track so promoted leaves can
+     never push the page wider than the viewport. (The default implicit
+     `auto` track sizes to content and overflows on wide items.) */
+  .cert-detail--wide:not(.cert-detail--editing) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cert-detail--wide:not(.cert-detail--editing) > .cert-detail__aside,
+  .cert-detail--wide:not(.cert-detail--editing) > .cert-detail__main,
+  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__meta {
+    display: contents;
+  }
+
+  /* Single-column reading order:
+       title → image → summary → time period → work scope → contributors →
+       rights → tab content (updates / funding / locations).
+     The summary is rendered as a sibling of the tab panel (see
+     activity-detail.tsx) so the "facts" meta rows can sit between it and the
+     tab content. The panel itself (`.cert-detail__content`) is ordered last
+     as a single unit. */
+  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__headline {
+    order: 1;
+  }
+  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__image {
+    order: 2;
+  }
+  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__section--summary {
+    order: 3;
+  }
+  .cert-detail--wide:not(.cert-detail--editing)
+    .cert-detail__meta-row--timeperiod {
+    order: 4;
+  }
+  .cert-detail--wide:not(.cert-detail--editing)
+    .cert-detail__meta-row--workscope {
+    order: 5;
+  }
+  .cert-detail--wide:not(.cert-detail--editing)
+    .cert-detail__meta-row--contributors {
+    order: 6;
+  }
+  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__meta-row--rights {
+    order: 7;
+  }
+  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__content {
+    order: 8;
+  }
+
+  /* Create / edit activity form: lead with the title, then the image,
+     then the metadata and the rest of the form. The headline (order 1)
+     and image (order 2) already come from the read-view rules above; the
+     form's generic meta-rows and sections carry no modifier class, so
+     they defaulted to order:0 and jumped ahead of the title. Push them
+     after the image. */
+  .create-cert .cert-detail__meta-row {
+    order: 3;
+  }
+  .create-cert .cert-detail__section {
+    order: 4;
+  }
+  /* Cancel / Publish sit at the very end of the form (they carry no
+     order otherwise and would default to 0, jumping above the title). */
+  .create-cert .create-cert__actions {
+    order: 5;
+  }
+
+  /* The single-column grid already provides a uniform 24px row gap
+     between every promoted leaf (headline, image, each meta-row).
+     The promoted `.cert-detail__section` blocks (Summary, Locations)
+     carry their own `margin-top: 4px` + `padding-top: 24px` from the
+     desktop two-column layout, which stacked extra space on top of the
+     grid gap and made those sections sit noticeably farther from the
+     preceding element than the meta-rows do. Zero them so the grid gap
+     is the only spacing — every element is then a consistent 24px apart. */
+  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__section,
+  .cert-detail--wide:not(.cert-detail--editing) .context-updates {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+  }
+
+  /* Description / Contributors / Updates tabs: show only the tab
+     content. Hide the headline, image, and meta rows (the tab name +
+     count live in the navbar; the navbar Back button returns). */
+  .cert-detail--tab-description .cert-detail__headline,
+  .cert-detail--tab-contributors .cert-detail__headline,
+  .cert-detail--tab-funding .cert-detail__headline,
+  .cert-detail--tab-updates .cert-detail__headline,
+  .cert-detail--tab-description .cert-detail__image,
+  .cert-detail--tab-contributors .cert-detail__image,
+  .cert-detail--tab-funding .cert-detail__image,
+  .cert-detail--tab-updates .cert-detail__image,
+  .cert-detail--tab-description .cert-detail__meta-row,
+  .cert-detail--tab-contributors .cert-detail__meta-row,
+  .cert-detail--tab-funding .cert-detail__meta-row,
+  .cert-detail--tab-updates .cert-detail__meta-row {
+    display: none;
+  }
+
+  /* Contributors tab: title + count live in the navbar — drop the
+     in-main section header. */
+  .cert-detail--tab-contributors .cert-detail__section-header {
+    display: none;
+  }
+
+  /* Funding tab: the "Funding" title + count live in the navbar, so drop
+     them from the in-main section header (the record-funding + Confirmed-by
+     filter controls in the header stay). */
+  .cert-detail--tab-funding .cert-detail__section-title,
+  .cert-detail--tab-funding .cert-detail__section-count {
+    display: none;
+  }
+
+  /* Updates tab: the title + count live in the navbar, so drop the
+     in-body updates header (heading + count) and reset the section's
+     top divider/padding so the first update sits at the top — matching
+     the project detail page's Updates tab. */
+  .cert-detail--tab-updates .context-updates__head {
+    display: none;
+  }
+  .cert-detail--wide.cert-detail--tab-updates:not(.cert-detail--editing)
+    .context-updates {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+  }
+}
+
+/* ---------- Loading + error ---------- */
+
+.cert-detail__loading,
+.cert-detail__error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 96px 24px;
+  text-align: center;
+}
+
+.cert-detail__error-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  margin: 0 0 6px;
+}
+
+.cert-detail__error-desc {
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  margin: 0;
+  max-width: 32ch;
+  line-height: 1.5;
+}
+
+/* ---------- Left pane (slim aside) ---------- */
+
+.cert-detail__aside {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.cert-detail__image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-subtle);
+  /* Center the placeholder icon (Award) when there's no <img>. The
+     icon used to sit in the top-left because the box had default
+     block layout. The img child fills 100% / 100% so flex centering
+     doesn't visibly change it. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Inline-edit chrome anchors absolute children (Edit pill, the
+     dashed outline below). Kept here rather than in a duplicate
+     rule lower in the file. */
+  position: relative;
+}
+
+.cert-detail__image-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cert-detail__image--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    135deg,
+    var(--bg-sunken) 0%,
+    var(--overlay-weak) 100%
+  );
+}
+
+.cert-detail__image-placeholder-icon {
+  color: var(--fg-muted);
+  opacity: 0.55;
+}
+
+/* Inline-edit chrome ---------------------------------------------- */
+
+.cert-detail__image--editing {
+  outline: 1.5px dashed var(--border-hover);
+  outline-offset: -2px;
+}
+
+/* Cert image upload pill now lives in the shared
+   `<ImageEditOverlay>` component (`src/components/feed/image-edit-
+   overlay.tsx`); styles are at `.image-edit-overlay__*` in
+   components.css. The cert callsite uses the `single` variant. */
+
+/* Title and short-description inputs replace the static h1 / p
+   while editing. Border treatment matches the profile-page inline
+   edit inputs so the two surfaces feel like one editor family. */
+.cert-detail__title-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--fg-primary);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  border: 1.5px solid var(--border-hover);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  background: var(--bg-elevated);
+}
+
+.cert-detail__title-input:focus {
+  outline: none;
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+/* Unified placeholder color for the cert-detail form inputs. The
+   browser default ("a less-saturated gray, ~rgba(0,0,0,0.42)")
+   sat noticeably cooler than the Leaflet editor placeholder
+   (rendered via a CSS `::before` pseudo at `var(--fg-muted)`),
+   so the description placeholder looked like a different
+   typography family than every other field. Setting all native
+   placeholders to `--fg-muted` brings them into one rhythm.
+   `opacity: 1` neutralises Firefox's default 0.54 multiplier on
+   placeholder text. */
+.cert-detail__title-input::placeholder,
+.cert-detail__short-desc-input::placeholder,
+.cert-detail__meta-input::placeholder {
+  color: var(--fg-muted);
+  opacity: 1;
+}
+
+/* Date inputs (type="date") don't expose a `::placeholder` —
+   their format hint ("mm/dd/yyyy") is painted via WebKit's
+   internal `::-webkit-datetime-edit-*` pseudos. Coloring the
+   whole edit area `--fg-muted` matches the Time-period
+   placeholder to every other muted placeholder above; filled
+   values pick up the same colour, which reads naturally in the
+   aside meta column. */
+.cert-detail__meta-input[type="date"]::-webkit-datetime-edit {
+  color: var(--fg-muted);
+}
+
+.cert-detail__short-desc-input {
+  width: 100%;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--fg-secondary);
+  border: 1.5px solid var(--border-hover);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  resize: vertical;
+  min-height: 72px;
+}
+
+.cert-detail__short-desc-input:focus {
+  outline: none;
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+/* (Older byline used to sit in the aside — it moved into the main pane
+   under the title; see `.cert-detail__headline-byline` below.) */
+
+/* ---------- Project section (left pane) ----------
+
+   Renders only when this cert is in at least one project collection.
+   A thin stack of rows: thumbnail + name + optional short description.
+   Each row is its own link target. */
+
+.cert-detail__projects {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cert-detail__section-title--aside {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.cert-detail__projects-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cert-detail__project {
+  display: flex;
+  min-width: 0;
+}
+
+.cert-detail__project-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: inherit;
+}
+
+.cert-detail__project-link:hover,
+.cert-detail__project-link:focus-visible {
+  background: var(--overlay-weak);
+}
+
+.cert-detail__project-link--static {
+  cursor: default;
+}
+
+.cert-detail__project-link--static:hover {
+  background: transparent;
+}
+
+.cert-detail__project-thumb-wrap {
+  flex-shrink: 0;
+}
+
+.cert-detail__project-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  object-fit: cover;
+  display: block;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-subtle);
+}
+
+.cert-detail__project-thumb--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-muted);
+}
+
+.cert-detail__project-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+  flex: 1;
+}
+
+.cert-detail__project-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cert-detail__project-desc {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Main pane ---------- */
+
+.cert-detail__main {
+  display: flex;
+  flex-direction: column;
+  /* 32px (was 24px) — adds breathing room between the headline,
+     the short description, the two-col row, and the Updates
+     section so the page reads as well-spaced editorial content
+     instead of a tightly-packed form. The section dividers
+     inside still anchor visual rhythm; this just enlarges the
+     pause between them. */
+  gap: 32px;
+  min-width: 0;
+}
+
+.cert-detail__headline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* "Activity" eyebrow + date row above the title — mirrors the project
+   page's "Project" eyebrow. Hidden on desktop (the date lives in the
+   headline columns there). */
+.cert-detail__eyebrow-row {
+  display: none;
+}
+
+.cert-detail__eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-muted);
+  line-height: 1.2;
+}
+
+.cert-detail__eyebrow-date {
+  display: none;
+}
+
+/* Three-dot menu on the author row — mobile only (desktop keeps it in
+   the Time period row). */
+.cert-detail__headline-action {
+  display: none;
+}
+
+@media (max-width: 799px) {
+  .cert-detail__eyebrow-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    /* Cancel the headline's 12px gap so the eyebrow sits tight to the
+       title, matching the project page. */
+    margin-bottom: -12px;
+  }
+  .cert-detail__headline-action {
+    display: inline-flex;
+    margin-left: auto;
+    align-self: flex-start;
+    flex: none;
+  }
+  .cert-detail__headline-action button[aria-label="Open list actions"] {
+    height: 32px;
+    width: 32px;
+  }
+  .cert-detail__meta-menu {
+    display: none;
+  }
+  /* Author fills the first line minus the menu (basis 0 + grow) and
+     truncates, so the menu never wraps to the next row. */
+  .cert-detail__headline-col--author {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .cert-detail__headline-author {
+    min-width: 0;
+  }
+
+  /* Summary reads at the same size as the meta values (e.g. work scope).
+     Scoped via the section to beat the base 1rem rule. The funding
+     empty-state copy tracks the same size so it matches the short
+     description at every width (both are 1rem on desktop). */
+  .cert-detail__section--summary .cert-detail__short-desc,
+  .cert-detail__funding-empty {
+    font-size: 0.875rem;
+  }
+  .cert-detail__eyebrow-date {
+    display: inline;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--fg-muted);
+    white-space: nowrap;
+  }
+  /* Date now lives in the eyebrow row, so its column is hidden here.
+     Ancestor-scoped to beat the base `.cert-detail__headline-col`. The
+     "Author" eyebrow label is kept — it sits above the author avatar/name. */
+  .cert-detail__headline-cols .cert-detail__headline-col--date {
+    display: none;
+  }
+}
+
+.cert-detail__title {
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--fg-primary);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  margin: 0;
+  word-break: break-word;
+}
+
+.cert-detail__short-desc {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--fg-secondary);
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Locations section relocated into the left pane (aside) — sits
+   under the meta `<dl>` and shares the aside's vertical rhythm.
+   Drops the main-pane-specific padding + top divider that
+   `.cert-detail__section` applies (those exist for the reading
+   column above; the aside has its own gap-driven rhythm via
+   `.cert-detail__aside { gap: 16px }`). The map itself stays
+   width:100% so it scales to whatever column it's in — on the
+   narrow aside this means a more compact map, which is what the
+   relocation intends. */
+/* Inline count tail used by meta-row labels that show a count
+   (e.g. "Locations 3"). Lighter weight than the label text so the
+   count reads as metadata, not the primary word. */
+.cert-detail__meta-count {
+  color: var(--fg-secondary);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+/* ---------- Cert overview: 2-column row (contributors / projects) ----- */
+
+.cert-detail__two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  padding-top: 24px;
+  margin-top: 4px;
+}
+
+/* When the 2-col row is the first child of the main pane (no
+   headline ahead of it, which doesn't happen today but is defensive)
+   it sheds the top spacing so the page starts flush. */
+.cert-detail__main > .cert-detail__two-col:first-child {
+  padding-top: 0;
+  margin-top: 0;
+}
+
+/* The per-tab content lives in `.cert-detail__content` (the
+   TabPanelTransition wrapper, which carries the desktop tab-switch slide;
+   the headline sits OUTSIDE it so the title stays put across tabs). It
+   mirrors `.cert-detail__main`'s flex column + 32px rhythm so spacing and
+   the section dividers below read exactly as before. */
+.cert-detail__content {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  min-width: 0;
+}
+
+/* Divider above the 2-col row. (The headline is no longer a sibling, so
+   the 2-col is never spuriously treated as "first" here — every 2-col
+   gets the divider, as before when the headline preceded it.) */
+.cert-detail__content > .cert-detail__two-col {
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* No divider above the Updates preview on the Overview — it reads as part
+   of the overview narrative, not a ruled-off section. (The mobile rule
+   above drops the base .context-updates border; this covers desktop.) */
+.cert-detail__content > .context-updates--overview {
+  border-top: none;
+}
+
+/* Divider before a `.cert-detail__section` that immediately follows the
+   2-col row — the existing `section + section` rule doesn't match
+   across the 2-col wrapper, so add the equivalent here. */
+.cert-detail__content > .cert-detail__two-col + .cert-detail__section {
+  border-top: 1px solid var(--border-subtle);
+}
+
+@media (max-width: 799px) {
+  .cert-detail__two-col {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  /* Below the breakpoint the cells stack — restore the section divider
+     between them so the stack reads like the rest of the main pane. */
+  .cert-detail__two-col > .cert-detail__two-col-cell + .cert-detail__two-col-cell {
+    padding-top: 24px;
+    margin-top: 24px;
+    border-top: 1px solid var(--border-subtle);
+  }
+}
+
+.cert-detail__two-col-cell {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Sections nested inside a 2-col cell sit flush — the cell already
+   provides the outer padding/divider, so the section drops its own
+   top-spacing to avoid double padding. */
+.cert-detail__two-col-cell > .cert-detail__section {
+  padding-top: 0;
+  margin-top: 0;
+}
+
+/* Empty-state line shown when a cell has nothing to render (e.g.
+   "No contributors yet."). Smaller + muted so it doesn't compete
+   visually with populated content in the adjacent column. */
+.cert-detail__empty-line {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+}
+
+
+/* Title row — keeps the cert title on the left and floats the
+   creator-only Edit button to the far right. Wrap on small screens
+   so the button drops below the title rather than colliding. */
+.cert-detail__title-row {
+  display: flex;
+  /* Top-align so the three-dot menu sits on the title's first line even when
+     the title wraps to multiple lines. */
+  align-items: flex-start;
+  gap: 12px;
+  /* nowrap so the menu stays on the title row, right-aligned (the title is
+     flex:1 and shrinks to make room) instead of wrapping below it. */
+  flex-wrap: nowrap;
+}
+
+.cert-detail__title-row .cert-detail__title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Title-row action cluster (the three-dot record menu) — DESKTOP only.
+   Hidden by default (mobile), where the same actions live in the navbar's
+   three-dot record menu. */
+.cert-detail__title-actions {
+  display: none;
+}
+@media (min-width: 800px) {
+  .cert-detail__title-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+  }
+}
+
+/* "more" link below the short description — styling now lives in
+   `.more-link-row` / `.more-link` in `components.css` so the
+   project detail and cert detail share the same affordance shape. */
+
+/* ---------- Headline byline ----------
+
+   Sits directly under the title:
+
+     <date>  by  <avatar>  <display name>
+                            @<handle>
+
+   The avatar + name+handle stack is one focusable link. The "by"
+   separator is a static span, and the date is on the far left. Wraps
+   gracefully on narrow screens. */
+
+.cert-detail__headline-byline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+}
+
+.cert-detail__headline-date {
+  color: var(--fg-secondary);
+  font-feature-settings: 'tnum' 1;
+}
+
+.cert-detail__headline-label,
+.cert-detail__headline-by {
+  color: var(--fg-muted);
+}
+
+.cert-detail__headline-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border-radius: var(--radius);
+}
+
+.cert-detail__headline-author:hover,
+.cert-detail__headline-author:focus-visible {
+  background: var(--overlay-weak);
+}
+
+/* The shared Avatar component renders at 32 px in "sm" size. The cert
+   detail byline wants a ~24 px footprint; we scale it down via a CSS
+   transform on the immediate child without forcing a new Avatar size
+   prop. */
+.cert-detail__headline-author > div:first-child {
+  width: 24px;
+  height: 24px;
+}
+
+.cert-detail__headline-author-meta {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.15;
+  min-width: 0;
+}
+
+.cert-detail__headline-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cert-detail__headline-handle {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- Slim tab headline --------------------------------------------------
+   Used by every tab except Overview (Description / Contributors / Funding /
+   Updates): the title row carries the author (right-aligned) and a trailing
+   three-dot actions menu. No date / project byline. (Mostly hidden on mobile
+   by the reorder block above, like the other tab headlines.) */
+.cert-detail__headline--slim .cert-detail__title-row {
+  flex-wrap: nowrap;
+}
+
+/* Author + actions hug the right edge (the title, flex:1, takes the slack).
+   `stretch` makes the menu button match the author block's height. */
+.cert-slim-headline__trailing {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* The author's own content stays left-aligned (avatar then name/handle). */
+.cert-slim-headline__author {
+  flex-shrink: 0;
+}
+
+/* Drop the icon button's fixed 40px square so it stretches to the author's
+   height inside the trailing row; aspect-ratio keeps it square. The
+   two-class selector outranks the Tailwind h-/w- utilities. */
+.cert-detail__headline--slim .cert-slim-headline__menu {
+  height: auto;
+  width: auto;
+  min-height: 0;
+  aspect-ratio: 1 / 1;
+}
+
+/* Skeletons */
+.cert-detail__headline-author--skeleton {
+  cursor: default;
+}
+
+.cert-detail__headline-avatar-skel {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--overlay-weak);
+}
+
+.cert-detail__headline-name-skel {
+  width: 90px;
+  height: 10px;
+  border-radius: var(--radius);
+  background: var(--overlay-weak);
+  margin-bottom: 4px;
+  display: block;
+}
+
+.cert-detail__headline-handle-skel {
+  width: 60px;
+  height: 9px;
+  border-radius: var(--radius);
+  background: var(--overlay-weak);
+  display: block;
+}
+
+/* ---------- Two-column body ----------
+
+   Single stacked column under 720px, two columns above. The sidebar
+   sits at a fixed 260px so the main column can fluidly absorb extra
+   width on wider viewports. */
+
+/* ---------- Metadata block (left pane) ----------
+
+   Stacked label/value pairs under the byline. Small uppercase labels
+   above each value, mirroring the profile sidebar's details list. */
+
+.cert-detail__meta {
+  display: flex;
+  flex-direction: column;
+  /* Bumped 12px → 20px so each meta row reads as a discrete block
+     rather than crowded against its neighbours. Affects every aside
+     row uniformly: Created · Time period · Work scope · Contributors
+     · Locations · Rights. */
+  gap: 20px;
+  margin: 0;
+  padding: 0;
+}
+
+.cert-detail__meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cert-detail__meta-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Time-period row hosts the "Add to list" 3-dot menu on the same
+   line, right-aligned. The label text is wrapped in a child span
+   so the trigger can sit at the row's trailing edge. */
+.cert-detail__meta-label--with-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.cert-detail__meta-label-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cert-detail__meta-value {
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.cert-detail__meta-aux {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  margin-left: 4px;
+}
+
+/* Inline-edit inputs in the meta strip (issue #75): a date or
+   plain text field rendered in place of the static value while
+   the cert is in edit mode. Sized to fit the narrow aside column;
+   border treatment matches the other inline-edit inputs on the
+   page so the editor reads as one family. */
+.cert-detail__meta-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cert-detail__meta-input {
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--fg-primary);
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border-hover);
+  border-radius: var(--radius);
+  padding: 2px 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.cert-detail__meta-input:focus {
+  outline: none;
+  border-color: var(--fg-primary);
+  box-shadow: 0 0 0 2px var(--overlay-weak);
+}
+
+.cert-detail__uri {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  word-break: break-all;
+}
+
+/* The Rights meta value reads as plain text but opens the rights detail
+   modal on click — underline on hover signals it's interactive. */
+.cert-detail__rights-link {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cert-detail__rights-link:hover {
+  text-decoration: underline;
+}
+
+.cert-detail__rights-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/* ---------- Sections (contributors / locations / description) ---------- */
+
+.cert-detail__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 24px;
+  margin-top: 4px;
+}
+
+.cert-detail__main > .cert-detail__section:first-child {
+  padding-top: 0;
+  margin-top: 0;
+}
+
+/* Centered "Read full description" disclosure below the Overview summary.
+   Centres the design-system Button; matches the section top rhythm. */
+.cert-detail__desc-toggle {
+  display: flex;
+  justify-content: center;
+  /* The flex-column tab panel doesn't stretch this wrapper, so pin it to the
+     column width — otherwise justify-content centres within the button's own
+     width and it reads as left-aligned. */
+  width: 100%;
+  /* Pull the button up toward the summary: .cert-detail__main puts a 32px
+     flex gap between the summary and the content panel (shared by all tabs,
+     so not reduced globally). A negative top margin tightens just this
+     control to sit close under the summary. */
+  margin-top: -16px;
+}
+
+/* The chevron encodes the toggle: down to expand, flipped up once open.
+   Driven off the button's aria-expanded so state + visual can't drift.
+   (The global reduced-motion rule zeroes this transition.) */
+.cert-detail__desc-toggle-chevron {
+  transition: transform var(--transition-fast);
+}
+
+.cert-detail__desc-toggle-btn[aria-expanded="true"] .cert-detail__desc-toggle-chevron {
+  transform: rotate(180deg);
+}
+
+.cert-detail__content > .cert-detail__section + .cert-detail__section {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.cert-detail__section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+/* Title + count cluster on the left; "See all" pushes to the
+   right via auto-margin so the layout stays clean when the count
+   pill is hidden. */
+.cert-detail__section-header > .cert-detail__section-title {
+  margin-right: 0;
+}
+
+/* Summary heading row: label left, "Read full description" link right. */
+.cert-detail__summary-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+/* Right-aligned cluster of section-header controls (Funding "Confirmed by"
+   filter button + the "See all" link). Pushed flush-right via auto-margin;
+   centered against the baseline-aligned title so the icon button doesn't
+   ride high. */
+.cert-detail__section-actions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: center;
+}
+
+/* Inside the actions cluster the see-all link no longer owns the push —
+   the cluster does — so neutralise its own auto-margin. */
+.cert-detail__section-actions .cert-detail__section-see-all {
+  margin-left: 0;
+}
+
+.cert-detail__section-see-all {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  text-decoration: none;
+  /* Sits inside the uppercase `.cert-detail__meta-label` <dt> on the
+     contributors row, so it would inherit text-transform: uppercase.
+     Match the Updates "See all" (sentence case) explicitly. */
+  text-transform: none;
+  letter-spacing: normal;
+  transition: color var(--transition-fast);
+}
+
+.cert-detail__section-see-all:hover {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Centered "X contributors — see all" link at the bottom of the
+   Overview tab's Contributors preview. Lifts the affordance out
+   of the section header (where it competed with the title) and
+   makes it act as a clear "load more" CTA after the list. */
+.cert-detail__section-see-all-footer {
+  display: block;
+  margin: 8px auto 0;
+  text-align: center;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.cert-detail__section-see-all-footer:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.cert-detail__section-see-all-footer:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.cert-detail__section-title {
+  /* Match the .cert-detail__meta-label headings (Summary / Author / …) so
+     every section label on the activity page reads at the same scale. */
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.cert-detail__section-count {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--overlay-weak);
+  font-feature-settings: 'tnum' 1;
+}
+
+/* ---------- Funding receipts list ----------
+
+   Reuses the `.funding-receipt-row` component styles (defined in
+   explore.css). The explore page draws inter-row separators via its
+   own `.explore__list > li + li` selector, so this list supplies its
+   own equivalent. */
+.cert-detail__funding-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cert-detail__funding-list > li + li .funding-receipt-row {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.cert-detail__funding-loading {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+/* ---------- Contributors list ----------
+
+   Single-column stack — lives inside the sidebar so it never gets the
+   wide-viewport 2-col upgrade the old layout used. */
+
+.cert-detail__contributors {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* "%" column heading rendered above the contributors list when any
+   row carries a contributionWeight. Right-aligned and indented to
+   sit roughly above the weight pills in the rows below (which are
+   the last child of each row, flush against the row's right
+   padding). `cursor: help` hints that hovering reveals the
+   "Relative weight of the contribution" tooltip carried on the
+   parent's `title` attribute. */
+.cert-detail__contributors-weight-header {
+  display: flex;
+  justify-content: flex-end;
+  /* Match the contributor row's right padding (6px main / 6px
+     aside) so the heading's right edge lines up with the weight
+     pill's right edge. The extra 7px nudges the % over the pill's
+     content area (the pill itself has `padding: 1px 7px`). */
+  padding: 0 13px 4px 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+  cursor: help;
+}
+
+/* Aside variant — tighter rows + flush left padding so the
+   contributor block fits the narrow meta column without feeling
+   crowded against the rounded card edge. */
+.cert-detail__contributors--aside {
+  gap: 0;
+}
+
+.cert-detail__contributors--aside .cert-detail__contributor {
+  padding: 4px 6px;
+}
+
+/* "Show all" tail link below the aside contributor preview. Inline
+   block — sits flush-left under the last preview row at the same
+   font size as the meta-value text. Quiet styling: no underline by
+   default, hover bumps the contrast. */
+.cert-detail__aside-see-all {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  text-decoration: none;
+  border-radius: var(--radius);
+  /* Works as both <a> (desktop) and <button> (mobile inline toggle) —
+     strip the UA button chrome and inherit the surrounding font. */
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.cert-detail__aside-see-all:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.cert-detail__aside-see-all:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.cert-detail__contributor {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  min-width: 0;
+}
+
+.cert-detail__contributor-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Subtle pill background on hover — matches profile-certs grid */
+.cert-detail__contributor:has(.cert-detail__contributor-link:hover),
+.cert-detail__contributor:has(.cert-detail__contributor-link:focus-visible) {
+  background: var(--overlay-weak);
+}
+
+.cert-detail__contributor-link--static {
+  cursor: default;
+}
+
+.cert-detail__contributor-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+  flex: 1;
+}
+
+.cert-detail__contributor-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cert-detail__contributor-handle {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cert-detail__contributor-role {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  font-weight: 400;
+}
+
+.cert-detail__contributor-weight {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--fg-secondary);
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--overlay-weak);
+  font-feature-settings: 'tnum' 1;
+  flex-shrink: 0;
+}
+
+/* Skeleton */
+.cert-detail__contributor--skeleton {
+  pointer-events: none;
+}
+
+.cert-detail__contributor-avatar-skel {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--overlay-weak);
+  flex-shrink: 0;
+}
+
+.cert-detail__contributor-name-skel {
+  width: 100px;
+  height: 10px;
+  border-radius: var(--radius);
+  background: var(--overlay-weak);
+  margin-bottom: 4px;
+}
+
+.cert-detail__contributor-handle-skel {
+  width: 64px;
+  height: 9px;
+  border-radius: var(--radius);
+  background: var(--overlay-weak);
+}
+
+/* ---------- Long-form description ---------- */
+
+.cert-detail__description {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--fg-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+
+/* "Show full description" disclosure — sits under shortDescription and
+   reveals the rich `value.description` content. <details>-based so it
+   works without JS. */
+
+.cert-detail__full-disclosure {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.cert-detail__full-disclosure summary {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+  cursor: pointer;
+  list-style: none;
+  padding: 6px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cert-detail__full-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.cert-detail__full-disclosure summary::before {
+  content: "▸";
+  font-size: 0.625rem;
+  color: var(--fg-muted);
+  transition: transform 0.15s ease;
+  display: inline-block;
+}
+
+.cert-detail__full-disclosure[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.cert-detail__full-disclosure summary:hover,
+.cert-detail__full-disclosure[open] summary {
+  color: var(--fg-primary);
+}
+
+.cert-detail__full-body {
+  padding-top: 8px;
+}
+
+/* Cert-detail-specific spacing tweaks layered on top of the neutral
+   `.leaflet-doc` base styles (see styles/leaflet.css). The renderer
+   emits `leaflet-doc__*` class names everywhere; this surface just
+   adjusts gap + spacing to match the rest of the cert detail page. */
+.cert-detail .leaflet-doc {
+  gap: 14px;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--fg-secondary);
+  word-break: break-word;
+}
+
+/* ---------- Locations map ---------- */
+
+.cert-detail__map-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cert-detail__map {
+  width: 100%;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-sunken);
+}
+
+.cert-detail__map--skeleton {
+  height: 320px;
+  background: linear-gradient(
+    135deg,
+    var(--bg-sunken) 0%,
+    var(--overlay-weak) 100%
+  );
+}
+
+.cert-detail__map--empty {
+  height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+}
+
+.cert-detail__map--empty p {
+  margin: 0;
+}
+
+.cert-detail__map-other {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+}
+
+.cert-detail__map-other-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: var(--radius);
+  background: var(--overlay-weak);
+  min-width: 0;
+}
+
+.cert-detail__map-other-name {
+  font-weight: 500;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cert-detail__map-other-detail {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Locations names list (below the map) ----------
+   Renders every resolved location (mappable or not) so the viewer
+   can read the place name without hovering pins. Same visual
+   shape as the older `__map-other-*` list above but applied
+   universally — that older list only surfaced unmappable
+   fallbacks. */
+
+.cert-detail__map-locations {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+}
+
+.cert-detail__map-locations-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: var(--radius);
+  background: var(--overlay-weak);
+  min-width: 0;
+}
+
+/* MapPin SVG anchoring the row. Without `flex-shrink: 0` the
+   icon would be allowed to compress when the row's name text was
+   too long to fit — the SVG defaults to flex-shrink: 1 like any
+   other flex child. Pin it at full size; long names truncate
+   via the name element's ellipsis instead. */
+.cert-detail__map-locations-item > svg {
+  flex-shrink: 0;
+}
+
+.cert-detail__map-locations-name {
+  font-weight: 500;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cert-detail__map-locations-detail {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Plus Code copy-paste pill. Quiet monospace tag — reads as
+   metadata next to the human-readable name. Hover bumps the
+   contrast a touch so it's discoverable as interactive. */
+.cert-detail__map-locations-plus {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-muted);
+  font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.cert-detail__map-locations-plus:hover {
+  color: var(--fg-primary);
+  background: var(--overlay-weak);
+  border-color: var(--border-hover);
+}
+
+.cert-detail__map-locations-plus:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+/* ---------- Cert title row's three-column byline ----------
+   Below the cert title in the main pane: a three-cell grid with
+   no visible borders (the "invisible columns" — chrome-free) that
+   labels and renders Date created, Author, and first Project. The
+   per-cell label reuses `.cert-detail__meta-label` so the row
+   reads as a structural peer of the aside metadata. */
+
+.cert-detail__headline-cols {
+  /* Flex (not grid) so each column only takes the width its
+     content needs — narrow cells stay narrow and the unused row
+     space stays empty rather than padding each cell to a third of
+     the main pane. `flex-wrap: wrap` keeps long content from
+     overflowing on small screens. */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 32px;
+  align-items: flex-start;
+}
+
+.cert-detail__headline-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  /* `min-width: 0` lets the column shrink below its intrinsic
+     size when the row needs to wrap, instead of forcing overflow.
+     `flex: 0 0 auto` keeps each cell tied to its content width. */
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.cert-detail__headline-col-value {
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  line-height: 1.4;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Skeleton placeholder while the author resolution is in flight —
+   roughly matches the height of the avatar+name pair so the row
+   doesn't shift when data lands. */
+.cert-detail__headline-col-value--skel {
+  display: block;
+  height: 32px;
+  border-radius: var(--radius);
+  background: var(--overlay-weak);
+}
+
+/* Project cell renders as a small thumb + title inline. The thumb
+   uses the project's avatar / legacy image / banner (in that
+   precedence) so the cell carries the project's identity glyph,
+   not just text. Falls back to an empty rounded square if the
+   project hasn't published an image yet — keeps the row alignment
+   stable across mixed projects. */
+.cert-detail__headline-project-value {
+  min-width: 0;
+}
+
+/* The project column is the last cell in the byline. It grows into the
+   remaining row width and wraps a long title to two lines — but only
+   while it has at least `min-width` to work with. Once there's less
+   than that on the current row it wraps to the next row (where it gets
+   the full width) instead of cramming the title into a sliver. The
+   `min(100%, …)` keeps it from forcing horizontal overflow on very
+   narrow viewports. */
+.cert-detail__headline-col:has(.cert-detail__headline-project-value) {
+  flex: 1 1 0;
+  min-width: min(100%, 14rem);
+}
+
+.cert-detail__headline-project-link {
+  /* Background-highlight on hover matches the Author cell —
+     same `overlay-weak` fill, same rounded chip, same
+     negative-margin trick so the highlight feels inset without
+     reflowing the row. */
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg-primary);
+  text-decoration: none;
+  min-width: 0;
+  /* Cap to the (flex-grown) column so a long title wraps within the
+     cell instead of overflowing it; short titles still hug their
+     content so the hover chip doesn't stretch. */
+  max-width: 100%;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border-radius: var(--radius);
+  transition: background var(--transition-fast);
+}
+
+.cert-detail__headline-project-link:hover,
+.cert-detail__headline-project-link:focus-visible {
+  background: var(--overlay-weak);
+}
+
+.cert-detail__headline-project-link--static {
+  cursor: default;
+}
+
+.cert-detail__headline-project-link--static:hover {
+  background: transparent;
+}
+
+.cert-detail__headline-project-thumb {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Matches the Author avatar's effective size (24×24 — see the
+     `.cert-detail__headline-author > div:first-child` override
+     that scales the shared Avatar component down to 24px on the
+     headline byline) so the two glyphs read as a pair. */
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-subtle);
+}
+
+.cert-detail__headline-project-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cert-detail__headline-project-title {
+  min-width: 0;
+  overflow: hidden;
+  /* Allow the project title to wrap to two lines before truncating
+     (was a single-line ellipsis). */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+/* Mobile: the byline is a flex (not grid) container, so the old
+   `grid-template-columns` rule was silently ignored. The 32px
+   horizontal gap + flex-wrap let the Author column wrap mid-cell,
+   splitting the avatar from the name/handle (reads as an icon bar
+   with a missing value). Stack the labelled columns vertically and
+   keep the author avatar + meta on one line. */
+@media (max-width: 799px) {
+  /* Author + Date created share the first row; Project wraps to its
+     own full-width row below them (matches the mobile reading order). */
+  .cert-detail__headline-cols {
+    flex-direction: row;
+    flex-wrap: wrap;
+    /* Row gap separates the author row from the Project block below
+       it (the author takes the full row, so Project wraps under). 8px
+       read as cramped against the labelled Project block — 16px gives
+       it clear breathing room, just above the title→author gap. */
+    gap: 16px 24px;
+  }
+
+  .cert-detail__headline-col:nth-child(3) {
+    flex: 1 1 100%;
+  }
+
+  .cert-detail__headline-author {
+    flex-wrap: nowrap;
+  }
+}
+
+/* ---------- /create page tweaks ----------
+   The create-cert page reuses the cert-detail visual shell
+   (`.page-layout.cert-detail--wide`, `.cert-detail__aside`, etc.)
+   so the editing surface reads like an inline draft of the same
+   page it'll publish to. Only a few create-specific bits live
+   here. */
+
+/* Full-pane-width modifier for a meta input on /create. Used by the
+   Work scope field so the input stretches to fill the aside column
+   instead of sitting at the browser's default input width. Applies
+   width: 100% but leaves the rest of the .cert-detail__meta-input
+   styling intact. */
+.cert-detail__meta-input.create-cert__field--full {
+  width: 100%;
+}
+
+/* Smaller title font in the create form. The detail-page edit
+   mode keeps the full 1.875rem so the inline-edit reads as
+   "you are editing the cert title at full size"; on the create
+   form the title sits next to the counter + the rest of the form
+   inputs and full-size felt overpowering. */
+.create-cert .cert-detail__title-input {
+  font-size: 1.375rem;
+}
+
+.create-cert__date-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.create-cert__date-row .cert-detail__meta-input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* "Add contributor" + "Add me" sit side by side. Wrapping the two
+   buttons in a single flex row keeps them aligned at the left edge
+   while letting them flow onto a second line on narrow screens. */
+.create-cert__contrib-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.create-cert__counter {
+  margin: 0;
+  align-self: flex-end;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.create-cert__counter--over,
+.create-cert__counter--under {
+  color: var(--color-error);
+}
+
+.create-cert__counter--over {
+  font-weight: 600;
+}
+
+/* Tight wrapper around an input + its counter line. Used on the
+   title (inside the headline) and on the short description
+   (inside its section). The headline + section both have ~12-32px
+   gaps between their children; that's the right rhythm between
+   blocks, but the counter is metadata about the input directly
+   above it and should sit close. 4px keeps it tucked under the
+   field without forcing a tight cap on the typography. */
+.create-cert__input-with-counter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Auth loading spinner — centered in the dashboard main pane
+   while the session check is in flight. The /create page resolves
+   `useAuth().isLoading` first; rendering the EmptyState during
+   that window flashed a "Sign in to create" message on every
+   refresh even for already-signed-in users. */
+.create-cert__auth-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+}
+
+.create-cert__contrib-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.create-cert__contrib-row {
+  display: grid;
+  /* Identity (typeahead) — role — weight — remove. Weight gets a
+     fixed 170px track so its "Weight (optional)" placeholder
+     renders without ellipsis in most cases; role gets the middle
+     flex track since role labels run longer than weight values;
+     identity gets the widest flex track because it carries
+     @handle + dropdown affordance. */
+  grid-template-columns: 2fr 1.5fr 170px auto;
+  gap: 8px;
+  /* Center the role/weight/remove tracks against the identity slot
+     so the picked-contributor card (avatar + name + handle, 32px
+     tall) aligns its mid-line with the inputs and the trash button.
+     The per-row error message still grid-column-spans all tracks
+     below, so vertical centering doesn't pull errors out of place. */
+  align-items: center;
+}
+
+.create-cert__contrib-weight {
+  /* Left-align matches the role + identity inputs in the same row.
+     Right-aligning the weight made the "Weight (optional)"
+     placeholder hug the right edge while the entered numeric value
+     was supposed to read as a label; consistent left alignment
+     keeps the row visually tidy. */
+  text-align: left;
+}
+
+/* Identity field wrapper — positions the typeahead dropdown
+   absolutely beneath the input. `min-width: 0` keeps the field
+   from blowing out the grid track when the search results contain
+   long display names. */
+.create-cert__contrib-id {
+  position: relative;
+  min-width: 0;
+}
+
+/* Resolved-contributor card — the "picked" state of the row. Same
+   visual rhythm as the read-mode `activity-detail__contributor`
+   row: avatar + meta column + trailing clear button. Slots into
+   the same identity-track of the row grid as the typeahead input,
+   so the row's height/alignment stays put across the input → card
+   swap. */
+.create-cert__contrib-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 8px 4px 4px;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  height: 32px;
+}
+
+.create-cert__contrib-card-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.1;
+  flex: 1;
+}
+
+.create-cert__contrib-card-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.create-cert__contrib-card-handle {
+  font-size: 0.6875rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.create-cert__contrib-card-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.create-cert__contrib-card-clear:hover,
+.create-cert__contrib-card-clear:focus-visible {
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
+}
+
+.create-cert__contrib-id input {
+  width: 100%;
+}
+
+/* Invalid identity — paints the border red so the row's failure
+   reads at a glance. The accompanying `<p create-cert__contrib-
+   error>` below the row carries the explanation; this is the
+   field-level visual cue. */
+.create-cert__contrib-id-input--invalid {
+  border-color: var(--color-error);
+}
+
+.create-cert__contrib-id-input--invalid:focus {
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.15);
+}
+
+/* Per-row identity error — slots into the contributor grid by
+   spanning all four tracks, sitting below the row's inputs. The
+   text reuses the form-error rhythm: small, muted red. */
+.create-cert__contrib-error {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-error);
+}
+
+.create-cert__contrib-id-spinner {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--border-medium);
+  border-top-color: var(--fg-primary);
+  border-radius: 50%;
+  animation: spin 600ms linear infinite;
+  pointer-events: none;
+}
+
+.create-cert__contrib-id-dropdown {
+  list-style: none;
+  margin: 4px 0 0 0;
+  padding: 4px;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+}
+
+.create-cert__contrib-id-option {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.create-cert__contrib-id-option--active {
+  background: var(--overlay-weak);
+}
+
+.create-cert__contrib-id-name {
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  font-weight: 500;
+}
+
+.create-cert__contrib-id-handle {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.create-cert__contrib-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.create-cert__contrib-remove:hover {
+  background: var(--bg-sunken);
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+@media (max-width: 799px) {
+  .create-cert__contrib-row {
+    grid-template-columns: 1fr auto;
+    gap: 6px;
+  }
+  .create-cert__contrib-row > input:nth-child(2),
+  .create-cert__contrib-row > input:nth-child(3) {
+    grid-column: 1 / 2;
+  }
+}
+
+/* ---------- /project/new cert picker + selected-cert list ---------- */
+
+/* "Your certs" quick-pick — click-to-add list shown above the
+   CertSearch typeahead so the author can attach their own certs
+   without typing. Checked rows visually fade so the eye lands on
+   the still-unattached certs. */
+.create-project__quick-pick-label {
+  margin: 0 0 6px 0;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+/* Inline link inside the "no certs yet" empty-state note under the
+   Certs section header. Keeps the link visually subtle (matches the
+   surrounding muted-grey copy) but underlined so the affordance
+   reads at a glance. */
+.create-project__inline-link {
+  color: var(--fg-secondary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.create-project__inline-link:hover,
+.create-project__inline-link:focus-visible {
+  color: var(--fg-primary);
+}
+
+.create-project__quick-pick-list {
+  list-style: none;
+  margin: 0 0 12px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* Cap the list height when the user has lots of certs — the
+     overflow scrolls so the rest of the form stays in view. */
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 6px;
+}
+
+.create-project__quick-pick-row {
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius);
+  transition: background var(--transition-fast);
+}
+
+.create-project__quick-pick-row:hover {
+  background: var(--overlay-weak);
+}
+
+.create-project__quick-pick-row--added {
+  opacity: 0.6;
+}
+
+.create-project__quick-pick-label-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+}
+
+.create-project__quick-pick-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.create-project__cert-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.create-project__cert-list {
+  list-style: none;
+  margin: 0 0 8px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.create-project__cert-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--overlay-weak);
+  border-radius: var(--radius);
+  min-width: 0;
+}
+
+.create-project__cert-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+}
+
+.create-project__cert-remove {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--fg-muted);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.create-project__cert-remove:hover {
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
+.create-cert__followup-note {
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  background: var(--bg-sunken);
+  border-radius: var(--radius);
+  border: 1px dashed var(--border-default);
+}
+
+/* ---------- Locations list in the aside on /create ---------- */
+
+.create-cert__loc-list {
+  list-style: none;
+  margin: 0 0 6px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.create-cert__loc-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: var(--overlay-weak);
+  border-radius: var(--radius);
+  font-size: 0.8125rem;
+  color: var(--fg-primary);
+  min-width: 0;
+}
+
+.create-cert__loc-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.create-cert__loc-remove {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--fg-muted);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.create-cert__loc-remove:hover {
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
+/* ---------- Location picker dialog ---------- */
+
+.create-cert__loc-dialog-body {
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Forward-geocode combobox — same pattern as the profile picker:
+   relative-positioned input + absolute-positioned listbox below.
+   The listbox sits on top of the map so it can extend past the
+   input without nudging the map down. */
+.create-cert__loc-combobox {
+  position: relative;
+  min-width: 0;
+}
+
+/* Search-again icon button — only renders in edit mode. Anchored
+   to the right edge of the combobox input; the input grows its
+   right padding via this rule's sibling style so the typed value
+   never overlaps the icon. */
+.create-cert__loc-combobox:has(.create-cert__loc-search-again) > input {
+  padding-right: 32px;
+}
+
+.create-cert__loc-search-again {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius);
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.create-cert__loc-search-again:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+/* ---------- Mobile (<800px) accessibility for the create/edit forms ----------
+   Placed after the base rules above so it wins the cascade. Bumps the small
+   meta inputs to 16px (no iOS focus-zoom) and a ~44px field, and expands every
+   compact icon button to the 44px WCAG tap target. Desktop is untouched. */
+@media (max-width: 799px) {
+  .cert-detail__meta-input {
+    font-size: 16px;
+    padding: 10px 10px;
+  }
+  .create-cert__contrib-card-clear,
+  .create-cert__contrib-remove,
+  .create-project__cert-remove,
+  .create-cert__loc-remove,
+  .create-cert__loc-search-again,
+  .cert-detail__map-expand-btn {
+    width: 44px;
+    height: 44px;
+  }
+  /* Search-again is absolutely placed inside the combobox input; widen the
+     input's right padding so the larger button never overlaps typed text. */
+  .create-cert__loc-search-again {
+    right: 2px;
+  }
+  .create-cert__loc-combobox:has(.create-cert__loc-search-again) > input {
+    padding-right: 48px;
+  }
+  /* Let the Cancel/Publish action row wrap instead of crowding on tiny phones. */
+  .create-cert__actions {
+    flex-wrap: wrap;
+  }
+}
+
+.create-cert__loc-suggestions {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: var(--z-popover);
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+}
+
+.create-cert__loc-suggestion {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.create-cert__loc-suggestion--active {
+  background: var(--overlay-weak);
+}
+
+.create-cert__loc-suggestion-primary {
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  font-weight: 500;
+}
+
+.create-cert__loc-suggestion-secondary {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.create-cert__loc-map {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.create-cert__loc-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+/* Info banner shown briefly when a "New" submit was short-circuited
+   to an existing record from My locations (coord match). Sits in
+   the same vertical slot as save errors so the layout doesn't
+   reflow when it appears. */
+.create-cert__loc-reused {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  background: var(--overlay-weak);
+  border-radius: var(--radius);
+}
+
+.create-cert__loc-uri-label {
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+}
+
+.create-cert__loc-uri-label code {
+  font-size: 0.75rem;
+  background: var(--bg-sunken);
+  padding: 1px 4px;
+  border-radius: var(--radius);
+}
+
+.create-cert__loc-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.create-cert__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+}
+
+/* ---------- Expand-map button + modal ---------- */
+
+/* Small icon button overlaying the top-right of the map. Sized
+   to read as a control affordance without competing with
+   Leaflet's own zoom controls (which live at top-left). */
+.cert-detail__map {
+  position: relative;
+}
+
+.cert-detail__map-expand-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 500;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.cert-detail__map-expand-btn:hover {
+  background: var(--bg-sunken);
+  border-color: var(--border-hover);
+}
+
+.cert-detail__map-expand-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Modal variant of the map — drops the aside's narrow-column
+   sizing and reads full-width inside the dialog. */
+.cert-detail__map-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 20px 20px;
+}
+
+/* Height is viewport-relative so it tracks resize / rotation while
+   the modal is open (replaces a one-shot window.innerHeight read in
+   cert-locations-map.tsx). Mirrors the old min(720, 70% viewport)
+   clamp; the inner <Map> fills this with height="100%". */
+.cert-detail__map--modal {
+  width: 100%;
+  height: min(720px, 70vh);
+}
+
+/* ---------- Mobile tweaks ---------- */
+
+@media (max-width: 799px) {
+  .cert-detail__title {
+    font-size: 1.5rem;
+  }
+}

@@ -1,0 +1,99 @@
+import { describe, it, expect, vi, afterEach } from "vitest"
+import { render, screen, cleanup, within, fireEvent } from "@testing-library/react"
+
+// judgment-008: the Explore Sort dropdown was migrated from a local
+// hand-rolled <Popover> onto the canonical
+// <Popover>/<PopoverTrigger>/<PopoverContent>/<PopoverItem> primitive
+// (src/components/ui/popover.tsx). These tests pin the canonical
+// behaviour the migration must preserve: the trigger wires
+// aria-controls to the menu, the menu renders role="menuitem"
+// children, click opens / re-click and Escape close.
+//
+// (The sub-category control was also once a canonical Popover, but the
+// explore redesign replaced it with an inline pill SegmentedControl, so
+// there is no sub-category menu to pin here anymore.)
+//
+// Explore pulls in auth, navbar, navigation, and the explore-data hook;
+// none of those are under test, so they're stubbed to inert defaults
+// just enough for the component to mount in a single-kind state
+// (`?show=accounts`), where the Sort trigger renders. The default
+// `?show=all` landing renders the capped-blocks view with no single-kind
+// toolbar.
+
+vi.mock("@/lib/auth/auth-context", () => ({
+  useAuth: () => ({ did: null, isAuthenticated: false }),
+}))
+
+vi.mock("@/lib/navbar-context", () => ({
+  usePageTitle: () => undefined,
+}))
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/explore",
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  useSearchParams: () => new URLSearchParams("show=accounts"),
+}))
+
+vi.mock("@/hooks/use-explore", () => ({
+  useExploreData: () => ({
+    users: [],
+    projects: [],
+    certs: [],
+    certDids: new Map(),
+    cursor: null,
+    isLoading: false,
+    isLoadingMore: false,
+    hasMore: false,
+    loadMore: vi.fn(),
+    endorsementClosure: null,
+  }),
+}))
+
+afterEach(() => {
+  cleanup()
+})
+
+describe("Explore Sort dropdown uses the canonical Popover", () => {
+  it("opens a role=menu wired to the trigger via aria-controls", async () => {
+    const { default: Explore } = await import("../explore")
+    render(<Explore />)
+    const trigger = screen.getByRole("button", { name: "Sort" })
+    // Closed initially.
+    expect(screen.queryByRole("menu")).toBeNull()
+    expect(trigger.getAttribute("aria-expanded")).toBe("false")
+
+    fireEvent.click(trigger)
+
+    const menu = screen.getByRole("menu")
+    expect(trigger.getAttribute("aria-expanded")).toBe("true")
+    // Canonical primitive wires aria-controls -> the menu's id.
+    expect(trigger.getAttribute("aria-controls")).toBe(menu.id)
+    expect(menu.id).toBeTruthy()
+  })
+
+  it("renders the sort options as role=menuitemradio", async () => {
+    const { default: Explore } = await import("../explore")
+    render(<Explore />)
+    const trigger = screen.getByRole("button", { name: "Sort" })
+    fireEvent.click(trigger)
+    const menu = screen.getByRole("menu")
+    // Each option carries `selected`, so the canonical PopoverItem renders
+    // as a selectable `menuitemradio` rather than a plain `menuitem`.
+    const items = within(menu).getAllByRole("menuitemradio")
+    const labels = items.map((el) => el.textContent)
+    expect(labels).toContain("Newest first")
+    expect(labels).toContain("Oldest first")
+    expect(labels).toContain("Alphabetical")
+  })
+
+  it("closes on Escape", async () => {
+    const { default: Explore } = await import("../explore")
+    render(<Explore />)
+    const trigger = screen.getByRole("button", { name: "Sort" })
+    fireEvent.click(trigger)
+    expect(screen.getByRole("menu")).toBeTruthy()
+    fireEvent.keyDown(document, { key: "Escape" })
+    expect(screen.queryByRole("menu")).toBeNull()
+    expect(trigger.getAttribute("aria-expanded")).toBe("false")
+  })
+})

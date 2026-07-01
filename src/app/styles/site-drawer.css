@@ -1,0 +1,109 @@
+/* ---------- Hamburger button (in the top bar) ---------- */
+
+.desktop-top-bar__menu {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-right: 4px;
+  background: none;
+  border: 0;
+  border-radius: var(--radius);
+  color: var(--fg-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.desktop-top-bar__menu:hover {
+  background: var(--bg-sunken);
+}
+
+/* ---------- Site drawer (slides in from the left) ---------- */
+/* The portal shell — scrim (.site-drawer__scrim), the sliding
+   <aside> panel (.site-drawer / .site-drawer--open), focus trap,
+   scroll lock and Esc — now live in the canonical <Drawer> primitive
+   (src/components/ui/drawer.tsx). Those shell rules were removed; the
+   inner-content classes below (head / brand / nav / item) are still
+   rendered by SiteDrawer and styled here. */
+
+.site-drawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.site-drawer__brand {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.site-drawer__wordmark {
+  height: 24px;
+  width: auto;
+  display: block;
+}
+
+.site-drawer__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: none;
+  border: 0;
+  border-radius: var(--radius);
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.site-drawer__close:hover {
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
+.site-drawer__nav {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 8px;
+  gap: 2px;
+}
+
+.site-drawer__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: none;
+  border: 0;
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--fg-primary);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  text-align: left;
+}
+
+.site-drawer__item:hover {
+  background: var(--bg-sunken);
+}
+
+.site-drawer__item--active {
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
+.site-drawer__item--disabled {
+  color: var(--fg-muted);
+  cursor: not-allowed;
+}
+
+.site-drawer__item--disabled:hover {
+  background: none;
+}

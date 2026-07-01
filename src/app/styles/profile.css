@@ -1,0 +1,538 @@
+/* ========== Profile hero (full-bleed header for /profile/[handle]) ========== */
+
+.profile-hero {
+  width: 100%;
+  position: relative;
+}
+
+.profile-hero__banner {
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+  background: linear-gradient(
+    135deg,
+    var(--bg-sunken) 0%,
+    var(--bg-raised) 100%
+  );
+}
+
+/* Half height when the profile has no banner image. The gradient
+   panel reads as an intentional "no banner" affordance rather than
+   eating the same vertical real estate as a real banner. */
+.profile-hero__banner--empty {
+  height: 90px;
+}
+
+.profile-hero__banner-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-hero__body {
+  padding: 0 16px 16px;
+}
+
+.profile-hero__row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  /* Lift the avatar to half-overlap the banner */
+  margin-top: -48px;
+}
+
+/* Wrap the avatar in a rounded pad that reads as a border on any banner. */
+.profile-hero__avatar-wrap {
+  flex-shrink: 0;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border-radius: 999px;
+  line-height: 0;
+}
+
+.profile-hero__action {
+  flex-shrink: 0;
+  /* Sit on the same baseline as the avatar bottom edge */
+  padding-bottom: 4px;
+}
+
+.profile-hero__action-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.profile-hero__eyebrow {
+  /* Small "YOUR PROFILE" cue that arrives before the name, so visiting
+     `/` (which redirects to /profile/[my-handle]) reads as "yours"
+     rather than a generic profile view. */
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin: 12px 0 0;
+}
+
+.profile-hero__name {
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--fg-primary);
+  letter-spacing: -0.01em;
+  margin: 12px 0 2px;
+  line-height: 1.15;
+}
+
+/* When the eyebrow is present, tighten the top margin on the name so
+   the eyebrow + name read as one block. */
+.profile-hero__eyebrow + .profile-hero__name {
+  margin-top: 4px;
+}
+
+.profile-hero__handle {
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  font-weight: 400;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Inline tag shown next to the handle when the profile's PDS is
+   Bluesky-hosted, so visitors recognise the data origin. Quiet
+   styling — small pill, muted border. */
+.profile-hero__pds-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--overlay-weak);
+  border: 1px solid var(--border-default);
+  color: var(--fg-muted);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.4;
+}
+
+.profile-hero__count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 12px 0 0;
+  font-size: 0.875rem;
+}
+
+.profile-hero__count-value {
+  font-weight: 600;
+  color: var(--fg-primary);
+}
+
+.profile-hero__count-label {
+  color: var(--fg-muted);
+}
+
+.profile-hero__bio {
+  margin: 12px 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--fg-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Pronouns + social-graph strip. Mobile-only (this whole header is hidden at
+   ≥800px); mirrors the desktop sidebar so mobile reaches information parity. */
+.profile-hero__pronouns {
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+.profile-hero__graph {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.profile-hero__graph-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+  flex-wrap: wrap;
+}
+
+.profile-hero__graph-count {
+  font-weight: 600;
+  color: var(--fg-primary);
+}
+
+.profile-hero__graph-link {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.profile-hero__graph-link:hover,
+.profile-hero__graph-link:focus-visible {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.profile-hero__graph-sep {
+  color: var(--fg-muted);
+}
+
+/* Endorsed-by count sits inside its link (unlike the followers row), so it
+   inherits the link colour and the whole string lights up together on hover. */
+.profile-hero__graph-row[aria-label="Endorsed by"] .profile-hero__graph-count {
+  color: inherit;
+}
+
+/* Desktop: banner is center-column-bleed (not viewport-bleed) and the
+   column is 600px wide. Keep close to 3:1 aspect so the banner still
+   reads as a panoramic header rather than a letterbox card. 200px on
+   600px column = 3:1, matching bsky. The wider body padding, lifted
+   avatar overlap, and larger name (previously gated at the off-spec
+   640px tablet breakpoint) fold into this canonical 800px desktop
+   step. */
+@media (min-width: 800px) {
+  .profile-hero__banner {
+    height: 200px;
+  }
+
+  .profile-hero__banner--empty {
+    height: 100px;
+  }
+
+  .profile-hero__body {
+    padding: 0 24px 24px;
+  }
+
+  .profile-hero__row {
+    margin-top: -56px;
+  }
+
+  .profile-hero__name {
+    font-size: 1.75rem;
+  }
+}
+
+/* ========== Profile tabs ========== */
+
+.profile-tabs {
+  display: flex;
+  gap: 0;
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+  padding: 0 16px;
+  margin-top: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* The in-page tab strip is mobile-only — on desktop the top bar's row 2
+   carries the profile tabs. Hidden at ≥800px to avoid a duplicate strip. */
+@media (min-width: 800px) {
+  .profile-page__mobile-tabs {
+    display: none;
+  }
+}
+
+.profile-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.profile-tabs__tab {
+  /* Fixed content width so the row can scroll horizontally as soon as
+     the tabs overflow the viewport instead of cramming them. */
+  flex: 0 0 auto;
+  padding: 14px 20px;
+  background: transparent;
+  border: none;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+  cursor: pointer;
+  position: relative;
+  transition: color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.profile-tabs__tab:hover {
+  color: var(--fg-primary);
+}
+
+.profile-tabs__tab--active {
+  color: var(--fg-primary);
+  font-weight: 600;
+}
+
+.profile-tabs__tab--active::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  background: var(--fg-primary);
+  border-radius: var(--radius);
+}
+
+.profile-tabs__tab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+  border-radius: 2px;
+}
+
+.profile-panel {
+  padding: 16px;
+}
+
+/* Reading-column constraint for the non-Overview tab panels (Activities,
+   Endorsements, Groups) on desktop. The profile page widens to 1280px
+   for the GitHub-style Overview, but list views still want a narrow
+   reading column. */
+@media (min-width: 800px) {
+  .profile-panel--reading {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+}
+
+/* ========== Profile › Groups tab ========== */
+.profile-groups {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-groups__item {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.profile-groups__item:last-child {
+  border-bottom: none;
+}
+
+.profile-groups__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px;
+  color: inherit;
+  text-decoration: none;
+  transition: background var(--transition-fast);
+}
+
+.profile-groups__link:hover {
+  background: var(--overlay-weak);
+}
+
+.profile-groups__meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.profile-groups__name {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-groups__handle {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-groups__role {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.profile-groups__loading {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+
+/* ========== Profile › Projects tab ==========
+   Lists `org.hypercerts.collection` records with `type === "project"`
+   from the profile's PDS. Each row mirrors the GitHub repo-row look:
+   a leading folder/repo glyph, then title + description + meta. */
+.profile-projects {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-projects__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.profile-projects__item:first-child {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.profile-projects__icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  color: var(--fg-secondary);
+}
+
+.profile-projects__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profile-projects__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  margin: 0;
+}
+
+.profile-projects__desc {
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.profile-projects__meta {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  margin: 4px 0 0;
+}
+
+.profile-projects__loading {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+/* The Edit / Settings / Follow buttons in the profile hero drop the
+   global 44px mobile min tap-height (`min-h-11` on Button size="sm"),
+   which made them look oversized in the compact hero. Padding then
+   drives a tighter height, matching the desktop look. */
+@media (max-width: 799px) {
+  .profile-hero__action button {
+    min-height: 0;
+  }
+}
+
+/* Profile sub-tab strips (Created / Contributed, Received / Given,
+   Followers / Following) read as explore-style pills on mobile instead
+   of the tall underline tabs. Scoped to role="tab" so it only hits the
+   ui/Tabs sub-strips, not the main `.profile-tabs__tab` strip. */
+@media (max-width: 799px) {
+  .profile-page [role="tab"] {
+    padding: 4px 12px;
+    border: 1px solid var(--border-default);
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    color: var(--fg-primary);
+    font-size: 0.75rem;
+    font-weight: 500;
+    min-height: 30px;
+  }
+  .profile-page [role="tab"][aria-selected="true"] {
+    background: var(--fg-primary);
+    color: var(--bg-canvas);
+    border-color: var(--fg-primary);
+    font-weight: 600;
+  }
+  .profile-page [role="tab"][aria-disabled="true"] {
+    opacity: 0.5;
+  }
+}
+
+/* Profile Activities tab: when an activity has no image, show no
+   thumbnail at all rather than the grey CertIcon placeholder box. */
+.profile-certs .feed-card__image-wrap--placeholder {
+  display: none;
+}
+
+/* Desktop: pin the labelled "New X" CTA to the shared 30px toolbar-control
+   height so it lines up exactly with the search field and the sort / add
+   icon buttons (the Button primitive's `sm` size is padding-driven and
+   would otherwise render a couple of px shorter). Scoped under
+   `.profile-page` so it beats the Button primitive's single-class
+   utilities. */
+@media (min-width: 800px) {
+  .profile-page .profile-new-record-btn {
+    height: 30px;
+    min-height: 0;
+  }
+}
+
+/* "New activity / project / group" CTAs collapse to an icon-only plus on
+   mobile, styled IDENTICALLY to the Lists tab's create control: a 30px
+   bordered, transparent square with the plus in fg-primary. The visible
+   label is dropped (the button keeps its `aria-label` for assistive
+   tech). Scoped under `.profile-page` so it overrides the Button
+   primitive's filled "primary" variant (single-class utilities). */
+@media (max-width: 799px) {
+  .profile-new-record-btn__label {
+    display: none;
+  }
+  .profile-page .profile-new-record-btn {
+    width: 30px;
+    height: 30px;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    gap: 0;
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--fg-primary);
+  }
+  .profile-page .profile-new-record-btn:hover {
+    background: var(--bg-sunken);
+  }
+}

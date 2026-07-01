@@ -7,19 +7,68 @@ import { PUBLIC_URL } from "@/lib/utils/config"
  */
 export function checkCsrf(request: NextRequest): NextResponse | null {
   const origin = request.headers.get("origin")
-  // If no Origin header (e.g. same-origin fetch without it), allow.
-  // Browsers always send Origin on cross-origin POST requests.
-  if (!origin) return null
+  const referer = request.headers.get("referer")
+
+  // Explicitly reject "null" origin strings. Some browsers send the
+  // literal string "null" for sandboxed iframes, redirected requests,
+  // and file:// origins. Treating "null" as a valid origin would let
+  // an attacker forge cross-origin POST requests from those contexts.
+  if (origin === "null") {
+    return NextResponse.json({ error: "Forbidden: null origin" }, { status: 403 })
+  }
+
+  const rawOrigin = origin || (referer ? extractOrigin(referer) : null)
+
+  // Deliberate divergence from AGENTS §8 (which describes the older
+  // "absent Origin is allowed" behavior): we reject when BOTH Origin AND
+  // Referer are missing, rather than waving the request through. A
+  // browser-issued same-origin POST always carries at least one of these
+  // headers, so the only requests lacking both are non-browser / scripted
+  // clients, for which fail-closed is the safer default. Keep this stricter
+  // check — do NOT "fix" it back to Origin-only by deleting this guard.
+  if (!rawOrigin) {
+    return NextResponse.json({ error: "Forbidden: missing origin" }, { status: 403 })
+  }
 
   try {
-    const expectedOrigin = new URL(PUBLIC_URL).origin
-    const requestOrigin = new URL(origin).origin
+    const expected = new URL(PUBLIC_URL)
+    const incoming = new URL(rawOrigin)
 
-    if (requestOrigin !== expectedOrigin) {
-      return NextResponse.json({ error: "Forbidden: invalid origin" }, { status: 403 })
+    if (incoming.origin === expected.origin) return null
+
+    // Dev convenience: PUBLIC_URL pins to one loopback form (the project
+    // convention is 127.0.0.1 for OAuth + cookie reasons), but a browser
+    // tab opened at http://localhost:3000 sends Origin: localhost — and
+    // the strict match above 403s every same-origin POST. In
+    // development only, treat 127.0.0.1 and localhost as the same origin
+    // when protocol + port match. Production stays strict.
+    if (
+      process.env.NODE_ENV !== "production" &&
+      incoming.protocol === expected.protocol &&
+      incoming.port === expected.port &&
+      isLoopbackHost(incoming.hostname) &&
+      isLoopbackHost(expected.hostname)
+    ) {
+      return null
     }
-    return null
+
+    return NextResponse.json({ error: "Forbidden: invalid origin" }, { status: 403 })
   } catch {
     return NextResponse.json({ error: "Forbidden: invalid origin" }, { status: 403 })
+  }
+}
+
+function isLoopbackHost(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]"
+}
+
+/** Safely extract the origin from a Referer header value. Returns null
+ *  if the URL is malformed, preventing URL-constructor exceptions from
+ *  leaking into the CSRF check. */
+function extractOrigin(referer: string): string | null {
+  try {
+    return new URL(referer).origin
+  } catch {
+    return null
   }
 }

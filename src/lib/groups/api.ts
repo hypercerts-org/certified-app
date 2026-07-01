@@ -2,116 +2,26 @@ import { authFetch } from "@/lib/auth/fetch"
 import { resolveHandle, resolvePdsUrl } from "@/lib/atproto/did"
 import { getAvatarUrl } from "@/lib/atproto/profile"
 import { extractError } from "@/lib/utils/api"
-import type { CertifiedProfile } from "@/lib/atproto/types"
 import type {
   Group,
   OrgProfile,
   GroupMetadata,
   OrgMember,
   AuditEntry,
-  MembershipRecord,
   OrgRole,
   RemoteMembership,
 } from "./types"
-import { ORG_MEMBERSHIP_COLLECTION } from "./constants"
-
-// ─── Membership records (stored in user's own PDS) ───────────────────
-
-/**
- * List all membership records from the current user's PDS.
- * Each record represents a group the user belongs to.
- */
-export async function listMemberships(
-  did: string,
-  signal?: AbortSignal
-): Promise<MembershipRecord[]> {
-  const res = await authFetch(
-    `/api/xrpc/com/atproto/repo/listRecords?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(ORG_MEMBERSHIP_COLLECTION)}&limit=100`,
-    { signal }
-  )
-  if (!res.ok) {
-    if (res.status === 400 || res.status === 404) return []
-    throw new Error(`Failed to list memberships: ${res.statusText}`)
-  }
-  const data = await res.json()
-  return (data.records || []).map(
-    (r: { value: MembershipRecord; uri: string }) => ({
-      ...r.value,
-      rkey: r.uri.split("/").pop(),
-    })
-  )
-}
-
-/**
- * Create a membership record in the user's PDS.
- * Uses createRecord so the PDS assigns a TID-based rkey.
- * If a membership for this groupDid already exists, this is a no-op.
- */
-export async function putMembership(
-  did: string,
-  groupDid: string,
-  role: OrgRole
-): Promise<void> {
-  // Check if membership already exists to avoid duplicates
-  const existing = await listMemberships(did)
-  if (existing.some((m) => m.groupDid === groupDid)) return
-
-  const record: MembershipRecord = {
-    $type: "app.certified.actor.membership",
-    groupDid,
-    role,
-    joinedAt: new Date().toISOString(),
-  }
-  const res = await authFetch("/api/xrpc/com/atproto/repo/createRecord", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      repo: did,
-      collection: ORG_MEMBERSHIP_COLLECTION,
-      record,
-    }),
-  })
-  if (!res.ok) {
-    throw new Error(await extractError(res, "Failed to save membership"))
-  }
-}
-
-/**
- * Delete a membership record from the user's PDS.
- * Finds the record by groupDid, then deletes by its TID rkey.
- */
-export async function deleteMembership(
-  did: string,
-  groupDid: string
-): Promise<void> {
-  // Find the membership record to get its rkey
-  const memberships = await listMemberships(did)
-  const membership = memberships.find((m) => m.groupDid === groupDid)
-  if (!membership?.rkey) return // Nothing to delete
-
-  const res = await authFetch("/api/xrpc/com/atproto/repo/deleteRecord", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      repo: did,
-      collection: ORG_MEMBERSHIP_COLLECTION,
-      rkey: membership.rkey,
-    }),
-  })
-  if (!res.ok) {
-    throw new Error(await extractError(res, "Failed to delete membership"))
-  }
-}
 
 // ─── Group service operations (proxied through BFF API routes) ───────
 
 /**
  * Upload a blob (image) to the group's repo via the group service proxy.
+ * Returns a typed UploadedBlob matching the lexicon BlobRef shape.
  */
 export async function uploadOrgBlob(
   groupDid: string,
   file: File
-): Promise<Record<string, unknown>> {
+): Promise<import("@/lib/atproto/profile").UploadedBlob> {
   const buffer = await file.arrayBuffer()
   const res = await authFetch(
     `/api/groups/${encodeURIComponent(groupDid)}/upload-blob`,
@@ -124,8 +34,11 @@ export async function uploadOrgBlob(
   if (!res.ok) {
     throw new Error(await extractError(res, "Failed to upload image"))
   }
-  const data = await res.json()
-  return data.blob as Record<string, unknown>
+  const data = (await res.json()) as { blob?: import("@/lib/atproto/profile").UploadedBlob }
+  if (!data.blob || typeof data.blob.ref?.$link !== "string") {
+    throw new Error("uploadOrgBlob response missing blob.ref.$link")
+  }
+  return data.blob
 }
 
 /**
@@ -150,6 +63,16 @@ export async function createBskyProfile(
 /**
  * Register a new group via the group service.
  */
+/** Error thrown by registerGroup that preserves the server's error code. */
+export class RegisterGroupError extends Error {
+  readonly code?: string
+  constructor(message: string, code?: string) {
+    super(message)
+    this.code = code
+    this.name = "RegisterGroupError"
+  }
+}
+
 export async function registerGroup(
   handle: string,
   ownerDid: string,
@@ -161,9 +84,119 @@ export async function registerGroup(
     body: JSON.stringify({ handle, ownerDid, email }),
   })
   if (!res.ok) {
-    throw new Error(await extractError(res, "Failed to register group"))
+    let message = "Failed to register group"
+    let code: string | undefined
+    try {
+      const data = await res.json() as { error?: string; code?: string }
+      if (typeof data.error === "string") message = data.error
+      if (typeof data.code === "string") code = data.code
+    } catch {
+      // fall through
+    }
+    throw new RegisterGroupError(message, code)
   }
-  return res.json()
+  return await res.json()
+}
+
+/**
+ * Promote the currently authenticated account into a group (the sibling
+ * of {@link registerGroup} that reuses an existing account). The caller
+ * supplies an app password for that account; `ownerDid` defaults to the
+ * importer server-side. Reuses {@link RegisterGroupError} so callers can
+ * surface structured codes (e.g. `InvalidAppPassword`,
+ * `GroupAlreadyRegistered`).
+ */
+export async function importGroup(
+  appPassword: string,
+  ownerDid?: string,
+): Promise<{ groupDid: string; handle: string }> {
+  const res = await authFetch("/api/groups/import", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ appPassword, ownerDid }),
+  })
+  if (!res.ok) {
+    let message = "Failed to import group"
+    let code: string | undefined
+    try {
+      const data = (await res.json()) as { error?: string; code?: string }
+      if (typeof data.error === "string") message = data.error
+      if (typeof data.code === "string") code = data.code
+    } catch {
+      // fall through
+    }
+    throw new RegisterGroupError(message, code)
+  }
+  return await res.json()
+}
+
+/**
+ * Remove a group from the group service (owner-only; CGS enforces the
+ * role). The underlying PDS account is left intact and can be
+ * re-imported later. Reuses {@link RegisterGroupError} for structured
+ * codes (e.g. `GroupNotFound`).
+ */
+export async function destroyGroup(
+  groupDid: string,
+): Promise<{ groupDid: string }> {
+  const res = await authFetch(
+    `/api/groups/${encodeURIComponent(groupDid)}/destroy`,
+    { method: "POST" },
+  )
+  if (!res.ok) {
+    let message = "Failed to remove group"
+    let code: string | undefined
+    try {
+      const data = (await res.json()) as { error?: string; code?: string }
+      if (typeof data.error === "string") message = data.error
+      if (typeof data.code === "string") code = data.code
+    } catch {
+      // fall through
+    }
+    throw new RegisterGroupError(message, code)
+  }
+  return await res.json()
+}
+
+/**
+ * Group password reset (owner/admin), enter-email flow. The owner supplies the
+ * group's email; the BFF runs atproto's email-gated recovery against the
+ * group's PDS (see the route). Step 1 sends a code to that mailbox.
+ */
+export async function requestGroupPasswordReset(
+  groupDid: string,
+  email: string,
+): Promise<void> {
+  const res = await authFetch(
+    `/api/groups/${encodeURIComponent(groupDid)}/password-reset`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    },
+  )
+  if (!res.ok) {
+    throw new Error(await extractError(res, "Failed to send reset code"))
+  }
+}
+
+/** Step 2: complete the reset with the emailed code + a new password. */
+export async function confirmGroupPasswordReset(
+  groupDid: string,
+  token: string,
+  password: string,
+): Promise<void> {
+  const res = await authFetch(
+    `/api/groups/${encodeURIComponent(groupDid)}/password-reset`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, password }),
+    },
+  )
+  if (!res.ok) {
+    throw new Error(await extractError(res, "Failed to reset password"))
+  }
 }
 
 /**
@@ -178,10 +211,16 @@ export async function getOrgProfile(
     { signal }
   )
   if (!res.ok) {
+    // 404 retained for backward compatibility (older route revisions and
+    // the dev mock). The route now returns 200 + null for an absent
+    // profile (issue #156) so the browser doesn't log a red 404 for every
+    // gone-group row; both shapes coerce to null here.
     if (res.status === 404) return null
     throw new Error("Failed to fetch org profile")
   }
-  return res.json()
+  // 200 body is the bare profile record, or `null` when the record is
+  // absent / the group's PDS no longer resolves.
+  return (await res.json()) as OrgProfile | null
 }
 
 /**
@@ -332,6 +371,8 @@ export async function queryOrgAuditLog(
 ): Promise<AuditEntry[]> {
   const all: AuditEntry[] = []
   let cursor: string | undefined
+  const MAX_PAGES = 50
+  let pages = 0
 
   do {
     const params = new URLSearchParams({ limit: "100" })
@@ -348,7 +389,8 @@ export async function queryOrgAuditLog(
     const data = await res.json()
     all.push(...(data.entries || []))
     cursor = data.cursor
-  } while (cursor)
+    pages++
+  } while (cursor && pages < MAX_PAGES)
 
   return all
 }
@@ -363,6 +405,8 @@ export async function fetchRemoteMemberships(
 ): Promise<RemoteMembership[]> {
   const all: RemoteMembership[] = []
   let cursor: string | undefined
+  const MAX_PAGES = 50
+  let pages = 0
 
   // Paginate through all results
   do {
@@ -380,7 +424,8 @@ export async function fetchRemoteMemberships(
     const data = await res.json()
     all.push(...(data.groups || []))
     cursor = data.cursor
-  } while (cursor)
+    pages++
+  } while (cursor && pages < MAX_PAGES)
 
   return all
 }
@@ -418,17 +463,12 @@ export async function getSelfCreatedOrgCount(
  * (source of truth) with local PDS records (to determine accepted status).
  */
 export async function resolveGroups(
-  did: string,
+  _did: string,
   signal?: AbortSignal
 ): Promise<Group[]> {
-  // Fetch both sources in parallel
-  const [remoteMemberships, localMemberships] = await Promise.all([
-    fetchRemoteMemberships(signal),
-    listMemberships(did, signal),
-  ])
-
-  // Build set of locally-accepted groupDids
-  const acceptedSet = new Set(localMemberships.map((m) => m.groupDid))
+  // Groups come from the CGS membership list (the source of truth). We no
+  // longer keep a local `app.certified.actor.membership` marker.
+  const remoteMemberships = await fetchRemoteMemberships(signal)
 
   // Resolve all remote memberships in parallel (profile, handle, PDS per org)
   const orgs = await Promise.all(
@@ -446,7 +486,7 @@ export async function resolveGroups(
         if (resolvedHandle) handle = resolvedHandle
         if (profile && pdsUrl) {
           const url = getAvatarUrl(
-            profile as CertifiedProfile,
+            profile,
             rm.groupDid,
             pdsUrl
           )
@@ -455,17 +495,13 @@ export async function resolveGroups(
       } catch {
         // ignore — profile or handle may not resolve
       }
-      // Get rkey from the local membership record (if accepted)
-      const localRecord = localMemberships.find((m) => m.groupDid === rm.groupDid)
       return {
         groupDid: rm.groupDid,
         handle,
         displayName,
         role: rm.role,
-        accepted: acceptedSet.has(rm.groupDid),
+        accepted: true,
         avatarUrl,
-        rkey: localRecord?.rkey,
-        joinedAt: rm.joinedAt,
       } satisfies Group
     })
   )

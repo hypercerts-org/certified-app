@@ -101,11 +101,11 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
 
         {/* Overlay */}
         {(isHovered || isUploading) && (
-          <div className="absolute inset-0 rounded-full bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="absolute inset-0 rounded-full bg-[var(--navy-overlay-70)] flex items-center justify-center">
             {isUploading ? (
               <LoadingSpinner size="sm" />
             ) : (
-              <Camera className="h-8 w-8 text-white" />
+              <Camera className="h-8 w-8 text-[var(--color-white)]" />
             )}
           </div>
         )}
@@ -123,7 +123,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
 
       {/* Error message */}
       {error && (
-        <p className="text-caption text-red-600 text-center max-w-xs">
+        <p role="alert" className="text-caption text-[var(--color-error)] text-center max-w-xs">
           {error}
         </p>
       )}

@@ -1,3 +1,6 @@
+import type { CertifiedProfile } from "@/lib/atproto/types"
+import type { LongDescriptionValue } from "@/lib/leaflet/types"
+
 export interface Group {
   groupDid: string
   handle: string
@@ -5,9 +8,6 @@ export interface Group {
   role: OrgRole
   accepted: boolean
   avatarUrl?: string
-  rkey?: string
-  /** ISO timestamp from the group service indicating when the user joined. */
-  joinedAt?: string
 }
 
 export interface RemoteMembership {
@@ -25,38 +25,42 @@ export interface OrgMember {
   addedAt: string
 }
 
-export interface OrgProfile {
-  $type?: "app.certified.actor.profile"
-  displayName?: string
-  description?: string
-  pronouns?: string
-  website?: string
-  avatar?: unknown
-  banner?: unknown
-  createdAt?: string
-}
+export type OrgProfile = CertifiedProfile
 
 export interface GroupMetadata {
   $type?: "app.certified.actor.organization"
-  organizationType?: string[]
+  /** Allow either the legacy `string[]` shape or a single `string` —
+   *  the inline-edit flow writes a single string but older records may
+   *  still carry the array form. */
+  organizationType?: string | string[]
   urls?: OrgUrlItem[]
-  location?: { uri: string; cid: string }
+  /** Location for the org. Three accepted shapes (all round-trip cleanly
+   *  through the reader):
+   *   - `string`             — free-text name only (no map pin)
+   *   - `{ uri, cid }`       — legacy strong-ref to a separate record
+   *   - `{ name?, lat, lng }` — coordinates picked on the map; renders
+   *                            as a pin in the overview's right column
+   */
+  location?:
+    | string
+    | { uri: string; cid: string }
+    | { name?: string; lat: number; lng: number }
   foundedDate?: string
+  /** Long-form description. The lexicon (app.certified.actor.organization)
+   *  defines this as a union of three refs:
+   *    - org.hypercerts.defs#descriptionString — plain text / markdown
+   *    - pub.leaflet.pages.linearDocument — inline rich text
+   *    - com.atproto.repo.strongRef — separate document record
+   *  The renderer (`<LeafletDocument>`) handles all three; the
+   *  in-app editor (`<LeafletEditor>`) writes the linearDocument
+   *  shape, but the field stays read-compatible with legacy strings. */
+  longDescription?: LongDescriptionValue
   createdAt: string
 }
 
 export interface OrgUrlItem {
   url: string
   label?: string
-}
-
-export interface MembershipRecord {
-  $type: "app.certified.actor.membership"
-  groupDid: string
-  role: OrgRole
-  joinedAt: string
-  /** The record key (TID), extracted from the AT URI after listing. */
-  rkey?: string
 }
 
 export interface AuditEntry {
@@ -70,7 +74,3 @@ export interface AuditEntry {
   createdAt: string
 }
 
-export interface CreateOrgParams {
-  name: string
-  handle: string
-}

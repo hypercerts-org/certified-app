@@ -1,31 +1,71 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useId } from "react";
+import { profileUrl } from "@/lib/urls"
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Plus, X, ChevronLeft } from "lucide-react";
+import ErrorMessage from "@/components/ui/error-message";
 import Input from "@/components/ui/input";
 import Textarea from "@/components/ui/textarea";
-import Button from "@/components/ui/button";
-import ErrorMessage from "@/components/ui/error-message";
+import Tooltip from "@/components/ui/tooltip";
 import AvatarUpload from "@/components/profile/avatar-upload";
 import BannerUpload from "@/components/profile/banner-upload";
-import type { CertifiedProfile, HypercertsSmallImage, HypercertsLargeImage } from "@/lib/atproto/types";
+import type {
+  CertifiedProfile,
+  HypercertsSmallImage,
+  HypercertsLargeImage,
+} from "@/lib/atproto/types";
+import type { UploadedBlob } from "@/lib/atproto/profile";
 import type { BlobRef } from "@atproto/api";
-import { normalizeWebsiteUrl } from "@/lib/utils/url";
+import type { OrgUrlItem } from "@/lib/groups/types";
 
+/**
+ * Org URL list passed in/out as a plain array. The parent owns whether
+ * the underlying record is fetched and saved; the form just edits the
+ * list. When `isOrg` is false the form hides the URL list entirely.
+ */
 export interface ProfileEditFormProps {
   initialProfile: CertifiedProfile | null;
-  onSave: (profile: CertifiedProfile) => Promise<void>;
+  isOrg: boolean;
+  initialOrgUrls: OrgUrlItem[];
+  /** Handle of the account being edited — used for the in-form back link
+   *  and the Cancel button's destination. The navbar breadcrumb is the
+   *  parent page's responsibility; this prop only drives in-page nav. */
+  handle: string | null;
+  onSave: (payload: {
+    profile: CertifiedProfile;
+    orgUrls: OrgUrlItem[] | null;
+  }) => Promise<void>;
   isSaving: boolean;
   saveError: string | null;
-  onAvatarUpload: (file: File) => Promise<Record<string, unknown>>;
-  onBannerUpload: (file: File) => Promise<Record<string, unknown>>;
+  onAvatarUpload: (file: File) => Promise<UploadedBlob>;
+  onBannerUpload: (file: File) => Promise<UploadedBlob>;
   currentAvatarUrl: string | null;
   currentBannerUrl: string | null;
   fallbackInitials: string;
 }
 
+interface UrlRowState {
+  id: string;
+  url: string;
+  label: string;
+  error?: string;
+}
+
+let urlRowSeq = 0;
+const newUrlRow = (init?: Partial<UrlRowState>): UrlRowState => ({
+  id: `row-${++urlRowSeq}`,
+  url: init?.url ?? "",
+  label: init?.label ?? "",
+  error: init?.error,
+});
+
 const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
   initialProfile,
+  isOrg,
+  initialOrgUrls,
+  handle,
   onSave,
   isSaving,
   saveError,
@@ -36,47 +76,45 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
   fallbackInitials,
 }) => {
   const router = useRouter();
+  const displayNameId = useId();
+  const pronounsId = useId();
+  const descriptionId = useId();
+  const websiteId = useId();
 
-  // Form state
   const [displayName, setDisplayName] = useState("");
+  const [pronouns, setPronouns] = useState("");
   const [description, setDescription] = useState("");
   const [website, setWebsite] = useState("");
+  const [urlRows, setUrlRows] = useState<UrlRowState[]>([]);
 
-  // Image upload state
-  const [avatarBlob, setAvatarBlob] = useState<Record<string, unknown> | null>(null);
-  const [bannerBlob, setBannerBlob] = useState<Record<string, unknown> | null>(null);
+  const [avatarBlob, setAvatarBlob] = useState<UploadedBlob | null>(null);
+  const [bannerBlob, setBannerBlob] = useState<UploadedBlob | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
 
-  // Validation errors
   const [displayNameError, setDisplayNameError] = useState("");
+  const [pronounsError, setPronounsError] = useState("");
   const [descriptionError, setDescriptionError] = useState("");
   const [websiteError, setWebsiteError] = useState("");
 
-  // Track if form has changes
-  const [hasChanges, setHasChanges] = useState(false);
-
-  // Initialize form with profile data
+  // Initialize once per initialProfile identity.
   useEffect(() => {
     if (initialProfile) {
       setDisplayName(initialProfile.displayName || "");
+      setPronouns(initialProfile.pronouns || "");
       setDescription(initialProfile.description || "");
       setWebsite(initialProfile.website || "");
     }
   }, [initialProfile]);
 
-  // Track changes
   useEffect(() => {
-    const changed =
-      displayName !== (initialProfile?.displayName || "") ||
-      description !== (initialProfile?.description || "") ||
-      website !== (initialProfile?.website || "") ||
-      avatarBlob !== null ||
-      bannerBlob !== null;
-    setHasChanges(changed);
-  }, [displayName, description, website, initialProfile, avatarBlob, bannerBlob]);
+    setUrlRows(
+      initialOrgUrls.length > 0
+        ? initialOrgUrls.map((u) => newUrlRow({ url: u.url, label: u.label }))
+        : [],
+    );
+  }, [initialOrgUrls]);
 
-  // Validate display name
   const validateDisplayName = (value: string) => {
     if (value.length > 64) {
       setDisplayNameError("Display name must be 64 characters or fewer");
@@ -86,29 +124,73 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     return true;
   };
 
-  // Validate description
+  const validatePronouns = (value: string) => {
+    // Lexicon allows up to 20 graphemes / 200 bytes. We approximate with a
+    // character-count limit — the server is the source of truth.
+    if (value.length > 20) {
+      setPronounsError("Pronouns must be 20 characters or fewer");
+      return false;
+    }
+    setPronounsError("");
+    return true;
+  };
+
   const validateDescription = (value: string) => {
     if (value.length > 256) {
-      setDescriptionError("Description must be 256 characters or fewer");
+      setDescriptionError("Bio must be 256 characters or fewer");
       return false;
     }
     setDescriptionError("");
     return true;
   };
 
-  // Validate website. Accepts bare hostnames (e.g. "www.gainforest.earth") and
-  // adds the https:// scheme on save via normalizeWebsiteUrl.
+  // Only http/https — `javascript:` parses fine via `new URL()` and would
+  // otherwise be planted as XSS on any visitor who clicks the link.
+  const isValidUrl = (value: string): boolean => {
+    try {
+      const url = new URL(value);
+      return url.protocol === "http:" || url.protocol === "https:";
+    } catch {
+      return false;
+    }
+  };
+
   const validateWebsite = (value: string) => {
-    const result = normalizeWebsiteUrl(value);
-    if (!result.ok) {
-      setWebsiteError("Please enter a valid URL");
+    const v = value.trim();
+    if (v === "") {
+      setWebsiteError("");
+      return true;
+    }
+    if (!isValidUrl(v)) {
+      setWebsiteError("Use a full URL starting with http:// or https://");
       return false;
     }
     setWebsiteError("");
     return true;
   };
 
-  // Handle avatar upload
+  const validateOrgUrls = (
+    rows: UrlRowState[],
+  ): { ok: boolean; rows: UrlRowState[] } => {
+    let ok = true;
+    const next = rows.map((row) => {
+      const v = row.url.trim();
+      if (v === "") {
+        if (row.label.trim() !== "") {
+          ok = false;
+          return { ...row, error: "URL required" };
+        }
+        return { ...row, error: undefined };
+      }
+      if (!isValidUrl(v)) {
+        ok = false;
+        return { ...row, error: "Invalid URL" };
+      }
+      return { ...row, error: undefined };
+    });
+    return { ok, rows: next };
+  };
+
   const handleAvatarUpload = async (file: File) => {
     setIsUploadingAvatar(true);
     try {
@@ -119,7 +201,6 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     }
   };
 
-  // Handle banner upload
   const handleBannerUpload = async (file: File) => {
     setIsUploadingBanner(true);
     try {
@@ -130,63 +211,82 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     }
   };
 
-  // Handle field changes with validation
-  const handleDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setDisplayName(value);
-    validateDisplayName(value);
+  const updateUrlRow = (id: string, patch: Partial<UrlRowState>) => {
+    setUrlRows((rows) =>
+      rows.map((row) =>
+        row.id === id ? { ...row, ...patch, error: undefined } : row,
+      ),
+    );
   };
 
-  const handleDescriptionChange = (
-    e: React.ChangeEvent<HTMLTextAreaElement>
-  ) => {
-    const value = e.target.value;
-    setDescription(value);
-    validateDescription(value);
+  const removeUrlRow = (id: string) => {
+    setUrlRows((rows) => rows.filter((row) => row.id !== id));
   };
 
-  const handleWebsiteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setWebsite(value);
-    validateWebsite(value);
+  const addUrlRow = () => {
+    setUrlRows((rows) => [...rows, newUrlRow()]);
   };
 
-  // Check if form is valid
+  const hasChanges = (() => {
+    const baseDisplay = initialProfile?.displayName || "";
+    const basePronouns = initialProfile?.pronouns || "";
+    const baseDesc = initialProfile?.description || "";
+    const baseWeb = initialProfile?.website || "";
+    if (displayName !== baseDisplay) return true;
+    if (pronouns !== basePronouns) return true;
+    if (description !== baseDesc) return true;
+    if (website !== baseWeb) return true;
+    if (avatarBlob || bannerBlob) return true;
+    if (isOrg) {
+      const initSig = JSON.stringify(
+        initialOrgUrls.map((u) => [u.url, u.label ?? ""]),
+      );
+      const currSig = JSON.stringify(
+        urlRows.map((r) => [r.url.trim(), r.label.trim()]),
+      );
+      if (initSig !== currSig) return true;
+    }
+    return false;
+  })();
+
   const isValid =
     !displayNameError &&
+    !pronounsError &&
     !descriptionError &&
-    !websiteError;
+    !websiteError &&
+    urlRows.every((r) => !r.error);
 
-  // Handle save
   const handleSave = async () => {
-    // Re-validate all fields
     const displayNameValid = validateDisplayName(displayName);
+    const pronounsValid = validatePronouns(pronouns);
     const descriptionValid = validateDescription(description);
     const websiteValid = validateWebsite(website);
+    const { ok: urlsValid, rows: validatedRows } = validateOrgUrls(urlRows);
+    setUrlRows(validatedRows);
 
-    if (!displayNameValid || !descriptionValid || !websiteValid) {
+    if (
+      !displayNameValid ||
+      !pronounsValid ||
+      !descriptionValid ||
+      !websiteValid ||
+      !urlsValid
+    ) {
       return;
     }
 
-    // Normalize website (prepends https:// when the user entered a bare host).
-    // validateWebsite has already confirmed this resolves successfully.
-    const websiteNormalized = normalizeWebsiteUrl(website);
-    const websiteValue = websiteNormalized.ok ? websiteNormalized.url : "";
-
-    // Construct profile
     const profile: CertifiedProfile = {
-      // Set createdAt: use existing or new
       createdAt: initialProfile?.createdAt || new Date().toISOString(),
-      // Add text fields (trim and omit empty strings)
       ...(displayName.trim() && { displayName: displayName.trim() }),
+      ...(pronouns.trim() && { pronouns: pronouns.trim() }),
       ...(description.trim() && { description: description.trim() }),
-      ...(websiteValue && { website: websiteValue }),
+      ...(website.trim() && { website: website.trim() }),
     };
 
-    // Handle avatar: use new blob if uploaded, otherwise preserve existing
     if (avatarBlob) {
       const avatarImage: HypercertsSmallImage = {
         $type: "org.hypercerts.defs#smallImage",
+        // UploadedBlob is structurally compatible with the lexicon's BlobRef
+        // shape — narrow with a single cast at this seam.
         image: avatarBlob as unknown as BlobRef,
       };
       profile.avatar = avatarImage;
@@ -194,7 +294,6 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
       profile.avatar = initialProfile.avatar;
     }
 
-    // Handle banner: use new blob if uploaded, otherwise preserve existing
     if (bannerBlob) {
       const bannerImage: HypercertsLargeImage = {
         $type: "org.hypercerts.defs#largeImage",
@@ -205,85 +304,299 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
       profile.banner = initialProfile.banner;
     }
 
-    await onSave(profile);
+    const orgUrls: OrgUrlItem[] | null = isOrg
+      ? validatedRows
+          .map((row) => {
+            const url = row.url.trim();
+            const label = row.label.trim();
+            if (!url) return null;
+            return label ? { url, label } : { url };
+          })
+          .filter((u): u is OrgUrlItem => u !== null)
+      : null;
+
+    await onSave({ profile, orgUrls });
   };
 
-  // Handle cancel
+  // Cancel and back-link destinations. When we know the user's handle we
+  // route back to their public profile by handle (canonical URL); otherwise
+  // fall back to `/profile` which redirects to the current user's profile.
+  const profileHref = handle ? profileUrl(handle) : "/profile";
+
   const handleCancel = () => {
-    router.push("/");
+    router.push(profileHref);
   };
 
   return (
-    <div className="edit-profile">
-      {/* Banner + avatar — mirrors profile page layout */}
-      <div className="dash-card">
+    <div className="pe">
+      {/* Subtle textual back affordance above the hero. Mirrors GitHub's
+          "Back to <owner>" pattern — repeats the navbar breadcrumb in a
+          way that's visible in the content area itself. */}
+      <div className="pe__back">
+        <Link href={profileHref} className="pe__back-link">
+          <ChevronLeft size={14} strokeWidth={2} aria-hidden />
+          <span>
+            Back to{" "}
+            <span className="pe__back-handle">@{handle ?? "profile"}</span>
+          </span>
+        </Link>
+      </div>
+
+      {/* Banner + avatar preview. Acts as a compact hero that visually
+          ties this page to the profile the user came from. */}
+      <div className="pe__media">
         <BannerUpload
           currentBannerUrl={currentBannerUrl}
           onUpload={handleBannerUpload}
           isUploading={isUploadingBanner}
         />
-        <div className="edit-profile__avatar-row">
+        <div className="pe__avatar-slot">
           <AvatarUpload
             currentAvatarUrl={currentAvatarUrl}
             fallbackInitials={fallbackInitials}
             onUpload={handleAvatarUpload}
             isUploading={isUploadingAvatar}
           />
-          <div className="edit-profile__name-field">
-            <Input
-              label="Display name"
-              value={displayName}
-              onChange={handleDisplayNameChange}
-              maxLength={64}
-              placeholder="Your display name"
-              error={displayNameError}
+        </div>
+      </div>
+
+      <div className="pe__section">
+        <div className="pe__section-head">
+          <h2 className="pe__section-title">Identity</h2>
+          <p className="pe__hint">How others see you across Certified.</p>
+        </div>
+
+        <div className="pe__fields">
+          <div className="pe__row pe__row--split">
+            <div className="pe__field">
+              <label className="pe__label" htmlFor={displayNameId}>
+                <span>Display name</span>
+                <span className="pe__label-count">{displayName.length}/64</span>
+              </label>
+              <Input
+                id={displayNameId}
+                type="text"
+                value={displayName}
+                maxLength={64}
+                placeholder={isOrg ? "Organization name" : "Your name"}
+                onChange={(e) => {
+                  setDisplayName(e.target.value);
+                  validateDisplayName(e.target.value);
+                }}
+                error={displayNameError || undefined}
+              />
+            </div>
+
+            {!isOrg ? (
+              <div className="pe__field">
+                <label className="pe__label" htmlFor={pronounsId}>
+                  <span>Pronouns</span>
+                  <span className="pe__label-count">{pronouns.length}/20</span>
+                </label>
+                <Input
+                  id={pronounsId}
+                  type="text"
+                  value={pronouns}
+                  maxLength={20}
+                  placeholder="they/them"
+                  onChange={(e) => {
+                    setPronouns(e.target.value);
+                    validatePronouns(e.target.value);
+                  }}
+                  error={pronounsError || undefined}
+                />
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="pe__section">
+        <div className="pe__section-head">
+          <h2 className="pe__section-title">Bio</h2>
+          <p className="pe__hint">
+            {isOrg
+              ? "A short description of this organization."
+              : "A short description of you and your work."}
+          </p>
+        </div>
+
+        <div className="pe__fields">
+          <div className="pe__field">
+            <label className="pe__label" htmlFor={descriptionId}>
+              <span>About</span>
+            </label>
+            <Textarea
+              id={descriptionId}
+              rows={4}
+              maxLength={256}
+              showCount
+              value={description}
+              placeholder={
+                isOrg
+                  ? "What is this organization about?"
+                  : "A short description of you and your work."
+              }
+              onChange={(e) => {
+                setDescription(e.target.value);
+                validateDescription(e.target.value);
+              }}
+              error={descriptionError || undefined}
             />
           </div>
         </div>
       </div>
 
-      {/* Fields */}
-      <div className="dash-card">
-        <div className="edit-profile__fields">
-          <div>
-            <Textarea
-              label="About"
-              value={description}
-              onChange={handleDescriptionChange}
-              rows={4}
-              maxLength={256}
-              placeholder="Tell us about yourself"
-              error={descriptionError}
-            />
-            <div className="edit-profile__char-count">
-              {description.length}/256 characters
-            </div>
-          </div>
-          <Input
-            label="Website"
-            type="url"
-            value={website}
-            onChange={handleWebsiteChange}
-            maxLength={256}
-            placeholder="https://example.com"
-            error={websiteError}
-          />
+      <div className="pe__section">
+        <div className="pe__section-head">
+          <h2 className="pe__section-title">Links</h2>
+          <p className="pe__hint">
+            {isOrg
+              ? "Your primary website appears next to your name. Additional URLs show as a list on your profile."
+              : "Your primary website. Shown next to your name on your profile."}
+          </p>
         </div>
 
-        {saveError && <ErrorMessage message={saveError} />}
+        <div className="pe__fields">
+          <div className="pe__field">
+            <label className="pe__label" htmlFor={websiteId}>
+              <span>Website</span>
+            </label>
+            <Input
+              id={websiteId}
+              type="url"
+              inputMode="url"
+              value={website}
+              maxLength={256}
+              placeholder="https://example.com"
+              onChange={(e) => {
+                setWebsite(e.target.value);
+                validateWebsite(e.target.value);
+              }}
+              error={websiteError || undefined}
+              helperText="Include https://."
+            />
+          </div>
+        </div>
+      </div>
 
-        <div className="edit-profile__actions">
-          <Button variant="ghost" onClick={handleCancel} disabled={isSaving}>
+      {isOrg ? (
+        <div className="pe__section">
+          <div className="pe__section-head">
+            <h2 className="pe__section-title">Organization</h2>
+            <p className="pe__hint">
+              Extra links displayed on this organization&apos;s profile.
+            </p>
+          </div>
+
+          <div className="pe__fields">
+            <div className="pe__field">
+              <label className="pe__label">
+                <span>Additional URLs</span>
+              </label>
+
+              {urlRows.length === 0 ? (
+                <p className="pe__url-empty">No additional links yet.</p>
+              ) : (
+                <div className="pe__url-list">
+                  {urlRows.map((row) => (
+                    <div key={row.id} className="pe__url-item">
+                      <div className="pe__url-row">
+                        {/* flush Input as a direct grid child. `error` drives
+                            the error border + aria-invalid; the row keeps its
+                            own `.pe__field-error` <p> below (flush mode renders
+                            no error block), so aria-describedby is wired by
+                            hand to point at it. */}
+                        <Input
+                          flush
+                          type="url"
+                          inputMode="url"
+                          value={row.url}
+                          placeholder="https://example.com"
+                          aria-label="URL"
+                          error={row.error}
+                          aria-describedby={
+                            row.error ? `${row.id}-error` : undefined
+                          }
+                          onChange={(e) =>
+                            updateUrlRow(row.id, { url: e.target.value })
+                          }
+                        />
+                        <Input
+                          flush
+                          type="text"
+                          value={row.label}
+                          maxLength={48}
+                          placeholder="Label"
+                          aria-label="Link label"
+                          onChange={(e) =>
+                            updateUrlRow(row.id, { label: e.target.value })
+                          }
+                        />
+                        <Tooltip label="Remove URL">
+                          <button
+                            type="button"
+                            className="pe__url-remove"
+                            aria-label="Remove URL"
+                            onClick={() => removeUrlRow(row.id)}
+                          >
+                            <X size={16} strokeWidth={1.75} aria-hidden />
+                          </button>
+                        </Tooltip>
+                      </div>
+                      {row.error ? (
+                        <p
+                          id={`${row.id}-error`}
+                          className="pe__field-error"
+                          role="alert"
+                        >
+                          {row.error}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="pe__url-add"
+                onClick={addUrlRow}
+              >
+                <Plus size={14} strokeWidth={2} aria-hidden />
+                Add URL
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {saveError ? (
+        <div className="pe__error">
+          <ErrorMessage message={saveError} />
+        </div>
+      ) : null}
+
+      {/* Sticky footer. Stays pinned to the bottom of the viewport while
+          the user scrolls long forms so Save is always one click away. */}
+      <div className="pe__footer">
+        <div className="pe__footer-inner">
+          <button
+            type="button"
+            className="pe__action-btn pe__action-btn--ghost"
+            onClick={handleCancel}
+            disabled={isSaving}
+          >
             Cancel
-          </Button>
-          <Button
-            variant="primary"
+          </button>
+          <button
+            type="button"
+            className="pe__action-btn pe__action-btn--primary"
             onClick={handleSave}
-            loading={isSaving}
             disabled={!hasChanges || !isValid || isSaving}
           >
-            Save Changes
-          </Button>
+            {isSaving ? "Saving…" : "Save changes"}
+          </button>
         </div>
       </div>
     </div>

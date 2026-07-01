@@ -1,7 +1,6 @@
-"use client";
-
 import React from "react";
 import { Loader2 } from "lucide-react";
+import Brandmark from "./brandmark";
 
 export interface LoadingSpinnerProps {
   size?: "sm" | "md" | "lg";
@@ -18,49 +17,27 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
     lg: "h-16 w-16",
   };
 
-  const [useFallback, setUseFallback] = React.useState(false);
-
-  if (useFallback) {
-    // Fallback: spinning circle in accent color
-    return (
-      <div className={`flex items-center justify-center ${className}`}>
-        <Loader2
-          className={`${sizeMap[size]} text-accent animate-spin`}
-          aria-label="Loading"
-        />
-      </div>
-    );
-  }
-
-  // Primary: pulsing brandmark
+  // Primary: pulsing brandmark (uses currentColor so it adapts to theme)
   return (
-    <div className={`flex items-center justify-center ${className}`}>
-      <img
-        src="/assets/certified_brandmark_black.svg"
-        alt="Loading"
+    <div
+      role="status"
+      aria-live="polite"
+      className={`flex items-center justify-center ${className}`}
+      style={{ color: "var(--fg-primary)" }}
+    >
+      <Brandmark
+        size="100%"
+        title="Loading"
         className={`${sizeMap[size]} animate-pulse`}
-        onError={() => setUseFallback(true)}
         style={{
           animationDuration: "1.5s",
           animationTimingFunction: "ease-in-out",
         }}
       />
-      <style jsx>{`
-        @media (prefers-reduced-motion: reduce) {
-          img {
-            animation: none !important;
-          }
-        }
-        @keyframes pulse {
-          0%,
-          100% {
-            opacity: 0.4;
-          }
-          50% {
-            opacity: 1;
-          }
-        }
-      `}</style>
+      <span className="sr-only">Loading</span>
+      <noscript>
+        <Loader2 className={`${sizeMap[size]} animate-spin`} aria-label="Loading" />
+      </noscript>
     </div>
   );
 };

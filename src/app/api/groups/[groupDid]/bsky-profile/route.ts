@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import {
   getAuthenticatedAgent,
-  createGroupAgent,
+  createGroupClient,
 } from "@/lib/groups/proxy-agent"
 import { checkCsrf } from "@/lib/auth/csrf"
+import { isValidDid } from "@/lib/utils/did"
+import { extractRouteError } from "@/lib/utils/api"
 
 /**
  * POST /api/groups/[groupDid]/bsky-profile
@@ -19,11 +21,14 @@ export async function POST(
 
   try {
     const { groupDid } = await params
+    if (!isValidDid(groupDid)) {
+      return NextResponse.json({ error: "Invalid group DID" }, { status: 400 })
+    }
     const auth = await getAuthenticatedAgent()
     if (!auth)
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
 
-    const groupAgent = createGroupAgent(auth.agent, groupDid)
+    const groupAgent = createGroupClient(auth.agent, groupDid)
 
     await groupAgent.call(
       "app.certified.group.repo.putRecord",
@@ -41,10 +46,7 @@ export async function POST(
 
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
-    const error = err as { status?: number; message?: string }
-    return NextResponse.json(
-      { error: error?.message || "Internal server error" },
-      { status: error?.status || 500 }
-    )
+    const { status, message } = extractRouteError(err)
+    return NextResponse.json({ error: message }, { status })
   }
 }

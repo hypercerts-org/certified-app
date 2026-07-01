@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import {
   getAuthenticatedAgent,
-  createGroupAgent,
+  callGroupServiceJson,
 } from "@/lib/groups/proxy-agent"
 import { checkCsrf } from "@/lib/auth/csrf"
+import { isValidDid } from "@/lib/utils/did"
+import { extractRouteError, parseJsonBody } from "@/lib/utils/api"
+import { isAssignableRole } from "@/lib/groups/constants"
 
 /**
  * GET /api/groups/[groupDid]/members
@@ -15,26 +18,26 @@ export async function GET(
 ) {
   try {
     const { groupDid } = await params
+    if (!isValidDid(groupDid)) {
+      return NextResponse.json({ error: "Invalid group DID" }, { status: 400 })
+    }
     const auth = await getAuthenticatedAgent()
     if (!auth)
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
 
-    const groupAgent = createGroupAgent(auth.agent, groupDid)
     const rawLimit = parseInt(request.nextUrl.searchParams.get("limit") || "50", 10)
     const limit = isNaN(rawLimit) ? 50 : Math.min(Math.max(1, rawLimit), 100)
 
-    const { data } = await groupAgent.call(
+    const data = await callGroupServiceJson(
+      auth.agent,
       "app.certified.group.member.list",
-      { limit }
+      { query: { repo: groupDid, limit } }
     )
 
     return NextResponse.json(data)
   } catch (err: unknown) {
-    const error = err as { status?: number; message?: string }
-    return NextResponse.json(
-      { error: error?.message || "Internal server error" },
-      { status: error?.status || 500 }
-    )
+    const { status, message } = extractRouteError(err)
+    return NextResponse.json({ error: message }, { status })
   }
 }
 
@@ -51,38 +54,44 @@ export async function POST(
 
   try {
     const { groupDid } = await params
+    if (!isValidDid(groupDid)) {
+      return NextResponse.json({ error: "Invalid group DID" }, { status: 400 })
+    }
     const auth = await getAuthenticatedAgent()
     if (!auth)
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
 
-    const body = await request.json()
-    const { memberDid, role = "member" } = body as {
-      memberDid: string
+    const parsed = await parseJsonBody(request, "[groups/members POST]")
+    if (!parsed.ok) return parsed.response
+    const { memberDid, role = "member" } = (parsed.body ?? {}) as {
+      memberDid?: string
       role?: string
     }
 
-    if (!memberDid) {
+    if (!memberDid || !isValidDid(memberDid)) {
       return NextResponse.json(
         { error: "memberDid is required" },
         { status: 400 }
       )
     }
 
-    const groupAgent = createGroupAgent(auth.agent, groupDid)
-    const { data } = await groupAgent.call(
+    if (role && !isAssignableRole(role)) {
+      return NextResponse.json(
+        { error: "role must be 'member' or 'admin'" },
+        { status: 400 }
+      )
+    }
+
+    const data = await callGroupServiceJson(
+      auth.agent,
       "app.certified.group.member.add",
-      {},
-      { memberDid, role },
-      { encoding: "application/json" }
+      { body: { repo: groupDid, memberDid, role } }
     )
 
     return NextResponse.json(data)
   } catch (err: unknown) {
-    const error = err as { status?: number; message?: string }
-    return NextResponse.json(
-      { error: error?.message || "Internal server error" },
-      { status: error?.status || 500 }
-    )
+    const { status, message } = extractRouteError(err)
+    return NextResponse.json({ error: message }, { status })
   }
 }
 
@@ -99,34 +108,33 @@ export async function DELETE(
 
   try {
     const { groupDid } = await params
+    if (!isValidDid(groupDid)) {
+      return NextResponse.json({ error: "Invalid group DID" }, { status: 400 })
+    }
     const auth = await getAuthenticatedAgent()
     if (!auth)
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
 
-    const body = await request.json()
-    const { memberDid } = body as { memberDid: string }
+    const parsed = await parseJsonBody(request, "[groups/members DELETE]")
+    if (!parsed.ok) return parsed.response
+    const { memberDid } = (parsed.body ?? {}) as { memberDid?: string }
 
-    if (!memberDid) {
+    if (!memberDid || !isValidDid(memberDid)) {
       return NextResponse.json(
         { error: "memberDid is required" },
         { status: 400 }
       )
     }
 
-    const groupAgent = createGroupAgent(auth.agent, groupDid)
-    await groupAgent.call(
+    await callGroupServiceJson(
+      auth.agent,
       "app.certified.group.member.remove",
-      {},
-      { memberDid },
-      { encoding: "application/json" }
+      { body: { repo: groupDid, memberDid } }
     )
 
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
-    const error = err as { status?: number; message?: string }
-    return NextResponse.json(
-      { error: error?.message || "Internal server error" },
-      { status: error?.status || 500 }
-    )
+    const { status, message } = extractRouteError(err)
+    return NextResponse.json({ error: message }, { status })
   }
 }

@@ -1,16 +1,15 @@
+import Brandmark from "./brandmark";
+
 export default function ProviderRedirectOverlay() {
   return (
     <div
+      role="status"
       className="loading-screen"
-      style={{ position: "fixed", inset: 0, zIndex: 9999 }}
+      style={{ position: "fixed", inset: 0, zIndex: "var(--z-skip-nav)" }}
     >
       <div className="loading-screen__inner">
-        <img
-          src="/assets/certified_brandmark_black.svg"
-          alt=""
-          className="loading-screen__logo"
-        />
-        <p className="mt-6 text-sm text-black/30 font-sans tracking-wide">
+        <Brandmark title="" className="loading-screen__logo" />
+        <p className="mt-6 text-sm font-sans tracking-wide" style={{ color: "var(--fg-muted)" }}>
           Redirecting...
         </p>
       </div>

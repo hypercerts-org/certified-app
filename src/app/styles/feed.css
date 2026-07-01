@@ -1,0 +1,2020 @@
+/* ==========================================================================
+   Search Page (mobile-first)
+   ========================================================================== */
+
+.search-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 8px;
+}
+
+/* The legacy `.search-page__bar` / `__icon` / `__input` rules were
+   removed after the Explore page migrated to the people-search
+   typeahead (`/api/search-actors`). The remaining `.search-page` +
+   `.search-page__hint` selectors are still in use by /search and
+   embedded versions of the typeahead. */
+
+.search-page__hint {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  margin-top: 12px;
+}
+
+
+/* ==========================================================================
+   Create Form (mobile-first)
+   ========================================================================== */
+
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.create-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.create-form__label {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--fg-muted);
+}
+
+.create-form__input,
+.create-form__textarea {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.9375rem;
+  color: var(--fg-primary);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.create-form__input:focus,
+.create-form__textarea:focus {
+  border-color: var(--fg-primary);
+}
+
+.create-form__textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.create-form__error {
+  font-size: 0.8125rem;
+  color: var(--color-error);
+}
+
+.create-form__actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  align-self: flex-start;
+}
+
+.create-form__submit,
+.create-form__cancel {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: var(--radius);
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: opacity var(--transition-fast), background var(--transition-fast);
+}
+
+.create-form__submit {
+  color: var(--btn-primary-fg);
+  background: var(--btn-primary-bg);
+  border: none;
+}
+
+.create-form__cancel {
+  color: var(--fg-secondary);
+  background: transparent;
+  border: 1px solid var(--border-light);
+}
+
+.create-form__submit:hover {
+  opacity: 0.9;
+}
+
+.create-form__cancel:hover {
+  background: var(--overlay-weak);
+}
+
+.create-form__submit:disabled,
+.create-form__cancel:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+
+/* ==========================================================================
+   Feed Tabs (mobile-first)
+   ========================================================================== */
+
+.feed-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-canvas);
+}
+
+.feed-tabs__tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 14px 0;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+  text-align: center;
+}
+
+.feed-tabs__tab:hover {
+  color: var(--fg-primary);
+}
+
+.feed-tabs__tab--active {
+  color: var(--fg-primary);
+  font-weight: 600;
+  border-bottom-color: var(--fg-primary);
+}
+
+.feed-tabs__tab-wrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.feed-tabs__chevron {
+  margin-left: 4px;
+  transition: transform var(--transition-fast);
+}
+
+.feed-tabs__chevron--open {
+  transform: rotate(180deg);
+}
+
+/* ---- Label Filter Dropdown ---- */
+
+.feed-filter {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-popover);
+  min-width: 180px;
+  padding: 8px 0;
+}
+
+.feed-filter__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.feed-filter__item:hover {
+  background: var(--bg-canvas);
+}
+
+.feed-filter__checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--fg-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.feed-filter__label {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  color: var(--fg-primary);
+}
+
+@media (min-width: 800px) {
+  .feed-tabs__tab {
+    font-size: 0.9375rem;
+    padding: 16px 0;
+  }
+}
+
+/* ---- Inline Evaluator Checkboxes ---- */
+
+.feed-evaluator-panel {
+  width: 100%;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-default);
+  padding: 10px 16px 8px;
+}
+
+/* Section heading inside the panel ("Activity quality", …) — same
+   register as the create-form field labels. */
+.feed-evaluator-panel__heading {
+  margin: 8px 0 6px;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-muted);
+}
+
+.feed-evaluator-panel__heading:first-child {
+  margin-top: 2px;
+}
+
+/* Quiet text button at the panel's bottom. */
+.feed-evaluator-panel__reset {
+  display: block;
+  margin: 2px 0 4px;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.feed-evaluator-panel__reset:hover:not(:disabled) {
+  color: var(--fg-primary);
+}
+
+.feed-evaluator-panel__reset:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.feed-evaluators {
+  background: var(--bg-canvas);
+  padding: 10px 16px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.feed-evaluators__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.feed-evaluators__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  padding: 2px 0;
+}
+
+.feed-evaluators__row--disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.feed-evaluators__checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--fg-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.feed-evaluators__avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.feed-evaluators__avatar--placeholder {
+  display: inline-block;
+  background: var(--bg-sunken);
+}
+
+.feed-evaluators__name {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-weight: 500;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.feed-evaluators__handle {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.feed-evaluators__separator {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 8px 0;
+}
+
+.feed-evaluators__show-all {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.feed-evaluators__show-all-label {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+}
+
+/* ---- Unfiltered Warning Banner ---- */
+
+.feed-unfiltered-banner {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-fg);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: center;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+
+/* ==========================================================================
+   Activity Feed (mobile-first)
+   ========================================================================== */
+
+.feed {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Card ---- */
+
+.feed-card {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.feed-card:last-child {
+  border-bottom: none;
+}
+
+/* The card's title/body/meta are wrapped in a Link to the activity's
+   detail page. Keep it visually invisible — no underline, no color
+   shift — so the card still reads as a card. */
+.feed-card__body {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  /* Align the content with the author's name/handle, not the avatar:
+     indent by the byline avatar (sm = 32px) + its 10px gap. */
+  padding-left: 42px;
+}
+
+.feed-card__body:hover .feed-card__title {
+  text-decoration: underline;
+  text-decoration-color: var(--fg-muted);
+  text-underline-offset: 3px;
+}
+
+/* Author byline: avatar + display name + @handle, links to the author's profile */
+.feed-card__author {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  text-decoration: none;
+  color: inherit;
+  max-width: 100%;
+}
+
+.feed-card__author:hover .feed-card__author-name {
+  text-decoration: underline;
+}
+
+.feed-card__author-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+  overflow: hidden;
+  line-height: 1.2;
+}
+
+/* Holds the display name + optional inline suffix (e.g. /explore's
+ * endorsement-degree pill). Inline flex so the pill sits on the same
+ * baseline as the name without forcing it onto the next line. */
+.feed-card__author-name-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.feed-card__author-name {
+  /* Standard text, bold (primary line). */
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.feed-card__author-handle {
+  /* Second-row text — smaller. */
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.feed-card__author--skeleton {
+  pointer-events: none;
+}
+
+/* Author-byline skeleton bars now render via the <Skeleton> primitive
+   (animate-pulse). The hand-rolled *-skel rules + feed-author-skel-pulse
+   keyframe were removed in the component-library consolidation. */
+
+.feed-card__image-wrap {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  background: var(--bg-sunken);
+}
+
+.feed-card__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.feed-card__image-wrap--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(
+      135deg,
+      var(--bg-sunken) 0%,
+      var(--overlay-weak) 100%
+    );
+}
+
+.feed-card__image-placeholder-icon {
+  color: var(--fg-muted);
+  opacity: 0.6;
+}
+
+.feed-card__title {
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--fg-primary);
+  line-height: 1.3;
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feed-card__desc {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--fg-secondary);
+  margin-bottom: 12px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.feed-card__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.feed-card__time {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.feed-card__meta-sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--fg-muted);
+  flex-shrink: 0;
+}
+
+/* .feed-card__label* rules were retired — FeedLabelPill now composes
+   <Badge variant="high-quality|standard|draft|test"> instead. */
+
+/* ---- Load More ---- */
+
+.feed__load-more {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.feed__load-more-btn {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-accent);
+  background: transparent;
+  border: 1px solid var(--border-default);
+  padding: 10px 24px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.feed__load-more-btn:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-canvas);
+}
+
+.feed__load-more-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---- Skeleton ---- */
+
+.feed-skeleton {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Inner skeleton bars (image/title/line/pill) now render via the
+   <Skeleton> primitive (animate-pulse). The hand-rolled *-skel rules +
+   skeleton-pulse keyframe were removed in the consolidation. */
+
+.feed-skeleton__meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* ---- Desktop enhancements ---- */
+
+@media (min-width: 800px) {
+  .feed-card {
+    padding: 24px 0;
+  }
+
+  .feed-card__title {
+    font-size: 1.25rem;
+  }
+
+  .feed-card__image-wrap {
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+  }
+
+  .feed-card__desc {
+    margin-bottom: 16px;
+  }
+
+  .feed-card__meta {
+    gap: 10px;
+  }
+
+  .feed-skeleton {
+    padding: 24px 0;
+  }
+}
+
+
+/* ========== Activity detail page ========== */
+
+.activity-detail__contributor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.activity-detail__contributor-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+  border-radius: var(--radius);
+  padding: 2px 4px;
+  margin: -2px -4px;
+}
+
+.activity-detail__contributor-link:hover .activity-detail__contributor-name,
+.activity-detail__contributor-link:focus-visible
+  .activity-detail__contributor-name {
+  text-decoration: underline;
+}
+
+/* Non-linked variant — same layout, no hover underline. Used when we
+ * can't resolve the contributor to a profile page (e.g. external
+ * identifier like a GitHub URL). */
+.activity-detail__contributor-link--static {
+  cursor: default;
+}
+
+.activity-detail__contributor-link--static:hover
+  .activity-detail__contributor-name {
+  text-decoration: none;
+}
+
+.activity-detail__contributor-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.activity-detail__contributor-name {
+  font-weight: 600;
+}
+
+.activity-detail__contributor-handle {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  word-break: break-all;
+}
+
+.activity-detail__contributor-role,
+.activity-detail__contributor-weight {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+/* Contributor-row skeleton bars now render via the <Skeleton> primitive.
+   The hand-rolled *-skel rules were removed in the consolidation. */
+
+/* ========== Location cards (activity detail) ========== */
+
+.location-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.location-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+}
+
+.location-card--fallback {
+  background: transparent;
+  border-style: dashed;
+}
+
+.location-card__icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--overlay-weak);
+  color: var(--fg-muted);
+  margin-top: 2px;
+}
+
+.location-card__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.location-card__name {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.location-card__desc {
+  margin: 2px 0 0;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.location-card__detail {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.location-card__coords {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--fg-secondary);
+  font-size: 0.75rem;
+}
+
+.location-card__type {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  padding: 2px 6px;
+  background: var(--overlay-weak);
+  border-radius: var(--radius);
+}
+
+.location-card__fallback {
+  word-break: break-word;
+}
+
+.location-card__map-link {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 500;
+}
+
+.location-card__map-link:hover {
+  color: var(--fg-secondary);
+}
+
+.location-card__uri {
+  margin: 2px 0 0;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  word-break: break-all;
+}
+
+/* The .location-card skeleton (icon/name/detail bars + location-card-pulse
+   keyframe) was dead CSS — no TSX consumer — and was removed in the
+   consolidation. */
+
+/* ========== Map (Leaflet wrapper) ========== */
+
+.certs-map {
+  width: 100%;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  /* Keep map above our own stacking contexts but below modals. */
+  position: relative;
+  z-index: 0;
+}
+
+.certs-map .leaflet-container {
+  background: var(--bg-raised);
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  font-size: 0.8125rem;
+}
+
+/* Attribution control — readable in both themes, unobtrusive */
+.certs-map .leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--fg-muted);
+  padding: 2px 6px;
+  font-size: 0.625rem;
+}
+.certs-map .leaflet-control-attribution a {
+  color: var(--fg-secondary);
+}
+[data-theme="dark"] .certs-map .leaflet-control-attribution {
+  background: rgba(20, 20, 23, 0.85);
+  color: var(--fg-muted);
+}
+[data-theme="dark"] .certs-map .leaflet-control-attribution a {
+  color: var(--fg-secondary);
+}
+
+/* Zoom control — theme-aware surface + hover states */
+.certs-map .leaflet-bar {
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.certs-map .leaflet-bar a {
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.certs-map .leaflet-bar a:hover {
+  background: var(--bg-raised);
+}
+.certs-map .leaflet-bar a:last-child {
+  border-bottom: none;
+}
+.certs-map .leaflet-bar a.leaflet-disabled {
+  color: var(--fg-muted);
+  cursor: not-allowed;
+}
+
+/* Popups — theme-aware body + arrow */
+.certs-map .leaflet-popup-content-wrapper {
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+}
+.certs-map .leaflet-popup-content {
+  margin: 10px 14px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+.certs-map .leaflet-popup-tip {
+  background: var(--bg-elevated);
+}
+.certs-map .leaflet-popup-close-button {
+  color: var(--fg-muted) !important;
+}
+
+/* Map skeleton (shown while the Leaflet chunk is loading) */
+.map-skeleton {
+  width: 100%;
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  animation: map-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes map-skeleton-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-skeleton {
+    animation: none;
+    opacity: 0.5;
+  }
+}
+
+/* Spacing for the inline map inside a LocationCard */
+.location-card__map {
+  margin-top: 8px;
+}
+
+/* Endorsements
+ * -----------------------------------------------------------------
+ * - Main /endorsements page uses the settings dashboard shell
+ *   (dashboard__body--single + dash-card cards) and adds its own
+ *   tab strip and per-row list.
+ * - Profile page "Endorsements" tab reuses the same row styling but
+ *   stacks two labeled sections (received + given) instead of tabs.
+ */
+
+/* Tabs bar: tab strip on the left, "New" action on the right, single
+ * border-bottom that spans the whole row. The tab strip is pinned to
+ * the bottom of the bar so the active-tab underline coincides with
+ * the bar border; the "New" button is vertically centered on the
+ * same row. */
+.page-tabs-bar,
+.endorsements-tabs-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--border-default);
+  margin-bottom: 16px;
+}
+
+/* Generic "+ New X" toolbar button used in the tab-bar pattern
+   (endorsements, groups). Subtle text-button styling so it doesn't
+   compete with primary content actions further down the page. */
+.page-tabs-bar__new,
+.endorsements-new-btn {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  border: none;
+  background: transparent;
+  color: var(--fg-primary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.page-tabs-bar__new:hover:not(:disabled),
+.endorsements-new-btn:hover:not(:disabled) {
+  background: var(--overlay-weak);
+}
+
+.page-tabs-bar__new:disabled,
+.endorsements-new-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Section heading shown above a tab bar (e.g. "Membership" above
+   Public/Private tabs on /groups). */
+.page-section-heading {
+  margin: 0 0 12px;
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--fg-primary);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+/* Inline "new endorsement" panel that sits at the top of the Given
+   tab — replaces the prior "+ New" modal flow. */
+.endorsement-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: var(--overlay-weak);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+}
+
+.endorsement-panel__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.endorsement-panel__heading-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.endorsement-panel__close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--fg-muted);
+  border-radius: var(--radius);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.endorsement-panel__close:hover:not(:disabled) {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.endorsement-panel__close:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.endorsement-panel__title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+}
+
+.endorsement-panel__hint {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+/* Inline picker hint — soft message shown when a chosen account
+   can't be added (already endorsed, self-pick, duplicate). Lives
+   between the search input and the recipient list. Quiet, single
+   line, no banner. */
+.endorsement-panel__pick-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+.endorsement-panel__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.endorsements-loading {
+  display: flex;
+  justify-content: center;
+  padding: 32px 0;
+}
+
+/* Short policy note above the Received list — explains what
+   accepting vs rejecting an endorsement does to the visible
+   profile, so the inline Accept / Reject buttons aren't a black
+   box on first encounter. */
+.endorsements-hint {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--fg-secondary);
+  background: var(--overlay-weak);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+}
+
+.endorsements-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  padding: 24px;
+  color: var(--fg-muted);
+  font-size: 0.875rem;
+  margin: 0;
+  text-align: center;
+}
+
+.endorsements-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.endorsement-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.endorsement-row:last-child {
+  border-bottom: none;
+}
+
+.endorsement-row__main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+  flex: 1;
+}
+
+.endorsement-row__main:hover .endorsement-row__name {
+  text-decoration: underline;
+}
+
+.endorsement-row__meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.endorsement-row__name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endorsement-row__handle {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endorsement-row__date {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+
+.endorsement-row__revoke {
+  background: transparent;
+  border: 1px solid transparent;
+  /* --fg-secondary (not --fg-muted) so the icon-only control clears the
+     contrast bar without a visible label; hover lifts it to --fg-primary. */
+  color: var(--fg-secondary);
+  border-radius: var(--radius);
+  /* ≥44×44 hit area on every viewport (the icon stays 16px). The
+     <=799px media block already enforced this on touch; promote it to
+     the base rule so desktop pointers get the same target. */
+  min-width: 44px;
+  min-height: 44px;
+  padding: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.endorsement-row__revoke:hover:not(:disabled) {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+  border-color: var(--border-default);
+}
+
+.endorsement-row__revoke:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Optional note shown under the issuer display name on received rows */
+.endorsement-row__note {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ---------------- Response controls (Phase 2: accept/reject) ----------------
+   - response-buttons: loud, inline. Used on incoming-endorsement rows.
+   - response-menu:    quiet kebab + dropdown. Used on profile / endorsements
+                       audit-surface rows where the row owner is browsing.
+*/
+
+.response-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.response-buttons__btn {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.response-buttons__btn:hover:not(:disabled) {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.response-buttons__btn--pressed {
+  background: var(--fg-primary);
+  color: var(--bg-elevated);
+  border-color: var(--fg-primary);
+}
+
+/* Hover-on-pressed: keep the pressed look but show a subtle opacity
+   dip so the user has a visual signal that clicking will toggle
+   off. Going to a fully-different colour would suggest "click to
+   confirm" instead of "click to revert." */
+.response-buttons__btn--pressed:hover:not(:disabled) {
+  background: var(--fg-primary);
+  color: var(--bg-elevated);
+  opacity: 0.85;
+}
+
+.response-buttons__btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.response-buttons__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.response-buttons__error {
+  font-size: 0.6875rem;
+  color: var(--color-error);
+  margin-left: 6px;
+}
+
+/* Quiet kebab — same dimensions as endorsement-row__revoke so the row
+   layout doesn't shift between row variants. */
+.response-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Reserve the kebab column when the row LACKS a response-menu (and
+   isn't the revoke variant), so a list mixing rows-with-action and
+   rows-without doesn't visually shift. No-op for lists that are
+   uniformly all-with or all-without. */
+.endorsement-row:not(:has(.response-menu, .endorsement-row__revoke)) .endorsement-row__date {
+  margin-right: 40px;
+}
+
+.response-menu__trigger {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius);
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.response-menu__trigger:hover:not(:disabled) {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.response-menu__trigger:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.response-menu__trigger:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* State-aware trigger glyph (#77): when the recipient has
+   accepted or rejected an endorsement, the kebab is replaced by
+   a status-coloured checkmark / X. Click still opens the menu so
+   the user can change their mind or reset. */
+.response-menu__trigger--accepted {
+  color: var(--color-success);
+}
+
+.response-menu__trigger--rejected {
+  color: var(--color-warning);
+}
+
+.response-menu__trigger--accepted:hover:not(:disabled),
+.response-menu__trigger--rejected:hover:not(:disabled) {
+  /* Keep the status colour on hover; just add background so the
+     pressable affordance is unmistakable. */
+  background: var(--overlay-weak);
+}
+
+/* Quick accept/reject buttons (#77): rendered inline when the
+   endorsement has no response yet (`state === "default"`). One
+   click writes the response — no kebab → menu → menuitem
+   indirection. Two small pill buttons side-by-side. */
+.response-menu__quick-actions {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.response-menu__quick-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  border-radius: var(--radius);
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.response-menu__quick-btn--accept:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.response-menu__quick-btn--reject:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+}
+
+/* Active state — filled background + white glyph so the
+   recipient's current decision is unambiguous at a glance.
+   Clicking the active button toggles back to default (the
+   handler in response-menu.tsx swaps `writeResponse` for
+   `resetToDefault` when the button matches the current state). */
+.response-menu__quick-btn--accept.response-menu__quick-btn--active {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: var(--bg-canvas);
+}
+
+.response-menu__quick-btn--accept.response-menu__quick-btn--active:hover:not(:disabled) {
+  /* Slightly darker on hover to surface the "click to reset"
+     affordance without losing the filled-active read. */
+  background: color-mix(in srgb, var(--color-success) 85%, black);
+  border-color: color-mix(in srgb, var(--color-success) 85%, black);
+  color: var(--bg-canvas);
+}
+
+.response-menu__quick-btn--reject.response-menu__quick-btn--active {
+  background: var(--color-warning);
+  border-color: var(--color-warning);
+  color: var(--bg-canvas);
+}
+
+.response-menu__quick-btn--reject.response-menu__quick-btn--active:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-warning) 85%, black);
+  border-color: color-mix(in srgb, var(--color-warning) 85%, black);
+  color: var(--bg-canvas);
+}
+
+.response-menu__quick-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.response-menu__quick-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.response-menu__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 180px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-popover);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.response-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  /* Normal weight regardless of the surrounding context's
+     font-weight (the kebab trigger can sit inside semibold
+     labels). */
+  font-weight: 400;
+  color: var(--fg-primary);
+  text-align: left;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background var(--transition-fast);
+}
+
+.response-menu__item:hover:not(:disabled) {
+  background: var(--overlay-weak);
+}
+
+.response-menu__item:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.response-menu__item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.response-menu__indicator {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fg-muted);
+  padding: 6px 10px 4px;
+  margin: 0;
+}
+
+.response-menu__error {
+  font-size: 0.6875rem;
+  color: var(--color-error);
+  padding: 4px 10px;
+  margin: 0;
+}
+
+/* Undo toast (AC#8) — anchored to the kebab column so it doesn't
+   require a global toast surface. aria-live="polite" makes the
+   announcement; 6s timer in the component dismisses it. */
+.response-menu__toast {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  padding: 6px 10px;
+  background: var(--fg-primary);
+  color: var(--bg-elevated);
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-popover);
+}
+
+.response-menu__toast-undo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: transparent;
+  border: 1px solid var(--bg-elevated);
+  border-radius: 2px;
+  color: var(--bg-elevated);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.response-menu__toast-undo:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
+}
+
+.response-menu__toast-undo:focus-visible {
+  outline: 2px solid var(--bg-elevated);
+  outline-offset: 2px;
+}
+
+.response-menu__toast-undo:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Mobile touch-target bump — WCAG 2.5.5 / Apple HIG 44px minimum.
+   Applied only at narrow widths so desktop UI stays compact. */
+@media (max-width: 799px) {
+  .response-buttons__btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 14px;
+    font-size: 0.8125rem;
+  }
+  .response-buttons__error {
+    font-size: 0.8125rem;
+  }
+  .response-menu__trigger {
+    width: 44px;
+    height: 44px;
+  }
+  .response-menu__item {
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+  /* Endorsement row controls → 44px tap targets. */
+  .endorsement-panel__close,
+  .endorsement-row__revoke {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px;
+  }
+  /* Tab-bar "New" buttons (endorsements, groups) → 44px tall. */
+  .page-tabs-bar__new,
+  .endorsements-new-btn {
+    min-height: 44px;
+  }
+}
+
+/* Preview block inside the New endorsement modal */
+.endorsement-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--overlay-weak);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+}
+
+.endorsement-preview__meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.endorsement-preview__name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--fg-primary);
+}
+
+.endorsement-preview__handle {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+/* Multi-recipient endorsement modal — list of selected recipients
+   with per-row write status. */
+.endorsement-multi-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.endorsement-multi-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--overlay-weak);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+}
+
+.endorsement-multi-row__meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  line-height: 1.2;
+}
+
+.endorsement-multi-row__name {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.endorsement-multi-row__handle {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.endorsement-multi-row__error {
+  font-size: 0.75rem;
+  color: var(--color-error);
+  margin-top: 2px;
+}
+
+.endorsement-multi-row__status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.endorsement-multi-row__status--writing {
+  border: 2px solid var(--border-default);
+  border-top-color: var(--fg-primary);
+  animation: endorsement-multi-spin 0.8s linear infinite;
+}
+
+.endorsement-multi-row__status--success {
+  background: var(--color-success);
+  color: var(--color-white);
+}
+
+.endorsement-multi-row__status--error {
+  background: var(--color-error);
+  color: var(--color-white);
+}
+
+@keyframes endorsement-multi-spin {
+  to { transform: rotate(360deg); }
+}
+
+.endorsement-multi-row__remove {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  /* ≥44×44 hit area on every viewport (the X icon stays 14px); higher
+     resting contrast via --fg-secondary, hover lifts to --fg-primary. */
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px;
+  color: var(--fg-secondary);
+  border-radius: var(--radius);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.endorsement-multi-row__remove:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+/* Mobile: the multi-recipient row's remove button → 44px tap target. */
+@media (max-width: 799px) {
+  .endorsement-multi-row__remove {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px;
+  }
+}
+
+.endorsement-multi-summary {
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+/* Profile page "Endorsements" tab — stacked sections */
+.profile-endorsements {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 16px 0;
+}
+
+.profile-endorsements__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Heading + optional Endorse-shortcut button. The row is flex so the
+   button right-aligns on the same baseline as the section title. */
+.profile-endorsements__heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.profile-endorsements__heading {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  margin: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.profile-endorsements__endorse-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--fg-primary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.profile-endorsements__endorse-btn:hover:not(:disabled) {
+  background: var(--overlay-weak);
+  border-color: var(--fg-primary);
+}
+
+.profile-endorsements__endorse-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Active state — the viewer has already endorsed this profile.
+   Filled background so the click affordance (= "revoke") reads
+   distinctly from the empty Endorse state. */
+.profile-endorsements__endorse-btn--active {
+  background: var(--overlay-weak);
+  border-color: var(--fg-primary);
+  color: var(--fg-primary);
+}
+
+.profile-endorsements__endorse-error {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-error);
+  margin-top: 4px;
+}
+
+/* Inline count after the heading — same visual register as the
+   activity-claim count on the profile hero (bold number, muted
+   weight balance). */
+.profile-endorsements__count {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+}
+
+.profile-endorsements__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 12px;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+.profile-endorsements__pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  font-size: 0.8125rem;
+}
+
+.profile-endorsements__pagination-btn:hover:not(:disabled) {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.profile-endorsements__pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.profile-endorsements__pagination-status {
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-endorsements__placeholder {
+  color: var(--fg-muted);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.profile-endorsements__loading {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+/* Received endorsement card (endorsements page) */
+.received-endorsement-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.received-endorsement-card:last-child {
+  border-bottom: none;
+}
+
+.received-endorsement-card__endorsers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-left: 60px; /* align with text after avatar */
+}
+
+/* Endorser chip — compact inline link */
+.endorser-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 4px;
+  background: var(--overlay-weak);
+  border: 1px solid var(--border-default);
+  border-radius: 9999px;
+  text-decoration: none;
+  color: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.2;
+  transition: background 0.15s ease;
+}
+
+.endorser-chip:hover {
+  background: var(--overlay-medium);
+}
+
+.endorser-chip__name {
+  font-weight: 600;
+  color: var(--fg-primary);
+  white-space: nowrap;
+}
+
+.endorser-chip__date {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+/* iOS auto-zoom rule: any input touched on mobile must be >=16px or
+   Safari zooms the viewport. The people-search input lives on /search
+   and in the right rail; ensure that and the create-form inputs hit
+   the threshold. */
+@media (max-width: 799px) {
+  .create-form__input,
+  .create-form__textarea {
+    font-size: 16px;
+  }
+}
+
+/* ==========================================================================
+   Follower-events home feed — issue #88
+   Builds on .feed and .feed-card primitives above; the additions here
+   are author-row chrome (avatar + name + inline time), the per-kind
+   action line, and the feed-shell decorations (warning, hint, sentinel).
+   ========================================================================== */
+
+.feed-card__author-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.feed-card__time--inline {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.feed-card__action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.feed-card__action svg {
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+
+.feed-card__action-subject {
+  color: var(--fg-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.feed-card__action-subject:hover {
+  text-decoration: underline;
+}
+
+.feed-card__note {
+  margin: 12px 0 0;
+  padding: 12px;
+  background: var(--bg-sunken);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.feed-card__desc--unknown {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  word-break: break-all;
+}
+
+.feed__warning {
+  margin: 12px 0;
+  padding: 10px 14px;
+  background: var(--bg-sunken);
+  border-left: 3px solid var(--fg-muted);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+}
+
+.feed__sentinel {
+  height: 1px;
+  width: 100%;
+}
+
+.feed__hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 24px 0;
+  padding: 14px 16px;
+  background: var(--bg-sunken);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+}
+
+.feed__hint svg {
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+
+.feed__hint p {
+  margin: 0;
+}

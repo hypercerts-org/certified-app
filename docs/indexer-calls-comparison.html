@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>certified-app → Magic Indexer vs. live Hyperindex</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --card: #ffffff; --ink: #1a1a1a; --muted: #5c5c5c; --line: #e2e2dd;
+    --code-bg: #f0efea; --yes: #1f7a3d; --yes-bg: #e6f4ea; --no: #b3261e; --no-bg: #fbe9e8;
+    --maybe: #8a5a00; --maybe-bg: #fdf3e0; --head: #2a2a28; --accent: #3a5bbf;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--ink); line-height: 1.5; padding: 32px 20px 80px; }
+  .wrap { max-width: 1760px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  h2 { font-size: 18px; margin: 38px 0 10px; color: var(--head); border-bottom: 2px solid var(--line); padding-bottom: 6px; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0 0 18px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin: 16px 0 8px; font-size: 13px; }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-weight: 600; font-size: 12px; white-space: nowrap; }
+  .pill.yes { background: var(--yes-bg); color: var(--yes); }
+  .pill.no { background: var(--no-bg); color: var(--no); }
+  .pill.maybe { background: var(--maybe-bg); color: var(--maybe); }
+  .fb-lead { font-weight: 700; color: var(--head); }
+  .fb-easy { color: var(--yes); } .fb-mod { color: var(--maybe); } .fb-hard { color: var(--no); }
+  .note-box { background: #eef4ff; border: 1px solid #bcd2f5; border-radius: 6px; padding: 12px 16px; font-size: 13.5px; margin: 14px 0 8px; color: #1e3a6b; }
+  .facts { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 14px 18px; margin: 14px 0 8px; font-size: 13px; }
+  .facts h3 { margin: 0 0 8px; font-size: 14px; }
+  .facts ul { margin: 6px 0; padding-left: 20px; }
+  .facts li { margin: 3px 0; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  thead th { background: var(--head); color: #fff; text-align: left; padding: 10px 11px; font-size: 12px; position: sticky; top: 0; vertical-align: bottom; }
+  tbody td { padding: 11px 11px; border-top: 1px solid var(--line); vertical-align: top; }
+  tbody tr:nth-child(even) { background: #fcfcfb; }
+  .feature { font-weight: 600; width: 13%; }
+  .op { width: 10%; } .req { width: 21%; } .serve { width: 7%; } .why { width: 23%; color: var(--muted); } .fallback { width: 26%; }
+  code { font-family: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace; font-size: 11.5px; background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  .req code { display: inline-block; margin: 1px 0; }
+  .tag { font-size: 11px; color: var(--accent); font-weight: 600; }
+  .endpoint { font-size: 13px; color: var(--muted); margin: 0 0 6px; }
+  .endpoint code { background: #eef1fb; color: var(--accent); }
+  footer { margin-top: 40px; font-size: 12.5px; color: var(--muted); }
+  .ok { color: var(--yes); font-weight: 600; } .bad { color: var(--no); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>certified-app → Magic Indexer vs. the <em>live</em> Hyperindex</h1>
+  <p class="sub">Every request the app makes to the Magic Indexer, the feature it powers, whether the deployed Hyperindex can serve it, and how to bridge any gap. The Hyperindex column is now <strong>verified by live GraphQL introspection</strong> of <code>https://api.indexer.hypercerts.dev/graphql</code> (not inferred from code comments).</p>
+
+  <div class="note-box">
+    <strong>Verified against the live schema on 2026-06-10.</strong> I introspected the deployed Hyperindex (<code>POST .../graphql</code> with <code>__schema</code> / <code>__type</code> queries) and read its <code>Query</code> root fields and every relevant <code>*WhereInput</code> + filter-operator type. So "Hyperindex can serve?" reflects what the running schema actually exposes today. The big surprise vs. my first pass: Hyperindex <em>is</em> the same ATProto lexicon indexer (same types), and it has <strong>native label filtering</strong> and <strong>DID filtering</strong> — but it expresses them with different syntax than the fork, and it has a handful of hard gaps (notably it cannot filter badge awards by <em>recipient</em>).
+  </div>
+
+  <div class="facts">
+    <h3>Ground-truth schema facts (from introspection)</h3>
+    <ul>
+      <li><span class="ok">Present:</span> every base lexicon connection the app reads — <code>orgHypercertsClaimActivity</code>, <code>orgHypercertsCollection</code>, <code>appCertifiedActorProfile</code>, <code>appCertifiedActorOrganization</code>, <code>appCertifiedBadgeAward</code>, <code>appCertifiedBadgeDefinition</code>, <code>appCertifiedGraphFollow</code>, evaluation/measurement/attachment, etc. — each with <code>where</code>, <code>first/after/last/before</code>, and <code>sortBy/sortDirection</code>. Plus per-collection <code>…ByUri(uri)</code> single-record resolvers, a top-level <code>search(collection, query, …)</code>, and <code>externalLabels(sources, values, activeOnly, subjects)</code>.</li>
+      <li><span class="ok">Filter operators:</span> <code>StringFilterInput</code> = <code>eq, neq, in, contains, startsWith, isNull</code>; <code>DIDFilterInput</code> = <code>eq, in</code>; <code>ExternalLabelWhereInput</code> = <code>has, none</code>; <code>BooleanFilterInput</code> exists. <span class="bad">No <code>eqi</code></span> (case-insensitive) anywhere.</li>
+      <li><span class="ok">Native labels:</span> filter any record by label via <code>where:{ externalLabels:{ has:[…], none:[…] } }</code> — the fork's inline <code>labels</code>/<code>excludeLabels</code> map straight onto this.</li>
+      <li><span class="ok">Author/issuer filter:</span> <code>where:{ did:{ eq | in } }</code> on every connection.</li>
+      <li><span class="bad">No <code>uri</code> field in any <code>WhereInput</code></span> — multi-URI hydration can't use <code>where:{uri:{in:…}}</code>; must fan out via aliased <code>…ByUri</code> resolvers.</li>
+      <li><span class="bad">Award <code>subject</code> is presence-only</span> (<code>PresenceFilterInput</code> = <code>isNull</code>). You can filter awards by <em>issuer</em> (<code>did</code>) but <strong>not by recipient</strong> — so "endorsements received by DID X" has no server-side filter. (Follow <code>subject</code>, by contrast, <em>is</em> a <code>StringFilterInput</code>, so Followers works.)</li>
+      <li><span class="bad">Presence-only (can't match a value):</span> activity <code>contributors</code>, collection <code>items</code> — so no "by contributor DID" and no "collections containing activity URI" filters. Badge <code>badge</code>/<code>subject</code> too.</li>
+      <li><span class="bad">No derived flags / custom resolvers:</span> profile has no <code>isOrganization</code> field; and <code>followerEvents</code>, <code>endorsementClosure</code>, <code>actorProfile(did)</code>, and the <code>notifications</code> service are <strong>absent</strong>.</li>
+      <li><span class="ok">Definitions:</span> <code>appCertifiedBadgeDefinition.where</code> <em>does</em> expose <code>badgeType</code> (StringFilterInput) — but <code>appCertifiedBadgeAward.where</code> does <strong>not</strong>.</li>
+    </ul>
+  </div>
+
+  <div class="legend">
+    <span><span class="pill yes">Yes</span> deployed schema serves it directly or via a straightforward query rewrite</span>
+    <span><span class="pill maybe">Partial</span> serveable but degraded (client-side join/intersect, aliased fan-out, case-sensitive type)</span>
+    <span><span class="pill no">No</span> a needed filter/resolver is absent — requires app-side reconstruction or a separate backend</span>
+  </div>
+
+  <!-- ===================== PUBLIC PROXY ===================== -->
+  <h2>1 · Public GraphQL proxy &nbsp;<span class="tag">POST /api/indexer → {INDEXER_URL}/graphql</span></h2>
+  <p class="endpoint">Client sends <code>operationName</code> + <code>variables</code>; server holds the query strings. Unauthenticated public reads.</p>
+  <table>
+    <thead><tr>
+      <th class="feature">Feature</th><th class="op">Magic-Indexer op</th><th class="req">Request (fork syntax)</th>
+      <th class="serve">Live<br>Hyperindex?</th><th class="why">Verified schema reason</th><th class="fallback">How to serve it on Hyperindex</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="feature">Home / explore activities feed (global, label/author filtered)</td>
+        <td class="op"><code>Activities</code></td>
+        <td class="req"><code>orgHypercertsClaimActivity(labels, excludeLabels, authors, search)</code></td>
+        <td class="serve"><span class="pill yes">Yes</span></td>
+        <td class="why">Connection exists with <code>where</code> + <code>sortBy</code>. Labels → <code>externalLabels:{has,none}</code>; authors → <code>did:{in}</code>.</td>
+        <td class="fallback"><span class="fb-lead fb-easy">Rewrite.</span> <code>where:{ did:{in:…}, externalLabels:{has/none:…} }</code>, <code>sortBy:CREATED_AT</code>. Free-text via the top-level <code>search()</code> field or <code>title:{contains}</code>.</td>
+      </tr>
+      <tr>
+        <td class="feature">Explore "Ma Earth" featured filter (hydrate known URIs + labels)</td>
+        <td class="op"><code>ActivitiesByUris</code></td>
+        <td class="req"><code>where:{uri:{in:$uris}}, labels, excludeLabels</code></td>
+        <td class="serve"><span class="pill maybe">Partial</span></td>
+        <td class="why">No <code>uri</code> in <code>where</code>. Single-record <code>orgHypercertsClaimActivityByUri(uri)</code> resolver exists.</td>
+        <td class="fallback"><span class="fb-lead fb-mod">Aliased fan-out.</span> One query aliasing <code>…ByUri</code> per URI (already chunked at 50). Labels aren't filterable on <code>ByUri</code>, so apply the label filter client-side (or cross-check <code>externalLabels(subjects:…)</code>).</td>
+      </tr>
+      <tr>
+        <td class="feature">Profile › Activities — Created bucket</td>
+        <td class="op"><code>AuthoredActivities</code></td>
+        <td class="req"><code>where:{did:{eq}}, labels, excludeLabels, search</code></td>
+        <td class="serve"><span class="pill yes">Yes</span></td>
+        <td class="why"><code>did:{eq}</code> ✓, <code>externalLabels</code> ✓.</td>
+        <td class="fallback"><span class="fb-lead fb-easy">Rewrite.</span> <code>where:{ did:{eq}, externalLabels:{…} }</code>; search via <code>search()</code> or <code>contains</code>.</td>
+      </tr>
+      <tr>
+        <td class="feature">Profile › Activities — Contributed bucket</td>
+        <td class="op"><code>ContributedActivities</code></td>
+        <td class="req"><code>where:{contributor:{eq}}</code></td>
+        <td class="serve"><span class="pill no">No</span></td>
+        <td class="why">Activity <code>contributors</code> is <code>PresenceFilterInput</code> (isNull only) — can't match a contributor DID.</td>
+        <td class="fallback"><span class="fb-lead fb-hard">Reconstruct (verified no drop-in).</span> Checked the separate <code>orgHypercertsClaimContribution</code> / <code>…ContributorInformation</code> connections: their <code>where</code> exposes only <code>did</code> (+ role/labels/dates) — no filterable link back to the parent activity. So there's no way to list "activities X contributed to." Needs an app-side reverse index or an upstream contributor filter.</td>
+      </tr>
+      <tr>
+        <td class="feature">Followers list &amp; counts</td>
+        <td class="op"><code>Followers</code></td>
+        <td class="req"><code>appCertifiedGraphFollow(where:{subject:{eq}})</code></td>
+        <td class="serve"><span class="pill yes">Yes</span></td>
+        <td class="why">Follow <code>subject</code> is a <code>StringFilterInput</code> — <code>eq</code> works (unlike award subject).</td>
+        <td class="fallback"><span class="fb-lead fb-easy">Works as-is.</span> Same query.</td>
+      </tr>
+      <tr>
+        <td class="feature">Profile endorsements panel (received)</td>
+        <td class="op"><code>ReceivedEndorsements</code></td>
+        <td class="req"><code>where:{subject:{eq}, badgeType:"endorsement"}</code> + denormalized <code>issuer{…}</code> + <code>response{state}</code></td>
+        <td class="serve"><span class="pill no">No</span></td>
+        <td class="why"><strong>Award <code>subject</code> is presence-only</strong> — no way to filter "awards where recipient = X". Also no <code>badgeType</code> on awards, no denormalized issuer/response.</td>
+        <td class="fallback"><span class="fb-lead fb-hard">Hard — biggest gap.</span> The whole panel hinges on "awards to me", which the schema can't express. Needs an app-side index of awards keyed by subject DID (or an upstream <code>subject</code> filter). Issuer profiles + response state would then be separate joins (<code>appCertifiedActorProfile</code>, <code>appCertifiedBadgeResponse</code>).</td>
+      </tr>
+      <tr>
+        <td class="feature">Home feed — trusted-evaluator expansion</td>
+        <td class="op"><code>EvaluatorEndorsements</code></td>
+        <td class="req"><code>where:{did:{in:$evaluators}, badgeType:"endorsement"}</code> → <code>subject.did</code></td>
+        <td class="serve"><span class="pill maybe">Partial</span></td>
+        <td class="why"><code>did:{in}</code> ✓ (filter by <em>issuer</em>), but no <code>badgeType</code> on awards.</td>
+        <td class="fallback"><span class="fb-lead fb-easy">Rewrite + client filter.</span> <code>where:{did:{in:evaluators}}</code>, then keep only endorsement-type awards by joining <code>appCertifiedBadgeDefinition</code> (which <em>does</em> have <code>badgeType</code>), or filter by the badge ref.</td>
+      </tr>
+      <tr>
+        <td class="feature">Endorsement badge titles for issuers</td>
+        <td class="op"><code>EndorsementDefs</code></td>
+        <td class="req"><code>appCertifiedBadgeDefinition(where:{did:{in}, badgeType:"endorsement"})</code></td>
+        <td class="serve"><span class="pill yes">Yes</span></td>
+        <td class="why">Definition <code>where</code> has both <code>did</code> and <code>badgeType</code>.</td>
+        <td class="fallback"><span class="fb-lead fb-easy">Works as-is.</span> Same query.</td>
+      </tr>
+      <tr>
+        <td class="feature">Workspace / explore — recent actor list</td>
+        <td class="op"><code>NetworkActors</code></td>
+        <td class="req"><code>appCertifiedActorProfile(first, after)</code></td>
+        <td class="serve"><span class="pill yes">Yes</span></td>
+        <td class="why">Plain connection with pagination + sort.</td>
+        <td class="fallback"><span class="fb-lead fb-easy">Works as-is.</span></td>
+      </tr>
+      <tr>
+        <td class="feature">Explore › Accounts — People / Org toggle</td>
+        <td class="op"><code>NetworkActorsByKind</code></td>
+        <td class="req"><code>where:{isOrganization:{eq}}</code></td>
+        <td class="serve"><span class="pill maybe">Partial</span></td>
+        <td class="why">No <code>isOrganization</code> field on profile.</td>
+        <td class="fallback"><span class="fb-lead fb-mod">Client intersect.</span> Page <code>appCertifiedActorOrganization</code> (exists) for the full org-DID set, then split the profile list against it client-side. Paginate the org set fully to avoid the known under-show bug.</td>
+      </tr>
+      <tr>
+        <td class="feature">Explore › Users — individuals vs. groups</td>
+        <td class="op"><code>OrganizationDids</code></td>
+        <td class="req"><code>appCertifiedActorOrganization(first, after)</code></td>
+        <td class="serve"><span class="pill yes">Yes</span></td>
+        <td class="why">Plain connection.</td>
+        <td class="fallback"><span class="fb-lead fb-easy">Works as-is.</span></td>
+      </tr>
+      <tr>
+        <td class="feature">Explore — "Account quality" labeler-tier filter</td>
+        <td class="op"><code>OrganizationDidsByLabel</code></td>
+        <td class="req"><code>appCertifiedActorOrganization(labels, excludeLabels)</code></td>
+        <td class="serve"><span class="pill yes">Yes</span></td>
+        <td class="why">Org connection + native <code>externalLabels:{has,none}</code>.</td>
+        <td class="fallback"><span class="fb-lead fb-easy">Rewrite.</span> <code>where:{ externalLabels:{has/none:…} }</code>.</td>
+      </tr>
+      <tr>
+        <td class="feature">Explore — "Account quality (include-only)" profiles</td>
+        <td class="op"><code>NetworkActorsByDids</code></td>
+        <td class="req"><code>where:{did:{in:$dids}}</code></td>
+        <td class="serve"><span class="pill yes">Yes</span></td>
+        <td class="why"><code>did:{in}</code> ✓.</td>
+        <td class="fallback"><span class="fb-lead fb-easy">Works as-is.</span></td>
+      </tr>
+      <tr>
+        <td class="feature">Explore › Accounts — org subset of a DID set</td>
+        <td class="op"><code>OrganizationDidsForSet</code></td>
+        <td class="req"><code>where:{did:{in}, isOrganization:{eq:true}}</code></td>
+        <td class="serve"><span class="pill maybe">Partial</span></td>
+        <td class="why">No <code>isOrganization</code>; but <code>did:{in}</code> works on the organization connection.</td>
+        <td class="fallback"><span class="fb-lead fb-easy">Rewrite.</span> Query <code>appCertifiedActorOrganization(where:{did:{in:$set}})</code> directly — the returned DIDs <em>are</em> the org subset. No client intersect even needed.</td>
+      </tr>
+      <tr>
+        <td class="feature">Explore › Accounts — DIDs of a kind within a set</td>
+        <td class="op"><code>DidsByKindInSet</code></td>
+        <td class="req"><code>where:{did:{in}, isOrganization:{eq:$bool}}</code></td>
+        <td class="serve"><span class="pill maybe">Partial</span></td>
+        <td class="why">Same — no <code>isOrganization</code>, but org connection accepts <code>did:{in}</code>.</td>
+        <td class="fallback"><span class="fb-lead fb-easy">Rewrite.</span> Orgs = <code>appCertifiedActorOrganization(where:{did:{in}})</code>; People = input set minus that result.</td>
+      </tr>
+      <tr>
+        <td class="feature">/workspace per-actor count headers</td>
+        <td class="op"><code>ActorWorkspaceCounts</code></td>
+        <td class="req">5 aliased <code>totalCount</code>s: activities, projects (<code>type eqi</code>), lists (<code>type eqi</code>), endorsementsReceived (<code>subject eq</code>), followers (<code>subject eq</code>)</td>
+        <td class="serve"><span class="pill maybe">Partial</span></td>
+        <td class="why">Aliased <code>totalCount</code> + <code>did</code>/follow-<code>subject</code> ✓. But <code>type</code> needs <code>eq</code> (no <code>eqi</code>), and <strong>endorsementsReceived can't be counted</strong> (award subject presence-only).</td>
+        <td class="fallback"><span class="fb-lead fb-mod">4 of 5.</span> Activities/projects/lists/followers via aliased <code>totalCount</code> (type via <code>eq:"project"</code>, slight undercount on mixed-case). Endorsements-received count has no server path — show "–" or compute from an app-side subject index.</td>
+      </tr>
+      <tr>
+        <td class="feature">/welcome landing stats strip (×5 network counts)</td>
+        <td class="op"><code>ProfileCount</code>…<code>AwardCount</code></td>
+        <td class="req"><code>{root}(first:1){ totalCount }</code>; <code>ProjectCount</code> adds <code>type eqi "project"</code></td>
+        <td class="serve"><span class="pill yes">Yes</span></td>
+        <td class="why">Bare <code>totalCount</code> on each root ✓.</td>
+        <td class="fallback"><span class="fb-lead fb-easy">Works.</span> 4 unchanged; <code>ProjectCount</code> uses <code>type:{eq:"project"}</code> — marketing stat tolerates the case-sensitivity.</td>
+      </tr>
+      <tr>
+        <td class="feature">Explore › Projects — generic project listing</td>
+        <td class="op"><code>Projects</code></td>
+        <td class="req"><code>where:{type:{eqi:"project"}}, authors, search</code></td>
+        <td class="serve"><span class="pill maybe">Partial</span></td>
+        <td class="why">Collection <code>where</code> has <code>type</code> + <code>did</code>, but only <code>eq</code> (no <code>eqi</code>).</td>
+        <td class="fallback"><span class="fb-lead fb-mod">Rewrite (case-sensitive).</span> <code>type:{eq:"project"}</code> + <code>did:{in}</code>; search via <code>search()</code> or <code>title:{contains}</code>. Mixed-case <code>type</code> records are missed unless data is normalized.</td>
+      </tr>
+      <tr>
+        <td class="feature">Profile › Projects tab — projects by one DID</td>
+        <td class="op"><code>UserProjects</code></td>
+        <td class="req"><code>where:{did:{eq}, type:{eqi:"project"}}</code></td>
+        <td class="serve"><span class="pill maybe">Partial</span></td>
+        <td class="why"><code>did:{eq}</code> ✓; <code>type</code> only <code>eq</code>.</td>
+        <td class="fallback"><span class="fb-lead fb-easy">Rewrite.</span> <code>where:{ did:{eq}, type:{eq:"project"} }</code>. (Or PDS <code>listRecords</code> + JS-side case-insensitive type — the pre-indexer path.)</td>
+      </tr>
+      <tr>
+        <td class="feature">Activity detail — "Projects containing this activity"</td>
+        <td class="op"><code>ProjectsContainingCert</code></td>
+        <td class="req"><code>where:{type:{eqi:"project"}, itemUri:{eq:$certUri}}</code></td>
+        <td class="serve"><span class="pill no">No</span></td>
+        <td class="why">Collection <code>items</code> is <code>PresenceFilterInput</code> — no <code>itemUri</code> value match.</td>
+        <td class="fallback"><span class="fb-lead fb-hard">Reconstruct.</span> No reverse activity→collection index. Either limit to same-author projects (PDS scan), build an app-side reverse index, or get an upstream <code>itemUri</code> filter.</td>
+      </tr>
+      <tr>
+        <td class="feature">Explore — "Endorsed users" trust-graph filter</td>
+        <td class="op"><code>EndorsementClosure</code></td>
+        <td class="req"><code>endorsementClosure(viewer, degree){ accounts{did,degree,via,issuer} }</code></td>
+        <td class="serve"><span class="pill maybe">Partial</span></td>
+        <td class="why">No <code>endorsementClosure</code> resolver — but the forward direction <em>is</em> queryable: "who X endorsed" = awards <code>where:{did:{eq:X}}</code> → <code>subject.did</code>.</td>
+        <td class="fallback"><span class="fb-lead fb-mod">Client/server BFS.</span> Walk level by level with <code>did:{in:ring}</code>, dedupe per ring, resolve issuer profiles via <code>appCertifiedActorProfile(where:{did:{in}})</code>. Chatty but feasible to degree 2–3; degree-1 is one query.</td>
+      </tr>
+      <tr>
+        <td class="feature">Home timeline — follower-event feed</td>
+        <td class="op"><code>FollowerEvents</code></td>
+        <td class="req"><code>followerEvents(authors, kinds, sortBy){ …, actor{…} }</code></td>
+        <td class="serve"><span class="pill no">No</span></td>
+        <td class="why">No <code>followerEvents</code> field. No cross-lexicon union, no single merged cursor.</td>
+        <td class="fallback"><span class="fb-lead fb-hard">Reconstruct (hard).</span> Query each lexicon connection with <code>where:{did:{in:followSet}}</code> + <code>sortBy:CREATED_AT</code>, merge + sort client-side, resolve actors via profile <code>did:{in}</code>. The real cost is reproducing one stable cursor across N merged streams for infinite scroll.</td>
+      </tr>
+      <tr>
+        <td class="feature">Home timeline — hydrate one page (7 record kinds)</td>
+        <td class="op"><code>HydrateFeedPage</code></td>
+        <td class="req">7 aliased connections, each <code>where:{uri:{in:…}}</code> + activity label filters</td>
+        <td class="serve"><span class="pill maybe">Partial</span></td>
+        <td class="why">No <code>uri</code> in <code>where</code>; but every kind has a <code>…ByUri(uri)</code> resolver.</td>
+        <td class="fallback"><span class="fb-lead fb-mod">Aliased <code>ByUri</code> fan-out.</span> One query aliasing each kind's <code>…ByUri</code> per URI (≤50/kind). Activity label exclusion applied client-side (no <code>where</code> on <code>ByUri</code>).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ===================== NOTIFICATIONS ===================== -->
+  <h2>2 · Notifications &nbsp;<span class="tag">POST /api/notifications → {INDEXER_URL_BASE}/notifications/graphql</span></h2>
+  <p class="endpoint">Authenticated; server mints a service-auth JWT (<code>lxm = com.hypergoat.notification.query</code>). Indexer derives the acting DID from the JWT.</p>
+  <table>
+    <thead><tr>
+      <th class="feature">Feature</th><th class="op">Magic-Indexer op</th><th class="req">Request</th>
+      <th class="serve">Live<br>Hyperindex?</th><th class="why">Verified reason</th><th class="fallback">How to serve it</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="feature">Notifications list page</td>
+        <td class="op"><code>notifications</code></td>
+        <td class="req"><code>notifications(first, after){ reason, count, latestRecord*, isRead }</code></td>
+        <td class="serve"><span class="pill no">No</span></td>
+        <td class="why">No <code>notifications</code> root field; it's a separate <code>com.hypergoat</code> service on a different path, not in the public <code>/graphql</code> schema.</td>
+        <td class="fallback" rowspan="3"><span class="fb-lead fb-hard">Build or run the service.</span> Either run the existing <code>hypergoat</code> notification service alongside a stock Hyperindex, or compute the feed app-side: derive viewer-targeting events from base reads (new follows via <code>appCertifiedGraphFollow.subject:{eq}</code>; mentions of the viewer's activities) — <em>but</em> "endorsements received" can't be sourced (award subject is presence-only), so that notification class needs an app-side subject index. Per-viewer read/seen-state needs its own store (the <code>updateNotificationsSeen</code> mutation has no read-only counterpart).</td>
+      </tr>
+      <tr>
+        <td class="feature">Nav bell — unread count</td>
+        <td class="op"><code>unreadNotificationCount</code></td>
+        <td class="req"><code>unreadNotificationCount{ count, more }</code></td>
+        <td class="serve"><span class="pill no">No</span></td>
+        <td class="why">Same absent service.</td>
+      </tr>
+      <tr>
+        <td class="feature">Mark notifications seen</td>
+        <td class="op"><code>updateNotificationsSeen</code> (mutation)</td>
+        <td class="req"><code>updateNotificationsSeen(seenAt)</code></td>
+        <td class="serve"><span class="pill no">No</span></td>
+        <td class="why">Write path; the public Hyperindex is read-only with no per-viewer state.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ===================== RESOLVE-DID ===================== -->
+  <h2>3 · DID resolution fast-path &nbsp;<span class="tag">server-side → {INDEXER_URL}/graphql</span></h2>
+  <p class="endpoint">Optional, flag-gated by <code>RESOLVE_DID_USE_INDEXER=true</code> (default <strong>OFF</strong>). Falls back per-field to <code>resolveHandle</code> + <code>app.bsky.actor.getProfile</code>.</p>
+  <table>
+    <thead><tr>
+      <th class="feature">Feature</th><th class="op">Magic-Indexer op</th><th class="req">Request</th>
+      <th class="serve">Live<br>Hyperindex?</th><th class="why">Verified reason</th><th class="fallback">How to serve it</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="feature">DID → handle + profile fast-path</td>
+        <td class="op"><code>ResolveActorProfile</code></td>
+        <td class="req"><code>actorProfile(did){ handle, displayName, avatarCid, bannerCid }</code></td>
+        <td class="serve"><span class="pill maybe">Partial</span></td>
+        <td class="why">No <code>actorProfile(did)</code> resolver. But <code>appCertifiedActorProfile(where:{did:{eq}})</code> returns the profile fields (no <code>handle</code>).</td>
+        <td class="fallback"><span class="fb-lead fb-easy">Trivial — already off by default.</span> Profile fields via the connection; handle via <code>resolveHandle</code>. Or just leave the flag OFF and use the existing legacy path — only cost is more round-trips per DID.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ===================== FEATURE REQUESTS ===================== -->
+  <h2>4 · Feature requests to Hyperindex (to serve certified-app natively)</h2>
+  <p class="endpoint">Derived from the verified gaps above. Each is what the <code>hb-agent/magic-indexer</code> fork adds today; landing them upstream would let certified-app drop its fork and point <code>INDEXER_URL</code> at <code>api.indexer.hypercerts.dev</code>. Ordered by impact — P0 are hard blockers with no scalable client workaround.</p>
+  <table>
+    <thead><tr>
+      <th class="op" style="width:5%">#</th>
+      <th class="feature" style="width:22%">Request</th>
+      <th class="req" style="width:24%">Concrete schema change</th>
+      <th style="width:9%">Priority</th>
+      <th class="why" style="width:40%">Unblocks / why it matters</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>1</strong></td>
+        <td class="feature">Filter badge awards by recipient</td>
+        <td class="req">Make <code>AppCertifiedBadgeAwardWhereInput.subject</code> a value filter (<code>DIDFilterInput</code> / <code>StringFilterInput</code>) instead of <code>PresenceFilterInput</code>; ideally also a denormalized <code>subjectDid</code> field.</td>
+        <td><span class="pill no">P0</span></td>
+        <td class="why"><strong>The single biggest gap.</strong> Today there is no way to ask "awards received by DID X." Unblocks the profile endorsements panel, the per-actor endorsements-received count, and the "endorsement received" notification class. No client-side workaround scales (would require scanning all awards).</td>
+      </tr>
+      <tr>
+        <td><strong>2</strong></td>
+        <td class="feature">Contributor-DID filter on activities</td>
+        <td class="req">Add a value-matchable contributor filter to <code>OrgHypercertsClaimActivityWhereInput</code> — e.g. <code>contributors:{ has: $did }</code> or a <code>contributor: DIDFilterInput</code> (handling the DID / strongRef / identity variants).</td>
+        <td><span class="pill no">P0</span></td>
+        <td class="why">Unblocks Profile › Activities "Contributed" bucket. The contribution lexicons only expose their own author <code>did</code>, so there is no reverse path from a contributor to the activities they're on.</td>
+      </tr>
+      <tr>
+        <td><strong>3</strong></td>
+        <td class="feature">Reverse activity → collection containment</td>
+        <td class="req">Add an <code>itemUri</code> filter to <code>OrgHypercertsCollectionWhereInput</code> — e.g. <code>items:{ has:{ uri: $certUri } }</code> (promote the strongRef URI to an indexed, filterable field).</td>
+        <td><span class="pill no">P0</span></td>
+        <td class="why">Unblocks the activity-detail "Projects containing this activity" section. <code>items</code> is presence-only today, so cross-DID containment can't be queried.</td>
+      </tr>
+      <tr>
+        <td><strong>4</strong></td>
+        <td class="feature">Personalized notifications service</td>
+        <td class="req">Host the JWT-scoped notification API (or equivalent): <code>notifications(first,after)</code>, <code>unreadNotificationCount</code>, and the <code>updateNotificationsSeen(seenAt)</code> mutation, deriving the acting DID from service-auth.</td>
+        <td><span class="pill no">P0</span></td>
+        <td class="why">Entire notifications feature (list page + nav-bell unread badge + seen-state). It's a separate component with read/write per-viewer state — nothing in the public read-only schema can stand in for it.</td>
+      </tr>
+      <tr>
+        <td><strong>5</strong></td>
+        <td class="feature"><code>uri</code> filter on every connection</td>
+        <td class="req">Add <code>uri: StringFilterInput</code> (supporting <code>in</code>) to all <code>*WhereInput</code> types, so <code>where:{ uri:{ in:[…] } }</code> works.</td>
+        <td><span class="pill maybe">P1</span></td>
+        <td class="why">Collapses the home-feed <code>HydrateFeedPage</code> (7 kinds) and <code>ActivitiesByUris</code> from aliased <code>…ByUri</code> fan-outs back to one clean batched query per kind, and lets label filters apply on the same call.</td>
+      </tr>
+      <tr>
+        <td><strong>6</strong></td>
+        <td class="feature">Home-timeline <code>followerEvents</code> union</td>
+        <td class="req">Add a <code>followerEvents(authors, kinds, sortBy, first, after)</code> resolver: a cross-lexicon "create events by author set" stream with a <strong>single stable cursor</strong> and denormalized <code>actor{ handle, displayName, avatarCid }</code>.</td>
+        <td><span class="pill maybe">P1</span></td>
+        <td class="why">The home feed. Reconstructing it from N per-lexicon queries works for page 1 but the merged-stream pagination cursor is the hard part to replicate client-side for infinite scroll.</td>
+      </tr>
+      <tr>
+        <td><strong>7</strong></td>
+        <td class="feature"><code>badgeType</code> filter on awards</td>
+        <td class="req">Add <code>badgeType: StringFilterInput</code> to <code>AppCertifiedBadgeAwardWhereInput</code> (it already exists on <em>definitions</em>).</td>
+        <td><span class="pill maybe">P1</span></td>
+        <td class="why">Removes the client-side definition join for the trusted-evaluator expansion and received endorsements. Pairs naturally with request #1.</td>
+      </tr>
+      <tr>
+        <td><strong>8</strong></td>
+        <td class="feature">Endorsement-graph closure resolver</td>
+        <td class="req">Add <code>endorsementClosure(viewer, degree){ accounts{ did, degree, via, issuer{…} }, truncated }</code> (viewer-centric BFS over active endorsement awards, with a server cap).</td>
+        <td><span class="pill maybe">P1</span></td>
+        <td class="why">Explore "Endorsed users" filter. Reconstructable via client BFS (forward awards-by-issuer already works), but a server resolver is far cheaper and gives provenance + truncation semantics for free.</td>
+      </tr>
+      <tr>
+        <td><strong>9</strong></td>
+        <td class="feature">Denormalize issuer + response onto awards</td>
+        <td class="req">On the award node, inline <code>issuer{ handle, displayName, avatarCid, pds }</code> and the recipient's latest <code>response{ state, weight, createdAt }</code>.</td>
+        <td><span class="pill maybe">P2</span></td>
+        <td class="why">Kills the N+1 profile/response fan-out on the endorsements panel's first paint. Quality-of-life once #1 lands.</td>
+      </tr>
+      <tr>
+        <td><strong>10</strong></td>
+        <td class="feature"><code>isOrganization</code> flag on actor profile</td>
+        <td class="req">Add a derived <code>isOrganization: BooleanFilterInput</code> to <code>AppCertifiedActorProfileWhereInput</code>.</td>
+        <td><span class="pill maybe">P2</span></td>
+        <td class="why">Lets the explore People/Org toggle filter in one query instead of client-side intersecting with <code>appCertifiedActorOrganization</code>. Workaround exists, so lower priority.</td>
+      </tr>
+      <tr>
+        <td><strong>11</strong></td>
+        <td class="feature">Case-insensitive matching (or normalized <code>type</code>)</td>
+        <td class="req">Add <code>eqi</code> to <code>StringFilterInput</code>, <em>or</em> normalize the collection <code>type</code> discriminator at ingest (<code>"project"</code> / <code>"list:endorsements"</code>).</td>
+        <td><span class="pill maybe">P2</span></td>
+        <td class="why">Today <code>type:{eq:"project"}</code> misses mixed-case records (<code>"Project"</code>/<code>"PROJECT"</code>). Affects project listings + counts. Normalization upstream is the cleanest fix.</td>
+      </tr>
+      <tr>
+        <td><strong>12</strong></td>
+        <td class="feature">Denormalized <code>actorProfile(did)</code> with handle + typed search</td>
+        <td class="req">Add <code>actorProfile(did){ handle, displayName, description, avatarCid, bannerCid }</code> (incl. resolved handle); and let the top-level <code>search()</code> return typed nodes or expose a <code>search</code> arg per connection.</td>
+        <td><span class="pill maybe">P2</span></td>
+        <td class="why">DID-resolution fast-path (currently flag-off; legacy path works) and typed full-text search without re-fetching from the generic record connection. Pure latency/ergonomics wins.</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="endpoint" style="margin-top:10px">If only the four <span class="bad">P0</span> items shipped, certified-app could run on stock Hyperindex with every feature present — degraded only in latency (extra round-trips / client joins) on the P1–P2 items, not in capability.</p>
+
+  <footer>
+    <p><strong>Bottom line (verified).</strong> The deployed Hyperindex is the same ATProto indexer and covers far more than the code comments implied — once queries are rewritten to its native syntax (<code>externalLabels:{has,none}</code> for labels, <code>did:{eq,in}</code> for authors/issuers, <code>sortBy</code>, and the top-level <code>search()</code>). Of the ~27 operations: ~9 work directly or with a pure rewrite; ~9 work degraded (aliased <code>…ByUri</code> fan-out instead of <code>uri.in</code>; client-side intersects for People/Org; case-sensitive <code>type:"project"</code>; client-side <code>badgeType</code> joins; BFS for the trust graph). The genuine blockers are narrow but real: <strong>(1) badge awards can't be filtered by recipient</strong> (presence-only <code>subject</code>) → kills received-endorsements and its count; <strong>(2)</strong> no contributor-DID filter; <strong>(3)</strong> no activity→collection (<code>itemUri</code>) filter; <strong>(4)</strong> no <code>followerEvents</code> union with a single cursor; and <strong>(5)</strong> the entire notifications service is a separate component. The fork mostly exists to denormalize joins and add three reverse/derived indexes the base schema doesn't expose — recipient-keyed awards, contributor, and itemUri — plus the feed/closure/notification resolvers.</p>
+    <p>Hyperindex column verified by live introspection of <code>https://api.indexer.hypercerts.dev/graphql</code> on 2026-06-10 (root fields + <code>*WhereInput</code> + filter-operator types). Magic-Indexer side from the <code>staging</code> branch source. Re-introspect before acting — the deployed schema can change.</p>
+  </footer>
+
+</div>
+</body>
+</html>

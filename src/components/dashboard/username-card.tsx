@@ -5,8 +5,10 @@ import { Pencil, Globe, AtSign } from "lucide-react";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import { authFetch } from "@/lib/auth/fetch";
+import { DEFAULT_PDS_URL } from "@/lib/utils/config";
 import { clearSessionCache } from "@/hooks/use-session";
 import CustomDomainModal from "@/components/dashboard/custom-domain-modal";
+import CopyPill from "@/components/account/copy-pill";
 
 interface UsernameCardProps {
   handle: string | null;
@@ -27,9 +29,8 @@ function getPdsHostname(pdsUrl?: string, handle?: string | null): string {
     return handle.slice(handle.indexOf(".") + 1);
   }
   // Fallback to env
-  const url = process.env.NEXT_PUBLIC_PDS_URL || "https://certified.one";
   try {
-    return new URL(url).hostname;
+    return new URL(DEFAULT_PDS_URL).hostname;
   } catch {
     return "certified.one";
   }
@@ -46,7 +47,10 @@ function isOurHandle(handle: string | null, pdsUrl?: string): boolean {
   // If handle has a dot, it's a subdomain-style handle (not a custom domain like alice.com)
   // Consider it "ours" if it has 2+ dots (prefix.pds.host.tld)
   if (handle.split(".").length >= 3) return true;
-  return handle.endsWith(".certified.app");
+  // Legacy fallbacks for handles that pre-date a configured pdsUrl. Includes
+  // .certs.social (the old domain) so users migrating accounts retain the
+  // "you can manage this" experience.
+  return handle.endsWith(".certified.app") || handle.endsWith(".certs.social");
 }
 
 export default function UsernameCard({ handle, pdsUrl, did, groupDid }: UsernameCardProps) {
@@ -59,8 +63,8 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
   const [error, setError] = useState<string | null>(null);
   const [isDomainModalOpen, setIsDomainModalOpen] = useState(false);
 
-  // "subdomain" mode: choosing a certified username (username.pdsHostname)
-  const [isChoosingCertified, setIsChoosingCertified] = useState(false);
+  // "subdomain" mode: choosing a certs username (username.pdsHostname)
+  const [isChoosingCertified, setIsChoosingCerts] = useState(false);
   const [subdomainValue, setSubdomainValue] = useState("");
 
   const handleEdit = () => {
@@ -71,19 +75,19 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
     setNewHandle(currentPrefix);
     setError(null);
     setIsEditing(true);
-    setIsChoosingCertified(false);
+    setIsChoosingCerts(false);
   };
 
   const handleStartCertified = () => {
     setSubdomainValue("");
     setError(null);
-    setIsChoosingCertified(true);
+    setIsChoosingCerts(true);
     setIsEditing(false);
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    setIsChoosingCertified(false);
+    setIsChoosingCerts(false);
     setError(null);
   };
 
@@ -176,17 +180,7 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
     <>
       <div className="dash-card mt-4">
         <div className="username-card">
-          <div className="username-card__header">
-            <h2 className="dash-card__title" style={{ marginBottom: 0 }}>{groupDid ? "Handle" : "Username"}</h2>
-            {isCertifiedHandle && !showingForm && (
-              <Button variant="ghost" size="sm" onClick={handleEdit}>
-                <Pencil size={14} />
-                Edit
-              </Button>
-            )}
-          </div>
-
-          {/* Inline edit for certified handle */}
+          {/* Inline edit for certs handle */}
           {isEditing && (
             <div className="username-card__form">
               <label className="username-card__form-label" htmlFor="username-input">{groupDid ? "Handle" : "Username"}</label>
@@ -217,13 +211,13 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
             </div>
           )}
 
-          {/* Subdomain picker for switching back to certified */}
+          {/* Subdomain picker for switching back to certs */}
           {isChoosingCertified && (
             <div className="username-card__form">
-              <label className="username-card__form-label" htmlFor="certified-username-input">Choose a Certified username</label>
+              <label className="username-card__form-label" htmlFor="certs-username-input">Choose a Certified username</label>
               <div className="username-card__subdomain-row">
                 <input
-                  id="certified-username-input"
+                  id="certs-username-input"
                   type="text"
                   className="username-card__subdomain-input"
                   value={subdomainValue}
@@ -248,50 +242,85 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
             </div>
           )}
 
-          {/* Handle display */}
+          {/* Read-only display: value + inline actions (Edit, then the
+              domain-switch buttons). The custom-domain buttons are gated
+              OFF in group context (groupDid set): that flow writes the
+              handle via the personal XRPC updateHandle endpoint, which is
+              wrong for a group repo. The "Use a Certified username"
+              button is kept — it routes through the group-aware path. */}
           {!showingForm && (
-            <p className="username-card__value">@{handle || "..."}</p>
-          )}
-
-          {/* Action buttons — shown when not in any editing mode */}
-          {!showingForm && did && (
-            <div className="username-card__switch-btns">
-              {isCertifiedHandle ? (
-                <button
-                  className="username-card__domain-btn"
-                  onClick={() => setIsDomainModalOpen(true)}
-                  type="button"
-                >
-                  <Globe size={14} aria-hidden="true" />
-                  Use my own domain
-                </button>
-              ) : (
-                <>
-                  <button
-                    className="username-card__domain-btn"
-                    onClick={() => setIsDomainModalOpen(true)}
-                    type="button"
-                  >
-                    <Globe size={14} aria-hidden="true" />
-                    Use a different domain
-                  </button>
-                  <button
-                    className="username-card__domain-btn"
-                    onClick={handleStartCertified}
-                    type="button"
-                  >
-                    <AtSign size={14} aria-hidden="true" />
-                    Use a Certified username
-                  </button>
-                </>
+            <div className="settings-field">
+              {/* Click-to-copy the bare handle (no @), mirroring the DID pill —
+                  `display` keeps the familiar @handle on screen. The wrapper
+                  fills the row (like .settings-field__value) so the pill is as
+                  wide as the email / password fields. */}
+              <span
+                className="flex-1 min-w-0"
+                data-tour="settings-handle"
+              >
+                {handle ? (
+                  <CopyPill
+                    value={handle}
+                    display={`@${handle}`}
+                    label="username"
+                  />
+                ) : (
+                  <span className="settings-field__value">@...</span>
+                )}
+              </span>
+              {isCertifiedHandle && (
+                <Button variant="ghost" size="sm" onClick={handleEdit}>
+                  <Pencil size={14} />
+                  Edit
+                </Button>
+              )}
+              {/* Domain-switch buttons on their own full-width row so the pill
+                  above fills the field like the email / password values. */}
+              {did && !(isCertifiedHandle && groupDid) && (
+                <div className="basis-full flex flex-wrap gap-2">
+                  {isCertifiedHandle ? (
+                    !groupDid && (
+                      <button
+                        className="username-card__domain-btn"
+                        onClick={() => setIsDomainModalOpen(true)}
+                        type="button"
+                      >
+                        <Globe size={14} aria-hidden="true" />
+                        Use my own domain
+                      </button>
+                    )
+                  ) : (
+                    <>
+                      {!groupDid && (
+                        <button
+                          className="username-card__domain-btn"
+                          onClick={() => setIsDomainModalOpen(true)}
+                          type="button"
+                        >
+                          <Globe size={14} aria-hidden="true" />
+                          Use a different domain
+                        </button>
+                      )}
+                      <button
+                        className="username-card__domain-btn"
+                        onClick={handleStartCertified}
+                        type="button"
+                      >
+                        <AtSign size={14} aria-hidden="true" />
+                        Use a Certified username
+                      </button>
+                    </>
+                  )}
+                </div>
               )}
             </div>
           )}
         </div>
       </div>
 
-      {/* Custom domain modal */}
-      {did && (
+      {/* Custom domain modal — not mounted in group context (groupDid set),
+          since the modal writes the handle via the personal XRPC endpoint. */}
+      {did && !groupDid && (
         <CustomDomainModal
           isOpen={isDomainModalOpen}
           onClose={() => setIsDomainModalOpen(false)}

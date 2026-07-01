@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import LandingTopBar from "@/components/landing/landing-topbar";
 
 export const metadata: Metadata = {
   title: "Digital Services Act — Compliance Information",
@@ -11,23 +13,24 @@ export const metadata: Metadata = {
       "Digital Services Act compliance information for Certified, operated by the Hypercerts Foundation.",
     url: "https://certified.app/dsa",
     type: "website",
-    images: [{ url: "/assets/certified-hero-1200x630.png", width: 1200, height: 630, alt: "Certified — One account, any app" }],
+    images: [{ url: "/assets/certs-hero-1200x630.png", width: 1200, height: 630, alt: "Certified — One account. Your work. Recognized everywhere." }],
   },
 };
 
 export default function DsaPage() {
   return (
-    <div className="app-page">
-      <div className="app-page__inner max-w-3xl">
-        <h1 className="font-mono text-h1 text-navy tracking-tight mb-8">
+    <div className="app-page legal-page">
+      <LandingTopBar />
+      <div className="app-page__inner">
+        <h1 className="font-headline text-h1 text-[var(--fg-primary)] tracking-tight mb-8">
           Digital Services Act — Compliance Information
         </h1>
 
-        <p className="text-sm text-gray-500 mb-8">Last updated: May 6, 2026</p>
+        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: May 6, 2026</p>
 
-        <div className="prose prose-navy max-w-none space-y-8">
+        <div className="prose max-w-none space-y-8">
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">1. About this page</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">1. About this page</h2>
             <p>
               This page provides information required under the Digital Services Act (Regulation
               (EU) 2022/2065) (&quot;DSA&quot;) regarding the hosting services operated by the
@@ -41,7 +44,7 @@ export default function DsaPage() {
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">2. Service provider</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">2. Service provider</h2>
             <p>
               <strong>Hypercerts Foundation</strong>
               <br />
@@ -59,7 +62,7 @@ export default function DsaPage() {
               Contact:{" "}
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 legal@hypercerts.org
               </a>
@@ -67,7 +70,7 @@ export default function DsaPage() {
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               3. Legal representative in the European Union
             </h2>
             <p>
@@ -81,7 +84,7 @@ export default function DsaPage() {
               <br />
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 legal@hypercerts.org
               </a>
@@ -89,7 +92,7 @@ export default function DsaPage() {
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">4. Point of contact</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">4. Point of contact</h2>
             <p>
               In accordance with Article 11 of the DSA, the single point of contact for
               communications with EU member state authorities, the European Commission, and the
@@ -98,7 +101,7 @@ export default function DsaPage() {
             <p className="mt-4">
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 legal@hypercerts.org
               </a>
@@ -111,7 +114,7 @@ export default function DsaPage() {
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               5. Notice-and-action procedure
             </h2>
             <p>
@@ -120,14 +123,14 @@ export default function DsaPage() {
               accordance with Article 16 of the DSA.
             </p>
 
-            <h3 className="font-mono text-lg text-navy mt-6 mb-3">
+            <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">
               How to submit a notice
             </h3>
             <p>Notices should be sent to:</p>
             <p className="mt-2">
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 legal@hypercerts.org
               </a>
@@ -150,7 +153,7 @@ export default function DsaPage() {
               </li>
             </ul>
 
-            <h3 className="font-mono text-lg text-navy mt-6 mb-3">
+            <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">
               How we process notices
             </h3>
             <p>Upon receipt of a notice, the Hypercerts Foundation will:</p>
@@ -190,14 +193,14 @@ export default function DsaPage() {
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               6. Content restrictions
             </h2>
             <p>
               As described in the{" "}
-              <a href="/terms" className="text-blue-600 underline hover:text-blue-800">
+              <Link href="/terms" className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]">
                 Terms of Service
-              </a>
+              </Link>
               , the Hypercerts Foundation may restrict access to content or suspend accounts in
               the following circumstances:
             </p>
@@ -225,7 +228,7 @@ export default function DsaPage() {
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               7. Statement of reasons
             </h2>
             <p>
@@ -249,7 +252,7 @@ export default function DsaPage() {
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               8. Internal complaint-handling
             </h2>
             <p>
@@ -259,7 +262,7 @@ export default function DsaPage() {
             <p className="mt-4">
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
               >
                 legal@hypercerts.org
               </a>
@@ -271,7 +274,7 @@ export default function DsaPage() {
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               9. Trusted flaggers
             </h2>
             <p>
@@ -282,7 +285,7 @@ export default function DsaPage() {
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">10. Transparency</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">10. Transparency</h2>
             <p>
               The Hypercerts Foundation will publish{" "}
               <strong>annual transparency reports</strong> in accordance with Article 15 of the
@@ -300,7 +303,7 @@ export default function DsaPage() {
           </section>
 
           <section>
-            <h2 className="font-mono text-xl text-navy mb-4">11. Limitation</h2>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">11. Limitation</h2>
             <p>
               The Hypercerts Foundation is not responsible for content moderation decisions made by
               third-party applications that access data through the AT Protocol.

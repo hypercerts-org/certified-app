@@ -8,7 +8,7 @@ interface ErrorPageProps {
   reset: () => void;
 }
 
-export default function ErrorPage({ error }: ErrorPageProps) {
+export default function ErrorPage({ error, reset }: ErrorPageProps) {
   return (
     <div className="dashboard">
       <div className="dashboard__topbar">
@@ -17,7 +17,15 @@ export default function ErrorPage({ error }: ErrorPageProps) {
       <div className="dashboard__body dashboard__body--single">
         <div className="dashboard__main">
           <div className="dash-card">
-            <p className="dash-card__desc">{error.message || "An unexpected error occurred."}</p>
+            <p className="dash-card__desc">An unexpected error occurred.</p>
+            {error.digest && (
+              <p className="dash-card__desc" style={{ opacity: 0.7 }}>
+                Reference: {error.digest}
+              </p>
+            )}
+            <button onClick={reset} className="dashboard__back-btn" style={{ marginBottom: "0.5rem" }}>
+              Try again
+            </button>
             <Link href="/" className="dashboard__back-btn">
               Go home
             </Link>

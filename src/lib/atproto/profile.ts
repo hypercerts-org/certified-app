@@ -7,7 +7,8 @@ import {
   getBlobRefLink,
 } from "./types";
 import { authFetch } from "@/lib/auth/fetch";
-import { extractError } from "@/lib/utils/api";
+import { extractError, xrpcGetRecordPath } from "@/lib/utils/api";
+import { writeToRepo } from "@/lib/atproto/repo-write";
 
 const COLLECTION = "app.certified.actor.profile";
 const BSKY_COLLECTION = "app.bsky.actor.profile";
@@ -32,16 +33,39 @@ export async function getProfile(
   did: string,
   signal?: AbortSignal
 ): Promise<CertifiedProfile | null> {
+  const res = await getProfileWithCid(did, signal);
+  return res ? res.value : null;
+}
+
+/**
+ * Get a user's profile record together with the record CID.
+ *
+ * The `com.atproto.repo.getRecord` response carries both the record
+ * `value` and its `cid`. `getProfile` (above) discards the CID for the
+ * common read path; this sibling preserves it so inline-edit can capture
+ * a mount-time CID snapshot and thread it as the `swapRecord`
+ * precondition on the subsequent putProfile (judgment-006 / #71).
+ *
+ * @param did - The DID of the user whose profile to fetch
+ * @returns `{ value, cid }` or null when the record doesn't exist.
+ */
+export async function getProfileWithCid(
+  did: string,
+  signal?: AbortSignal
+): Promise<{ value: CertifiedProfile; cid: string | null } | null> {
   const res = await authFetch(
-    `/api/xrpc/com/atproto/repo/getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(COLLECTION)}&rkey=${encodeURIComponent(RKEY)}`,
+    xrpcGetRecordPath({ repo: did, collection: COLLECTION, rkey: RKEY }),
     { signal }
   );
   if (!res.ok) {
     if (res.status === 400 || res.status === 404) return null;
     throw new Error(`Failed to get profile: ${res.statusText}`);
   }
-  const data = await res.json();
-  return data.value as CertifiedProfile;
+  const data = (await res.json()) as { value?: CertifiedProfile; cid?: string };
+  return {
+    value: data.value as CertifiedProfile,
+    cid: typeof data.cid === "string" ? data.cid : null,
+  };
 }
 
 /**
@@ -53,7 +77,7 @@ export async function getBlueskyProfile(
   signal?: AbortSignal
 ): Promise<BlueskyProfile | null> {
   const res = await authFetch(
-    `/api/xrpc/com/atproto/repo/getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(BSKY_COLLECTION)}&rkey=${encodeURIComponent(RKEY)}`,
+    xrpcGetRecordPath({ repo: did, collection: BSKY_COLLECTION, rkey: RKEY }),
     { signal }
   );
   if (!res.ok) {
@@ -66,81 +90,99 @@ export async function getBlueskyProfile(
 }
 
 /**
- * Get the URL for a Bluesky profile avatar
- */
-export function getBlueskyAvatarUrl(
-  profile: BlueskyProfile,
-  did: string,
-  pdsUrl: string
-): string | null {
-  if (!profile.avatar) return null;
-  const avatar = profile.avatar as { ref?: { $link: string } };
-  if (avatar.ref?.$link) {
-    return `${pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${did}&cid=${avatar.ref.$link}`;
-  }
-  return null;
-}
-
-/**
- * Get the URL for a Bluesky profile banner
- */
-export function getBlueskyBannerUrl(
-  profile: BlueskyProfile,
-  did: string,
-  pdsUrl: string
-): string | null {
-  if (!profile.banner) return null;
-  const banner = profile.banner as { ref?: { $link: string } };
-  if (banner.ref?.$link) {
-    return `${pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${did}&cid=${banner.ref.$link}`;
-  }
-  return null;
-}
-
-/**
  * Create or update a user's profile record
  * @param did - The DID of the user whose profile to update
  * @param profile - The profile data to save
+ * @param options - Optional overrides. When `targetDid` differs from the
+ *   session DID (i.e. the viewer is saving a group's profile they admin),
+ *   the call is routed through the group profile BFF route instead of the
+ *   direct PDS XRPC putRecord. The BFF route handles the proxied write to
+ *   the group service.
  */
 export async function putProfile(
   did: string,
-  profile: CertifiedProfile
+  profile: CertifiedProfile,
+  options?: { targetDid?: string; swapRecord?: string }
 ): Promise<void> {
-  const res = await authFetch("/api/xrpc/com/atproto/repo/putRecord", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      repo: did,
-      collection: COLLECTION,
-      rkey: RKEY,
-      record: {
-        ...profile,
-        $type: "app.certified.actor.profile",
+  const targetDid = options?.targetDid ?? did;
+  const swap = options?.swapRecord;
+  // Group-profile save: BFF expects the bare profile record (no
+  // $type wrapper — it adds collection/rkey/$type server-side). The
+  // own-DID XRPC path needs the wrapped record.
+  await writeToRepo<unknown>({
+    ownDid: did,
+    targetDid,
+    ownPath: {
+      url: "/api/xrpc/com/atproto/repo/putRecord",
+      method: "POST",
+      body: {
+        repo: did,
+        collection: COLLECTION,
+        rkey: RKEY,
+        record: { ...profile, $type: "app.certified.actor.profile" },
+        ...(swap ? { swapRecord: swap } : {}),
       },
-    }),
+    },
+    groupPath: {
+      url: `/api/groups/${encodeURIComponent(targetDid)}/profile`,
+      method: "PUT",
+      // BFF route reads the profile fields via pickAllowedFields
+      // and `swapRecord` as a separate top-level key (swapRecord
+      // isn't in PROFILE_FIELDS so the allowlist filters it from
+      // the record itself — the route reads it from the raw body
+      // before allowlisting and forwards as the outer arg).
+      body: swap ? { ...profile, swapRecord: swap } : profile,
+    },
+    errorFallback: "Failed to save profile",
   });
-  if (!res.ok) {
-    throw new Error(await extractError(res, res.statusText));
-  }
 }
 
 /**
- * Upload a blob (image file) to the PDS
+ * The blob descriptor returned by `com.atproto.repo.uploadBlob`. Matches
+ * the lexicon's BlobRef shape ($type/ref/mimeType/size).
+ */
+export interface UploadedBlob {
+  $type: "blob";
+  ref: { $link: string };
+  mimeType: string;
+  size: number;
+}
+
+/**
+ * Upload a blob (image file) to the PDS.
+ *
+ * When `options.targetDid` is provided and differs from the session DID,
+ * the upload is routed through the group's repo via the group service
+ * proxy (so the blob lands in the GROUP's repo, not the viewer's). This
+ * is required for avatars/banners on group profiles the viewer admins.
+ *
  * @param file - The file to upload
- * @returns The blob reference as a plain object
+ * @param options.targetDid - Optional group DID to upload on behalf of
+ * @returns The blob reference, typed as UploadedBlob
  */
 export async function uploadBlob(
-  file: File
-): Promise<Record<string, unknown>> {
-  // Validate file type
-  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+  file: File,
+  options?: { targetDid?: string; allowAnyType?: boolean }
+): Promise<UploadedBlob> {
+  // Validate file type. Image-only by default (avatars, banners, hero
+  // images, rich-text embeds); `allowAnyType` opts out for surfaces that
+  // accept arbitrary file attachments (e.g. update `content[]` blobs).
+  // The upload itself is type-agnostic — it streams the raw bytes — so
+  // skipping the check is safe; the PDS enforces its own size limits.
+  if (!options?.allowAnyType && !ALLOWED_IMAGE_TYPES.includes(file.type)) {
     throw new Error(
       `Invalid file type: ${file.type}. Allowed types: ${ALLOWED_IMAGE_TYPES.join(", ")}`
     );
   }
 
   const buffer = await file.arrayBuffer();
-  const res = await authFetch("/api/xrpc/com/atproto/repo/uploadBlob", {
+  // Group upload path: hits the BFF route that calls
+  // app.certified.group.repo.uploadBlob via the proxied agent. The
+  // response shape is { blob: UploadedBlob } — same as the XRPC route.
+  const url = options?.targetDid
+    ? `/api/groups/${encodeURIComponent(options.targetDid)}/upload-blob`
+    : "/api/xrpc/com/atproto/repo/uploadBlob";
+  const res = await authFetch(url, {
     method: "POST",
     headers: { "Content-Type": file.type },
     body: buffer,
@@ -150,40 +192,39 @@ export async function uploadBlob(
     throw new Error(await extractError(res, res.statusText));
   }
 
-  const data = await res.json();
-  return data.blob as Record<string, unknown>;
+  const data = (await res.json()) as { blob?: UploadedBlob };
+  if (!data.blob || typeof data.blob.ref?.$link !== "string") {
+    throw new Error("uploadBlob response missing blob.ref.$link");
+  }
+  return data.blob;
 }
 
-/**
- * Upload an avatar image (max 5MB)
- * @param file - The avatar image file
- * @returns The blob reference as a plain object
- */
+/** Upload an avatar image (max 4MB) — returns a typed UploadedBlob.
+ *  Pass `targetDid` to upload to a group repo instead of the viewer's. */
 export async function uploadAvatar(
-  file: File
-): Promise<Record<string, unknown>> {
+  file: File,
+  options?: { targetDid?: string }
+): Promise<UploadedBlob> {
   if (file.size > MAX_AVATAR_SIZE) {
     throw new Error(
       `Avatar file size exceeds maximum of ${MAX_AVATAR_SIZE / 1024 / 1024}MB`
     );
   }
-  return uploadBlob(file);
+  return uploadBlob(file, options);
 }
 
-/**
- * Upload a banner image (max 10MB)
- * @param file - The banner image file
- * @returns The blob reference as a plain object
- */
+/** Upload a banner image (max 4MB) — returns a typed UploadedBlob.
+ *  Pass `targetDid` to upload to a group repo instead of the viewer's. */
 export async function uploadBanner(
-  file: File
-): Promise<Record<string, unknown>> {
+  file: File,
+  options?: { targetDid?: string }
+): Promise<UploadedBlob> {
   if (file.size > MAX_BANNER_SIZE) {
     throw new Error(
       `Banner file size exceeds maximum of ${MAX_BANNER_SIZE / 1024 / 1024}MB`
     );
   }
-  return uploadBlob(file);
+  return uploadBlob(file, options);
 }
 
 /**
@@ -217,6 +258,46 @@ export function getAvatarUrl(
   }
 
   return null;
+}
+
+/**
+ * Build an avatar URL from the indexer's denormalised
+ * `(did, avatarCid)` pair. Routes through the XRPC proxy which
+ * federates to the issuer's PDS via repo resolution — same pattern
+ * `getAvatarUrl` above uses for a record-side blob ref.
+ *
+ * Used by render sites that consume an indexer payload directly
+ * (e.g. profile-endorsements / profile-overview cards reading the
+ * `issuer { avatarCid }` block from magic-indexer #96) instead of
+ * resolving via `useAuthorInfo`.
+ *
+ * `cid` is validated as alphanumeric (base32 / base58 — CIDs never
+ * contain slashes or path-traversal characters) so a compromised
+ * indexer can't inject path-traversal into the URL we mount. Round-1
+ * security review NOTE on #69 — cheap defense in depth.
+ */
+export function buildAvatarUrlFromCid(
+  did: string | null | undefined,
+  cid: string | null | undefined,
+): string | null {
+  if (!did || !cid) return null
+  if (!/^[A-Za-z0-9]+$/.test(cid)) return null
+  return `/api/xrpc/com/atproto/sync/getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`
+}
+
+/**
+ * Build a banner URL from the indexer's denormalised `(did, bannerCid)`
+ * pair. A banner blob is fetched through the exact same getBlob-by-cid
+ * proxy path as an avatar — the only difference is which CID — so this
+ * delegates to `buildAvatarUrlFromCid` and exists purely for naming
+ * clarity at call sites that resolve a banner (e.g. the resolve-did
+ * indexer fast-path consuming `actorProfile(did) { bannerCid }`).
+ */
+export function buildBannerUrlFromCid(
+  did: string | null | undefined,
+  cid: string | null | undefined,
+): string | null {
+  return buildAvatarUrlFromCid(did, cid)
 }
 
 /**

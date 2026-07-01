@@ -10,41 +10,203 @@ interface DidDocument {
 
 const DID_FETCH_TIMEOUT_MS = 5000
 
+function isAllowedPdsUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return false;
+
+    const hostname = parsed.hostname;
+    if (hostname === "localhost" || hostname === "[::1]") return false;
+
+    if (hostname.startsWith("[")) {
+      const inner = hostname.slice(1, -1).toLowerCase()
+      if (inner === "::1" || inner.startsWith("fe80:") || inner.startsWith("fc") || inner.startsWith("fd") || inner.startsWith("::ffff:")) return false
+    }
+
+    const parts = hostname.split(".");
+    if (parts.every((p) => /^\d+$/.test(p)) && parts.length === 4) {
+      const [a, b] = parts.map(Number);
+      if (a === 127) return false;
+      if (a === 10) return false;
+      if (a === 172 && b >= 16 && b <= 31) return false;
+      if (a === 192 && b === 168) return false;
+      if (a === 169 && b === 254) return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Process-local cache for DID documents. DID docs change infrequently
+// (PLC mirror responses are themselves cached for minutes), so a short
+// TTL collapses the per-render N+1 pattern (a single page resolving
+// the same DID across multiple components) into one upstream call.
+// Successes get a 5-minute TTL; null results (resolution failures) get
+// a 30s TTL so a transient upstream blip clears quickly.
+const DID_DOC_TTL_OK_MS = 5 * 60 * 1000;
+const DID_DOC_TTL_NULL_MS = 30 * 1000;
+
+interface DidDocCacheEntry {
+  expiresAt: number;
+  doc: DidDocument | null;
+}
+
+// Bound the map size so a long-running process (or a malicious caller
+// feeding synthetic DIDs) can't grow it unboundedly. FIFO eviction is
+// fine because every entry expires anyway — the cap just protects
+// against pre-expiry growth.
+const DID_DOC_CACHE_MAX = 1000;
+
+const didDocCache = new Map<string, DidDocCacheEntry>();
+const didDocInflight = new Map<string, Promise<DidDocument | null>>();
+
+// Per-DID generation counter, bumped on every invalidate. A fetch
+// captures the generation at start; if it changed by the time the
+// fetch resolves, the result is dropped instead of overwriting the
+// (now-known-stale) cache. Without this, the race goes:
+//   t0: fetch starts → reads pre-update PLC doc
+//   t1: caller invalidateDidDoc() — cache is already empty, no-op
+//   t2: fetch from t0 resolves and writes stale doc with 5-min TTL
+const didDocGen = new Map<string, number>();
+
+/**
+ * Drop a DID from the cache. Call this whenever the upstream document
+ * changes — most importantly after `com.atproto.identity.updateHandle`,
+ * which rewrites `alsoKnownAs` and would otherwise serve the old handle
+ * for up to DID_DOC_TTL_OK_MS. Bumps the generation so any inflight
+ * fetch started before this call won't seat a stale doc.
+ */
+export function invalidateDidDoc(did: string): void {
+  didDocCache.delete(did);
+  didDocGen.set(did, (didDocGen.get(did) ?? 0) + 1);
+}
+
 /**
  * Construct the URL for a DID document and fetch it with a timeout.
- * Shared by resolveHandle and resolvePdsUrl.
+ * Shared by resolveHandle and resolvePdsUrl. Results are memoized
+ * per-process for a short TTL, and concurrent callers share the same
+ * in-flight promise (singleflight) so a burst collapses to one fetch.
  */
 async function fetchDidDocument(did: string): Promise<DidDocument | null> {
-  let url: string;
+  const now = Date.now();
+  const cached = didDocCache.get(did);
+  if (cached && cached.expiresAt > now) return cached.doc;
 
-  if (did.startsWith("did:plc:")) {
-    url = `https://plc.directory/${did}`;
-  } else if (did.startsWith("did:web:")) {
-    const withoutPrefix = did.slice("did:web:".length);
-    const parts = withoutPrefix.split(":");
-    const domain = parts[0];
-    const path = parts.length > 1 ? parts.slice(1).join("/") : ".well-known";
-    url = `https://${domain}/${path}/did.json`;
-  } else {
-    return null;
-  }
+  const inflight = didDocInflight.get(did);
+  if (inflight) return inflight;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), DID_FETCH_TIMEOUT_MS);
+  // Snapshot the generation at fetch start. If invalidateDidDoc(did)
+  // is called while we're in flight, the generation will diverge and
+  // we'll drop our result instead of caching it.
+  const generationAtStart = didDocGen.get(did) ?? 0;
 
-  let response: Response;
+  const promise = (async (): Promise<DidDocument | null> => {
+    let url: string;
+
+    if (did.startsWith("did:plc:")) {
+      url = `https://plc.directory/${did}`;
+    } else if (did.startsWith("did:web:")) {
+      const withoutPrefix = did.slice("did:web:".length);
+      const parts = withoutPrefix.split(":");
+      const domain = parts[0];
+      const path = parts.length > 1 ? parts.slice(1).join("/") : ".well-known";
+      url = `https://${domain}/${path}/did.json`;
+      if (!isAllowedPdsUrl(url)) return null;
+    } else {
+      return null;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), DID_FETCH_TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(url, { signal: controller.signal });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    if (!response.ok) return null;
+
+    try {
+      return (await response.json()) as DidDocument;
+    } catch {
+      return null;
+    }
+  })();
+
+  didDocInflight.set(did, promise);
+
   try {
-    response = await fetch(url, { signal: controller.signal });
+    const doc = await promise;
+    // If something called invalidateDidDoc while we were in flight,
+    // our result is already known-stale. Return it (callers asked for
+    // a doc, not a guarantee) but don't seat it in the cache.
+    const generationAtFinish = didDocGen.get(did) ?? 0;
+    if (generationAtFinish !== generationAtStart) return doc;
+    // Evict the oldest entry once we exceed the cap. Map preserves
+    // insertion order, so the first key is the oldest.
+    if (didDocCache.size >= DID_DOC_CACHE_MAX && !didDocCache.has(did)) {
+      const firstKey = didDocCache.keys().next().value;
+      if (firstKey !== undefined) didDocCache.delete(firstKey);
+    }
+    didDocCache.set(did, {
+      doc,
+      expiresAt: Date.now() + (doc ? DID_DOC_TTL_OK_MS : DID_DOC_TTL_NULL_MS),
+    });
+    return doc;
   } finally {
-    clearTimeout(timeoutId);
+    didDocInflight.delete(did);
   }
+}
 
-  if (!response.ok) return null;
+/**
+ * Resolve a handle to its DID via the `.well-known/atproto-did` endpoint
+ * on the handle's domain. This is the AT Protocol standard resolution
+ * path and works for custom-domain handles that may not have a DNS TXT
+ * record (which Bluesky's public appView requires).
+ *
+ * See: https://atproto.com/specs/handle#handle-resolution
+ */
+export async function resolveHandleViaWellKnown(handle: string): Promise<string | null> {
+  // Basic sanity: must look like a domain (contain a dot, no spaces)
+  if (!handle.includes(".") || /\s/.test(handle)) return null
 
   try {
-    return (await response.json()) as DidDocument;
+    const res = await fetch(
+      `https://${handle}/.well-known/atproto-did`,
+      { signal: AbortSignal.timeout(5_000) }
+    )
+    if (!res.ok) return null
+    const text = (await res.text()).trim()
+    // Must be a valid DID
+    if (text.startsWith("did:")) return text
+    return null
   } catch {
-    return null;
+    return null
+  }
+}
+
+/** Bluesky's public appView — unauthenticated handle resolution. */
+const BSKY_APPVIEW = "https://public.api.bsky.app"
+
+/**
+ * Resolve a handle (e.g. `alice.bsky.social`) to its DID via Bluesky's
+ * public appView. Returns null if resolution fails.
+ */
+export async function resolveHandleToDid(handle: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `${BSKY_APPVIEW}/xrpc/com.atproto.identity.resolveHandle?handle=${encodeURIComponent(handle)}`,
+      { signal: AbortSignal.timeout(5_000) }
+    )
+    if (!res.ok) return null
+    const data = (await res.json()) as { did?: string }
+    return data.did ?? null
+  } catch {
+    return null
   }
 }
 
@@ -60,7 +222,14 @@ export async function resolveHandle(did: string): Promise<string | null> {
     const atUri = doc.alsoKnownAs.find((aka) => typeof aka === "string" && aka.startsWith("at://"));
     if (!atUri) return null;
 
-    return atUri.replace("at://", "");
+    const handle = atUri.replace("at://", "");
+    // The DID document (especially for attacker-controllable did:web)
+    // can carry an arbitrary at:// value like `at://example.com/some/path`.
+    // Sanity-check the stripped value actually looks like a handle so a
+    // non-handle (path, empty, or whitespace-bearing string) doesn't leak.
+    if (!handle || !handle.includes(".") || /[/\s]/.test(handle)) return null;
+
+    return handle;
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") return null;
     console.warn(`resolveHandle failed for ${did}:`, err);
@@ -89,6 +258,10 @@ export async function resolvePdsUrl(did: string): Promise<string | null> {
     if (!pdsService) return null;
 
     if (!pdsService.serviceEndpoint || typeof pdsService.serviceEndpoint !== "string") {
+      return null;
+    }
+
+    if (!isAllowedPdsUrl(pdsService.serviceEndpoint)) {
       return null;
     }
 

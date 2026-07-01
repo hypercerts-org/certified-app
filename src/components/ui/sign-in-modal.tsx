@@ -1,70 +1,55 @@
 "use client"
 
 import React, { useEffect, useRef, useState } from "react"
-import { useFocusTrap } from "@/hooks/use-focus-trap"
-
-type ModalView = "certified" | "atproto"
+import AppDialog, { AppDialogHeader, AppDialogBody } from "./app-dialog"
+import Brandmark from "./brandmark"
+import Button from "./button"
+import Checkbox from "./checkbox"
+import Input from "./input"
 
 interface SignInModalProps {
   isOpen: boolean
-  initialView?: ModalView
   error: string | null
   onClose: () => void
   onSubmitEmail: (email: string) => Promise<void>
   onSubmitHandle: (handle: string) => Promise<void>
 }
 
+type ModalView = "certified" | "atproto"
+
 export default function SignInModal({
   isOpen,
-  initialView = "certified",
   error,
   onClose,
   onSubmitEmail,
   onSubmitHandle,
 }: SignInModalProps) {
-  const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen)
   const inputRef = useRef<HTMLInputElement>(null)
-  const [view, setView] = useState<ModalView>(initialView)
+  const [view, setView] = useState<ModalView>("certified")
   const [inputValue, setInputValue] = useState("")
+  const [rememberMe, setRememberMe] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Reset state when modal opens/closes
+  // Reset state when the modal opens. Backdrop/Esc/focus-trap/scroll-lock
+  // are all owned by <AppDialog> now; we only manage the form state here.
   useEffect(() => {
     if (isOpen) {
-      setView(initialView)
+      setView("certified")
       setInputValue("")
       setIsSubmitting(false)
       requestAnimationFrame(() => inputRef.current?.focus())
     }
-  }, [isOpen, initialView])
+  }, [isOpen])
 
-  // Focus input when switching views
+  // Focus input when switching views.
   useEffect(() => {
     if (isOpen) {
       requestAnimationFrame(() => inputRef.current?.focus())
     }
   }, [view, isOpen])
 
-  // Close on Escape key
-  useEffect(() => {
-    if (!isOpen) return
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose()
-    }
-    document.addEventListener("keydown", handleKeyDown)
-    return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen, onClose])
-
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden"
-    } else {
-      document.body.style.overflow = ""
-    }
-    return () => { document.body.style.overflow = "" }
-  }, [isOpen])
-
+  // <AppDialog> calls showModal() on mount and has no `open` prop, so gate
+  // the mount here to match the previous isOpen-driven render.
   if (!isOpen) return null
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,91 +69,82 @@ export default function SignInModal({
 
   const isCertified = view === "certified"
 
-  const title = isCertified
-    ? "Sign in to Certified"
-    : "Sign in with AT Protocol"
-
-  const buttonLabel = isCertified
-    ? "Sign in with Certified"
-    : "Sign in"
-
+  const heading = isCertified ? "Your email" : "Your handle"
+  const placeholder = isCertified ? "you@example.com" : "you.bsky.social"
   const switchLabel = isCertified
-    ? "Sign in with AT Protocol or Bluesky"
-    : "Sign in with Certified"
+    ? "Or sign in with ATProto/Bluesky"
+    : "Or sign in with Certified"
+  const submitLabel = isSubmitting ? "Connecting..." : "Continue"
 
   return (
-    <div
-      className="signin-modal__backdrop"
-      ref={focusTrapRef}
-      onClick={(e) => { if (e.target === focusTrapRef.current) onClose() }}
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-    >
-      <div className="signin-modal">
-        <div className="signin-modal__header">
-          <img src="/assets/certified_brandmark_black.svg" alt="" aria-hidden="true" className="signin-modal__logo" />
-          <span className="signin-modal__title">{title}</span>
-          <button
-            className="signin-modal__close"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M4 4l8 8M12 4l-8 8" />
-            </svg>
-          </button>
+    <AppDialog ariaLabel="Sign in" onClose={onClose}>
+      <AppDialogHeader title="" onClose={onClose} />
+
+      <AppDialogBody>
+        <div className="flex justify-center mb-8 text-[var(--fg-primary)] max-[520px]:mb-6">
+          <Brandmark size={72} decorative className="block" />
         </div>
 
-        <div className="signin-modal__body">
-            <form onSubmit={handleSubmit} className="signin-modal__form" method="post" aria-label="Sign in">
-              <label className="signin-modal__label" htmlFor={isCertified ? "email" : "username"}>
-                {isCertified ? "Email address" : "Handle (username)"}
-              </label>
-              <input
-                ref={inputRef}
-                id={isCertified ? "email" : "username"}
-                name={isCertified ? "email" : "username"}
-                type={isCertified ? "email" : "text"}
-                inputMode={isCertified ? "email" : "text"}
-                className="signin-modal__input"
-                placeholder={isCertified ? "you@example.com" : "you.bsky.social"}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                required
-                autoComplete={isCertified ? "email" : "username"}
-                disabled={isSubmitting}
-                aria-invalid={error ? true : undefined}
-                aria-describedby={error ? "signin-error" : undefined}
-              />
+        <form onSubmit={handleSubmit} className="flex flex-col" method="post" aria-label="Sign in">
+          <label
+            className="font-[var(--font-inter),system-ui,sans-serif] text-[1.125rem] font-semibold tracking-[-0.01em] text-[var(--fg-primary)] mb-3 max-[520px]:text-base"
+            htmlFor={isCertified ? "email" : "username"}
+          >
+            {heading}
+          </label>
+          <Input
+            ref={inputRef}
+            id={isCertified ? "email" : "username"}
+            name={isCertified ? "email" : "username"}
+            type={isCertified ? "email" : "text"}
+            inputMode={isCertified ? "email" : "text"}
+            size="lg"
+            placeholder={placeholder}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            required
+            autoComplete={isCertified ? "email" : "username"}
+            disabled={isSubmitting}
+            error={error ?? undefined}
+          />
 
-              {error && (
-                <p id="signin-error" className="signin-modal__error" role="alert">{error}</p>
-              )}
-
-              <button
-                type="submit"
-                className="signin-modal__submit"
-                disabled={isSubmitting || !inputValue.trim()}
-              >
-                {isSubmitting ? "Connecting..." : buttonLabel}
-              </button>
-            </form>
-
-            <div className="signin-modal__switch">
-              <button
-                type="button"
-                className="signin-modal__switch-btn"
-                onClick={() => {
-                  setView(isCertified ? "atproto" : "certified")
-                  setInputValue("")
-                }}
-              >
-                {switchLabel}
-              </button>
-            </div>
+          <div className="mt-4">
+            <Checkbox
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              label="Remember me on this device"
+            />
           </div>
-      </div>
-    </div>
+
+          <Button
+            type="submit"
+            size="lg"
+            loading={isSubmitting}
+            disabled={isSubmitting || !inputValue.trim()}
+            className="mt-4 w-full"
+          >
+            {submitLabel}
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setView(isCertified ? "atproto" : "certified")
+              setInputValue("")
+            }}
+            className="mt-2 w-full"
+          >
+            {switchLabel}
+          </Button>
+        </form>
+
+        <div
+          className='block mx-auto mt-6 w-[165px] h-[18px] bg-[var(--fg-primary)] dark:bg-[var(--fg-secondary)] [mask-image:url("/assets/powered_by_certified_black.svg")] [mask-size:contain] [mask-repeat:no-repeat] [mask-position:center] [-webkit-mask-image:url("/assets/powered_by_certified_black.svg")] [-webkit-mask-size:contain] [-webkit-mask-repeat:no-repeat] [-webkit-mask-position:center]'
+          role="img"
+          aria-label="Powered by Certified"
+        />
+      </AppDialogBody>
+    </AppDialog>
   )
 }

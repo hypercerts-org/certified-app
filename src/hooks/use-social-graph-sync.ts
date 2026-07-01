@@ -1,0 +1,275 @@
+"use client"
+
+import { useCallback, useMemo, useState } from "react"
+import { useBlueskyFollows } from "@/hooks/use-bluesky-follows"
+import { useFollowing } from "@/hooks/use-following"
+import { createFollow, createBlueskyFollow } from "@/lib/atproto/follow"
+
+export interface SocialGraphSyncStats {
+  /** Subject DIDs followed on BOTH Certified and Bluesky. */
+  inBoth: string[]
+  /** Followed only on the Certified graph. */
+  onlyCertified: string[]
+  /** Followed on Bluesky but not yet on Certified — the import
+   *  candidates. */
+  onlyBluesky: string[]
+}
+
+export interface SocialGraphSyncResult {
+  /** Number of follows successfully written. */
+  imported: number
+  /** Number of follows that failed to write (sum of `errors`). */
+  failed: number
+  /** Per-failure { subjectDid, message } for surfacing in the UI. */
+  errors: { subjectDid: string; message: string }[]
+}
+
+/**
+ * Compare the certified social graph against the bluesky social
+ * graph for the same `did` and expose a one-click import for
+ * accounts followed on Bluesky that aren't yet on Certified.
+ *
+ * Read side:
+ *   - `useFollowing(did)`     → Certified follows on the same repo.
+ *   - `useBlueskyFollows(did)` → Bluesky follows on the same repo.
+ *   Both hit the PDS via the XRPC proxy and run in parallel; the
+ *   set arithmetic happens locally here.
+ *
+ * Write side:
+ *   - `importDids(dids)` writes one certified follow per DID. When
+ *     `targetDid` is set (acting-as-group) writes route through the
+ *     group's BFF; otherwise they go to the personal repo.
+ *
+ * The hook does NOT swallow failures — the result object surfaces
+ * per-DID errors so the caller can show them next to the right row.
+ */
+export function useSocialGraphSync(
+  did: string | null,
+  opts?: { ownDid?: string | null; targetDid?: string },
+): {
+  certifiedCount: number
+  blueskyCount: number
+  stats: SocialGraphSyncStats
+  /** True when either side's follow list was truncated by the 10k
+   *  safety cap. In that state the set-arithmetic above is unsafe —
+   *  `onlyBluesky` and `onlyCertified` may contain false-positives,
+   *  and re-importing would create duplicate follows on the user's
+   *  PDS. Callers must refuse to act on `stats` when this is true. */
+  truncated: boolean
+  /** True when the BLUESKY side's follow list was truncated by the 10k
+   *  safety cap. While true, `onlyCertified` may contain false-positives,
+   *  so the Certified → Bluesky export (`exportDids`) must refuse. */
+  blueskyTruncated: boolean
+  isLoading: boolean
+  error: string | null
+  refetch: () => Promise<void>
+  /** Bluesky → Certified: write a certified follow per DID. */
+  importDids: (
+    dids: string[],
+    opts?: { signal?: AbortSignal },
+  ) => Promise<SocialGraphSyncResult>
+  /** Certified → Bluesky: write an `app.bsky.graph.follow` per DID.
+   *  Personal repo only — refuses when acting-as-group. */
+  exportDids: (
+    dids: string[],
+    opts?: { signal?: AbortSignal },
+  ) => Promise<SocialGraphSyncResult>
+} {
+  // Destructure both sources so the closures below close over
+  // individually-stable callbacks rather than the always-fresh
+  // wrapping object literal returned each render. This lets the React
+  // Compiler preserve memoization for `refetch` and `importDids`.
+  const {
+    subjects: certifiedSubjects,
+    count: certifiedCount,
+    truncated: certifiedTruncated,
+    isLoading: certifiedLoading,
+    error: certifiedError,
+    refetch: certifiedRefetch,
+    addFollow: certifiedAddFollow,
+  } = useFollowing(did)
+  const {
+    followedDids: blueskyDids,
+    truncated: blueskyTruncated,
+    isLoading: blueskyLoading,
+    error: blueskyError,
+    addFollow: blueskyAddFollow,
+  } = useBlueskyFollows(did)
+  const blueskyCount = blueskyDids.size
+  const ownDid = opts?.ownDid ?? did
+  const targetDid = opts?.targetDid
+
+  const stats = useMemo<SocialGraphSyncStats>(() => {
+    const inBoth: string[] = []
+    const onlyCertified: string[] = []
+    const onlyBluesky: string[] = []
+    certifiedSubjects.forEach((d) => {
+      if (blueskyDids.has(d)) inBoth.push(d)
+      else onlyCertified.push(d)
+    })
+    blueskyDids.forEach((d) => {
+      if (!certifiedSubjects.has(d)) onlyBluesky.push(d)
+    })
+    return { inBoth, onlyCertified, onlyBluesky }
+  }, [certifiedSubjects, blueskyDids])
+
+  // `useBlueskyFollows` doesn't expose a refetch — the cache
+  // refreshes on focus when stale, which is good enough for the
+  // post-import view (the bluesky data didn't change, only certified
+  // did).
+  const refetch = useCallback(() => certifiedRefetch(), [certifiedRefetch])
+
+  const [isWriting, setIsWriting] = useState(false)
+
+  const importDids = useCallback(
+    async (
+      dids: string[],
+      opts?: { signal?: AbortSignal },
+    ): Promise<SocialGraphSyncResult> => {
+      if (!ownDid) {
+        return {
+          imported: 0,
+          failed: dids.length,
+          errors: dids.map((subjectDid) => ({
+            subjectDid,
+            message: "Not signed in",
+          })),
+        }
+      }
+      if (isWriting) {
+        return { imported: 0, failed: 0, errors: [] }
+      }
+      // Refuse to act when the certified set is truncated — the
+      // `certifiedSubjects.has(subjectDid)` skip below would return
+      // false-negatives for any DID past the 10k cap and we'd write
+      // duplicate follow records to the user's PDS.
+      if (certifiedTruncated) {
+        return {
+          imported: 0,
+          failed: dids.length,
+          errors: dids.map((subjectDid) => ({
+            subjectDid,
+            message: "Your follow list is too large to sync safely",
+          })),
+        }
+      }
+      setIsWriting(true)
+      let imported = 0
+      const errors: { subjectDid: string; message: string }[] = []
+      try {
+        // Skip anything already in the certified set — covers the
+        // race where the user opens the modal, follows someone via
+        // the sidebar, then clicks Import. Also dedupes within `dids`.
+        const seen = new Set<string>()
+        for (const subjectDid of dids) {
+          // Honor caller cancellation between iterations. Closing the
+          // modal mid-import should stop further writes, otherwise the
+          // loop continues populating the user's repo (and the local
+          // cache) with rows the user thought they cancelled.
+          if (opts?.signal?.aborted) break
+          if (seen.has(subjectDid)) continue
+          seen.add(subjectDid)
+          if (certifiedSubjects.has(subjectDid)) continue
+          try {
+            const result = await createFollow(ownDid, subjectDid, {
+              targetDid,
+            })
+            // Optimistically update the local certified set so the
+            // stats tile flips immediately AND a partial failure
+            // leaves the count accurate. Refetch below catches up to
+            // the PDS for the final reconciliation.
+            certifiedAddFollow(subjectDid, result.uri, result.cid)
+            imported++
+          } catch (err) {
+            errors.push({
+              subjectDid,
+              message:
+                err instanceof Error ? err.message : "Failed to create follow",
+            })
+          }
+        }
+        // Refetch the certified list so the cache reflects the new
+        // commits authoritatively. The bluesky side didn't change.
+        // If refetch throws, the finally below still clears
+        // `isWriting` — without the try/finally the modal would stay
+        // stuck on "Importing…" forever.
+        await certifiedRefetch()
+      } finally {
+        setIsWriting(false)
+      }
+      return { imported, failed: errors.length, errors }
+    },
+    [ownDid, targetDid, isWriting, certifiedSubjects, certifiedTruncated, certifiedAddFollow, certifiedRefetch],
+  )
+
+  const exportDids = useCallback(
+    async (
+      dids: string[],
+      opts?: { signal?: AbortSignal },
+    ): Promise<SocialGraphSyncResult> => {
+      const failAll = (message: string): SocialGraphSyncResult => ({
+        imported: 0,
+        failed: dids.length,
+        errors: dids.map((subjectDid) => ({ subjectDid, message })),
+      })
+      if (!ownDid) return failAll("Not signed in")
+      // Writing to Bluesky goes to the signed-in account's own repo via the
+      // XRPC proxy — there's no group BFF path, so refuse when acting-as-group.
+      if (targetDid && targetDid !== ownDid) {
+        return failAll("Syncing to Bluesky isn't available for group accounts")
+      }
+      if (isWriting) return { imported: 0, failed: 0, errors: [] }
+      // Refuse when the Bluesky set is truncated — `blueskyDids.has()` below
+      // would return false-negatives past the 10k cap and we'd write
+      // duplicate `app.bsky.graph.follow` records to the user's repo.
+      if (blueskyTruncated) {
+        return failAll("Your Bluesky follow list is too large to sync safely")
+      }
+      setIsWriting(true)
+      let imported = 0
+      const errors: { subjectDid: string; message: string }[] = []
+      try {
+        const seen = new Set<string>()
+        for (const subjectDid of dids) {
+          if (opts?.signal?.aborted) break
+          if (seen.has(subjectDid)) continue
+          seen.add(subjectDid)
+          // Skip anyone already followed on Bluesky — duplicate guard +
+          // covers the open-modal-then-follow race.
+          if (blueskyDids.has(subjectDid)) continue
+          try {
+            await createBlueskyFollow(ownDid, subjectDid)
+            // Optimistically add to the local Bluesky set so the stats
+            // (onlyCertified / inBoth) flip immediately, mirroring the
+            // import direction's `certifiedAddFollow`.
+            blueskyAddFollow(subjectDid)
+            imported++
+          } catch (err) {
+            errors.push({
+              subjectDid,
+              message:
+                err instanceof Error ? err.message : "Failed to create follow",
+            })
+          }
+        }
+      } finally {
+        setIsWriting(false)
+      }
+      return { imported, failed: errors.length, errors }
+    },
+    [ownDid, targetDid, isWriting, blueskyDids, blueskyTruncated, blueskyAddFollow],
+  )
+
+  return {
+    certifiedCount,
+    blueskyCount,
+    stats,
+    truncated: certifiedTruncated,
+    blueskyTruncated,
+    isLoading: certifiedLoading || blueskyLoading,
+    error: certifiedError || blueskyError,
+    refetch,
+    importDids,
+    exportDids,
+  }
+}

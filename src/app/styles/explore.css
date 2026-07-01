@@ -1,0 +1,1906 @@
+/* ---------- /explore page ----------
+   Page-frame layout lives in layout.css under the
+   `:is(:has(.home-page), :has(.explore-page))` selector — those
+   rules zero the shell padding, stretch the page to fill the
+   100vh shell, and collapse the footer margin so the sidebar/main
+   divider meets the footer flush. This file owns explore-specific
+   styling only. */
+
+.explore-page {
+  padding: 2px 8px 16px;
+}
+
+@media (min-width: 800px) {
+  .explore-page {
+    padding: 0;
+  }
+}
+
+@media (max-width: 799px) {
+  /* Clip horizontal overflow so overlong content (degree-pills,
+     monospace DIDs, etc.) can't push the page wider than the viewport. */
+  .explore-page {
+    overflow-x: clip;
+    max-width: 100vw;
+  }
+  /* Zero the shell's 16px reading gutter — the page carries its own
+     small (8px) gutter above so list rows run nearly edge-to-edge,
+     matching the /home feed treatment. Specificity (three classes via
+     :has) beats the components.css mobile gutter rule. */
+  .app-shell:has(.explore-page) .app-shell__content {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+.explore-page {
+  position: relative;
+  /* Fluid sidebar width clamped to 256–296px, matching /home's
+     .home-page var so the two surfaces line up at every viewport. */
+  --explore-sidebar-width: clamp(256px, 22vw, 296px);
+}
+
+.explore__layout {
+  display: grid;
+  grid-template-columns: var(--explore-sidebar-width) 1fr;
+  gap: 0;
+  align-items: start;
+}
+
+/* Vertical divider between the sidebar and the main pane,
+   matching GitHub's repo-list layout. Anchored on .explore-page
+   (not .explore__layout) so it spans every bit of the page
+   including the bottom padding — the divider meets the
+   .site-footer border-top flush instead of stopping where the
+   main column's last card ends. */
+.explore-page::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--explore-sidebar-width);
+  width: 1px;
+  background: var(--border-medium);
+  pointer-events: none;
+}
+
+@media (max-width: 799px) {
+  /* Phone: the explore page is the main pane only. The left filter
+     sidebar is hidden (its filters duplicate the on-page category
+     dropdown + sub-toggles), so the layout is a single full-width
+     column. The vertical sidebar divider is suppressed below. */
+  .explore__layout {
+    grid-template-columns: 1fr;
+    padding: 0;
+  }
+  .explore-page::before {
+    display: none;
+  }
+}
+
+/* ---------- Sidebar ---------- */
+
+.explore__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  /* Scrolls with the page (matches the top bar's no-sticky
+     behavior). Flush-left to the viewport, with breathing room at
+     the top + right so the active filter pill doesn't touch the
+     vertical divider. Top padding shared with /home and /settings
+     so first-line-of-text sits at the same vertical position on
+     every page-frame route. */
+  padding: 32px 12px 32px 12px;
+}
+
+/* Phone: hide the left filter sidebar entirely so the explore page is
+   the main pane only (its filters duplicate the on-page category
+   dropdown + sub-toggles). This override sits AFTER the base rule above
+   so it wins on equal specificity — a @media block adds no specificity,
+   so an earlier-placed override would lose to the base `display: flex`. */
+@media (max-width: 799px) {
+  .explore__sidebar {
+    display: none;
+  }
+}
+
+/* Filter list rows need their own right padding now that the
+   sidebar wrapper doesn't reserve any. */
+.explore__filter-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* Section heading above the Featured group. Same font size as
+   the filter pills below so the two read at the same visual
+   weight; the muted color + medium weight still carries the
+   label/target hierarchy. */
+.explore__filter-heading {
+  margin: 0;
+  padding: 0 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+}
+
+/* Thin horizontal divider between the Featured group and the
+   generic filter list. Uses the standard subtle border token. */
+.explore__filter-divider {
+  margin: 12px 10px;
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Featured-group pills sit indented from the section heading so
+   they read as nested children of it. The indent is applied to
+   the surrounding list (not the inner pill padding) so the pill's
+   hover + active background also shifts right by the same amount —
+   the highlight ends up tabbed in, matching the text. */
+.explore__filter-list--indented {
+  padding-left: 18px;
+}
+
+.explore__filter {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--fg-primary);
+  cursor: pointer;
+}
+
+.explore__filter:hover {
+  background: var(--bg-sunken);
+}
+
+.explore__filter--active,
+.explore__filter--active:hover {
+  /* The hover style on the generic filter dimmed the background
+     to bg-sunken while the active style inverts the text — producing
+     unreadable text mid-hover. Keep the fg-primary fill on hover when
+     the filter is already active. Text is --bg-canvas (not a fixed
+     white) so it inverts with the fg-primary fill: light in light mode,
+     dark in dark mode. A fixed white was white-on-white in dark mode,
+     where --fg-primary is itself near-white. */
+  background: var(--fg-primary);
+  color: var(--bg-canvas);
+}
+
+/* ---------- Main pane ---------- */
+
+.explore__main {
+  min-width: 0;
+  /* Center the content in the space right of the sidebar. The grid
+     cell takes the full remaining width; the inner content is
+     bounded + auto-margined so it sits in the middle of the cell.
+     Vertical padding gives the body air; the surrounding panes
+     (.app-shell__content, .explore-page) carry no padding so the
+     page-frame borders meet the navbar + footer borders flush. */
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px 24px 32px;
+}
+
+/* ---------- Sub-category dropdown prefix to the search bar ---------- */
+
+.explore__sub-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  /* 32px tall: matches the icon-only chrome buttons so the whole
+     chrome row sits at the same height. Vertical centering is
+     handled by align-items; horizontal padding is unaffected. */
+  height: 32px;
+  padding: 0 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.explore__sub-dropdown-trigger:hover {
+  background: var(--bg-sunken);
+  border-color: var(--fg-secondary);
+}
+
+.explore__sub-dropdown-label {
+  color: var(--fg-primary);
+}
+
+
+@media (max-width: 799px) {
+  /* Full-width single pane on phones — horizontal gutters come from
+     .explore-page's 16px padding, so the main pane drops its own
+     side padding and keeps a little top air above the chrome row. */
+  .explore__main {
+    max-width: none;
+    padding: 8px 0 8px;
+  }
+}
+
+.explore__chrome {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+/* Search field grows to fill the chrome row. The field chrome (border,
+   fill, focus ring, leading search glyph) now comes from the canonical
+   <Input leadingIcon> primitive; this wrapper only carries the flex
+   sizing the bespoke <label> used to own. */
+.explore__search-field {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* On desktop, constrain the search input to 32px — the same height as
+   the icon-only chrome buttons — so the whole chrome row sits level.
+   The Input primitive uses h-9 (36px) for size="sm"; we shave it down
+   here to keep the explore chrome compact without touching the primitive. */
+@media (min-width: 800px) {
+  .explore__search-field input {
+    height: 32px;
+  }
+}
+
+.explore__chrome-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.explore__chrome-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  font-size: 0.85rem;
+  color: var(--fg-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.explore__chrome-btn:hover {
+  background: var(--bg-sunken);
+}
+
+/* Icon-only chrome variant — square 32×32 on desktop, drops the
+   horizontal padding the label-bearing buttons need. */
+.explore__chrome-btn--icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  justify-content: center;
+}
+
+/* Active state (non-default selection) — same fill-on-accent
+   pattern other "currently applied" filter buttons use. */
+.explore__chrome-btn--active {
+  border-color: var(--fg-primary);
+  background: var(--bg-sunken);
+}
+
+/* Mobile-first chrome: search takes a full-width row of its own (the
+   primary action on a phone), and the type dropdown + view/sort/filter
+   controls sit together on a comfortable second row. Every control meets
+   the 44px tap target. */
+@media (max-width: 799px) {
+  .explore__chrome {
+    gap: 10px;
+  }
+  /* Search first, full width. */
+  .explore__search-field {
+    order: -1;
+    flex: 1 0 100%;
+    min-width: 0;
+  }
+  /* Second row: dropdown on the left, action cluster pushed to the right.
+     Stretch the cluster to the row height so its icon buttons can match
+     the category pills (which set the line height). `flex-shrink: 0`
+     keeps the filter button from being squeezed off the right edge when
+     the category pills get wide (they scroll instead — see below). */
+  .explore__chrome-actions {
+    margin-left: auto;
+    gap: 8px;
+    align-self: stretch;
+    flex-shrink: 0;
+  }
+  .explore__chrome-btn {
+    min-height: 44px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  /* Mobile icon buttons (sort + filter): a deterministic square.
+     A fixed width/height (rather than aspect-ratio + align-self:stretch,
+     whose height-derived width under-sized the flex cluster and pushed
+     the filter button off the right edge) keeps the action cluster a
+     predictable size so `margin-left: auto` pins it flush to the right.
+     The 36px visual box is kept; the touch target is extended to 44px via
+     an out-of-flow pseudo-element below (so the cluster width is unchanged). */
+  .explore__chrome-btn--icon {
+    width: 36px;
+    height: 36px;
+    min-height: 0;
+    padding: 0;
+    align-self: center;
+    aspect-ratio: auto;
+    flex-shrink: 0;
+    position: relative;
+  }
+  /* Invisible >=44px touch target (WCAG 2.5.8) centered over the 36px box.
+     Absolutely positioned, so it extends the tappable area without growing
+     the flex cluster; clicks on it still dispatch to the button. The 8px
+     inter-button gap means adjacent targets meet but don't overlap. */
+  .explore__chrome-btn--icon::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+  /* The type dropdown trigger matches the 44px control height too. */
+  .explore__sub-dropdown-trigger {
+    min-height: 44px;
+  }
+}
+
+/* Category dropdown wrapper — transparent on desktop, hidden on mobile
+   (replaced by the pill strip below). */
+.explore__category-dropdown {
+  display: contents;
+}
+
+@media (max-width: 799px) {
+  .explore__category-dropdown {
+    display: none;
+  }
+}
+
+/* Mobile-only category pills — Activities / Projects / Accounts.
+   Sits inside the chrome row between the search field and the filter
+   button. Hidden on desktop (dropdown takes its place). */
+.explore__category-pills {
+  display: none;
+}
+
+@media (max-width: 799px) {
+  .explore__category-pills {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    /* Take only the width the pills need (don't grow) so the action
+       cluster keeps its full width and `margin-left: auto` can pin it to
+       the right edge — `flex: 1` here grew the pills and pushed the
+       filter button off-screen. Shrink + wrap handle the rare case where
+       the pills can't fit beside the actions. No `overflow` clip: the
+       category dropdown popover is a child and must escape the box. */
+    flex: 0 1 auto;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .explore__category-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    border: 1px solid var(--border-default);
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--fg-primary);
+    cursor: pointer;
+    white-space: nowrap;
+    min-height: 30px;
+  }
+
+  .explore__category-pill--active {
+    background: var(--fg-primary);
+    color: var(--bg-canvas);
+    border-color: var(--fg-primary);
+  }
+
+  .explore__category-pills-sep {
+    display: block;
+    width: 1px;
+    height: 18px;
+    background: var(--border-default);
+    flex-shrink: 0;
+    align-self: center;
+  }
+
+}
+
+.explore__loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+/* Load-more sentinel — sits below the result list, auto-triggers
+   the next page when scrolled into view, and renders an explicit
+   button as the keyboard fallback / end-of-list affordance. */
+.explore__load-more {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.explore__load-more-btn {
+  padding: 8px 18px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.explore__load-more-btn:hover:not(:disabled) {
+  background: var(--bg-sunken);
+}
+
+.explore__load-more-btn:disabled {
+  color: var(--fg-secondary);
+  cursor: progress;
+}
+
+/* ---------- Popover content (quality filter) ----------
+   The popover container, overlay, and menu chrome now come from the
+   canonical <Popover> primitive (src/components/ui/popover.tsx). These
+   classes style only the *content* the quality filter renders inside
+   <PopoverContent>: the tier checkboxes, section headings, divider,
+   and reset button. */
+
+.popover__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  background: none;
+  border: 0;
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--fg-primary);
+  cursor: pointer;
+}
+
+.popover__item:hover {
+  background: var(--bg-sunken);
+}
+
+/* Row wrapper for a quality-filter <Checkbox>. The box + label chrome
+   come from the canonical <Checkbox> primitive; this only supplies the
+   menu-row padding (inherited from .popover__item) and full-row hover. */
+.popover__item--check {
+  cursor: pointer;
+}
+
+/* Sub-section heading inside a popover — used by the certs-tab
+   Quality popover to separate the Hyperlabel + Orglabeler tier
+   blocks. Same font size as the items, muted color, medium weight
+   so it reads as a label. */
+.popover__section-heading {
+  margin: 4px 0 2px;
+  padding: 0 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+}
+
+/* Thin rule between popover sections. Inset from the menu edges so
+   it doesn't visually merge with the menu border. */
+.popover__divider {
+  margin: 6px 8px;
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* "Reset to default" link at the bottom of each popover. Sits just
+   under the menu's last divider; rendered as a quiet text button
+   (no border / no fill) so it doesn't compete with the active
+   selection above. Disabled state when already at default keeps it
+   visible but reads as inert. */
+.popover__reset-btn {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  text-align: left;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.popover__reset-btn:hover:not(:disabled) {
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
+.popover__reset-btn:disabled {
+  color: var(--fg-muted);
+  cursor: default;
+}
+
+/* Inline reset on the endorsement-degree pill row (the degree
+   control lives in the chrome strip, not a popover, so its reset
+   sits adjacent to the pills rather than below them). */
+.explore__degree-reset {
+  margin-left: 4px;
+  padding: 4px 10px;
+  background: none;
+  border: 0;
+  border-radius: var(--radius);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.explore__degree-reset:hover {
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
+/* ---------- Combined "All" view (search across kinds) ---------- */
+
+.explore__all {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.explore__all-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.explore__all-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.explore__all-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-secondary);
+}
+
+/* "Show all" action in the section header — sits on the same line as
+   the section title (pushed right by the head's space-between). Matches
+   the project detail page's "See all →" link: small, muted, underline
+   on hover. Collapses the All view to that single category. */
+.explore__all-section-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.explore__all-section-action:hover {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* All view, single-category mode: the row that hosts the inline
+   sub-option pills and/or the endorsement-degree pills, in place of the
+   chrome's sub-dropdown + the standalone degree bar. Low vertical
+   footprint so it doesn't read as a tall band under the chrome. */
+.explore__inline-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* On mobile the pill strip already handles sub-filtering, so the
+   inline-controls row (SegmentedControl + degree bar) is hidden to
+   avoid duplicate UI and prevent overflow. */
+@media (max-width: 799px) {
+  .explore__inline-controls {
+    display: none;
+  }
+}
+
+/* Light vertical rule between the sub-option pills and the degree pills
+   when both are shown. */
+.explore__inline-divider {
+  width: 1px;
+  align-self: stretch;
+  min-height: 20px;
+  background: var(--border-medium);
+}
+
+/* Inline variant of the degree bar — drops the standalone bar's block
+   padding/margin so the pills sit flush in the inline-controls row.
+   Doubled class so it beats the base `.explore__degree-bar` rule, which
+   is declared later in this file. */
+.explore__degree-bar.explore__degree-bar--inline {
+  padding: 0;
+  margin: 0;
+}
+
+.explore__all-empty {
+  margin: 0;
+  padding: 14px;
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+}
+
+.explore__all-loading {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+}
+
+/* ---------- List view (certs + projects) ---------- */
+
+.explore__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.explore__list > li + li .cert-list-row {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.cert-list-row {
+  /* Four columns: link block (thumb + title/meta), author column,
+     and time. The link block shrinks; the author column has a
+     fixed minimum so author bylines stack vertically across rows. */
+  display: grid;
+  grid-template-columns: 1fr 200px 84px;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 14px;
+  transition: background var(--transition-fast);
+}
+
+.cert-list-row:hover {
+  /* --bg-subtle doesn't exist in the token set; fell through to
+     no background. Use --bg-sunken for a clearly-visible hover
+     wash that highlights the whole row, not just the title link. */
+  background: var(--bg-sunken);
+}
+
+/* Compact variant (image + title/meta only, no author/date columns).
+   Compound selector so it beats both the base and the mobile
+   `.cert-list-row` grid rules regardless of source order. */
+.cert-list-row.cert-list-row--compact {
+  grid-template-columns: 1fr;
+  grid-template-areas: none;
+}
+.cert-list-row.cert-list-row--compact .cert-list-row__link {
+  grid-area: auto;
+}
+
+.cert-list-row__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.cert-list-row__thumb {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-sunken);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-secondary);
+}
+
+.cert-list-row__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cert-list-row__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.cert-list-row__title {
+  margin: 0;
+  /* Standard text, bold (primary line). */
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* "by Display Name" line under a project row's title. Hidden on
+   desktop (the avatar author column carries the byline there); shown on
+   mobile, where the column is dropped (see the mobile block below). */
+.cert-list-row__subtitle {
+  display: none;
+  margin: 0;
+  /* Second-row text — smaller. */
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cert-list-row__meta {
+  margin: 0;
+  /* Single line: time period · work scope, truncated with an ellipsis
+     when the work scope doesn't fit (no wrapping to a second line). */
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cert-list-row__meta-item {
+  display: inline;
+}
+
+.cert-list-row__meta-sep {
+  margin: 0 5px;
+  color: var(--fg-muted);
+}
+
+.cert-list-row__meta-icon {
+  color: var(--fg-secondary);
+}
+
+/* Reserved fixed-width column for the author, left-aligned so
+   author bylines stack vertically across rows (instead of right-
+   floating into a ragged column). */
+.cert-list-row__author-col {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+  font-size: 0.8rem;
+}
+
+/* In list rows the author byline is a centered grid cell — drop the
+   card-view bottom margin so it sits vertically centered. */
+.cert-list-row__author-col .feed-card__author {
+  margin-bottom: 0;
+}
+
+.cert-list-row__time {
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Phone: list rows pick up the /home feed-card treatment — the boxed
+   list flattens to hairline-divided full-width cards, the author
+   byline moves on top with the relative time pinned right, and titles
+   speak in the serif headline voice. */
+@media (max-width: 799px) {
+  .explore__list {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    overflow: visible;
+  }
+
+  .explore__list > li + li .cert-list-row,
+  .explore__list > li + li .account-list-row {
+    border-top: 1px solid var(--border-default);
+  }
+
+  .cert-list-row {
+    padding: 16px 0;
+  }
+
+  .cert-list-row:hover {
+    background: transparent;
+  }
+
+  .cert-list-row__body {
+    gap: 4px;
+  }
+
+  .cert-list-row__title {
+    /* Standard Inter text everywhere (no serif headline bump) — bold as
+       the primary line. */
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .cert-list-row__meta {
+    color: var(--fg-muted);
+  }
+
+  /* Activities (compact): thumb + serif title + meta in one row — the
+     same treatment the mobile project-detail activities list uses. */
+  .cert-list-row.cert-list-row--compact .cert-list-row__link {
+    align-items: flex-start;
+  }
+
+  /* Let the activity meta (time period · work scope) wrap on mobile so
+     the work scope stays visible instead of being clipped by the
+     single-line ellipsis. The dot separator is hidden at wrap points by
+     ExploreListRow's line-start measurement. */
+  .cert-list-row.cert-list-row--compact .cert-list-row__meta {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  /* Projects (non-compact): [thumb + title / "by …"] on the left, the
+     date pinned to the right of the same row. Author avatar column and
+     the count·location meta line are dropped on mobile. */
+  .cert-list-row:not(.cert-list-row--compact) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "link time";
+    align-items: center;
+    gap: 12px;
+  }
+
+  .cert-list-row:not(.cert-list-row--compact) .cert-list-row__link {
+    grid-area: link;
+    align-items: center;
+  }
+
+  .cert-list-row:not(.cert-list-row--compact) .cert-list-row__time {
+    grid-area: time;
+    color: var(--fg-muted);
+  }
+
+  .cert-list-row:not(.cert-list-row--compact) .cert-list-row__author-col,
+  .cert-list-row:not(.cert-list-row--compact) .cert-list-row__meta {
+    display: none;
+  }
+
+  .cert-list-row:not(.cert-list-row--compact) .cert-list-row__subtitle {
+    display: block;
+  }
+}
+
+/* ---------- Result grids ---------- */
+
+.explore__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.explore__grid--users {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.explore__grid--projects {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.explore__grid--certs {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+/* Phone: single-column galleries so the 240–260px card minimums never
+   overflow a narrow viewport. minmax(0, 1fr) lets the track shrink to 0
+   so wide card content is clipped rather than pushing the grid wider.
+   The list rows already collapse to a single column via their own rules. */
+@media (max-width: 799px) {
+  .explore__grid--users,
+  .explore__grid--projects,
+  .explore__grid--certs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* On phones, drop the whole image *placeholder* box for
+     projects/activities that have no real image — including the grey
+     aspect-ratio wrapper that reserves the space, not just the icon.
+     Scoped to the explore grids so the shared activity card keeps its
+     placeholder on the home feed. Cards with a real image are untouched. */
+  .explore__grid--projects
+    .explore-project-card__image-wrap:has(.explore-project-card__image--placeholder),
+  .explore__grid--certs .feed-card__image-wrap--placeholder {
+    display: none;
+  }
+}
+
+/* ---------- Account gallery card ---------- */
+
+/* Vertical card: identity row (avatar + name + @handle) on top, then
+   the description block. Reads as one structured entity rather than
+   "avatar + line of text" — distinct from the cert/project cards. */
+.explore-user-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--transition-fast), background var(--transition-fast),
+    box-shadow var(--transition-fast);
+  min-width: 0;
+}
+
+.explore-user-card:hover {
+  border-color: var(--fg-secondary);
+  background: var(--bg-sunken);
+  /* Subtle lift on hover — distinguishes the account cards from the
+     flat cert/project cards so the kind switch is visually felt. */
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--fg-primary) 6%, transparent);
+}
+
+.explore-user-card__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.explore-user-card__avatar {
+  flex-shrink: 0;
+}
+
+.explore-user-card__id {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.explore-user-card__name {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.explore-user-card__handle {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.explore-user-card__handle--did {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  color: var(--fg-muted);
+}
+
+.explore-user-card__desc {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--fg-secondary);
+  line-height: 1.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+/* ---------- Account list row ---------- */
+
+/* Three tracks: identity block (avatar + name + @handle stacked),
+   optional endorsement badge, and a right-anchored "Joined …" date.
+   The middle and right tracks use `auto` so they collapse when the
+   data is missing — endorsement-filter mode adds the badge; older
+   profiles without a recorded createdAt drop the date silently. */
+.account-list-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px;
+  transition: background var(--transition-fast);
+}
+
+.explore__list > li + li .account-list-row {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.account-list-row:hover {
+  background: var(--bg-sunken);
+}
+
+.account-list-row__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.account-list-row__avatar {
+  flex-shrink: 0;
+}
+
+.account-list-row__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.account-list-row__name {
+  /* Standard text, bold (primary line). */
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.account-list-row__handle {
+  /* Second-row text — smaller. */
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+
+.account-list-row__handle--did {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  color: var(--fg-muted);
+}
+
+.account-list-row__badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.account-list-row__joined {
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+@media (max-width: 799px) {
+  /* Account rows share the flattened feed treatment: full-width rows
+     between hairline dividers (set in the cert-list-row mobile block),
+     no boxed hover wash. */
+  .account-list-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    padding: 14px 0;
+  }
+  .account-list-row:hover {
+    background: transparent;
+  }
+  .account-list-row__badge {
+    justify-self: start;
+  }
+  /* "Joined …" date is dropped on mobile — the row is just the
+     identity (avatar + name + @handle). */
+  .account-list-row__joined {
+    display: none;
+  }
+}
+
+/* ---------- Funding receipt row ---------- */
+
+.funding-receipt-row {
+  display: grid;
+  /* Base grid for the activity-detail Funding list (showFor=false):
+     date | from | to | amount | confirmed-by. (The /explore list adds a
+     flexible "for" column via subgrid below.) `confirmed-by` holds the
+     plain-text provenance summary (flexes, truncates). */
+  grid-template-columns:
+    7rem minmax(0, 1fr) minmax(0, 1fr) 7rem minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px;
+  transition: background var(--transition-fast);
+}
+
+.explore__list > li + li .funding-receipt-row {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.funding-receipt-row:hover {
+  background: var(--bg-sunken);
+}
+
+/* Clickable rows open the detail modal. Signal it with a pointer cursor;
+   the existing hover background already reads as "interactive". Inner
+   links / buttons keep their own cursor + behaviour. */
+.funding-receipt-row--interactive {
+  cursor: pointer;
+}
+
+.funding-receipt-row--interactive:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* Column-header row: small uppercase labels (matching the app's other
+   section labels), no hover. */
+.funding-receipt-row--header:hover {
+  background: transparent;
+}
+
+.funding-receipt-row__heading {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+}
+
+.funding-receipt-row__heading--amount {
+  text-align: right;
+}
+
+/* Trailing column: amount + currency. Standard body text, like the
+   date / to / for fields. */
+.funding-receipt-row__amount {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Trailing column — flush right. */
+  text-align: right;
+}
+
+.funding-receipt-row__currency {
+  margin-left: 4px;
+  font-weight: 400;
+  color: var(--fg-primary);
+}
+
+/* From / to columns. min-width:0 lets the cell shrink with its grid track;
+   overflow:hidden is what actually clips an over-long party — a resolved ENS
+   name (rendered with an avatar via WalletAddress) doesn't always shrink to
+   ellipsis from min-width:0 alone, so without this it bled into the next
+   column. The label still ellipsises within; this just guarantees the cell
+   never overflows. */
+.funding-receipt-row__from,
+.funding-receipt-row__to-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* The copyable-address button's focus ring is offset 2px OUTSIDE its box, so
+   the cell's overflow:hidden would clip it — inset it within funding rows so
+   keyboard focus stays fully visible. */
+.funding-receipt-row__from .wallet-address:focus-visible,
+.funding-receipt-row__to-cell .wallet-address:focus-visible {
+  outline-offset: -2px;
+}
+
+.funding-receipt-row__party {
+  min-width: 0;
+}
+
+.funding-receipt-row__word {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--fg-secondary);
+  flex-shrink: 0;
+}
+
+/* The text party is now the WalletAddress primitive (ENS / copyable
+   address); it owns truncation + numeric figures. Only the row's font
+   size needs pinning here — it inherits down to the address label. */
+.funding-receipt-row__text-party {
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.funding-receipt-row__for {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.funding-receipt-row__activity {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  text-decoration: none;
+  color: var(--fg-primary);
+}
+
+/* Square activity thumbnail. */
+.funding-receipt-row__activity-img {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-sunken);
+  display: block;
+}
+
+.funding-receipt-row__activity-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Activity title — standard body text, wraps to at most two lines. */
+.funding-receipt-row__activity-title {
+  min-width: 0;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--fg-primary);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.funding-receipt-row__activity:hover .funding-receipt-row__activity-title {
+  text-decoration: underline;
+}
+
+.funding-receipt-row__date {
+  /* Dates are secondary metadata — smaller + muted, like the date on the
+     cert / account rows. */
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--fg-secondary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* "Confirmed by" filter popover — attestor row (avatar + name). */
+.funding-confirmer-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.funding-confirmer-item__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Provenance "Confirmed by" column — who attested the payment. Sender /
+   Recipient roles read as plain text; a third party renders as a normal
+   account identity (avatar + name + "Third party" subtitle). Stacks when
+   both are present. Right-aligned on the desktop table (it's the trailing
+   column); the mobile stacked layout keeps it left-aligned. */
+.funding-receipt-row__confirmed-by {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* Per-field labels (From / To / For / Confirmed by) only exist for the
+   mobile card layout — the desktop table is labelled by the shared header
+   row, so they're hidden here. */
+.funding-receipt-row__cell-label {
+  display: none;
+}
+
+/* Wrapper around the "Confirmed by" value (role label + third-party
+   identities). On desktop it's transparent (`display:contents`) so the
+   children flow into the parent's right-aligned column exactly as before;
+   the mobile card turns it into its own stacked value column. */
+.funding-receipt-row__confirmed-value {
+  display: contents;
+}
+
+@media (min-width: 800px) {
+  /* Right-align the column by positioning each child at the flex-end (the
+     plain Sender / Recipient label and the third-party identity block).
+     No `text-align: right` here — it would cascade into IdentityRow and
+     push the display name off the avatar within its handle-width column. */
+  .funding-receipt-row__confirmed-by {
+    align-items: flex-end;
+  }
+  /* Cap the role label + third-party identity rows at the column width.
+     Without this the `align-items: flex-end` children size to their own
+     content (a full name + @handle) and overflow leftward into the amount
+     / To columns — visible on the activity detail page, whose list uses
+     the plain `minmax(0, 1fr)` track rather than /explore's subgrid. The
+     wrapper is `display: contents`, so the cap has to land on the actual
+     children; combined with IdentityRow's internal `min-w-0` + truncate
+     they ellipsize instead of spilling. */
+  .funding-receipt-row__confirmed-value > * {
+    max-width: 100%;
+  }
+  /* Right-align the role label's wrapped lines (safe: it's plain text, not
+     an IdentityRow, so this doesn't disturb avatar/name alignment). */
+  .funding-receipt-row__confirmed-label {
+    text-align: right;
+  }
+  .funding-receipt-row__heading--confirmed {
+    text-align: right;
+  }
+}
+
+/* The Sender / Recipient text label (not a chip). Allowed to wrap to two
+   lines so "Sender & Recipient" isn't truncated to "Sender & Reci…" in the
+   narrow column; clamps (with an ellipsis) past two lines. */
+.funding-receipt-row__confirmed-label {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--fg-secondary);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+/* Explore funding list → a true table. The <ul> owns the column tracks
+   (content-sized amount / from / date, flexible to) and each row adopts
+   them via `subgrid`, so the four columns line up tightly across every
+   item — not just aligned but content-fitted, the way the other list
+   surfaces read. The row keeps its own box, so the hairline divider and
+   hover wash still work. Desktop only; phones use the stacked layout
+   below. */
+@media (min-width: 800px) {
+  .explore__list--funding {
+    display: grid;
+    /* date | from | to | for | amount | confirmed-by. Date + amount are
+       content-sized; from / to / for / confirmed-by all flex equally
+       (minmax(0,1fr)) so the columns share the row evenly and truncate
+       long names rather than sizing every row to the widest one (which
+       left big ragged gaps after short wallet-address parties). */
+    grid-template-columns:
+      max-content minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) max-content
+      minmax(0, 1fr);
+  }
+  .explore__list--funding > li {
+    display: contents;
+  }
+  .explore__list--funding .funding-receipt-row {
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    padding: 12px 0;
+    column-gap: 16px;
+  }
+  /* Edge inset: keep content off the list border while letting the row
+     background (hover) and the divider span the full width. */
+  .explore__list--funding .funding-receipt-row > :first-child {
+    padding-left: 14px;
+  }
+  .explore__list--funding .funding-receipt-row > :last-child {
+    padding-right: 14px;
+  }
+}
+
+@media (max-width: 799px) {
+  /* Phones: the dense desktop table has too many columns to read on a
+     narrow screen, so each receipt becomes a self-labelling card. The
+     shared column-header row is redundant (cards label their own fields)
+     and is hidden. */
+  .funding-receipt-row--header {
+    display: none;
+  }
+
+  /* The /explore funding list drops its own bordered-card container on
+     mobile (it would double-up with the per-receipt cards); both the
+     /explore and activity-detail lists become a simple gapped stack. */
+  .explore__list--funding {
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    overflow: visible;
+  }
+  .explore__list--funding,
+  .cert-detail__funding-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .funding-receipt-row {
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    background: var(--bg-elevated);
+  }
+  /* The list now spaces cards via its own gap; drop the desktop inter-row
+     hairline (it would draw a line through the card border). */
+  .explore__list > li + li .funding-receipt-row,
+  .cert-detail__funding-list > li + li .funding-receipt-row {
+    border-top: none;
+  }
+  /* No hover wash on touch; a brief press state confirms the tap target. */
+  .funding-receipt-row:hover {
+    background: var(--bg-elevated);
+  }
+  .funding-receipt-row--interactive:active {
+    background: var(--bg-sunken);
+  }
+
+  /* Header line of the card: date (left, muted) + amount (right,
+     emphasised — it's the punchline on a phone). */
+  .funding-receipt-row__date {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    font-size: 0.8125rem;
+  }
+  .funding-receipt-row__amount {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    align-self: center;
+  }
+
+  /* Body of the card: From / To / For / Confirmed by, each a full-width
+     row with a fixed-width label column so every value lines up. */
+  .funding-receipt-row__from,
+  .funding-receipt-row__to-cell,
+  .funding-receipt-row__for,
+  .funding-receipt-row__confirmed-by {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
+  }
+  .funding-receipt-row__cell-label {
+    display: block;
+    flex: 0 0 4.5rem;
+    padding-top: 2px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg-muted);
+  }
+  /* The value side fills the remaining width and truncates internally. */
+  .funding-receipt-row__party,
+  .funding-receipt-row__text-party,
+  .funding-receipt-row__activity {
+    min-width: 0;
+  }
+  /* "Confirmed by" value becomes its own stacked column (role label above
+     any third-party identities) beside the label. */
+  .funding-receipt-row__confirmed-value {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+  .funding-receipt-row__confirmed-label {
+    white-space: normal;
+  }
+}
+
+/* ---------- Project card ---------- */
+
+.explore-project-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.explore-project-card:hover {
+  border-color: var(--fg-secondary);
+  background: var(--bg-sunken);
+}
+
+.explore-project-card__image-wrap {
+  /* 3:1 to match the project page's banner aspect — the thumbnail
+     shows the same image after the same crop, so the explore card
+     never previews a region that gets cut on the detail page. */
+  aspect-ratio: 3 / 1;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-sunken);
+}
+
+.explore-project-card__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.explore-project-card__image--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-secondary);
+}
+
+.explore-project-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.explore-project-card__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.explore-project-card__desc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.explore-project-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+}
+
+.explore-project-card__count {
+  font-weight: 500;
+}
+
+.explore-project-card__when {
+  margin-left: auto;
+}
+
+/* -----------------------------------------------------------------
+ * Endorsement-degree segmented control (certified-app #84 +
+ * magic-indexer #117). Renders above the explore result list when
+ * the active filter is endorsement-based.
+ * --------------------------------------------------------------- */
+
+.explore__degree-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 0 6px;
+  margin-bottom: 12px;
+}
+
+.explore__degree-pills {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.explore__degree-truncated {
+  font-size: 12px;
+  color: var(--fg-muted);
+  margin: 0;
+  font-style: italic;
+}
+
+/* -----------------------------------------------------------------
+ * Row-level endorsement decoration (certified-app #84). Static degree
+ * pill — "1st" / "2nd" / "3rd" — rendered inline next to the row's
+ * primary text (display name on Project/Cert rows, handle on Account
+ * rows). No interactivity.
+ * --------------------------------------------------------------- */
+
+.endorsement-row-badge__degree {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+
+/* Color tiers — densest for direct endorsements, lighter for the
+ * wider rings. Keeps the visual hierarchy obvious at a glance. */
+.endorsement-row-badge__degree--d1 {
+  background: var(--fg-primary);
+  color: var(--bg-canvas);
+  border-color: var(--fg-primary);
+}
+.endorsement-row-badge__degree--d2 {
+  background: var(--bg-raised);
+  color: var(--fg-primary);
+  border-color: var(--border-default);
+}
+.endorsement-row-badge__degree--d3 {
+  background: var(--bg-sunken);
+  color: var(--fg-secondary);
+  border-color: var(--border-subtle);
+}
+
+.endorsement-row-badge__sep {
+  color: var(--fg-muted);
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* ========== Funding receipt detail modal ========== */
+/* Receipt details are split into three collapsible groups (Transfer /
+   Payment / Record), each its own section + definition list. Only the
+   first is expanded on open. */
+.funding-receipt-detail__section + .funding-receipt-detail__section {
+  margin-top: 2px;
+}
+
+/* Group heading wraps the disclosure button. Reset the heading's own box
+   so the button owns all the spacing. */
+.funding-receipt-detail__section-heading {
+  margin: 0;
+}
+
+/* Disclosure button: a real heading-weight title with a rotating chevron,
+   underlined full-width so each group reads as a labelled, clickable
+   section header (not a per-row label). */
+.funding-receipt-detail__section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--border-default);
+  background: none;
+  text-align: left;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  cursor: pointer;
+  border-radius: var(--radius) var(--radius) 0 0;
+  transition: background var(--transition-fast);
+}
+
+.funding-receipt-detail__section-toggle:hover {
+  background: var(--bg-sunken);
+}
+
+.funding-receipt-detail__section-toggle:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.funding-receipt-detail__chevron {
+  flex-shrink: 0;
+  color: var(--fg-muted);
+  transition: transform var(--transition-fast);
+}
+
+/* Points right when collapsed; rotates down when the section is open. */
+.funding-receipt-detail__chevron[data-open] {
+  transform: rotate(90deg);
+}
+
+/* Label / value definition list shown by FundingReceiptDetailModal. */
+.funding-receipt-detail__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.funding-receipt-detail__row {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.funding-receipt-detail__row + .funding-receipt-detail__row {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.funding-receipt-detail__label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  /* Nudge the label down so its cap-height sits on the value's first line. */
+  padding-top: 3px;
+}
+
+.funding-receipt-detail__value {
+  margin: 0;
+  min-width: 0;
+  font-size: 0.85rem;
+  color: var(--fg-primary);
+}
+
+.funding-receipt-detail__amount {
+  font-variant-numeric: tabular-nums;
+}
+
+.funding-receipt-detail__currency {
+  margin-left: 4px;
+  color: var(--fg-muted);
+}
+
+.funding-receipt-detail__empty {
+  color: var(--fg-muted);
+}
+
+/* Free-text note: wrap naturally, and break overlong tokens (e.g. a
+   wallet address pasted into the note) rather than overflowing the cell. */
+.funding-receipt-detail__note {
+  overflow-wrap: anywhere;
+}
+
+.funding-receipt-detail__copyable {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.funding-receipt-detail__mono {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+}
+
+.funding-receipt-detail__copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.funding-receipt-detail__copy-btn:hover {
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
+.funding-receipt-detail__copy-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}

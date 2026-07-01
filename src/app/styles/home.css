@@ -1,0 +1,743 @@
+/* ---------- /home page ----------
+   Page-frame layout lives in layout.css under the
+   `:is(:has(.home-page), :has(.explore-page))` selector — those
+   rules zero the shell padding and stretch the page to fill the
+   100vh shell so the sidebar/main divider reaches the footer.
+   This file owns home-specific styling only. */
+
+.home-page {
+  padding: 24px 16px 64px;
+  position: relative;
+}
+
+@media (min-width: 800px) {
+  .home-page {
+    padding: 0;
+  }
+}
+
+/* Left pane width: fluid between 256px (min) and 296px (max),
+   scaling with viewport via clamp(). Same expression on /home and
+   /explore so the two surfaces feel consistent. Below 760px the
+   layout collapses to a single column (the var is unused there).
+   Variable lives on `.home-page` (not `.home__layout`) so the
+   page-frame `::before` divider can read it too — custom properties
+   only cascade DOWN, and the divider is on the parent. */
+.home-page {
+  --home-sidebar-width: clamp(256px, 22vw, 296px);
+}
+
+.home__layout {
+  display: grid;
+  grid-template-columns: var(--home-sidebar-width) 1fr;
+  gap: 0;
+  align-items: start;
+}
+
+/* Vertical divider between the sidebar and the main pane —
+   matches /explore + /settings. Anchored on .home-page so it runs
+   from the page top to the footer border flush. */
+.home-page::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--home-sidebar-width);
+  width: 1px;
+  background: var(--border-medium);
+  pointer-events: none;
+}
+
+@media (max-width: 799px) {
+  .home-page {
+    /* Mobile is the feed only — kill the page's outer side padding so
+       the feed governs its own gutters via .home__main below. */
+    padding: 0;
+  }
+  .home-page::before {
+    display: none;
+  }
+  .home__layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Sidebar ---------- */
+
+.home__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  /* Extra breathing room on the left so the sidebar doesn't hug the
+     viewport edge — matches the inset the main pane reserves on the
+     right side of the page-frame divider. Top padding is shared
+     with /explore and /settings so the first line of text sits at
+     the same vertical position on every page-frame route. */
+  padding: 32px 16px 32px 28px;
+  min-width: 0;
+}
+
+@media (max-width: 799px) {
+  /* Mobile shows ONLY the feed. The sidebar is rendered unconditionally
+     in home.tsx; hide it here so the page collapses to a single
+     full-width feed column. The right news rail is already hidden below
+     1100px. This override sits AFTER the base `.home__sidebar` rule so
+     it wins on equal specificity (a @media block adds none). */
+  .home__sidebar {
+    display: none;
+    padding: 16px 12px 24px;
+  }
+}
+
+.home-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.home-section__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px 4px;
+  color: var(--fg-secondary);
+}
+
+.home-section__title-link {
+  text-decoration: none;
+  color: inherit;
+  border-radius: var(--radius);
+  padding: 2px 6px;
+  margin: -2px -6px;
+  transition: background var(--transition-fast);
+}
+
+.home-section__title-link:hover {
+  background: var(--bg-sunken);
+  text-decoration: none;
+}
+
+.home-section__title-link:hover .home-section__title {
+  color: var(--fg-primary);
+}
+
+.home-section__title {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-secondary);
+  transition: color var(--transition-fast);
+}
+
+/* Positioning only — colour / weight / tabular-nums come from the
+   <Badge variant="count-bare"> primitive this class is applied to. */
+.home-section__count {
+  margin-left: auto;
+}
+
+.home-section__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.home-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  color: var(--fg-primary);
+  text-decoration: none;
+  min-width: 0;
+  transition: background var(--transition-fast);
+}
+
+.home-row:hover {
+  background: var(--bg-sunken);
+}
+
+.home-row__thumb {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-sunken);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-secondary);
+}
+
+.home-row__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.home-row__thumb-icon {
+  color: var(--fg-secondary);
+}
+
+/* Column wrapping the label + optional "by {group}" byline so a
+   group-owned row reads as two stacked lines while a personal row stays
+   a single line. The thumb stays vertically centred against either. */
+.home-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.home-row__label {
+  font-size: 0.85rem;
+  color: var(--fg-primary);
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Shared "by {group}" provenance byline (src/components/ui/owner-byline.tsx).
+   Defined here because home.css is imported globally; reused by the
+   profile Projects tab. Compact single muted line: a 14px group avatar
+   between the "by" label and the group name. */
+.owner-byline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  color: var(--fg-muted);
+}
+
+.owner-byline__label {
+  flex-shrink: 0;
+}
+
+.owner-byline__avatar {
+  flex-shrink: 0;
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+}
+
+.owner-byline__avatar > div {
+  width: 14px;
+  height: 14px;
+  font-size: 0.5rem;
+}
+
+.owner-byline__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Padding/alignment only — text colour and size come from the
+   <EmptyState variant="inline"> primitive this class is applied to,
+   so the empty hint lines up with the 8px-inset list rows above it. */
+.home-section__empty {
+  padding: 2px 8px;
+}
+
+.home-section__loading {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+}
+
+.home-section__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  padding: 4px 8px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  text-decoration: none;
+  border-radius: var(--radius);
+  align-self: flex-start;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.home-section__more:hover {
+  color: var(--fg-primary);
+  background: var(--bg-sunken);
+}
+
+/* ---------- Main pane ---------- */
+
+.home__main {
+  min-width: 0;
+  width: 100%;
+  padding: 20px 24px 32px;
+}
+
+@media (max-width: 799px) {
+  /* Zero the shell's 16px reading gutter for the home page — the feed
+     carries its own (small) gutter below, so cards run nearly
+     edge-to-edge like a native social timeline. Top padding drops to
+     the bare navbar offset: the "For you" tab strip sits right under
+     the bar (its buttons carry 14px internal padding of their own).
+     Specificity (three classes via :has) beats the components.css
+     mobile gutter rule. */
+  .app-shell:has(.home-page) .app-shell__content {
+    padding-top: var(--navbar-height);
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .home__main {
+    /* Just a small side gutter on a phone so the feed gets the room. */
+    padding: 0 8px 32px;
+  }
+}
+
+.home__split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 32px;
+  align-items: start;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* News rail only shows at the canonical 1300px step. With the feed capped
+   at 600px (below) plus the 320px rail, gaps, and the left sidebar, there
+   isn't room for the rail below ~1300px — so below that the layout collapses
+   to a single feed column and the rail is hidden entirely (never squished,
+   never stacked under the feed). */
+@media (max-width: 1299.98px) {
+  .home__split {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .home__news {
+    display: none;
+  }
+}
+
+.home__feed {
+  min-width: 0;
+}
+
+/* Desktop: cap the feed at a 600px reading column and center it inside
+   its grid track (the feed column keeps its full 1fr width; the timeline
+   just sits centered within it). Applies in both the single-column band
+   (800–1299px, news rail hidden) and the two-column layout (≥1300px).
+
+   `width` (not just `max-width`) is deliberate: `margin-inline: auto`
+   on a grid item disables stretch, so a max-width-only column sizes to
+   its CONTENT (shrink-to-fit). That made the column — and the "For you"
+   tab strip / filter dropdown above it — visibly jump narrower for a
+   frame whenever a filter toggle refetched the feed and briefly rendered
+   narrower content. A definite width pins it to 600 regardless of
+   content; `max-width: 100%` keeps it from overflowing a narrower track. */
+@media (min-width: 800px) {
+  .home__feed {
+    width: 600px;
+    max-width: 100%;
+    margin-inline: auto;
+  }
+}
+
+.home__news {
+  min-width: 0;
+  /* Match the .right-rail surface used elsewhere — light card on
+     a darker canvas, with a thin border that reads as a panel
+     edge rather than competing with the page-frame dividers.
+     Scrolls with the page rather than sticking — the rail is a
+     side panel, not a persistent control surface, and pinning it
+     produced an awkward dead zone once the user had scrolled past
+     the news content. */
+  padding: 16px 18px 18px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+}
+
+/* ---------- Activity feed (certs.social-style social cards) ----------
+   Each entry is a full-width card separated by hairline dividers:
+   author byline (avatar + name + @handle + relative time) with the
+   event verb as a muted second line, then — for record creates — the
+   record body: full-width image, serif headline title, clamped short
+   description and a dot-separated muted meta row. Mirrors the
+   feed-card layout shipped on certs.social. */
+
+/* No border-top — the tab strip above (.feed-tabs) carries the
+   dividing rule, exactly like the certs.social feed surface. */
+.home-feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.home-feed__item {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.home-feed__item:last-child {
+  border-bottom: none;
+}
+
+/* ---- Card ---- */
+
+.home-feed__card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 0;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+}
+
+/* Align everything under the byline (the preview card / endorsement
+   expansion) with the actor's name column rather than the avatar: indent
+   by the head's avatar column (32px) + its 10px gap. */
+.home-feed__card > :not(.home-feed__card-head) {
+  padding-left: 42px;
+}
+
+/* ---- Head: avatar + byline + verb sentence ---- */
+
+.home-feed__card-head {
+  display: grid;
+  /* Avatar column sized to the Avatar component's "sm" intrinsic
+     (32px) so the actor icon renders at the same diameter on every
+     card regardless of whether the profile lookup has resolved yet.
+     Top-aligned — the meta column is three lines tall (name+time /
+     @handle / sentence), so the avatar pins to the name line. */
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.home-feed__avatar {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  text-decoration: none;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.home-feed__card-head-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+/* Row 1: display name, relative time pinned right. */
+.home-feed__byline {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.home-feed__actor {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-feed__actor:hover {
+  text-decoration: underline;
+}
+
+/* Row 2: the @handle on its own line under the name. */
+.home-feed__handle {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.home-feed__time {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Verb sentence — muted second line under the name; carries its own
+   links (target cert / project / account names). */
+.home-feed__sentence {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--fg-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.home-feed__target {
+  font-weight: 500;
+  color: var(--fg-primary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.home-feed__target:hover {
+  border-bottom-color: var(--fg-primary);
+}
+
+/* The "Show all / Show fewer" toggle is a <Button variant="ghost"
+   size="sm">; keep it sized to its label inside the flex-column card
+   (the primitive is inline-flex and would otherwise stretch). */
+.home-feed__group-toggle {
+  align-self: flex-start;
+}
+
+/* Expanded endorsement-group list: each row is an <IdentityRow>
+   (avatar + display name + @handle), so give them breathing room. */
+.home-feed__group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.home-feed__loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+/* ---- Body: record image + headline + description + meta ---- */
+
+/* The whole record body is one Link to the detail page. Keep it
+   visually invisible — no underline, no color shift — so the card
+   still reads as a card; only the title underlines on hover. */
+.home-feed__card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: inherit;
+  text-decoration: none;
+  min-width: 0;
+}
+
+a.home-feed__card-body:hover .home-feed__card-title {
+  text-decoration: underline;
+  text-decoration-color: var(--fg-muted);
+  text-underline-offset: 3px;
+}
+
+.home-feed__card-image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.home-feed__card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.home-feed__card-title-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.home-feed__card-title {
+  font-family: var(--font-headline), "Noto Serif", Georgia, serif;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--fg-primary);
+  line-height: 1.3;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-feed__card-desc {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.home-feed__card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.home-feed__card-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+/* Dot separator between meta items (certs.social meta row). */
+.home-feed__card-meta-item + .home-feed__card-meta-item::before {
+  content: "";
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--fg-muted);
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+/* ---- Desktop enhancements ---- */
+
+@media (min-width: 800px) {
+  .home-feed__card {
+    padding: 24px 0;
+  }
+
+  .home-feed__card-title {
+    font-size: 1.25rem;
+  }
+
+  .home-feed__card-image {
+    width: min(100%, 400px);
+    margin-inline: auto;
+  }
+}
+
+@media (max-width: 799px) {
+  .home-feed__item {
+    /* Slightly stronger divider than the desktop subtle line so cards
+       read as distinct entries in a thumb-scrolled timeline. */
+    border-bottom: 1px solid var(--border-default);
+  }
+
+  .home-feed__item:last-child {
+    border-bottom: 0;
+  }
+
+  .home-feed__card {
+    padding: 16px 0;
+  }
+
+  .home-feed__load-more {
+    padding: 20px 0 8px;
+  }
+
+  .home-feed__load-more-btn {
+    padding: 12px 18px;
+    font-size: 0.875rem;
+  }
+
+  /* Expandable endorsement-group list rows get comfortable touch height. */
+  .home-feed__group-list-item {
+    padding: 4px 0;
+  }
+
+  /* Center the "Show all / Show fewer" toggle in the thumb-scrolled
+     feed (desktop keeps it flush-left, the default above). */
+  .home-feed__group-toggle {
+    align-self: center;
+  }
+}
+
+/* ---------- Auth-loading + signed-out states ---------- */
+
+.home__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+}
+
+.home__signed-out {
+  max-width: 480px;
+  margin: 64px auto;
+  padding: 0 16px;
+}
+
+/* The feed's tab strip + inline filter panel reuse the certs.social
+   classes in feed.css (.feed-tabs, .feed-evaluator-panel,
+   .feed-evaluators__*) — no home-specific chrome styles needed. */
+
+/* Mobile: comfortable tap height for the home sidebar/list rows. */
+@media (max-width: 799px) {
+  .home-row {
+    min-height: 44px;
+  }
+}
+
+/* ---------- Activity timeline load-more sentinel ---------- */
+
+.home-feed__load-more {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 32px;
+}
+
+.home-feed__load-more-btn {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  background: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.home-feed__load-more-btn:hover {
+  color: var(--fg-primary);
+  background: var(--bg-sunken);
+  border-color: var(--border-hover);
+}
+
+.home-feed__load-more-btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+

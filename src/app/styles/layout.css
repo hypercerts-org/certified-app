@@ -1,0 +1,3360 @@
+/* ========== Theme toggle ========== */
+/* The former 3-state segmented control (.theme-toggle / .theme-toggle__option
+   / .theme-toggle__icon / .theme-toggle__label / .theme-toggle--compact) moved
+   to the canonical RadioGroup primitive (src/components/ui/theme-toggle.tsx),
+   which styles itself with inline utility classes. Those BEM rules are dead and
+   have been removed. The single-icon cycling variant below is still live. */
+
+/* Single-icon cycling variant (System → Light → Dark → System) */
+.theme-toggle-cycle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.theme-toggle-cycle:hover {
+  color: var(--fg-primary);
+}
+
+.theme-toggle-cycle:focus {
+  outline: none;
+}
+
+.theme-toggle-cycle:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+.theme-toggle-cycle__icon {
+  display: inline-flex;
+}
+
+/* ========== Theme-aware image swap (dual-image pattern) ==========
+   Uses html[data-theme] / html:not([data-theme="dark"]) selectors for
+   higher specificity (0,2,1) so component-level display rules still take
+   effect on the visible image. Both images must carry the --light and
+   --dark class respectively. */
+html:not([data-theme="dark"]) .signin-mark__img--dark {
+  display: none;
+}
+html[data-theme="dark"] .signin-mark__img--light {
+  display: none;
+}
+
+/* ========== Loading Screen ========== */
+.loading-screen {
+  /* Fix the loading screen to the viewport so the logo always sits at
+     the true center of the whole screen — not affected by navbars,
+     bottom nav, safe-area insets, or the parent page's layout. Rendered
+     at a z-index below modals but above the page content. */
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-popover);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-canvas);
+  pointer-events: none;
+}
+
+.loading-screen__inner > * {
+  pointer-events: auto;
+}
+
+.loading-screen__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.loading-screen__logo {
+  width: 64px;
+  height: 64px;
+  color: var(--fg-primary);
+  animation: logoPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes logoPulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-screen__logo {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.loading-screen__error {
+  font-size: 0.8125rem;
+  color: var(--color-error);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  margin-bottom: 16px;
+}
+
+.loading-screen__link {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.loading-screen__link:hover {
+  color: var(--fg-primary);
+}
+
+.loading-screen__link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+  color: var(--fg-primary);
+}
+
+/* Mobile: bump the error text + return link to a readable 16px, give the link
+   a 44px tap target, and keep the inner box off the viewport edge. */
+@media (max-width: 799px) {
+  .loading-screen__inner {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+  .loading-screen__error {
+    font-size: 1rem;
+  }
+  .loading-screen__link {
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 12px;
+  }
+}
+
+/* ========== Navbar ========== */
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-navbar);
+  height: var(--navbar-height);
+  transition: background var(--transition-fast), backdrop-filter var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-base);
+}
+
+.navbar--hidden {
+  transform: translateY(-100%);
+}
+
+.navbar--default {
+  background: var(--navbar-bg);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 1px 0 var(--navbar-border);
+}
+
+/* Profile overlay: transparent navbar that floats over a full-bleed page
+   (used for /profile/[handle]). Only the back arrow renders in the left slot. */
+.navbar--profile-overlay {
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+.navbar__back-overlay {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 999px;
+  background: var(--navy-overlay-30);
+  backdrop-filter: blur(6px);
+  color: var(--color-white);
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.navbar__back-overlay:hover {
+  background: var(--navy-overlay-70);
+}
+
+.navbar__back-overlay:active {
+  transform: scale(0.95);
+}
+
+.navbar__back-overlay:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.navbar__inner {
+  max-width: 1536px;
+  margin: 0 auto;
+  padding: 0 16px;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+
+.navbar__left {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.navbar__logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  justify-self: center;
+  color: var(--fg-primary);
+}
+
+.navbar__title {
+  justify-self: center;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 450;
+  color: var(--fg-primary);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60vw;
+}
+
+.navbar__title-part {
+  color: inherit;
+  text-decoration: none;
+  padding: 3px 6px;
+  margin: 0 -2px;
+  border-radius: var(--radius);
+  transition: background var(--transition-fast);
+}
+
+.navbar__title-part:hover {
+  background: var(--overlay-weak);
+}
+
+.navbar__title-sep {
+  color: var(--fg-muted);
+  font-weight: 400;
+}
+
+.navbar__logo-img {
+  height: 28px;
+  width: auto;
+  display: block;
+}
+
+.navbar__chevron-desktop {
+  display: none;
+}
+
+@media (min-width: 800px) {
+  .navbar__inner {
+    padding: 0 32px;
+  }
+  .navbar__chevron-desktop {
+    display: block;
+  }
+}
+
+.navbar__beta-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fg-secondary);
+  background: var(--bg-sunken);
+  padding: 1px 6px;
+  border-radius: var(--radius);
+  margin-left: 10px;
+  line-height: 1;
+}
+
+.navbar__right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+/* Sign-in button in the mobile navbar sits inside a 56px bar, so the
+   full 44px tap target makes it look oversized. Trim to 36px while
+   keeping horizontal padding intact. */
+.navbar__right button {
+  min-height: 32px;
+}
+
+/* Record-level overflow menu (Share / Add to list / Copy AT URI) in the
+   titled navbar's right slot on detail pages. Right-aligned to mirror the
+   back button on the left; the ghost icon trigger keeps its own sizing. */
+.navbar__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* ========== App Top Nav (authenticated) ========== */
+.navbar__app-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.navbar__app-link {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+  padding: 4px 0;
+  border-bottom: 1.5px solid transparent;
+}
+
+.navbar__app-link:hover {
+  color: var(--fg-primary);
+}
+
+.navbar__app-link--active {
+  color: var(--fg-primary);
+  border-bottom-color: var(--fg-primary);
+}
+
+.navbar__user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.navbar__hamburger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  outline: none;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.navbar__hamburger:hover {
+  color: var(--fg-primary);
+}
+
+.navbar__hamburger:focus {
+  outline: none;
+}
+
+.navbar__hamburger:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+.navbar__dropdown {
+  display: none;
+  position: absolute;
+  top: var(--navbar-height);
+  left: 0;
+  right: 0;
+  background: var(--sheet-bg);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-light);
+  padding: 20px 32px;
+  flex-direction: column;
+  gap: 16px;
+  /* Below --z-navbar (50) so the navbar bar sits above its own dropdown. */
+  z-index: calc(var(--z-navbar) - 1);
+}
+
+.navbar__dropdown--open {
+  display: flex;
+}
+
+.navbar__dropdown-link {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+  text-decoration: none;
+  padding: 8px 0;
+  transition: color var(--transition-fast);
+}
+
+.navbar__dropdown-link:hover {
+  color: var(--fg-primary);
+}
+
+.navbar__dropdown-link--active {
+  color: var(--fg-primary);
+}
+
+
+
+
+/* ========== Bottom Nav (mobile-first) ==========
+   `--bottom-nav-height` is defined in tokens.css (base 56px, zeroed at
+   ≥800px) so the desktop override isn't clobbered by import order. */
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-bottom-nav);
+  height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.bottom-nav__inner {
+  max-width: 720px;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  /* Center items vertically so the icon+label cluster sits in the
+     middle of the 56px bar and the full row is a comfortable tap
+     target. (Previously flex-start left a strip at the bottom that
+     wasn't visually obvious as "tappable".) */
+  align-items: center;
+  justify-content: space-around;
+}
+
+.bottom-nav__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+  height: 100%;
+  /* Guarantee WCAG / iOS HIG 44pt touch target even on shorter bars. */
+  min-height: 44px;
+  border: none;
+  background: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bottom-nav__icon-wrap {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bottom-nav__item:hover {
+  color: var(--fg-primary);
+}
+
+.bottom-nav__item:active {
+  transform: scale(0.92);
+  transition: transform var(--transition-fast);
+}
+
+.bottom-nav__item--active {
+  color: var(--fg-primary);
+}
+
+.bottom-nav__label {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.625rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+/* Bottom nav is mobile-only chrome (<800px). On desktop the top bar /
+   left rail host navigation; hide via CSS here so first paint is correct
+   even before JS hydrates and the component's own `if (isDesktop) return
+   null` runs. Mirrors the analogous rule on .navbar (~line 716) and the
+   inverse opt-in on .desktop-top-bar (~line 1918). */
+@media (min-width: 800px) {
+  .bottom-nav {
+    display: none;
+  }
+}
+
+
+/* ========== Sidebar ========== */
+/* The portal shell — backdrop (.mobile-sidebar__backdrop), the sliding
+   panel (.mobile-sidebar / .mobile-sidebar--open), focus trap, scroll
+   lock, Esc and `inert` — now live in the canonical <Drawer> primitive
+   (src/components/ui/drawer.tsx). Those shell rules were removed; the
+   inner-content classes below (sections, profile, links, badges) are
+   still rendered by MobileSidebar and styled here. */
+
+/* Brand row pinned to the drawer's top: wordmark top-left, theme
+   toggle top-right. Sits above the (signed-in-only) profile block. */
+.mobile-sidebar__section--brand {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mobile-sidebar__wordmark {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius);
+}
+
+.mobile-sidebar__wordmark-img {
+  height: 18px;
+  width: auto;
+  display: block;
+}
+
+/* Source SVG is pure black; flip via CSS filter in dark mode (mirrors
+   .desktop-top-bar__wordmark / .site-footer__wordmark). */
+:root[data-theme="dark"] .mobile-sidebar__wordmark-img {
+  filter: invert(1);
+}
+
+/* Brand row on top, profile block (signed-in only) stacked below. */
+.mobile-sidebar__section--profile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.mobile-sidebar__profile {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border-radius: var(--radius);
+}
+
+a.mobile-sidebar__profile:hover .mobile-sidebar__name {
+  text-decoration: underline;
+}
+
+.mobile-sidebar__theme {
+  flex-shrink: 0;
+  margin-top: -12px;
+  margin-right: -16px;
+}
+
+.mobile-sidebar__section {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.mobile-sidebar__section:last-child {
+  border-bottom: none;
+}
+
+.mobile-sidebar__name {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  margin-top: 12px;
+}
+
+.mobile-sidebar__handle {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  margin-top: 2px;
+}
+
+.mobile-sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  color: var(--fg-secondary);
+  text-decoration: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.mobile-sidebar__link--active {
+  color: var(--fg-primary);
+  font-weight: 600;
+}
+
+.mobile-sidebar__section--legal {
+  padding: 16px 24px;
+  font-size: 0.75rem;
+}
+
+.mobile-sidebar__legal-link {
+  color: var(--fg-muted);
+  text-decoration: none;
+}
+
+.mobile-sidebar__legal-link:hover {
+  color: var(--fg-primary);
+}
+
+.mobile-sidebar__legal-sep {
+  color: var(--border-medium);
+}
+
+
+/* ========== App Pages (authenticated) ==========
+   `.app-shell__content` already handles navbar-offset top padding and
+   side padding — `.app-page` should NOT duplicate it. The wrappers are
+   structural only. */
+.app-page {
+  min-height: 100vh;
+  background: var(--bg-canvas);
+}
+
+.app-page__inner {
+  padding: 16px 0;
+}
+
+/* ========== Cards (app pages) ========== */
+.app-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 24px;
+  transition: border-color var(--transition-fast);
+}
+
+.app-card:hover {
+  border-color: var(--border-hover-soft);
+}
+
+.app-card__label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--fg-muted);
+  margin-bottom: 8px;
+}
+
+/* ========== App Shell (editorial layout) ==========
+   Mobile (<800px): single column, content max-width 720px.
+   Desktop (≥800px): foundation for the 3-column rail layout in PR2.
+   The grid wrapper has max-width 1300 so on ultra-wide displays the
+   rail/center/rail unit centers in the viewport (passive horizontal
+   whitespace per DESIGN.md). */
+.app-shell {
+  background: var(--bg-canvas);
+  /* Sticky-footer column: the grid flex-grows to fill the shell,
+     pushing SiteFooter (the shell's last child) to the bottom. This
+     replaces the old per-layer `min-height: 100vh` chain, which forced
+     the content slot to a full viewport AND stacked the footer below
+     it as an extra sibling — so the footer was always pushed a full
+     screen past the fold, leaving a near-viewport gap on short pages. */
+  display: flex;
+  flex-direction: column;
+  /* Fill `<main>` (a flex column that already grows to the viewport
+     height MINUS the sticky top bar / acting-as bar) rather than minting
+     a fresh 100vh. The old `min-height: 100vh` stacked on top of the
+     in-flow top bar, so the document was `100vh + navbar` tall — a
+     navbar-height overflow that pushed the footer below the fold on
+     every page. `flex: 1 0 auto` makes navbar + content + footer total
+     exactly one viewport on short pages, and grows with tall content. */
+  flex: 1 0 auto;
+}
+
+.app-shell__grid {
+  max-width: 1300px;
+  width: 100%;
+  margin: 0 auto;
+  /* Grow to absorb the leftover viewport height (minus the footer) so
+     short pages still reach the bottom; long pages push the footer down
+     naturally. Replaces `min-height: 100vh`. */
+  flex: 1 0 auto;
+}
+
+/* On desktop the global navbar is hidden — the left rail hosts the
+   brandmark at its top. Zeroing --navbar-height makes sticky tops
+   and padding-tops collapse without per-rule overrides. */
+@media (min-width: 800px) {
+  .navbar {
+    display: none;
+  }
+  :root {
+    --navbar-height: 0px;
+  }
+}
+
+/* Desktop cascade (Overview redesign): both rails retired. The grid is
+   a single centered column. Non-profile pages keep a narrow reading
+   column (.app-shell__content max-width below). Profile pages widen
+   their own container via `.app-shell--fullbleed` to ~1280px so the
+   GitHub-style two-column Overview fits.
+
+   At <800px the grid is `display: block` so children stack as before. */
+@media (min-width: 800px) {
+  .app-shell__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1280px);
+    justify-content: center;
+  }
+}
+
+.app-shell__center {
+  /* Fill the (flex-grown) grid rather than minting a fresh 100vh — the
+     grid already owns the viewport-height stretch. */
+  min-height: 100%;
+}
+
+.app-shell__content {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: calc(var(--navbar-height) + 16px) 32px calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 24px);
+  /* Fill the center cell (which fills the flex-grown grid) so pages that
+     stretch internally — home/explore — still reach the footer, while
+     short pages let the grid's flex-grow do the pushing. Was `100vh`,
+     which over-stacked against the footer sibling. Border-box folds the
+     padding into the min-height so the slot stays exactly one cell tall
+     rather than one viewport + ~160px. */
+  min-height: 100%;
+  box-sizing: border-box;
+}
+/* Note: the <800px reading gutter (16px horizontal + max-width:100%) is set
+   in components.css's mobile block, which loads after this file and wins. */
+
+/* Desktop: reading width narrows to 600px (matches bsky/x). The flanking
+   rails (mounted in PR2) provide the lateral context the mobile column
+   had to carry alone. */
+@media (min-width: 800px) {
+  .app-shell__content {
+    max-width: 600px;
+  }
+}
+
+/* ========== Page-frame layout (shared by /home + /explore) ==========
+   Pages that span the viewport edge-to-edge with their own
+   sidebar/main divider. They drop the shell's reading-column width
+   caps, zero its lateral padding (the inner panes carry their own),
+   and turn the content slot into a flex column so the page can
+   stretch to fill the shell's reserved 100vh. Without the flex
+   stretch the page only reaches its content height — short pages
+   leave the sidebar divider chopped off above the footer.
+
+   Add the page's wrapper class to the `:is(...)` selector below
+   when introducing another page that wants this layout. Per-page
+   styling (sidebar width, grid columns, divider color) stays in
+   the per-page CSS file. */
+.app-shell:is(:has(.home-page), :has(.explore-page)) .app-shell__grid {
+  max-width: none;
+}
+
+@media (min-width: 800px) {
+  .app-shell:is(:has(.home-page), :has(.explore-page)) .app-shell__grid {
+    grid-template-columns: 1fr;
+  }
+  .app-shell:is(:has(.home-page), :has(.explore-page)) .app-shell__content {
+    max-width: none;
+    padding-top: var(--navbar-height);
+    padding-bottom: 0;
+    padding-left: 0;
+    padding-right: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  :is(.home-page, .explore-page) {
+    flex: 1;
+  }
+  /* Footer carries margin-top: 48px elsewhere; collapse it so the
+     sidebar/main divider meets the footer border flush. */
+  html:is(:has(.home-page), :has(.explore-page)) .site-footer {
+    margin-top: 0;
+  }
+}
+
+/* Full-bleed shell: used by the profile page so its banner starts at
+   viewport top-left and extends edge-to-edge. On mobile the transparent
+   navbar floats over the banner (see .navbar--profile-overlay).
+   On desktop (≥800px) full-bleed scopes to the center cell — the right
+   rail sits outside — and the opaque top bar sits above; the banner
+   inside the Overview tab starts immediately below the bar and scrolls
+   under it. */
+
+/* Bump `--top-bar-total` whenever the desktop top bar renders its
+   second row (the profile/settings tabs row OR the cert/project
+   back-button row — both use `.desktop-top-bar__row--tabs`). The
+   default in tokens.css is row 1 only; this keeps anything sticking
+   off `--top-bar-total` (e.g. the inline-edit banner) positioned
+   below the actual top bar on every page that renders row 2. We
+   match on `html` because `.desktop-top-bar` is a sibling of
+   `.app-shell`, not a descendant. */
+@media (min-width: 800px) {
+  html:has(.desktop-top-bar__row--tabs) {
+    --top-bar-total: calc(var(--top-bar-row1) + var(--top-bar-row2));
+  }
+}
+
+.app-shell--fullbleed .app-shell__content {
+  max-width: none;
+  padding-top: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Profile pages on desktop expand the content area to a GitHub-style
+   1280px container. Non-Overview tabs inside the profile page constrain
+   themselves to a reading column via .profile-panel--reading. */
+@media (min-width: 800px) {
+  .app-shell--fullbleed .app-shell__content {
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+}
+
+/* ========== Auth Guard Loading ========== */
+.auth-guard-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+/* ========== Dashboard ========== */
+.dashboard {
+  padding: 0;
+}
+
+.dashboard__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 48px 0 24px;
+  background: transparent;
+  position: relative;
+}
+
+.dashboard__topbar::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -40px;
+  transform: translateY(-50%);
+  width: 200px;
+  height: 200px;
+  background: url('/assets/guilloche_02.svg') no-repeat center;
+  background-size: contain;
+  opacity: 0.04;
+  pointer-events: none;
+}
+
+.dashboard__page-title {
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-size: clamp(2rem, 3vw + 1rem, 2.5rem);
+  font-weight: 700;
+  color: var(--fg-primary);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.dashboard__topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard__action-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+}
+
+.dashboard__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+}
+
+.dashboard__main {
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard__aside {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Profile card (horizontal layout) */
+.profile-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.profile-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-card__name {
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--fg-primary);
+  letter-spacing: -0.01em;
+}
+
+.profile-card__handle {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  margin-top: 2px;
+}
+
+.profile-card__bio {
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+.profile-card__did {
+  margin-top: 16px;
+  word-break: break-all;
+}
+
+.profile-card__banner {
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+  margin: 0 0 16px 0;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--bg-sunken) 0%, var(--bg-raised) 100%);
+}
+
+.profile-card__banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.personal-info__hint {
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.personal-info__field--link {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.personal-info__field--link:hover {
+  text-decoration: underline;
+}
+
+.personal-info__full-width {
+  grid-column: 1 / -1;
+}
+
+.profile-fallback-note {
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-top: 16px;
+}
+
+.profile-fallback-note p {
+  font-size: 0.8125rem;
+  color: var(--color-warning-text);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Personal Information form fields */
+.personal-info__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.personal-info__label {
+  display: block;
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin-bottom: 6px;
+}
+
+.personal-info__field {
+  padding: 12px 0;
+  border: none;
+  border-radius: 0;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  background: transparent;
+}
+
+.personal-info__field--mono {
+  font-family: monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  color: var(--fg-muted);
+  word-break: break-all;
+  background: transparent;
+  border: none;
+  padding: 12px 0;
+}
+
+/* Utility */
+.mt-4 {
+  margin-top: 16px;
+}
+
+/* (Sidebar removed — navigation moved to top navbar) */
+
+/* Acting-as-group delegation bar. Mounted above all page chrome whenever
+   the viewer is operating a group, so the elevated, inverted treatment
+   reads as a persistent "you are not yourself right now" reminder.
+   Mirrors the primary button: dark bg / light text in light theme, and
+   inverts under [data-theme="dark"] via the same --btn-primary-* tokens.
+   Scrolls with the page (no sticky) so it never overlaps fixed chrome. */
+.acting-as-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+  padding: 8px 16px;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-fg);
+}
+
+.acting-as-bar__text {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.acting-as-bar__text b {
+  font-weight: 600;
+}
+
+/* Outlined control that stays legible against the inverted bar — borrows
+   the bar's own foreground for border + text so it tracks the theme flip. */
+.acting-as-bar__switch {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--btn-primary-fg);
+  background: transparent;
+  border: 1px solid var(--btn-primary-fg);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.acting-as-bar__switch:hover {
+  opacity: 0.8;
+}
+
+/* Mobile: the bar is fixed so it's never tucked behind the fixed navbar.
+   It sits just below the navbar while the navbar is shown, and slides to
+   the very top when the navbar auto-hides on scroll. One row only — the
+   org line truncates rather than wrapping under the navbar. */
+@media (max-width: 799px) {
+  .acting-as-bar {
+    position: fixed;
+    top: var(--navbar-height);
+    left: 0;
+    right: 0;
+    z-index: var(--z-navbar);
+    height: 44px;
+    flex-wrap: nowrap;
+    transition: top var(--transition-base);
+  }
+  .acting-as-bar--nav-hidden {
+    top: 0;
+  }
+  .acting-as-bar__text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  /* Reserve the fixed bar's height so it doesn't overlay the top of the
+     page content. Applied to `.app-shell` (not `.app-shell__content`,
+     whose top padding is overridden per-page by higher-specificity
+     `:has()` rules) so it stacks on top of whatever navbar offset each
+     page already carries. */
+  html.has-acting-as-bar .app-shell {
+    padding-top: 44px;
+  }
+}
+
+/* ========== Desktop Right Rail ==========
+   Mounted at >=1100px. Search sticky at top; sections use the
+   feed-card hairline pattern (no bordered cards). Footer is a
+   single inline line per DESIGN.md feed-card meta convention. */
+
+.right-rail {
+  display: none;
+  flex-direction: column;
+  gap: 24px;
+  position: sticky;
+  top: var(--top-bar-total);
+  height: calc(100vh - var(--top-bar-total));
+  padding: 16px 16px 24px;
+  background: var(--bg-canvas);
+  border-left: 1px solid var(--border-subtle);
+  z-index: var(--z-rail);
+  overflow-y: auto;
+  /* Make any internal scrollbar visually quiet against --bg-canvas. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-default) transparent;
+}
+
+@media (min-width: 1100px) {
+  .right-rail {
+    display: flex;
+  }
+}
+
+.right-rail__search {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-rail-sticky);
+  background: var(--bg-canvas);
+  padding-bottom: 8px;
+}
+
+.right-rail__section {
+  display: flex;
+  flex-direction: column;
+}
+
+.right-rail__heading {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  /* Caption scale per DESIGN.md §3 — matches .app-card__label and other
+     uppercase labels (0.6875rem / 0.08em). */
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin: 0 0 12px;
+}
+
+.right-rail__empty {
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  margin: 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.right-rail__footer {
+  margin-top: auto;
+  padding-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.right-rail__footer-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--fg-muted);
+  font: inherit;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.right-rail__footer-link:hover {
+  color: var(--fg-secondary);
+}
+
+.right-rail__footer-sep {
+  color: var(--fg-muted);
+  user-select: none;
+}
+
+/* ========== Right-rail "News" (Bluesky posts from @certified.app) ==========
+   Each post is a tappable card-row with hairline separators between
+   items, matching the feed-card pattern used elsewhere in the rail. */
+
+.news__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.news__item {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.news__item:last-child {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.news__article {
+  padding: 12px 0;
+  color: inherit;
+}
+
+.news__images {
+  display: grid;
+  gap: 2px;
+  margin: 8px 0 6px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-sunken);
+}
+
+.news__images--n1 { grid-template-columns: 1fr; }
+.news__images--n2 { grid-template-columns: 1fr 1fr; }
+.news__images--n3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.news__images--n3 .news__image:first-child { grid-row: span 2; }
+.news__images--n4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+
+.news__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Default crop for multi-image grids; single-image override sets
+     the natural aspectRatio inline so portrait shots don't get
+     squished. */
+  aspect-ratio: 16 / 10;
+}
+
+.news__images--n1 .news__image {
+  /* Cap very tall portrait shots so a single image can't blow out
+     the rail's vertical rhythm. */
+  max-height: 360px;
+  aspect-ratio: auto;
+}
+
+.news__text {
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--fg-primary);
+  margin: 0;
+  /* Wrap long lines and preserve newlines from the post record so a
+     two-paragraph post still reads as the author intended. */
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Inline facet anchors inside a post body: links, @-mentions, #tags.
+   Underlined accent so they read as clickable amongst the body text;
+   stay readable in both themes by leaning on --fg-secondary rather
+   than a fixed brand blue. */
+.news__rich-link {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-decoration-color: var(--border-medium);
+  text-underline-offset: 2px;
+  transition: text-decoration-color var(--transition-fast);
+}
+
+.news__rich-link:hover {
+  text-decoration-color: var(--fg-primary);
+}
+
+.news__rich-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* The relative-time element is the canonical "view this post on
+   Bluesky" affordance now that the card isn't wholly an anchor. */
+.news__time-link {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.news__time-link:hover {
+  color: var(--fg-secondary);
+}
+
+.news__time-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.news__more {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 8px 0;
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--fg-muted);
+  cursor: pointer;
+  text-align: center;
+  transition: color var(--transition-fast);
+}
+
+.news__more:hover:not(:disabled) {
+  color: var(--fg-primary);
+}
+
+.news__more:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.news__more:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ========== People search typeahead ==========
+   Used by the right-rail search and the Explore page. Mirrors the
+   typeahead pattern from hypercerts-org/certified-app#51, restyled
+   to certs-social tokens (rectangular 2px-radius field, hairline
+   border, --bg-elevated; not a pill). */
+
+.people-search {
+  position: relative;
+  width: 100%;
+}
+
+.people-search__clear {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Hit target = 36×36 (the visible circle hover background fills it).
+     Wraps a 14px <X /> glyph. Inside a 44px tall field, 36px clears the
+     hit-area threshold once you add the natural overlap with the input. */
+  width: 36px;
+  height: 36px;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.people-search__clear:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.people-search__dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  /* Popover tier — above rails but below the navbar and any modals. */
+  z-index: var(--z-popover);
+  /* On mobile, the virtual keyboard shrinks the visual viewport. svh
+     contracts with the keyboard, dvh would jump as it opens — svh keeps
+     the dropdown above the keyboard at all times. */
+  max-height: min(360px, 50svh);
+  overflow-y: auto;
+}
+
+.people-search__empty {
+  padding: 14px 12px;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  text-align: left;
+}
+
+.people-search__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition-fast);
+  user-select: none;
+}
+
+.people-search__item:hover {
+  background: var(--overlay-weak);
+}
+
+.people-search__item--highlighted {
+  background: var(--overlay-weak);
+  box-shadow: inset 2px 0 0 var(--fg-primary);
+}
+
+.people-search__item-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.people-search__item-name {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.people-search__item-handle {
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Cert search typeahead. Used by the project edit page's add-cert
+   flow. The field chrome (box, border, leading icon) is now the
+   <Input> primitive; only the wrapper + dropdown/result rows + the
+   interactive clear button remain bespoke here. */
+
+.cert-search {
+  position: relative;
+  width: 100%;
+}
+
+.cert-search__clear {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.cert-search__clear:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.cert-search__dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-popover);
+  max-height: min(360px, 50svh);
+  overflow-y: auto;
+}
+
+.cert-search__empty {
+  padding: 14px 12px;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  text-align: left;
+}
+
+/* Group header — "Your certs" / "Other certs". Acts as a section
+   label inside the dropdown. Pointer-events:none so a click on the
+   header doesn't fall through to whatever's behind. */
+.cert-search__group-header {
+  padding: 8px 10px 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  pointer-events: none;
+  user-select: none;
+}
+
+.cert-search__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition-fast);
+  user-select: none;
+}
+
+.cert-search__item:hover {
+  background: var(--overlay-weak);
+}
+
+.cert-search__item--highlighted {
+  background: var(--overlay-weak);
+  box-shadow: inset 2px 0 0 var(--fg-primary);
+}
+
+.cert-search__thumb {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius);
+  object-fit: cover;
+  background: var(--bg-sunken);
+}
+
+.cert-search__thumb--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-muted);
+}
+
+.cert-search__item-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 1px;
+}
+
+.cert-search__item-title {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cert-search__item-handle {
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Visually-hidden utility for sr-only labels */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ========== Desktop Top Bar (positioning redesign) ==========
+   Two-row chrome rendered at ≥800px. Row 1 is brandmark + page title
+   (left) and search + Apps + Settings + switcher (right). Row 2 is
+   the profile tabs strip on /profile and /settings, or the back-row
+   on /activity and /project. Hidden on <800px — the mobile
+   <Navbar /> handles that range.
+
+   The bar scrolls with the page (no `position: sticky`) so the whole
+   layout — top bar + content — moves together as the user scrolls. */
+
+.desktop-top-bar {
+  display: none;
+}
+
+@media (min-width: 800px) {
+  .desktop-top-bar {
+    display: flex;
+    flex-direction: column;
+    background: var(--navbar-bg);
+    box-shadow: 0 1px 0 var(--navbar-border);
+  }
+
+  /* Placeholder rendered by the Suspense fallback while the real
+     DesktopTopBar resolves on statically-prerendered pages. Reserves the
+     row-1 height so first paint doesn't jump when the real bar mounts. */
+  .desktop-top-bar--placeholder {
+    height: var(--top-bar-row1);
+  }
+}
+
+.desktop-top-bar__row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  /* No max-width cap — the chrome stretches viewport-wide on every
+     page so the navbar border-bottom and footer border-top run
+     edge-to-edge in lockstep (matches the framing on /explore and
+     /settings). Inner content keeps its 12px gutter via the padding
+     below. */
+  margin: 0 auto;
+  padding: 0 12px;
+}
+
+.desktop-top-bar__row--chrome {
+  height: var(--top-bar-row1);
+  justify-content: space-between;
+  gap: 24px;
+}
+
+/* Single-row navbar (pages without a tabs row, e.g. /home) needs
+   its own bottom border — the two-row case carries the same border
+   on row-2. Without this rule, /home's navbar ends with only the
+   subtle ambient box-shadow on `.desktop-top-bar`, which reads as
+   "no border" against the page background and breaks the page-frame
+   continuity (top bar → sidebar divider → footer). `:last-child`
+   covers the case cleanly because row-chrome is always followed by
+   row-tabs when row-tabs is present. */
+.desktop-top-bar__row--chrome:last-child {
+  border-bottom: 1px solid var(--border-medium);
+}
+
+.desktop-top-bar__row--tabs {
+  height: var(--top-bar-row2);
+  gap: 20px;
+  border-bottom: 1px solid var(--border-medium);
+}
+
+.desktop-top-bar__left {
+  display: flex;
+  align-items: center;
+  /* Zero base gap — hamburger sits flush next to the brandmark. The
+     title's separation comes entirely from its own margin-left
+     override below so brand→title reads as "breadcrumb-y" instead
+     of "icon cluster". */
+  gap: 0;
+  min-width: 0;
+}
+
+.desktop-top-bar__brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  width: 36px;
+  color: var(--fg-primary);
+  text-decoration: none;
+  border-radius: var(--radius);
+  transition: opacity var(--transition-fast);
+  flex-shrink: 0;
+}
+
+/* On pages with no title/breadcrumb the brandmark is swapped for
+   the wordmark — relax the square width so the lockup can render. */
+.desktop-top-bar__brand--wordmark {
+  width: auto;
+}
+
+.desktop-top-bar__wordmark {
+  height: 20px;
+  width: auto;
+  display: block;
+}
+
+/* Source SVG is pure black; flip via CSS filter in dark mode so the wordmark
+   stays visible on legal/marketing pages (mirrors .site-footer__wordmark). */
+:root[data-theme="dark"] .desktop-top-bar__wordmark {
+  filter: invert(1);
+}
+
+.desktop-top-bar__brand:hover {
+  opacity: 0.85;
+}
+
+.desktop-top-bar__title {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 450;
+  color: var(--fg-primary);
+  letter-spacing: -0.01em;
+  /* Brand→title separation. The row's gap is 0 so this margin is
+     the full space — sized to read as a breadcrumb separator, not
+     as an icon cluster (the hamburger is flush against the brand;
+     the title floats slightly away). Written as the long-form
+     `margin` shorthand so the h1's UA `margin: 0` reset that lived
+     here doesn't stomp it. */
+  margin: 0 0 0 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.desktop-top-bar__title-part {
+  color: inherit;
+  text-decoration: none;
+  padding: 4px 8px;
+  margin: 0 -2px;
+  border-radius: var(--radius);
+  transition: background var(--transition-fast);
+}
+
+.desktop-top-bar__title-part:hover {
+  background: var(--overlay-weak);
+}
+
+.desktop-top-bar__title-part:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.desktop-top-bar__title-sep {
+  color: var(--fg-muted);
+  font-weight: 400;
+}
+
+.desktop-top-bar__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.desktop-top-bar__search {
+  width: 260px;
+}
+
+@media (min-width: 1100px) {
+  .desktop-top-bar__search {
+    width: 300px;
+  }
+}
+
+.desktop-top-bar__icon-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 56px;
+  height: 40px;
+  padding: 0 6px;
+  color: var(--fg-secondary);
+  background: transparent;
+  border-radius: var(--radius);
+  border: none;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.desktop-top-bar__icon-label {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.desktop-top-bar__icon-btn:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.desktop-top-bar__icon-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.desktop-top-bar__switcher-wrap {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+}
+
+.desktop-top-bar__switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  background: transparent;
+  border: none;
+  /* Use the design-system `--radius` token so the switcher's outer
+     corners match the surrounding chrome (icon buttons, the search bar,
+     etc.) instead of forming a pill. */
+  border-radius: var(--radius);
+  cursor: pointer;
+  color: var(--fg-secondary);
+  transition: background var(--transition-fast);
+  max-width: 260px;
+}
+
+.desktop-top-bar__switcher:hover {
+  background: var(--overlay-weak);
+}
+
+.desktop-top-bar__switcher:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.desktop-top-bar__switcher-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  min-width: 0;
+  text-align: left;
+}
+
+.desktop-top-bar__switcher-name {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.desktop-top-bar__switcher-handle {
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Hide the textual meta on narrower viewports so the trigger stays
+   compact next to the search and icon-buttons. */
+@media (max-width: 1099.98px) {
+  .desktop-top-bar__switcher-meta {
+    display: none;
+  }
+}
+
+/* Icon-only "Sign in" affordance — uses the Certified signin
+   brandmark glyph. Padding kept for tap area; no border/fill. */
+.desktop-top-bar__signin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  background: none;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.desktop-top-bar__signin-btn:hover {
+  opacity: 0.85;
+}
+
+.desktop-top-bar__signin-btn:active {
+  transform: scale(0.97);
+}
+
+.desktop-top-bar__signin-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.desktop-top-bar__signin-img {
+  height: 28px;
+  width: auto;
+  display: block;
+}
+
+/* Back affordance rendered in the row-2 slot on cert / project detail
+   pages. Left-aligned, sits at the same height as the tab strip. */
+.desktop-top-bar__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0 4px;
+  background: transparent;
+  border: none;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.desktop-top-bar__back:hover {
+  color: var(--fg-primary);
+}
+
+.desktop-top-bar__back:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* "+" create-menu trigger wrapper — kept as a wrapper so the
+   open/close effects can anchor against a stable DOM node even
+   when the button itself re-renders. */
+.desktop-top-bar__create-wrap {
+  display: inline-flex;
+}
+
+/* Dropdown panel rendered via createPortal — elevated surface
+   treatment (border + --shadow-md) so the three shortcuts visually
+   read as the same "menu" family as the other portaled menus. */
+.desktop-top-bar__create-menu {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 6px;
+  z-index: var(--z-popover);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.desktop-top-bar__create-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  text-decoration: none;
+  transition: background var(--transition-fast);
+}
+
+.desktop-top-bar__create-item:hover,
+.desktop-top-bar__create-item:focus-visible {
+  background: var(--overlay-weak);
+  outline: none;
+}
+
+.desktop-top-bar__create-item > svg {
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+
+/* ========== Profile page CSS scaffolding for the top-bar redesign ==========
+   On desktop the mobile-only ProfileHeader is hidden; the Overview tab's
+   left sidebar carries the identity instead, and the top bar's row 2
+   tabs are the single source of profile tab navigation (the in-page
+   tab strip was removed in the Overview rewrite). */
+
+@media (min-width: 800px) {
+  .profile-page__mobile-header {
+    display: none;
+  }
+}
+
+/* ========== Profile page layout (GitHub-style 2-column) ==========
+   The page renders a left identity sidebar and a right main pane that
+   together carry the active tab content. The sidebar is constant; the
+   right pane swaps between Overview / Certs / Projects / Endorsements.
+
+   On mobile (<800px) the columns collapse to a single stack and the
+   sidebar is hidden — the page's <ProfileHeader> above already carries
+   identity on small viewports. */
+
+/* Shared 2-column page layout used by both the profile page and the
+   cert detail page (and any future entity detail page). The class was
+   originally `.profile-page__layout` — renamed to `.page-layout` once
+   the cert page started reusing the same grid so the naming reflects
+   the broader scope. */
+.page-layout {
+  display: grid;
+  gap: 24px;
+  padding: 24px 16px;
+}
+
+@media (min-width: 800px) {
+  .page-layout {
+    grid-template-columns: 296px minmax(0, 1fr);
+    gap: 32px;
+    align-items: start;
+    padding: 24px;
+  }
+}
+
+.page-layout__main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+/* /create mobile field order. The create form reuses the cert-detail two-pane
+   shell: in source order the metadata <aside> comes first and the Title/
+   description main pane second (so desktop can explicit-place the aside in
+   column 2). On mobile `.page-layout` collapses to a single grid column and
+   honours source order, which stacked the metadata sidebar ABOVE the Title.
+   Re-order so the primary Title/description main pane leads and the metadata
+   sidebar follows. Scoped to `.create-cert` so the cert-detail read view is
+   untouched; only applies below the 800px desktop breakpoint where no explicit
+   grid placement is set. */
+@media (max-width: 799px) {
+  .create-cert.page-layout > .page-layout__main {
+    order: 0;
+  }
+  .create-cert.page-layout > .cert-detail__aside {
+    order: 1;
+  }
+}
+
+/* ---------- Identity sidebar ---------- */
+
+.profile-sidebar {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+@media (min-width: 800px) {
+  .profile-sidebar {
+    display: flex;
+  }
+}
+
+.profile-sidebar__avatar {
+  /* The inner <Avatar> is sized via Tailwind override (!h-[240px]
+     !w-[240px]); this wrapper just provides the layout slot. */
+  display: inline-flex;
+}
+
+.profile-sidebar__name-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  /* Let the name shrink within the sidebar so an unbreakable display name
+     truncates instead of overflowing into the main column. */
+  min-width: 0;
+}
+
+.profile-sidebar__name {
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-size: 1.625rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--fg-primary);
+  margin: 0;
+  line-height: 1.2;
+  /* A display name with no spaces (e.g. a handle used as the name) can't
+     wrap — cut it off with an ellipsis rather than overflow. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-sidebar__handle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1.125rem;
+  color: var(--fg-muted);
+  margin: 0;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.profile-sidebar__did {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 0;
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+}
+
+.profile-sidebar__did-value {
+  font-family: monospace;
+  font-size: 0.6875rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  user-select: all;
+}
+
+.profile-sidebar__copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  margin-left: 2px;
+  color: var(--fg-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.profile-sidebar__copy-btn:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.profile-sidebar__copy-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.profile-sidebar__pronouns {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.profile-sidebar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  /* Reserve the action row's height even when empty — keeps the layout
+     anchored while the user is in edit mode (the "Edit profile" button
+     is hidden but its slot remains as whitespace). */
+  min-height: 36px;
+}
+
+.profile-sidebar__action-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  height: 36px;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.profile-sidebar__action-primary:hover {
+  background: var(--bg-sunken);
+  border-color: var(--border-hover);
+}
+
+.profile-sidebar__action-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--fg-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  text-decoration: none;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.profile-sidebar__action-secondary:hover {
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
+.profile-sidebar__followers {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* Pull a bit of extra space above the followers row so it reads as a
+     visually-separate block from the action row, and below it to push
+     the links/joined list further down. */
+  margin: 8px 0 12px;
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+  flex-wrap: wrap;
+}
+
+.profile-sidebar__followers-count {
+  font-weight: 600;
+  color: var(--fg-primary);
+}
+
+/* Each count is its own deep-link into the Followers tab's matching
+   sub-tab. The link itself reads like body text — the count number
+   inside picks up the bold treatment via `.profile-sidebar__followers-
+   count`. Hovering nudges the label/count toward `--fg-primary` so
+   the affordance is discoverable without underlining everything. */
+.profile-sidebar__followers-link {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.profile-sidebar__followers-link:hover,
+.profile-sidebar__followers-link:focus-visible {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.profile-sidebar__followers-sep {
+  color: var(--fg-muted);
+}
+
+/* Wrapper for the followers/following + Endorsed-by rows. The parent
+   .profile-sidebar uses gap: 12px between every direct child, which
+   would force a 12px gap between the two stat rows. Wrapping them in
+   their own flex column with a smaller gap lets the URL-list cadence
+   (6px between rows) carry through here, so the two rows read as a
+   single stats block instead of two independent paragraphs. The
+   wrapper itself sits on the parent's 12px rhythm, preserving the
+   visual break to the URL list below. */
+.profile-sidebar__stats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-sidebar__stats .profile-sidebar__followers {
+  margin: 0;
+}
+
+/* In the Endorsed-by row the count lives INSIDE the link (whereas in
+   the followers row it sits outside), so override the count's primary
+   colour to inherit the link colour — that way the whole "Endorsed by
+   N" string reads as one link and lights up uniformly on hover. */
+.profile-sidebar__endorsed-by .profile-sidebar__followers-count {
+  color: inherit;
+}
+
+.profile-sidebar__details {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-sidebar__details li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+  min-width: 0;
+}
+
+/* The "Joined" / "Founded" row sits below the URL block; push it
+   slightly farther so URLs vs. date read as two separate blocks. We
+   target the date row by class — not `:last-child` — so the visual
+   break never accidentally lands between two adjacent URL rows
+   (which used to happen when the date row was hidden). */
+.profile-sidebar__details-date {
+  margin-top: 10px;
+}
+
+.profile-sidebar__details li > svg {
+  flex-shrink: 0;
+  color: var(--fg-muted);
+}
+
+.profile-sidebar__detail-link {
+  color: var(--fg-secondary);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  transition: color var(--transition-fast);
+}
+
+.profile-sidebar__detail-link:hover {
+  color: var(--fg-primary);
+  text-decoration: underline;
+}
+
+/* Bluesky-import marker. Shown on profiles whose data was imported
+   from a bluesky-hosted PDS (no Certified-side profile record). The
+   row drops the leaf-icon left affordance so the chip reads as a
+   metadata tag rather than another entry in the link list. */
+.profile-sidebar__bsky-row {
+  /* The shared `.profile-sidebar__details li` rule pads-left for the
+     left-edge icon column; we don't render an icon here, so reset. */
+  padding-left: 0 !important;
+}
+
+.profile-sidebar__bsky-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: var(--overlay-weak);
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.profile-sidebar__bsky-tag:hover,
+.profile-sidebar__bsky-tag:focus-visible {
+  background: var(--overlay-medium);
+  color: var(--fg-primary);
+  /* No underline — chip semantics, not a body link. The browser-
+     native title tooltip carries the explanatory text. */
+  text-decoration: none;
+}
+
+.profile-sidebar__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.profile-sidebar__section-title {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.profile-sidebar__section-title--link {
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.profile-sidebar__section-title--link:hover {
+  color: var(--fg-primary);
+}
+
+.profile-sidebar__see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.profile-sidebar__see-all:hover {
+  color: var(--fg-primary);
+}
+
+.profile-sidebar__loading {
+  padding: 12px 0;
+}
+
+.profile-sidebar__empty {
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  margin: 0;
+  padding: 8px 0;
+}
+
+/* Groups grid (GitHub orgs style) */
+
+.profile-sidebar__groups {
+  margin-top: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.profile-sidebar__groups-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-sidebar__group-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  margin: 0 -8px;
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: inherit;
+  transition: background var(--transition-fast);
+}
+
+.profile-sidebar__group-row:hover {
+  background: var(--overlay-weak);
+}
+
+.profile-sidebar__group-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.profile-sidebar__group-name {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-sidebar__group-handle {
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Right pane: Overview tab content ---------- */
+
+.profile-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.profile-overview__banner {
+  display: none;
+}
+
+@media (min-width: 800px) {
+  .profile-overview__banner {
+    display: block;
+    width: 100%;
+    aspect-ratio: 3 / 1;
+    max-height: 220px;
+    overflow: hidden;
+    border-radius: var(--radius);
+    background: linear-gradient(
+      135deg,
+      var(--bg-sunken) 0%,
+      var(--bg-raised) 100%
+    );
+  }
+  .profile-overview__banner--empty {
+    aspect-ratio: 6 / 1;
+    max-height: 96px;
+  }
+}
+
+.profile-overview__banner-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-overview__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* On mobile three equal columns squeeze each card so the uppercase
+   letter-spaced labels ("ENDORSEMENTS") and sub-rows clip; drop to a single
+   column so each stat keeps its full label + value rows. */
+@media (max-width: 799px) {
+  .profile-overview__stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+.profile-overview__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.profile-overview__stat:hover {
+  border-color: var(--border-hover-soft);
+  background: var(--bg-sunken);
+}
+
+.profile-overview__stat-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  /* Keep the uppercase letter-spaced label on one line so the tablet column
+     width doesn't break it mid-word ("ENDORSE MENTS"); ellipsize if it still
+     overflows rather than wrapping. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.profile-overview__stat-split {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.profile-overview__stat-split--solo {
+  justify-content: flex-start;
+}
+
+.profile-overview__stat-value {
+  font-family: var(--font-headline), 'Noto Serif', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--fg-primary);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.profile-overview__stat-sub {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  letter-spacing: 0.01em;
+  /* Keep the descriptor ("created"/"received"/…) whole — at tablet widths the
+     split row was breaking it mid-word ("crea ted"/"recei ved"). */
+  white-space: nowrap;
+}
+
+/* ---------- About section ---------- */
+
+.profile-overview__about {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-overview__about-body {
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--fg-secondary);
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* About + side map. Falls back to a single column when no map is set
+   or the viewport is too narrow for the right column to read well. */
+.profile-overview__about-block {
+  display: block;
+}
+
+.profile-overview__about-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (min-width: 1100px) {
+  .profile-overview__about-block--with-map {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 24px;
+    align-items: start;
+  }
+}
+
+/* Organization type tags (read mode) */
+.profile-overview__types {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profile-overview__type-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.profile-overview__type-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--overlay-weak);
+  border: 1px solid var(--border-subtle);
+  line-height: 1.4;
+}
+
+/* Location column (read + edit). The wrapper handles spacing between
+   the map, the label, and the picker controls. */
+.profile-overview__location {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.profile-overview__location-map {
+  width: 100%;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.profile-overview__location-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  margin: 0;
+}
+
+.profile-overview__location-name svg {
+  flex-shrink: 0;
+  color: var(--fg-muted);
+}
+
+.profile-overview__location-picker-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.profile-overview__location-hint {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.profile-overview__location-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.profile-overview__location-clear:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.profile-overview__location-attribution {
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.profile-overview__location-attribution a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+/* Autocomplete combobox: input + absolutely-positioned suggestions
+   panel beneath. The wrapper is `position: relative` so the panel
+   anchors to the input rather than to the page. */
+.profile-overview__location-combobox {
+  position: relative;
+}
+
+.profile-overview__location-suggestions {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 4px;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: var(--z-popover);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.profile-overview__location-suggestion {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.profile-overview__location-suggestion:hover,
+.profile-overview__location-suggestion--active {
+  background: var(--overlay-weak);
+}
+
+.profile-overview__location-suggestion-primary {
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-overview__location-suggestion-secondary {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Section heads + digest lists ---------- */
+
+.profile-overview__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.profile-overview__section-title {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.profile-overview__see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.profile-overview__see-all:hover {
+  color: var(--fg-primary);
+}
+
+.profile-overview__loading {
+  padding: 12px 0;
+}
+
+/* ---------- Profile certs tab ---------- */
+
+.profile-certs {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-certs__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.profile-certs__controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  /* Bottom-align with the `self-end` tab strip so the 30px controls sit on
+     the same baseline as the taller tabs instead of floating above them. */
+  align-self: flex-end;
+  padding-bottom: 8px;
+}
+
+.profile-certs__search {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.profile-certs__search:focus-within {
+  border-color: var(--fg-primary);
+}
+
+.profile-certs__search-icon {
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+
+.profile-certs__search-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.875rem;
+  color: var(--fg-primary);
+  width: 200px;
+}
+
+.profile-certs__search-input::placeholder {
+  color: var(--fg-muted);
+}
+
+/* Strip the WebKit/Blink default 'x' button on type=search so it
+   doesn't fight with the icon styling. */
+.profile-certs__search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.profile-certs__sort-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.profile-certs__sort-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.profile-certs__sort-btn:hover {
+  background: var(--overlay-weak);
+  color: var(--fg-primary);
+}
+
+.profile-certs__sort-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (max-width: 799px) {
+  /* Certs + Projects toolbar: controls take their own full-width row
+     below the sub-tabs so the search can stretch across it. Search +
+     sort match the plus button's 30px height; the search grows to fill
+     the row beside the buttons. */
+  .profile-certs__controls,
+  .profile-projects__controls {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .profile-certs__search {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 30px;
+  }
+  .profile-certs__search-input {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .profile-certs__sort-btn {
+    width: 30px;
+    height: 30px;
+  }
+}
+
+/* On wider viewports, lay cert cards out as a grid. Drop the default
+   per-card bottom divider (the shared .feed style) since grid gap now
+   provides separation. Cards are uniform size: square image + 2-line
+   title + 2-line description + meta row pinned to the bottom. */
+@media (min-width: 800px) {
+  .profile-certs .feed {
+    display: grid;
+    /* Fixed 3-track grid: each track is at most 1/3 of the container so
+       a single cert renders at the same width as one of three in a row.
+       `minmax(0, …)` lets the track shrink instead of pushing past 1/3
+       when its content is wide. */
+    grid-template-columns: repeat(3, minmax(0, calc((100% - 48px) / 3)));
+    gap: 28px 24px;
+  }
+
+  .profile-certs .feed-card {
+    padding: 10px;
+    border-bottom: none;
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    transition: background var(--transition-fast);
+  }
+
+  .profile-certs .feed-card:hover {
+    background: var(--overlay-weak);
+  }
+
+  /* Cards in the certs grid get a card-wide hover background — drop
+     the title underline that's used in the stacked feed views. */
+  .profile-certs .feed-card__body:hover .feed-card__title {
+    text-decoration: none;
+  }
+
+  .profile-certs .feed-card__body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  /* Title: 2-line clamp with reserved height so short titles still
+     leave the description and meta row at the same vertical position
+     across cards. */
+  .profile-certs .feed-card__title {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: calc(1.125rem * 1.3 * 2);
+  }
+
+  /* Description: 2-line clamp with reserved height. */
+  .profile-certs .feed-card__desc {
+    -webkit-line-clamp: 2;
+    min-height: calc(0.875rem * 1.6 * 2);
+  }
+
+  /* Meta row pinned to the bottom regardless of title/desc length. */
+  .profile-certs .feed-card__meta {
+    margin-top: auto;
+  }
+
+  .profile-certs .feed__sentinel {
+    grid-column: 1 / -1;
+  }
+
+  /* Empty / error states inside the grid: span every column so the
+     EmptyState's own centering renders across the full pane instead
+     of sitting in the first grid cell. */
+  .profile-certs .feed > .empty-state {
+    grid-column: 1 / -1;
+  }
+}
+
+/* 3-track grid applies from 800px upwards — no breakpoint change needed
+   at 1100px; the same `minmax(0, 1/3)` rule keeps cards capped to 1/3 of
+   the container at every width. */
+
+.profile-overview__empty {
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  margin: 0;
+  padding: 8px 0;
+}
+
+.profile-overview__digest {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-overview__activity-list,
+.profile-overview__endorse-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-overview__activity-item,
+.profile-overview__endorse-item {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.profile-overview__activity-item:last-child,
+.profile-overview__endorse-item:last-child {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.profile-overview__activity-link {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.profile-overview__activity-link:hover .profile-overview__activity-title {
+  text-decoration: underline;
+}
+
+.profile-overview__activity-thumb {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.profile-overview__activity-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-overview__activity-thumb--placeholder {
+  background:
+    linear-gradient(
+      135deg,
+      var(--bg-sunken) 0%,
+      var(--overlay-weak) 100%
+    );
+  color: var(--fg-muted);
+}
+
+.profile-overview__activity-thumb--placeholder svg {
+  opacity: 0.6;
+}
+
+.profile-overview__activity-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.profile-overview__activity-title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+}
+
+.profile-overview__activity-desc {
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.profile-overview__activity-meta {
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+  margin-top: 4px;
+}
+
+.profile-overview__endorse-link {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.profile-overview__endorse-link:hover .profile-overview__endorse-name {
+  text-decoration: underline;
+}
+
+.profile-overview__endorse-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.profile-overview__endorse-name {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-overview__endorse-when {
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+}
+
+.profile-overview__endorse-note {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  font-style: italic;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+/* ============================================================
+   Site footer — minimal, GitHub-style.
+
+   One horizontal row at desktop (small brandmark + copyright on the
+   left, link list on the right); wraps to two stacked rows on
+   narrow viewports. Sits as a sibling of `.app-shell__grid` (NOT
+   inside it) so the footer spans the full viewport width on every
+   page — the border-top reads as a page-frame divider that matches
+   the navbar's border-bottom edge-to-edge. Interior padding
+   (16px 32px 24px) gives the brandmark + link list breathing room
+   inset from the viewport edges.
+   ============================================================ */
+
+.site-footer {
+  /* Matches the sidebar / row-2 dividers (--border-medium) so the
+     page-frame borders all read at the same visual weight. */
+  border-top: 1px solid var(--border-medium);
+  padding: 16px 32px 24px;
+  margin-top: 48px;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+/* The footer is the document's bottommost element on every page and
+   sits OUTSIDE `.app-shell__content` (it's a grid sibling), so the
+   shell's own bottom-nav padding doesn't reach it. On mobile the fixed
+   `.bottom-nav` (z-index --z-bottom-nav) would otherwise overlap the
+   wordmark + copyright when the page is scrolled to its bottom. Fold the
+   bar height (+ the iOS safe-area inset) into the footer's bottom padding
+   so the last footer line always clears the nav. `--bottom-nav-height`
+   is 0px at ≥800px, so this collapses back to the base 24px on desktop. */
+@media (max-width: 799px) {
+  .site-footer {
+    padding-bottom: calc(
+      var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 24px
+    );
+  }
+}
+
+.site-footer__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+@media (max-width: 799px) {
+  .site-footer__row {
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+.site-footer__left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Legal pages (about / terms / privacy / dsa / imprint) widen the
+   reading column compared to the default 600/720px app-shell cap.
+   Dense legal text benefits from longer line lengths; the inner
+   .app-page__inner's Tailwind max-w-3xl (768px) was already wider
+   than the outer 600/720 cap, so the actual cap was the OUTER one.
+   This bumps it to ~880px on both mobile and desktop. */
+.app-shell:has(.legal-page) .app-shell__content {
+  max-width: 880px;
+}
+
+/* Mobile heading scale for prose pages. The `text-h1..h3` Tailwind tokens are
+   fixed (2.25/1.75/1.375rem) and eat the narrow column on phones. Scoped to
+   `.legal-page`, these out-specify the utility class (0,1,1 > 0,1,0) and shrink
+   the headings below 800px only — app feed/card headings elsewhere are
+   untouched, and desktop (≥800px) keeps the full scale. */
+@media (max-width: 799px) {
+  .legal-page :is(h1, .text-h1) {
+    font-size: 1.75rem;
+    line-height: 1.25;
+  }
+  .legal-page :is(h2, .text-h2) {
+    font-size: 1.375rem;
+    line-height: 1.3;
+  }
+  .legal-page :is(h3, .text-h3) {
+    font-size: 1.125rem;
+    line-height: 1.35;
+  }
+  /* Trim list indentation so deeply-nested items keep usable width on phones
+     (Tailwind `pl-6` = 24px is generous for a ~300px column). */
+  .legal-page :is(ul, ol) {
+    padding-left: 1.25rem;
+  }
+}
+
+/* Keyboard focus affordance for inline links in long-form legal/about copy. */
+.legal-page a:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+.site-footer__brand {
+  color: var(--fg-muted);
+  opacity: 0.7;
+}
+
+.site-footer__wordmark {
+  display: block;
+  height: 14px;
+  width: auto;
+  opacity: 0.7;
+}
+
+/* Source SVG is pure black; flip via CSS filter in dark mode. */
+:root[data-theme="dark"] .site-footer__wordmark {
+  filter: invert(1);
+}
+
+/* Feedback button mimics a Link visually — same colour + hover —
+   but is a real <button> because the action opens a modal. */
+.site-footer__link--button {
+  font-family: inherit;
+  font-size: inherit;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.site-footer__nav {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+.site-footer__link {
+  color: var(--fg-muted);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.site-footer__link:hover {
+  color: var(--fg-primary);
+}
+
+.site-footer__link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+

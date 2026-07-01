@@ -1,0 +1,633 @@
+/* ---------- Workspace page chrome ---------- */
+
+.workspace-page {
+  padding: 24px 16px 64px;
+}
+
+@media (min-width: 800px) {
+  .app-shell:has(.workspace-page) .app-shell__content {
+    max-width: 1280px;
+  }
+}
+
+.workspace__head {
+  margin-bottom: 20px;
+}
+
+.workspace__eyebrow {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-secondary);
+}
+
+.workspace__title {
+  margin: 4px 0 6px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--fg-primary);
+}
+
+.workspace__subtitle {
+  margin: 0;
+  max-width: 56ch;
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+}
+
+.workspace__loading {
+  display: flex;
+  justify-content: center;
+  padding: 32px 0;
+}
+
+/* ---------- Shared content pane ---------- */
+
+.wks-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+}
+
+.wks-pane__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg-primary);
+}
+
+.wks-pane__heading {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.wks-pane__lede {
+  margin: 0;
+  color: var(--fg-secondary);
+  font-size: 0.9rem;
+}
+
+.wks-pane__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.wks-pane__grid-item {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.wks-pane__grid-label {
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+}
+
+.wks-pane__grid-count {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+}
+
+.wks-pane__hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+}
+
+.wks-pane__cta {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  background: var(--fg-primary);
+  color: var(--bg-canvas);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.wks-pane__cta:hover {
+  opacity: 0.9;
+}
+
+/* ============================================================ */
+/* Layout 1 — Breadcrumb */
+/* ============================================================ */
+
+.wks-breadcrumb {
+  position: relative;
+}
+
+.wks-breadcrumb__bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 14px;
+  font-size: 0.875rem;
+}
+
+.wks-breadcrumb__crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.wks-breadcrumb__crumb:hover {
+  background: var(--bg-sunken);
+}
+
+.wks-breadcrumb__menu {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  max-width: 360px;
+  max-height: 320px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-md);
+}
+
+.wks-breadcrumb__menu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--fg-primary);
+  cursor: pointer;
+}
+
+.wks-breadcrumb__menu-item:hover {
+  background: var(--bg-sunken);
+}
+
+.wks-breadcrumb__main {
+  min-height: 200px;
+}
+
+/* ============================================================ */
+/* Layout 2 — Notion left rail */
+/* ============================================================ */
+
+.wks-notion {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.wks-notion__rail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+}
+
+.wks-notion__section-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-secondary);
+  padding: 0 8px 4px;
+}
+
+.wks-notion__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.wks-notion__node {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 8px;
+  background: none;
+  border: 0;
+  border-radius: var(--radius);
+  text-align: left;
+  font-size: inherit;
+  color: var(--fg-primary);
+  cursor: pointer;
+}
+
+.wks-notion__node:hover {
+  background: var(--bg-sunken);
+}
+
+.wks-notion__node--active {
+  background: var(--fg-primary);
+  color: var(--bg-canvas);
+}
+
+.wks-notion__node-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wks-notion__node-count {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+.wks-notion__avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--bg-sunken);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.wks-notion__avatar--ph {
+  background: var(--bg-raised);
+}
+
+/* ============================================================ */
+/* Layout 3 — Mail accounts */
+/* ============================================================ */
+
+.wks-mail {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.wks-mail__rail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+}
+
+.wks-mail__network {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--fg-primary);
+  font-size: inherit;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.wks-mail__network:hover {
+  background: var(--bg-sunken);
+}
+
+.wks-mail__network--active {
+  background: var(--fg-primary);
+  color: var(--bg-canvas);
+}
+
+.wks-mail__accounts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.wks-mail__account-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 8px;
+  background: none;
+  border: 0;
+  border-radius: var(--radius);
+  text-align: left;
+  font-size: inherit;
+  color: var(--fg-primary);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.wks-mail__account-head:hover {
+  background: var(--bg-sunken);
+}
+
+.wks-mail__account-head--active {
+  background: var(--bg-sunken);
+}
+
+.wks-mail__avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--bg-sunken);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.wks-mail__avatar--ph {
+  background: var(--bg-raised);
+}
+
+.wks-mail__account-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wks-mail__folders {
+  list-style: none;
+  margin: 2px 0 6px 26px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.wks-mail__folder {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  text-align: left;
+  font-size: 0.8rem;
+  color: var(--fg-secondary);
+  cursor: pointer;
+}
+
+.wks-mail__folder:hover {
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+}
+
+.wks-mail__folder--active {
+  background: var(--fg-primary);
+  color: var(--bg-canvas);
+}
+
+.wks-mail__folder-label {
+  flex: 1;
+}
+
+.wks-mail__folder-count {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+/* ============================================================ */
+/* Layout 4 — Bluesky switcher */
+/* ============================================================ */
+
+.wks-blue {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+}
+
+.wks-blue__head {
+  position: relative;
+}
+
+.wks-blue__switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.wks-blue__switcher:hover {
+  background: var(--bg-sunken);
+}
+
+.wks-blue__avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg-sunken);
+  object-fit: cover;
+}
+
+.wks-blue__avatar--ph {
+  background: var(--bg-raised);
+}
+
+.wks-blue__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 10;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  min-width: 280px;
+  max-height: 360px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-md);
+}
+
+.wks-blue__menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  background: none;
+  border: 0;
+  border-radius: var(--radius);
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--fg-primary);
+  cursor: pointer;
+}
+
+.wks-blue__menu-item:hover {
+  background: var(--bg-sunken);
+}
+
+.wks-blue__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ============================================================ */
+/* Layout 5 — Slack columns */
+/* ============================================================ */
+
+.wks-slack {
+  display: grid;
+  grid-template-columns: 60px 220px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.wks-slack__icons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+  border-right: 1px solid var(--border-subtle);
+}
+
+.wks-slack__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius);
+  border: 0;
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  align-self: center;
+}
+
+.wks-slack__icon:hover {
+  outline: 2px solid var(--fg-secondary);
+  outline-offset: -2px;
+}
+
+.wks-slack__icon--active {
+  outline: 2px solid var(--fg-primary);
+  outline-offset: -2px;
+}
+
+.wks-slack__avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.wks-slack__initial {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.wks-slack__lexicons {
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+}
+
+.wks-slack__lexicons-head {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wks-slack__lex-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.wks-slack__lex {
+  display: flex;
+  width: 100%;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  text-align: left;
+  font-size: inherit;
+  color: var(--fg-primary);
+  cursor: pointer;
+}
+
+.wks-slack__lex:hover {
+  background: var(--bg-sunken);
+}
+
+.wks-slack__lex--active {
+  background: var(--fg-primary);
+  color: var(--bg-canvas);
+}
+
+.wks-slack__lex-label {
+  flex: 1;
+}
+
+.wks-slack__lex-count {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+.wks-slack__lex-empty {
+  font-size: 0.8rem;
+  color: var(--fg-secondary);
+  margin: 0;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 799px) {
+  .wks-notion,
+  .wks-mail,
+  .wks-slack {
+    grid-template-columns: 1fr;
+  }
+}

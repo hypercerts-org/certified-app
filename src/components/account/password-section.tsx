@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Pencil } from "lucide-react";
+import Banner from "@/components/ui/banner";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import { authFetch } from "@/lib/auth/fetch";
@@ -133,7 +134,7 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
 
   if (state === "form") {
     return (
-      <div className="dash-card mt-4">
+      <div className="dash-card">
         <div className="password-section__header">
           <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Password</h2>
         </div>
@@ -171,7 +172,9 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
             />
           </div>
           {formError && (
-            <p className="password-section__error" role="alert">{formError}</p>
+            <Banner variant="error" className="mt-2">
+              {formError}
+            </Banner>
           )}
           <div className="password-section__actions">
             <Button size="sm" onClick={handleSubmit} disabled={saving}>
@@ -187,9 +190,9 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
   }
 
   return (
-    <div className="dash-card mt-4">
-      <div className="password-section__header">
-        <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Password</h2>
+    <div className="dash-card">
+      <div className="settings-field">
+        <span className="settings-field__value">••••••••••••</span>
         <Button
           variant="ghost"
           size="sm"
@@ -206,18 +209,13 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
           )}
         </Button>
       </div>
-      {state === "success" ? (
+      {state === "success" && (
         <p className="password-section__status password-section__status--success">Password updated successfully.</p>
-      ) : (
-        <p className="password-section__masked">••••••••••••</p>
-      )}
-      {state === "idle" && (
-        <p className="password-section__hint">
-          Use the password to sign in to other AT Protocol apps (like Bluesky) with your Certified username. Your primary sign-in method for Certified apps remains the passwordless email code.
-        </p>
       )}
       {idleError && (
-        <p className="password-section__error" role="alert">{idleError}</p>
+        <Banner variant="error" className="mt-3">
+          {idleError}
+        </Banner>
       )}
     </div>
   );

@@ -1,14 +1,26 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Noto_Serif, Instrument_Serif } from "next/font/google";
+import { Suspense } from "react";
+import { Inter, Noto_Serif } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth/auth-context";
 import { NavbarProvider } from "@/lib/navbar-context";
+import { ViewTransitionProvider } from "@/lib/view-transitions";
 import Navbar from "@/components/layout/navbar";
-import Footer from "@/components/layout/footer";
+import DesktopTopBar from "@/components/layout/desktop-top-bar";
 import { Providers } from "@/lib/providers";
 import AppShell from "@/components/layout/app-shell";
 import { OrgProvider } from "@/lib/groups/org-context";
+import { OnboardingProvider } from "@/lib/onboarding/onboarding-context";
+import OnboardingModal from "@/components/onboarding/onboarding-modal";
+import { TourProvider } from "@/lib/tour/tour-context";
+import ProductTour from "@/components/tour/product-tour";
 import FeedbackModal from "@/components/ui/feedback-modal";
+import FeedbackTrigger from "@/components/layout/feedback-trigger";
+import { FeedbackProvider } from "@/lib/feedback-context";
+import BottomNav from "@/components/layout/bottom-nav";
+import ActingAsBar from "@/components/layout/acting-as-bar";
+import PwaInstallGuard from "@/components/layout/pwa-install-guard";
+import { ToastProvider } from "@/components/ui/toast";
 import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
@@ -20,17 +32,11 @@ const inter = Inter({
 
 const notoSerif = Noto_Serif({
   subsets: ["latin"],
-  weight: ["400", "700"],
+  // 300 is the landing-page display weight (hero + section headlines);
+  // 400/700 are the app-wide heading weights.
+  weight: ["300", "400", "700"],
   style: ["normal", "italic"],
   variable: "--font-headline",
-  display: "swap",
-});
-
-const instrumentSerif = Instrument_Serif({
-  subsets: ["latin"],
-  weight: ["400"],
-  style: ["normal", "italic"],
-  variable: "--font-serif-alt",
   display: "swap",
 });
 
@@ -42,15 +48,17 @@ export const metadata: Metadata = {
   description: "Your identity, everywhere.",
   metadataBase: new URL("https://certified.app"),
   openGraph: {
+    title: "Certified",
+    description: "Your identity, everywhere.",
     siteName: "Certified",
     locale: "en_US",
     type: "website",
     images: [
       {
-        url: "/assets/certified-hero-1200x630.png",
+        url: "/assets/certs-hero-1200x630.png",
         width: 1200,
         height: 630,
-        alt: "Certified — One account, any app",
+        alt: "Certified — One account. Your work. Recognized everywhere.",
       },
     ],
   },
@@ -58,7 +66,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: "@hypercerts",
     creator: "@hypercerts",
-    images: ["/assets/certified-hero-1200x630.png"],
+    images: ["/assets/certs-hero-1200x630.png"],
   },
   appleWebApp: {
     capable: true,
@@ -68,7 +76,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f9f9f6",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f9f9f6" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0b0d" },
+  ],
+  viewportFit: "cover",
 };
 
 const groupJsonLd = {
@@ -79,7 +91,7 @@ const groupJsonLd = {
   url: "https://hypercerts.org",
   logo: {
     "@type": "ImageObject",
-    url: "https://certified.app/assets/certified_brandmark_black.png",
+    url: "https://certified.app/brand/brandmark/certified_brandmark_black_512.png",
     width: 512,
     height: 512,
   },
@@ -113,7 +125,7 @@ const websiteJsonLd = {
   name: "Certified",
   url: "https://certified.app",
   description:
-    "Create your Certified identity and use one account across partner apps. No passwords, no lock-in.",
+    "Your profile, your work, and your supporters in one account — recognized on every app in the network. No passwords, no lock-in.",
   publisher: {
     "@type": "Organization",
     name: "Hypercerts Foundation",
@@ -128,7 +140,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script
           type="application/ld+json"
@@ -139,21 +151,47 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
       </head>
-      <body className={`${inter.variable} ${notoSerif.variable} ${instrumentSerif.variable} min-h-screen flex flex-col`}>
+      <body className={`${inter.variable} ${notoSerif.variable} min-h-screen flex flex-col`}>
         <Providers>
+          {/* App-wide toast region. Mounted high in the tree so any
+              client component below can call useToast(); ToastProvider
+              renders its own portal-backed Toaster. */}
+          <ToastProvider>
           <AuthProvider>
             <OrgProvider>
+              <OnboardingProvider>
+              <TourProvider>
               <NavbarProvider>
+                <FeedbackProvider>
+                <ViewTransitionProvider>
                 <a href="#main-content" className="skip-nav">Skip to main content</a>
+                <ActingAsBar />
                 <Navbar />
-                <main id="main-content" className="flex-1">
+                {/* Suspense is required because DesktopTopBar reads
+                    useSearchParams() to highlight the active profile tab.
+                    Without a boundary, statically-rendered pages (e.g.
+                    /dsa, /terms, /privacy) deopt and fail the build with
+                    missing-suspense-with-csr-bailout. */}
+                <Suspense fallback={<div className="desktop-top-bar desktop-top-bar--placeholder" aria-hidden />}>
+                  <DesktopTopBar />
+                </Suspense>
+                <main id="main-content" className="flex-1 flex flex-col">
                   <AppShell>{children}</AppShell>
                 </main>
-                <Footer />
+                <BottomNav />
+                <PwaInstallGuard />
                 <FeedbackModal />
+                <FeedbackTrigger />
+                <OnboardingModal />
+                <ProductTour />
+                </ViewTransitionProvider>
+                </FeedbackProvider>
               </NavbarProvider>
+              </TourProvider>
+              </OnboardingProvider>
             </OrgProvider>
           </AuthProvider>
+          </ToastProvider>
         </Providers>
         <Analytics />
       </body>

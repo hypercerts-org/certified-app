@@ -1,9 +1,14 @@
+/**
+ * Partner apps surfaced on the /apps directory page. Add a new entry
+ * by dropping a square logo (~256px) into public/assets/partners and
+ * referencing it here. Order in this list is the order rendered.
+ */
 export const CONNECTED_APPS = [
   {
     name: "Ma Earth",
-    desc: "Collective Funding for Regenerating Earth",
+    desc: "Collective funding for regenerating Earth",
     longDesc:
-      "Ma Earth connects communities with regenerative projects, enabling transparent funding and impact tracking through hypercerts.",
+      "Ma Earth runs collective funding rounds that direct community support and matching funds to community-led regeneration projects.",
     logo: "/assets/partners/maearth_logo.jpeg",
     url: "https://maearth.com",
   },
@@ -11,15 +16,23 @@ export const CONNECTED_APPS = [
     name: "GainForest",
     desc: "Co-creating a fair future for nature stewards",
     longDesc:
-      "GainForest uses AI and blockchain to monitor forests and reward conservation efforts with verifiable impact certificates.",
+      "GainForest develops open nature tech that monitors ecosystems and rewards verifiable conservation outcomes.",
     logo: "/assets/partners/gainforest_logo.jpeg",
     url: "https://gainforest.earth",
+  },
+  {
+    name: "Silvi",
+    desc: "Reforestation done right",
+    longDesc:
+      "Silvi connects funders with tree stewards and verifies community-led reforestation through satellite, drone, and on-the-ground monitoring.",
+    logo: "/assets/partners/silvi_logo.png",
+    url: "https://silvi.earth",
   },
   {
     name: "Simocracy",
     desc: "Democratic governance for the digital age",
     longDesc:
-      "Simocracy enables transparent democratic decision-making with verifiable identity and portable civic participation records.",
+      "Simocracy lets people build AI digital twins of themselves and send them into governance, deliberation, and capital allocation.",
     logo: "/assets/partners/simocracy_logo.jpg",
     url: "https://simocracy.org",
   },
@@ -27,8 +40,13 @@ export const CONNECTED_APPS = [
     name: "Hyperboards",
     desc: "Visualizing and recognizing those who create real value",
     longDesc:
-      "Hyperboards creates leaderboards and visual displays of hypercerts holders, making impact contributions visible and shareable.",
+      "Hyperboards turn signed contributor records on AT Protocol into living, embeddable boards that show who built what.",
     logo: "/assets/partners/hyperboards_brandmark.webp",
     url: "https://hyperboards.org",
+    // Hyperboards exposes the ePDS handle-login GET endpoint with no
+    // `prompt=login`, so passing the viewer's handle silently SSOs them
+    // through the Certified PDS session. Appended with
+    // `encodeURIComponent(handle)` at render time.
+    ssoHandleUrl: "https://hyperboards.org/api/oauth/epds/login?handle=",
   },
-];
+] as const;
