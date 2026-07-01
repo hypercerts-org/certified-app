@@ -14,6 +14,29 @@ interface SessionData {
 let cachedPromise: Promise<SessionData> | null = null;
 let cachedResult: SessionData | null = null;
 
+// Subscribers re-sync when the cached session is patched in place (e.g. after
+// an email change) so already-mounted readers update without a remount or a
+// full refetch.
+const listeners = new Set<() => void>();
+function notifySessionListeners(): void {
+  for (const listener of listeners) listener();
+}
+
+/**
+ * Patch the cached session email in place and notify readers. Call after an
+ * email change / confirmation so `useSession` consumers reflect the new
+ * address immediately, instead of showing the pre-change one until a hard
+ * refresh clears the cache.
+ */
+export function updateCachedSessionEmail(
+  email: string,
+  emailConfirmed: boolean,
+): void {
+  if (!cachedResult) return;
+  cachedResult = { ...cachedResult, email, emailConfirmed };
+  notifySessionListeners();
+}
+
 function fetchSession(): Promise<SessionData> {
   if (cachedPromise) return cachedPromise;
   cachedPromise = authFetch("/api/xrpc/com/atproto/server/getSession")
@@ -120,6 +143,21 @@ export function useSession(): {
         setIsLoading(false);
       });
   }, [isAuthenticated]);
+
+  // Re-sync when the cached session is patched in place (email change /
+  // confirm) so this reader updates without needing to remount or refetch.
+  useEffect(() => {
+    const sync = () => {
+      if (!cachedResult) return;
+      setHandle(cachedResult.handle);
+      setEmail(cachedResult.email);
+      setEmailConfirmed(cachedResult.emailConfirmed);
+    };
+    listeners.add(sync);
+    return () => {
+      listeners.delete(sync);
+    };
+  }, []);
 
   return { handle, email, emailConfirmed, isLoading, error };
 }

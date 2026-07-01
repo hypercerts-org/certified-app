@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil } from "lucide-react";
+import { Pencil, RefreshCw } from "lucide-react";
 import Banner from "@/components/ui/banner";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
-import { useAuth } from "@/lib/auth/auth-context";
 import {
   requestEmailUpdate,
   updateEmail,
@@ -14,6 +13,7 @@ import {
   EmailLockedError,
 } from "@/lib/atproto/account-email";
 import UnlockAppPasswordsDialog from "@/components/settings/unlock-app-passwords-dialog";
+import { updateCachedSessionEmail } from "@/hooks/use-session";
 
 interface EmailSectionProps {
   email: string;
@@ -29,21 +29,12 @@ type State = "idle" | "requesting" | "form" | "confirm" | "success";
 const looksLikeEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
 const EmailSection: React.FC<EmailSectionProps> = ({ email, emailConfirmed }) => {
-  const { did } = useAuth();
-  // Where to remember the pre-change address so "Revert" survives a reload
-  // while the new one is unconfirmed. Session-scoped: it's the user's own
-  // email, only needed until they confirm or revert.
-  const revertKey = did ? `certified:email-revert:${did}` : null;
-
   // The current address — updated locally on success so the row reflects the
   // change without a full session refresh.
   const [currentEmail, setCurrentEmail] = useState(email);
   // Whether `currentEmail` is confirmed. Seeded from the session, then owned
   // locally as the user changes / confirms without a full session refetch.
   const [confirmed, setConfirmed] = useState(emailConfirmed);
-  // The address to offer reverting to (the last *confirmed* one before a
-  // change). Loaded from session storage on mount so it survives a reload.
-  const [previousEmail, setPreviousEmail] = useState<string | null>(null);
 
   // On a hard refresh the session loads after this mounts, so the props arrive
   // empty/false and fill in a tick later. Sync them in.
@@ -53,25 +44,6 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, emailConfirmed }) =>
   useEffect(() => {
     setConfirmed(emailConfirmed);
   }, [emailConfirmed]);
-  useEffect(() => {
-    if (!revertKey) return;
-    try {
-      setPreviousEmail(sessionStorage.getItem(revertKey));
-    } catch {
-      /* storage unavailable — revert just won't be offered */
-    }
-  }, [revertKey]);
-
-  const rememberPrevious = (value: string | null) => {
-    setPreviousEmail(value);
-    if (!revertKey) return;
-    try {
-      if (value) sessionStorage.setItem(revertKey, value);
-      else sessionStorage.removeItem(revertKey);
-    } catch {
-      /* ignore */
-    }
-  };
 
   const [state, setState] = useState<State>("idle");
   const [tokenRequired, setTokenRequired] = useState(false);
@@ -187,11 +159,11 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, emailConfirmed }) =>
     setFormError(null);
     try {
       await updateEmail(next, tokenRequired ? token.trim() : undefined);
-      // Only capture the revert target when leaving a *confirmed* address, so
-      // repeated fixes of a typo still revert to the original good address.
-      if (confirmed && currentEmail) rememberPrevious(currentEmail);
       setCurrentEmail(next);
       setConfirmed(false);
+      // Keep the session cache in step so navigating away and back doesn't
+      // resurrect the pre-change address.
+      updateCachedSessionEmail(next, false);
       clearFormState();
       // The new address is unconfirmed — prove control of it.
       await startConfirmation();
@@ -224,7 +196,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, emailConfirmed }) =>
     try {
       await confirmEmail(currentEmail, code.trim());
       setConfirmed(true);
-      rememberPrevious(null);
+      updateCachedSessionEmail(currentEmail, true);
       setCode("");
       setState("success");
       setTimeout(() => setState("idle"), 4000);
@@ -240,33 +212,6 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, emailConfirmed }) =>
         /token|code/i.test(msg)
           ? "That code looks wrong or expired. Resend a new one."
           : msg,
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Revert to the last confirmed address. Tokenless because the current
-  // address is unconfirmed; the reverted address then needs confirming too.
-  const handleRevert = async () => {
-    if (!previousEmail) return;
-    setSaving(true);
-    setFormError(null);
-    try {
-      await updateEmail(previousEmail);
-      setCurrentEmail(previousEmail);
-      setConfirmed(false);
-      rememberPrevious(null);
-      clearFormState();
-      setState("idle");
-    } catch (err) {
-      if (err instanceof EmailLockedError) {
-        setState("idle");
-        setUnlockOpen(true);
-        return;
-      }
-      setFormError(
-        err instanceof Error ? err.message : "Couldn't revert your email.",
       );
     } finally {
       setSaving(false);
@@ -348,7 +293,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, emailConfirmed }) =>
           <p className="password-section__hint">
             Your email is now <strong>{currentEmail}</strong>, but it isn&rsquo;t
             confirmed yet. Enter the code we sent there to confirm it. Until you
-            do, you can change it again or revert with no code.
+            do, you can change it again with no code.
           </p>
           <div className="password-section__fields">
             <Input
@@ -370,16 +315,17 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, emailConfirmed }) =>
             <Button size="sm" onClick={handleConfirm} disabled={saving}>
               {saving ? "Confirming…" : "Confirm email"}
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
+          </div>
+          <div className="password-section__actions mt-2">
+            <button
+              type="button"
+              className="username-card__domain-btn"
               onClick={() => void startConfirmation()}
               disabled={saving}
             >
+              <RefreshCw size={14} aria-hidden="true" />
               Resend code
-            </Button>
-          </div>
-          <div className="password-section__actions mt-2">
+            </button>
             <Button
               variant="ghost"
               size="sm"
@@ -387,24 +333,6 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, emailConfirmed }) =>
               disabled={saving}
             >
               Use a different email
-            </Button>
-            {previousEmail && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleRevert}
-                disabled={saving}
-              >
-                Revert to {previousEmail}
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setState("idle")}
-              disabled={saving}
-            >
-              Later
             </Button>
           </div>
         </div>
@@ -440,16 +368,6 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, emailConfirmed }) =>
             <Button size="sm" onClick={() => void startConfirmation()}>
               Verify email
             </Button>
-            {previousEmail && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleRevert}
-                disabled={saving}
-              >
-                Revert to {previousEmail}
-              </Button>
-            )}
           </div>
         </Banner>
       )}
