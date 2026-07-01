@@ -501,6 +501,7 @@ export default function DesktopTopBar() {
                     type="button"
                     className="desktop-top-bar__switcher"
                     aria-label={`Switch account (currently ${identity.name || "anonymous"})`}
+                    data-tour="account-switcher"
                   >
                     <Avatar
                       size="sm"

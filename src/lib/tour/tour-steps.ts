@@ -188,6 +188,18 @@ export const TOUR_STEPS: readonly TourStep[] = [
     placement: "bottom",
   },
 
+  // ---- Account switcher (groups) --------------------------------------
+  {
+    id: "account-switcher",
+    navigateTo: null,
+    anchor: "account-switcher",
+    title: "Switch between accounts",
+    body: "Your account switcher lives up here. If you belong to a group, switch into it to post and act as the group — then switch back to yourself any time.",
+    placement: "bottom",
+    align: "end",
+    platform: "desktop",
+  },
+
   // ---- Settings ------------------------------------------------------
   {
     id: "nav-settings",
