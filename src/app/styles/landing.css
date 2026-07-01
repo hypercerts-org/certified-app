@@ -339,7 +339,9 @@
 .lp-topbar__btn {
   display: inline-flex;
   align-items: center;
-  padding: 8px 14px;
+  /* Match the square theme toggle's height so the two read as siblings. */
+  height: 34px;
+  padding: 0 14px;
   background: var(--color-off-white);
   border: 1px solid var(--color-light-gray);
   border-radius: var(--radius);
