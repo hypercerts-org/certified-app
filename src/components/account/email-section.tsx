@@ -17,9 +17,6 @@ import { updateCachedSessionEmail } from "@/hooks/use-session";
 
 interface EmailSectionProps {
   email: string;
-  /** Whether the CURRENT address is confirmed (from the session). Drives the
-   *  persistent "unconfirmed — verify" state after a change or reload. */
-  emailConfirmed: boolean;
 }
 
 type State = "idle" | "requesting" | "form" | "confirm" | "success";
@@ -28,22 +25,23 @@ type State = "idle" | "requesting" | "form" | "confirm" | "success";
 // pre-check so an obvious typo doesn't cost a round-trip.
 const looksLikeEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-const EmailSection: React.FC<EmailSectionProps> = ({ email, emailConfirmed }) => {
+const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
   // The current address — updated locally on success so the row reflects the
   // change without a full session refresh.
   const [currentEmail, setCurrentEmail] = useState(email);
-  // Whether `currentEmail` is confirmed. Seeded from the session, then owned
-  // locally as the user changes / confirms without a full session refetch.
-  const [confirmed, setConfirmed] = useState(emailConfirmed);
+  // A signed-in user already proved control of their current email via the
+  // sign-in OTP, so we treat it as confirmed — no "verify" nag just for being
+  // signed in. This only flips to false when they CHANGE the email this
+  // session, at which point we ask them to verify the new address directly.
+  // (Resets on a fresh load, which is fine: getting back here means they
+  // re-signed-in, i.e. re-OTP'd, the current address.)
+  const [confirmed, setConfirmed] = useState(true);
 
-  // On a hard refresh the session loads after this mounts, so the props arrive
-  // empty/false and fill in a tick later. Sync them in.
+  // On a hard refresh the session loads after this mounts, so `email` arrives
+  // empty and fills in a tick later. Sync it in.
   useEffect(() => {
     setCurrentEmail(email);
   }, [email]);
-  useEffect(() => {
-    setConfirmed(emailConfirmed);
-  }, [emailConfirmed]);
 
   const [state, setState] = useState<State>("idle");
   const [tokenRequired, setTokenRequired] = useState(false);
@@ -163,7 +161,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, emailConfirmed }) =>
       setConfirmed(false);
       // Keep the session cache in step so navigating away and back doesn't
       // resurrect the pre-change address.
-      updateCachedSessionEmail(next, false);
+      updateCachedSessionEmail(next);
       clearFormState();
       // The new address is unconfirmed — prove control of it.
       await startConfirmation();
@@ -196,7 +194,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, emailConfirmed }) =>
     try {
       await confirmEmail(currentEmail, code.trim());
       setConfirmed(true);
-      updateCachedSessionEmail(currentEmail, true);
+      updateCachedSessionEmail(currentEmail);
       setCode("");
       setState("success");
       setTimeout(() => setState("idle"), 4000);

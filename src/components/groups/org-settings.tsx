@@ -208,7 +208,7 @@ interface OrgSettingsProps {
 
 export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   const { did, pdsUrl } = useAuth()
-  const { email, emailConfirmed } = useSession()
+  const { email } = useSession()
   const { switchOrg, refetchOrgs } = useOrg()
   const router = useRouter()
   const isOwner = org.role === "owner"
@@ -543,10 +543,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                       Used to sign in and recover this account.
                     </p>
                   </div>
-                  <EmailSection
-                    email={email || ""}
-                    emailConfirmed={emailConfirmed}
-                  />
+                  <EmailSection email={email || ""} />
                 </div>
                 <div className="sx-subsection">
                   <div className="sx-subsection__head">

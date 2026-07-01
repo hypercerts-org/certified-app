@@ -186,7 +186,7 @@ function readHashPage(): PageKey | null {
  */
 export default function SettingsPanel() {
   const { did, pdsUrl } = useAuth()
-  const { handle, email, emailConfirmed } = useSession()
+  const { handle, email } = useSession()
   const { activeOrg, selfGroup } = useOrg()
 
   // `null` = no page actively selected. On desktop that resolves to the
@@ -281,9 +281,7 @@ export default function SettingsPanel() {
           />
         )
       case "email":
-        return (
-          <EmailSection email={email || ""} emailConfirmed={emailConfirmed} />
-        )
+        return <EmailSection email={email || ""} />
       case "password":
         return <PasswordSection email={email || ""} />
       case "theme":
