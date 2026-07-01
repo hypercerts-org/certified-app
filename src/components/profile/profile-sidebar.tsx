@@ -699,7 +699,10 @@ function AvatarEditOverlay({ onFile, isUploading, hasPending }: AvatarEditOverla
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        /* Match the banner + the shared ALLOWED_IMAGE_TYPES so unsupported
+           formats (e.g. SVG) aren't even selectable, instead of being picked
+           and then rejected. */
+        accept="image/jpeg,image/png,image/webp"
         className="profile-sidebar__avatar-edit-input"
         onChange={handleChange}
       />
