@@ -712,7 +712,8 @@ export default function CreateGroupPage() {
       {confirmOpen ? (
         <ConfirmDialog
           title="Confirm the group's email"
-          message={`This group will sign in and recover with ${email.trim()}. You'll need access to this inbox to reset its password or manage the account later, so make sure it's correct.`}
+          message={`This group will sign in and recover with ${email.trim()}. You'll need access to this inbox to reset its password or manage the account later, so make sure it's correct. Re-enter it below to confirm.`}
+          confirmPhrase={email.trim()}
           confirmLabel="Create group"
           cancelLabel="Back"
           confirmVariant="primary"
