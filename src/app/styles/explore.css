@@ -18,10 +18,13 @@
 
 @media (max-width: 799px) {
   /* Clip horizontal overflow so overlong content (degree-pills,
-     monospace DIDs, etc.) can't push the page wider than the viewport. */
+     monospace DIDs, etc.) can't push the page wider than the viewport.
+     Cap at 100% (the containing block, which already excludes the
+     reserved scrollbar gutter) rather than 100vw — 100vw includes the
+     gutter, so it can overhang by the scrollbar width. */
   .explore-page {
     overflow-x: clip;
-    max-width: 100vw;
+    max-width: 100%;
   }
   /* Zero the shell's 16px reading gutter — the page carries its own
      small (8px) gutter above so list rows run nearly edge-to-edge,
