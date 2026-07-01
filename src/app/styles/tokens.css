@@ -370,11 +370,28 @@ button:focus-visible,
   }
 }
 
-/* Reserve scrollbar space in the layout so pages with overflow and
-   pages without don't shift horizontally on Windows/Linux Chromium
-   (where the scrollbar takes ~15-17px). Older Safari (<18) silently
-   falls back to no reservation, which is acceptable. */
+/* Always paint the viewport scrollbar (via `overflow-y: scroll`) so a
+   short / non-overflowing page shows the same inert scrollbar track as a
+   scrolling one — instead of the empty reserved band that
+   `scrollbar-gutter: stable` alone leaves beside the full-bleed top bar
+   and acting-as banner, which reads as a "gap on the right" on classic /
+   always-on scrollbars. Reserving the same width on scrolling AND
+   non-scrolling pages also means no horizontal jump when navigating
+   between them.
+
+   `scrollbar-gutter: stable` is KEPT alongside it, and is load-bearing:
+   the scroll-lock hook (use-body-scroll-lock) toggles THIS element's
+   overflow to `hidden` while a drawer / bottom-sheet is open (html is the
+   viewport scroller once overflow-y is `scroll`, so the lock must live
+   here, not on <body>). The stable gutter keeps the scrollbar's width
+   reserved during that `hidden` lock, so opening an overlay doesn't shift
+   the page.
+
+   Overlay-scrollbar platforms (macOS default, iOS, mobile) reserve zero
+   width either way, so they're unaffected. Older Safari (<18) ignores
+   scrollbar-gutter but honours overflow-y: scroll. */
 html {
+  overflow-y: scroll;
   scrollbar-gutter: stable;
 }
 
