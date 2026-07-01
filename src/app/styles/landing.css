@@ -517,7 +517,11 @@
   .lp-hero {
     display: block;
     min-height: auto;
-    padding: calc(var(--navbar-height) + 8px) 20px 48px;
+    /* No top padding: on /welcome the topbar (.lp-topbar) is in normal
+       flow, so its 64px already sits above the hero (the wordmark is
+       vertically centered, leaving ~21px of intrinsic space below it).
+       Any extra padding-top double-counted the gap. */
+    padding: 0 20px 48px;
   }
   /* Cropped seal band above the stacked copy. */
   .lp-hero__art {
