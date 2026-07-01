@@ -1,8 +1,11 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { usePathname } from "next/navigation"
 import { MessageSquare } from "lucide-react"
 import { useFeedback } from "@/lib/feedback-context"
+import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
+import { isBottomNavVisible } from "@/lib/layout/bottom-nav-visibility"
 
 /**
  * Floating "Share Feedback" button, pinned bottom-right. It's the app's
@@ -15,6 +18,8 @@ import { useFeedback } from "@/lib/feedback-context"
  */
 export default function FeedbackTrigger() {
   const { isOpen, openFeedback } = useFeedback()
+  const pathname = usePathname()
+  const { isDesktop, isStandalone } = useLayoutBreakpoints()
   const [bottomOffset, setBottomOffset] = useState(20)
 
   const updatePosition = useCallback(() => {
@@ -62,7 +67,16 @@ export default function FeedbackTrigger() {
     }
   }, [updatePosition])
 
-  if (isOpen) return null
+  // Hidden on the marketing landing page (/welcome has its own contact
+  // CTA), and wherever the mobile bottom nav is on screen — that bar
+  // already carries a Feedback entry, so the floating button would
+  // duplicate it and overlap the bar.
+  if (
+    isOpen ||
+    pathname === "/welcome" ||
+    isBottomNavVisible({ pathname, isDesktop, isStandalone })
+  )
+    return null
 
   return (
     <button
