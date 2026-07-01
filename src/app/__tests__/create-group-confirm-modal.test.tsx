@@ -171,6 +171,12 @@ describe("CreateGroupPage create-group confirmation modal", () => {
     ).find((b) => /create group/i.test(b.textContent ?? "")) as HTMLButtonElement
     expect(confirm).toBeTruthy()
 
+    // The confirm gate: the user must re-type the email before Create group
+    // is enabled (guards a typo in the recovery-critical group address).
+    const reenter = dialog.querySelector("input") as HTMLInputElement
+    expect(reenter).toBeTruthy()
+    fireEvent.change(reenter, { target: { value: VALID_EMAIL } })
+
     fireEvent.click(confirm)
 
     await waitFor(() => {
@@ -181,5 +187,23 @@ describe("CreateGroupPage create-group confirmation modal", () => {
       "did:plc:me",
       VALID_EMAIL,
     )
+  })
+
+  it("does NOT create the group until the re-entered email matches", async () => {
+    render(<CreateGroupPage />)
+    fillValidForm()
+    fireEvent.click(getSubmitButton())
+
+    const dialog = await screen.findByRole("alertdialog", { hidden: true })
+    const confirm = Array.from(
+      dialog.querySelectorAll("button"),
+    ).find((b) => /create group/i.test(b.textContent ?? "")) as HTMLButtonElement
+
+    // Wrong re-entry — confirm stays disabled and registerGroup isn't called.
+    const reenter = dialog.querySelector("input") as HTMLInputElement
+    fireEvent.change(reenter, { target: { value: "typo@example.com" } })
+    expect(confirm.disabled).toBe(true)
+    fireEvent.click(confirm)
+    expect(registerGroup).not.toHaveBeenCalled()
   })
 })
