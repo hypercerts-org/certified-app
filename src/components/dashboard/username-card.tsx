@@ -8,6 +8,7 @@ import { authFetch } from "@/lib/auth/fetch";
 import { DEFAULT_PDS_URL } from "@/lib/utils/config";
 import { clearSessionCache } from "@/hooks/use-session";
 import CustomDomainModal from "@/components/dashboard/custom-domain-modal";
+import CopyPill from "@/components/account/copy-pill";
 
 interface UsernameCardProps {
   handle: string | null;
@@ -249,7 +250,20 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
               button is kept — it routes through the group-aware path. */}
           {!showingForm && (
             <div className="settings-field">
-              <span className="settings-field__value" data-tour="settings-handle">@{handle || "..."}</span>
+              {/* Click-to-copy the bare handle (no @), mirroring the DID pill —
+                  `display` keeps the familiar @handle on screen. */}
+              <span data-tour="settings-handle">
+                {handle ? (
+                  <CopyPill
+                    value={handle}
+                    display={`@${handle}`}
+                    label="username"
+                    inline
+                  />
+                ) : (
+                  <span className="settings-field__value">@...</span>
+                )}
+              </span>
               {isCertifiedHandle && (
                 <Button variant="ghost" size="sm" onClick={handleEdit}>
                   <Pencil size={14} />

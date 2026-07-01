@@ -233,6 +233,17 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, emailConfirmed }) =>
               : "Enter the email address you'd like to use. We'll send a code to confirm it."}
           </p>
           <div className="password-section__fields">
+            {tokenRequired && (
+              <Input
+                label="Confirmation code"
+                type="text"
+                placeholder="Enter code from email"
+                autoComplete="one-time-code"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                error={tokenError ?? undefined}
+              />
+            )}
             <Input
               label="New email"
               type="email"
@@ -251,17 +262,6 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, emailConfirmed }) =>
               onChange={(e) => setConfirmNewEmail(e.target.value)}
               error={confirmNewEmailError ?? undefined}
             />
-            {tokenRequired && (
-              <Input
-                label="Confirmation code"
-                type="text"
-                placeholder="Enter code from email"
-                autoComplete="one-time-code"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                error={tokenError ?? undefined}
-              />
-            )}
           </div>
           {formError && (
             <Banner variant="error" className="mt-2">
@@ -315,8 +315,6 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, emailConfirmed }) =>
             <Button size="sm" onClick={handleConfirm} disabled={saving}>
               {saving ? "Confirming…" : "Confirm email"}
             </Button>
-          </div>
-          <div className="password-section__actions mt-2">
             <button
               type="button"
               className="username-card__domain-btn"

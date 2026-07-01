@@ -543,7 +543,12 @@
   background: none;
   border: 1px dashed var(--border-default);
   border-radius: var(--radius);
-  padding: 8px 14px;
+  /* Match the sm Button height (Edit / Save / Confirm email = 28px on
+     desktop) so it lines up as a sibling control. min-height (not a fixed
+     height) lets it stretch to taller sm buttons when they hit their
+     min-h-11 on narrow screens inside a flex action row. */
+  min-height: 28px;
+  padding: 0 14px;
   font-size: 0.8125rem;
   font-weight: 500;
   color: var(--color-accent);
