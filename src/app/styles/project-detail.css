@@ -1319,7 +1319,7 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  margin-top: 8px;
+  margin-top: 20px;
   padding: 12px 14px;
   background: var(--bg-sunken);
   border: 1px solid var(--border-subtle);
