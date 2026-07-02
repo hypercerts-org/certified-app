@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
-import { useNavbarContext } from "@/lib/navbar-context";
+import { useNavbarValues } from "@/lib/navbar-context";
 import { useViewTransition } from "@/lib/view-transitions";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
@@ -49,7 +49,7 @@ const ROOT_PATHS = new Set<string>([
 const Navbar: React.FC = () => {
   const { isLoading, isAuthenticated, did, openSignIn, signOut } = useAuth();
   const { pageTitle, breadcrumb, recordMenu, profileOverlay } =
-    useNavbarContext();
+    useNavbarValues();
   const { profile, avatarUrl } = useProfile();
   const { handle } = useSession();
   const pathname = usePathname();
@@ -335,7 +335,7 @@ const Navbar: React.FC = () => {
               </Tooltip>
             )}
           </div>
-          <div className="navbar__title">
+          <h1 className="navbar__title">
             {breadcrumb ? (
               <>
                 <Link href={breadcrumb.left.href} className="navbar__title-part">
@@ -353,7 +353,7 @@ const Navbar: React.FC = () => {
             ) : (
               pageTitle
             )}
-          </div>
+          </h1>
           <div className="navbar__right">
             {isRootLevel ? (
               rightCluster

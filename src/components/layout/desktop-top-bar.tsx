@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import SiteDrawer from "./site-drawer";
 import { useAuth } from "@/lib/auth/auth-context";
-import { useNavbarContext } from "@/lib/navbar-context";
+import { useNavbarValues } from "@/lib/navbar-context";
 import { useViewTransition } from "@/lib/view-transitions";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
@@ -118,7 +118,7 @@ export default function DesktopTopBar() {
     profileAboutAvailable,
     profileGroupsAvailable,
     profileEditing,
-  } = useNavbarContext();
+  } = useNavbarValues();
   // The desktop bar prefers the record-name override (detail pages keep the
   // name on every tab); the mobile navbar still uses the tab-aware pageTitle.
   const desktopShownTitle = desktopTitle ?? pageTitle;
@@ -390,7 +390,7 @@ export default function DesktopTopBar() {
             )}
           </Link>
           {breadcrumb ? (
-            <div className="desktop-top-bar__title" aria-live="polite">
+            <h1 className="desktop-top-bar__title" aria-live="polite">
               <Link href={breadcrumb.left.href} className="desktop-top-bar__title-part">
                 {breadcrumb.left.text}
               </Link>
@@ -402,9 +402,9 @@ export default function DesktopTopBar() {
                   </Link>
                 </>
               ) : null}
-            </div>
+            </h1>
           ) : desktopShownTitle ? (
-            <div className="desktop-top-bar__title" aria-live="polite">{desktopShownTitle}</div>
+            <h1 className="desktop-top-bar__title" aria-live="polite">{desktopShownTitle}</h1>
           ) : null}
         </div>
 

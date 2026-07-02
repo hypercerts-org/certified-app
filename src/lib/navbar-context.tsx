@@ -59,62 +59,86 @@ export interface PageRecordMenu {
   editActions?: PageRecordEditActions | null;
 }
 
-interface NavbarContextValue {
+/**
+ * The mutable navbar *values*. Every field changes over the app's lifetime.
+ * Only the components that actually read chrome (Navbar, DesktopTopBar, and
+ * AppShell for `profileOverlay`) subscribe to this context, so a value change
+ * doesn't re-render the many pages that merely publish a title via the setter
+ * hooks below.
+ */
+interface NavbarValues {
   pageTitle: string | null;
-  setPageTitle: (title: string | null) => void;
   /** Desktop-only title override. The mobile navbar shows `pageTitle` (which
    *  detail pages make tab-aware, e.g. "Funding"); the wide desktop top bar,
    *  where the tab strip is already visible, shows this instead so it always
    *  reads the record's name regardless of the active tab. Falls back to
    *  `pageTitle` when unset. */
   desktopTitle: string | null;
-  setDesktopTitle: (title: string | null) => void;
   breadcrumb: PageTitleBreadcrumb | null;
-  setBreadcrumb: (b: PageTitleBreadcrumb | null) => void;
   /** Record-level overflow menu rendered in the mobile navbar's right
    *  slot on detail (sub-)pages. Null on pages that don't set it. */
   recordMenu: PageRecordMenu | null;
-  setRecordMenu: (m: PageRecordMenu | null) => void;
   profileOverlay: boolean;
-  setProfileOverlay: (v: boolean) => void;
   /** True when the viewed profile has a non-empty `longDescription`.
    *  Drives whether the "About" tab is rendered in the top-bar tab
    *  strip. Set by the profile page from its org-marker state and
    *  read by `<DesktopTopBar />` while filtering PROFILE_TABS. */
   profileAboutAvailable: boolean;
-  setProfileAboutAvailable: (v: boolean) => void;
   /** True when the viewed profile carries at least one public group
    *  membership OR when the viewer is looking at their own profile.
    *  Drives whether the "Groups" tab renders in the top-bar tab strip. */
   profileGroupsAvailable: boolean;
-  setProfileGroupsAvailable: (v: boolean) => void;
   /** True while the viewer is inline-editing the profile. The top-bar
    *  (and mobile) tab strips lock to the editable section(s) — Overview,
    *  plus About for orgs — and disable the rest so you can't tab away to
    *  read-only sections mid-edit. Set by the profile page, read by
    *  `<DesktopTopBar />`. */
   profileEditing: boolean;
+}
+
+/**
+ * The navbar *setters*. These come from `useState` so they are referentially
+ * stable for the life of the provider; the setters context value is memoized
+ * once and never changes identity, so setter-only consumers (the `usePageTitle`
+ * family) never re-render when a value changes.
+ */
+interface NavbarSetters {
+  setPageTitle: (title: string | null) => void;
+  setDesktopTitle: (title: string | null) => void;
+  setBreadcrumb: (b: PageTitleBreadcrumb | null) => void;
+  setRecordMenu: (m: PageRecordMenu | null) => void;
+  setProfileOverlay: (v: boolean) => void;
+  setProfileAboutAvailable: (v: boolean) => void;
+  setProfileGroupsAvailable: (v: boolean) => void;
   setProfileEditing: (v: boolean) => void;
 }
 
-const NavbarContext = createContext<NavbarContextValue>({
+type NavbarContextValue = NavbarValues & NavbarSetters;
+
+const defaultValues: NavbarValues = {
   pageTitle: null,
-  setPageTitle: () => {},
   desktopTitle: null,
-  setDesktopTitle: () => {},
   breadcrumb: null,
-  setBreadcrumb: () => {},
   recordMenu: null,
-  setRecordMenu: () => {},
   profileOverlay: false,
-  setProfileOverlay: () => {},
   profileAboutAvailable: false,
-  setProfileAboutAvailable: () => {},
   profileGroupsAvailable: false,
-  setProfileGroupsAvailable: () => {},
   profileEditing: false,
+};
+
+const defaultSetters: NavbarSetters = {
+  setPageTitle: () => {},
+  setDesktopTitle: () => {},
+  setBreadcrumb: () => {},
+  setRecordMenu: () => {},
+  setProfileOverlay: () => {},
+  setProfileAboutAvailable: () => {},
+  setProfileGroupsAvailable: () => {},
   setProfileEditing: () => {},
-});
+};
+
+const NavbarValuesContext = createContext<NavbarValues>(defaultValues);
+const NavbarSettersContext = createContext<NavbarSetters>(defaultSetters);
 
 export function NavbarProvider({ children }: { children: ReactNode }) {
   const [pageTitle, setPageTitle] = useState<string | null>(null);
@@ -127,24 +151,40 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
   const [profileGroupsAvailable, setProfileGroupsAvailable] =
     useState<boolean>(false);
   const [profileEditing, setProfileEditing] = useState<boolean>(false);
-  const value = useMemo(
+  // Setters are stable across renders, so this memo never recomputes and the
+  // setters context keeps one identity for the provider's lifetime.
+  const setters = useMemo<NavbarSetters>(
+    () => ({
+      setPageTitle,
+      setDesktopTitle,
+      setBreadcrumb,
+      setRecordMenu,
+      setProfileOverlay,
+      setProfileAboutAvailable,
+      setProfileGroupsAvailable,
+      setProfileEditing,
+    }),
+    [
+      setPageTitle,
+      setDesktopTitle,
+      setBreadcrumb,
+      setRecordMenu,
+      setProfileOverlay,
+      setProfileAboutAvailable,
+      setProfileGroupsAvailable,
+      setProfileEditing,
+    ]
+  );
+  const values = useMemo<NavbarValues>(
     () => ({
       pageTitle,
-      setPageTitle,
       desktopTitle,
-      setDesktopTitle,
       breadcrumb,
-      setBreadcrumb,
       recordMenu,
-      setRecordMenu,
       profileOverlay,
-      setProfileOverlay,
       profileAboutAvailable,
-      setProfileAboutAvailable,
       profileGroupsAvailable,
-      setProfileGroupsAvailable,
       profileEditing,
-      setProfileEditing,
     }),
     [
       pageTitle,
@@ -158,14 +198,30 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
     ]
   );
   return (
-    <NavbarContext.Provider value={value}>
-      {children}
-    </NavbarContext.Provider>
+    <NavbarSettersContext.Provider value={setters}>
+      <NavbarValuesContext.Provider value={values}>
+        {children}
+      </NavbarValuesContext.Provider>
+    </NavbarSettersContext.Provider>
   );
 }
 
-export function useNavbarContext() {
-  return useContext(NavbarContext);
+/**
+ * Subscribe to the live navbar values. Only the chrome readers (Navbar,
+ * DesktopTopBar) should call this — it re-renders on every value change.
+ */
+export function useNavbarValues() {
+  return useContext(NavbarValuesContext);
+}
+
+/**
+ * Read the full navbar context (values + setters). Kept for consumers that
+ * need both; the returned setters are stable and the values are live.
+ */
+export function useNavbarContext(): NavbarContextValue {
+  const values = useContext(NavbarValuesContext);
+  const setters = useContext(NavbarSettersContext);
+  return { ...values, ...setters };
 }
 
 /**
@@ -181,7 +237,7 @@ export function useNavbarContext() {
  *   }
  */
 export function usePageTitle(title: string) {
-  const { setPageTitle } = useContext(NavbarContext);
+  const { setPageTitle } = useContext(NavbarSettersContext);
   useEffect(() => {
     setPageTitle(title);
     return () => setPageTitle(null);
@@ -195,7 +251,7 @@ export function usePageTitle(title: string) {
  * tab. Pass `null` to leave the desktop bar on the `usePageTitle` value.
  */
 export function usePageDesktopTitle(title: string | null) {
-  const { setDesktopTitle } = useContext(NavbarContext);
+  const { setDesktopTitle } = useContext(NavbarSettersContext);
   useEffect(() => {
     setDesktopTitle(title);
     return () => setDesktopTitle(null);
@@ -209,7 +265,7 @@ export function usePageDesktopTitle(title: string | null) {
  * usually also calls `usePageTitle(...)` to supply a string fallback.
  */
 export function usePageTitleBreadcrumb(b: PageTitleBreadcrumb | null) {
-  const { setBreadcrumb } = useContext(NavbarContext);
+  const { setBreadcrumb } = useContext(NavbarSettersContext);
   const key = b
     ? `${b.left.text}|${b.left.href}|${b.right?.text ?? ""}|${b.right?.href ?? ""}`
     : null;
@@ -232,7 +288,7 @@ export function usePageTitleBreadcrumb(b: PageTitleBreadcrumb | null) {
  * in-body menu at ≥800px).
  */
 export function usePageRecordMenu(menu: PageRecordMenu | null) {
-  const { setRecordMenu } = useContext(NavbarContext);
+  const { setRecordMenu } = useContext(NavbarSettersContext);
   // Include the edit-action data (not the callbacks) so the menu re-sets when
   // edit eligibility resolves (e.g. after auth loads), while a new object
   // literal each render still doesn't re-fire (callbacks call stable setters).
@@ -265,7 +321,7 @@ export function usePageRecordMenu(menu: PageRecordMenu | null) {
  *   }
  */
 export function useProfileNavbar(enabled: boolean = true) {
-  const { setProfileOverlay } = useContext(NavbarContext);
+  const { setProfileOverlay } = useContext(NavbarSettersContext);
   useEffect(() => {
     if (!enabled) return;
     setProfileOverlay(true);
@@ -280,7 +336,7 @@ export function useProfileNavbar(enabled: boolean = true) {
  * on unmount so the flag doesn't bleed into the next page.
  */
 export function useProfileAboutAvailable(available: boolean) {
-  const { setProfileAboutAvailable } = useContext(NavbarContext);
+  const { setProfileAboutAvailable } = useContext(NavbarSettersContext);
   useEffect(() => {
     setProfileAboutAvailable(available);
     return () => setProfileAboutAvailable(false);
@@ -293,7 +349,7 @@ export function useProfileAboutAvailable(available: boolean) {
  * the Groups tab renders in the top-bar tab strip.
  */
 export function useProfileGroupsAvailable(available: boolean) {
-  const { setProfileGroupsAvailable } = useContext(NavbarContext);
+  const { setProfileGroupsAvailable } = useContext(NavbarSettersContext);
   useEffect(() => {
     setProfileGroupsAvailable(available);
     return () => setProfileGroupsAvailable(false);
@@ -307,7 +363,7 @@ export function useProfileGroupsAvailable(available: boolean) {
  * Reset to false on unmount so the lock doesn't bleed into the next page.
  */
 export function useProfileEditing(editing: boolean) {
-  const { setProfileEditing } = useContext(NavbarContext);
+  const { setProfileEditing } = useContext(NavbarSettersContext);
   useEffect(() => {
     setProfileEditing(editing);
     return () => setProfileEditing(false);
