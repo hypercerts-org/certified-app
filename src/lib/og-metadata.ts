@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { unstable_cache } from "next/cache"
 import { buildProfilePayload } from "@/app/api/resolve-did/resolve-core"
 import { resolveHandle, resolveHandleToDid, resolveHandleViaWellKnown } from "@/lib/atproto/did"
 import { getRecordServer } from "@/lib/atproto/get-record-server"
@@ -9,6 +10,28 @@ import { parseActor, profileUrl, recordUrl, type RecordType } from "@/lib/urls"
 const SITE_NAME = "Certified"
 const DEFAULT_OG_IMAGE = "/assets/certs-hero-1200x630.png"
 const TWITTER_HANDLE = "@hypercerts"
+
+// `generateMetadata` runs on the TTFB-critical path, and social scrapers /
+// crawlers hit the same profile & record URLs repeatedly. Cache the DID-keyed
+// upstream resolution briefly so repeat hits collapse onto one fetch instead
+// of re-issuing the indexer + PDS round-trips every request. `unstable_cache`
+// (rather than per-fetch `next: { revalidate }`) is required because
+// `buildProfilePayload` issues an indexer POST, and Next never data-caches
+// POST fetches. OG previews are then at most a few minutes stale after an edit.
+const OG_REVALIDATE_SECONDS = 300
+
+const cachedProfilePayload = unstable_cache(
+  (did: string) => buildProfilePayload(did),
+  ["og-metadata:profile-payload"],
+  { revalidate: OG_REVALIDATE_SECONDS },
+)
+
+const cachedRecord = unstable_cache(
+  (did: string, collection: string, rkey: string) =>
+    getRecordServer<Record<string, unknown>>(did, collection, rkey),
+  ["og-metadata:record"],
+  { revalidate: OG_REVALIDATE_SECONDS },
+)
 
 /** Collapse whitespace and cap a description at OG-friendly length. */
 function clampDescription(text: string | null | undefined, max = 200): string | undefined {
@@ -118,7 +141,7 @@ export async function profileMetadata(actorParam: string): Promise<Metadata> {
     const resolved = await actorToDid(actorParam)
     if (!resolved) return {}
 
-    const profile = await buildProfilePayload(resolved.did)
+    const profile = await cachedProfilePayload(resolved.did)
     const handle = profile.handle || resolved.handle || resolved.did
     const name = profile.displayName?.trim() || handle
 
@@ -159,7 +182,7 @@ export async function recordMetadata(
     if (!resolved) return {}
     const { did } = resolved
 
-    const record = await getRecordServer<Record<string, unknown>>(did, collection, rkey)
+    const record = await cachedRecord(did, collection, rkey)
     if (!record) return {}
     const value = record.value
 

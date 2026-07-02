@@ -24,8 +24,13 @@ describe("robots.ts disallow covers app-only surfaces", () => {
     },
   )
 
-  it("keeps genuinely public surfaces indexable (no /profile or /project disallow)", () => {
-    expect(disallow).not.toContain("/profile")
+  it("keeps genuinely public record surfaces indexable (no /project disallow)", () => {
     expect(disallow).not.toContain("/project")
+  })
+
+  it("disallows the /profile redirect stub (next-robots-omits-internal-routes)", () => {
+    // /profile is a client redirect stub, not a public surface, so it must
+    // stay out of the index alongside /workspace and /endorsement-graph.
+    expect(disallow).toContain("/profile")
   })
 })

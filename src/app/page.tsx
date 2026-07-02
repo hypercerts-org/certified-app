@@ -1,9 +1,5 @@
-"use client";
-
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth/auth-context";
-import LoadingSpinner from "@/components/ui/loading-spinner";
+import { redirect } from "next/navigation";
+import { getSessionDid } from "@/lib/auth/session";
 
 /**
  * Root — `/`.
@@ -14,29 +10,15 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
  * (redesign.certified.app), and staging (staging.certified.app) all
  * resolve `/` through this component.
  *
- * Client-side redirect rather than a server-side rewrite because
- * authentication state lives in a cookie-backed client context and
- * resolves a tick after first paint; an inline loading spinner
- * covers that gap.
+ * A Server Component reads the session cookie directly via
+ * `getSessionDid()` — the same source `/api/auth/session` reads — and
+ * issues the redirect before any client bundle loads, so there is no
+ * spinner, no client round-trip, and crawlers get a real 307 instead of
+ * a blank spinner page. Redis session presence is an authoritative-enough
+ * signal for which landing to show; `/home` re-verifies the OAuth session
+ * and bounces to `/welcome` if it has since been revoked.
  */
-export default function Root() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (isLoading) return;
-    if (isAuthenticated) {
-      router.replace("/home");
-    } else {
-      router.replace("/welcome");
-    }
-  }, [isLoading, isAuthenticated, router]);
-
-  return (
-    <div className="loading-screen">
-      <div className="loading-screen__inner">
-        <LoadingSpinner />
-      </div>
-    </div>
-  );
+export default async function Root() {
+  const did = await getSessionDid();
+  redirect(did ? "/home" : "/welcome");
 }
