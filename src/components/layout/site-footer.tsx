@@ -34,6 +34,14 @@ export default function SiteFooter() {
           <Link href="/welcome" className="site-footer__link">
             Welcome
           </Link>
+          <a
+            href="https://docs.hypercerts.org/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="site-footer__link"
+          >
+            Docs
+          </a>
           <Link href="/terms" className="site-footer__link">
             Terms
           </Link>
