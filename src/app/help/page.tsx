@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import PageTitle from "@/components/layout/page-title";
 import HelpFeedbackLink from "@/components/help/help-feedback-link";
 import HelpTourButton from "@/components/help/help-tour-button";
@@ -52,31 +51,14 @@ export default function HelpPage() {
             <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               What is certified.app?
             </h2>
-            <p className="mb-4">
+            <p>
               certified.app is a view into the whole Certified network. It brings together every
               account on the network, the activities and impact data they publish, and the
               connections between them — who endorses whom, who follows whom, and who works
               together in which group. The data itself doesn&apos;t live in this app: each account
-              keeps its own records on the AT Protocol, and certified.app reads across all of them
+              keeps its own records on AT Protocol, and certified.app reads across all of them
               to show the network in one place. Other compatible apps can present the same network
               in their own way.
-            </p>
-            <p>
-              A good place to start browsing is{" "}
-              <Link
-                href="/explore"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
-              >
-                Explore
-              </Link>
-              , and the{" "}
-              <Link
-                href="/endorsement-graph"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
-              >
-                endorsement graph
-              </Link>{" "}
-              draws the network&apos;s connections as an interactive map.
             </p>
           </section>
 
