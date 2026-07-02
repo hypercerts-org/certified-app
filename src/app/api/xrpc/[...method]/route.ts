@@ -21,7 +21,10 @@ import { parseJsonBody } from "@/lib/utils/api"
 import {
   checkAndIncrementWriteRate,
   RATE_LIMITED_WRITE_COLLECTIONS,
+  makeLimiter,
+  enforceRateLimit,
 } from "@/lib/auth/rate-limit"
+import { clientIp } from "@/lib/utils/ip"
 
 // INVARIANT: `app.bsky.actor.profile` must NEVER be added to this allowlist
 // (certified-app invariant) — writing it clobbers the user's Bluesky profile.
@@ -81,10 +84,19 @@ const MAX_BLOB_SIZE = 4 * 1024 * 1024 // 4MB — Vercel serverless functions hav
 
 // Ceiling for foreign-DID blob reads. An allowlisted-but-hostile PDS
 // could otherwise stream an arbitrarily large body for an attacker-
-// chosen DID's CID through our proxy. We only short-circuit on a
-// declared Content-Length over this cap; a missing/lying length is
-// out of scope (we don't wrap the stream to count bytes).
+// chosen DID's CID through our proxy. We short-circuit on a declared
+// Content-Length over this cap AND wrap the response stream in a byte
+// counter that aborts once the cap is passed, so a missing/lying length
+// can't stream unbounded.
 const MAX_FOREIGN_BLOB_SIZE = 10 * 1024 * 1024 // 10MB
+
+// IP-scoped limiter for the unauthenticated GET proxy. This handler
+// resolves an arbitrary client-supplied repo/did to a PDS and issues an
+// upstream fetch (getRecord / listRecords / sync.getBlob) for signed-out
+// callers, so it needs its own ceiling — every other outbound-fetching
+// proxy route (resolve-did, indexer, geocode, …) has one. Sized
+// generously (300/60s) for feed/profile fan-out from a single client.
+const GET_LIMITER = makeLimiter("xrpc-get-ip", 300, 60)
 
 /**
  * Fixed Cache-Control for foreign-DID blob reads. CIDs are content-
@@ -98,6 +110,33 @@ const FOREIGN_BLOB_CACHE_HEADERS = {
 
 function asString(v: unknown): string | undefined {
   return typeof v === "string" ? v : undefined
+}
+
+/**
+ * Wrap a response body stream in a byte counter that errors the stream
+ * once `maxBytes` have passed through, independent of any declared
+ * Content-Length. A hostile-but-allowlisted PDS can omit or understate
+ * the header and stream an unbounded body for an attacker-chosen CID;
+ * this caps the bytes we proxy regardless. Returns null unchanged when
+ * the upstream has no body.
+ */
+function capStream(
+  body: ReadableStream<Uint8Array> | null,
+  maxBytes: number,
+): ReadableStream<Uint8Array> | null {
+  if (!body) return null
+  let total = 0
+  const counter = new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      total += chunk.byteLength
+      if (total > maxBytes) {
+        controller.error(new Error("Foreign blob exceeded size cap"))
+        return
+      }
+      controller.enqueue(chunk)
+    },
+  })
+  return body.pipeThrough(counter)
 }
 
 /**
@@ -218,7 +257,7 @@ async function proxyPublicGetRecord(
   try {
     const upstream = await fetch(
       `${targetPds}/xrpc/com.atproto.repo.getRecord?${params.toString()}`,
-      { signal: AbortSignal.timeout(10_000) }
+      { redirect: "error", signal: AbortSignal.timeout(10_000) }
     )
     if (!upstream.ok) {
       return NextResponse.json(
@@ -267,6 +306,7 @@ async function proxyPublicListRecords(
     const upstream = await fetch(
       `${targetPds}/xrpc/com.atproto.repo.listRecords?${params.toString()}`,
       {
+        redirect: "error",
         headers: { "Content-Type": "application/json" },
         // Abort after 10s so a slow PDS doesn't block our handler.
         signal: AbortSignal.timeout(10_000),
@@ -308,7 +348,7 @@ async function proxyPublicGetBlob(
     const params = new URLSearchParams({ did: blobDid, cid })
     const upstream = await fetch(
       `${targetPds}/xrpc/com.atproto.sync.getBlob?${params.toString()}`,
-      { signal: AbortSignal.timeout(15_000) }
+      { redirect: "error", signal: AbortSignal.timeout(15_000) }
     )
     if (!upstream.ok) {
       return NextResponse.json(
@@ -316,14 +356,13 @@ async function proxyPublicGetBlob(
         { status: upstream.status }
       )
     }
-    // Trust posture: short-circuit a *declared* oversize before streaming.
-    // A missing/lying Content-Length is out of scope (we don't wrap the
-    // stream to enforce the cap byte-by-byte).
+    // Short-circuit a *declared* oversize before streaming — cheap fast
+    // path when the PDS is honest about a large body.
     const upstreamLength = upstream.headers.get("content-length")
     if (upstreamLength && Number(upstreamLength) > MAX_FOREIGN_BLOB_SIZE) {
       return NextResponse.json({ error: "Payload too large" }, { status: 413 })
     }
-    return new NextResponse(upstream.body, {
+    return new NextResponse(capStream(upstream.body, MAX_FOREIGN_BLOB_SIZE), {
       status: 200,
       headers: {
         "Content-Type":
@@ -345,6 +384,14 @@ export async function GET(
   { params }: { params: Promise<{ method: string[] }> }
 ) {
   try {
+    // Rate-limit first: this handler is reachable unauthenticated and
+    // resolves a client-supplied repo/did to a PDS it then fetches, so
+    // block floods (SSRF / amplification fan-out) before any upstream
+    // work. IP-scoped; fail-open on a limiter backend error (handled
+    // inside enforceRateLimit).
+    const rateDenied = await enforceRateLimit(GET_LIMITER, clientIp(request))
+    if (rateDenied) return rateDenied
+
     const { method } = await params
     const methodName = method.join(".")
 

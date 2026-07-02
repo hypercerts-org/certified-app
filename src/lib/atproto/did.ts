@@ -10,28 +10,107 @@ interface DidDocument {
 
 const DID_FETCH_TIMEOUT_MS = 5000
 
-function isAllowedPdsUrl(url: string): boolean {
+/**
+ * Parse a hostname as a loose IPv4 literal the way glibc `inet_aton`
+ * (undici's resolver) does: 1-4 dot-separated parts, each decimal,
+ * octal (leading `0`) or hex (leading `0x`), with the a / a.b / a.b.c /
+ * a.b.c.d field-packing forms. Returns the 32-bit address, or null when
+ * the host is not a numeric IPv4 literal (a real DNS name resolved
+ * normally). This catches the non-canonical encodings — `2130706433`,
+ * `0x7f.0.0.1`, `0177.0.0.1`, `127.1` — that all collapse to an
+ * internal address but slip past a plain dotted-quad check.
+ */
+function parseIpv4Loose(host: string): number | null {
+  const parts = host.split(".")
+  if (parts.length === 0 || parts.length > 4) return null
+
+  const nums: number[] = []
+  for (const part of parts) {
+    let value: number
+    if (/^0x[0-9a-f]+$/i.test(part)) {
+      value = parseInt(part.slice(2), 16)
+    } else if (/^0[0-7]+$/.test(part)) {
+      value = parseInt(part, 8)
+    } else if (/^(0|[1-9][0-9]*)$/.test(part)) {
+      value = parseInt(part, 10)
+    } else {
+      // A non-numeric label → this is a DNS name, not an IP literal.
+      return null
+    }
+    if (!Number.isFinite(value) || value < 0) return null
+    nums.push(value)
+  }
+
+  const n = nums.length
+  if (n === 1) {
+    if (nums[0] > 0xffffffff) return null
+    return nums[0] >>> 0
+  }
+  if (n === 2) {
+    if (nums[0] > 0xff || nums[1] > 0xffffff) return null
+    return ((nums[0] << 24) | nums[1]) >>> 0
+  }
+  if (n === 3) {
+    if (nums[0] > 0xff || nums[1] > 0xff || nums[2] > 0xffff) return null
+    return ((nums[0] << 24) | (nums[1] << 16) | nums[2]) >>> 0
+  }
+  if (nums.some((x) => x > 0xff)) return null
+  return ((nums[0] << 24) | (nums[1] << 16) | (nums[2] << 8) | nums[3]) >>> 0
+}
+
+/** Range-check a 32-bit IPv4 against the loopback / private / CGNAT /
+ *  link-local / unspecified blocks that must never be reachable through
+ *  a server-side proxy. */
+function isBlockedIpv4(addr: number): boolean {
+  const a = (addr >>> 24) & 0xff
+  const b = (addr >>> 16) & 0xff
+  if (a === 0) return true // 0.0.0.0/8
+  if (a === 10) return true // 10.0.0.0/8
+  if (a === 127) return true // 127.0.0.0/8 loopback
+  if (a === 100 && b >= 64 && b <= 127) return true // 100.64.0.0/10 CGNAT
+  if (a === 169 && b === 254) return true // 169.254.0.0/16 link-local
+  if (a === 172 && b >= 16 && b <= 31) return true // 172.16.0.0/12
+  if (a === 192 && b === 168) return true // 192.168.0.0/16
+  return false
+}
+
+/**
+ * Gate an outbound PDS URL against SSRF. Requires https, blocks
+ * localhost, IPv6 loopback/link-local/ULA/unspecified/IPv4-mapped, and
+ * every IPv4 private range — including the non-canonical decimal / hex /
+ * octal encodings a naive dotted-quad check misses.
+ *
+ * This validates the host STRING only; it does not resolve DNS, so a
+ * public name that resolves to an internal address (DNS rebinding) is
+ * out of scope here — mitigated by `redirect: "error"` on the callers
+ * and the fetch timeouts.
+ */
+export function isAllowedPdsUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== "https:") return false;
 
     const hostname = parsed.hostname;
-    if (hostname === "localhost" || hostname === "[::1]") return false;
+    if (hostname === "localhost") return false;
 
-    if (hostname.startsWith("[")) {
+    if (hostname.startsWith("[") && hostname.endsWith("]")) {
       const inner = hostname.slice(1, -1).toLowerCase()
-      if (inner === "::1" || inner.startsWith("fe80:") || inner.startsWith("fc") || inner.startsWith("fd") || inner.startsWith("::ffff:")) return false
+      if (
+        inner === "::1" ||
+        inner === "::" ||
+        inner.startsWith("fe80:") ||
+        inner.startsWith("fc") ||
+        inner.startsWith("fd") ||
+        inner.startsWith("::ffff:")
+      ) {
+        return false
+      }
+      return true
     }
 
-    const parts = hostname.split(".");
-    if (parts.every((p) => /^\d+$/.test(p)) && parts.length === 4) {
-      const [a, b] = parts.map(Number);
-      if (a === 127) return false;
-      if (a === 10) return false;
-      if (a === 172 && b >= 16 && b <= 31) return false;
-      if (a === 192 && b === 168) return false;
-      if (a === 169 && b === 254) return false;
-    }
+    const bare = hostname.endsWith(".") ? hostname.slice(0, -1) : hostname
+    const ipv4 = parseIpv4Loose(bare)
+    if (ipv4 !== null && isBlockedIpv4(ipv4)) return false
 
     return true;
   } catch {
@@ -123,7 +202,10 @@ async function fetchDidDocument(did: string): Promise<DidDocument | null> {
 
     let response: Response;
     try {
-      response = await fetch(url, { signal: controller.signal });
+      response = await fetch(url, {
+        redirect: "error",
+        signal: controller.signal,
+      });
     } finally {
       clearTimeout(timeoutId);
     }
@@ -171,14 +253,29 @@ async function fetchDidDocument(did: string): Promise<DidDocument | null> {
  * See: https://atproto.com/specs/handle#handle-resolution
  */
 export async function resolveHandleViaWellKnown(handle: string): Promise<string | null> {
-  // Basic sanity: must look like a domain (contain a dot, no spaces)
-  if (!handle.includes(".") || /\s/.test(handle)) return null
+  // Anti-SSRF: `handle` is fully client-controlled and is interpolated
+  // into an outbound URL. Reject anything that isn't a bare DNS hostname
+  // (no port / userinfo / path / percent-encoded chars), and require a
+  // real dotted name with an alphabetic TLD — so an IP literal, host:port
+  // or `10.0.0.5`-style value can never reach the fetch. Then run the
+  // constructed URL through the SAME gate resolvePdsUrl uses.
+  if (/[:@/%\s]/.test(handle)) return null
+  if (
+    !/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i.test(
+      handle,
+    )
+  ) {
+    return null
+  }
+
+  const url = `https://${handle}/.well-known/atproto-did`
+  if (!isAllowedPdsUrl(url)) return null
 
   try {
-    const res = await fetch(
-      `https://${handle}/.well-known/atproto-did`,
-      { signal: AbortSignal.timeout(5_000) }
-    )
+    const res = await fetch(url, {
+      redirect: "error",
+      signal: AbortSignal.timeout(5_000),
+    })
     if (!res.ok) return null
     const text = (await res.text()).trim()
     // Must be a valid DID
