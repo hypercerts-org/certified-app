@@ -846,19 +846,12 @@
 
 /* Attribution control — readable in both themes, unobtrusive */
 .certs-map .leaflet-control-attribution {
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--navbar-bg);
   color: var(--fg-muted);
   padding: 2px 6px;
   font-size: 0.625rem;
 }
 .certs-map .leaflet-control-attribution a {
-  color: var(--fg-secondary);
-}
-[data-theme="dark"] .certs-map .leaflet-control-attribution {
-  background: rgba(20, 20, 23, 0.85);
-  color: var(--fg-muted);
-}
-[data-theme="dark"] .certs-map .leaflet-control-attribution a {
   color: var(--fg-secondary);
 }
 

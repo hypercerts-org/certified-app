@@ -96,6 +96,13 @@
      player surround reads as black in both themes. */
   --media-letterbox: #000000;
 
+  /* Image-edit pill scrims (avatar / banner "Change" + "Remove" pills).
+     Intentionally invariant (not overridden in dark mode): the pills sit
+     over a user image, so the scrim must not flip with the theme. */
+  --scrim-pill: rgba(17, 17, 17, 0.78);
+  --scrim-pill-hover: rgba(17, 17, 17, 0.92);
+  --scrim-pill-ghost: rgba(255, 255, 255, 0.92);
+
   /* Navbar + sheets */
   --navbar-bg: rgba(255, 255, 255, 0.8);
   --navbar-border: rgba(0, 0, 0, 0.05);
